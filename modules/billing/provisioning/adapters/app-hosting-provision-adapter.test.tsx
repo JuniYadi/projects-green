@@ -21,6 +21,7 @@ describe("AppHostingProvisionAdapter", () => {
     expect(AppHostingProvisionAdapter.id).toBe("APP_HOSTING")
     expect(AppHostingProvisionAdapter.name).toBe("App Hosting")
     expect(DEFAULT_APP_HOSTING_PLAN_CONFIG).toEqual({
+      clusterIds: [],
       cpu: 1000,
       memory: 1024,
       storage: 20,
@@ -56,12 +57,9 @@ describe("AppHostingProvisionAdapter", () => {
         memory: 2048,
       })
       expect(parsed).toEqual({
+        ...DEFAULT_APP_HOSTING_PLAN_CONFIG,
         cpu: 2000,
         memory: 2048,
-        storage: 20,
-        maxCustomDomains: 3,
-        wildcard: false,
-        requiredDependencies: [],
       })
     })
 
@@ -78,6 +76,7 @@ describe("AppHostingProvisionAdapter", () => {
         },
       })
       expect(parsed).toEqual({
+        ...DEFAULT_APP_HOSTING_PLAN_CONFIG,
         cpu: 4000,
         memory: 8192,
         storage: 100,
@@ -86,7 +85,6 @@ describe("AppHostingProvisionAdapter", () => {
         requiredDependencies: ["POSTGRESQL", "REDIS"],
       })
     })
-
     it("falls back to default config on invalid input types", () => {
       expect(parseAppHostingPlanConfig("invalid")).toEqual(
         DEFAULT_APP_HOSTING_PLAN_CONFIG
@@ -161,6 +159,7 @@ describe("AppHostingProvisionAdapter", () => {
   describe("AppHostingPlanConfigComponent", () => {
     it("renders all form fields with initial values", () => {
       const initial: AppHostingPlanConfig = {
+        clusterIds: [],
         cpu: 2000,
         memory: 4096,
         storage: 50,

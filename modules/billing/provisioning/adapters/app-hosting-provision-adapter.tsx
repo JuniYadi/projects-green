@@ -1,7 +1,10 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { z } from "zod"
 
+import { eden } from "@/lib/eden"
+import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +22,7 @@ export type AppHostingDependency = (typeof APP_HOSTING_DEPENDENCIES)[number]
 export const appHostingDependencySchema = z.enum(APP_HOSTING_DEPENDENCIES)
 
 export type AppHostingPlanConfig = {
+  clusterIds: string[]
   cpu: number
   memory: number
   storage: number
@@ -28,6 +32,7 @@ export type AppHostingPlanConfig = {
 }
 
 export const DEFAULT_APP_HOSTING_PLAN_CONFIG: AppHostingPlanConfig = {
+  clusterIds: [],
   cpu: 1000,
   memory: 1024,
   storage: 20,
@@ -38,6 +43,7 @@ export const DEFAULT_APP_HOSTING_PLAN_CONFIG: AppHostingPlanConfig = {
 export const DEFAULT_APP_HOSTING_BLUEPRINT = DEFAULT_APP_HOSTING_PLAN_CONFIG
 
 const appHostingPlanConfigSchema = z.object({
+  clusterIds: z.array(z.string().trim().min(1)).default([]),
   cpu: z.number().finite().int().min(1).default(1000),
   memory: z.number().finite().int().min(128).default(1024),
   storage: z.number().finite().int().min(1).default(20),
@@ -137,6 +143,15 @@ const DEPENDENCY_OPTIONS: Array<{
   },
 ]
 
+type ClusterItem = {
+  id: string
+  code: string
+  name: string
+  region: string
+  status: string
+  isDefault: boolean
+}
+
 export function AppHostingPlanConfigComponent({
   value,
   onChange,
@@ -148,6 +163,53 @@ export function AppHostingPlanConfigComponent({
   disabled?: boolean
   errors?: Record<string, string>
 }>) {
+  const [clusters, setClusters] = useState<ClusterItem[]>([])
+  const [loadingClusters, setLoadingClusters] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    async function fetchClusters() {
+      try {
+        const { data: payload } = await eden.api.admin[
+          "app-hosting"
+        ].clusters.get({
+          $query: { page: 1, limit: 50 },
+        })
+        if (mounted && payload?.ok && Array.isArray(payload.data)) {
+          setClusters(
+            (payload.data as ClusterItem[]).filter(
+              (c: ClusterItem) => c.status === "ACTIVE"
+            )
+          )
+        }
+      } catch (err) {
+        if (mounted) {
+          setLoadError(
+            err instanceof Error ? err.message : "Failed to load clusters."
+          )
+        }
+      } finally {
+        if (mounted) setLoadingClusters(false)
+      }
+    }
+    fetchClusters()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const toggleCluster = (clusterId: string, checked: boolean) => {
+    const nextClusterIds = checked
+      ? [...new Set([...(value.clusterIds ?? []), clusterId])]
+      : (value.clusterIds ?? []).filter((id) => id !== clusterId)
+
+    onChange({
+      ...value,
+      clusterIds: nextClusterIds,
+    })
+  }
+
   const toggleDependency = (
     dependency: AppHostingDependency,
     checked: boolean
@@ -161,14 +223,98 @@ export function AppHostingPlanConfigComponent({
       requiredDependencies: nextDependencies,
     })
   }
-
   return (
     <section className="space-y-4 rounded-md border p-4">
       <div>
         <h3 className="font-medium">App Hosting provisioning</h3>
         <p className="text-sm text-muted-foreground">
-          Set the resources and template dependencies for this plan.
+          Set target clusters, compute specs, and template dependencies for this
+          plan.
         </p>
+      </div>
+
+      {/* Cluster Selection Section */}
+      <div className="space-y-3 border-b pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm font-medium">
+              Allowed Target Clusters
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Select Kubernetes clusters where this plan can be deployed. Leave
+              empty to allow all active clusters.
+            </p>
+          </div>
+          {clusters.length > 0 && (
+            <Badge variant="outline" className="text-xs">
+              {(value.clusterIds?.length ?? 0) === 0
+                ? "All Active Clusters"
+                : `${value.clusterIds.length} of ${clusters.length} Selected`}
+            </Badge>
+          )}
+        </div>
+
+        {loadingClusters ? (
+          <div className="rounded-md border p-3 text-xs text-muted-foreground">
+            Loading active clusters...
+          </div>
+        ) : loadError ? (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+            {loadError}
+          </div>
+        ) : clusters.length === 0 ? (
+          <div className="rounded-md border p-3 text-xs text-muted-foreground">
+            No active clusters found. Configure clusters under App Hosting
+            inventory.
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {clusters.map((cluster) => {
+              const isChecked = (value.clusterIds ?? []).includes(cluster.id)
+              return (
+                <label
+                  key={cluster.id}
+                  htmlFor={`cluster-${cluster.id}`}
+                  className="flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors hover:bg-muted/40"
+                >
+                  <Checkbox
+                    id={`cluster-${cluster.id}`}
+                    checked={isChecked}
+                    onCheckedChange={(checked) =>
+                      toggleCluster(cluster.id, Boolean(checked))
+                    }
+                    disabled={disabled}
+                    aria-label={cluster.name}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm leading-none font-medium">
+                        {cluster.name}
+                      </span>
+                      {cluster.isDefault && (
+                        <Badge
+                          variant="secondary"
+                          className="h-4 px-1 text-[10px]"
+                        >
+                          Default
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Code: <span className="font-mono">{cluster.code}</span> ·
+                      Region: {cluster.region || "Global"}
+                    </p>
+                  </div>
+                </label>
+              )
+            })}
+          </div>
+        )}
+        {errors?.clusterIds && (
+          <p className="text-xs text-destructive" role="alert">
+            {errors.clusterIds}
+          </p>
+        )}
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <NumberField

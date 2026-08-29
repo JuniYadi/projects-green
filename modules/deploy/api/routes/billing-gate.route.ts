@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client"
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
+import { resolveServerHourlyCost } from "../../deploy-pricing"
 import { AppHostingBillingService } from "../../billing/app-hosting-billing.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 
@@ -45,16 +46,6 @@ export const billingGateRoutes = new Elysia({
       }
     }
 
-    if (!Number.isFinite(body.hourlyCost) || body.hourlyCost <= 0) {
-      set.status = 422
-      return {
-        ok: false,
-        error: "INVALID_HOURLY_COST",
-        message:
-          "A positive hourly cost is required to compute the billing gate.",
-      }
-    }
-
     const account = await prisma.billingAccount.findUnique({
       where: { organizationId: auth.organizationId },
     })
@@ -68,12 +59,35 @@ export const billingGateRoutes = new Elysia({
       }
     }
 
+    // Trusted server-side price computation: resolve from ServicePricing / plan definition
+    let resolvedHourlyCost: Prisma.Decimal
+    if (body.resourcePlanId) {
+      const pricingResult = await resolveServerHourlyCost({
+        resourcePlanId: body.resourcePlanId,
+        regionId: body.regionId,
+        currency: account.currency,
+        cpu: body.cpu,
+        memory: body.memory,
+      })
+      resolvedHourlyCost = pricingResult.hourlyCost
+    } else if (typeof body.hourlyCost === "number" && body.hourlyCost > 0) {
+      resolvedHourlyCost = new Prisma.Decimal(String(body.hourlyCost))
+    } else {
+      set.status = 422
+      return {
+        ok: false,
+        error: "INVALID_HOURLY_COST",
+        message:
+          "A resourcePlanId or positive hourly cost is required to compute the billing gate.",
+      }
+    }
+
     const transactions = new BillingTransactionService(prisma)
     const billingService = new AppHostingBillingService(prisma, transactions)
 
     const quote = await billingService.quotePayg({
       organizationId: auth.organizationId,
-      hourlyCost: new Prisma.Decimal(String(body.hourlyCost)),
+      hourlyCost: resolvedHourlyCost,
       bufferHours: body.paygBufferHours,
     })
 
@@ -101,7 +115,11 @@ export const billingGateRoutes = new Elysia({
   {
     body: t.Object({
       billingMode: t.Union([t.Literal("PAYG"), t.Literal("PACKAGE")]),
-      hourlyCost: t.Number(),
+      resourcePlanId: t.Optional(t.String()),
+      regionId: t.Optional(t.String()),
+      cpu: t.Optional(t.Number()),
+      memory: t.Optional(t.Number()),
+      hourlyCost: t.Optional(t.Number()),
       paygBufferHours: t.Optional(t.Number()),
     }),
   }

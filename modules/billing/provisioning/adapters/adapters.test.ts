@@ -29,6 +29,7 @@ describe("built-in provision adapters", () => {
       customUsername: false,
     })
     expect(DEFAULT_APP_HOSTING_PLAN_CONFIG).toEqual({
+      clusterIds: [],
       cpu: 1000,
       memory: 1024,
       storage: 20,

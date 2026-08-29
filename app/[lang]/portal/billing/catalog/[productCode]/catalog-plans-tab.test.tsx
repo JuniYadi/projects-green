@@ -1,8 +1,7 @@
-import { describe, expect, it, mock } from "bun:test"
-import { render } from "@testing-library/react"
+import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { render, cleanup } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useState } from "react"
-
 import type {
   ProductPlanEditorForm,
   SupportedCurrency,
@@ -48,6 +47,9 @@ function PlansHarness({
 }
 
 describe("CatalogPlansTab", () => {
+  beforeEach(() => {
+    cleanup()
+  })
   it("adds plans with editable identity fields and unique default codes", async () => {
     const view = render(<PlansHarness initialPlans={[]} />)
     const user = userEvent.setup()

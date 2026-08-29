@@ -266,6 +266,7 @@ export async function resolveAppHostingClusterForStack(
   if (stack.clusterId) {
     const cluster = await prisma.appHostingCluster.findUnique({
       where: { id: stack.clusterId },
+      include: { region: true },
     })
     if (!cluster) {
       throw new Error("No active default App Hosting cluster configured")
@@ -277,12 +278,13 @@ export async function resolveAppHostingClusterForStack(
       id: cluster.id,
       code: cluster.code,
       name: cluster.name,
-      region: cluster.region,
+      region: cluster.region?.name ?? "Global",
     }
   }
 
   const defaults = await prisma.appHostingCluster.findMany({
     where: { status: "ACTIVE", isDefault: true },
+    include: { region: true },
   })
   if (defaults.length === 0) {
     throw new Error("No active default App Hosting cluster configured")
@@ -295,7 +297,7 @@ export async function resolveAppHostingClusterForStack(
     id: cluster.id,
     code: cluster.code,
     name: cluster.name,
-    region: cluster.region,
+    region: cluster.region?.name ?? "Global",
   }
 }
 

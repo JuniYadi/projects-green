@@ -94,7 +94,7 @@ describe("cluster-integration.service", () => {
       id: "cluster-1",
       code: "sgp",
       name: "Singapore Production",
-      region: "Singapore",
+      region: { id: "reg-1", name: "Singapore", code: "sgp" },
       status: "ACTIVE",
     })
 
@@ -107,6 +107,7 @@ describe("cluster-integration.service", () => {
     })
     expect(mockPrisma.appHostingCluster.findUnique).toHaveBeenCalledWith({
       where: { id: "cluster-1" },
+      include: { region: true },
     })
   })
 
@@ -119,7 +120,7 @@ describe("cluster-integration.service", () => {
         id: "cluster-default",
         code: "sgp",
         name: "Singapore Production",
-        region: "Singapore",
+        region: { id: "reg-1", name: "Singapore", code: "sgp" },
       },
     ])
 
@@ -127,6 +128,7 @@ describe("cluster-integration.service", () => {
     expect(cluster.code).toBe("sgp")
     expect(mockPrisma.appHostingCluster.findMany).toHaveBeenCalledWith({
       where: { status: "ACTIVE", isDefault: true },
+      include: { region: true },
     })
   })
 
