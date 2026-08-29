@@ -41,6 +41,8 @@ export type StackUpsertInput = {
   subdomain?: string | null
   envVars?: unknown[]
   imageRepository?: string | null
+  deploymentType?: "deployment" | "statefulset" | null
+  additionalPorts?: Array<{ port: number; name: string }> | null
 }
 
 const IN_PROGRESS_STATUSES = ["QUEUED", "BUILDING", "DEPLOYING"] as const
@@ -162,6 +164,10 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
     if (input.defaultPort != null) buildMetadata.defaultPort = input.defaultPort
     if (input.imageRepository != null)
       buildMetadata.imageRepository = input.imageRepository
+    if (input.deploymentType != null)
+      buildMetadata.deploymentType = input.deploymentType
+    if (input.additionalPorts != null)
+      buildMetadata.additionalPorts = input.additionalPorts
 
     // Merge with existing metadataJson on update
     const existingJson =
