@@ -121,6 +121,9 @@ const mockPrisma = {
   appManagedStock: {
     update: mock(async () => ({ id: "stock-1" })),
   },
+  appTemplate: {
+    findFirst: mock(async () => null),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
