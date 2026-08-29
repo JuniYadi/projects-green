@@ -82,6 +82,8 @@ import { groupMessagesByDate } from "@/modules/whatsapp/messages/ui/date-group"
 import { MessageDateGroup } from "@/modules/whatsapp/messages/ui/message-date-group"
 import {
   getTemplatePlaceholderIndexes,
+  renderTemplateBody,
+  WhatsAppFormattedText,
   WhatsAppTemplatePreview,
 } from "@/modules/whatsapp/templates/ui/template-preview"
 import {
@@ -138,11 +140,30 @@ export type Message = {
   updatedAt: string
 }
 
+export type TemplateLanguageData = {
+  headerType?: string | null
+  headerText?: string | null
+  headerUrl?: string | null
+  body?: string | null
+  footer?: string | null
+  buttons?: unknown
+  parameters?: unknown
+}
+
 export type TemplateMessageMetadata = {
   templateId?: string
   templateName?: string
   language?: string
+  templateLanguage?: string
+  fields?: string[]
   variables?: string[]
+  templateLanguageData?: TemplateLanguageData | null
+  headerType?: string | null
+  headerText?: string | null
+  headerUrl?: string | null
+  body?: string | null
+  footer?: string | null
+  buttons?: unknown
 }
 
 export type ConversationDetail = ConversationListItem & {
@@ -439,6 +460,96 @@ function ConversationItem({
   )
 }
 
+function getTemplateButtonLabel(button: Record<string, unknown>): string {
+  if (typeof button.text === "string" && button.text.trim()) {
+    return button.text.trim()
+  }
+  const ctaUrl = button.cta_url
+  if (
+    ctaUrl &&
+    typeof ctaUrl === "object" &&
+    "display_text" in ctaUrl &&
+    typeof ctaUrl.display_text === "string" &&
+    ctaUrl.display_text.trim()
+  ) {
+    return ctaUrl.display_text.trim()
+  }
+  const reply = button.reply
+  if (
+    reply &&
+    typeof reply === "object" &&
+    "title" in reply &&
+    typeof reply.title === "string" &&
+    reply.title.trim()
+  ) {
+    return reply.title.trim()
+  }
+  return button.type === "OTP" ? "Copy Code" : String(button.type ?? "Button")
+}
+
+function TemplateHeader({ data }: { data: TemplateLanguageData }) {
+  const headerType = data.headerType?.toUpperCase()
+  const headerText = data.headerText?.trim()
+  const headerUrl = data.headerUrl?.trim()
+
+  if (headerText) {
+    return (
+      <div className="mb-2 text-sm font-bold text-[#111b21] dark:text-[#e9edef]">
+        <WhatsAppFormattedText text={headerText} />
+      </div>
+    )
+  }
+
+  if (headerUrl && (headerType === "IMAGE" || !headerType)) {
+    return (
+      <div className="mb-2 overflow-hidden rounded-lg border border-border/40">
+        {/* eslint-disable-next-line @next/next/no-img-element -- template media URLs are dynamic */}
+        <img
+          src={headerUrl}
+          alt="Template header"
+          className="max-h-48 w-full object-cover"
+        />
+      </div>
+    )
+  }
+
+  if (headerUrl && headerType === "VIDEO") {
+    return (
+      <div className="mb-2 overflow-hidden rounded-lg border border-border/40">
+        <video
+          src={headerUrl}
+          controls
+          className="max-h-48 w-full object-cover"
+          aria-label="Template header video"
+        />
+      </div>
+    )
+  }
+
+  if (headerUrl && headerType === "DOCUMENT") {
+    return (
+      <a
+        href={headerUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="mb-2 block rounded-lg border border-border/40 bg-black/5 p-2.5 text-xs text-[#00a884] hover:underline dark:bg-white/5"
+      >
+        {headerUrl.split("/").pop()?.split("?")[0] || "Open document"}
+      </a>
+    )
+  }
+
+  if (headerType && headerType !== "NONE") {
+    return (
+      <div className="mb-2 rounded-lg border border-border/40 bg-black/5 p-2 text-center text-xs text-[#667781] dark:bg-white/5 dark:text-[#8696a0]">
+        {headerType} attachment
+      </div>
+    )
+  }
+
+  return null
+}
+
 // ─── Message Bubble ──────────────────────────────────────────────────────────
 
 function MessageBubble({
@@ -454,6 +565,32 @@ function MessageBubble({
   const journeyHref = `${basePath.replace(/\/$/, "")}/${encodeURIComponent(
     message.waMessageId || ""
   )}`
+  const metadata = message.metadata
+  const templateData =
+    metadata?.templateLanguageData ??
+    (metadata &&
+    (metadata.headerType ||
+      metadata.headerText ||
+      metadata.headerUrl ||
+      metadata.body ||
+      metadata.footer ||
+      metadata.buttons)
+      ? metadata
+      : null)
+  const isTemplatePreview = message.messageType === "template" && !!templateData
+  const fields = metadata?.fields
+  const values = Array.isArray(fields)
+    ? Object.fromEntries(fields.map((value, index) => [index + 1, value]))
+    : undefined
+  const templateBody = templateData?.body
+    ? renderTemplateBody(templateData.body, values)
+    : message.body
+  const templateButtons = Array.isArray(templateData?.buttons)
+    ? templateData.buttons.filter(
+        (button): button is Record<string, unknown> =>
+          !!button && typeof button === "object"
+      )
+    : []
 
   return (
     <TooltipProvider>
@@ -465,24 +602,46 @@ function MessageBubble({
         <div
           className={`relative max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-xs ${
             isInbox
-              ? "rounded-tl-xs bg-muted text-foreground"
-              : "rounded-tr-xs bg-emerald-600/90 text-white dark:bg-emerald-700 dark:text-emerald-50"
+              ? "rounded-tl-xs border border-border/40 bg-white text-[#111b21] dark:border-transparent dark:bg-[#202c33] dark:text-[#e9edef]"
+              : "rounded-tr-xs bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]"
           }`}
         >
-          <p className="leading-relaxed break-words whitespace-pre-wrap">
-            {message.body || (
-              <span className="italic opacity-60">
-                <WhatsAppText id="s133" />
-              </span>
-            )}
-          </p>
-          <div
-            className={`absolute right-2 bottom-1.5 flex items-center gap-1 text-[10px] select-none ${
-              isInbox
-                ? "text-muted-foreground"
-                : "text-emerald-100 dark:text-emerald-200"
-            }`}
-          >
+          {isTemplatePreview ? (
+            <>
+              <TemplateHeader data={templateData} />
+              {templateBody ? (
+                <div className="leading-relaxed break-words whitespace-pre-wrap">
+                  <WhatsAppFormattedText text={templateBody} />
+                </div>
+              ) : null}
+              {templateData.footer ? (
+                <div className="mt-1.5 text-[11px] text-[#667781] dark:text-[#8696a0]">
+                  {templateData.footer}
+                </div>
+              ) : null}
+              {templateButtons.length > 0 ? (
+                <div className="-mx-3.5 mt-2 -mb-2 divide-y divide-border/40 border-t border-border/40">
+                  {templateButtons.map((button, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-center px-3 py-2.5 text-center text-xs font-semibold text-[#00a884] transition-colors hover:bg-black/5 dark:text-[#00a884] dark:hover:bg-white/5"
+                    >
+                      {getTemplateButtonLabel(button)}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="leading-relaxed break-words whitespace-pre-wrap">
+              {message.body || (
+                <span className="italic opacity-60">
+                  <WhatsAppText id="s133" />
+                </span>
+              )}
+            </p>
+          )}
+          <div className="absolute right-2 bottom-1.5 flex items-center gap-1 text-[10px] text-[#667781] select-none dark:text-[#8696a0]">
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>{formatMessageTime(message.createdAt)}</span>
