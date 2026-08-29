@@ -37,6 +37,11 @@ mock.module("./argocd-rollout.service", () => ({
   pollDeploymentRollout: mockPollDeploymentRollout,
 }))
 
+const mockCheckIngressReadiness = mock(() => Promise.resolve(true))
+mock.module("./ingress-readiness.service", () => ({
+  checkIngressReadiness: mockCheckIngressReadiness,
+}))
+
 import {
   getMonitorStats,
   monitorActiveDeployments,
@@ -52,6 +57,8 @@ describe("deploy-monitor.service", () => {
     mockRecordDeployLog.mockClear()
     mockProcessQueuedDeployment.mockClear()
     mockPollDeploymentRollout.mockClear()
+    mockCheckIngressReadiness.mockClear()
+    mockCheckIngressReadiness.mockResolvedValue(true)
   })
 
   it("monitors active deployments and processes queued ones", async () => {
@@ -178,6 +185,64 @@ describe("deploy-monitor.service", () => {
     expect(mockUpdateStack).toHaveBeenCalledWith({
       where: { id: "stack-fail" },
       data: { lastDeployStatus: "FAILED" },
+    })
+  })
+
+  it("queries RUNNING deployments with ingressVerified false bounded by a 30 minute window", async () => {
+    mockFindMany.mockResolvedValueOnce([])
+
+    await monitorActiveDeployments()
+
+    expect(mockFindMany).toHaveBeenCalledTimes(1)
+    const call = mockFindMany.mock.calls[0]?.[0] as {
+      where: { OR: Array<Record<string, unknown>> }
+    }
+    const runningClause = call.where.OR.find(
+      (clause) => clause.status === "RUNNING"
+    ) as {
+      status: string
+      ingressVerified: boolean
+      completedAt: { gt: Date }
+    }
+    expect(runningClause).toBeTruthy()
+    expect(runningClause.ingressVerified).toBe(false)
+    const boundMs = Date.now() - runningClause.completedAt.gt.getTime()
+    expect(boundMs).toBeGreaterThan(29 * 60 * 1000)
+    expect(boundMs).toBeLessThan(31 * 60 * 1000)
+  })
+
+  it("re-checks ingress readiness for a RUNNING-but-unverified deployment without touching status", async () => {
+    mockFindMany.mockResolvedValueOnce([
+      {
+        id: "dep-running",
+        stackId: "stack-1",
+        status: "RUNNING",
+        manifestPushed: true,
+        argocdSynced: true,
+        attempt: 1,
+        stack: { name: "my-app" },
+      },
+    ] as unknown as never)
+    mockCheckIngressReadiness.mockResolvedValueOnce(true)
+
+    const results = await monitorActiveDeployments()
+
+    expect(mockCheckIngressReadiness).toHaveBeenCalledWith("dep-running")
+    expect(mockUpdateDeployment).toHaveBeenCalledWith({
+      where: { id: "dep-running" },
+      data: { ingressVerified: true, ingressCheckedAt: expect.any(Date) },
+    })
+    const updateCall = mockUpdateDeployment.mock.calls.find(
+      (c) => (c[0] as { where: { id: string } }).where.id === "dep-running"
+    )
+    const updateData = (updateCall?.[0] as { data: Record<string, unknown> })
+      .data
+    expect(updateData).not.toHaveProperty("status")
+    expect(results[0]).toEqual({
+      deploymentId: "dep-running",
+      status: "RUNNING",
+      manifestPushed: true,
+      argocdSynced: true,
     })
   })
 
