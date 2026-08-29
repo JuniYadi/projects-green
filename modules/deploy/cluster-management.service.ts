@@ -165,11 +165,7 @@ export async function getClusterById(
 }
 
 async function resolveRegionId(
-  db: {
-    serviceRegion?: {
-      findFirst: (args: unknown) => Promise<{ id: string } | null>
-    }
-  },
+  db: Prisma.TransactionClient | typeof prisma,
   regionId?: string | null,
   regionNameOrCode?: string | null
 ): Promise<string | null> {
