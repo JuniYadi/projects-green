@@ -1340,8 +1340,8 @@ export function WhatsAppInbox({
                 {isAdminMode ? "New Message" : t.sendMessage}
               </Button>
             </DialogTrigger>
-            <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-5xl">
-              <DialogHeader>
+            <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+              <DialogHeader className="border-b p-6 pb-3">
                 <DialogTitle>
                   <WhatsAppText id="s134" />
                 </DialogTitle>
@@ -1349,7 +1349,7 @@ export function WhatsAppInbox({
                   <WhatsAppText id="s135" />
                 </DialogDescription>
               </DialogHeader>
-              <div className="min-h-0 flex-1 overflow-y-auto px-1 py-4">
+              <div className="flex-1 space-y-4 overflow-y-auto p-6">
                 <div className="grid min-h-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
                   {/* Left Column */}
                   <div className="space-y-4">
@@ -1838,7 +1838,7 @@ export function WhatsAppInbox({
                   </div>
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="border-t p-6 pt-3">
                 <Button
                   variant="outline"
                   onClick={() => handleDialogOpenChange(false)}
