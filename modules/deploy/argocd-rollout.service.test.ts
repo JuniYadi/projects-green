@@ -60,6 +60,16 @@ mock.module("@/modules/deploy/cluster-integration.service", () => ({
   }),
 }))
 
+let ingressReadinessImpl: (
+  deploymentId: string
+) => Promise<boolean> = async () => true
+const checkIngressReadinessMock = mock((deploymentId: string) =>
+  ingressReadinessImpl(deploymentId)
+)
+mock.module("./ingress-readiness.service", () => ({
+  checkIngressReadiness: checkIngressReadinessMock,
+}))
+
 const originalFetch = globalThis.fetch
 
 const setupFetch = (response: {
@@ -102,6 +112,11 @@ describe("argocd-rollout.service", () => {
     mockPrisma.applicationDeployEvent.findFirst.mockResolvedValue(null)
     recordEvent.mockReset()
     recordEvent.mockResolvedValue(undefined)
+    checkIngressReadinessMock.mockReset()
+    ingressReadinessImpl = async () => true
+    checkIngressReadinessMock.mockImplementation((deploymentId: string) =>
+      ingressReadinessImpl(deploymentId)
+    )
   })
 
   it("returns Synced + Healthy completion with POD_READY + DEPLOY_COMPLETED", async () => {
@@ -127,6 +142,47 @@ describe("argocd-rollout.service", () => {
     expect(types).toContain("ARGOCD_SYNCED")
     expect(types).toContain("POD_READY")
     expect(types).toContain("DEPLOY_COMPLETED")
+    restoreFetch()
+  })
+
+  it("still sets RUNNING when the ingress readiness check fails", async () => {
+    ingressReadinessImpl = async () => false
+    setupFetch({
+      ok: true,
+      body: {
+        status: {
+          sync: { status: "Synced" },
+          health: { status: "Healthy" },
+        },
+      },
+    })
+    const result = await pollDeploymentRollout("deploy-1")
+    expect(result.completed).toBe(true)
+    expect(mockPrisma.applicationDeployment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "deploy-1" },
+        data: expect.objectContaining({ ingressVerified: false }),
+      })
+    )
+    restoreFetch()
+  })
+
+  it("still sets RUNNING when the ingress readiness check throws", async () => {
+    ingressReadinessImpl = async () => {
+      throw new Error("kube api unreachable")
+    }
+    setupFetch({
+      ok: true,
+      body: {
+        status: {
+          sync: { status: "Synced" },
+          health: { status: "Healthy" },
+        },
+      },
+    })
+    const result = await pollDeploymentRollout("deploy-1")
+    expect(result.completed).toBe(true)
+    expect(result.status?.healthStatus).toBe("Healthy")
     restoreFetch()
   })
 
