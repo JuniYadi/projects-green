@@ -24,7 +24,8 @@ export type ListClustersParams = { page: number; limit: number }
 export type CreateClusterInput = {
   code: string
   name: string
-  region: string
+  region?: string
+  regionId?: string
   metadataJson?: Record<string, unknown>
   status?: "PLANNED" | "ACTIVE" | "DEPRECATED"
   isDefault?: boolean
@@ -33,6 +34,7 @@ export type CreateClusterInput = {
 export type UpdateClusterInput = {
   name?: string
   region?: string
+  regionId?: string
   metadataJson?: Record<string, unknown>
 }
 
@@ -129,7 +131,7 @@ function throwInvalidDefault(message: string) {
   throw err
 }
 
-const clusterInclude = { integrations: true } as const
+const clusterInclude = { integrations: true, region: true } as const
 
 // ── Service ──────────────────────────────────────────
 
@@ -162,6 +164,30 @@ export async function getClusterById(
   return row ? toClusterDTO(row) : null
 }
 
+async function resolveRegionId(
+  db: Prisma.TransactionClient | typeof prisma,
+  regionId?: string | null,
+  regionNameOrCode?: string | null
+): Promise<string | null> {
+  if (regionId) return regionId
+  if (!regionNameOrCode || !db.serviceRegion) return null
+
+  const trimmed = regionNameOrCode.trim()
+  if (!trimmed) return null
+
+  const normalizedCode = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+  const found = await db.serviceRegion.findFirst({
+    where: {
+      OR: [
+        { id: trimmed },
+        { code: normalizedCode },
+        { name: { equals: trimmed, mode: "insensitive" } },
+      ],
+    },
+  })
+
+  return found?.id ?? null
+}
 export async function createCluster(
   input: CreateClusterInput
 ): Promise<ClusterAdminDTO> {
@@ -180,11 +206,17 @@ export async function createCluster(
         where: { isDefault: true },
         data: { isDefault: false },
       })
+      const resolvedRegionId = await resolveRegionId(
+        tx,
+        input.regionId,
+        input.region
+      )
+
       const row = await tx.appHostingCluster.create({
         data: {
           code: input.code,
           name: input.name,
-          region: input.region,
+          regionId: resolvedRegionId,
           status: input.status ?? "PLANNED",
           isDefault: true,
           metadataJson: metadata as Prisma.InputJsonValue,
@@ -195,11 +227,17 @@ export async function createCluster(
     })
   }
 
+  const resolvedRegionId = await resolveRegionId(
+    prisma,
+    input.regionId,
+    input.region
+  )
+
   const row = await prisma.appHostingCluster.create({
     data: {
       code: input.code,
       name: input.name,
-      region: input.region,
+      regionId: resolvedRegionId,
       status: input.status ?? "PLANNED",
       isDefault: input.isDefault ?? false,
       metadataJson: metadata as Prisma.InputJsonValue,
@@ -217,6 +255,10 @@ export async function updateCluster(
     await prisma.appHostingCluster.findUnique({ where: { id } }),
     "Cluster"
   )
+  let regionIdToSet: string | null | undefined = input.regionId
+  if (regionIdToSet === undefined && input.region !== undefined) {
+    regionIdToSet = await resolveRegionId(prisma, undefined, input.region)
+  }
 
   const metadata =
     input.metadataJson === undefined
@@ -226,7 +268,7 @@ export async function updateCluster(
     where: { id },
     data: {
       ...(input.name !== undefined && { name: input.name }),
-      ...(input.region !== undefined && { region: input.region }),
+      ...(regionIdToSet !== undefined && { regionId: regionIdToSet }),
       ...(metadata !== undefined && { metadataJson: metadata }),
     },
     include: clusterInclude,

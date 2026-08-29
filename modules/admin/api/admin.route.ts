@@ -15,6 +15,8 @@ import { createWhatsappAuditRoutes } from "@/modules/whatsapp/audit/api/whatsapp
 import { createAdminAiRoutes } from "@/modules/docs/api/admin-ai.route"
 import { createAdminCronRoutes } from "@/modules/admin/api/routes/admin-cron.route"
 import { createManagedStockRoutes } from "@/modules/deploy/api/routes/app-managed-stock.route"
+import { createAdminRegionsRoutes } from "@/modules/billing/api/admin/regions.route"
+
 export const adminRoutes = new Elysia()
   .use(createAdminOrganizationsRoutes())
   .use(createAdminInvitationsRoutes())
@@ -29,3 +31,4 @@ export const adminRoutes = new Elysia()
   .use(createAdminAiRoutes())
   .use(createAdminCronRoutes())
   .use(createManagedStockRoutes())
+  .use(createAdminRegionsRoutes())

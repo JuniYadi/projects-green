@@ -21,6 +21,15 @@ import {
   type ManagedAppTemplate,
 } from "../../managed-app-templates"
 import { parsePublicGitUrl } from "../../public-source"
+interface BlueprintRuntimeConfig {
+  runtime?: {
+    defaultPort?: number
+  }
+  resources?: {
+    defaultCpu?: number
+    defaultMemory?: number
+  }
+}
 
 /**
  * PGREEN-071 — Console Deploy Journey truth path.
@@ -131,9 +140,43 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       name = body.name?.trim() || managedTemplate.name
       slug = slugify(name)
     } else if (sourceType === "TEMPLATE") {
-      const template = DEPLOY_TEMPLATES.find(
+      let template = DEPLOY_TEMPLATES.find(
         (item) => item.id === body.templateId
       )
+
+      if (!template && body.templateId) {
+        const dbTemplate = await prisma.appTemplate.findFirst({
+          where: {
+            OR: [{ id: body.templateId }, { slug: body.templateId }],
+          },
+        })
+        if (dbTemplate) {
+          const blueprint =
+            (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig) ??
+            null
+          template = {
+            id: dbTemplate.id as (typeof DEPLOY_TEMPLATES)[number]["id"],
+            name: dbTemplate.name,
+            description: dbTemplate.description || "",
+            category: "Developer Tools",
+            defaultCpu: blueprint?.resources?.defaultCpu ?? 500,
+            defaultMemory: blueprint?.resources?.defaultMemory ?? 512,
+            build: {
+              language: "Docker",
+              framework: "Docker",
+              frameworkVersion: "",
+              buildCommand: "",
+              useDockerfile: true,
+              primaryEngine: "docker",
+              primaryEngineVersion: "",
+              secondaryEngine: "",
+              secondaryEngineVersion: "",
+              defaultPort: blueprint?.runtime?.defaultPort ?? 8080,
+            },
+          }
+        }
+      }
+
       if (!template) {
         set.status = 422
         return {

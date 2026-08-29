@@ -1034,6 +1034,10 @@ export type CatalogOffer = {
   chargeUnit: "SUBSCRIPTION" | "DEVICE"
   effectiveFrom: string
   effectiveTo: string | null
+  regionId?: string | null
+  regionCode?: string | null
+  regionName?: string | null
+  regionFlag?: string | null
 }
 
 export type CatalogPlan = {

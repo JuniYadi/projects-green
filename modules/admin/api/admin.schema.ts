@@ -75,6 +75,7 @@ export const createClusterBodySchema = z.object({
     .trim()
     .min(1, "Region is required.")
     .max(64, "Region must be at most 64 characters."),
+  regionId: z.string().trim().min(1).optional(),
   metadataJson: z.record(z.string(), z.unknown()).optional(),
   status: clusterStatusEnum.optional(),
   isDefault: z.boolean().optional(),
@@ -83,6 +84,7 @@ export const createClusterBodySchema = z.object({
 export const updateClusterBodySchema = z.object({
   name: z.string().trim().min(1).max(128).optional(),
   region: z.string().trim().min(1).max(64).optional(),
+  regionId: z.string().trim().min(1).optional(),
   metadataJson: z.record(z.string(), z.unknown()).optional(),
 })
 

@@ -43,6 +43,10 @@ describe("catalog DTO mappers", () => {
       periodPrice: "0",
       currency: "IDR",
       chargeUnit: "DEVICE",
+      regionId: null,
+      regionCode: null,
+      regionName: null,
+      regionFlag: null,
       effectiveFrom: "2026-01-01T00:00:00.000Z",
       effectiveTo: null,
     })

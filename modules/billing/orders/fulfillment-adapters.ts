@@ -79,6 +79,17 @@ export function parseAppHostingFulfillmentContext(
     }
   }
 
+  if (raw === null) {
+    return {
+      ok: false,
+      failure: {
+        code: "APP_HOSTING_FULFILLMENT_CONTEXT_INVALID",
+        message:
+          "The App Hosting deployment request is invalid; retry with stack, deployment, source, and resource package references.",
+        retryable: false,
+      },
+    }
+  }
   const parsed = appHostingFulfillmentContextSchema.safeParse(raw)
   if (!parsed.success) {
     return {

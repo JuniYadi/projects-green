@@ -24,6 +24,7 @@ export type ClusterAdminDTO = {
   code: string
   name: string
   region: string
+  regionId: string | null
   status: AppHostingClusterStatus
   isDefault: boolean
   metadataJson: unknown | null
@@ -50,6 +51,7 @@ export function toClusterIntegrationDTO(
 
 export function toClusterDTO(
   row: AppHostingCluster & {
+    region?: { name: string } | null
     integrations?: AppHostingClusterIntegration[]
   }
 ): ClusterAdminDTO {
@@ -57,7 +59,8 @@ export function toClusterDTO(
     id: row.id,
     code: row.code,
     name: row.name,
-    region: row.region,
+    region: row.region?.name ?? "",
+    regionId: row.regionId,
     status: row.status,
     isDefault: row.isDefault,
     metadataJson: row.metadataJson,

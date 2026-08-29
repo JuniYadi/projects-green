@@ -1422,8 +1422,8 @@ model ServiceRegion {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pricings ServicePricing[]
-
+  pricings            ServicePricing[]
+  appHostingClusters  AppHostingCluster[]
   @@index([isActive])
   @@map("Region")
 }
@@ -3137,7 +3137,7 @@ model AppHostingCluster {
   id           String                  @id @default(cuid())
   code         String                  @unique
   name         String
-  region       String
+  regionId     String?
   status       AppHostingClusterStatus @default(PLANNED)
   isDefault    Boolean                 @default(false)
   metadataJson Json?
@@ -3150,7 +3150,10 @@ model AppHostingCluster {
   managedStocks             AppManagedStock[]
   endpoint                  AppHostingClusterEndpoint?
   domains                   ApplicationDomain[]
+  region                    ServiceRegion?                  @relation(fields: [regionId], references: [id])
 
+  @@index([regionId, status])
+  @@index([regionId, isDefault])
   @@index([status])
   @@index([isDefault])
 }

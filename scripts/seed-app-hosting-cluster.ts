@@ -149,11 +149,23 @@ const stripEmptySecrets = (
 const main = async () => {
   console.log("Seeding App Hosting cluster inventory...")
 
+  // Ensure ServiceRegion for Singapore exists
+  const serviceRegion = await prisma.serviceRegion.upsert({
+    where: { code: "sgp" },
+    update: { name: "Singapore", country: "SG", isActive: true },
+    create: {
+      code: "sgp",
+      name: "Singapore",
+      country: "SG",
+      isActive: true,
+    },
+  })
+
   const cluster = await prisma.appHostingCluster.upsert({
     where: { code: "sgp" },
     update: {
       name: "Singapore Production",
-      region: "Singapore",
+      regionId: serviceRegion.id,
       status: "ACTIVE",
       isDefault: true,
       metadataJson: SINGAPORE_METADATA,
@@ -161,7 +173,7 @@ const main = async () => {
     create: {
       code: "sgp",
       name: "Singapore Production",
-      region: "Singapore",
+      regionId: serviceRegion.id,
       status: "ACTIVE",
       isDefault: true,
       metadataJson: SINGAPORE_METADATA,

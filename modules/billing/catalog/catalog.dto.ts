@@ -23,6 +23,10 @@ export type CatalogOfferDTO = {
   chargeUnit: "SUBSCRIPTION" | "DEVICE"
   effectiveFrom: string // ISO date
   effectiveTo: string | null
+  regionId?: string | null
+  regionCode?: string | null
+  regionName?: string | null
+  regionFlag?: string | null
 }
 
 const PERIOD_MONTHS: Record<RecurringBillingPeriod, 1 | 3 | 6 | 12> = {
@@ -45,6 +49,10 @@ export function toCatalogOfferDTO(
     chargeUnit: pricing.chargeUnit as "SUBSCRIPTION" | "DEVICE",
     effectiveFrom: pricing.effectiveFrom.toISOString(),
     effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
+    regionId: pricing.regionId ?? null,
+    regionCode: pricing.region?.code ?? null,
+    regionName: pricing.region?.name ?? null,
+    regionFlag: pricing.region?.flag ?? null,
   }
 }
 

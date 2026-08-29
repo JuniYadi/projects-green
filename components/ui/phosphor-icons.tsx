@@ -76,6 +76,8 @@ export {
   Lock,
   MagnifyingGlass,
   MagnifyingGlassIcon,
+  MapPin,
+  MapPin as MapPinIcon,
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
   MegaphoneSimple as MegaphoneSimpleIcon,

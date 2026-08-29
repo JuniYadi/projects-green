@@ -1,9 +1,9 @@
 import { Prisma } from "@prisma/client"
 
+import { prisma } from "@/lib/prisma"
 import type { ResourcePlanId } from "@/modules/deploy/deploy.types"
 
 /**
- * PGREEN-071/069 — Deterministic PAYG pricing.
  *
  * The billing gate (deploy-trigger.route.ts) and the deploy submit flow
  * need a single, predictable hourly cost derived from the requested
@@ -61,6 +61,87 @@ export const computeHourlyCost = (input: {
     cpu * PAYG_CPU_RATE_PER_MILLI_HOUR + memory * PAYG_MEMORY_RATE_PER_MIB_HOUR
 
   return round4(cost)
+}
+
+/**
+ * Resolve hourly cost from database ServicePricing for a given region and plan,
+ * falling back to deterministic calculation if no matching pricing row exists (sparse coverage).
+ */
+export async function resolveServerHourlyCost(input: {
+  resourcePlanId: string
+  regionId?: string | null
+  currency?: string
+  cpu?: number | null
+  memory?: number | null
+}): Promise<{
+  hourlyCost: Prisma.Decimal
+  source: "SERVICE_PRICING" | "DETERMINISTIC_FALLBACK"
+  pricingId?: string
+}> {
+  const currency = input.currency ?? "USD"
+  const planKey = input.resourcePlanId.toUpperCase()
+
+  if (input.regionId) {
+    const plan = await prisma.servicePlan.findFirst({
+      where: {
+        package: { code: "APP_HOSTING" },
+        code: planKey,
+        isActive: true,
+      },
+      select: { id: true },
+    })
+
+    if (plan) {
+      const pricing = await prisma.servicePricing.findFirst({
+        where: {
+          planId: plan.id,
+          regionId: input.regionId,
+          currency,
+          isActive: true,
+        },
+        orderBy: { effectiveFrom: "desc" },
+      })
+
+      if (pricing) {
+        if (
+          pricing.billingMode === "PAYG" &&
+          (pricing.unitRateCpu || pricing.unitRateMem)
+        ) {
+          const cpu = input.cpu && input.cpu > 0 ? input.cpu : DEFAULT_PAYG_CPU
+          const memory =
+            input.memory && input.memory > 0
+              ? input.memory
+              : DEFAULT_PAYG_MEMORY
+          const cpuRate = Number(
+            pricing.unitRateCpu ?? PAYG_CPU_RATE_PER_MILLI_HOUR
+          )
+          const memRate = Number(
+            pricing.unitRateMem ?? PAYG_MEMORY_RATE_PER_MIB_HOUR
+          )
+          const calculated = round4(cpu * cpuRate + memory * memRate)
+          return {
+            hourlyCost: new Prisma.Decimal(String(calculated)),
+            source: "SERVICE_PRICING",
+            pricingId: pricing.id,
+          }
+        }
+        if (pricing.periodPrice) {
+          // Fixed tier monthly rate converted to hourly (~720 hours/month)
+          const hourlyFromPeriod = round4(Number(pricing.periodPrice) / 720)
+          return {
+            hourlyCost: new Prisma.Decimal(String(hourlyFromPeriod)),
+            source: "SERVICE_PRICING",
+            pricingId: pricing.id,
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    hourlyCost: computeHourlyCostDecimal(input),
+    source: "DETERMINISTIC_FALLBACK",
+  }
 }
 
 /**

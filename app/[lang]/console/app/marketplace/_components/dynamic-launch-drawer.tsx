@@ -12,6 +12,7 @@ import {
   Lightning,
   RocketLaunchIcon,
   ShieldCheckIcon,
+  WarningIcon,
 } from "@/components/ui/phosphor-icons"
 import { TemplateLogo } from "./template-logo"
 import { Badge } from "@/components/ui/badge"
@@ -22,9 +23,12 @@ import {
   getCatalogProduct,
   type CatalogPlan,
   type CatalogProductDetailResponse,
+  getAccount,
+  type BillingAccount,
 } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 import { getPlanResources } from "@/modules/deploy/catalog-plan-utils"
+import { QuickTopUpDialog } from "@/components/billing/quick-top-up-dialog"
 import {
   Select,
   SelectContent,
@@ -61,6 +65,8 @@ export interface DynamicLaunchDrawerProps {
     cpu?: number
     memory?: number
     resourcePlanId?: string
+    region?: string
+    regionId?: string
   }) => Promise<void> | void
   isDeploying?: boolean
   userBalance?: number
@@ -103,21 +109,26 @@ export function generateSuggestedAppName(templateSlug: string): string {
   return `${cleanSlug || "app"}-${adj}-${noun}`
 }
 
-
 export function DynamicLaunchDrawer({
   open,
   onOpenChange,
   template,
   onDeploy,
   isDeploying = false,
-  userBalance: _userBalance = 25.5,
-  currency = "USD",
-}: DynamicLaunchDrawerProps) {
+  userBalance: initialUserBalance,
+  currency: initialCurrency = "USD",
+  lang,
+}: DynamicLaunchDrawerProps & { lang?: string }) {
+  const [accountData, setAccountData] = useState<BillingAccount | null>(null)
+  const [quickTopUpOpen, setQuickTopUpOpen] = useState(false)
   const [appNameOverride, setAppNameOverride] = useState<string | null>(null)
   const [catalogData, setCatalogData] =
     useState<CatalogProductDetailResponse | null>(null)
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [selectedPlanCode, setSelectedPlanCode] = useState<string>("SMALL")
+  const [selectedRegionCodeOverride, setSelectedRegionCodeOverride] = useState<
+    string | null
+  >(null)
   const [cpuOverride, setCpuOverride] = useState<number | null>(null)
   const [memoryOverride, setMemoryOverride] = useState<number | null>(null)
   const [envOverrides, setEnvOverrides] = useState<Record<string, string>>({})
@@ -125,6 +136,32 @@ export function DynamicLaunchDrawer({
     Record<string, boolean>
   >({})
 
+  const [accountRefreshKey, setAccountRefreshKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    if (open) {
+      void (async () => {
+        try {
+          const acc = await getAccount()
+          if (active && acc?.ok) {
+            setAccountData(acc)
+          }
+        } catch {
+          // Ignore transient account error
+        }
+      })()
+    }
+    return () => {
+      active = false
+    }
+  }, [open, accountRefreshKey])
+
+  const fetchAccount = () => setAccountRefreshKey((k) => k + 1)
+  const currency = accountData?.currency || initialCurrency
+  const currentBalance = accountData
+    ? Number(accountData.balanceIdr)
+    : (initialUserBalance ?? 0)
   useEffect(() => {
     let isMounted = true
     async function loadCatalog() {
@@ -157,10 +194,74 @@ export function DynamicLaunchDrawer({
     return catalogData?.product?.plans ?? []
   }, [catalogData])
 
+  // Discover available regions from all plan offers
+  const availableRegions = useMemo(() => {
+    const map = new Map<
+      string,
+      { code: string; name: string; flag: string; id: string }
+    >()
+    for (const plan of plans) {
+      for (const offer of plan.offers || []) {
+        if (offer.regionCode) {
+          map.set(offer.regionCode, {
+            code: offer.regionCode,
+            name: offer.regionName || offer.regionCode,
+            flag: offer.regionFlag || "🌐",
+            id: offer.regionId || offer.regionCode,
+          })
+        }
+      }
+    }
+    // Default fallback if no region attached
+    if (map.size === 0) {
+      map.set("SINGAPORE", {
+        code: "SINGAPORE",
+        name: "Singapore",
+        flag: "🇸🇬",
+        id: "singapore",
+      })
+      map.set("INDONESIA", {
+        code: "INDONESIA",
+        name: "Indonesia",
+        flag: "🇮🇩",
+        id: "indonesia",
+      })
+    }
+    return Array.from(map.values())
+  }, [plans])
+
+  const effectiveRegionCode = useMemo(() => {
+    if (
+      selectedRegionCodeOverride &&
+      availableRegions.some((r) => r.code === selectedRegionCodeOverride)
+    ) {
+      return selectedRegionCodeOverride
+    }
+    return availableRegions[0]?.code ?? "SINGAPORE"
+  }, [availableRegions, selectedRegionCodeOverride])
   const selectedPlan: CatalogPlan | undefined = useMemo(() => {
     return plans.find((p) => p.code === selectedPlanCode) || plans[0]
   }, [plans, selectedPlanCode])
 
+  // Plan price calculation for first month
+  const selectedPlanOffer = useMemo(() => {
+    if (!selectedPlan) return undefined
+    return (
+      selectedPlan.offers?.find(
+        (o) =>
+          o.billingPeriod === "MONTHLY" && o.regionCode === effectiveRegionCode
+      ) ||
+      selectedPlan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+      selectedPlan.offers?.[0]
+    )
+  }, [selectedPlan, effectiveRegionCode])
+
+  const planCost = selectedPlanOffer?.periodPrice
+    ? Number(selectedPlanOffer.periodPrice)
+    : 0
+  const planCurrency = selectedPlanOffer?.currency || currency
+  const isBalanceInsufficient = planCost > 0 && currentBalance < planCost
+  const shortageAmount = isBalanceInsufficient ? planCost - currentBalance : 0
   // Reset or initialize CPU/RAM whenever template or selectedPlan changes if not overridden
   const currentCpu =
     cpuOverride ??
@@ -212,6 +313,9 @@ export function DynamicLaunchDrawer({
 
   const handleConfirmDeploy = async () => {
     if (!template) return
+    const currentRegion = availableRegions.find(
+      (r) => r.code === effectiveRegionCode
+    )
     await onDeploy({
       templateId: template.id,
       templateSlug: template.slug,
@@ -222,6 +326,8 @@ export function DynamicLaunchDrawer({
       cpu: currentCpu,
       memory: currentMemory,
       resourcePlanId: (selectedPlanCode || "small").toLowerCase(),
+      region: currentRegion?.name || effectiveRegionCode,
+      regionId: currentRegion?.id,
     })
   }
   if (!template) return null
@@ -272,6 +378,46 @@ export function DynamicLaunchDrawer({
         </SheetHeader>
 
         <div className="flex-1 space-y-6 overflow-y-auto p-6">
+          {/* Insufficient Balance Banner */}
+          {isBalanceInsufficient && (
+            <div className="flex flex-col gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-950 dark:text-amber-200">
+              <div className="flex items-start gap-2.5">
+                <WarningIcon className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div className="flex-1 space-y-1">
+                  <p className="font-semibold text-foreground">
+                    Insufficient balance for this plan
+                  </p>
+                  <p className="text-muted-foreground">
+                    First month requires{" "}
+                    <span className="font-medium text-foreground">
+                      {formatBillingMoney(planCost, planCurrency)}
+                    </span>
+                    . Your current balance is{" "}
+                    <span className="font-medium text-foreground">
+                      {formatBillingMoney(currentBalance, currency)}
+                    </span>
+                    .
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  onClick={() => setQuickTopUpOpen(true)}
+                  className="h-7 gap-1.5 bg-emerald-600 text-[11px] font-medium text-white hover:bg-emerald-700"
+                >
+                  <Lightning className="size-3" weight="fill" />
+                  <span>
+                    Quick Top-Up (+
+                    {formatBillingMoney(shortageAmount, planCurrency)})
+                  </span>
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* App Configuration Section */}
           <div className="space-y-4">
             <div className="space-y-2">
@@ -311,12 +457,61 @@ export function DynamicLaunchDrawer({
               </Badge>
             </div>
 
-            {/* Real Catalog Plans */}
+            {/* Region Selection */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Target Region
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                {availableRegions.map((region) => {
+                  const isSelected = effectiveRegionCode === region.code
+                  return (
+                    <button
+                      key={region.code}
+                      type="button"
+                      onClick={() => setSelectedRegionCodeOverride(region.code)}
+                      className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border bg-card hover:bg-muted/40"
+                      }`}
+                    >
+                      <span className="text-base">{region.flag}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-foreground">
+                          {region.name}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {region.code}
+                        </p>
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 shrink-0 text-primary" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Resource Plan Cards (Grouped by selected Region) */}
+          <div className="space-y-3">
+            <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Hardware Resource Plan
+            </Label>
+
             {plans.length > 0 ? (
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
                 {plans.map((plan) => {
                   const isSelected = selectedPlanCode === plan.code
-                  const monthlyOffer =
+                  // Find offer matching the selected region or first monthly
+                  const regionOffer =
+                    plan.offers?.find(
+                      (o) =>
+                        o.billingPeriod === "MONTHLY" &&
+                        o.regionCode === effectiveRegionCode
+                    ) ||
                     plan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
                     plan.offers?.[0]
 
@@ -345,8 +540,8 @@ export function DynamicLaunchDrawer({
                         )}
                       </div>
                       <span className="text-[11px] text-muted-foreground">
-                        {monthlyOffer?.periodPrice
-                          ? `${formatBillingMoney(monthlyOffer.periodPrice, monthlyOffer.currency || currency)} / month`
+                        {regionOffer?.periodPrice
+                          ? `${formatBillingMoney(regionOffer.periodPrice, regionOffer.currency || currency)} / month`
                           : "Free / Included"}
                       </span>
                     </button>
@@ -438,7 +633,6 @@ export function DynamicLaunchDrawer({
               </div>
             )}
           </div>
-
           {/* Dynamic Form Generator from envSchema */}
           {envSchema.length > 0 && (
             <div className="space-y-4">
@@ -577,7 +771,6 @@ export function DynamicLaunchDrawer({
             </div>
           )}
         </div>
-
         <SheetFooter className="border-t border-border p-6">
           <div className="flex w-full items-center justify-between gap-3">
             <Button
@@ -610,6 +803,17 @@ export function DynamicLaunchDrawer({
           </div>
         </SheetFooter>
       </SheetContent>
+      <QuickTopUpDialog
+        open={quickTopUpOpen}
+        onOpenChange={setQuickTopUpOpen}
+        currentBalance={currentBalance}
+        suggestedAmount={Math.ceil(shortageAmount)}
+        currency={(planCurrency as "IDR" | "USD") || "IDR"}
+        lang={lang}
+        onSuccess={() => {
+          void fetchAccount()
+        }}
+      />
     </Sheet>
   )
 }

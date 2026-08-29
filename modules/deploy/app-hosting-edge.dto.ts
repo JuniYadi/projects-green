@@ -104,7 +104,11 @@ type DomainWithRelations = Pick<
 > & {
   certificate?: ApplicationDomainCertificate | null
   allowlistEntries?: ApplicationDomainAllowlistEntry[]
-  cluster?: Pick<AppHostingCluster, "id" | "code" | "name" | "region"> | null
+  cluster?:
+    | (Pick<AppHostingCluster, "id" | "code" | "name"> & {
+        region?: { id: string; name: string; code: string } | string | null
+      })
+    | null
 }
 
 export const toApplicationDomainDTO = (
@@ -122,7 +126,11 @@ export const toApplicationDomainDTO = (
         id: domain.cluster.id,
         code: domain.cluster.code,
         name: domain.cluster.name,
-        region: domain.cluster.region,
+        region:
+          typeof domain.cluster.region === "object" &&
+          domain.cluster.region !== null
+            ? (domain.cluster.region as { name: string }).name
+            : String(domain.cluster.region ?? ""),
       }
     : null,
   dnsStatus: domain.dnsStatus,
