@@ -83,8 +83,10 @@ const formatBroadcastStatus = (broadcast: Broadcast) => {
       return "Completed"
     case "COMPLETED_WITH_ERRORS":
       return "Completed with Errors"
-    default:
-      return broadcast.status.replaceAll("_", " ")
+    default: {
+      const rawStatus: string = broadcast.status
+      return rawStatus.replaceAll("_", " ")
+    }
   }
 }
 

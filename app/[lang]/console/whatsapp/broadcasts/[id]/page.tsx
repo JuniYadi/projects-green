@@ -85,18 +85,18 @@ const formatBroadcastStatus = (
   }
 
   switch (broadcast.status) {
-    case "DRAFT":
-      return messages.status.draft
     case "QUEUED":
       return messages.status.queued
     case "PROCESSING":
       return messages.status.processing
     case "COMPLETED":
       return messages.status.completed
-    case "FAILED":
-      return messages.status.failed
-    default:
-      return broadcast.status.replaceAll("_", " ")
+    case "COMPLETED_WITH_ERRORS":
+      return messages.status.completedWithErrors
+    default: {
+      const rawStatus: string = broadcast.status
+      return rawStatus.replaceAll("_", " ")
+    }
   }
 }
 

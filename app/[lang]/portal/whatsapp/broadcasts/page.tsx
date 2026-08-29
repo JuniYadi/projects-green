@@ -141,6 +141,7 @@ export default function WhatsAppBroadcastsPage() {
         },
       },
       {
+        id: "progress",
         accessorFn: (row) => row.sent,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Progress" />

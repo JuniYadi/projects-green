@@ -1298,6 +1298,7 @@ export type AppMessages = {
           queued: string
           processing: string
           completed: string
+          completedWithErrors: string
           failed: string
         }
       }

@@ -1424,6 +1424,7 @@ export const enMessages: AppMessages = {
           queued: "Queued",
           processing: "Processing",
           completed: "Completed",
+          completedWithErrors: "Completed with Errors",
           failed: "Failed",
         },
       },

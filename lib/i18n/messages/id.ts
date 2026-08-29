@@ -1434,6 +1434,7 @@ export const idMessages: AppMessages = {
           queued: "Dalam antrean",
           processing: "Sedang diproses",
           completed: "Selesai",
+          completedWithErrors: "Selesai Sebagian (Ada Gagal)",
           failed: "Gagal",
         },
       },
