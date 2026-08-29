@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
@@ -14,6 +15,12 @@ import {
 import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
 import { AppManifestBuilder } from "@/modules/gitops/builders"
 import * as jsYaml from "js-yaml"
+import { buildHelmValues } from "./helm-values.builder"
+import {
+  commitHelmValuesAndAdvanceToDeploying,
+  loadPersistedEdgePolicy,
+  resolveHelmEnvInputs,
+} from "./jenkins-image-ready.service"
 
 /**
  * Processes a QUEUED deployment through the build/deploy pipeline.
@@ -36,6 +43,10 @@ export async function processQueuedDeployment(deploymentId: string) {
   }
 
   const stack = deployment.stack
+
+  if (stack.sourceType === "TEMPLATE") {
+    return processTemplateDeployment(deployment)
+  }
 
   let jenkinsConfig: JenkinsClusterConfig | null = null
   let registryConfig: RegistryClusterConfig | null = null
@@ -424,6 +435,125 @@ export async function processQueuedDeployment(deploymentId: string) {
     await recordDeployLog({
       deploymentId: deployment.id,
       scope: "build",
+      status: "FAILED",
+      message: reason,
+    })
+
+    return { processed: true, status: "FAILED", error: reason }
+  }
+}
+
+type QueuedTemplateDeployment = Prisma.ApplicationDeploymentGetPayload<{
+  include: { stack: true }
+}>
+
+const parseTemplateImageReference = (
+  imageReference: string
+): { imageRepository: string; imageTag: string } => {
+  const lastSlashIndex = imageReference.lastIndexOf("/")
+  const lastColonIndex = imageReference.lastIndexOf(":")
+  if (lastColonIndex > lastSlashIndex) {
+    return {
+      imageRepository: imageReference.slice(0, lastColonIndex),
+      imageTag: imageReference.slice(lastColonIndex + 1),
+    }
+  }
+  return { imageRepository: imageReference, imageTag: "latest" }
+}
+
+const getStackImageRepository = (
+  metadataJson: Prisma.JsonValue | null
+): string | null => {
+  if (!metadataJson || typeof metadataJson !== "object") return null
+  const value = (metadataJson as Record<string, unknown>).imageRepository
+  return typeof value === "string" && value.length > 0 ? value : null
+}
+
+async function resolveTemplateImageReference(stack: {
+  id: string
+  slug: string
+  metadataJson: Prisma.JsonValue | null
+}): Promise<{ imageRepository: string; imageTag: string }> {
+  const storedImageRepository = getStackImageRepository(stack.metadataJson)
+  if (storedImageRepository) {
+    return parseTemplateImageReference(storedImageRepository)
+  }
+
+  const registryConfig = await resolveClusterIntegration(stack.id, "REGISTRY")
+  const imageRepository = registryConfig.namespace
+    ? `${registryConfig.host}/${registryConfig.namespace}/${stack.slug}`
+    : `${registryConfig.host}/${stack.slug}`
+  return { imageRepository, imageTag: "latest" }
+}
+
+/**
+ * TEMPLATE deploys reference a prebuilt image (e.g. docker.io/n8nio/n8n)
+ * instead of source code to build, so there is no Jenkins job to run and
+ * the deployment must never pass through BUILDING. This resolves the
+ * image straight to the Helm-generate-and-commit step that the Jenkins
+ * image-ready webhook normally drives for GIT/PUBLIC deploys.
+ */
+async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
+  const stack = deployment.stack
+
+  try {
+    const gitopsConfig = await resolveClusterIntegration(stack.id, "GITOPS")
+    const { imageRepository, imageTag } =
+      await resolveTemplateImageReference(stack)
+
+    const { envVars, externalSecretVaultPath } = resolveHelmEnvInputs(
+      stack.envVarsJson
+    )
+    const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
+
+    const values = buildHelmValues({
+      slug: stack.slug,
+      imageRepository,
+      imageTag,
+      env: envVars,
+      replicas: 1,
+      cpu: stack.cpu,
+      memory: stack.memory,
+      domain: stack.customDomain ?? null,
+      edge,
+      externalSecretVaultPath,
+    })
+
+    const { gitopsCommitSha } = await prisma.$transaction((tx) =>
+      commitHelmValuesAndAdvanceToDeploying({
+        deployment: { id: deployment.id, commitSha: deployment.commitSha },
+        stack: { slug: stack.slug },
+        values,
+        gitopsConfig,
+        imageTag,
+        tx,
+      })
+    )
+
+    return { processed: true, status: "DEPLOYING", gitopsCommitSha }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Unknown error"
+
+    await prisma.applicationDeployment.update({
+      where: { id: deployment.id },
+      data: {
+        status: "FAILED",
+        failureReason: reason,
+        completedAt: new Date(),
+      },
+    })
+    await prisma.applicationStack.update({
+      where: { id: stack.id },
+      data: { lastDeployStatus: "FAILED" },
+    })
+    await recordDeployEventOnce({
+      deploymentId: deployment.id,
+      type: "DEPLOY_FAILED",
+      message: `Deployment failed: ${reason}`,
+    })
+    await recordDeployLog({
+      deploymentId: deployment.id,
+      scope: "deploy",
       status: "FAILED",
       message: reason,
     })
