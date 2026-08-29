@@ -18,6 +18,8 @@ export type ParsedMessagePayload = {
   id: string
   timestamp: string
   type: string
+  profileName?: string
+  rawPayload?: unknown
   text?: { body: string }
   image?: { id: string; mime_type?: string; sha256?: string }
   document?: {
@@ -105,17 +107,19 @@ export async function processInboundMessage(
       mediaUrl: mediaUrl ?? undefined,
       waMessageId: payload.id,
       metadata: {
-        rawPayload: payload,
+        rawPayload: payload.rawPayload ?? payload,
         deviceId,
         organizationId,
+        profileName: payload.profileName,
       } as Prisma.InputJsonValue,
     },
   })
 
-  // Upsert contact from this inbound message — mark isWhatsapp: true
+  // Upsert contact from this inbound message — mark isWhatsapp: true and update name if profileName is present
   await upsertWhatsappContactFromMessage({
     organizationId,
     phoneNumber: normalizedPhone,
+    name: payload.profileName,
     whatsappDeviceId: deviceId,
     messageAt: whatsappMessage.createdAt,
     isWhatsapp: true,
@@ -686,14 +690,15 @@ export async function createWebhookEvent(
   orgId: string,
   deviceId: string,
   eventType: string,
-  metaPayload: Prisma.InputJsonValue
+  metaPayload: Prisma.InputJsonValue,
+  rawPayload?: Prisma.InputJsonValue
 ): Promise<string> {
   const event = await prisma.whatsappWebhookEvent.create({
     data: {
       organizationId: orgId,
       whatsappDeviceId: deviceId,
       eventType,
-      metaPayload,
+      metaPayload: rawPayload ?? metaPayload,
       waMessageId: extractEventMetadata(metaPayload, eventType).waMessageId,
     },
   })

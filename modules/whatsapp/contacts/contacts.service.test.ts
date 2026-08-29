@@ -220,4 +220,52 @@ describe("upsertWhatsappContactFromMessage", () => {
     expect(updateCall.update.isWhatsapp).toBeUndefined()
     expect(updateCall.create.isWhatsapp).toBe(false)
   })
+
+  it("upserts contact with sender profile name when provided", async () => {
+    mockFindDefaultGroup.mockResolvedValueOnce({
+      id: "grp-default-1",
+      organizationId: "org-1",
+      name: DEFAULT_CONTACT_GROUP_NAME,
+    } as never)
+
+    const fixedDate = new Date("2026-08-28T16:00:00Z")
+
+    await upsertWhatsappContactFromMessage({
+      organizationId: "org-1",
+      phoneNumber: "628111222333",
+      name: "John Doe",
+      messageAt: fixedDate,
+      isWhatsapp: true,
+      waId: "628111222333",
+    })
+
+    expect(mockUpsertContact).toHaveBeenCalledWith({
+      where: {
+        organizationId_phoneNumber: {
+          organizationId: "org-1",
+          phoneNumber: "628111222333",
+        },
+      },
+      create: {
+        organizationId: "org-1",
+        phoneNumber: "628111222333",
+        name: "John Doe",
+        email: "",
+        status: "ACTIVE",
+        contactGroupId: "grp-default-1",
+        lastContactedAt: fixedDate,
+        whatsappDeviceId: undefined,
+        isWhatsapp: true,
+        waId: "628111222333",
+        lastCheckedAt: null,
+      },
+      update: {
+        lastContactedAt: fixedDate,
+        status: "ACTIVE",
+        name: "John Doe",
+        isWhatsapp: true,
+        waId: "628111222333",
+      },
+    })
+  })
 })

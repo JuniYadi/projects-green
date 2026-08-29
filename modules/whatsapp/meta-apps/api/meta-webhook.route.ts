@@ -182,6 +182,7 @@ function extractWebhookItems(payload: unknown): WebhookItem[] | null {
 
       const messages = change.value.messages
       const statuses = change.value.statuses
+      const contacts = change.value.contacts
       if (messages !== undefined && !Array.isArray(messages)) return null
       if (statuses !== undefined && !Array.isArray(statuses)) return null
       if (
@@ -191,22 +192,48 @@ function extractWebhookItems(payload: unknown): WebhookItem[] | null {
         return null
       }
 
+      // Map contacts by wa_id to extract profile names
+      const contactMap = new Map<string, string>()
+      if (Array.isArray(contacts)) {
+        for (const contact of contacts) {
+          if (
+            isRecord(contact) &&
+            typeof contact.wa_id === "string" &&
+            isRecord(contact.profile) &&
+            typeof contact.profile.name === "string"
+          ) {
+            contactMap.set(contact.wa_id, contact.profile.name)
+          }
+        }
+      }
+
       for (const message of messages ?? []) {
         if (!isRecord(message)) return null
+        const from = typeof message.from === "string" ? message.from : undefined
+        const profileName = from ? contactMap.get(from) : undefined
+        const messagePayload = {
+          ...message,
+          ...(profileName ? { profileName } : {}),
+          rawPayload: payload,
+        }
         items.push({
           deviceLookup: { type: "phone", value: metadata.phone_number_id },
           eventType: "inbound_message",
           jobEventType: "message",
-          payload: message as unknown as Prisma.InputJsonValue,
+          payload: messagePayload as unknown as Prisma.InputJsonValue,
         })
       }
       for (const status of statuses ?? []) {
         if (!isRecord(status)) return null
+        const statusPayload = {
+          ...status,
+          rawPayload: payload,
+        }
         items.push({
           deviceLookup: { type: "phone", value: metadata.phone_number_id },
           eventType: "status_update",
           jobEventType: "statuses",
-          payload: status as unknown as Prisma.InputJsonValue,
+          payload: statusPayload as unknown as Prisma.InputJsonValue,
         })
       }
     }
@@ -489,7 +516,8 @@ export const metaWebhookRoutes = new Elysia({
               device.organizationId,
               device.id,
               item.eventType,
-              item.payload
+              item.payload,
+              payload as Prisma.InputJsonValue
             )
             createdEvents.push({ eventId, item, device })
           }

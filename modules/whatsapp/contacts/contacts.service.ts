@@ -45,13 +45,13 @@ export async function resolveWhatsappContactGroupId(
 export type UpsertWhatsappContactFromMessageOptions = {
   organizationId: string
   phoneNumber: string
+  name?: string | null
   whatsappDeviceId?: string | null
   messageAt?: Date
   isWhatsapp?: boolean
   waId?: string | null
   markChecked?: boolean
 }
-
 /**
  * Upsert a contact record when a message is sent or received.
  * Used by outbound sends, inbound webhooks, delivery status updates, and broadcasts.
@@ -63,21 +63,25 @@ export async function upsertWhatsappContactFromMessage(
   const {
     organizationId,
     phoneNumber,
+    name,
     whatsappDeviceId,
     messageAt,
     isWhatsapp,
     waId,
     markChecked,
   } = options
-
   const now = messageAt ?? new Date()
 
   // Build update data — only set fields that should always update
+  const trimmedName = name?.trim()
   const updateData: Record<string, unknown> = {
     lastContactedAt: now,
     status: "ACTIVE",
   }
 
+  if (trimmedName && trimmedName.length > 0) {
+    updateData.name = trimmedName
+  }
   if (whatsappDeviceId) {
     updateData.whatsappDeviceId = whatsappDeviceId
   }
@@ -108,7 +112,7 @@ export async function upsertWhatsappContactFromMessage(
     create: {
       organizationId,
       phoneNumber,
-      name: phoneNumber,
+      name: trimmedName && trimmedName.length > 0 ? trimmedName : phoneNumber,
       email: "",
       status: "ACTIVE",
       contactGroupId: groupResult.id,

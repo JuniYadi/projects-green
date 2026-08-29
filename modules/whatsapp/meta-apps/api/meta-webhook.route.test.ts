@@ -273,7 +273,8 @@ describe("canonical Meta webhook ingress", () => {
         language: "id",
         event: "APPROVED",
         reason: "NONE",
-      })
+      }),
+      templateStatusFixture
     )
     expect(mockDispatch).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "template_status_update" })
