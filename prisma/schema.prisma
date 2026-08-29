@@ -542,6 +542,8 @@ model ApplicationDeployment {
   manifestPushedAt DateTime?
   argocdSynced     Boolean      @default(false)
   argocdSyncedAt   DateTime?
+  ingressVerified  Boolean      @default(false)
+  ingressCheckedAt DateTime?
   startedAt        DateTime     @default(now())
   completedAt      DateTime?
   failureReason    String?
