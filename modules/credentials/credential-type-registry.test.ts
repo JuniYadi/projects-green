@@ -81,14 +81,14 @@ describe("credentialTypeRegistry", () => {
   describe("buildMaskedPreview", () => {
     it("builds masked preview for CLOUDFLARE_API_TOKEN", () => {
       const preview = buildMaskedPreview("CLOUDFLARE_API_TOKEN", {
-        token: "1234567890abcdef",
+        token: "dummy-token-sample-cdef",
       })
       expect(preview).toBe("cf…cdef")
     })
 
     it("builds masked preview for CLOUDFLARE_LEGACY_TOKEN", () => {
       const preview = buildMaskedPreview("CLOUDFLARE_LEGACY_TOKEN", {
-        apiKey: "global-api-key-9876",
+        apiKey: "dummy-key-9876",
         email: "user@example.com",
       })
       expect(preview).toBe("cf…9876")
@@ -96,7 +96,7 @@ describe("credentialTypeRegistry", () => {
 
     it("builds masked preview for GITHUB_APP with token", () => {
       const preview = buildMaskedPreview("GITHUB_APP", {
-        cachedInstallationToken: "ghs_1234567890abcdef",
+        cachedInstallationToken: "dummy-installation-token-cdef",
       })
       expect(preview).toBe("ghs_***…cdef")
     })
@@ -108,7 +108,7 @@ describe("credentialTypeRegistry", () => {
 
     it("builds masked preview for GITHUB_TOKEN", () => {
       const preview = buildMaskedPreview("GITHUB_TOKEN", {
-        token: "ghp_1234567890fedcba",
+        token: "dummy-token-fedcba",
       })
       expect(preview).toBe("ghp_***…dcba")
     })

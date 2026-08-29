@@ -39,13 +39,11 @@ const appWith = (service: Record<string, unknown>) =>
 describe("mobile session routes", () => {
   beforeEach(() => {
     requireMobileSession.mockReset().mockResolvedValue(auth)
-    serverAccountFindUnique
-      .mockReset()
-      .mockResolvedValue({
-        id: "sa_1",
-        serverId: "srv_1",
-        subscriptionId: "sub_1",
-      })
+    serverAccountFindUnique.mockReset().mockResolvedValue({
+      id: "sa_1",
+      serverId: "srv_1",
+      subscriptionId: "sub_1",
+    })
     deviceFindUnique.mockReset().mockResolvedValue({ subscriptionId: "sub_1" })
   })
 

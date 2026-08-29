@@ -149,72 +149,78 @@ export const defaultTcpDial: TcpDialer = (host, port, timeoutMs) =>
  * - No response before the deadline → port appears open (pass, with caveat)
  * - Other socket errors → error
  */
-export const defaultUdpProbe: UdpProber = (host, port, timeoutMs) =>
-  new Promise<PortCheckOutcome>((resolve) => {
-    const socket = dgram.createSocket("udp4")
-    const startedAt = Date.now()
-    let settled = false
-    // eslint-disable-next-line prefer-const -- reassigned in setTimeout below
-    let timer: ReturnType<typeof setTimeout> | undefined
+export const createUdpProber =
+  (
+    socketFactory: () => dgram.Socket = () => dgram.createSocket("udp4")
+  ): UdpProber =>
+  (host, port, timeoutMs) =>
+    new Promise<PortCheckOutcome>((resolve) => {
+      const socket = socketFactory()
+      const startedAt = Date.now()
+      let settled = false
+      // eslint-disable-next-line prefer-const -- reassigned in setTimeout below
+      let timer: ReturnType<typeof setTimeout> | undefined
 
-    const finish = (outcome: PortCheckOutcome) => {
-      if (settled) return
-      settled = true
-      if (timer) clearTimeout(timer)
-      socket.removeAllListeners()
-      try {
-        socket.close()
-      } catch {
-        // ignore teardown errors
-      }
-      resolve(outcome)
-    }
-
-    socket.once("error", (err: NodeJS.ErrnoException) => {
-      finish({
-        ok: false,
-        kind: "fail",
-        latencyMs: null,
-        message: `Port unreachable — ${classifyIcmpError(err)}`,
-        detail: `UDP probe to ${host}:${port} returned an ICMP error`,
-      })
-    })
-
-    socket.once("message", () => {
-      finish({
-        ok: true,
-        latencyMs: Date.now() - startedAt,
-        message: "Port responded to UDP probe",
-        detail: `UDP probe sent to ${host}:${port} and a response was received`,
-      })
-    })
-
-    timer = setTimeout(() => {
-      finish({
-        ok: true,
-        latencyMs: Date.now() - startedAt,
-        message: "No ICMP error received — port appears open",
-        detail: `UDP port ${port} accepting traffic. Send a handshake initiation to verify the service responds.`,
-      })
-    }, timeoutMs)
-
-    try {
-      socket.send(Buffer.from([0x00]), port, host, (err) => {
-        if (err) {
-          finish({
-            ok: false,
-            kind: "error",
-            latencyMs: null,
-            message: `Failed to send UDP probe: ${err.message}`,
-          })
+      const finish = (outcome: PortCheckOutcome) => {
+        if (settled) return
+        settled = true
+        if (timer) clearTimeout(timer)
+        socket.removeAllListeners()
+        try {
+          socket.close()
+        } catch {
+          // ignore teardown errors
         }
+        resolve(outcome)
+      }
+
+      socket.once("error", (err: NodeJS.ErrnoException) => {
+        finish({
+          ok: false,
+          kind: "fail",
+          latencyMs: null,
+          message: `Port unreachable — ${classifyIcmpError(err)}`,
+          detail: `UDP probe to ${host}:${port} returned an ICMP error`,
+        })
       })
-    } catch (err) {
-      finish({
-        ok: false,
-        kind: "error",
-        latencyMs: null,
-        message: `Failed to send UDP probe: ${(err as Error).message}`,
+
+      socket.once("message", () => {
+        finish({
+          ok: true,
+          latencyMs: Date.now() - startedAt,
+          message: "Port responded to UDP probe",
+          detail: `UDP probe sent to ${host}:${port} and a response was received`,
+        })
       })
-    }
-  })
+
+      timer = setTimeout(() => {
+        finish({
+          ok: true,
+          latencyMs: Date.now() - startedAt,
+          message: "No ICMP error received — port appears open",
+          detail: `UDP port ${port} accepting traffic. Send a handshake initiation to verify the service responds.`,
+        })
+      }, timeoutMs)
+
+      try {
+        socket.send(Buffer.from([0x00]), port, host, (err) => {
+          if (err) {
+            finish({
+              ok: false,
+              kind: "error",
+              latencyMs: null,
+              message: `Failed to send UDP probe: ${err.message}`,
+            })
+          }
+        })
+      } catch (err) {
+        finish({
+          ok: false,
+          kind: "error",
+          latencyMs: null,
+          message: `Failed to send UDP probe: ${(err as Error).message}`,
+        })
+      }
+    })
+
+export const defaultUdpProbe: UdpProber = createUdpProber()

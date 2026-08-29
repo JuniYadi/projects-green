@@ -160,7 +160,7 @@ describe("cluster-secrets-vault lifecycle", () => {
 
     mockVaultReadKV.mockResolvedValueOnce({
       apiServerUrl: "https://k8s-api.internal:6443",
-      serviceAccountToken: "eyJhbGciOiJSUzI1NiIsImtpZCI6...",
+      serviceAccountToken: "dummy-service-account-token",
       caCertificate: "-----BEGIN CERTIFICATE-----\nMIIB...",
       kubeconfig: "apiVersion: v1\nclusters:\n- cluster:...",
     })
@@ -172,7 +172,7 @@ describe("cluster-secrets-vault lifecycle", () => {
       1
     )
     expect(resolved.apiServerUrl).toBe("https://k8s-api.internal:6443")
-    expect(resolved.serviceAccountToken).toBe("eyJhbGciOiJSUzI1NiIsImtpZCI6...")
+    expect(resolved.serviceAccountToken).toBe("dummy-service-account-token")
     expect(resolved.namespacePattern).toBe("app-{slug}")
     expect(resolved.labelSelector).toBe("app.kubernetes.io/name={slug}")
   })

@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import {
   classifyIcmpError,
   classifyTcpError,
+  createUdpProber,
   defaultTcpDial,
   defaultUdpProbe,
 } from "./vpn-port-checker"
@@ -121,14 +122,23 @@ describe("vpn-port-checker", () => {
     })
 
     it("times out and assumes port appears open when no ICMP received", async () => {
-      const tmpSocket = dgram.createSocket("udp4")
-      const { promise, resolve } = Promise.withResolvers<void>()
-      tmpSocket.bind(0, "127.0.0.1", () => resolve())
-      await promise
-      const port = tmpSocket.address().port
-      tmpSocket.close()
+      const mockSocket = {
+        once: () => mockSocket,
+        removeAllListeners: () => mockSocket,
+        close: () => {},
+        send: (
+          _buf: Buffer,
+          _port: number,
+          _host: string,
+          cb?: (err: Error | null) => void
+        ) => {
+          if (cb) cb(null)
+        },
+      } as unknown as dgram.Socket
 
-      const res = await defaultUdpProbe("127.0.0.1", port, 100)
+      const probe = createUdpProber(() => mockSocket)
+      const res = await probe("127.0.0.1", 51820, 20)
+
       expect(res.ok).toBe(true)
       if (res.ok) {
         expect(res.message).toContain("No ICMP error received")
