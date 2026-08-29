@@ -11,8 +11,13 @@ import { prisma } from "@/lib/prisma"
 import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 import { processQueuedDeployment } from "./deploy-builder.service"
 import { pollDeploymentRollout } from "./argocd-rollout.service"
+import { checkIngressReadiness } from "./ingress-readiness.service"
 
 const BATCH_SIZE = 10
+
+// Bounds how long a RUNNING deployment stays in the ingress recheck set —
+// beyond this window we stop retrying and leave ingressVerified as-is.
+const INGRESS_RECHECK_WINDOW_MS = 30 * 60 * 1000
 
 async function chunkArray<T>(array: T[], size: number): Promise<T[][]> {
   const chunks: T[][] = []
@@ -25,7 +30,16 @@ async function chunkArray<T>(array: T[], size: number): Promise<T[][]> {
 export async function monitorActiveDeployments() {
   const activeDeployments = await prisma.applicationDeployment.findMany({
     where: {
-      status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
+      OR: [
+        { status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] } },
+        {
+          status: "RUNNING",
+          ingressVerified: false,
+          completedAt: {
+            gt: new Date(Date.now() - INGRESS_RECHECK_WINDOW_MS),
+          },
+        },
+      ],
     },
     include: { stack: true },
     orderBy: { createdAt: "asc" },
@@ -114,6 +128,22 @@ async function checkDeploymentStatus(deployment: {
         argocdSynced:
           deployment.argocdSynced || rollout.status.syncStatus === "Synced",
       }
+    }
+  }
+
+  // Re-check ingress/DNS readiness for RUNNING deployments that haven't
+  // verified yet — never touches status, only the ingress fields.
+  if (deployment.status === "RUNNING") {
+    const ingressVerified = await checkIngressReadiness(deployment.id)
+    await prisma.applicationDeployment.update({
+      where: { id: deployment.id },
+      data: { ingressVerified, ingressCheckedAt: new Date() },
+    })
+    return {
+      deploymentId: deployment.id,
+      status: deployment.status,
+      manifestPushed: deployment.manifestPushed,
+      argocdSynced: deployment.argocdSynced,
     }
   }
 
