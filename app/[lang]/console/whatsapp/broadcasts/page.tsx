@@ -27,6 +27,9 @@ import {
 import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
 import { LockedFeatureTeaser } from "@/modules/whatsapp/onboarding/locked-feature-teaser"
 import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
+const isDraftBroadcast = (broadcast?: Broadcast | null) =>
+  Boolean(broadcast && broadcast.status === "QUEUED" && !broadcast.startedAt)
+
 const statusVariant = (status: BroadcastStatus) => {
   if (status === "COMPLETED") return "default"
   if (status === "COMPLETED_WITH_ERRORS") return "secondary"
@@ -124,11 +127,24 @@ export default function WhatsAppBroadcastsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t.columnStatus} />
         ),
-        cell: ({ row }) => (
-          <Badge variant={statusVariant(row.original.status)}>
-            {row.original.status.replaceAll("_", " ")}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const isDraft = isDraftBroadcast(row.original)
+          if (isDraft) {
+            return (
+              <Badge
+                variant="secondary"
+                className="border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300"
+              >
+                {t.status.draftReady || "Draf / Siap Kirim"}
+              </Badge>
+            )
+          }
+          return (
+            <Badge variant={statusVariant(row.original.status)}>
+              {row.original.status.replaceAll("_", " ")}
+            </Badge>
+          )
+        },
       },
       {
         id: "progress",
@@ -157,35 +173,38 @@ export default function WhatsAppBroadcastsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t.list.actions} />
         ),
-        cell: ({ row }) => (
-          <div className="flex justify-end space-x-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => router.push(`${basePath}/${row.original.id}`)}
-            >
-              <Eye className="mr-1 size-4" />
-              {t.list.view}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={row.original.status !== "QUEUED"}
-              onClick={() => void handleSend(row.original)}
-            >
-              <PaperPlaneTilt className="mr-1 size-4" />
-              {t.list.send}
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => void handleDelete(row.original)}
-            >
-              <Trash className="mr-1 size-4" />
-              {t.list.delete}
-            </Button>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const isDraft = isDraftBroadcast(row.original)
+          return (
+            <div className="flex justify-end space-x-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => router.push(`${basePath}/${row.original.id}`)}
+              >
+                <Eye className="mr-1 size-4" />
+                {t.list.view}
+              </Button>
+              <Button
+                size="sm"
+                variant={isDraft ? "default" : "outline"}
+                disabled={row.original.status !== "QUEUED"}
+                onClick={() => void handleSend(row.original)}
+              >
+                <PaperPlaneTilt className="mr-1 size-4" />
+                {t.list.send}
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => void handleDelete(row.original)}
+              >
+                <Trash className="mr-1 size-4" />
+                {t.list.delete}
+              </Button>
+            </div>
+          )
+        },
         enableHiding: false,
       },
     ]

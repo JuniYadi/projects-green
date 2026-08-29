@@ -1268,6 +1268,11 @@ export type AppMessages = {
           sent: string
           failed: string
           queued: string
+          draftReady: string
+          draftBannerTitle: string
+          draftBannerDescription: string
+          sendBroadcast: string
+          sendingBroadcast: string
           deliveryProgress: string
           recipientList: string
           recipientListDescription: string
@@ -1289,6 +1294,7 @@ export type AppMessages = {
         }
         status: {
           draft: string
+          draftReady: string
           queued: string
           processing: string
           completed: string

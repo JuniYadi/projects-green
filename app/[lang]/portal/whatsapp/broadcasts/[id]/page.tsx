@@ -4,13 +4,12 @@ import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
 import {
   DownloadSimple,
-  Info,
   MagnifyingGlass,
   PaperPlaneTilt,
+  Info,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -36,8 +35,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { getMessages } from "@/lib/i18n/messages"
 import {
   whatsappClient,
   type Broadcast,
@@ -57,44 +54,35 @@ const recipientBadgeVariant = (status: BroadcastRecipientStatus) =>
       ? "destructive"
       : "secondary"
 
-const formatRecipientStatus = (
-  status: BroadcastRecipientStatus,
-  messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["broadcasts"]
-) => {
+const formatRecipientStatus = (status: BroadcastRecipientStatus) => {
   switch (status) {
     case "SENT":
-      return messages.detail.sent
+      return "Sent"
     case "QUEUED":
-      return messages.detail.queued
+      return "Queued"
     case "FAILED":
-      return messages.detail.failed
+      return "Failed"
     default:
       return status
   }
 }
 
-const isDraftBroadcast = (broadcast?: Broadcast | null) =>
-  Boolean(broadcast && broadcast.status === "QUEUED" && !broadcast.startedAt)
+const isDraftBroadcast = (broadcast: Broadcast) =>
+  broadcast.status === "QUEUED" && broadcast.startedAt === null
 
-const formatBroadcastStatus = (
-  broadcast: Broadcast,
-  messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["broadcasts"]
-) => {
+const formatBroadcastStatus = (broadcast: Broadcast) => {
   if (isDraftBroadcast(broadcast)) {
-    return messages.detail.draftReady
+    return "Draft / Ready to Send"
   }
-
   switch (broadcast.status) {
-    case "DRAFT":
-      return messages.status.draft
     case "QUEUED":
-      return messages.status.queued
+      return "Queued"
     case "PROCESSING":
-      return messages.status.processing
+      return "Processing"
     case "COMPLETED":
-      return messages.status.completed
-    case "FAILED":
-      return messages.status.failed
+      return "Completed"
+    case "COMPLETED_WITH_ERRORS":
+      return "Completed with Errors"
     default:
       return broadcast.status.replaceAll("_", " ")
   }
@@ -128,20 +116,18 @@ const downloadFailedRecipientsCsv = (
   URL.revokeObjectURL(link.href)
 }
 
-export default function WhatsAppBroadcastDetailPage() {
+export default function PortalWhatsAppBroadcastDetailPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string; id: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
-  const t = getMessages(locale).console.whatsapp.broadcasts
   const recipientFilters: Array<{ value: RecipientFilter; label: string }> = [
-    { value: "ALL", label: t.detail.all },
-    { value: "QUEUED", label: t.detail.queued },
-    { value: "SENT", label: t.detail.sent },
-    { value: "FAILED", label: t.detail.failed },
+    { value: "ALL", label: "All" },
+    { value: "QUEUED", label: "Queued" },
+    { value: "SENT", label: "Sent" },
+    { value: "FAILED", label: "Failed" },
   ]
   const [broadcast, setBroadcast] = React.useState<Broadcast | null>(null)
   const [loading, setLoading] = React.useState(true)
-  const [sending, setSending] = React.useState(false)
+  const [isSending, setIsSending] = React.useState(false)
   const [filter, setFilter] = React.useState<RecipientFilter>("ALL")
   const [search, setSearch] = React.useState("")
 
@@ -150,32 +136,35 @@ export default function WhatsAppBroadcastDetailPage() {
     try {
       setBroadcast(await whatsappClient.getBroadcast(params.id))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t.detail.loadError)
+      toast.error(
+        error instanceof Error ? error.message : "Unable to load broadcast"
+      )
     } finally {
       setLoading(false)
     }
-  }, [params.id, t.detail.loadError])
-
-  const handleSend = React.useCallback(async () => {
-    if (!broadcast) return
-    setSending(true)
-    try {
-      const message = await whatsappClient.sendBroadcast(broadcast.id)
-      toast.success(message || t.list.send)
-      setBroadcast((prev) => (prev ? { ...prev, status: "PROCESSING" } : null))
-      await loadBroadcast()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t.list.sendError)
-    } finally {
-      setSending(false)
-    }
-  }, [broadcast, loadBroadcast, t.list.send, t.list.sendError])
+  }, [params.id])
 
   React.useEffect(() => {
     ;(async () => {
       await loadBroadcast()
     })()
   }, [loadBroadcast])
+
+  const handleSend = React.useCallback(async () => {
+    if (!broadcast) return
+    setIsSending(true)
+    try {
+      const message = await whatsappClient.sendBroadcast(broadcast.id)
+      toast.success(message)
+      await loadBroadcast()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to send broadcast"
+      )
+    } finally {
+      setIsSending(false)
+    }
+  }, [broadcast, loadBroadcast])
 
   const recipients = React.useMemo<BroadcastRecipient[]>(() => {
     const query = search.trim().toLowerCase()
@@ -198,26 +187,28 @@ export default function WhatsAppBroadcastDetailPage() {
     [broadcast?.recipients]
   )
 
+  const isDraft = broadcast ? isDraftBroadcast(broadcast) : false
+
   const progress = broadcast?.total
     ? Math.round(((broadcast.sent + broadcast.failed) / broadcast.total) * 100)
     : 0
 
-  const isDraft = isDraftBroadcast(broadcast)
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {broadcast?.templateName ?? t.detail.fallbackTitle}
+            {broadcast?.templateName ?? "Broadcast details"}
           </h1>
-          <p className="text-muted-foreground">{t.detail.description}</p>
+          <p className="text-muted-foreground">
+            Monitor delivery progress and recipient status.
+          </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {isDraft && (
-            <Button onClick={() => void handleSend()} disabled={sending}>
-              <PaperPlaneTilt weight="bold" className="mr-2 size-4" />
-              {sending ? t.detail.sendingBroadcast : t.detail.sendBroadcast}
+            <Button disabled={isSending} onClick={() => void handleSend()}>
+              <PaperPlaneTilt weight="bold" className="mr-1 size-4" />
+              {isSending ? "Sending..." : "Send Broadcast"}
             </Button>
           )}
           <Button
@@ -228,76 +219,71 @@ export default function WhatsAppBroadcastDetailPage() {
               downloadFailedRecipientsCsv(failedRecipients, broadcast.id)
             }}
           >
-            <DownloadSimple weight="bold" className="size-4" />
-            {t.detail.downloadFailed}
+            <DownloadSimple weight="bold" className="mr-1 size-4" />
+            Download failed
           </Button>
           <Button variant="outline" onClick={() => router.back()}>
-            {t.detail.back}
+            Back
           </Button>
         </div>
       </div>
+
+      {isDraft && (
+        <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 p-4 text-primary">
+          <div className="flex items-center gap-3">
+            <Info className="size-5 shrink-0" />
+            <div>
+              <p className="font-medium text-foreground">
+                Broadcast Draft Ready to Send
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This campaign has {broadcast?.total ?? 0} queued recipient(s).
+                Click &quot;Send Broadcast&quot; when you are ready to initiate
+                message delivery.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            disabled={isSending}
+            onClick={() => void handleSend()}
+          >
+            <PaperPlaneTilt className="mr-1 size-4" />
+            {isSending ? "Sending..." : "Send Broadcast"}
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <Card>
-          <CardContent className="py-8">{t.detail.loading}</CardContent>
+          <CardContent className="py-8">
+            Loading broadcast details...
+          </CardContent>
         </Card>
       ) : !broadcast ? (
         <Card>
-          <CardContent className="py-8">{t.detail.notFound}</CardContent>
+          <CardContent className="py-8">Broadcast not found.</CardContent>
         </Card>
       ) : (
         <>
-          {isDraft && (
-            <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
-              <Info className="size-5 text-amber-600 dark:text-amber-400" />
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <AlertTitle className="font-semibold text-amber-950 dark:text-amber-100">
-                    {t.detail.draftBannerTitle}
-                  </AlertTitle>
-                  <AlertDescription className="text-amber-800 dark:text-amber-300">
-                    {t.detail.draftBannerDescription}
-                  </AlertDescription>
-                </div>
-                <Button
-                  size="sm"
-                  className="shrink-0 bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-500 dark:text-amber-950 dark:hover:bg-amber-400"
-                  disabled={sending}
-                  onClick={() => void handleSend()}
-                >
-                  <PaperPlaneTilt weight="bold" className="mr-1.5 size-4" />
-                  {sending ? t.detail.sendingBroadcast : t.detail.sendBroadcast}
-                </Button>
-              </div>
-            </Alert>
-          )}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <CardTitle>{t.detail.campaignProgress}</CardTitle>
-                <Badge
-                  variant={isDraft ? "secondary" : "default"}
-                  className={
-                    isDraft
-                      ? "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                      : undefined
-                  }
-                >
-                  {formatBroadcastStatus(broadcast, t)}
+                <CardTitle>Campaign Progress</CardTitle>
+                <Badge variant={isDraft ? "secondary" : "default"}>
+                  {formatBroadcastStatus(broadcast)}
                 </Badge>
               </div>
               <CardDescription>
-                {broadcast.templateLanguage} •{" "}
-                {t.detail.createdAt.replace(
-                  "{date}",
-                  formatDate(broadcast.createdAt)
-                )}
+                {broadcast.templateLanguage} • Created at{" "}
+                {formatDate(broadcast.createdAt)}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">
-                    {t.detail.totalRecipients}
+                    Total Recipients
                   </p>
                   <p className="mt-2 text-2xl font-semibold">
                     {broadcast.total}
@@ -305,14 +291,12 @@ export default function WhatsAppBroadcastDetailPage() {
                 </div>
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      {t.detail.sent}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Sent</p>
                     <Badge
                       variant="outline"
                       className="text-emerald-600 dark:text-emerald-400"
                     >
-                      {t.detail.sent}
+                      Sent
                     </Badge>
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
@@ -321,14 +305,12 @@ export default function WhatsAppBroadcastDetailPage() {
                 </div>
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      {t.detail.queued}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Queued</p>
                     <Badge
                       variant="outline"
                       className="text-amber-600 dark:text-amber-400"
                     >
-                      {t.detail.queued}
+                      Queued
                     </Badge>
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">
@@ -336,10 +318,13 @@ export default function WhatsAppBroadcastDetailPage() {
                   </p>
                 </div>
                 <div className="rounded-lg border p-4">
-                  <p className="text-sm text-muted-foreground">
-                    {t.detail.failed}
-                  </p>
-                  <p className="mt-2 text-2xl font-semibold text-red-600 dark:text-red-400">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">Failed</p>
+                    <Badge variant="outline" className="text-destructive">
+                      Failed
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold text-destructive">
                     {broadcast.failed}
                   </p>
                 </div>
@@ -348,7 +333,7 @@ export default function WhatsAppBroadcastDetailPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {t.detail.deliveryProgress}
+                    Delivery Progress
                   </span>
                   <span className="font-medium">{progress}%</span>
                 </div>
@@ -359,10 +344,9 @@ export default function WhatsAppBroadcastDetailPage() {
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {t.detail.progressTiming
-                    .replace("{progress}", String(progress))
-                    .replace("{startedAt}", formatDate(broadcast.startedAt))
-                    .replace("{endedAt}", formatDate(broadcast.endedAt))}
+                  {progress}% complete (Started:{" "}
+                  {formatDate(broadcast.startedAt)}, Ended:{" "}
+                  {formatDate(broadcast.endedAt)})
                 </p>
               </div>
             </CardContent>
@@ -371,9 +355,9 @@ export default function WhatsAppBroadcastDetailPage() {
           <TooltipProvider>
             <Card>
               <CardHeader>
-                <CardTitle>{t.detail.recipientList}</CardTitle>
+                <CardTitle>Recipient list</CardTitle>
                 <CardDescription>
-                  {t.detail.recipientListDescription}
+                  List of recipients, message dispatch status, and errors.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -381,7 +365,7 @@ export default function WhatsAppBroadcastDetailPage() {
                   <div className="relative w-full sm:max-w-xs">
                     <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder={t.detail.searchPlaceholder}
+                      placeholder="Search recipient..."
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
                       className="pl-9"
@@ -393,7 +377,7 @@ export default function WhatsAppBroadcastDetailPage() {
                       setFilter(value as RecipientFilter)
                     }
                   >
-                    <TabsList aria-label={t.detail.recipientFilterLabel}>
+                    <TabsList aria-label="Recipient filter">
                       {recipientFilters.map(({ value, label }) => (
                         <TabsTrigger key={value} value={value} className="px-3">
                           {label}
@@ -406,20 +390,18 @@ export default function WhatsAppBroadcastDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t.detail.phoneNumber}</TableHead>
-                      <TableHead>{t.detail.name}</TableHead>
-                      <TableHead>{t.detail.status}</TableHead>
-                      <TableHead>{t.detail.attempts}</TableHead>
-                      <TableHead>{t.detail.messageId}</TableHead>
-                      <TableHead>{t.detail.error}</TableHead>
+                      <TableHead>Phone number</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Attempts</TableHead>
+                      <TableHead>Message ID</TableHead>
+                      <TableHead>Error</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {recipients.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6}>
-                          {t.detail.noRecipients}
-                        </TableCell>
+                        <TableCell colSpan={6}>No recipients found.</TableCell>
                       </TableRow>
                     ) : (
                       recipients.map((recipient) => (
@@ -430,7 +412,7 @@ export default function WhatsAppBroadcastDetailPage() {
                             <Badge
                               variant={recipientBadgeVariant(recipient.status)}
                             >
-                              {formatRecipientStatus(recipient.status, t)}
+                              {formatRecipientStatus(recipient.status)}
                             </Badge>
                           </TableCell>
                           <TableCell>{recipient.attempts}</TableCell>
@@ -463,6 +445,6 @@ export default function WhatsAppBroadcastDetailPage() {
           </TooltipProvider>
         </>
       )}
-    </div>
+    </main>
   )
 }

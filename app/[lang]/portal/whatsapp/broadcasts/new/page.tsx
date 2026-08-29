@@ -163,7 +163,9 @@ export default function NewWhatsAppBroadcastPage() {
         whatsappDeviceId,
         recipients: allRecipients,
       })
-      toast.success("Broadcast created")
+      toast.success(
+        "Broadcast created as Draft. Review recipients and click 'Send Broadcast' to start."
+      )
       router.push(`${basePath}/${broadcast.id}`)
     } catch (error) {
       toast.error(

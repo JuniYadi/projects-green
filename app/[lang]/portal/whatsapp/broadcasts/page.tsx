@@ -19,18 +19,27 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { type ColumnDef } from "@tanstack/react-table"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   whatsappClient,
   type Broadcast,
   type BroadcastStatus,
 } from "@/modules/whatsapp/whatsapp-client"
 
-const statusVariant = (status: BroadcastStatus) => {
+const isDraftBroadcast = (broadcast: Broadcast) =>
+  broadcast.status === "QUEUED" && broadcast.startedAt === null
+
+const statusVariant = (status: BroadcastStatus, isDraft = false) => {
+  if (isDraft) return "secondary"
   if (status === "COMPLETED") return "default"
   if (status === "COMPLETED_WITH_ERRORS") return "secondary"
   if (status === "PROCESSING") return "outline"
   return "secondary"
 }
-
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString() : "—"
 
@@ -39,7 +48,7 @@ export default function WhatsAppBroadcastsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const basePath = localizePathname({
-    pathname: "/console/whatsapp/broadcasts",
+    pathname: "/portal/whatsapp/broadcasts",
     locale,
   })
   const [broadcasts, setBroadcasts] = React.useState<Broadcast[]>([])
@@ -120,14 +129,18 @@ export default function WhatsAppBroadcastsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Status" />
         ),
-        cell: ({ row }) => (
-          <Badge variant={statusVariant(row.original.status)}>
-            {row.original.status.replaceAll("_", " ")}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const isDraft = isDraftBroadcast(row.original)
+          return (
+            <Badge variant={statusVariant(row.original.status, isDraft)}>
+              {isDraft
+                ? "Draft / Ready to Send"
+                : row.original.status.replaceAll("_", " ")}
+            </Badge>
+          )
+        },
       },
       {
-        id: "progress",
         accessorFn: (row) => row.sent,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Progress" />
@@ -151,36 +164,54 @@ export default function WhatsAppBroadcastsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Actions" />
         ),
-        cell: ({ row }) => (
-          <div className="flex justify-end space-x-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => router.push(`${basePath}/${row.original.id}`)}
-            >
-              <Eye className="mr-1 size-4" />
-              View
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={row.original.status !== "QUEUED"}
-              onClick={() => void handleSend(row.original)}
-            >
-              <PaperPlaneTilt className="mr-1 size-4" />
-              Send
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => void handleDelete(row.original)}
-            >
-              <Trash className="mr-1 size-4" />
-              Delete
-            </Button>
-          </div>
-        ),
-        enableHiding: false,
+        cell: ({ row }) => {
+          const isDraft = isDraftBroadcast(row.original)
+          const canSend = row.original.status === "QUEUED"
+          return (
+            <div className="flex justify-end space-x-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => router.push(`${basePath}/${row.original.id}`)}
+              >
+                <Eye className="mr-1 size-4" />
+                View
+              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        size="sm"
+                        variant={isDraft ? "default" : "outline"}
+                        disabled={!canSend}
+                        onClick={() => void handleSend(row.original)}
+                      >
+                        <PaperPlaneTilt className="mr-1 size-4" />
+                        Send
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isDraft
+                      ? "Start sending broadcast to all queued recipients"
+                      : canSend
+                        ? "Resume/send broadcast"
+                        : "Broadcast cannot be sent in current status"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => void handleDelete(row.original)}
+              >
+                <Trash className="mr-1 size-4" />
+                Delete
+              </Button>
+            </div>
+          )
+        },
       },
     ]
   }, [basePath, handleSend, handleDelete, router])
