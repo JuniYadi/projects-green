@@ -51,6 +51,7 @@ mock.module("@/lib/vault/vault-client", () => ({
     writeKV = mockVaultWriteKV
     readKV = mockVaultReadKV
   },
+  VaultSecretNotFoundError: class VaultSecretNotFoundError extends Error {},
 }))
 // ── Dynamic import after mocks ───────────────────────
 

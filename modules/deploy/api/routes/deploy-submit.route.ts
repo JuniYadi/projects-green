@@ -21,6 +21,15 @@ import {
   type ManagedAppTemplate,
 } from "../../managed-app-templates"
 import { parsePublicGitUrl } from "../../public-source"
+interface BlueprintRuntimeConfig {
+  runtime?: {
+    defaultPort?: number
+  }
+  resources?: {
+    defaultCpu?: number
+    defaultMemory?: number
+  }
+}
 
 /**
  * PGREEN-071 — Console Deploy Journey truth path.
@@ -142,26 +151,29 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           },
         })
         if (dbTemplate) {
+          const blueprint =
+            (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig) ??
+            null
           template = {
-            id: dbTemplate.id,
+            id: dbTemplate.id as (typeof DEPLOY_TEMPLATES)[number]["id"],
             name: dbTemplate.name,
             description: dbTemplate.description || "",
-            framework: "Docker",
-            primaryEngine: "docker",
-            defaultPort:
-              (dbTemplate.blueprintJson as any)?.runtime?.defaultPort ?? 8080,
-            recommendedResources: {
-              cpu:
-                (dbTemplate.blueprintJson as any)?.resources?.defaultCpu ?? 500,
-              memory:
-                (dbTemplate.blueprintJson as any)?.resources?.defaultMemory ??
-                512,
+            category: "Developer Tools",
+            defaultCpu: blueprint?.resources?.defaultCpu ?? 500,
+            defaultMemory: blueprint?.resources?.defaultMemory ?? 512,
+            build: {
+              language: "Docker",
+              framework: "Docker",
+              frameworkVersion: "",
+              buildCommand: "",
+              useDockerfile: true,
+              primaryEngine: "docker",
+              primaryEngineVersion: "",
+              secondaryEngine: "",
+              secondaryEngineVersion: "",
+              defaultPort: blueprint?.runtime?.defaultPort ?? 8080,
             },
-            source: {
-              type: "template",
-              templateId: dbTemplate.id,
-            },
-          } as any
+          }
         }
       }
 

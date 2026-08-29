@@ -25,7 +25,6 @@ import { createAdminOrgDetailRoutes } from "./admin/org-detail.route"
 import { createAdminAddonsRoutes } from "./admin/addons.route"
 import { createAdminPromotionsRoutes } from "./admin/promotions.route"
 import { createAdminBillingContactsRoutes } from "./admin/contacts.route"
-import { createAdminRegionsRoutes } from "./admin/regions.route"
 import { createBillingCheckoutRoutes } from "./checkout.route"
 import { createCatalogAdminRoutes } from "../catalog/catalog-admin.route"
 import { UsageLedgerService } from "../usage-ledger.service"
@@ -61,7 +60,6 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createAdminAddonsRoutes())
   .use(createAdminPromotionsRoutes())
   .use(createCatalogRoutes())
-  .use(createAdminRegionsRoutes())
   // Keep the app-level Elysia type graph within TypeScript's instantiation limit.
   .use(createCatalogAdminRoutes() as unknown as Elysia)
   .use(createAdminAuditLogRoutes())

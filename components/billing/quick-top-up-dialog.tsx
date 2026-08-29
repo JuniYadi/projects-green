@@ -390,8 +390,7 @@ export function QuickTopUpDialog({
                   htmlFor="custom-amount-input"
                   className="text-xs font-medium text-foreground"
                 >
-                  {t.chooseAmount}
-                  {currency})
+                  {t.chooseAmount} {currency})
                 </label>
                 {suggestedAmount && suggestedAmount > 0 ? (
                   <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">

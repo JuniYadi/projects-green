@@ -38,8 +38,11 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     sourcePrefixes: [
       "modules/deploy/",
       "modules/framework-detection/",
+      "modules/admin/api/admin.schema.ts",
+      "modules/admin/api/routes/admin-app-hosting-clusters",
       "app/[lang]/console/app/",
       "app/[lang]/console/marketplace/",
+      "app/[lang]/portal/app/clusters/",
       "app/[lang]/portal/marketplace/",
       "app/api/deploy/",
       "app/api/integrations/github/",
@@ -48,7 +51,9 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     testPrefixes: [
       "modules/deploy/",
       "modules/framework-detection/",
+      "modules/admin/api/routes/admin-app-hosting-clusters.route.test.ts",
       "app/[lang]/console/marketplace/",
+      "app/[lang]/portal/app/clusters/",
       "app/[lang]/portal/marketplace/",
       "app/api/deploy/",
     ],

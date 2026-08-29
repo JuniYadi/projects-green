@@ -164,6 +164,34 @@ export async function getClusterById(
   return row ? toClusterDTO(row) : null
 }
 
+async function resolveRegionId(
+  db: {
+    serviceRegion?: {
+      findFirst: (args: unknown) => Promise<{ id: string } | null>
+    }
+  },
+  regionId?: string | null,
+  regionNameOrCode?: string | null
+): Promise<string | null> {
+  if (regionId) return regionId
+  if (!regionNameOrCode || !db.serviceRegion) return null
+
+  const trimmed = regionNameOrCode.trim()
+  if (!trimmed) return null
+
+  const normalizedCode = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+  const found = await db.serviceRegion.findFirst({
+    where: {
+      OR: [
+        { id: trimmed },
+        { code: normalizedCode },
+        { name: { equals: trimmed, mode: "insensitive" } },
+      ],
+    },
+  })
+
+  return found?.id ?? null
+}
 export async function createCluster(
   input: CreateClusterInput
 ): Promise<ClusterAdminDTO> {
@@ -182,33 +210,11 @@ export async function createCluster(
         where: { isDefault: true },
         data: { isDefault: false },
       })
-      let resolvedRegionId: string | null = input.regionId ?? null
-      if (!resolvedRegionId && input.region && tx.serviceRegion) {
-        const trimmed = input.region.trim()
-        const normalizedCode = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-        const found = await tx.serviceRegion.findFirst({
-          where: {
-            OR: [
-              { id: trimmed },
-              { code: normalizedCode },
-              { name: { equals: trimmed, mode: "insensitive" } },
-            ],
-          },
-        })
-        if (found) {
-          resolvedRegionId = found.id
-        } else {
-          const created = await tx.serviceRegion.create({
-            data: {
-              code: normalizedCode,
-              name: trimmed,
-              country: "GLOBAL",
-              isActive: true,
-            },
-          })
-          resolvedRegionId = created.id
-        }
-      }
+      const resolvedRegionId = await resolveRegionId(
+        tx,
+        input.regionId,
+        input.region
+      )
 
       const row = await tx.appHostingCluster.create({
         data: {
@@ -225,33 +231,11 @@ export async function createCluster(
     })
   }
 
-  let resolvedRegionId: string | null = input.regionId ?? null
-  if (!resolvedRegionId && input.region && prisma.serviceRegion) {
-    const trimmed = input.region.trim()
-    const normalizedCode = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-    const found = await prisma.serviceRegion.findFirst({
-      where: {
-        OR: [
-          { id: trimmed },
-          { code: normalizedCode },
-          { name: { equals: trimmed, mode: "insensitive" } },
-        ],
-      },
-    })
-    if (found) {
-      resolvedRegionId = found.id
-    } else {
-      const created = await prisma.serviceRegion.create({
-        data: {
-          code: normalizedCode,
-          name: trimmed,
-          country: "GLOBAL",
-          isActive: true,
-        },
-      })
-      resolvedRegionId = created.id
-    }
-  }
+  const resolvedRegionId = await resolveRegionId(
+    prisma,
+    input.regionId,
+    input.region
+  )
 
   const row = await prisma.appHostingCluster.create({
     data: {
@@ -276,40 +260,8 @@ export async function updateCluster(
     "Cluster"
   )
   let regionIdToSet: string | null | undefined = input.regionId
-  if (
-    regionIdToSet === undefined &&
-    input.region !== undefined &&
-    prisma.serviceRegion
-  ) {
-    const trimmed = input.region.trim()
-    if (trimmed.length > 0) {
-      // Try to find existing region by code or name, or create one
-      const normalizedCode = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-      const found = await prisma.serviceRegion.findFirst({
-        where: {
-          OR: [
-            { id: trimmed },
-            { code: normalizedCode },
-            { name: { equals: trimmed, mode: "insensitive" } },
-          ],
-        },
-      })
-      if (found) {
-        regionIdToSet = found.id
-      } else {
-        const created = await prisma.serviceRegion.create({
-          data: {
-            code: normalizedCode,
-            name: trimmed,
-            country: "GLOBAL",
-            isActive: true,
-          },
-        })
-        regionIdToSet = created.id
-      }
-    } else {
-      regionIdToSet = null
-    }
+  if (regionIdToSet === undefined && input.region !== undefined) {
+    regionIdToSet = await resolveRegionId(prisma, undefined, input.region)
   }
 
   const metadata =

@@ -81,12 +81,12 @@ export function parseAppHostingFulfillmentContext(
 
   if (raw === null) {
     return {
-      ok: true,
-      context: {
-        stackId: "standalone",
-        deploymentId: "standalone",
-        sourceType: "TEMPLATE",
-        resourcePlanId: "starter",
+      ok: false,
+      failure: {
+        code: "APP_HOSTING_FULFILLMENT_CONTEXT_INVALID",
+        message:
+          "The App Hosting deployment request is invalid; retry with stack, deployment, source, and resource package references.",
+        retryable: false,
       },
     }
   }
