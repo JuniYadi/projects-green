@@ -258,6 +258,46 @@ describe("deploySubmitRoutes /submit", () => {
     )
   })
 
+  it("threads deploymentType and additionalPorts from a DB template blueprint into stack metadataJson", async () => {
+    mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+      id: "tpl-hermes",
+      slug: "hermes",
+      name: "Hermes",
+      description: "AI Agent workspace",
+      blueprintJson: {
+        runtime: {
+          image: "nousresearch/hermes-agent:v2026.8.18",
+          defaultPort: 8642,
+          deploymentType: "statefulset",
+          additionalPorts: [{ port: 9119, name: "dashboard" }],
+        },
+        resources: { defaultCpu: 500, defaultMemory: 1024 },
+      },
+    } as never)
+
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "hermes",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 500,
+      memory: 1024,
+    })
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadataJson: expect.objectContaining({
+            imageRepository: "nousresearch/hermes-agent:v2026.8.18",
+            deploymentType: "statefulset",
+            additionalPorts: [{ port: 9119, name: "dashboard" }],
+          }),
+        }),
+      })
+    )
+  })
+
   it("persists secret reference metadata without dropping it", async () => {
     const envVars = [
       {
