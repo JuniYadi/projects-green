@@ -74,11 +74,21 @@ function isClusterEndpointDTO(value: unknown): value is ClusterEndpointDTO {
   )
 }
 
+type ServiceRegionOption = {
+  id: string
+  code: string
+  name: string
+  country: string
+  flag: string | null
+  isActive: boolean
+}
+
 type ClusterAdminDTO = {
   id: string
   code: string
   name: string
   region: string
+  regionId?: string | null
   status: "PLANNED" | "ACTIVE" | "DEPRECATED"
   isDefault: boolean
   metadataJson: unknown | null
@@ -187,10 +197,12 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   )
   const [endpointSaving, setEndpointSaving] = useState(false)
   const [endpointRetry, setEndpointRetry] = useState(0)
-
   const [statusSaving, setStatusSaving] = useState(false)
   const [clusterName, setClusterName] = useState("")
   const [clusterRegion, setClusterRegion] = useState("")
+  const [selectedRegionId, setSelectedRegionId] = useState("")
+  const [regions, setRegions] = useState<ServiceRegionOption[]>([])
+  const [regionsLoading, setRegionsLoading] = useState(true)
   const [clusterMetadata, setClusterMetadata] = useState<ClusterMetadataInput>(
     {}
   )
@@ -206,6 +218,38 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   useEffect(() => {
     let cancelled = false
 
+    const loadRegions = async () => {
+      try {
+        const { data: payload, error: resError } =
+          await eden.api.admin.regions.get()
+        if (resError || !payload || !payload.ok) {
+          const errPayload = (resError?.value || payload) as
+            | { message?: string }
+            | undefined
+          throw new Error(errPayload?.message || "Failed to load regions")
+        }
+        if (cancelled) return
+        const rawList = Array.isArray(payload.data)
+          ? (payload.data as ServiceRegionOption[])
+          : []
+        const activeRegions = rawList.filter((r) => r.isActive)
+        setRegions(activeRegions)
+      } catch (err) {
+        console.error("Failed to load regions:", err)
+      } finally {
+        if (!cancelled) setRegionsLoading(false)
+      }
+    }
+
+    void loadRegions()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
     const run = async () => {
       setLoading(true)
       setError(null)
@@ -216,11 +260,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         if (!payload || !payload.ok || !payload.data) {
           throw new Error(payload?.message ?? "Unable to load cluster.")
         }
-
         if (cancelled) return
         setCluster(payload.data)
         setClusterName(payload.data.name)
         setClusterRegion(payload.data.region)
+        setSelectedRegionId(payload.data.regionId ?? "")
         setClusterMetadata(
           (payload.data.metadataJson as ClusterMetadataInput) ?? {}
         )
@@ -313,7 +357,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     setMetadataSaving(true)
     setMetadataError(null)
     setMetadataFieldErrors({})
-
     try {
       const result = clusterMetadataSchema.safeParse(clusterMetadata)
       if (!result.success) {
@@ -326,7 +369,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         setMetadataFieldErrors(fieldErrors)
         throw new Error("Please fix the errors below.")
       }
-      if (!clusterName.trim() || !clusterRegion.trim()) {
+      const selectedRegion = regions.find((r) => r.id === selectedRegionId)
+      const finalRegionName = selectedRegion
+        ? selectedRegion.name
+        : clusterRegion.trim()
+      if (!clusterName.trim() || !finalRegionName) {
         throw new Error("Name and region are required.")
       }
 
@@ -334,7 +381,10 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         clusterId
       ].patch({
         name: clusterName.trim(),
-        region: clusterRegion.trim(),
+        region: finalRegionName,
+        regionId: selectedRegion
+          ? selectedRegion.id
+          : selectedRegionId || undefined,
         metadataJson: result.data as Record<string, unknown>,
       })
 
@@ -639,11 +689,35 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cluster-region">Region</Label>
-                <Input
-                  id="cluster-region"
-                  value={clusterRegion}
-                  onChange={(event) => setClusterRegion(event.target.value)}
-                />
+                <Select
+                  value={selectedRegionId}
+                  onValueChange={(val) => {
+                    setSelectedRegionId(val)
+                    const r = regions.find((x) => x.id === val)
+                    if (r) setClusterRegion(r.name)
+                  }}
+                  disabled={regionsLoading || regions.length === 0}
+                >
+                  <SelectTrigger id="cluster-region">
+                    <SelectValue
+                      placeholder={
+                        regionsLoading
+                          ? "Loading regions..."
+                          : regions.length === 0
+                            ? "No active regions available"
+                            : "Select a region"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.flag ? `${r.flag} ` : ""}
+                        {r.name} ({r.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="space-y-2">

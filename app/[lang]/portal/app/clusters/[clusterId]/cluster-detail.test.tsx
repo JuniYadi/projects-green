@@ -9,11 +9,17 @@ import {
 
 import { ClusterDetail } from "./cluster-detail"
 
+const mockPush = mock(() => {})
+
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
+  useRouter: () => ({ push: mockPush }),
+}))
+
 afterEach(() => {
   cleanup()
   mock.restore()
 })
-
 const MOCK_CLUSTER = {
   id: "cl_1",
   code: "us-east-1",
@@ -45,6 +51,17 @@ const MOCK_CLUSTER = {
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 }
+const MOCK_REGIONS = [
+  {
+    id: "reg-1",
+    code: "US_EAST",
+    name: "US East",
+    country: "US",
+    flag: "🇺🇸",
+    isActive: true,
+  },
+]
+
 const MOCK_ENDPOINT = {
   managedBaseDomain: "apps.us-east.example.com",
   cnameTarget: "edge.us-east.example.com",
@@ -57,11 +74,14 @@ function responseForClusterOrEndpoint(
   input: RequestInfo | URL,
   endpoint = MOCK_ENDPOINT
 ) {
-  return String(input).endsWith("/endpoint")
+  const url = String(input)
+  if (url.endsWith("/regions")) {
+    return Response.json({ ok: true, data: MOCK_REGIONS })
+  }
+  return url.endsWith("/endpoint")
     ? Response.json({ ok: true, data: endpoint })
     : Response.json({ ok: true, data: MOCK_CLUSTER })
 }
-
 describe("ClusterDetail endpoint", () => {
   it("loads the region-specific edge endpoint configuration", async () => {
     globalThis.fetch = mock(async (input) =>
@@ -183,7 +203,7 @@ describe("ClusterDetail endpoint", () => {
           { status: 503 }
         )
       }
-      return Response.json({ ok: true, data: MOCK_CLUSTER })
+      return responseForClusterOrEndpoint(input)
     }) as unknown as typeof fetch
 
     const view = render(<ClusterDetail clusterId="cl_1" />)
@@ -198,6 +218,7 @@ describe("ClusterDetail endpoint", () => {
     expect(view.getByText("US East")).toBeTruthy()
   })
 })
+
 describe("ClusterDetail", () => {
   it("shows loading state", () => {
     globalThis.fetch = mock(
@@ -209,8 +230,11 @@ describe("ClusterDetail", () => {
   })
 
   it("shows error state", async () => {
-    globalThis.fetch = mock(async () => {
-      throw new Error("Not found")
+    globalThis.fetch = mock(async (input) => {
+      if (String(input).includes("/clusters/")) {
+        throw new Error("Not found")
+      }
+      return responseForClusterOrEndpoint(input)
     }) as unknown as typeof fetch
 
     const view = render(<ClusterDetail clusterId="cl_1" />)
@@ -225,8 +249,8 @@ describe("ClusterDetail", () => {
   })
 
   it("renders cluster metadata", async () => {
-    globalThis.fetch = mock(async () =>
-      Response.json({ ok: true, data: MOCK_CLUSTER })
+    globalThis.fetch = mock(async (input) =>
+      responseForClusterOrEndpoint(input)
     ) as unknown as typeof fetch
 
     const view = render(<ClusterDetail clusterId="cl_1" />)
@@ -242,10 +266,9 @@ describe("ClusterDetail", () => {
     expect(view.getAllByText("Active").length).toBeGreaterThanOrEqual(1)
     expect(view.getAllByText("Default").length).toBeGreaterThanOrEqual(1)
   })
-
   it("renders editable cluster metadata fields", async () => {
-    globalThis.fetch = mock(async () =>
-      Response.json({ ok: true, data: MOCK_CLUSTER })
+    globalThis.fetch = mock(async (input) =>
+      responseForClusterOrEndpoint(input)
     ) as unknown as typeof fetch
 
     const view = render(<ClusterDetail clusterId="cl_1" />)
@@ -253,20 +276,17 @@ describe("ClusterDetail", () => {
     await waitFor(
       () => {
         expect(view.getByLabelText("Name")).toBeTruthy()
+        expect(view.getByLabelText("Region")).toBeTruthy()
       },
       { timeout: 5000 }
     )
 
     expect(view.getByLabelText("Name").getAttribute("value")).toBe("US East")
-    expect(view.getByLabelText("Region").getAttribute("value")).toBe(
-      "us-east-1"
-    )
     expect(view.getByRole("button", { name: /save cluster/i })).toBeTruthy()
   })
-
   it("renders integration list with status", async () => {
-    globalThis.fetch = mock(async () =>
-      Response.json({ ok: true, data: MOCK_CLUSTER })
+    globalThis.fetch = mock(async (input) =>
+      responseForClusterOrEndpoint(input)
     ) as unknown as typeof fetch
 
     const view = render(<ClusterDetail clusterId="cl_1" />)
@@ -287,8 +307,8 @@ describe("ClusterDetail", () => {
   })
 
   it("offers missing integration types for configuration", async () => {
-    globalThis.fetch = mock(async () =>
-      Response.json({ ok: true, data: MOCK_CLUSTER })
+    globalThis.fetch = mock(async (input) =>
+      responseForClusterOrEndpoint(input)
     ) as unknown as typeof fetch
 
     const view = render(<ClusterDetail clusterId="cl_1" />)
@@ -304,8 +324,8 @@ describe("ClusterDetail", () => {
   })
 
   it("shows masked secret preview", async () => {
-    globalThis.fetch = mock(async () =>
-      Response.json({ ok: true, data: MOCK_CLUSTER })
+    globalThis.fetch = mock(async (input) =>
+      responseForClusterOrEndpoint(input)
     ) as unknown as typeof fetch
 
     const view = render(<ClusterDetail clusterId="cl_1" />)
@@ -324,9 +344,13 @@ describe("ClusterDetail", () => {
       integrations: [],
     }
 
-    globalThis.fetch = mock(async () =>
-      Response.json({ ok: true, data: clusterNoIntegrations })
-    ) as unknown as typeof fetch
+    globalThis.fetch = mock(async (input) => {
+      const url = String(input)
+      if (url.endsWith("/regions")) {
+        return Response.json({ ok: true, data: MOCK_REGIONS })
+      }
+      return Response.json({ ok: true, data: clusterNoIntegrations })
+    }) as unknown as typeof fetch
 
     const view = render(<ClusterDetail clusterId="cl_1" />)
 
@@ -339,8 +363,8 @@ describe("ClusterDetail", () => {
   })
 
   it("opens integration edit form with blank secret fields", async () => {
-    globalThis.fetch = mock(async () =>
-      Response.json({ ok: true, data: MOCK_CLUSTER })
+    globalThis.fetch = mock(async (input) =>
+      responseForClusterOrEndpoint(input)
     ) as unknown as typeof fetch
 
     const view = render(<ClusterDetail clusterId="cl_1" />)

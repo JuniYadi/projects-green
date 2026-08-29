@@ -301,6 +301,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           isActive: startsWithRoute(path, "/portal/billing/catalog"),
         },
         {
+          title: "Regions",
+          url: localizePathname({
+            pathname: "/portal/billing/regions",
+            locale,
+          }),
+          icon: <MapPinIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/regions"),
+        },
+        {
           title: "Orders",
           url: localizePathname({ pathname: "/portal/billing/orders", locale }),
           icon: <ReceiptIcon />,
