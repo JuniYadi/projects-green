@@ -469,6 +469,29 @@ const getStackImageRepository = (
   return typeof value === "string" && value.length > 0 ? value : null
 }
 
+const getStackDeploymentType = (
+  metadataJson: Prisma.JsonValue | null
+): "deployment" | "statefulset" | undefined => {
+  if (!metadataJson || typeof metadataJson !== "object") return undefined
+  const value = (metadataJson as Record<string, unknown>).deploymentType
+  return value === "deployment" || value === "statefulset" ? value : undefined
+}
+
+const getStackAdditionalPorts = (
+  metadataJson: Prisma.JsonValue | null
+): Array<{ port: number; name: string }> | undefined => {
+  if (!metadataJson || typeof metadataJson !== "object") return undefined
+  const value = (metadataJson as Record<string, unknown>).additionalPorts
+  if (!Array.isArray(value)) return undefined
+  return value.filter(
+    (entry): entry is { port: number; name: string } =>
+      typeof entry === "object" &&
+      entry !== null &&
+      typeof (entry as Record<string, unknown>).port === "number" &&
+      typeof (entry as Record<string, unknown>).name === "string"
+  )
+}
+
 async function resolveTemplateImageReference(stack: {
   id: string
   slug: string
@@ -517,6 +540,8 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
       domain: stack.customDomain ?? null,
       edge,
       externalSecretVaultPath,
+      deploymentType: getStackDeploymentType(stack.metadataJson),
+      additionalContainerPorts: getStackAdditionalPorts(stack.metadataJson),
     })
 
     const { gitopsCommitSha } = await prisma.$transaction((tx) =>
