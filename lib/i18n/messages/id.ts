@@ -1401,6 +1401,12 @@ export const idMessages: AppMessages = {
           sent: "Terkirim",
           failed: "Gagal",
           queued: "Dalam antrean",
+          draftReady: "Draf / Siap Kirim",
+          draftBannerTitle: "Siaran Belum Dikirim",
+          draftBannerDescription:
+            "Broadcast ini berstatus Draf dan belum dikirim. Klik 'Kirim Broadcast' untuk mulai mendistribusikan pesan ke antrean penerima.",
+          sendBroadcast: "Kirim Broadcast",
+          sendingBroadcast: "Mengirim...",
           deliveryProgress: "Progres pengiriman",
           recipientList: "Daftar penerima",
           recipientListDescription:
@@ -1424,9 +1430,11 @@ export const idMessages: AppMessages = {
         },
         status: {
           draft: "Draf",
+          draftReady: "Draf / Siap Kirim",
           queued: "Dalam antrean",
           processing: "Sedang diproses",
           completed: "Selesai",
+          completedWithErrors: "Selesai Sebagian (Ada Gagal)",
           failed: "Gagal",
         },
       },

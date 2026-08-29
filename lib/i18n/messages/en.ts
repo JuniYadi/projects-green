@@ -1391,6 +1391,12 @@ export const enMessages: AppMessages = {
           sent: "Sent",
           failed: "Failed",
           queued: "Queued",
+          draftReady: "Draft / Ready to Send",
+          draftBannerTitle: "Broadcast Not Sent Yet",
+          draftBannerDescription:
+            "This broadcast is a Draft and has not been sent yet. Click 'Send Broadcast' to start distributing messages to the recipient queue.",
+          sendBroadcast: "Send Broadcast",
+          sendingBroadcast: "Sending...",
           deliveryProgress: "Delivery progress",
           recipientList: "Recipient list",
           recipientListDescription:
@@ -1414,9 +1420,11 @@ export const enMessages: AppMessages = {
         },
         status: {
           draft: "Draft",
+          draftReady: "Draft / Ready to Send",
           queued: "Queued",
           processing: "Processing",
           completed: "Completed",
+          completedWithErrors: "Completed with Errors",
           failed: "Failed",
         },
       },

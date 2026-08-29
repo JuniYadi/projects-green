@@ -512,7 +512,9 @@ export default function NewWhatsAppBroadcastPage() {
         acknowledgeMultiDay: needsMultiDayAck || undefined,
         recipients: activeRecipients,
       })
-      toast.success("Broadcast berhasil dibuat")
+      toast.success(
+        "Broadcast berhasil dibuat sebagai Draf. Silakan tinjau penerima dan klik 'Kirim Broadcast' untuk memulai pengiriman."
+      )
       router.push(`${basePath}/${broadcast.id}`)
     } catch (error) {
       toast.error(
