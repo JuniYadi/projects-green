@@ -110,6 +110,11 @@ export type ConversationListItem = {
   stage?: string | null
   assigneeId?: string | null
   whatsappDeviceId: string | null
+  whatsappDevice?: {
+    id: string
+    phoneNumber: string
+    whatsappProfile?: Record<string, unknown> | null
+  } | null
   createdAt: string
   updatedAt: string
   _count: { whatsappMessages: number }
@@ -269,6 +274,8 @@ function getLanguagePresentation(code: string): LanguagePresentation {
 function ConversationItem({
   conversation,
   isActive,
+  isAdminMode,
+  orgName,
   onClick,
   onDelete,
   onNotes,
@@ -276,6 +283,8 @@ function ConversationItem({
 }: {
   conversation: ConversationListItem
   isActive: boolean
+  isAdminMode?: boolean
+  orgName?: string
   onClick: () => void
   onDelete: (id: string) => void
   onNotes: (conversation: ConversationListItem) => void
@@ -334,6 +343,27 @@ function ConversationItem({
             {conversation._count.whatsappMessages !== 1 ? "s" : ""}
           </span>
         </div>
+        {/* Device & Org badges for tracking */}
+        {(conversation.whatsappDevice ||
+          (isAdminMode && (orgName || conversation.organizationId))) && (
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+            {conversation.whatsappDevice && (
+              <span className="inline-flex items-center gap-0.5 rounded-xs bg-muted px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+                <DeviceMobile className="size-3 text-muted-foreground" />
+                {conversation.whatsappDevice.phoneNumber}
+              </span>
+            )}
+            {isAdminMode && (
+              <span
+                className="inline-flex items-center gap-0.5 rounded-xs bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                title={`Org ID: ${conversation.organizationId}`}
+              >
+                <Buildings className="size-3 text-muted-foreground" />
+                {orgName || conversation.organizationId}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Labels & Note indicator */}
         {(Boolean(conversation.internalNotes) ||
@@ -597,7 +627,9 @@ export function WhatsAppInbox({
     enabled: isAdminMode,
   })
 
-  const [searchQuery, setSearchQuery] = React.useState("")
+  const [searchQuery, setSearchQuery] = React.useState(
+    () => searchParams.get(PHONE_QUERY_KEY) || ""
+  )
   const [lifecycleFilter, setLifecycleFilter] = React.useState("all")
   const [directionFilter, setDirectionFilter] = React.useState("all")
   const [replyFilter, setReplyFilter] = React.useState<
@@ -685,6 +717,14 @@ export function WhatsAppInbox({
     return findConversationByPhone(conversations, phoneDigits)
   }, [conversations, phoneDigits])
 
+  const orgNameMap = React.useMemo(() => {
+    const map = new Map<string, string>()
+    for (const org of adminOrganizations) {
+      if (org.id) map.set(org.id, org.name || org.id)
+    }
+    return map
+  }, [adminOrganizations])
+
   const activeConversationId =
     selectedConversationIdOverride ?? matchedPhoneConversation?.id ?? null
   const setActiveConversationId = React.useCallback(
@@ -750,7 +790,7 @@ export function WhatsAppInbox({
 
   // Async fallback: load conversation for phone query if not yet loaded in initial list
   React.useEffect(() => {
-    if (!phoneDigits || conversations.length > 0 || matchedPhoneConversation) {
+    if (!phoneDigits || matchedPhoneConversation) {
       return
     }
     let cancelled = false
@@ -770,7 +810,6 @@ export function WhatsAppInbox({
     loadConversationForPhone,
     setActiveConversationId,
   ])
-
   const templateQueryId = searchParams.get("template")
   const { template: queryTemplate } = useTemplate(templateQueryId ?? "")
   // Sync send template dialog from ?template= query param
@@ -901,9 +940,22 @@ export function WhatsAppInbox({
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase()
-      result = result.filter((c) => c.contactPhone.toLowerCase().includes(q))
+      const qDigits = cleanPhoneForQuery(searchQuery.trim())
+      result = result.filter((c) => {
+        const phoneMatch = c.contactPhone.toLowerCase().includes(q)
+        const digitsMatch = qDigits
+          ? cleanPhoneForQuery(c.contactPhone).includes(qDigits)
+          : false
+        const orgMatch = isAdminMode
+          ? c.organizationId.toLowerCase().includes(q) ||
+            (orgNameMap.get(c.organizationId)?.toLowerCase().includes(q) ??
+              false)
+          : false
+        const deviceMatch =
+          c.whatsappDevice?.phoneNumber.toLowerCase().includes(q) ?? false
+        return phoneMatch || digitsMatch || orgMatch || deviceMatch
+      })
     }
-
     if (lifecycleFilter !== "all") {
       result = result.filter((c) => (c.status ?? "OPEN") === lifecycleFilter)
     }
@@ -936,6 +988,8 @@ export function WhatsAppInbox({
     directionFilter,
     replyFilter,
     labelFilterIds,
+    isAdminMode,
+    orgNameMap,
   ])
 
   // Reverse messages to show oldest first
@@ -2102,6 +2156,8 @@ export function WhatsAppInbox({
                   key={conversation.id}
                   conversation={conversation}
                   isActive={activeConversationId === conversation.id}
+                  isAdminMode={isAdminMode}
+                  orgName={orgNameMap.get(conversation.organizationId)}
                   onClick={() => handleSelectConversation(conversation)}
                   onDelete={handleDeleteConversation}
                   onNotes={handleNotesConversation}
@@ -2121,9 +2177,30 @@ export function WhatsAppInbox({
                   <Phone className="size-4 text-primary" weight="fill" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold">
-                    {formatPhone(activeConversation.contactPhone)}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold">
+                      {formatPhone(activeConversation.contactPhone)}
+                    </h3>
+                    {activeConversation.whatsappDevice && (
+                      <Badge
+                        variant="outline"
+                        className="h-5 gap-1 text-[10px] font-normal text-muted-foreground"
+                      >
+                        <DeviceMobile className="size-2.5" />
+                        {activeConversation.whatsappDevice.phoneNumber}
+                      </Badge>
+                    )}
+                    {isAdminMode && (
+                      <Badge
+                        variant="secondary"
+                        className="h-5 gap-1 text-[10px] font-normal"
+                      >
+                        <Buildings className="size-2.5" />
+                        {orgNameMap.get(activeConversation.organizationId) ||
+                          activeConversation.organizationId}
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-[11px] text-muted-foreground">
                     {activeConversation._count.whatsappMessages}{" "}
                     <WhatsAppText id="s55" />

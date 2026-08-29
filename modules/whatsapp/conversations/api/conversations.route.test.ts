@@ -466,4 +466,60 @@ describe("conversations routes", () => {
     expect(res.status).toBe(404)
     expect(mockDelete).not.toHaveBeenCalled()
   })
+  it("allows super admin to get conversation without organization constraint", async () => {
+    mockAuth.current = {
+      type: "workos",
+      userId: "admin_user",
+      organizationId: null,
+      orgRole: null,
+      platformRole: "super_admin",
+    }
+    mockFindFirst.mockResolvedValueOnce({
+      id: "conv-cross-org",
+      organizationId: "org-other",
+      contactPhone: "+6285708296482",
+      whatsappMessages: [],
+    })
+
+    const res = await createTestApp().handle(
+      new Request("http://localhost/conversations/conv-cross-org")
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { ok: boolean; conversation: any }
+    expect(body.ok).toBe(true)
+    expect(body.conversation.id).toBe("conv-cross-org")
+    expect(mockFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "conv-cross-org" },
+      })
+    )
+  })
+
+  it("includes whatsappDevice in conversation list query", async () => {
+    mockAuth.current = {
+      type: "workos",
+      userId: "admin_user",
+      organizationId: null,
+      orgRole: null,
+      platformRole: "super_admin",
+    }
+    mockFindMany.mockResolvedValueOnce([])
+
+    const res = await createTestApp().handle(
+      new Request("http://localhost/conversations?contactPhone=6285708296482")
+    )
+    expect(res.status).toBe(200)
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          whatsappDevice: expect.objectContaining({
+            select: expect.objectContaining({
+              id: true,
+              phoneNumber: true,
+            }),
+          }),
+        }),
+      })
+    )
+  })
 })

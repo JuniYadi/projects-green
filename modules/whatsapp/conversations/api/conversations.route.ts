@@ -205,6 +205,13 @@ export const conversationsRoutes = new Elysia({
           _count: {
             select: { whatsappMessages: true },
           },
+          whatsappDevice: {
+            select: {
+              id: true,
+              phoneNumber: true,
+              whatsappProfile: true,
+            },
+          },
           conversationLabels: {
             include: { label: true },
           },
@@ -325,12 +332,14 @@ export const conversationsRoutes = new Elysia({
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      if (!whatsappAuth.organizationId) return toNoOrganization(set)
-      const organizationId = whatsappAuth.organizationId
+      const isSuper = isSuperAdmin(whatsappAuth)
+      if (!isSuper && !whatsappAuth.organizationId) return toNoOrganization(set)
       const conversation = await prisma.whatsappConversation.findFirst({
         where: {
           id,
-          organizationId,
+          ...(!isSuper && whatsappAuth.organizationId
+            ? { organizationId: whatsappAuth.organizationId }
+            : {}),
         },
         include: {
           _count: {
@@ -343,6 +352,13 @@ export const conversationsRoutes = new Elysia({
               statusHistory: {
                 orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }],
               },
+            },
+          },
+          whatsappDevice: {
+            select: {
+              id: true,
+              phoneNumber: true,
+              whatsappProfile: true,
             },
           },
           conversationLabels: {
@@ -445,12 +461,14 @@ export const conversationsRoutes = new Elysia({
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      if (!whatsappAuth.organizationId) return toNoOrganization(set)
-      const organizationId = whatsappAuth.organizationId
+      const isSuper = isSuperAdmin(whatsappAuth)
+      if (!isSuper && !whatsappAuth.organizationId) return toNoOrganization(set)
       const conversation = await prisma.whatsappConversation.findFirst({
         where: {
           id,
-          organizationId,
+          ...(!isSuper && whatsappAuth.organizationId
+            ? { organizationId: whatsappAuth.organizationId }
+            : {}),
         },
       })
 
@@ -535,11 +553,13 @@ export const conversationsRoutes = new Elysia({
         ? [...new Set(body.labelIds as string[])]
         : null
 
-      // Validate labelIds if provided
       if (labelIds !== null) {
+        // Validate labelIds if provided
         const validLabels = await prisma.whatsappConversationLabel.findMany({
           where: {
-            organizationId,
+            ...(!isSuper && whatsappAuth.organizationId
+              ? { organizationId: whatsappAuth.organizationId }
+              : {}),
             id: { in: labelIds },
           },
           select: { id: true },
@@ -637,12 +657,14 @@ export const conversationsRoutes = new Elysia({
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      if (!whatsappAuth.organizationId) return toNoOrganization(set)
-      const organizationId = whatsappAuth.organizationId
+      const isSuper = isSuperAdmin(whatsappAuth)
+      if (!isSuper && !whatsappAuth.organizationId) return toNoOrganization(set)
       const conversation = await prisma.whatsappConversation.findFirst({
         where: {
           id,
-          organizationId,
+          ...(!isSuper && whatsappAuth.organizationId
+            ? { organizationId: whatsappAuth.organizationId }
+            : {}),
         },
       })
 
@@ -693,10 +715,15 @@ export const conversationsRoutes = new Elysia({
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      if (!whatsappAuth.organizationId) return toNoOrganization(set)
-      const organizationId = whatsappAuth.organizationId
+      const isSuper = isSuperAdmin(whatsappAuth)
+      if (!isSuper && !whatsappAuth.organizationId) return toNoOrganization(set)
       const conversation = await prisma.whatsappConversation.findFirst({
-        where: { id, organizationId },
+        where: {
+          id,
+          ...(!isSuper && whatsappAuth.organizationId
+            ? { organizationId: whatsappAuth.organizationId }
+            : {}),
+        },
       })
       if (!conversation) {
         set.status = 404
@@ -778,10 +805,15 @@ export const conversationsRoutes = new Elysia({
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      if (!whatsappAuth.organizationId) return toNoOrganization(set)
-      const organizationId = whatsappAuth.organizationId
+      const isSuper = isSuperAdmin(whatsappAuth)
+      if (!isSuper && !whatsappAuth.organizationId) return toNoOrganization(set)
       const conversation = await prisma.whatsappConversation.findFirst({
-        where: { id, organizationId },
+        where: {
+          id,
+          ...(!isSuper && whatsappAuth.organizationId
+            ? { organizationId: whatsappAuth.organizationId }
+            : {}),
+        },
       })
       if (!conversation) {
         set.status = 404
