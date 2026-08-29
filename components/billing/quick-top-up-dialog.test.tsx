@@ -11,6 +11,12 @@ const mockTopupMethodsGet = mock(async () => ({
   data: {
     ok: true,
     currency: "IDR",
+    methods: {
+      MANUAL_BANK: true,
+      QRIS: true,
+      VA: true,
+      PAYPAL: false,
+    },
     config: {
       symbol: "Rp",
       ratePerBase: 18000,
@@ -22,6 +28,22 @@ const mockTopupMethodsGet = mock(async () => ({
   },
 }))
 
+const mockBankAccountsGet = mock(async () => ({
+  data: {
+    ok: true,
+    data: [
+      {
+        id: "bank_bca",
+        bankCode: "BCA",
+        bankName: "Bank Central Asia",
+        accountNumber: "1234567890",
+        accountName: "PT Projects Green",
+        isActive: true,
+        isDefault: true,
+      },
+    ],
+  },
+}))
 const mockTopupPost = mock(async () => ({
   data: {
     ok: true,
@@ -44,13 +66,15 @@ mock.module("@/lib/eden", () => ({
           methods: {
             get: mockTopupMethodsGet,
           },
+          "bank-accounts": {
+            get: mockBankAccountsGet,
+          },
           post: mockTopupPost,
         },
       },
     },
   },
 }))
-
 const mockGetInvoice = mock(async (id: string) => ({
   ok: true,
   invoice: {
@@ -74,11 +98,11 @@ import { QuickTopUpDialog } from "./quick-top-up-dialog"
 describe("QuickTopUpDialog", () => {
   beforeEach(() => {
     mockTopupMethodsGet.mockClear()
+    mockBankAccountsGet.mockClear()
     mockTopupPost.mockClear()
     mockGetInvoice.mockClear()
     mockQrToDataURL.mockClear()
   })
-
   afterEach(() => {
     cleanup()
   })
@@ -103,6 +127,14 @@ describe("QuickTopUpDialog", () => {
     expect(view.getAllByText(/\+Rp\s*150\.000/).length).toBeGreaterThanOrEqual(
       1
     )
+
+    await waitFor(() => {
+      expect(view.getByText("QRIS Instant")).toBeDefined()
+    })
+
+    const qrisBtn = view.getByText("QRIS Instant")
+    fireEvent.click(qrisBtn)
+
     const payButton = view.getByRole("button", {
       name: /Pay Rp\s*150\.000 Instantly/i,
     })
@@ -121,11 +153,14 @@ describe("QuickTopUpDialog", () => {
       expect(view.getByText("INV-TOPUP-123")).toBeDefined()
     })
   })
-
   it("allows switching to VA method and displays VA number", async () => {
     const view = render(
       <QuickTopUpDialog open={true} onOpenChange={() => {}} currency="IDR" />
     )
+
+    await waitFor(() => {
+      expect(view.getByText("Virtual Account")).toBeDefined()
+    })
 
     const vaButton = view.getByText("Virtual Account")
     fireEvent.click(vaButton)
@@ -145,7 +180,6 @@ describe("QuickTopUpDialog", () => {
       expect(view.getByText("98877665544")).toBeDefined()
     })
   })
-
   it("polls and succeeds when invoice status turns paid", async () => {
     mockGetInvoice.mockResolvedValueOnce({
       ok: true,
@@ -159,7 +193,6 @@ describe("QuickTopUpDialog", () => {
         periodEnd: new Date().toISOString(),
       },
     })
-
     const handleSuccess = mock(() => {})
     const view = render(
       <QuickTopUpDialog
@@ -168,6 +201,14 @@ describe("QuickTopUpDialog", () => {
         onSuccess={handleSuccess}
       />
     )
+
+    await waitFor(() => {
+      expect(
+        view.getByRole("button", {
+          name: /Pay Rp\s*50\.000 Instantly/i,
+        })
+      ).toBeDefined()
+    })
 
     const payButton = view.getByRole("button", {
       name: /Pay Rp\s*50\.000 Instantly/i,
@@ -183,6 +224,55 @@ describe("QuickTopUpDialog", () => {
     await waitFor(() => {
       expect(view.getByText("Payment Received!")).toBeDefined()
       expect(handleSuccess).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it("supports manual bank transfer when only manual bank is enabled", async () => {
+    mockTopupMethodsGet.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        currency: "IDR",
+        methods: {
+          MANUAL_BANK: true,
+          QRIS: false,
+          VA: false,
+          PAYPAL: false,
+        },
+        config: {
+          symbol: "Rp",
+          ratePerBase: 18000,
+          baseCode: "IDR",
+          presets: [50000, 100000, 250000, 500000],
+          minTopup: 25000,
+          maxTopup: 50000000,
+        },
+      },
+    })
+
+    const view = render(
+      <QuickTopUpDialog open={true} onOpenChange={() => {}} currency="IDR" />
+    )
+
+    await waitFor(() => {
+      expect(view.getByText("Bank Central Asia")).toBeDefined()
+      expect(view.getByText(/1234567890/)).toBeDefined()
+    })
+
+    const payButton = view.getByRole("button", {
+      name: /Pay Rp\s*50\.000 Instantly/i,
+    })
+    fireEvent.click(payButton)
+
+    await waitFor(() => {
+      expect(mockTopupPost).toHaveBeenCalledWith({
+        amount: 50000,
+        paymentMethod: "MANUAL_BANK",
+      })
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Konfirmasi Pembayaran Transfer")).toBeDefined()
+      expect(view.getByText("1234567890")).toBeDefined()
     })
   })
 })

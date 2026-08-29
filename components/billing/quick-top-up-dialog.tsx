@@ -19,8 +19,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  BuildingsIcon,
   CheckCircle,
   Copy,
+  CreditCardIcon,
   Lightning,
   QrCodeIcon,
   HandCoinsIcon,
@@ -28,7 +30,6 @@ import {
   ArrowsOutSimple,
   ReceiptIcon,
 } from "@/components/ui/phosphor-icons"
-
 export type QuickTopUpDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -40,8 +41,21 @@ export type QuickTopUpDialogProps = {
   onSuccess?: () => void
 }
 
-type InstantMethod = "QRIS" | "VA"
+type PaymentMethod = "MANUAL_BANK" | "QRIS" | "VA" | "PAYPAL"
 type Step = "select" | "payment" | "success"
+
+interface BankAccount {
+  id: string
+  bankCode: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  supportedCurrencies?: string[]
+  swiftCode?: string | null
+  bankAddress?: string | null
+  isActive: boolean
+  isDefault: boolean
+}
 
 interface CurrencyConfig {
   symbol: string
@@ -52,14 +66,15 @@ interface CurrencyConfig {
   maxTopup: number
 }
 
-const INSTANT_METHODS: {
-  value: InstantMethod
+const ALL_METHODS: {
+  value: PaymentMethod
   icon: React.ElementType
 }[] = [
+  { value: "MANUAL_BANK", icon: BuildingsIcon },
   { value: "QRIS", icon: QrCodeIcon },
   { value: "VA", icon: HandCoinsIcon },
+  { value: "PAYPAL", icon: CreditCardIcon },
 ]
-
 export function QuickTopUpDialog({
   open,
   onOpenChange,
@@ -71,21 +86,38 @@ export function QuickTopUpDialog({
   onSuccess,
 }: QuickTopUpDialogProps) {
   const locale = resolveLocaleOrDefault(lang)
-  const t = messages ?? getMessages(locale).console.billing.expressTopUp
+  const billingMessages = getMessages(locale).console.billing
+  const t = messages ?? billingMessages.expressTopUp
+  const topupMessages = billingMessages.topUpForm
 
   const methodMessages: Record<
-    InstantMethod,
+    PaymentMethod,
     { label: string; description: string }
   > = {
+    MANUAL_BANK: {
+      label: topupMessages.manualBankTransfer,
+      description: topupMessages.manualTransferAvailable,
+    },
     QRIS: { label: t.qrisMethod, description: t.qrisMethodDescription },
     VA: {
       label: t.virtualAccountMethod,
       description: t.virtualAccountMethodDescription,
     },
+    PAYPAL: {
+      label: topupMessages.paypal,
+      description: topupMessages.paymentMethod,
+    },
   }
 
   const [step, setStep] = useState<Step>("select")
-  const [selectedMethod, setSelectedMethod] = useState<InstantMethod>("QRIS")
+  const [availableMethods, setAvailableMethods] = useState<
+    Record<PaymentMethod, boolean>
+  >({ MANUAL_BANK: true, QRIS: false, VA: false, PAYPAL: false })
+  const [selectedMethod, setSelectedMethod] =
+    useState<PaymentMethod>("MANUAL_BANK")
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [selectedBankAccount, setSelectedBankAccount] = useState<string>("")
+  const [isLoadingMethods, setIsLoadingMethods] = useState(true)
   const [amount, setAmount] = useState<number>(suggestedAmount || 50000)
   const [customAmount, setCustomAmount] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -121,6 +153,7 @@ export function QuickTopUpDialog({
       setQrCodeDataUrl(null)
       setVaNumber(null)
       setCustomAmount("")
+      setIsLoadingMethods(true)
       if (suggestedAmount && suggestedAmount > 0) {
         setAmount(suggestedAmount)
       } else {
@@ -135,27 +168,67 @@ export function QuickTopUpDialog({
     if (open) {
       void (async () => {
         try {
-          const res = await eden.api.payments.topup.methods.get({
-            $query: { currency },
-          })
-          if (active && res.data?.ok && res.data.config) {
-            setCurrencyConfig({
-              symbol:
-                res.data.config.symbol || (currency === "USD" ? "$" : "Rp"),
-              ratePerBase: Number(res.data.config.ratePerBase) || 18000,
-              baseCode: res.data.config.baseCode || "USD",
-              presets:
-                res.data.config.presets && res.data.config.presets.length > 0
-                  ? res.data.config.presets
-                  : currency === "USD"
-                    ? [5, 10, 25, 50]
-                    : [50000, 100000, 250000, 500000],
-              minTopup: Number(res.data.config.minTopup) || 10000,
-              maxTopup: Number(res.data.config.maxTopup) || 50000000,
-            })
+          const [methodsRes, accountsRes] = await Promise.all([
+            eden.api.payments.topup.methods.get({
+              $query: { currency },
+            }),
+            eden.api.payments.topup["bank-accounts"].get().catch(() => ({
+              data: { ok: false, data: [] },
+            })),
+          ])
+
+          if (!active) return
+
+          if (accountsRes?.data?.ok && Array.isArray(accountsRes.data.data)) {
+            const accounts = accountsRes.data.data as BankAccount[]
+            setBankAccounts(accounts)
+            const defaultAcc = accounts.find((b) => b.isDefault) || accounts[0]
+            if (defaultAcc) {
+              setSelectedBankAccount(defaultAcc.id)
+            }
+          }
+
+          if (methodsRes.data?.ok) {
+            if (methodsRes.data.methods) {
+              const nextMethods: Record<PaymentMethod, boolean> = {
+                MANUAL_BANK: Boolean(methodsRes.data.methods.MANUAL_BANK),
+                QRIS: Boolean(methodsRes.data.methods.QRIS),
+                VA: Boolean(methodsRes.data.methods.VA),
+                PAYPAL: Boolean(methodsRes.data.methods.PAYPAL),
+              }
+              setAvailableMethods(nextMethods)
+              setSelectedMethod((current) => {
+                if (nextMethods[current]) return current
+                return (
+                  ALL_METHODS.find((m) => nextMethods[m.value])?.value ??
+                  "MANUAL_BANK"
+                )
+              })
+            }
+
+            if (methodsRes.data.config) {
+              const cfg = methodsRes.data.config
+              setCurrencyConfig({
+                symbol: cfg.symbol || (currency === "USD" ? "$" : "Rp"),
+                ratePerBase: Number(cfg.ratePerBase) || 18000,
+                baseCode: cfg.baseCode || "USD",
+                presets:
+                  Array.isArray(cfg.presets) && cfg.presets.length > 0
+                    ? cfg.presets
+                    : currency === "USD"
+                      ? [5, 10, 25, 50]
+                      : [50000, 100000, 250000, 500000],
+                minTopup: Number(cfg.minTopup) || 10000,
+                maxTopup: Number(cfg.maxTopup) || 50000000,
+              })
+            }
           }
         } catch {
           // fallback to defaults
+        } finally {
+          if (active) {
+            setIsLoadingMethods(false)
+          }
         }
       })()
     }
@@ -401,39 +474,90 @@ export function QuickTopUpDialog({
               )}
             </div>
 
-            {/* Instant Payment Channel Selection */}
+            {/* Payment Method Selection */}
             <div className="space-y-2">
               <span className="text-xs font-medium text-foreground">
                 {t.instantPaymentMethod}
               </span>
-              <div className="grid grid-cols-2 gap-2">
-                {INSTANT_METHODS.map((method) => {
-                  const Icon = method.icon
-                  const isSelected = selectedMethod === method.value
-                  return (
-                    <button
-                      key={method.value}
-                      type="button"
-                      onClick={() => setSelectedMethod(method.value)}
-                      className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
-                        isSelected
-                          ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500"
-                          : "border-border hover:bg-muted/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 text-xs font-medium">
-                        <Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
-                        <span>{methodMessages[method.value].label}</span>
-                      </div>
-                      <span className="text-[10px] leading-tight text-muted-foreground">
-                        {methodMessages[method.value].description}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
+              {isLoadingMethods ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {ALL_METHODS.filter((m) => availableMethods[m.value]).map(
+                    (method) => {
+                      const Icon = method.icon
+                      const isSelected = selectedMethod === method.value
+                      return (
+                        <button
+                          key={method.value}
+                          type="button"
+                          onClick={() => setSelectedMethod(method.value)}
+                          className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
+                            isSelected
+                              ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500"
+                              : "border-border hover:bg-muted/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 text-xs font-medium">
+                            <Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
+                            <span>{methodMessages[method.value].label}</span>
+                          </div>
+                          <span className="text-[10px] leading-tight text-muted-foreground">
+                            {methodMessages[method.value].description}
+                          </span>
+                        </button>
+                      )
+                    }
+                  )}
+                </div>
+              )}
             </div>
 
+            {/* Destination Bank Account selector when MANUAL_BANK is selected */}
+            {selectedMethod === "MANUAL_BANK" && bankAccounts.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-xs font-medium text-foreground">
+                  {topupMessages.destinationAccount}
+                </span>
+                <div className="space-y-2">
+                  {bankAccounts.map((acc) => {
+                    const isChosen =
+                      selectedBankAccount === acc.id ||
+                      (bankAccounts.length === 1 && !selectedBankAccount)
+                    return (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => setSelectedBankAccount(acc.id)}
+                        className={`flex w-full items-center justify-between rounded-lg border p-2.5 text-left text-xs transition-all ${
+                          isChosen
+                            ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500"
+                            : "border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <div>
+                          <span className="font-semibold text-foreground">
+                            {acc.bankName}
+                          </span>
+                          <p className="text-[11px] text-muted-foreground">
+                            {acc.accountNumber} &bull; {acc.accountName}
+                          </p>
+                        </div>
+                        {isChosen && (
+                          <CheckCircle
+                            className="size-4 text-emerald-600 dark:text-emerald-400"
+                            weight="fill"
+                          />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             {errorMessage && (
               <div className="rounded-md bg-destructive/10 p-2.5 text-xs text-destructive">
                 {errorMessage}
@@ -564,7 +688,108 @@ export function QuickTopUpDialog({
                 )}
               </div>
             )}
+            {selectedMethod === "MANUAL_BANK" && (
+              <div className="w-full space-y-3">
+                {(() => {
+                  const targetBank =
+                    bankAccounts.find((b) => b.id === selectedBankAccount) ||
+                    bankAccounts[0]
+                  return targetBank ? (
+                    <div className="rounded-lg border bg-card p-3.5 text-left text-xs">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <span className="font-semibold text-foreground">
+                          {targetBank.bankName}
+                        </span>
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          Manual Transfer
+                        </span>
+                      </div>
+                      <div className="mt-2.5 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground">
+                            No. Rekening
+                          </span>
+                          <p className="font-mono text-base font-bold tracking-wider text-foreground">
+                            {targetBank.accountNumber}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            a.n. {targetBank.accountName}
+                          </p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8"
+                          onClick={() => handleCopy(targetBank.accountNumber)}
+                          title="Copy Account Number"
+                        >
+                          {copied ? (
+                            <CheckCircle className="size-4 text-emerald-600" />
+                          ) : (
+                            <Copy className="size-4" />
+                          )}
+                        </Button>
+                      </div>
+                      {copied && (
+                        <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                          {t.copiedToClipboard}
+                        </p>
+                      )}
+                    </div>
+                  ) : null
+                })()}
 
+                <div className="rounded-md bg-amber-500/10 p-2.5 text-left text-[11px] text-amber-900 dark:text-amber-300">
+                  <p className="font-medium">Instruksi Pembayaran:</p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    Transfer tepat sebesar{" "}
+                    <strong className="text-foreground">
+                      {formatCurrency(amount)}
+                    </strong>{" "}
+                    ke rekening di atas, lalu konfirmasi pembayaran atau tunggu
+                    verifikasi admin.
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="w-full text-xs"
+                >
+                  <Link
+                    href={localizePathname({
+                      pathname: `/console/billing/payments/confirm${invoiceId ? `?invoiceId=${invoiceId}` : ""}`,
+                      locale,
+                    })}
+                    target="_blank"
+                  >
+                    <span>Konfirmasi Pembayaran Transfer</span>
+                    <ArrowsOutSimple className="ml-1.5 size-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            )}
+
+            {selectedMethod === "PAYPAL" && paymentUrl && (
+              <div className="w-full space-y-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="w-full text-xs"
+                >
+                  <a
+                    href={paymentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span>Lanjutkan ke PayPal</span>
+                    <ArrowsOutSimple className="ml-1.5 size-3.5" />
+                  </a>
+                </Button>
+              </div>
+            )}
             <div className="w-full space-y-2 border-t pt-3">
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <ArrowsClockwise className="size-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
