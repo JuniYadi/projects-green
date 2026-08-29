@@ -12,6 +12,8 @@ import { logger } from "@/lib/logger"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 import { resolveWhatsappQuotaCredit } from "@/modules/whatsapp/messages/quota-credit.service"
+import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
+import { renderTemplateBody } from "@/modules/whatsapp/templates/ui/template-preview"
 import {
   getHourlyMessageLimit,
   DEFAULT_DAILY_LIMIT_MESSAGE,
@@ -351,16 +353,56 @@ async function dispatchBroadcast(
       templateLanguage: campaign.templateLanguage,
       fields,
     })
+    const normalizedPhone =
+      normalizeIndonesianPhoneNumber(recipient.phoneNumber) ??
+      recipient.phoneNumber
+
+    // Find template to get body text for rendered message and billing category
+    let templateBody: string | null = null
+    let templateCategory: string | null = null
+    try {
+      const tpl = await prisma.whatsappTemplate.findFirst({
+        where: {
+          OR: [
+            { slug: campaign.templateName },
+            { name: campaign.templateName },
+          ],
+          organizationId: campaign.organizationId,
+        },
+        select: {
+          category: true,
+          languages: {
+            where: { lang: campaign.templateLanguage },
+            select: { body: true },
+            take: 1,
+          },
+        },
+      })
+      templateCategory = tpl?.category ?? null
+      templateBody = tpl?.languages[0]?.body ?? null
+    } catch {
+      // Non-critical
+    }
+
+    let renderedBody: string | null = templateBody
+    if (templateBody && fields.length > 0) {
+      const values: Record<number, string> = {}
+      fields.forEach((f, i) => {
+        values[i + 1] = f
+      })
+      renderedBody = renderTemplateBody(templateBody, values)
+    }
+
     const conversation = await prisma.whatsappConversation.upsert({
       where: {
         organizationId_contactPhone: {
           organizationId: campaign.organizationId,
-          contactPhone: recipient.phoneNumber,
+          contactPhone: normalizedPhone,
         },
       },
       create: {
         organizationId: campaign.organizationId,
-        contactPhone: recipient.phoneNumber,
+        contactPhone: normalizedPhone,
         whatsappDeviceId: campaign.whatsappDeviceId,
         lastDirection: "OUTBOX",
         lastMessageAt: new Date(),
@@ -377,6 +419,7 @@ async function dispatchBroadcast(
         conversationId: conversation.id,
         direction: "OUTBOX",
         messageType: "template",
+        body: renderedBody ?? null,
         waMessageId: result.providerMessageId,
         metadata: {
           broadcastCampaignId: campaign.id,
@@ -397,28 +440,13 @@ async function dispatchBroadcast(
     // Upsert contact from this broadcast send — has provider message id, mark as WhatsApp active
     await upsertWhatsappContactFromMessage({
       organizationId: campaign.organizationId,
-      phoneNumber: recipient.phoneNumber,
+      phoneNumber: normalizedPhone,
       whatsappDeviceId: device.id,
       messageAt: new Date(),
       isWhatsapp: true,
       waId: result.providerMessageId,
       markChecked: true,
     })
-
-    // Record billing ledger + daily/monthly counters
-    let templateCategory: string | null = null
-    try {
-      const tpl = await prisma.whatsappTemplate.findFirst({
-        where: {
-          name: campaign.templateName,
-          organizationId: campaign.organizationId,
-        },
-        select: { category: true },
-      })
-      templateCategory = tpl?.category ?? null
-    } catch {
-      // Non-critical
-    }
 
     const _now = new Date()
     const _year = _now.getUTCFullYear()

@@ -454,7 +454,16 @@ export default function NewWhatsAppBroadcastPage() {
 
   function handleTemplateChange(value: string) {
     setTemplateId(value)
-    setTemplateLanguage("")
+    const target = templates.find((t) => t.id === value)
+    const approvedLanguages =
+      target?.languages.filter(
+        (l) => l.isApproved || l.metaStatus === "APPROVED"
+      ) ?? []
+    if (approvedLanguages.length === 1 && approvedLanguages[0]) {
+      setTemplateLanguage(approvedLanguages[0].lang)
+    } else {
+      setTemplateLanguage("")
+    }
     setVariableValues({})
   }
 
@@ -792,7 +801,8 @@ export default function NewWhatsAppBroadcastPage() {
                                 >
                                   {varCount > 0 ? (
                                     <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                                      {varCount}v
+                                      {varCount}{" "}
+                                      {varCount === 1 ? "var" : "vars"}
                                     </span>
                                   ) : (
                                     <span className="opacity-60">static</span>

@@ -187,6 +187,7 @@ async function resolveBroadcastSelection({
       select: {
         id: true,
         name: true,
+        slug: true,
         languages: {
           where: {
             lang: templateLanguage,
@@ -207,7 +208,7 @@ async function resolveBroadcastSelection({
   return {
     deviceId: device.id,
     templateId: template.id,
-    templateName: template.name,
+    templateName: template.slug || template.name,
     templateLanguage,
     templateBody: language.body,
   }

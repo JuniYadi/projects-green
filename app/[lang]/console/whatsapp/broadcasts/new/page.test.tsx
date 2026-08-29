@@ -213,7 +213,7 @@ describe("NewWhatsAppBroadcastPage selection flow", () => {
     fireEvent.click(view.getByRole("radio", { name: /id/ }))
     expect(view.getByRole("radio", { name: /id/ })).toBeChecked()
     await selectOption(view, "Template", "Shipping update")
-    expect(await view.findByRole("radio", { name: /en/ })).not.toBeChecked()
+    expect(await view.findByRole("radio", { name: /en/ })).toBeChecked()
     expect(view.queryByRole("radio", { name: /id/ })).not.toBeInTheDocument()
   })
 
