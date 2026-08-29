@@ -1,11 +1,17 @@
 import * as jsYaml from "js-yaml"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { resolveClusterIntegration } from "@/modules/deploy/cluster-integration.service"
+import {
+  resolveClusterIntegration,
+  type GitOpsClusterConfig,
+} from "@/modules/deploy/cluster-integration.service"
 import { buildHelmValues } from "./helm-values.builder"
 import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
 import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 
-type PersistedEdgePolicy = {
+export type PrismaTransactionClient = Prisma.TransactionClient
+
+export type PersistedEdgePolicy = {
   domain: string
   certificateSource: "MANAGED" | "UPLOADED"
   certificateStatus?: string
@@ -28,7 +34,7 @@ type EdgeDomainDelegate = {
   } | null>
 }
 
-async function loadPersistedEdgePolicy(
+export async function loadPersistedEdgePolicy(
   stackId: string,
   stackSlug: string
 ): Promise<PersistedEdgePolicy | null> {
@@ -90,7 +96,7 @@ const ACTIVE_DEPLOYMENT_STATUSES = [
   "RUNNING",
 ] as const
 
-type JenkinsEnvVar = {
+export type JenkinsEnvVar = {
   key: string
   value: string
   type?: string
@@ -165,6 +171,21 @@ const getExternalSecretVaultPath = (
   return canonicalPath?.[1]
 }
 
+export function resolveHelmEnvInputs(envVarsJson: unknown): {
+  envVars: JenkinsEnvVar[]
+  externalSecretVaultPath: string | undefined
+} {
+  const parsedEnvVars = parseEnvVarsJson(envVarsJson)
+  const envVars = parsedEnvVars.filter(
+    (entry) =>
+      entry.source !== "vault" &&
+      entry.type !== "secret_ref" &&
+      entry.type !== "secret_shared_ref"
+  )
+  const externalSecretVaultPath = getExternalSecretVaultPath(parsedEnvVars)
+  return { envVars, externalSecretVaultPath }
+}
+
 const findActiveDeployment = async (
   stackId: string,
   input: JenkinsImageReadyInput
@@ -218,14 +239,9 @@ export async function handleJenkinsImageReady(
     ? `${registryConfig.host}/${registryConfig.namespace}/${stack.slug}`
     : `${registryConfig.host}/${stack.slug}`
 
-  const parsedEnvVars = parseEnvVarsJson(stack.envVarsJson)
-  const envVars = parsedEnvVars.filter(
-    (entry) =>
-      entry.source !== "vault" &&
-      entry.type !== "secret_ref" &&
-      entry.type !== "secret_shared_ref"
+  const { envVars, externalSecretVaultPath } = resolveHelmEnvInputs(
+    stack.envVarsJson
   )
-  const externalSecretVaultPath = getExternalSecretVaultPath(parsedEnvVars)
 
   const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
 
@@ -277,22 +293,6 @@ export async function handleJenkinsImageReady(
       idempotent: false,
     }
   }
-
-  const valuesYaml = jsYaml.dump(values, {
-    indent: 2,
-    lineWidth: -1,
-    noRefs: true,
-  })
-
-  const basePath = gitopsConfig.basePath
-    .replace("{slug}", stack.slug)
-    .replace(/\/$/, "")
-  const filePath = `${basePath}/value.yml`
-
-  const gitops = new GitOpsRepositoryService({
-    pat: gitopsConfig.pat,
-    branch: gitopsConfig.branch,
-  })
 
   return prisma.$transaction(async (tx) => {
     const lockKey = `jenkins-image-ready:${deployment.id}`
@@ -352,77 +352,118 @@ export async function handleJenkinsImageReady(
       }
     }
 
-    const result = await gitops.commitFiles(
-      gitopsConfig.repo,
-      `Deploy ${stack.slug} image ${input.imageTag}`,
-      [{ path: filePath, content: valuesYaml }]
-    )
-
-    await tx.applicationDeployment.update({
-      where: { id: deployment.id },
-      data: {
-        status: "DEPLOYING",
-        ...(input.commitSha ? { commitSha: input.commitSha } : {}),
-        manifestPushed: true,
-        manifestPushedAt: new Date(),
-      },
+    const { gitopsCommitSha } = await commitHelmValuesAndAdvanceToDeploying({
+      deployment: { id: deployment.id, commitSha: input.commitSha ?? null },
+      stack: { slug: stack.slug },
+      values,
+      gitopsConfig,
+      imageTag: input.imageTag,
+      buildNumber: input.buildNumber,
+      tx,
     })
-
-    await recordDeployEventOnce(
-      {
-        deploymentId: deployment.id,
-        type: "IMAGE_TAG_RECEIVED" as any,
-        message: `Image tag ${input.imageTag} received for ${stack.slug}`,
-        metadata: {
-          imageTag: input.imageTag,
-          commitSha: input.commitSha ?? null,
-          buildNumber: input.buildNumber ?? null,
-        },
-      },
-      tx
-    )
-
-    await recordDeployEventOnce(
-      {
-        deploymentId: deployment.id,
-        type: "GITOPS_COMMIT_CREATED" as any,
-        message: `Helm values committed for ${stack.slug}`,
-        metadata: {
-          gitopsCommitSha: result.sha,
-          imageTag: input.imageTag,
-        },
-      },
-      tx
-    )
-
-    await recordDeployEventOnce(
-      {
-        deploymentId: deployment.id,
-        type: "MANIFEST_PUSHED" as any,
-        message: `Manifest pushed for ${stack.slug}`,
-        metadata: {
-          imageTag: input.imageTag,
-          gitopsCommitSha: result.sha,
-        },
-      },
-      tx
-    )
-
-    await recordDeployEventOnce(
-      {
-        deploymentId: deployment.id,
-        type: "ARGOCD_SYNC_STARTED" as any,
-        message: `ArgoCD sync started for ${stack.slug}`,
-        metadata: { imageTag: input.imageTag },
-      },
-      tx
-    )
 
     return {
       ok: true,
       deploymentId: deployment.id,
-      gitopsCommitSha: result.sha,
+      gitopsCommitSha,
       idempotent: false,
     }
   })
+}
+
+export async function commitHelmValuesAndAdvanceToDeploying(params: {
+  deployment: { id: string; commitSha?: string | null }
+  stack: { slug: string }
+  values: Record<string, unknown>
+  gitopsConfig: GitOpsClusterConfig
+  imageTag: string
+  buildNumber?: number
+  tx: PrismaTransactionClient
+}): Promise<{ gitopsCommitSha: string }> {
+  const { deployment, stack, values, gitopsConfig, imageTag, buildNumber, tx } =
+    params
+
+  const valuesYaml = jsYaml.dump(values, {
+    indent: 2,
+    lineWidth: -1,
+    noRefs: true,
+  })
+
+  const basePath = gitopsConfig.basePath
+    .replace("{slug}", stack.slug)
+    .replace(/\/$/, "")
+  const filePath = `${basePath}/value.yml`
+
+  const gitops = new GitOpsRepositoryService({
+    pat: gitopsConfig.pat,
+    branch: gitopsConfig.branch,
+  })
+
+  const result = await gitops.commitFiles(
+    gitopsConfig.repo,
+    `Deploy ${stack.slug} image ${imageTag}`,
+    [{ path: filePath, content: valuesYaml }]
+  )
+
+  await tx.applicationDeployment.update({
+    where: { id: deployment.id },
+    data: {
+      status: "DEPLOYING",
+      ...(deployment.commitSha ? { commitSha: deployment.commitSha } : {}),
+      manifestPushed: true,
+      manifestPushedAt: new Date(),
+    },
+  })
+
+  await recordDeployEventOnce(
+    {
+      deploymentId: deployment.id,
+      type: "IMAGE_TAG_RECEIVED" as any,
+      message: `Image tag ${imageTag} received for ${stack.slug}`,
+      metadata: {
+        imageTag,
+        commitSha: deployment.commitSha ?? null,
+        buildNumber: buildNumber ?? null,
+      },
+    },
+    tx
+  )
+
+  await recordDeployEventOnce(
+    {
+      deploymentId: deployment.id,
+      type: "GITOPS_COMMIT_CREATED" as any,
+      message: `Helm values committed for ${stack.slug}`,
+      metadata: {
+        gitopsCommitSha: result.sha,
+        imageTag,
+      },
+    },
+    tx
+  )
+
+  await recordDeployEventOnce(
+    {
+      deploymentId: deployment.id,
+      type: "MANIFEST_PUSHED" as any,
+      message: `Manifest pushed for ${stack.slug}`,
+      metadata: {
+        imageTag,
+        gitopsCommitSha: result.sha,
+      },
+    },
+    tx
+  )
+
+  await recordDeployEventOnce(
+    {
+      deploymentId: deployment.id,
+      type: "ARGOCD_SYNC_STARTED" as any,
+      message: `ArgoCD sync started for ${stack.slug}`,
+      metadata: { imageTag },
+    },
+    tx
+  )
+
+  return { gitopsCommitSha: result.sha }
 }
