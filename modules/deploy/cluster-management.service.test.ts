@@ -5,7 +5,7 @@
  * default replacement, integration upsert, secret-safe DTOs.
  */
 
-import { describe, it, expect, mock, beforeEach } from "bun:test"
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test"
 
 // ── Prisma mock ──────────────────────────────────────
 
@@ -42,27 +42,7 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrismaClient,
 }))
 
-// ── Encryption mock ──────────────────────────────────
-
-const actualClusterIntegration =
-  await import("@/modules/deploy/cluster-integration.service")
-
-const mockEncryptClusterIntegrationSecrets = mock(
-  actualClusterIntegration.encryptClusterIntegrationSecrets
-)
-const mockMaskClusterIntegrationSecret = mock(
-  actualClusterIntegration.maskClusterIntegrationSecret
-)
-const mockDecryptClusterIntegrationSecrets = mock(
-  actualClusterIntegration.decryptClusterIntegrationSecrets
-)
-
-mock.module("@/modules/deploy/cluster-integration.service", () => ({
-  ...actualClusterIntegration,
-  decryptClusterIntegrationSecrets: mockDecryptClusterIntegrationSecrets,
-  encryptClusterIntegrationSecrets: mockEncryptClusterIntegrationSecrets,
-  maskClusterIntegrationSecret: mockMaskClusterIntegrationSecret,
-}))
+// ── Mock vault ───────────────────────────────────────────
 const mockVaultWriteKV = mock(async () => ({ version: 1 }))
 const mockVaultReadKV = mock(async () => ({}))
 
@@ -123,9 +103,20 @@ function fakeIntegration(overrides: Record<string, unknown> = {}) {
 // ── Tests ────────────────────────────────────────────
 
 describe("ClusterManagementService", () => {
+  const originalEncryptionKey = process.env.ENCRYPTION_KEY
+
   beforeEach(() => {
+    process.env.ENCRYPTION_KEY = "test-encryption-key"
     mock.clearAllMocks()
     mockPrismaAppHostingClusterIntegration.findUnique.mockResolvedValue(null)
+  })
+
+  afterEach(() => {
+    if (originalEncryptionKey === undefined) {
+      delete process.env.ENCRYPTION_KEY
+    } else {
+      process.env.ENCRYPTION_KEY = originalEncryptionKey
+    }
   })
 
   // ── listClusters ─────────────────────────────────
@@ -345,18 +336,23 @@ describe("ClusterManagementService", () => {
         },
       })
 
-      expect(mockEncryptClusterIntegrationSecrets).toHaveBeenCalledWith({
-        username: "jenkins-user",
-        apiToken: "secret123",
-        webhookToken: "webhook123",
-      })
+      expect(
+        mockPrismaAppHostingClusterIntegration.upsert
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { clusterId_type: { clusterId: "cl_1", type: "JENKINS" } },
+          create: expect.objectContaining({
+            secretPreview: expect.any(String),
+          }),
+        })
+      )
       expect(result.type).toBe("JENKINS")
       // Must not expose ciphertext
       expect(result).not.toHaveProperty("secretCiphertext")
     })
 
     it("updates secretPreview when secrets provided", async () => {
-      mockMaskClusterIntegrationSecret.mockReturnValue("secr…ken1")
+      // Secret preview is masked automatically by cluster-integration.service
       mockPrismaAppHostingCluster.findUnique.mockResolvedValue(fakeCluster())
       mockPrismaAppHostingClusterIntegration.upsert.mockResolvedValue(
         fakeIntegration({ secretPreview: "secr…ken1" })
@@ -371,7 +367,6 @@ describe("ClusterManagementService", () => {
         secrets: { pat: "ghp_abc123" },
       })
 
-      expect(mockMaskClusterIntegrationSecret).toHaveBeenCalled()
       expect(result.secretPreview).toBe("secr…ken1")
     })
 

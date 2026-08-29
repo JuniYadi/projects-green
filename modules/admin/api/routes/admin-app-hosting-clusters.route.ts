@@ -44,6 +44,7 @@ function clusterError(
   set: { status?: number | string },
   error: unknown
 ): AdminApiError {
+  console.error("[admin-clusters] route error:", error)
   if (error instanceof ClusterIntegrationValidationError) {
     set.status = 422
     return {
