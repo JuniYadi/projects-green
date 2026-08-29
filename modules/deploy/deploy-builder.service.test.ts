@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import * as RealClusterIntegrationService from "@/modules/deploy/cluster-integration.service"
 
 const txCreate = mock(async (..._args: unknown[]) => ({ id: "event-1" }))
 
@@ -81,6 +82,7 @@ mock.module("@/modules/gitops/gitops.service", () => ({
   },
 }))
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
+  ...RealClusterIntegrationService,
   resolveClusterIntegration: mock(async (_id: string, type: string) => {
     if (type === "JENKINS") {
       return {
@@ -126,11 +128,16 @@ describe("processQueuedDeployment", () => {
   beforeEach(() => {
     txCreate.mockClear()
     triggerJenkinsJobMock.mockClear()
+    syncJenkinsPipelineMock.mockClear()
     commitFilesMock.mockClear()
     mockPrisma.applicationDeployment.findUnique.mockReset()
     mockPrisma.applicationDeployment.findUnique.mockResolvedValue(
       defaultDeployment
     )
+    mockPrisma.applicationDeployment.update.mockClear()
+    mockPrisma.applicationStack.update.mockClear()
+    mockTx.applicationDeployment.update.mockClear()
+    mockTx.applicationStack.update.mockClear()
     originalEagerFlag = process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK
   })
 
@@ -335,5 +342,62 @@ describe("processQueuedDeployment", () => {
         }),
       })
     )
+  })
+
+  it("advances a TEMPLATE deployment straight to DEPLOYING without ever going through BUILDING", async () => {
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      id: "deploy-template-1",
+      stackId: "stack-template-1",
+      status: "QUEUED",
+      commitSha: null,
+      stack: {
+        id: "stack-template-1",
+        slug: "n8n-app",
+        branchName: "main",
+        repositoryConnectionId: null,
+        framework: null,
+        sourceType: "TEMPLATE",
+        publicSourceUrl: null,
+        publicSourceRef: null,
+        cpu: 500,
+        memory: 512,
+        customDomain: null,
+        envVarsJson: [],
+        metadataJson: { imageRepository: "docker.io/n8nio/n8n:latest" },
+      },
+    } as never)
+
+    const result = await processQueuedDeployment("deploy-template-1")
+
+    expect(triggerJenkinsJobMock).not.toHaveBeenCalled()
+    expect(syncJenkinsPipelineMock).not.toHaveBeenCalled()
+
+    const statusesWritten = [
+      ...mockPrisma.applicationDeployment.update.mock.calls,
+      ...mockTx.applicationDeployment.update.mock.calls,
+    ].map((call) => (call[0] as { data?: { status?: string } }).data?.status)
+    expect(statusesWritten).not.toContain("BUILDING")
+
+    expect(result.processed).toBe(true)
+    expect(result.status).toBe("DEPLOYING")
+
+    expect(mockTx.applicationDeployment.update).toHaveBeenCalledTimes(1)
+    const txUpdateArgs = mockTx.applicationDeployment.update.mock
+      .calls[0]?.[0] as {
+      data: { status: string; manifestPushed: boolean }
+    }
+    expect(txUpdateArgs.data.status).toBe("DEPLOYING")
+    expect(txUpdateArgs.data.manifestPushed).toBe(true)
+
+    expect(commitFilesMock).toHaveBeenCalledTimes(1)
+    const [repoArg, messageArg, filesArg] = commitFilesMock.mock.calls[0] as [
+      string,
+      string,
+      Array<{ path: string; content: string }>,
+    ]
+    expect(repoArg).toBe("pfnapp/sgp-argocd-prod")
+    expect(messageArg).toContain("image latest")
+    expect(filesArg[0]?.content).toContain("repository: docker.io/n8nio/n8n")
+    expect(filesArg[0]?.content).toContain("tag: latest")
   })
 })
