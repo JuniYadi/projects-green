@@ -168,4 +168,54 @@ describe("AppTemplateBlueprint Validation & Service", () => {
     expect(envVars.ADMIN_PASSWORD).toBe("custom-secret-pass")
     expect(envVars.EXTRA_VAR).toBe("extra-value")
   })
+
+  it("defaults deploymentType to deployment and additionalPorts to empty when omitted", () => {
+    const result = validateBlueprint(validSampleBlueprint)
+    expect(result.valid).toBe(true)
+    expect(result.data?.runtime.deploymentType).toBe("deployment")
+    expect(result.data?.runtime.additionalPorts).toEqual([])
+  })
+
+  it("accepts an explicit statefulset deploymentType and additionalPorts list", () => {
+    const statefulBlueprint = {
+      ...validSampleBlueprint,
+      runtime: {
+        ...validSampleBlueprint.runtime,
+        deploymentType: "statefulset" as const,
+        additionalPorts: [{ port: 9119, name: "dashboard" }],
+      },
+    }
+    const result = validateBlueprint(statefulBlueprint)
+    expect(result.valid).toBe(true)
+    expect(result.data?.runtime.deploymentType).toBe("statefulset")
+    expect(result.data?.runtime.additionalPorts).toEqual([
+      { port: 9119, name: "dashboard" },
+    ])
+  })
+
+  it("rejects an invalid deploymentType value", () => {
+    const invalid = {
+      ...validSampleBlueprint,
+      runtime: {
+        ...validSampleBlueprint.runtime,
+        deploymentType: "daemonset",
+      },
+    }
+    const result = validateBlueprint(invalid)
+    expect(result.valid).toBe(false)
+    expect(result.errors?.["runtime.deploymentType"]).toBeDefined()
+  })
+
+  it("rejects an additionalPorts entry missing a name", () => {
+    const invalid = {
+      ...validSampleBlueprint,
+      runtime: {
+        ...validSampleBlueprint.runtime,
+        additionalPorts: [{ port: 9119, name: "" }],
+      },
+    }
+    const result = validateBlueprint(invalid)
+    expect(result.valid).toBe(false)
+    expect(result.errors?.["runtime.additionalPorts.0.name"]).toBeDefined()
+  })
 })
