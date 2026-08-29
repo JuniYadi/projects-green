@@ -13,7 +13,7 @@ import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 import { resolveWhatsappQuotaCredit } from "@/modules/whatsapp/messages/quota-credit.service"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
-import { renderTemplateBody } from "@/modules/whatsapp/templates/ui/template-preview"
+import { renderTemplateBody } from "@/modules/whatsapp/templates/lib/template-renderer"
 import {
   getHourlyMessageLimit,
   DEFAULT_DAILY_LIMIT_MESSAGE,
