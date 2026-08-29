@@ -201,6 +201,39 @@ describe("buildHelmValues", () => {
     expect((disabled.simpleIngress as any)[0].annotations).toBeUndefined()
   })
 
+  it("appends additionalContainerPorts to containerPorts, keeping the primary port first", () => {
+    const out = buildHelmValues({
+      slug: "hermes-agent",
+      imageRepository: "nousresearch/hermes-agent",
+      imageTag: "v2026.8.18",
+      env: [],
+      containerPort: 8642,
+      deploymentType: "statefulset",
+      additionalContainerPorts: [{ port: 9119, name: "dashboard" }],
+    })
+
+    expect(out.containerPorts).toEqual([
+      { containerPort: 8642, name: "http" },
+      { containerPort: 9119, name: "dashboard" },
+    ])
+    expect(out.deploymentType).toBe("statefulset")
+    expect((out.service as Record<string, unknown>).port).toBe(8642)
+    expect((out.service as Record<string, unknown>).targetPort).toBe(8642)
+  })
+
+  it("defaults deploymentType to deployment and containerPorts to a single entry", () => {
+    const out = buildHelmValues({
+      slug: "s",
+      imageRepository: "r",
+      imageTag: "1",
+      env: [],
+      containerPort: 80,
+    })
+
+    expect(out.deploymentType).toBe("deployment")
+    expect(out.containerPorts).toEqual([{ containerPort: 80, name: "http" }])
+  })
+
   it("omits env, externalSecret, and simpleIngress when not applicable", () => {
     const out = buildHelmValues({
       slug: "s",
