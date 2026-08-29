@@ -83,7 +83,7 @@ export function TemplateLanguageBadge({
     </Badge>
   )
 }
-function getFlagEmoji(countryCode: string): string {
+export function getFlagEmoji(countryCode: string): string {
   if (countryCode.length !== 2) return ""
   const codePoints = countryCode
     .toUpperCase()

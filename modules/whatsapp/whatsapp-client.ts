@@ -17,6 +17,10 @@ export type Device = {
   id: string
   organizationId: string
   phoneNumber: string
+  name?: string | null
+  verifiedName?: string | null
+  nameStatus?: string | null
+  qualityRating?: string | null
   balance: number
   quotaBase: number
   quotaBaseOut: number
@@ -32,6 +36,8 @@ export type Device = {
   features?: Record<string, unknown> | null
   callbackUrl?: string | null
   expiredAt?: string | null
+  lastHeartbeatAt?: string | null
+  lastDisconnectedAt?: string | null
   createdAt: string
   updatedAt: string
 }

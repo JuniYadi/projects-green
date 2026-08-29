@@ -46,6 +46,12 @@ mock.module("@/components/ui/phosphor-icons", () => ({
   ShieldCheckIcon: (props: Record<string, unknown>) => (
     <span data-testid="icon-shield" {...props} />
   ),
+  RocketLaunchIcon: (props: Record<string, unknown>) => (
+    <span data-testid="icon-rocket" {...props} />
+  ),
+  WhatsappLogoIcon: (props: Record<string, unknown>) => (
+    <span data-testid="icon-whatsapp" {...props} />
+  ),
 }))
 
 const mockInvoicesGet = mock()
@@ -124,6 +130,20 @@ describe("ConsolePage Actionable Overview", () => {
             status: "ACTIVE",
             currentPeriodEnd: "2026-09-01T00:00:00.000Z",
           },
+          {
+            id: "sub_2",
+            packageCode: "APP_HOSTING",
+            planCode: "STARTER",
+            status: "ACTIVE",
+            currentPeriodEnd: "2026-09-15T00:00:00.000Z",
+          },
+          {
+            id: "sub_3",
+            packageCode: "VPN",
+            planCode: "STANDARD",
+            status: "ACTIVE",
+            currentPeriodEnd: "2026-09-20T00:00:00.000Z",
+          },
         ],
       },
     })
@@ -148,15 +168,15 @@ describe("ConsolePage Actionable Overview", () => {
     await waitFor(() => {
       expect(screen.getByText("#INV-2026-001")).toBeInTheDocument()
     })
-
-    // Invoice card assertions
-    expect(screen.getByText("Latest Invoice")).toBeInTheDocument()
-    expect(screen.getByText("Pay invoice")).toBeInTheDocument()
-
-    // Services card assertions
+    // Services card assertions - categorized by product lines
     expect(screen.getByText("Active Services")).toBeInTheDocument()
+    expect(screen.getByText("3 active service(s)")).toBeInTheDocument()
+    expect(screen.getByText("WhatsApp Gateway")).toBeInTheDocument()
+    expect(screen.getByText("App Hosting")).toBeInTheDocument()
+    expect(screen.getByText("Secure VPN")).toBeInTheDocument()
     expect(screen.getByText("WHATSAPP-PRO • MONTHLY")).toBeInTheDocument()
-    expect(screen.getByText("1 active service(s)")).toBeInTheDocument()
+    expect(screen.getByText("APP_HOSTING • STARTER")).toBeInTheDocument()
+    expect(screen.getByText("VPN • STANDARD")).toBeInTheDocument()
 
     // Support card assertions
     expect(screen.getByText("Support & Help")).toBeInTheDocument()

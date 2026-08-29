@@ -1,7 +1,9 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
+import { localizePathname } from "@/lib/i18n/pathname"
 import {
   DownloadSimple,
   Info,
@@ -145,37 +147,45 @@ export default function WhatsAppBroadcastDetailPage() {
   const [filter, setFilter] = React.useState<RecipientFilter>("ALL")
   const [search, setSearch] = React.useState("")
 
-  const loadBroadcast = React.useCallback(async () => {
-    setLoading(true)
-    try {
-      setBroadcast(await whatsappClient.getBroadcast(params.id))
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t.detail.loadError)
-    } finally {
-      setLoading(false)
+  React.useEffect(() => {
+    let active = true
+    whatsappClient
+      .getBroadcast(params.id)
+      .then((data) => {
+        if (active) {
+          setBroadcast(data)
+          setLoading(false)
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          toast.error(
+            error instanceof Error ? error.message : t.detail.loadError
+          )
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
     }
   }, [params.id, t.detail.loadError])
 
-  const handleSend = React.useCallback(async () => {
+  async function handleSend() {
     if (!broadcast) return
     setSending(true)
     try {
       const message = await whatsappClient.sendBroadcast(broadcast.id)
       toast.success(message || t.list.send)
       setBroadcast((prev) => (prev ? { ...prev, status: "PROCESSING" } : null))
-      await loadBroadcast()
+      const fresh = await whatsappClient.getBroadcast(params.id)
+      setBroadcast(fresh)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t.list.sendError)
     } finally {
       setSending(false)
     }
-  }, [broadcast, loadBroadcast, t.list.send, t.list.sendError])
-
-  React.useEffect(() => {
-    ;(async () => {
-      await loadBroadcast()
-    })()
-  }, [loadBroadcast])
+  }
 
   const recipients = React.useMemo<BroadcastRecipient[]>(() => {
     const query = search.trim().toLowerCase()
@@ -424,7 +434,19 @@ export default function WhatsAppBroadcastDetailPage() {
                     ) : (
                       recipients.map((recipient) => (
                         <TableRow key={recipient.id}>
-                          <TableCell>{recipient.phoneNumber}</TableCell>
+                          <TableCell>
+                            <Link
+                              href={`${localizePathname({
+                                pathname: "/console/whatsapp/messages",
+                                locale,
+                              })}?phone=${encodeURIComponent(
+                                recipient.phoneNumber.replace(/^\+/, "")
+                              )}`}
+                              className="font-medium text-primary hover:underline"
+                            >
+                              {recipient.phoneNumber}
+                            </Link>
+                          </TableCell>
                           <TableCell>{recipient.name ?? "—"}</TableCell>
                           <TableCell>
                             <Badge
@@ -435,7 +457,19 @@ export default function WhatsAppBroadcastDetailPage() {
                           </TableCell>
                           <TableCell>{recipient.attempts}</TableCell>
                           <TableCell className="max-w-48 truncate">
-                            {recipient.waMessageId ?? "—"}
+                            {recipient.waMessageId ? (
+                              <Link
+                                href={localizePathname({
+                                  pathname: `/console/whatsapp/messages/${recipient.waMessageId}`,
+                                  locale,
+                                })}
+                                className="font-mono text-xs text-primary hover:underline"
+                              >
+                                {recipient.waMessageId}
+                              </Link>
+                            ) : (
+                              "—"
+                            )}
                           </TableCell>
                           <TableCell className="max-w-64">
                             {recipient.lastError ? (

@@ -71,8 +71,8 @@ export const getGithubEventsRedisConnection = (): RedisOptions => {
   return {
     host: parsed.hostname,
     port,
-    username: parsed.username || undefined,
-    password: parsed.password || undefined,
+    username: parsed.username ? decodeURIComponent(parsed.username) : undefined,
+    password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
     db: parseRedisDb(parsed.pathname),
     tls: parsed.protocol === "rediss:" ? {} : undefined,
     maxRetriesPerRequest: null,

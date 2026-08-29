@@ -706,7 +706,7 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
   {
     context: "applications",
     matches: (path) => startsWithRoute(path, "/console/app"),
-    navMainLabel: "Applications",
+    navMainLabel: "App Hosting",
     getProjects: (path, locale) => [
       {
         name: "Back to Console",
@@ -1014,7 +1014,7 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
   ],
   navMain: [
     {
-      title: "Applications",
+      title: "App Hosting",
       url: localizePathname({ pathname: "/console/app", locale }),
       icon: <RocketLaunchIcon />,
       isActive: startsWithRoute(path, "/console/app"),

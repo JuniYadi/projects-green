@@ -96,6 +96,21 @@ mock.module("next/navigation", () => ({
   useParams: () => ({ lang: currentLocale, id: "bc_1" }),
 }))
 
+mock.module("next/link", () => ({
+  default: ({
+    children,
+    href,
+    className,
+  }: {
+    children: React.ReactNode
+    href: string
+    className?: string
+  }) => (
+    <span data-href={href} className={className}>
+      {children}
+    </span>
+  ),
+}))
 mock.module("@/lib/i18n/pathname", () => ({
   localizePathname: (opts: { pathname: string }) => `/en${opts.pathname}`,
   resolveLocaleOrDefault: (lang?: string) => lang || "en",

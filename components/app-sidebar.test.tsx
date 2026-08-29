@@ -14,7 +14,7 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(navMainLabel).toBe("Applications")
+    expect(navMainLabel).toBe("App Hosting")
 
     expect(navMain.map((item) => item.title)).toEqual([
       "Deploy",
@@ -106,7 +106,7 @@ describe("resolveSidebarMenu", () => {
     ).toBe(true)
 
     expect(navMain.map((item) => item.title)).toEqual([
-      "Applications",
+      "App Hosting",
       "WhatsApp",
       "VPN",
       "AI Studio",
@@ -126,7 +126,7 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMain.map((item) => item.title)).toEqual([
-      "Applications",
+      "App Hosting",
       "WhatsApp",
       "VPN",
       "AI Studio",
@@ -265,9 +265,7 @@ describe("resolveSidebarMenu", () => {
     expect(projects.map((project) => project.name)).not.toContain(
       "Documentation"
     )
-    expect(projects.map((project) => project.name)).not.toContain(
-      "Applications"
-    )
+    expect(projects.map((project) => project.name)).not.toContain("App Hosting")
     expect(projects.map((project) => project.name)).not.toContain(
       "Tenant Management"
     )

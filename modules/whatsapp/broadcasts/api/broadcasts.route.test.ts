@@ -526,6 +526,7 @@ describe("broadcastsRoutes POST /", () => {
       select: {
         id: true,
         name: true,
+        slug: true,
         languages: {
           where: {
             lang: "en",

@@ -30,6 +30,8 @@ import {
   PlusIcon,
   BookOpenIcon,
   ShieldCheckIcon,
+  RocketLaunchIcon,
+  WhatsappLogoIcon,
 } from "@/components/ui/phosphor-icons"
 
 type InvoiceSummary = {
@@ -95,29 +97,6 @@ const invoiceStatusBadgeVariant = (
     case "OVERDUE":
     case "UNCOLLECTIBLE":
     case "VOID":
-      return "destructive"
-    default:
-      return "secondary"
-  }
-}
-
-const serviceStatusBadgeVariant = (
-  status: string
-):
-  | "default"
-  | "secondary"
-  | "success"
-  | "warning"
-  | "destructive"
-  | "outline" => {
-  switch (status.toUpperCase()) {
-    case "ACTIVE":
-      return "success"
-    case "SUSPENDED":
-    case "PENDING":
-      return "warning"
-    case "CANCELLED":
-    case "EXPIRED":
       return "destructive"
     default:
       return "secondary"
@@ -466,30 +445,151 @@ export default function ConsolePage() {
                 <span>{t.services.failedToLoad}</span>
               </div>
             ) : state.services.data.length > 0 ? (
-              <div className="space-y-2">
-                {state.services.data.slice(0, 2).map((service) => (
-                  <div
-                    key={service.id}
-                    className="flex items-center justify-between rounded-lg border border-border/60 p-2.5 text-xs"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="font-semibold text-foreground">
-                        {service.packageCode} • {service.planCode}
-                      </div>
-                      {service.currentPeriodEnd && (
-                        <div className="text-muted-foreground">
-                          {t.services.renewsOn.replace(
-                            "{date}",
-                            formatDate(service.currentPeriodEnd, locale)
-                          )}
+              <div className="space-y-2.5">
+                {(() => {
+                  const groupsMap = new Map<
+                    string,
+                    {
+                      key: string
+                      title: string
+                      icon: React.ComponentType<{ className?: string }>
+                      activeCount: number
+                      nearestRenewal: string | null
+                      href: string
+                      actionLabel: string
+                      items: ServiceSummary[]
+                    }
+                  >()
+
+                  for (const service of state.services.data) {
+                    const code = (service.packageCode || "").toUpperCase()
+                    let key = "OTHER"
+                    let title = service.packageCode
+                    let icon: React.ComponentType<{ className?: string }> =
+                      SquaresFourIcon
+                    let href = localizePathname({
+                      pathname: "/console/billing/subscriptions",
+                      locale,
+                    })
+                    let actionLabel = locale === "id" ? "Kelola" : "Manage"
+
+                    if (code.startsWith("WHATSAPP") || code.includes("WA_")) {
+                      key = "WHATSAPP"
+                      title = "WhatsApp Gateway"
+                      icon = WhatsappLogoIcon
+                      href = `/${locale}/console/whatsapp/dashboard`
+                      actionLabel =
+                        locale === "id" ? "Buka Dasbor" : "Open Dashboard"
+                    } else if (
+                      code.startsWith("APP") ||
+                      code.includes("HOSTING")
+                    ) {
+                      key = "APP_HOSTING"
+                      title = "App Hosting"
+                      icon = RocketLaunchIcon
+                      href = `/${locale}/console/app`
+                      actionLabel =
+                        locale === "id" ? "Kelola Aplikasi" : "Manage Apps"
+                    } else if (code.startsWith("VPN")) {
+                      key = "VPN"
+                      title = "Secure VPN"
+                      icon = ShieldCheckIcon
+                      href = localizePathname({
+                        pathname: "/console/vpn/profiles",
+                        locale,
+                      })
+                      actionLabel =
+                        locale === "id" ? "Konfigurasi VPN" : "Configure VPN"
+                    }
+
+                    const existing = groupsMap.get(key)
+                    const isActive = service.status.toUpperCase() === "ACTIVE"
+                    if (!existing) {
+                      groupsMap.set(key, {
+                        key,
+                        title,
+                        icon,
+                        activeCount: isActive ? 1 : 0,
+                        nearestRenewal: service.currentPeriodEnd,
+                        href,
+                        actionLabel,
+                        items: [service],
+                      })
+                    } else {
+                      if (isActive) existing.activeCount += 1
+                      if (
+                        service.currentPeriodEnd &&
+                        (!existing.nearestRenewal ||
+                          new Date(service.currentPeriodEnd) <
+                            new Date(existing.nearestRenewal))
+                      ) {
+                        existing.nearestRenewal = service.currentPeriodEnd
+                      }
+                      existing.items.push(service)
+                    }
+                  }
+
+                  return Array.from(groupsMap.values()).map((group) => {
+                    const IconComponent = group.icon
+                    return (
+                      <div
+                        key={group.key}
+                        className="flex flex-col gap-2 rounded-lg border border-border/60 p-3 text-xs transition-colors hover:bg-muted/40"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 font-semibold text-foreground">
+                            <IconComponent className="size-4 text-muted-foreground" />
+                            <span>{group.title}</span>
+                          </div>
+                          <Badge
+                            variant={
+                              group.activeCount > 0 ? "success" : "secondary"
+                            }
+                          >
+                            {group.activeCount > 0
+                              ? locale === "id"
+                                ? `${group.activeCount} Aktif`
+                                : `${group.activeCount} Active`
+                              : (group.items[0]?.status ?? "INACTIVE")}
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                    <Badge variant={serviceStatusBadgeVariant(service.status)}>
-                      {service.status}
-                    </Badge>
-                  </div>
-                ))}
+                        <div className="flex flex-wrap items-center justify-between gap-1 text-muted-foreground">
+                          <div>
+                            {group.items.length === 1 && group.items[0] ? (
+                              <span>
+                                {group.items[0].packageCode} •{" "}
+                                {group.items[0].planCode}
+                              </span>
+                            ) : (
+                              <span>
+                                {group.items.length}{" "}
+                                {locale === "id"
+                                  ? "langganan"
+                                  : "subscription(s)"}
+                              </span>
+                            )}
+                            {group.nearestRenewal && (
+                              <span className="ml-1.5">
+                                •{" "}
+                                {t.services.renewsOn.replace(
+                                  "{date}",
+                                  formatDate(group.nearestRenewal, locale)
+                                )}
+                              </span>
+                            )}
+                          </div>
+                          <Link
+                            href={group.href}
+                            className="inline-flex items-center gap-1 font-medium text-foreground hover:text-primary"
+                          >
+                            <span>{group.actionLabel}</span>
+                            <ArrowRightIcon className="size-3" />
+                          </Link>
+                        </div>
+                      </div>
+                    )
+                  })
+                })()}
               </div>
             ) : (
               <div className="space-y-1">
