@@ -439,10 +439,12 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         const failure = response as unknown as {
           message?: string
           fieldErrors?: Record<string, string[] | string>
+          fields?: Record<string, string[] | string>
         }
-        if (failure.fieldErrors) {
+        const errorSource = failure.fieldErrors || failure.fields
+        if (errorSource) {
           const fieldErrors: FieldErrors = {}
-          for (const [key, messages] of Object.entries(failure.fieldErrors)) {
+          for (const [key, messages] of Object.entries(errorSource)) {
             const field = key.replace(/^endpoint\./, "").replace(/\.\d+$/, "")
             fieldErrors[field] = Array.isArray(messages)
               ? messages[0]
@@ -450,9 +452,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           }
           setEndpointFieldErrors(fieldErrors)
         }
-        throw new Error(failure.message ?? "Failed to update edge endpoint.")
+        setEndpointError(failure.message ?? "Failed to update edge endpoint.")
+        return
       }
-
       if (isClusterEndpointDTO(response.data)) setEndpoint(response.data)
     } catch (cause) {
       setEndpointError(

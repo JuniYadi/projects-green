@@ -26,6 +26,33 @@ mock.module("@/lib/billing-client", () => ({
       ],
     },
   })),
+  getAccount: mock(async () => ({
+    ok: true,
+    currency: "IDR",
+    balanceIdr: "5000",
+    formattedBalance: "Rp 5.000",
+    isAboveWarn: true,
+    isPositive: true,
+  })),
+  getInvoice: mock(async () => ({ ok: true })),
+  formatBillingMoney: (amt: number | string, curr: string) => `${curr} ${amt}`,
+}))
+
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      payments: {
+        topup: {
+          methods: {
+            get: mock(async () => ({
+              data: { ok: true, config: { presets: [50000] } },
+            })),
+          },
+          post: mock(async () => ({ data: { ok: true } })),
+        },
+      },
+    },
+  },
 }))
 
 import {
@@ -251,5 +278,31 @@ describe("DynamicLaunchDrawer", () => {
     expect(payload.billingMode).toBe("PACKAGE")
     expect(payload.envVars.N8N_PORT).toBe("5678")
     expect(payload.envVars.N8N_ENCRYPTION_KEY).toHaveLength(32)
+  })
+
+  it("shows insufficient balance warning banner and allows triggering quick top-up", async () => {
+    const view = render(
+      <DynamicLaunchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        template={mockTemplate}
+        onDeploy={() => {}}
+        userBalance={5000}
+        currency="IDR"
+      />
+    )
+
+    expect(
+      await view.findByText("Insufficient balance for this plan")
+    ).toBeDefined()
+    expect(view.getByText(/First month requires/i)).toBeDefined()
+
+    const topupBtn = view.getByRole("button", {
+      name: /Quick Top-Up/i,
+    })
+    expect(topupBtn).toBeDefined()
+    fireEvent.click(topupBtn)
+
+    expect(await view.findByText("Express Top Up")).toBeDefined()
   })
 })

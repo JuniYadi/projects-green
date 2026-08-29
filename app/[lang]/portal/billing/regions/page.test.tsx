@@ -31,59 +31,72 @@ const MOCK_REGIONS = [
 ]
 
 describe("PortalBillingRegionsPage", () => {
+  let regionsState = [...MOCK_REGIONS]
+
   beforeEach(() => {
     cleanup()
-    globalThis.fetch = mock(
-      async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = String(input)
-        const method = init?.method || "GET"
-
-        if (url.includes("/api/admin/regions") && method === "GET") {
-          return new Response(
-            JSON.stringify({
-              ok: true,
-              data: MOCK_REGIONS,
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          )
-        }
-
-        if (url.includes("/api/admin/regions") && method === "POST") {
-          const body = JSON.parse(String(init?.body || "{}"))
-          return new Response(
-            JSON.stringify({
-              ok: true,
-              data: { id: "reg-new", ...body },
-            }),
-            { status: 201, headers: { "Content-Type": "application/json" } }
-          )
-        }
-
-        if (url.includes("/api/admin/regions/reg-sg") && method === "PATCH") {
-          const body = JSON.parse(String(init?.body || "{}"))
-          return new Response(
-            JSON.stringify({
-              ok: true,
-              data: { ...MOCK_REGIONS[0], ...body },
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          )
-        }
-
-        if (url.includes("/api/admin/regions/reg-id") && method === "DELETE") {
-          return new Response(
-            JSON.stringify({
-              ok: true,
-              data: MOCK_REGIONS[1],
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-          )
-        }
-
-        return new Response(JSON.stringify({ ok: false }), { status: 404 })
-      }
-    ) as unknown as typeof fetch
+    regionsState = [...MOCK_REGIONS]
   })
+
+  mock.module("@/lib/eden", () => ({
+    eden: {
+      api: {
+        admin: {
+          regions: Object.assign(
+            mock(async () => ({
+              ok: true,
+              data: { ok: true, data: regionsState },
+            })),
+            {
+              get: mock(async () => ({
+                ok: true,
+                data: { ok: true, data: regionsState },
+              })),
+              post: mock(async (body: unknown) => ({
+                ok: true,
+                data: {
+                  ok: true,
+                  data: { id: "reg-new", ...(body as Record<string, unknown>) },
+                },
+              })),
+              "reg-sg": {
+                patch: mock(async (body: unknown) => ({
+                  ok: true,
+                  data: {
+                    ok: true,
+                    data: {
+                      ...MOCK_REGIONS[0],
+                      ...(body as Record<string, unknown>),
+                    },
+                  },
+                })),
+                delete: mock(async () => ({
+                  ok: true,
+                  data: { ok: true, data: MOCK_REGIONS[0] },
+                })),
+              },
+              "reg-id": {
+                patch: mock(async (body: unknown) => ({
+                  ok: true,
+                  data: {
+                    ok: true,
+                    data: {
+                      ...MOCK_REGIONS[1],
+                      ...(body as Record<string, unknown>),
+                    },
+                  },
+                })),
+                delete: mock(async () => ({
+                  ok: true,
+                  data: { ok: true, data: MOCK_REGIONS[1] },
+                })),
+              },
+            }
+          ),
+        },
+      },
+    },
+  }))
 
   it("renders the master regions table and lists regions", async () => {
     render(<PortalBillingRegionsPage />)

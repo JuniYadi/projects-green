@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { AppBreadcrumbs } from "@/components/app-breadcrumbs"
 import { Separator } from "@/components/ui/separator"
 import { ConsoleOnboardingTour } from "@/components/console-onboarding-tour"
+import { CompactBalanceBadge } from "@/components/billing/compact-balance-badge"
 import {
   SidebarInset,
   SidebarProvider,
@@ -141,7 +142,8 @@ export default async function ConsoleLayout({
             />
             <AppBreadcrumbs rootSegment="console" />
           </div>
-          <div className="ml-auto px-6">
+          <div className="ml-auto flex items-center gap-3 px-6">
+            <CompactBalanceBadge lang={locale} />
             <ThunderAiHelpDrawer />
           </div>
         </header>

@@ -63,7 +63,7 @@ export function ClusterCreateDialog({
         setRegions(activeRegions)
       } catch (err) {
         if (!cancelled) {
-          setLoadError(
+          setError(
             err instanceof Error ? err.message : "Failed to load regions"
           )
         }

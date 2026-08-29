@@ -85,8 +85,8 @@ export function parseAppHostingFulfillmentContext(
       context: {
         stackId: "standalone",
         deploymentId: "standalone",
-        sourceType: "STANDALONE",
-        resourcePackage: "standard",
+        sourceType: "TEMPLATE",
+        resourcePlanId: "starter",
       },
     }
   }

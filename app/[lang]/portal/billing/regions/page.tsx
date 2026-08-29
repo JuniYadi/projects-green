@@ -52,7 +52,6 @@ import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
-
 export type ServiceRegionItem = {
   id: string
   code: string
@@ -60,8 +59,8 @@ export type ServiceRegionItem = {
   country: string
   flag: string | null
   isActive: boolean
-  createdAt?: string
-  updatedAt?: string
+  createdAt?: string | Date
+  updatedAt?: string | Date
   _count?: {
     appHostingClusters?: number
     pricings?: number
@@ -173,19 +172,23 @@ export default function PortalBillingRegionsPage() {
     setTogglingId(region.id)
     try {
       const nextActive = !region.isActive
-      const { data: payload, error: resError } = await eden.api.admin
-        .regions({ id: region.id })
-        .patch({
-          isActive: nextActive,
-        })
-
-      if (resError || !payload || !payload.ok) {
-        const errPayload = (resError?.value || payload) as
-          | { message?: string }
-          | undefined
+      const { data: payload, error: resError } = await (
+        eden.api.admin.regions as Record<
+          string,
+          {
+            patch: (p: {
+              isActive: boolean
+            }) => Promise<{ data?: unknown; error?: unknown }>
+          }
+        >
+      )[region.id].patch({
+        isActive: nextActive,
+      })
+      if (resError || !payload || !(payload as { ok?: boolean }).ok) {
+        const errPayload = ((resError as { value?: unknown } | null)?.value ||
+          payload) as { message?: string } | undefined
         throw new Error(errPayload?.message || "Failed to update region status")
       }
-
       setRegions((prev) =>
         prev.map((r) =>
           r.id === region.id ? { ...r, isActive: nextActive } : r
@@ -221,38 +224,45 @@ export default function PortalBillingRegionsPage() {
     setSaving(true)
     try {
       if (editingRegion) {
-        const { data: payload, error: resError } = await eden.api.admin
-          .regions({ id: editingRegion.id })
-          .patch({
-            code: formData.code.trim().toUpperCase(),
-            name: formData.name.trim(),
-            country: formData.country.trim().toUpperCase(),
-            flag: formData.flag.trim() || undefined,
-            isActive: formData.isActive,
-          })
-
-        if (resError || !payload || !payload.ok) {
-          const errPayload = (resError?.value || payload) as
-            | { message?: string }
-            | undefined
+        const { data: payload, error: resError } = await (
+          eden.api.admin.regions as Record<
+            string,
+            {
+              patch: (
+                p: Record<string, unknown>
+              ) => Promise<{ data?: unknown; error?: unknown }>
+            }
+          >
+        )[editingRegion.id].patch({
+          code: formData.code.trim().toUpperCase(),
+          name: formData.name.trim(),
+          country: formData.country.trim().toUpperCase(),
+          flag: formData.flag.trim() || undefined,
+          isActive: formData.isActive,
+        })
+        if (resError || !payload || !(payload as { ok?: boolean }).ok) {
+          const errPayload = ((resError as { value?: unknown } | null)?.value ||
+            payload) as { message?: string } | undefined
           throw new Error(errPayload?.message || "Failed to update region")
         }
-
         toast.success(`Region ${formData.name} updated successfully`)
       } else {
-        const { data: payload, error: resError } =
-          await eden.api.admin.regions.post({
-            code: formData.code.trim().toUpperCase(),
-            name: formData.name.trim(),
-            country: formData.country.trim().toUpperCase(),
-            flag: formData.flag.trim() || undefined,
-            isActive: formData.isActive,
-          })
-
-        if (resError || !payload || !payload.ok) {
-          const errPayload = (resError?.value || payload) as
-            | { message?: string }
-            | undefined
+        const { data: payload, error: resError } = await (
+          eden.api.admin.regions as {
+            post: (
+              p: Record<string, unknown>
+            ) => Promise<{ data?: unknown; error?: unknown }>
+          }
+        ).post({
+          code: formData.code.trim().toUpperCase(),
+          name: formData.name.trim(),
+          country: formData.country.trim().toUpperCase(),
+          flag: formData.flag.trim() || undefined,
+          isActive: formData.isActive,
+        })
+        if (resError || !payload || !(payload as { ok?: boolean }).ok) {
+          const errPayload = ((resError as { value?: unknown } | null)?.value ||
+            payload) as { message?: string } | undefined
           throw new Error(errPayload?.message || "Failed to create region")
         }
         toast.success(`Region ${formData.name} created successfully`)
@@ -277,20 +287,19 @@ export default function PortalBillingRegionsPage() {
 
   const handleDeleteRegion = async () => {
     if (!regionToDelete) return
-
     setDeleting(true)
     try {
-      const { data: payload, error: resError } = await eden.api.admin
-        .regions({ id: regionToDelete.id })
-        .delete()
-      if (resError || !payload || !payload.ok) {
-        const errPayload = (resError?.value || payload) as
-          | { message?: string }
-          | undefined
+      const { data: payload, error: resError } = await (
+        eden.api.admin.regions as Record<
+          string,
+          { delete: () => Promise<{ data?: unknown; error?: unknown }> }
+        >
+      )[regionToDelete.id].delete()
+      if (resError || !payload || !(payload as { ok?: boolean }).ok) {
+        const errPayload = ((resError as { value?: unknown } | null)?.value ||
+          payload) as { message?: string } | undefined
         throw new Error(errPayload?.message || "Failed to delete region")
       }
-
-      toast.success(`Region ${regionToDelete.name} deleted successfully`)
       setDeleteDialogOpen(false)
       setRegionToDelete(null)
       refetchRegions()
@@ -482,12 +491,7 @@ export default function PortalBillingRegionsPage() {
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <p className="text-sm text-destructive">{error}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchRegions}
-                className="mt-4"
-              >
+              <Button variant="outline" onClick={() => refetchRegions()}>
                 Retry
               </Button>
             </div>
