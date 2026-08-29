@@ -79,6 +79,17 @@ export function parseAppHostingFulfillmentContext(
     }
   }
 
+  if (raw === null) {
+    return {
+      ok: true,
+      context: {
+        stackId: "standalone",
+        deploymentId: "standalone",
+        sourceType: "STANDALONE",
+        resourcePackage: "standard",
+      },
+    }
+  }
   const parsed = appHostingFulfillmentContextSchema.safeParse(raw)
   if (!parsed.success) {
     return {

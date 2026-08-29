@@ -131,9 +131,40 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       name = body.name?.trim() || managedTemplate.name
       slug = slugify(name)
     } else if (sourceType === "TEMPLATE") {
-      const template = DEPLOY_TEMPLATES.find(
+      let template = DEPLOY_TEMPLATES.find(
         (item) => item.id === body.templateId
       )
+
+      if (!template && body.templateId) {
+        const dbTemplate = await prisma.appTemplate.findFirst({
+          where: {
+            OR: [{ id: body.templateId }, { slug: body.templateId }],
+          },
+        })
+        if (dbTemplate) {
+          template = {
+            id: dbTemplate.id,
+            name: dbTemplate.name,
+            description: dbTemplate.description || "",
+            framework: "Docker",
+            primaryEngine: "docker",
+            defaultPort:
+              (dbTemplate.blueprintJson as any)?.runtime?.defaultPort ?? 8080,
+            recommendedResources: {
+              cpu:
+                (dbTemplate.blueprintJson as any)?.resources?.defaultCpu ?? 500,
+              memory:
+                (dbTemplate.blueprintJson as any)?.resources?.defaultMemory ??
+                512,
+            },
+            source: {
+              type: "template",
+              templateId: dbTemplate.id,
+            },
+          } as any
+        }
+      }
+
       if (!template) {
         set.status = 422
         return {
