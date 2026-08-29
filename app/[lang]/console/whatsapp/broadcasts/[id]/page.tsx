@@ -436,16 +436,12 @@ export default function WhatsAppBroadcastDetailPage() {
                         <TableRow key={recipient.id}>
                           <TableCell>
                             <Link
-                              href={localizePathname({
+                              href={`${localizePathname({
                                 pathname: "/console/whatsapp/messages",
-                                query: {
-                                  phone: recipient.phoneNumber.replace(
-                                    /^\+/,
-                                    ""
-                                  ),
-                                },
                                 locale,
-                              })}
+                              })}?phone=${encodeURIComponent(
+                                recipient.phoneNumber.replace(/^\+/, "")
+                              )}`}
                               className="font-medium text-primary hover:underline"
                             >
                               {recipient.phoneNumber}

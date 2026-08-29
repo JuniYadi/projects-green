@@ -807,7 +807,7 @@ export default function NewWhatsAppBroadcastPage() {
                                   ) : (
                                     <span className="opacity-60">static</span>
                                   )}
-                                  {hasMedia ? (
+                                  {hasMedia && primaryLang?.headerType ? (
                                     <span className="font-medium text-amber-600 dark:text-amber-400">
                                       • {primaryLang.headerType.toLowerCase()}
                                     </span>
