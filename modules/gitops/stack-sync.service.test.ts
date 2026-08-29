@@ -279,6 +279,7 @@ describe("ManifestBuilder", () => {
               volumeMounts: Array<{
                 name: string
                 mountPath: string
+                subPath?: string
                 readOnly: boolean
               }>
             }>
