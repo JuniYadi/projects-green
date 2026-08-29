@@ -584,9 +584,14 @@ describe("messageService", () => {
       expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            direction: "OUTBOX",
+            conversationId: "conv-1",
             messageType: "text",
             body: "Hello",
+            mediaUrl: undefined,
+            waMessageId: "wa-msg-123",
+            metadata: expect.objectContaining({
+              quotaPending: false,
+            }),
           }),
         })
       )

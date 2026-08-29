@@ -299,7 +299,9 @@ export const whatsappClient = {
       }),
     send: (input: {
       phoneNumber: string
-      message: string
+      message?: string
+      mediaUrl?: string
+      type?: "text" | "image" | "document" | "audio" | "video"
       deviceId?: string
     }) =>
       serverFetch<{

@@ -143,6 +143,9 @@ const messageBodySchema = t.Object({
   ),
   metadata: t.Optional(t.Nullable(t.Any())),
 })
+const replyContextSchema = t.Optional(
+  t.Object({ message_id: t.String({ minLength: 1 }) })
+)
 
 const sendTemplateSchema = t.Object({
   phoneNumber: t.String({
@@ -248,6 +251,17 @@ const sendSchema = t.Object({
       description: "Optional sender device ID (defaults to primary device)",
     })
   ),
+  messageType: t.Optional(
+    t.Union([
+      t.Literal("text"),
+      t.Literal("image"),
+      t.Literal("document"),
+      t.Literal("audio"),
+      t.Literal("video"),
+    ])
+  ),
+  context: replyContextSchema,
+  replyToMessageId: t.Optional(t.String({ minLength: 1 })),
 })
 
 const unifiedMessageSchema = t.Object({
@@ -284,12 +298,15 @@ const unifiedMessageSchema = t.Object({
   templateLanguage: t.Optional(t.String({ example: "id" })),
   template: t.Optional(t.Any()),
   fields: t.Optional(t.Array(t.String({ example: "Nilai Variabel" }))),
+  messageType: t.Optional(t.String({ example: "text" })),
+  context: replyContextSchema,
+  replyToMessageId: t.Optional(t.String({ minLength: 1 })),
 })
 
 const messageUpdateSchema = t.Partial(messageBodySchema)
 
 function validateSendBody(body: any): string | null {
-  const type = body.type ?? "text"
+  const type = body.type ?? body.messageType ?? "text"
 
   if (type === "text" && !body.message) {
     return "message is required for text messages"
@@ -299,8 +316,11 @@ function validateSendBody(body: any): string | null {
     if (!body.mediaUrl) {
       return "mediaUrl is required for media messages"
     }
-    if (!/^https?:\/\//.test(body.mediaUrl)) {
-      return "mediaUrl must be a publicly accessible http(s) URL"
+    if (
+      !/^https?:\/\//.test(body.mediaUrl) &&
+      !body.mediaUrl.startsWith("__media:")
+    ) {
+      return "mediaUrl must be a publicly accessible http(s) URL or uploaded media ID"
     }
   }
 
@@ -925,7 +945,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       // 3. Dispatch: Free-form Message (Text / Media / Location)
       const textMessage = body.message ?? body.text?.body ?? body.text
       const mediaUrl = body.mediaUrl ?? body.media_url
-      const type = body.type ?? "text"
+      const type = body.type ?? body.messageType ?? "text"
 
       const validationError = validateSendBody({
         ...body,
@@ -956,6 +976,8 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           name: body.name,
           address: body.address,
           deviceId: body.deviceId,
+          context: body.context,
+          replyToMessageId: body.replyToMessageId,
         })
         const response = toWhatsappSendResultDTO(result)
 
@@ -1210,7 +1232,12 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         }
       }
 
-      const validationError = validateSendBody(body)
+      const validationError = validateSendBody({
+        ...body,
+        type: body.type ?? body.messageType ?? "text",
+        message: body.message,
+        mediaUrl: body.mediaUrl,
+      })
       if (validationError) {
         set.status = 422
         return {
@@ -1220,7 +1247,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         }
       }
       const {
-        type,
+        type: requestedType,
         message,
         mediaUrl,
         caption,
@@ -1230,7 +1257,11 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         name,
         address,
         deviceId,
+        context,
+        replyToMessageId,
+        messageType,
       } = body
+      const type = requestedType ?? messageType ?? "text"
 
       try {
         const result = await messageService.sendMessage({
@@ -1246,6 +1277,8 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           name,
           address,
           deviceId,
+          context,
+          replyToMessageId,
         })
         const response = toWhatsappSendResultDTO(result)
 

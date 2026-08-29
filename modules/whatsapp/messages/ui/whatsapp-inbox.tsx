@@ -12,6 +12,7 @@ import {
 import {
   ChatCircle,
   PaperPlaneTilt,
+  Paperclip,
   ArrowBendDownLeft,
   ArrowBendUpRight,
   MagnifyingGlass,
@@ -19,9 +20,10 @@ import {
   FunnelSimple,
   CheckIcon,
   DotsThreeVertical,
-  ArrowSquareOut,
   Buildings,
   DeviceMobile,
+  Info,
+  X,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { getMessages } from "@/lib/i18n/messages"
@@ -106,6 +108,7 @@ export type ConversationListItem = {
   id: string
   organizationId: string
   contactPhone: string
+  contactName?: string | null
   lastMessageAt: string | null
   lastDirection: MessageDirection | null
   status?: "OPEN" | "PENDING" | "RESOLVED"
@@ -224,7 +227,6 @@ function formatLocalDateTime(iso: string | null | undefined): string {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
   })
 }
 
@@ -232,14 +234,19 @@ const PHONE_QUERY_KEY = "phone"
 
 const cleanPhoneForQuery = (phone: string) => phone.replace(/\D/g, "")
 
+const normalizedPhoneDigits = (phone: string) => {
+  const normalized = normalizeIndonesianPhoneNumber(phone)
+  return cleanPhoneForQuery(normalized ?? phone)
+}
+
 const findConversationByPhone = (
   conversations: ConversationListItem[],
   phone: string
 ): ConversationListItem | undefined => {
-  const digits = cleanPhoneForQuery(phone)
+  const digits = normalizedPhoneDigits(phone)
   if (!digits) return undefined
   return conversations.find(
-    (c) => cleanPhoneForQuery(c.contactPhone) === digits
+    (c) => normalizedPhoneDigits(c.contactPhone) === digits
   )
 }
 
@@ -335,12 +342,18 @@ function ConversationItem({
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-1">
           <span className="truncate text-sm font-medium">
-            {formatPhone(conversation.contactPhone)}
+            {conversation.contactName?.trim() ||
+              formatPhone(conversation.contactPhone)}
           </span>
           <span className="shrink-0 text-xs text-muted-foreground">
             {formatConversationTime(conversation.lastMessageAt)}
           </span>
         </div>
+        {conversation.contactName?.trim() && (
+          <div className="truncate text-xs text-muted-foreground">
+            {formatPhone(conversation.contactPhone)}
+          </div>
+        )}
 
         <div className="mt-1 flex items-center justify-between gap-1">
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -600,7 +613,7 @@ function MessageBubble({
         }`}
       >
         <div
-          className={`relative max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-xs ${
+          className={`relative max-w-[78%] rounded-2xl px-3.5 py-2 pr-16 pb-4 text-sm shadow-xs ${
             isInbox
               ? "rounded-tl-xs border border-border/40 bg-white text-[#111b21] dark:border-transparent dark:bg-[#202c33] dark:text-[#e9edef]"
               : "rounded-tr-xs bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]"
@@ -669,8 +682,9 @@ function MessageBubble({
                 href={journeyHref}
                 className="flex size-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs backdrop-blur hover:bg-muted hover:text-foreground"
                 title={getWhatsAppText("s132", locale)}
+                aria-label={getWhatsAppText("s132", locale)}
               >
-                <ArrowSquareOut className="size-3" />
+                <Info className="size-3" />
               </Link>
             </div>
           )}
@@ -813,6 +827,10 @@ export function WhatsAppInbox({
 
   // State - quick reply composer
   const [replyText, setReplyText] = React.useState("")
+  const [replyAttachment, setReplyAttachment] = React.useState<File | null>(
+    null
+  )
+  const replyAttachmentInputRef = React.useRef<HTMLInputElement>(null)
   const [currentTime, setCurrentTime] = React.useState(() => Date.now())
 
   React.useEffect(() => {
@@ -1102,8 +1120,9 @@ export function WhatsAppInbox({
       const qDigits = cleanPhoneForQuery(searchQuery.trim())
       result = result.filter((c) => {
         const phoneMatch = c.contactPhone.toLowerCase().includes(q)
+        const nameMatch = c.contactName?.toLowerCase().includes(q) ?? false
         const digitsMatch = qDigits
-          ? cleanPhoneForQuery(c.contactPhone).includes(qDigits)
+          ? normalizedPhoneDigits(c.contactPhone).includes(qDigits)
           : false
         const orgMatch = isAdminMode
           ? c.organizationId.toLowerCase().includes(q) ||
@@ -1112,7 +1131,7 @@ export function WhatsAppInbox({
           : false
         const deviceMatch =
           c.whatsappDevice?.phoneNumber.toLowerCase().includes(q) ?? false
-        return phoneMatch || digitsMatch || orgMatch || deviceMatch
+        return phoneMatch || nameMatch || digitsMatch || orgMatch || deviceMatch
       })
     }
     if (lifecycleFilter !== "all") {
@@ -1221,14 +1240,45 @@ export function WhatsAppInbox({
   }, [activeConversation, orderedMessages, currentTime])
 
   const sendReplyMutation = useMutation({
-    mutationFn: (input: {
+    mutationFn: async (input: {
       phoneNumber: string
-      message: string
-      deviceId?: string
-    }) => whatsappClient.messages.send(input),
+      message?: string
+      deviceId: string
+      attachment?: File
+    }) => {
+      let mediaUrl: string | undefined
+      let type: "text" | "image" | "document" | "audio" | "video" = "text"
+      if (input.attachment) {
+        const upload = await whatsappClient.media.upload(
+          input.attachment,
+          input.deviceId
+        )
+        if (!upload.ok || !upload.media) {
+          throw new Error("Failed to upload attachment")
+        }
+        const mediaId = upload.media.metaMediaId ?? upload.media.id
+        if (!mediaId) throw new Error("Uploaded attachment has no media ID")
+        mediaUrl = `__media:${mediaId}`
+        type = input.attachment.type.startsWith("image/")
+          ? "image"
+          : input.attachment.type.startsWith("audio/")
+            ? "audio"
+            : input.attachment.type.startsWith("video/")
+              ? "video"
+              : "document"
+      }
+      return whatsappClient.messages.send({
+        phoneNumber: input.phoneNumber,
+        message: input.message,
+        mediaUrl,
+        type,
+        deviceId: input.deviceId,
+      })
+    },
     onSuccess: async () => {
       toast.success("Message sent")
       setReplyText("")
+      setReplyAttachment(null)
       if (activeConversationId) {
         await queryClient.invalidateQueries({
           queryKey: ["whatsapp", "conversation", activeConversationId],
@@ -1244,15 +1294,17 @@ export function WhatsAppInbox({
   })
 
   const handleSendReply = () => {
-    if (!activeConversation || !replyText.trim()) return
-    if (activeDevices.length === 0) {
+    if (!activeConversation || (!replyText.trim() && !replyAttachment)) return
+    const deviceId = sendDeviceId || activeDevices[0]?.id
+    if (!deviceId) {
       toast.error("No active WhatsApp device available")
       return
     }
     sendReplyMutation.mutate({
       phoneNumber: activeConversation.contactPhone,
-      message: replyText.trim(),
-      deviceId: sendDeviceId || (activeDevices[0]?.id ?? undefined),
+      message: replyText.trim() || undefined,
+      deviceId,
+      attachment: replyAttachment ?? undefined,
     })
   }
 
@@ -2475,19 +2527,63 @@ export function WhatsAppInbox({
                       }}
                       className="flex items-center gap-2"
                     >
+                      <input
+                        ref={replyAttachmentInputRef}
+                        type="file"
+                        accept="image/*,video/*,audio/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) =>
+                          setReplyAttachment(e.target.files?.[0] ?? null)
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-10 shrink-0"
+                        onClick={() => replyAttachmentInputRef.current?.click()}
+                        disabled={sendReplyMutation.isPending}
+                        aria-label="Attach media"
+                        title="Attach media"
+                      >
+                        <Paperclip className="size-4" />
+                      </Button>
                       <Input
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder={getWhatsAppText("s162", locale)}
+                        placeholder={
+                          replyAttachment?.name ||
+                          getWhatsAppText("s162", locale)
+                        }
                         disabled={sendReplyMutation.isPending}
                         className="h-10 flex-1 bg-background text-sm"
                       />
+                      {replyAttachment && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 shrink-0"
+                          onClick={() => {
+                            setReplyAttachment(null)
+                            if (replyAttachmentInputRef.current) {
+                              replyAttachmentInputRef.current.value = ""
+                            }
+                          }}
+                          disabled={sendReplyMutation.isPending}
+                          aria-label="Remove attachment"
+                          title="Remove attachment"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      )}
                       <Button
                         type="submit"
                         size="sm"
                         className="h-10 shrink-0 gap-1.5 px-4"
                         disabled={
-                          !replyText.trim() || sendReplyMutation.isPending
+                          (!replyText.trim() && !replyAttachment) ||
+                          sendReplyMutation.isPending
                         }
                       >
                         <PaperPlaneTilt className="size-4" weight="fill" />

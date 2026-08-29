@@ -3,6 +3,44 @@ import type { Prisma, WhatsappActivityType } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
+
+function phoneVariants(phone: string): string[] {
+  const normalized = normalizeIndonesianPhoneNumber(phone)
+  const digits = (normalized ?? phone).replace(/\D/g, "")
+  return Array.from(
+    new Set([phone, normalized, digits, `+${digits}`].filter(Boolean))
+  ) as string[]
+}
+
+async function enrichConversationContactNames<
+  T extends { organizationId: string; contactPhone: string },
+>(conversations: T[]): Promise<Array<T & { contactName: string | null }>> {
+  const contacts = await prisma.whatsappContact.findMany({
+    where: {
+      OR: conversations.flatMap((conversation) =>
+        phoneVariants(conversation.contactPhone).map((phoneNumber) => ({
+          organizationId: conversation.organizationId,
+          phoneNumber,
+        }))
+      ),
+    },
+    select: { organizationId: true, phoneNumber: true, name: true },
+  })
+  const contactNames = new Map<string, string>()
+  for (const contact of contacts) {
+    contactNames.set(
+      `${contact.organizationId}:${(normalizeIndonesianPhoneNumber(contact.phoneNumber) ?? contact.phoneNumber).replace(/\D/g, "")}`,
+      contact.name
+    )
+  }
+  return conversations.map((conversation) => ({
+    ...conversation,
+    contactName:
+      contactNames.get(
+        `${conversation.organizationId}:${(normalizeIndonesianPhoneNumber(conversation.contactPhone) ?? conversation.contactPhone).replace(/\D/g, "")}`
+      ) ?? null,
+  }))
+}
 const DEFAULT_CONVERSATION_LIMIT = 50
 const MAX_CONVERSATION_LIMIT = 100
 
@@ -222,7 +260,10 @@ export const conversationsRoutes = new Elysia({
         },
       })
 
-      return { ok: true, conversations }
+      return {
+        ok: true,
+        conversations: await enrichConversationContactNames(conversations),
+      }
     },
     {
       query: t.Optional(
@@ -383,7 +424,10 @@ export const conversationsRoutes = new Elysia({
           message: "Conversation not found.",
         }
       }
-      return { ok: true, conversation }
+      const [enrichedConversation] = await enrichConversationContactNames([
+        conversation,
+      ])
+      return { ok: true, conversation: enrichedConversation }
     },
     {
       params: t.Object({

@@ -1,5 +1,6 @@
 export type SendMessageInputBase = {
   to: string
+  context?: { message_id: string }
 }
 
 export type SendTextPayload = {
@@ -208,8 +209,7 @@ export type ReplyPayloadText = {
   body: string
 }
 
-export type ReplyPayloadMedia = {
-  link: string
+export type ReplyPayloadMedia = MediaReferencePayload & {
   caption?: string
   filename?: string
 }

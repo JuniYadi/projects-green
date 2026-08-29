@@ -76,6 +76,8 @@ export type SendMessageOptions = {
   name?: string
   address?: string
   deviceId?: string
+  context?: { message_id: string }
+  replyToMessageId?: string
   // ponytail: used when type="interactive" — direct payload for sendMessage client
   interactivePayload?: InteractivePayload
 }
@@ -90,6 +92,12 @@ export type MessageService = {
     phoneNumber: string,
     deviceId?: string
   ): Promise<string>
+}
+function mediaPayload(mediaUrl?: string) {
+  if (mediaUrl?.startsWith("__media:")) {
+    return { id: mediaUrl.slice("__media:".length) }
+  }
+  return { link: mediaUrl ?? "" }
 }
 
 const CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -134,8 +142,13 @@ export const messageService: MessageService = {
       longitude,
       name,
       address,
+      context: requestedContext,
+      replyToMessageId,
       interactivePayload,
     } = options
+    const context =
+      requestedContext ??
+      (replyToMessageId ? { message_id: replyToMessageId } : undefined)
     const jobId = `wa-job-${Bun.randomUUIDv7()}`
     // Get or create device first (needed for quota gate checks)
     const device = deviceId
@@ -260,25 +273,25 @@ export const messageService: MessageService = {
               to: phoneNumber,
               type: "text",
               payload: { body: message ?? "" },
+              ...(context ? { context } : {}),
             })
           : type === "image"
             ? await client.sendReply({
                 to: phoneNumber,
                 type: "image",
-                payload: {
-                  link: mediaUrl ?? "",
-                  caption,
-                },
+                payload: { ...mediaPayload(mediaUrl), caption },
+                ...(context ? { context } : {}),
               })
             : type === "document"
               ? await client.sendReply({
                   to: phoneNumber,
                   type: "document",
                   payload: {
-                    link: mediaUrl ?? "",
+                    ...mediaPayload(mediaUrl),
                     caption,
                     filename,
                   },
+                  ...(context ? { context } : {}),
                 })
               : type === "location"
                 ? await client.sendMessage({
@@ -290,12 +303,14 @@ export const messageService: MessageService = {
                       name,
                       address,
                     },
+                    ...(context ? { context } : {}),
                   })
                 : type === "audio"
                   ? await client.sendMessage({
                       to: phoneNumber,
                       type: "audio",
-                      payload: { link: mediaUrl ?? "" },
+                      payload: mediaPayload(mediaUrl),
+                      ...(context ? { context } : {}),
                     })
                   : type === "interactive"
                     ? await client.sendMessage({
@@ -303,11 +318,13 @@ export const messageService: MessageService = {
                         type: "interactive",
                         payload: (interactivePayload ??
                           {}) as InteractivePayload,
+                        ...(context ? { context } : {}),
                       })
                     : await client.sendMessage({
                         to: phoneNumber,
                         type,
-                        payload: { link: mediaUrl ?? "", caption },
+                        payload: { ...mediaPayload(mediaUrl), caption },
+                        ...(context ? { context } : {}),
                       })
       if (
         typeof result.providerMessageId !== "string" ||
@@ -490,16 +507,18 @@ export const messageService: MessageService = {
       deviceId
     )
 
-    // Create message record
     const whatsappMessage = await prisma.whatsappMessage.create({
       data: {
         conversationId,
-        direction: "OUTBOX",
         messageType: type,
         body: type === "text" ? message : caption,
         mediaUrl,
         waMessageId,
-        metadata: { jobId, quotaPending },
+        metadata: {
+          jobId,
+          quotaPending,
+          ...(context ? { context } : {}),
+        },
         ...(sendFailure
           ? {
               statusHistory: {
