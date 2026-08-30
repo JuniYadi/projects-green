@@ -1353,6 +1353,7 @@ export function WhatsAppInbox({
     router,
     searchParams,
     setActiveConversationId,
+    setSearchQuery,
   ])
   const handleDeleteConversation = (id: string) => {
     setSelectedConversationId(id)
@@ -2303,6 +2304,23 @@ export function WhatsAppInbox({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            {searchParams.get(PHONE_QUERY_KEY) ? (
+              <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <span className="truncate">
+                  {getWhatsAppText("s411", locale).replace(
+                    "{phone}",
+                    formatPhone(searchParams.get(PHONE_QUERY_KEY) ?? "")
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearPhoneFilter}
+                  className="shrink-0 font-medium underline-offset-2 hover:underline"
+                >
+                  {getWhatsAppText("s412", locale)}
+                </button>
+              </div>
+            ) : null}
             {labelFilterIds.length > 0 && (
               <div className="mt-2">
                 <FilterPills
