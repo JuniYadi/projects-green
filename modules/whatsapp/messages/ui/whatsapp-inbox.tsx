@@ -669,18 +669,27 @@ function MessageBubble({
 
           {message.waMessageId && (
             <div
-              className={`absolute top-1 ${
+              className={`absolute top-1/2 -translate-y-1/2 ${
                 isInbox ? "-right-7" : "-left-7"
-              } opacity-0 transition-opacity group-hover:opacity-100`}
+              }`}
             >
-              <Link
-                href={journeyHref}
-                className="flex size-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs backdrop-blur hover:bg-muted hover:text-foreground"
-                title={getWhatsAppText("s132", locale)}
-                aria-label={getWhatsAppText("s132", locale)}
-              >
-                <Info className="size-3" />
-              </Link>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={journeyHref}
+                    className="flex size-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs backdrop-blur hover:bg-muted hover:text-foreground"
+                    aria-label={getWhatsAppText("s132", locale)}
+                  >
+                    <Info className="size-3" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
+                >
+                  {getWhatsAppText("s132", locale)}
+                </TooltipContent>
+              </Tooltip>
             </div>
           )}
         </div>
@@ -1325,6 +1334,26 @@ export function WhatsAppInbox({
     },
     [pathname, router, searchParams, setActiveConversationId]
   )
+  // Navigating here via a ?phone= link (e.g. from a notification or another
+  // page) seeds the search box and silently narrows the sidebar to that one
+  // number. Give the user an explicit way to see why and back out of it
+  // without losing the conversation they're currently viewing.
+  const handleClearPhoneFilter = React.useCallback(() => {
+    if (activeConversationId) {
+      setActiveConversationId(activeConversationId)
+    }
+    setSearchQuery("")
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete(PHONE_QUERY_KEY)
+    const qs = next.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [
+    activeConversationId,
+    pathname,
+    router,
+    searchParams,
+    setActiveConversationId,
+  ])
   const handleDeleteConversation = (id: string) => {
     setSelectedConversationId(id)
     setDeleteConfirmOpen(true)

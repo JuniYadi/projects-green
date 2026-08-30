@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 
 export const DEFAULT_CONTACT_GROUP_NAME = "Ungrouped"
 
@@ -62,7 +63,7 @@ export async function upsertWhatsappContactFromMessage(
 ): Promise<void> {
   const {
     organizationId,
-    phoneNumber,
+    phoneNumber: rawPhoneNumber,
     name,
     whatsappDeviceId,
     messageAt,
@@ -70,8 +71,12 @@ export async function upsertWhatsappContactFromMessage(
     waId,
     markChecked,
   } = options
+  // Normalize before upserting so the same contact never ends up split
+  // across a raw-digits row and an E.164 row (organizationId_phoneNumber
+  // is the unique key contacts are deduped on).
+  const phoneNumber =
+    normalizeIndonesianPhoneNumber(rawPhoneNumber) ?? rawPhoneNumber
   const now = messageAt ?? new Date()
-
   // Build update data — only set fields that should always update
   const trimmedName = name?.trim()
   const updateData: Record<string, unknown> = {

@@ -169,7 +169,15 @@ const mockTemplatesData: Array<{
 
 mock.module("next/navigation", () => ({
   useRouter: () => ({ push: mockRouterPush, replace: mockRouterReplace }),
-  useParams: () => ({ lang: "en" }),
+  useParams: () => {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname.startsWith("/id")
+    ) {
+      return { lang: "id" }
+    }
+    return { lang: "en" }
+  },
   usePathname: () => "/en/console/whatsapp/messages",
   useSearchParams: () => mockSearchParams,
 }))

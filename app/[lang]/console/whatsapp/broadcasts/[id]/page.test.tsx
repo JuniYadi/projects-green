@@ -87,15 +87,13 @@ const broadcastWithoutFailures = makeBroadcast({
   recipientCount: 2,
   recipients: [sentRecipient, makeRecipient({ id: "r5", status: "SENT" })],
 })
-
 const getBroadcast = mock(() => Promise.resolve(broadcastWithFailures))
-let currentLocale = "en"
+let mockNavLang = "en"
 
 mock.module("next/navigation", () => ({
   useRouter: () => ({ back: mock(() => {}), push: mock(() => {}) }),
-  useParams: () => ({ lang: currentLocale, id: "bc_1" }),
+  useParams: () => ({ lang: mockNavLang, id: "bc_1" }),
 }))
-
 mock.module("next/link", () => ({
   default: ({
     children,
@@ -111,10 +109,7 @@ mock.module("next/link", () => ({
     </span>
   ),
 }))
-mock.module("@/lib/i18n/pathname", () => ({
-  localizePathname: (opts: { pathname: string }) => `/en${opts.pathname}`,
-  resolveLocaleOrDefault: (lang?: string) => lang || "en",
-}))
+// Let real resolveLocaleOrDefault resolve lang correctly
 
 mock.module("@/modules/whatsapp/whatsapp-client", () => ({
   whatsappClient: { getBroadcast },
@@ -140,10 +135,9 @@ describe("WhatsAppBroadcastDetailPage", () => {
   let objectUrls: string[]
   let exportedBlobs: Blob[]
   let anchors: HTMLAnchorElement[]
-
   beforeEach(() => {
-    currentLocale = "en"
-    document.body.innerHTML = ""
+    mockNavLang = "en"
+    anchors = []
     getBroadcast.mockImplementation(() =>
       Promise.resolve(broadcastWithFailures)
     )
@@ -253,7 +247,8 @@ describe("WhatsAppBroadcastDetailPage", () => {
   })
 
   it("renders Indonesian customer-facing broadcast copy", async () => {
-    currentLocale = "id"
+    mockNavLang = "id"
+    window.history.pushState({}, "", "/id/console/whatsapp/broadcasts/bc_1")
     const view = render(<WhatsAppBroadcastDetailPage />)
 
     expect(await view.findByText("Progres pengiriman")).toBeInTheDocument()
