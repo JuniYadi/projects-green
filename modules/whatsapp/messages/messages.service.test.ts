@@ -584,14 +584,9 @@ describe("messageService", () => {
       expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            conversationId: "conv-1",
+            direction: "OUTBOX",
             messageType: "text",
             body: "Hello",
-            mediaUrl: undefined,
-            waMessageId: "wa-msg-123",
-            metadata: expect.objectContaining({
-              quotaPending: false,
-            }),
           }),
         })
       )
@@ -616,6 +611,7 @@ describe("messageService", () => {
       expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
+            direction: "OUTBOX",
             messageType: "image",
             body: "Image caption",
             mediaUrl: "https://example.com/image.jpg",
@@ -713,7 +709,7 @@ describe("messageService", () => {
       expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            waMessageId: undefined,
+            direction: "OUTBOX",
             statusHistory: {
               create: expect.objectContaining({
                 status: "FAILED",

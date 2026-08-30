@@ -94,10 +94,13 @@ export type MessageService = {
   ): Promise<string>
 }
 function mediaPayload(mediaUrl?: string) {
-  if (mediaUrl?.startsWith("__media:")) {
+  if (!mediaUrl) {
+    return {}
+  }
+  if (mediaUrl.startsWith("__media:")) {
     return { id: mediaUrl.slice("__media:".length) }
   }
-  return { link: mediaUrl ?? "" }
+  return { link: mediaUrl }
 }
 
 const CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -510,10 +513,10 @@ export const messageService: MessageService = {
     const whatsappMessage = await prisma.whatsappMessage.create({
       data: {
         conversationId,
+        direction: "OUTBOX",
         messageType: type,
         body: type === "text" ? message : caption,
         mediaUrl,
-        waMessageId,
         metadata: {
           jobId,
           quotaPending,
