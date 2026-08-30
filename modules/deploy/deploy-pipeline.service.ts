@@ -60,7 +60,7 @@ async function syncJenkinsPipelineForStack(
     framework: string | null
     repositoryConnectionId: string | null
   },
-  env: "dev" | "prod" = "dev"
+  env: "dev" | "prod" | "staging" = "dev"
 ): Promise<void> {
   try {
     // Need repositoryConnectionId to get installation info

@@ -314,15 +314,17 @@ describe("AppTemplateBlueprint Validation & Service", () => {
     expect(exported.metadata.documentationUrl).toBe(
       "https://docs.hermes.example.com"
     )
-    expect(exported.blueprint.envSchema[0].isFixed).toBe(true)
-    expect(exported.blueprint.envSchema[0].isHidden).toBe(true)
-    expect(exported.blueprint.envSchema[0].generateRandomHex).toBe(16)
+    expect(exported.blueprint.envSchema?.[0]?.isFixed).toBe(true)
+    expect(exported.blueprint.envSchema?.[0]?.isHidden).toBe(true)
+    expect(exported.blueprint.envSchema?.[0]?.generateRandomHex).toBe(16)
 
     const validation = validateTemplatePackage(exported)
     expect(validation.valid).toBe(true)
-    expect(validation.data?.blueprint.envSchema[0].isFixed).toBe(true)
-    expect(validation.data?.blueprint.envSchema[0].isHidden).toBe(true)
-    expect(validation.data?.blueprint.envSchema[0].generateRandomHex).toBe(16)
+    expect(validation.data?.blueprint.envSchema?.[0]?.isFixed).toBe(true)
+    expect(validation.data?.blueprint.envSchema?.[0]?.isHidden).toBe(true)
+    expect(validation.data?.blueprint.envSchema?.[0]?.generateRandomHex).toBe(
+      16
+    )
   })
 
   it("rejects invalid template package bundle missing required fields", () => {
