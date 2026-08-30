@@ -575,7 +575,10 @@ export class WhatsappUsageService {
         take: limit,
         include: {
           whatsappDevice: {
-            select: { phoneNumber: true },
+            select: {
+              phoneNumber: true,
+              whatsappProfile: true,
+            },
           },
         },
       }),
@@ -602,24 +605,39 @@ export class WhatsappUsageService {
     const totalRefundedCredits = toNum(refundedAgg._sum.quotaValue ?? 0)
 
     return {
-      data: rows.map((r) => ({
-        id: r.id,
-        organizationId: r.organizationId,
-        waMessageId: r.waMessageId,
-        phoneNumber: r.phoneNumber,
-        category: r.category,
-        quotaKey: r.quotaKey,
-        quotaValue: toNum(r.quotaValue),
-        status: r.status,
-        isReverted: r.isReverted,
-        revertReason: r.revertReason,
-        revertedAt: r.revertedAt,
-        lastStatus: r.lastStatus,
-        whatsappDeviceId: r.whatsappDeviceId,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-        devicePhoneNumber: r.whatsappDevice?.phoneNumber ?? null,
-      })),
+      data: rows.map((r) => {
+        const dev = r.whatsappDevice
+        const profile =
+          dev?.whatsappProfile &&
+          typeof dev.whatsappProfile === "object" &&
+          !Array.isArray(dev.whatsappProfile)
+            ? (dev.whatsappProfile as Record<string, unknown>)
+            : null
+        const deviceName =
+          profile && typeof profile.name === "string" && profile.name.trim()
+            ? profile.name.trim()
+            : null
+
+        return {
+          id: r.id,
+          organizationId: r.organizationId,
+          waMessageId: r.waMessageId,
+          phoneNumber: r.phoneNumber,
+          category: r.category,
+          quotaKey: r.quotaKey,
+          quotaValue: toNum(r.quotaValue),
+          status: r.status,
+          isReverted: r.isReverted,
+          revertReason: r.revertReason,
+          revertedAt: r.revertedAt,
+          lastStatus: r.lastStatus,
+          whatsappDeviceId: r.whatsappDeviceId,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+          devicePhoneNumber: dev?.phoneNumber ?? null,
+          deviceName,
+        }
+      }),
       total,
       page,
       limit,

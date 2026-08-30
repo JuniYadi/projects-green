@@ -1206,6 +1206,9 @@ export default function WhatsAppPricingPage() {
                           {isIndonesian ? "Nomor Tujuan" : "Recipient"}
                         </TableHead>
                         <TableHead>
+                          {isIndonesian ? "Perangkat" : "Device"}
+                        </TableHead>
+                        <TableHead>
                           {isIndonesian ? "Kategori Pesan" : "Category"}
                         </TableHead>
                         <TableHead>
@@ -1231,6 +1234,20 @@ export default function WhatsAppPricingPage() {
                           </TableCell>
                           <TableCell className="font-mono text-[11px] font-medium">
                             {formatPhone(row.phoneNumber)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-0.5 font-mono text-[11px]">
+                              {row.deviceName && (
+                                <p className="font-sans font-medium text-foreground">
+                                  {row.deviceName}
+                                </p>
+                              )}
+                              <p className="text-muted-foreground">
+                                {row.devicePhoneNumber
+                                  ? formatPhone(row.devicePhoneNumber)
+                                  : "—"}
+                              </p>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-[10px]">

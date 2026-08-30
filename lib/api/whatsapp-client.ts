@@ -588,6 +588,7 @@ export const whatsappClient = {
           createdAt: string
           updatedAt: string
           devicePhoneNumber?: string | null
+          deviceName?: string | null
         }[]
         total: number
         page: number
