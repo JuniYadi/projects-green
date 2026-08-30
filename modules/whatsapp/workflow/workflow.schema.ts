@@ -119,11 +119,18 @@ export const WorkflowNodeTypeSchema = z.enum([
 ])
 export type WorkflowNodeType = z.infer<typeof WorkflowNodeTypeSchema>
 
+export const WorkflowNodePositionSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+})
+export type WorkflowNodePosition = z.infer<typeof WorkflowNodePositionSchema>
+
 export const WorkflowNodeSchema = z.object({
   id: z.string(),
   type: WorkflowNodeTypeSchema,
   name: z.string(),
   config: z.record(z.string(), z.unknown()),
+  position: WorkflowNodePositionSchema.optional(),
 })
 export type WorkflowNode = z.infer<typeof WorkflowNodeSchema>
 
