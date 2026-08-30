@@ -49,17 +49,16 @@ import { WhatsAppCommandCenter } from "@/modules/whatsapp/onboarding/whatsapp-co
 import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 
 const CATEGORY_COLORS: Record<string, string> = {
-  UTILITY: "hsl(var(--chart-1))",
-  AUTHENTICATION: "hsl(var(--chart-2))",
-  MARKETING: "hsl(var(--chart-3))",
-  SERVICE: "hsl(var(--chart-4))",
+  UTILITY: "var(--color-chart-1, #22c55e)",
+  AUTHENTICATION: "var(--color-chart-2, #3b82f6)",
+  MARKETING: "var(--color-chart-3, #f59e0b)",
+  SERVICE: "var(--color-chart-4, #a855f7)",
 }
 
 const DASHBOARD_CHART_CONFIG = {
-  in: { label: "Pesan Masuk", color: "hsl(var(--chart-1))" },
-  out: { label: "Pesan Keluar", color: "hsl(var(--chart-2))" },
+  in: { label: "Pesan Masuk", color: "var(--color-chart-1, #22c55e)" },
+  out: { label: "Pesan Keluar", color: "var(--color-chart-2, #3b82f6)" },
 } satisfies ChartConfig
-
 type WebhookStats = {
   periodEnd: string
   totalEvents: number
@@ -597,12 +596,16 @@ export default function WhatsAppDashboardPage() {
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <div className="flex items-center gap-1">
-                      <span className="size-2 rounded-full bg-[hsl(var(--chart-1))]" />
-                      <span className="text-muted-foreground">Masuk</span>
+                      <span className="size-2 rounded-full bg-emerald-500" />
+                      <span className="text-muted-foreground">
+                        {locale === "id" ? "Masuk" : "Inbound"}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="size-2 rounded-full bg-[hsl(var(--chart-2))]" />
-                      <span className="text-muted-foreground">Keluar</span>
+                      <span className="size-2 rounded-full bg-blue-500" />
+                      <span className="text-muted-foreground">
+                        {locale === "id" ? "Keluar" : "Outbound"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -654,14 +657,14 @@ export default function WhatsAppDashboardPage() {
                       <Bar
                         dataKey="in"
                         name={locale === "id" ? "Pesan Masuk" : "Inbound"}
-                        fill="var(--color-in)"
+                        fill="#22c55e"
                         radius={[2, 2, 0, 0]}
                         maxBarSize={24}
                       />
                       <Bar
                         dataKey="out"
                         name={locale === "id" ? "Pesan Keluar" : "Outbound"}
-                        fill="var(--color-out)"
+                        fill="#3b82f6"
                         radius={[2, 2, 0, 0]}
                         maxBarSize={24}
                       />
