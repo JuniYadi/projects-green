@@ -13,7 +13,7 @@ import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 import { resolveWhatsappQuotaCredit } from "@/modules/whatsapp/messages/quota-credit.service"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
-import { renderTemplateBody } from "@/modules/whatsapp/templates/ui/template-preview"
+import { renderTemplateBody } from "@/modules/whatsapp/templates/lib/template-renderer"
 import {
   getHourlyMessageLimit,
   DEFAULT_DAILY_LIMIT_MESSAGE,
@@ -357,9 +357,10 @@ async function dispatchBroadcast(
       normalizeIndonesianPhoneNumber(recipient.phoneNumber) ??
       recipient.phoneNumber
 
-    // Find template to get body text for rendered message and billing category
+    // Find template to get language content for the rendered message and billing category
     let templateBody: string | null = null
     let templateCategory: string | null = null
+    let templateLanguageData: Record<string, unknown> | null = null
     try {
       const tpl = await prisma.whatsappTemplate.findFirst({
         where: {
@@ -373,13 +374,26 @@ async function dispatchBroadcast(
           category: true,
           languages: {
             where: { lang: campaign.templateLanguage },
-            select: { body: true },
+            select: {
+              headerType: true,
+              headerText: true,
+              headerUrl: true,
+              body: true,
+              footer: true,
+              buttons: true,
+              parameters: true,
+            },
             take: 1,
           },
         },
       })
       templateCategory = tpl?.category ?? null
-      templateBody = tpl?.languages[0]?.body ?? null
+      templateLanguageData =
+        (tpl?.languages[0] as Record<string, unknown>) ?? null
+      templateBody =
+        typeof templateLanguageData?.body === "string"
+          ? templateLanguageData.body
+          : null
     } catch {
       // Non-critical
     }
@@ -427,6 +441,7 @@ async function dispatchBroadcast(
           templateName: campaign.templateName,
           templateLanguage: campaign.templateLanguage,
           fields,
+          templateLanguageData: templateLanguageData as Prisma.InputJsonValue,
         } as Prisma.InputJsonValue,
         statusHistory: {
           create: {

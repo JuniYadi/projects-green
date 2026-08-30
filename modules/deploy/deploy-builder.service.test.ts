@@ -20,21 +20,21 @@ const defaultDeployment = {
 const mockPrisma = {
   $transaction: mock(async (fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
   applicationDeployment: {
-    findUnique: mock(async () => defaultDeployment),
-    update: mock(async () => ({})),
+    findUnique: mock(async (..._args: unknown[]) => defaultDeployment),
+    update: mock(async (..._args: unknown[]) => ({})),
   },
   applicationStack: {
-    update: mock(async () => ({})),
+    update: mock(async (..._args: unknown[]) => ({})),
   },
   applicationDeployEvent: {
     create: txCreate,
     upsert: txCreate,
   },
   applicationDeploymentLog: {
-    create: mock(async () => ({})),
+    create: mock(async (..._args: unknown[]) => ({})),
   },
   githubRepositoryConnection: {
-    findUnique: mock(async () => ({
+    findUnique: mock(async (..._args: unknown[]) => ({
       id: "conn-1",
       ownerLogin: "pfnapp",
       repoName: "console-next-app",
@@ -42,24 +42,24 @@ const mockPrisma = {
     })),
   },
   appHostingCluster: {
-    findMany: mock(async () => []),
-    findUnique: mock(async () => null),
+    findMany: mock(async (..._args: unknown[]) => []),
+    findUnique: mock(async (..._args: unknown[]) => null),
   },
 }
 
 const mockTx = {
   applicationDeployment: {
-    update: mock(async () => ({})),
+    update: mock(async (..._args: unknown[]) => ({})),
   },
   applicationStack: {
-    update: mock(async () => ({})),
+    update: mock(async (..._args: unknown[]) => ({})),
   },
   applicationDeployEvent: {
     create: txCreate,
     upsert: txCreate,
   },
   applicationDeploymentLog: {
-    create: mock(async () => ({})),
+    create: mock(async (..._args: unknown[]) => ({})),
   },
 }
 
@@ -332,7 +332,7 @@ describe("processQueuedDeployment", () => {
     )
     const result = await processQueuedDeployment("deploy-1")
     expect(result.status).toBe("FAILED")
-    expect(result.error).toBe("Database error")
+    expect((result as { error?: string }).error).toBe("Database error")
     expect(mockPrisma.applicationDeployment.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "deploy-1" },
@@ -375,20 +375,21 @@ describe("processQueuedDeployment", () => {
     const statusesWritten = [
       ...mockPrisma.applicationDeployment.update.mock.calls,
       ...mockTx.applicationDeployment.update.mock.calls,
-    ].map((call) => (call[0] as { data?: { status?: string } }).data?.status)
+    ].map(
+      (call) =>
+        (call[0] as unknown as { data?: { status?: string } })?.data?.status
+    )
     expect(statusesWritten).not.toContain("BUILDING")
-
     expect(result.processed).toBe(true)
     expect(result.status).toBe("DEPLOYING")
 
     expect(mockTx.applicationDeployment.update).toHaveBeenCalledTimes(1)
     const txUpdateArgs = mockTx.applicationDeployment.update.mock
-      .calls[0]?.[0] as {
+      .calls[0]?.[0] as unknown as {
       data: { status: string; manifestPushed: boolean }
     }
     expect(txUpdateArgs.data.status).toBe("DEPLOYING")
     expect(txUpdateArgs.data.manifestPushed).toBe(true)
-
     expect(commitFilesMock).toHaveBeenCalledTimes(1)
     const [repoArg, messageArg, filesArg] = commitFilesMock.mock.calls[0] as [
       string,

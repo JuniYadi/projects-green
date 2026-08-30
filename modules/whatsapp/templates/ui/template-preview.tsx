@@ -9,25 +9,19 @@ import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
+import {
+  renderTemplateBody,
+  resolveTemplatePreviewValues,
+  type TemplatePreviewValues,
+} from "@/modules/whatsapp/templates/lib/template-renderer"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export type TemplatePreviewValues = Record<number, string>
-
-// ─── Placeholder helpers ─────────────────────────────────────────────────────
-
-export function getTemplatePlaceholderIndexes(body?: string | null): number[] {
-  if (!body) return []
-  const matches = body.match(/{{\s*(\d+)\s*}}/g)
-  if (!matches) return []
-  const indexes = new Set<number>()
-  for (const match of matches) {
-    const num = parseInt(match.replace(/[{}]/g, "").trim(), 10)
-    if (!isNaN(num) && num > 0) indexes.add(num)
-  }
-  return Array.from(indexes).sort((a, b) => a - b)
-}
+export {
+  getTemplatePlaceholderIndexes,
+  renderTemplateBody,
+  resolveTemplatePreviewValues,
+  type TemplatePreviewValues,
+} from "@/modules/whatsapp/templates/lib/template-renderer"
 
 // ─── Language display ────────────────────────────────────────────────────────
 
@@ -168,117 +162,6 @@ function renderWhatsAppLine(line: string): React.ReactNode {
 
     return <React.Fragment key={i}>{part}</React.Fragment>
   })
-}
-
-// ─── Template body rendering ─────────────────────────────────────────────────
-
-export function renderTemplateBody(
-  body: string | null | undefined,
-  values?: TemplatePreviewValues
-): string {
-  if (!body) return ""
-  if (!values || Object.keys(values).length === 0) return body
-  return body.replace(/{{\s*(\d+)\s*}}/g, (_, num) => {
-    const index = parseInt(num, 10)
-    return values[index] || ""
-  })
-}
-// ─── Value resolution ────────────────────────────────────────────────────────
-
-/**
- * Resolve preview values for template placeholders.
- *
- * Priority:
- * 1. Explicit `overrides[index]`
- * 2. Examples from `language.parameters`
- * 3. `Example ${index}` fallback
- */
-export function resolveTemplatePreviewValues(
-  language: Pick<WhatsAppTemplateLanguage, "body" | "parameters">,
-  overrides?: TemplatePreviewValues
-): TemplatePreviewValues {
-  const indexes = getTemplatePlaceholderIndexes(language.body)
-  if (indexes.length === 0) return {}
-
-  const values: TemplatePreviewValues = {}
-  const examples = extractParameterExamples(language.parameters)
-
-  const bodyLower = (language.body ?? "").toLowerCase()
-  const isLikelyOtp =
-    bodyLower.includes("kode") ||
-    bodyLower.includes("code") ||
-    bodyLower.includes("verifikasi") ||
-    bodyLower.includes("otp") ||
-    bodyLower.includes("verification")
-
-  for (const idx of indexes) {
-    if (overrides?.[idx]) {
-      values[idx] = overrides[idx]
-    } else if (examples[idx]) {
-      values[idx] = examples[idx]
-    } else if (isLikelyOtp && idx === 1) {
-      values[idx] = "549281"
-    } else {
-      values[idx] = `Example ${idx}`
-    }
-  }
-
-  return values
-}
-
-function extractParameterExamples(params: unknown): Record<number, string> {
-  if (!params) return {}
-
-  // [{ type: "BODY", text: "Alice" }] — flat component array
-  if (Array.isArray(params)) {
-    const examples: Record<number, string> = {}
-    ;(params as Array<Record<string, unknown>>).forEach((item, i) => {
-      if (item.type === "BODY" && typeof item.text === "string") {
-        examples[i + 1] = item.text
-      }
-    })
-    return examples
-  }
-
-  // { components: [{ type: "BODY", example: { body_text: [["Alice", "Acme"]] } }] }
-  const obj = params as Record<string, unknown>
-  const components = obj.components as
-    | Array<Record<string, unknown>>
-    | undefined
-  if (Array.isArray(components)) {
-    const bodyComponent = components.find(
-      (c) => (c as Record<string, unknown>).type === "BODY"
-    )
-    if (bodyComponent) {
-      const example = bodyComponent.example as
-        | Record<string, unknown>
-        | undefined
-      if (example) {
-        const bodyText = example.body_text
-        if (Array.isArray(bodyText) && bodyText.length > 0) {
-          // body_text: [["Alice", "Acme"]] — nested array
-          if (Array.isArray(bodyText[0])) {
-            const examples: Record<number, string> = {}
-            ;(bodyText as string[][]).forEach((group) => {
-              group.forEach((val, i) => {
-                // 1-indexed placeholders
-                if (!examples[i + 1]) examples[i + 1] = val
-              })
-            })
-            return examples
-          }
-          // body_text: ["Alice", "Acme"] — flat array
-          const examples: Record<number, string> = {}
-          ;(bodyText as string[]).forEach((val, i) => {
-            examples[i + 1] = val
-          })
-          return examples
-        }
-      }
-    }
-  }
-
-  return {}
 }
 
 // ─── Button label resolution ─────────────────────────────────────────────────

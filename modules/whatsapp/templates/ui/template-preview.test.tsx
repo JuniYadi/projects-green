@@ -10,14 +10,16 @@ import { describe, expect, it } from "bun:test"
 import { render } from "@testing-library/react"
 import * as React from "react"
 import {
-  getTemplatePlaceholderIndexes,
   getLanguageDisplay,
-  renderTemplateBody,
-  resolveTemplatePreviewValues,
   WhatsAppTemplatePreview,
   TemplateLanguageBadge,
   WhatsAppFormattedText,
 } from "./template-preview"
+import {
+  getTemplatePlaceholderIndexes,
+  renderTemplateBody,
+  resolveTemplatePreviewValues,
+} from "@/modules/whatsapp/templates/lib/template-renderer"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 
 // ─── getTemplatePlaceholderIndexes ────────────────────────────────────────────
