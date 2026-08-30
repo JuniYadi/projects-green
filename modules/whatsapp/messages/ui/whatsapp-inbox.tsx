@@ -1269,7 +1269,11 @@ export function WhatsAppInbox({
       }
       return whatsappClient.messages.send({
         phoneNumber: input.phoneNumber,
-        message: input.message,
+        // Meta's API takes text under `caption` for media messages and
+        // under `message` for plain text — never both. The service only
+        // reads whichever field matches the resolved type.
+        message: input.attachment ? undefined : input.message,
+        caption: input.attachment ? input.message : undefined,
         mediaUrl,
         type,
         deviceId: input.deviceId,

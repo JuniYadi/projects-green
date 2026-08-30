@@ -301,6 +301,7 @@ export const whatsappClient = {
       phoneNumber: string
       message?: string
       mediaUrl?: string
+      caption?: string
       type?: "text" | "image" | "document" | "audio" | "video"
       deviceId?: string
     }) =>
