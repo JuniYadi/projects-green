@@ -82,6 +82,7 @@ export class WhatsAppDeviceClient {
       to: input.to,
       type: input.type,
       [input.type]: input.payload,
+      ...(input.context ? { context: input.context } : {}),
     }
 
     const result = await this.httpClient.request<any>(
@@ -167,6 +168,7 @@ export class WhatsAppDeviceClient {
       type: input.type,
       [input.type]:
         input.type === "text" ? { body: input.payload.body } : input.payload,
+      ...(input.context ? { context: input.context } : {}),
     }
 
     const result = await this.httpClient.request<any>(

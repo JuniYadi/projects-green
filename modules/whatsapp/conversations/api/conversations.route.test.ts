@@ -20,6 +20,7 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
 // ─── Prisma mock ──────────────────────────────────────────────────────────
 
 const mockFindMany = mock(async (_args: unknown): Promise<any> => [])
+const mockContactFindMany = mock(async (_args: unknown): Promise<any> => [])
 const mockFindFirst = mock(async (_args: unknown): Promise<any> => null)
 const mockUpdate = mock(async (_args: unknown): Promise<any> => ({}))
 const mockCreate = mock(async (_args: unknown): Promise<any> => ({}))
@@ -60,6 +61,9 @@ mock.module("@/lib/prisma", () => ({
       create: mockCreate,
       delete: mockDelete,
     },
+    whatsappContact: {
+      findMany: mockContactFindMany,
+    },
     whatsappConversationLabel: {
       findMany: mock(async () => []),
     },
@@ -83,6 +87,9 @@ function createTestApp() {
 beforeEach(() => {
   mockAuth.current = null
   mockFindMany.mockReset()
+  mockFindMany.mockResolvedValue([])
+  mockContactFindMany.mockReset()
+  mockContactFindMany.mockResolvedValue([])
   mockFindFirst.mockReset()
   mockUpdate.mockReset()
   mockCreate.mockReset()
