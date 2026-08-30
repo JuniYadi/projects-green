@@ -12,23 +12,13 @@ import {
   ChartLine,
   Calendar,
   Funnel,
-  CheckCircle,
-  Clock,
-  ArrowCounterClockwise,
   ArrowRight,
+  Receipt,
 } from "@phosphor-icons/react"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   ChartContainer,
   ChartTooltip,
@@ -43,7 +33,6 @@ import { Button } from "@/components/ui/button"
 import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import type { WhatsappBillingLedgerEntryDTO } from "@/modules/whatsapp/usage/usage.dto"
 
 type PageState = "loading" | "error" | "loaded"
 
@@ -141,20 +130,6 @@ function getLast6Months(): { year: number; month: number }[] {
   return months
 }
 
-function formatLedgerDate(iso: string | Date): string {
-  try {
-    const d = typeof iso === "string" ? new Date(iso) : iso
-    return d.toLocaleString("id-ID", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  } catch {
-    return String(iso)
-  }
-}
-
 export default function WhatsAppUsagePage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
@@ -169,10 +144,6 @@ export default function WhatsAppUsagePage() {
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [selectedDevice, setSelectedDevice] = React.useState<string>("all")
   const [dateRange, _setDateRange] = React.useState(getLast30DaysRange)
-  const [recentLedger, setRecentLedger] = React.useState<
-    WhatsappBillingLedgerEntryDTO[]
-  >([])
-  const [recentLedgerLoading, setRecentLedgerLoading] = React.useState(true)
 
   const deviceId = selectedDevice === "all" ? undefined : selectedDevice
 
@@ -188,7 +159,6 @@ export default function WhatsAppUsagePage() {
           dailyRes,
           deviceRes,
           costBreakdownRes,
-          ledgerRes,
           ...monthlyResults
         ] = await Promise.all([
           whatsappClient.usage.overview(),
@@ -199,7 +169,6 @@ export default function WhatsAppUsagePage() {
           }),
           whatsappClient.devices.list(),
           whatsappClient.usage.costBreakdown({ deviceId }),
-          whatsappClient.usage.ledger({ limit: 5 }),
           ...last6.map((m) =>
             whatsappClient.usage.monthly({
               year: m.year,
@@ -222,12 +191,6 @@ export default function WhatsAppUsagePage() {
         )
         setDevices(deviceRes.devices)
 
-        if (ledgerRes && ledgerRes.ok) {
-          setRecentLedger(
-            (ledgerRes.data as unknown as WhatsappBillingLedgerEntryDTO[]) ?? []
-          )
-        }
-
         const allMonthly: MonthlyCount[] = []
         for (const res of monthlyResults) {
           for (const c of res.counts as unknown as MonthlyCount[]) {
@@ -243,8 +206,6 @@ export default function WhatsAppUsagePage() {
           err instanceof Error ? err.message : "Failed to load usage data."
         setError(message)
         setState("error")
-      } finally {
-        setRecentLedgerLoading(false)
       }
     }
 
@@ -292,7 +253,7 @@ export default function WhatsAppUsagePage() {
             </p>
           </div>
           <Button variant="outline" size="sm" asChild className="gap-1.5">
-            <Link href="/console/whatsapp/ledger">
+            <Link href="/console/whatsapp/pricing?tab=ledger">
               <WhatsAppText id="s46" />
               <ArrowRight className="size-4" />
             </Link>
@@ -536,6 +497,7 @@ export default function WhatsAppUsagePage() {
           </CardContent>
         </Card>
       </div>
+
       {/* Cost Breakdown by Device */}
       {state === "loaded" && costBreakdown && (
         <Card>
@@ -621,15 +583,34 @@ export default function WhatsAppUsagePage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>
-              <WhatsAppText id="s57" />
-            </CardTitle>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Calendar className="size-3" />
-              <span>
-                {dateRange.from} <WhatsAppText id="s23" />
-                {dateRange.to}
-              </span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">
+                  <WhatsAppText id="s57" />
+                </CardTitle>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Calendar className="size-3" />
+                  <span>
+                    {dateRange.from} <WhatsAppText id="s23" />
+                    {dateRange.to}
+                  </span>
+                </div>
+              </div>
+              {/* Legend Badges */}
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-[hsl(var(--chart-1))]" />
+                  <span className="font-medium text-foreground">
+                    {locale === "id" ? "Pesan Masuk" : "Inbound"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-[hsl(var(--chart-2))]" />
+                  <span className="font-medium text-foreground">
+                    {locale === "id" ? "Pesan Terkirim" : "Outbound"}
+                  </span>
+                </div>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -664,6 +645,7 @@ export default function WhatsAppUsagePage() {
                   }))}
                 >
                   <XAxis
+                    dataKey="date"
                     tick={{ fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
@@ -672,6 +654,8 @@ export default function WhatsAppUsagePage() {
                     tick={{ fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
+                    tickFormatter={(v) => `${v}`}
+                    width={28}
                   />
                   <ChartTooltip
                     content={
@@ -680,13 +664,17 @@ export default function WhatsAppUsagePage() {
                   />
                   <Bar
                     dataKey="in"
+                    name={locale === "id" ? "Pesan Masuk" : "Inbound"}
                     fill="var(--color-in)"
-                    radius={[2, 2, 0, 0]}
+                    radius={[3, 3, 0, 0]}
+                    maxBarSize={32}
                   />
                   <Bar
                     dataKey="out"
+                    name={locale === "id" ? "Pesan Terkirim" : "Outbound"}
                     fill="var(--color-out)"
-                    radius={[2, 2, 0, 0]}
+                    radius={[3, 3, 0, 0]}
+                    maxBarSize={32}
                   />
                 </BarChart>
               </ChartContainer>
@@ -833,129 +821,37 @@ export default function WhatsAppUsagePage() {
         </CardContent>
       </Card>
 
-      {/* Recent 5 Deductions */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>
-              <WhatsAppText id="s382" locale={locale} />
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              <WhatsAppText id="s383" locale={locale} />
-            </p>
+      {/* Ledger Navigation Banner */}
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center justify-between gap-3 p-4 sm:flex-row">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Receipt className="size-4" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold">
+                {locale === "id"
+                  ? "Butuh Audit & Riwayat Pemotongan Kredit Lengkap?"
+                  : "Need Full Credit Deduction & Audit Ledger?"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {locale === "id"
+                  ? "Periksa detail pemotongan kuota, status pengiriman Meta, dan refund kredit di menu Tarif & Biaya."
+                  : "Inspect itemized credit deductions, Meta delivery statuses, and automatic refunds under Pricing & Ledger."}
+              </p>
+            </div>
           </div>
-          <Button variant="outline" size="sm" asChild className="gap-1.5">
-            <Link href="/console/whatsapp/ledger">
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="shrink-0 gap-1 text-xs"
+          >
+            <Link href="/console/whatsapp/pricing?tab=ledger">
               <WhatsAppText id="s64" />
-              <ArrowRight className="size-4" />
+              <ArrowRight className="size-3.5" />
             </Link>
           </Button>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{locale === "id" ? "Waktu" : "Time"}</TableHead>
-                <TableHead>
-                  <WhatsAppText id="s10" />
-                </TableHead>
-                <TableHead>
-                  {locale === "id" ? "Kategori" : "Category"}
-                </TableHead>
-                <TableHead>{locale === "id" ? "Kredit" : "Credits"}</TableHead>
-                <TableHead>
-                  <WhatsAppText id="s302" locale={locale} />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentLedgerLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-28" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-16" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-12" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : recentLedger.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="h-20 text-center text-sm text-muted-foreground"
-                  >
-                    <WhatsAppText id="s65" />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                recentLedger.map((row) => {
-                  const isRefunded =
-                    row.isReverted || row.status === "REVERTED_FAILED"
-                  const isConfirmed = row.status === "CONFIRMED"
-
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                        {formatLedgerDate(row.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-sm font-medium">
-                        {row.phoneNumber}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] font-semibold"
-                        >
-                          {row.category}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm font-semibold">
-                        {row.quotaValue}
-                      </TableCell>
-                      <TableCell>
-                        {isRefunded ? (
-                          <Badge
-                            variant="destructive"
-                            className="gap-1 border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-600 dark:text-amber-400"
-                          >
-                            <ArrowCounterClockwise className="size-3" />
-                            {locale === "id" ? "DIKEMBALIKAN" : "REFUNDED"}
-                          </Badge>
-                        ) : isConfirmed ? (
-                          <Badge
-                            variant="default"
-                            className="gap-1 bg-emerald-600 text-[10px] text-white"
-                          >
-                            <CheckCircle className="size-3" weight="fill" />
-                            {locale === "id" ? "TERKONFIRMASI" : "CONFIRMED"}
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="secondary"
-                            className="gap-1 text-[10px]"
-                          >
-                            <Clock className="size-3" />
-                            {locale === "id" ? "MENUNGGU" : "PENDING"}
-                          </Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
         </CardContent>
       </Card>
 
