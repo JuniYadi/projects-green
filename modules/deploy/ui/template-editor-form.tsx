@@ -105,6 +105,10 @@ export function TemplateEditorForm({
     initialData?.readmeMarkdown || ""
   )
   const [iconUrl, setIconUrl] = useState(initialData?.iconUrl || "")
+  const [websiteUrl, setWebsiteUrl] = useState(initialData?.websiteUrl || "")
+  const [documentationUrl, setDocumentationUrl] = useState(
+    initialData?.documentationUrl || ""
+  )
   const [category, setCategory] = useState(initialData?.category || "UTILITIES")
   const [visibility, setVisibility] = useState(
     initialData?.visibility || (isNew ? "PUBLIC" : "PRIVATE")
