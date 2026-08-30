@@ -142,3 +142,43 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
       }),
     }
   )
+  .post(
+    "/delete",
+    async ({ user, body }) => {
+      if (!user?.organizationId) {
+        return { ok: false, error: "Organization required" }
+      }
+
+      const { deviceId } = body
+      const device = await prisma.whatsappDevice.findFirst({
+        where: {
+          id: deviceId,
+          organizationId: user.organizationId,
+        },
+        select: { id: true, features: true },
+      })
+
+      if (!device) {
+        return { ok: false, error: "WhatsApp Device not found" }
+      }
+
+      const currentFeatures = (device.features as Record<string, unknown>) || {}
+      const { botWorkflow: _removed, ...remainingFeatures } = currentFeatures
+
+      await prisma.whatsappDevice.update({
+        where: { id: device.id },
+        data: {
+          features: remainingFeatures,
+        },
+      })
+
+      return {
+        ok: true,
+      }
+    },
+    {
+      body: t.Object({
+        deviceId: t.String(),
+      }),
+    }
+  )

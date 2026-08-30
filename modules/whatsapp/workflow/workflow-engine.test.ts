@@ -392,12 +392,11 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
     mockRedis.get.mockClear()
     mockRedis.set.mockClear()
     mockRedis.del.mockClear()
-    mockRedis.eval.mockClear()
     mockRedis.get.mockImplementation(async () => null)
     mockRedis.set.mockImplementation(async () => "OK")
     mockRedis.del.mockImplementation(async () => 1)
     mockRedis.eval.mockImplementation(async () => 1)
-    mockPrisma.whatsappDevice.findUnique.mockImplementation(async () => null)
+    mockPrisma.whatsappDevice.findUnique.mockResolvedValue(null as never)
     mockMessageService.sendMessage.mockClear()
   })
 
@@ -440,12 +439,13 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
       ],
       version: 1,
     }
-    mockPrisma.whatsappDevice.findUnique.mockImplementation(async () => ({
+
+    mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
       id: "dev_1",
       features: { botWorkflow: sampleWorkflow },
-    }))
+    } as never)
+
     const res = await processWhatsappWorkflowInbound({
-      organizationId: "org_1",
       deviceId: "dev_1",
       contactPhone: "+62812345678",
       inboundMessageText: "info ongkir dong",
