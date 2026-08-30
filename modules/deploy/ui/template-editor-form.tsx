@@ -11,6 +11,8 @@ import {
   FloppyDisk,
   Trash,
   ShieldCheck,
+  DownloadSimple,
+  UploadSimple,
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -62,8 +64,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { AdminTemplateRecord } from "@/app/[lang]/portal/marketplace/_components/template-inspector-drawer"
-import type { AppTemplateBlueprint } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
-
+import {
+  appTemplateBlueprintSchema,
+  type AppTemplateBlueprint,
+  type AppTemplatePackage,
+} from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+import {
+  exportTemplatePackage,
+  validateTemplatePackage,
+} from "@/modules/deploy/blueprint/app-template-blueprint.service"
 export interface TemplateEditorFormProps {
   initialData?: AdminTemplateRecord | null
   isNew?: boolean
@@ -97,6 +106,10 @@ export function TemplateEditorForm({
     initialData?.readmeMarkdown || ""
   )
   const [iconUrl, setIconUrl] = useState(initialData?.iconUrl || "")
+  const [websiteUrl, setWebsiteUrl] = useState(initialData?.websiteUrl || "")
+  const [documentationUrl, setDocumentationUrl] = useState(
+    initialData?.documentationUrl || ""
+  )
   const [category, setCategory] = useState(initialData?.category || "UTILITIES")
   const [visibility, setVisibility] = useState(
     initialData?.visibility || (isNew ? "PUBLIC" : "PRIVATE")
@@ -160,9 +173,12 @@ export function TemplateEditorForm({
       required: boolean
       isSecret: boolean
       dataType: "string" | "number" | "boolean" | "select"
+      isFixed?: boolean
+      isHidden?: boolean
     }>
   >(initialData?.blueprintJson?.envSchema || [])
-
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [importJsonText, setImportJsonText] = useState("")
   const [activeTab, setActiveTab] = useState("general")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [rejectNotes, setRejectNotes] = useState("")
@@ -268,6 +284,118 @@ export function TemplateEditorForm({
     }
   }
 
+  const handleExportJson = () => {
+    const blueprint = constructBlueprint()
+    const pkg = exportTemplatePackage({
+      name: name.trim() || "template",
+      slug: slug.trim() || "template",
+      tagline: tagline.trim() || undefined,
+      description: description.trim() || undefined,
+      category,
+      iconUrl: iconUrl.trim() || undefined,
+      websiteUrl: websiteUrl.trim() || undefined,
+      documentationUrl: documentationUrl.trim() || undefined,
+      blueprint,
+    })
+
+    const blob = new Blob([JSON.stringify(pkg, null, 2)], {
+      type: "application/json",
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${slug.trim() || "template"}-template.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success("Template exported as JSON")
+  }
+
+  const handleApplyImport = (jsonStr: string) => {
+    try {
+      const parsed = JSON.parse(jsonStr)
+      // Support full template package or bare blueprint
+      let meta: Partial<AppTemplatePackage["metadata"]> = {}
+      let bp: AppTemplateBlueprint
+
+      if (parsed && typeof parsed === "object" && "blueprint" in parsed) {
+        const validation = validateTemplatePackage(parsed)
+        if (!validation.valid || !validation.data) {
+          const firstErr =
+            Object.values(validation.errors || {})[0] ||
+            "Invalid package structure"
+          toast.error(`Invalid template package: ${firstErr}`)
+          return
+        }
+        meta = validation.data.metadata
+        bp = validation.data.blueprint
+      } else {
+        const parseResult = appTemplateBlueprintSchema.safeParse(parsed)
+        if (!parseResult.success) {
+          const firstIssue =
+            parseResult.error.issues[0]?.message ||
+            "Invalid blueprint structure"
+          toast.error(`Invalid blueprint schema: ${firstIssue}`)
+          return
+        }
+        bp = parseResult.data
+      }
+
+      if (meta.name) setName(meta.name)
+      if (meta.slug) setSlug(meta.slug)
+      if (meta.tagline !== undefined) setTagline(meta.tagline)
+      if (meta.description !== undefined) setDescription(meta.description)
+      if (meta.category) setCategory(meta.category)
+      if (meta.iconUrl !== undefined) setIconUrl(meta.iconUrl)
+      if (meta.websiteUrl !== undefined) setWebsiteUrl(meta.websiteUrl)
+      if (meta.documentationUrl !== undefined)
+        setDocumentationUrl(meta.documentationUrl)
+
+      if (bp.runtime) {
+        if (bp.runtime.image) setRuntimeImage(bp.runtime.image)
+        if (bp.runtime.defaultPort) setDefaultPort(bp.runtime.defaultPort)
+        if (bp.runtime.healthCheckPath !== undefined)
+          setHealthCheckPath(bp.runtime.healthCheckPath)
+        if (bp.runtime.runAsNonRoot !== undefined)
+          setRunAsNonRoot(bp.runtime.runAsNonRoot)
+        if (bp.runtime.deploymentType)
+          setDeploymentType(bp.runtime.deploymentType)
+        if (bp.runtime.additionalPorts)
+          setAdditionalPorts(bp.runtime.additionalPorts)
+      }
+
+      if (bp.resources) {
+        if (bp.resources.defaultCpu) setDefaultCpu(bp.resources.defaultCpu)
+        if (bp.resources.defaultMemory)
+          setDefaultMemory(bp.resources.defaultMemory)
+      }
+
+      if (bp.storage) {
+        setStorageEnabled(Boolean(bp.storage.enabled))
+        if (bp.storage.mountPath) setStorageMountPath(bp.storage.mountPath)
+        if (bp.storage.sizeGbDefault) setStorageSizeGb(bp.storage.sizeGbDefault)
+      } else {
+        setStorageEnabled(false)
+      }
+
+      if (Array.isArray(bp.dependencies)) {
+        setDependencies(bp.dependencies)
+      }
+
+      if (Array.isArray(bp.envSchema)) {
+        setEnvSchema(bp.envSchema)
+      }
+
+      setShowImportDialog(false)
+      setImportJsonText("")
+      toast.success("Template configuration imported successfully!")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Invalid JSON syntax"
+      toast.error(`Import failed: ${msg}`)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const parsedBlueprint = constructBlueprint()
@@ -364,6 +492,24 @@ export function TemplateEditorForm({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowImportDialog(true)}
+            className="gap-1.5 text-xs"
+          >
+            <UploadSimple className="size-4" /> Import JSON
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExportJson}
+            className="gap-1.5 text-xs"
+          >
+            <DownloadSimple className="size-4" /> Export JSON
+          </Button>
           {!isNew && initialData?.id && (
             <>
               {initialData.visibility === "PENDING_REVIEW" && onApprove && (
@@ -1175,6 +1321,77 @@ export function TemplateEditorForm({
               className="text-destructive-foreground bg-destructive hover:bg-destructive/90"
             >
               Confirm Rejection
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Import JSON Dialog */}
+      <AlertDialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Import Template Configuration</AlertDialogTitle>
+            <AlertDialogDescription>
+              Paste a template package JSON exported from another environment
+              (e.g. dev/staging) or upload a .json file.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                accept=".json,application/json"
+                id="import-json-file-input"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    const reader = new FileReader()
+                    reader.onload = (evt) => {
+                      const text = evt.target?.result as string
+                      if (text) {
+                        setImportJsonText(text)
+                      }
+                    }
+                    reader.readAsText(file)
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  document.getElementById("import-json-file-input")?.click()
+                }}
+                className="gap-1.5 text-xs"
+              >
+                <UploadSimple className="size-3.5" /> Upload File (.json)
+              </Button>
+              {importJsonText && (
+                <span className="text-xs text-muted-foreground">
+                  File loaded ({importJsonText.length} bytes)
+                </span>
+              )}
+            </div>
+            <Textarea
+              rows={10}
+              value={importJsonText}
+              onChange={(e) => setImportJsonText(e.target.value)}
+              placeholder='{"exportVersion":"1.0.0","metadata":{"name":"..."},"blueprint":{...}}'
+              className="font-mono text-xs"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setImportJsonText("")}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleApplyImport(importJsonText)}
+              disabled={!importJsonText.trim()}
+              className="bg-primary text-primary-foreground"
+            >
+              Apply Import
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

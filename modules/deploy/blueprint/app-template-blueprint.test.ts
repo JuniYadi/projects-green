@@ -1,9 +1,13 @@
-import { describe, expect, it } from "bun:test"
-
-import type { AppTemplateBlueprint } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+import { describe, it, expect } from "bun:test"
+import {
+  type AppTemplateBlueprint,
+  type AppTemplatePackage,
+} from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 import {
   buildInitialEnvVars,
+  exportTemplatePackage,
   validateBlueprint,
+  validateTemplatePackage,
 } from "@/modules/deploy/blueprint/app-template-blueprint.service"
 
 const validSampleBlueprint: AppTemplateBlueprint = {
@@ -217,5 +221,124 @@ describe("AppTemplateBlueprint Validation & Service", () => {
     const result = validateBlueprint(invalid)
     expect(result.valid).toBe(false)
     expect(result.errors?.["runtime.additionalPorts.0.name"]).toBeDefined()
+  })
+
+  it("enforces isFixed environment variables and prevents user overrides", () => {
+    const blueprintWithFixed: AppTemplateBlueprint = {
+      ...validSampleBlueprint,
+      envSchema: [
+        {
+          key: "HERMES_UID",
+          label: "Hermes UID",
+          defaultValue: "10000",
+          required: false,
+          isSecret: false,
+          dataType: "number",
+          isFixed: true,
+          isHidden: true,
+        },
+        {
+          key: "CUSTOM_VAR",
+          label: "Custom Var",
+          defaultValue: "default",
+          required: false,
+          isSecret: false,
+          dataType: "string",
+        },
+      ],
+    }
+
+    const envVars = buildInitialEnvVars(blueprintWithFixed, {
+      HERMES_UID: "0",
+      CUSTOM_VAR: "overridden",
+      EXTRA_USER_VAR: "extra_val",
+    })
+
+    // HERMES_UID is isFixed so override is ignored
+    expect(envVars.HERMES_UID).toBe("10000")
+    // CUSTOM_VAR is normal so override takes effect
+    expect(envVars.CUSTOM_VAR).toBe("overridden")
+    // EXTRA_USER_VAR passes through
+    expect(envVars.EXTRA_USER_VAR).toBe("extra_val")
+  })
+
+  it("validates and exports full template package bundle", () => {
+    const exported = exportTemplatePackage({
+      name: "Hermes Agent",
+      slug: "hermes-agent",
+      tagline: "AI workspace",
+      category: "AI",
+      blueprint: validSampleBlueprint,
+    })
+
+    expect(exported.exportVersion).toBe("1.0.0")
+    expect(exported.metadata.name).toBe("Hermes Agent")
+    expect(exported.metadata.slug).toBe("hermes-agent")
+    expect(exported.metadata.category).toBe("AI")
+    expect(exported.blueprint.runtime.image).toBe("ghost:5-alpine")
+
+    const validation = validateTemplatePackage(exported)
+    expect(validation.valid).toBe(true)
+    expect(validation.data).toBeDefined()
+  })
+
+  it("preserves isFixed and isHidden flags through export and package validation", () => {
+    const blueprintWithFlags: AppTemplateBlueprint = {
+      ...validSampleBlueprint,
+      envSchema: [
+        {
+          key: "HERMES_UID",
+          label: "Hermes UID",
+          defaultValue: "10000",
+          required: false,
+          isSecret: false,
+          dataType: "number",
+          isFixed: true,
+          isHidden: true,
+          generateRandomHex: 16,
+        },
+      ],
+    }
+
+    const exported = exportTemplatePackage({
+      name: "Hermes Agent",
+      slug: "hermes-agent",
+      tagline: "AI workspace",
+      category: "AI",
+      websiteUrl: "https://hermes.example.com",
+      documentationUrl: "https://docs.hermes.example.com",
+      blueprint: blueprintWithFlags,
+    })
+
+    expect(exported.metadata.websiteUrl).toBe("https://hermes.example.com")
+    expect(exported.metadata.documentationUrl).toBe(
+      "https://docs.hermes.example.com"
+    )
+    expect(exported.blueprint.envSchema?.[0]?.isFixed).toBe(true)
+    expect(exported.blueprint.envSchema?.[0]?.isHidden).toBe(true)
+    expect(exported.blueprint.envSchema?.[0]?.generateRandomHex).toBe(16)
+
+    const validation = validateTemplatePackage(exported)
+    expect(validation.valid).toBe(true)
+    expect(validation.data?.blueprint.envSchema?.[0]?.isFixed).toBe(true)
+    expect(validation.data?.blueprint.envSchema?.[0]?.isHidden).toBe(true)
+    expect(validation.data?.blueprint.envSchema?.[0]?.generateRandomHex).toBe(
+      16
+    )
+  })
+
+  it("rejects invalid template package bundle missing required fields", () => {
+    const invalidPkg = {
+      exportVersion: "1.0.0",
+      metadata: {
+        name: "",
+        slug: "hermes",
+      },
+      blueprint: validSampleBlueprint,
+    }
+
+    const validation = validateTemplatePackage(invalidPkg)
+    expect(validation.valid).toBe(false)
+    expect(validation.errors?.["metadata.name"]).toBeDefined()
   })
 })

@@ -32,6 +32,8 @@ export interface AdminTemplateRecord {
   description: string
   readmeMarkdown?: string | null
   iconUrl?: string | null
+  websiteUrl?: string | null
+  documentationUrl?: string | null
   category: string
   visibility: "PRIVATE" | "PENDING_REVIEW" | "PUBLIC" | "REJECTED" | "UNLISTED"
   version: string

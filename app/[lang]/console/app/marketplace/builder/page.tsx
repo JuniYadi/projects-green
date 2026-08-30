@@ -17,9 +17,29 @@ import {
   Save,
   Send,
   Trash2,
+  Download,
+  Upload,
 } from "lucide-react"
+import {
+  exportTemplatePackage,
+  validateTemplatePackage,
+} from "@/modules/deploy/blueprint/app-template-blueprint.service"
+import {
+  appTemplateBlueprintSchema,
+  type AppTemplateBlueprint,
+  type AppTemplatePackage,
+} from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { eden } from "@/lib/eden"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -51,6 +71,9 @@ export interface TemplateEnvVar {
   isSecret: boolean
   dataType: "string" | "number" | "boolean" | "select"
   options?: string[]
+  generateRandomHex?: number
+  isFixed?: boolean
+  isHidden?: boolean
 }
 
 export interface TemplateBuilderState {
@@ -129,7 +152,8 @@ export default function TemplateBuilderPage() {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [formData, setFormData] = useState<TemplateBuilderState>(INITIAL_STATE)
   const [isSubmitting, setIsSubmitting] = useState(false)
-
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [importJsonText, setImportJsonText] = useState("")
   const updateField = <K extends keyof TemplateBuilderState>(
     field: K,
     value: TemplateBuilderState[K]
@@ -237,7 +261,145 @@ export default function TemplateBuilderPage() {
         required: env.required,
         isSecret: env.isSecret,
         dataType: env.dataType,
+        options: env.options,
+        generateRandomHex: env.generateRandomHex,
+        isFixed: env.isFixed,
+        isHidden: env.isHidden,
       })),
+    }
+  }
+  const handleExportJson = () => {
+    const blueprint = constructBlueprintJson() as AppTemplateBlueprint
+    const pkg = exportTemplatePackage({
+      name: formData.name.trim() || "template",
+      slug:
+        formData.name
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9-]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "template",
+      tagline: formData.tagline.trim() || undefined,
+      description: formData.description.trim() || undefined,
+      category: formData.category,
+      iconUrl: formData.iconUrl.trim() || undefined,
+      blueprint,
+    })
+
+    const blob = new Blob([JSON.stringify(pkg, null, 2)], {
+      type: "application/json",
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${pkg.metadata.slug}-template.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success("Template exported as JSON")
+  }
+
+  const handleApplyImport = (jsonStr: string) => {
+    try {
+      const parsed = JSON.parse(jsonStr)
+      let meta: Partial<AppTemplatePackage["metadata"]> = {}
+      let bp: AppTemplateBlueprint
+
+      if (parsed && typeof parsed === "object" && "blueprint" in parsed) {
+        const validation = validateTemplatePackage(parsed)
+        if (!validation.valid || !validation.data) {
+          const firstErr =
+            Object.values(validation.errors || {})[0] ||
+            "Invalid package structure"
+          toast.error(`Invalid template package: ${firstErr}`)
+          return
+        }
+        meta = validation.data.metadata
+        bp = validation.data.blueprint
+      } else {
+        const parseResult = appTemplateBlueprintSchema.safeParse(parsed)
+        if (!parseResult.success) {
+          const firstIssue =
+            parseResult.error.issues[0]?.message ||
+            "Invalid blueprint structure"
+          toast.error(`Invalid blueprint schema: ${firstIssue}`)
+          return
+        }
+        bp = parseResult.data
+      }
+
+      setFormData((prev) => {
+        const next = { ...prev }
+        if (meta.name) next.name = meta.name
+        if (meta.tagline) next.tagline = meta.tagline
+        if (meta.description) next.description = meta.description
+        if (meta.category) next.category = meta.category
+        if (meta.iconUrl) next.iconUrl = meta.iconUrl
+
+        if (bp.runtime) {
+          if (bp.runtime.image) next.image = bp.runtime.image
+          if (bp.runtime.defaultPort) next.defaultPort = bp.runtime.defaultPort
+          if (bp.runtime.healthCheckPath !== undefined)
+            next.healthCheckPath = bp.runtime.healthCheckPath
+          if (bp.runtime.runAsNonRoot !== undefined)
+            next.runAsNonRoot = bp.runtime.runAsNonRoot
+          if (bp.runtime.command) next.command = bp.runtime.command.join(" ")
+          if (bp.runtime.args) next.args = bp.runtime.args.join(" ")
+        }
+
+        if (bp.resources) {
+          if (bp.resources.defaultCpu) next.defaultCpu = bp.resources.defaultCpu
+          if (bp.resources.defaultMemory)
+            next.defaultMemory = bp.resources.defaultMemory
+        }
+
+        if (bp.storage) {
+          next.enableStorage = Boolean(bp.storage.enabled)
+          if (bp.storage.mountPath) next.storageMountPath = bp.storage.mountPath
+          if (bp.storage.sizeGbDefault)
+            next.storageSizeGb = bp.storage.sizeGbDefault
+        } else {
+          next.enableStorage = false
+        }
+
+        if (Array.isArray(bp.dependencies)) {
+          next.enablePostgres = bp.dependencies.some(
+            (d) => d.serviceType === "POSTGRESQL"
+          )
+          next.enableMysql = bp.dependencies.some(
+            (d) => d.serviceType === "MYSQL"
+          )
+          next.enableRedis = bp.dependencies.some(
+            (d) => d.serviceType === "REDIS"
+          )
+        }
+
+        if (Array.isArray(bp.envSchema)) {
+          next.envSchema = bp.envSchema.map((item) => ({
+            id: Math.random().toString(36).substring(2, 9),
+            key: item.key,
+            label: item.label,
+            description: item.description,
+            defaultValue: item.defaultValue,
+            required: item.required,
+            isSecret: item.isSecret,
+            dataType: item.dataType,
+            options: item.options,
+            generateRandomHex: item.generateRandomHex,
+            isFixed: item.isFixed,
+            isHidden: item.isHidden,
+          }))
+        }
+
+        return next
+      })
+
+      setShowImportDialog(false)
+      setImportJsonText("")
+      toast.success("Template configuration imported successfully!")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Invalid JSON syntax"
+      toast.error(`Import failed: ${msg}`)
     }
   }
 
@@ -374,7 +536,27 @@ export default function TemplateBuilderPage() {
         </div>
 
         {/* Action CTAs */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSubmitting}
+            onClick={() => setShowImportDialog(true)}
+            className="gap-1.5 text-xs"
+          >
+            <Upload className="h-4 w-4" />
+            Import JSON
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSubmitting}
+            onClick={handleExportJson}
+            className="gap-1.5 text-xs"
+          >
+            <Download className="h-4 w-4" />
+            Export JSON
+          </Button>
           <Button
             variant="outline"
             disabled={isSubmitting}
@@ -996,6 +1178,77 @@ export default function TemplateBuilderPage() {
           </div>
         </CardFooter>
       </Card>
+
+      {/* Import JSON Dialog */}
+      <AlertDialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Import Template Configuration</AlertDialogTitle>
+            <AlertDialogDescription>
+              Paste a template package JSON exported from another environment
+              (e.g. dev/staging) or upload a .json file.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                accept=".json,application/json"
+                id="builder-import-json-file"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    const reader = new FileReader()
+                    reader.onload = (evt) => {
+                      const text = evt.target?.result as string
+                      if (text) {
+                        setImportJsonText(text)
+                      }
+                    }
+                    reader.readAsText(file)
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  document.getElementById("builder-import-json-file")?.click()
+                }}
+                className="gap-1.5 text-xs"
+              >
+                <Upload className="size-3.5" /> Upload File (.json)
+              </Button>
+              {importJsonText && (
+                <span className="text-xs text-muted-foreground">
+                  File loaded ({importJsonText.length} bytes)
+                </span>
+              )}
+            </div>
+            <Textarea
+              rows={10}
+              value={importJsonText}
+              onChange={(e) => setImportJsonText(e.target.value)}
+              placeholder='{"exportVersion":"1.0.0","metadata":{"name":"..."},"blueprint":{...}}'
+              className="font-mono text-xs"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setImportJsonText("")}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleApplyImport(importJsonText)}
+              disabled={!importJsonText.trim()}
+              className="bg-primary text-primary-foreground"
+            >
+              Apply Import
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

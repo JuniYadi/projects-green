@@ -151,6 +151,8 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
           required: false,
           isSecret: false,
           dataType: "number",
+          isFixed: true,
+          isHidden: true,
         },
         {
           key: "HERMES_GID",
@@ -161,6 +163,8 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
           required: false,
           isSecret: false,
           dataType: "number",
+          isFixed: true,
+          isHidden: true,
         },
         {
           key: "API_SERVER_ENABLED",

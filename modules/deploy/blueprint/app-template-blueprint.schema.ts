@@ -51,6 +51,8 @@ export const appTemplateBlueprintEnvVarSchema = z.object({
   dataType: z.enum(["string", "number", "boolean", "select"]),
   options: z.array(z.string()).optional(),
   generateRandomHex: z.number().int().min(1).optional(),
+  isFixed: z.boolean().default(false).optional(),
+  isHidden: z.boolean().default(false).optional(),
 })
 
 export const appTemplateBlueprintSchema = z.object({
@@ -81,3 +83,31 @@ export type AppTemplateBlueprintDependency = z.infer<
 export type AppTemplateBlueprintEnvVar = z.infer<
   typeof appTemplateBlueprintEnvVarSchema
 >
+
+export const appTemplatePackageSchema = z.object({
+  exportVersion: z.literal("1.0.0").default("1.0.0"),
+  metadata: z.object({
+    name: z.string().trim().min(1, "Template name is required"),
+    slug: z.string().trim().min(1, "Template slug is required"),
+    tagline: z.string().trim().optional(),
+    description: z.string().trim().optional(),
+    category: z
+      .enum([
+        "AI",
+        "AUTOMATION",
+        "CMS",
+        "DATABASE",
+        "DEVELOPER_TOOLS",
+        "ANALYTICS",
+        "UTILITIES",
+      ])
+      .default("UTILITIES"),
+    iconUrl: z.string().trim().optional(),
+    websiteUrl: z.string().trim().optional(),
+    documentationUrl: z.string().trim().optional(),
+  }),
+  blueprint: appTemplateBlueprintSchema,
+})
+
+export type AppTemplatePackage = z.input<typeof appTemplatePackageSchema>
+export type AppTemplatePackageParsed = z.infer<typeof appTemplatePackageSchema>

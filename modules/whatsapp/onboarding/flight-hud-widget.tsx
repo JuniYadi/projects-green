@@ -40,14 +40,14 @@ export function FlightHudWidget({
   const t = messages.console.whatsapp.onboarding.hud
   const tLevels = messages.console.whatsapp.onboarding.levels
   const HUD_STORAGE_KEY = "whatsapp_onboarding_hud_closed"
-  const [isDismissed, setIsDismissed] = React.useState<boolean>(() => {
-    if (typeof window === "undefined") return false
+  const [isDismissed, setIsDismissed] = React.useState(false)
+
+  React.useEffect(() => {
     try {
-      return localStorage.getItem(HUD_STORAGE_KEY) === "true"
-    } catch {
-      return false
-    }
-  })
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsDismissed(localStorage.getItem(HUD_STORAGE_KEY) === "true")
+    } catch {}
+  }, [])
   const [isExpanded, setIsExpanded] = React.useState(false)
   const [isInternalOrderOpen, setIsInternalOrderOpen] = React.useState(false)
 

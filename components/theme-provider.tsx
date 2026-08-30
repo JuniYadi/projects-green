@@ -15,6 +15,11 @@ function ThemeProvider({
       disableTransitionOnChange
       enableColorScheme={false}
       forcedTheme={undefined}
+      // React 19 + Next.js 16 warn when next-themes' inline FOUC-prevention
+      // script renders as a component <script> tag. Using a non-JS type
+      // keeps React from treating it as executable markup.
+      // https://github.com/pacocoursey/next-themes/issues/387
+      scriptProps={{ type: "application/json" }}
       {...props}
     >
       <ThemeHotkey />

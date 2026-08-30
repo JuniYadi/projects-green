@@ -45,6 +45,13 @@ describe("FlightHudWidget", () => {
     cleanup()
   })
 
+  it("hides the widget after mount when previously dismissed in localStorage", () => {
+    localStorage.setItem("whatsapp_onboarding_hud_closed", "true")
+    const view = render(<FlightHudWidget onboarding={mockState} />)
+    expect(view.queryByText("Onboarding Guide")).not.toBeInTheDocument()
+    localStorage.removeItem("whatsapp_onboarding_hud_closed")
+  })
+
   it("renders the onboarding guide pill", () => {
     const view = render(<FlightHudWidget onboarding={mockState} />)
     expect(view.getByText("Onboarding Guide")).toBeInTheDocument()

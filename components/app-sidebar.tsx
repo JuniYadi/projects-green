@@ -103,7 +103,8 @@ interface SidebarContextConfig {
   getNavMain: (
     pathname: string,
     locale: AppLocale,
-    tab?: string
+    tab?: string,
+    isGraduated?: boolean
   ) => AppSidebarNavItem[]
   getNavHeader?: (pathname: string, locale: AppLocale) => React.ReactNode
   navMainLabel: string
@@ -776,17 +777,7 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         icon: <CaretLeftIcon />,
       },
     ],
-    getNavMain: (path, locale) => {
-      let isGraduated = false
-      if (typeof window !== "undefined") {
-        try {
-          const manual = localStorage.getItem("whatsapp_onboarding_graduated")
-          const statusCached = sessionStorage.getItem(
-            "whatsapp_onboarding_graduated"
-          )
-          isGraduated = manual === "true" || statusCached === "true"
-        } catch {}
-      }
+    getNavMain: (path, locale, _tab, isGraduated = false) => {
       return [
         {
           title: "Dashboard",
@@ -1131,11 +1122,13 @@ export const resolveSidebarMenu = ({
   pathname,
   locale,
   tab,
+  isGraduated,
 }: {
   surface: AppSidebarSurface
   pathname: string
   locale: AppLocale
   tab?: string
+  isGraduated?: boolean
 }): {
   navMain: AppSidebarNavItem[]
   projects: AppSidebarProject[]
@@ -1146,7 +1139,7 @@ export const resolveSidebarMenu = ({
     const matchingContext = PORTAL_CONTEXTS.find((cfg) => cfg.matches(pathname))
     if (matchingContext) {
       return {
-        navMain: matchingContext.getNavMain(pathname, locale, tab),
+        navMain: matchingContext.getNavMain(pathname, locale, tab, isGraduated),
         projects: matchingContext.getProjects(pathname, locale),
         navMainLabel: matchingContext.navMainLabel,
         navHeader: matchingContext.getNavHeader?.(pathname, locale),
@@ -1170,7 +1163,12 @@ export const resolveSidebarMenu = ({
   const matchingContext = CONSOLE_CONTEXTS.find((cfg) => cfg.matches(pathname))
   if (matchingContext) {
     return {
-      navMain: matchingContext.getNavMain(pathname, locale),
+      navMain: matchingContext.getNavMain(
+        pathname,
+        locale,
+        undefined,
+        isGraduated
+      ),
       projects: matchingContext.getProjects(pathname, locale),
       navMainLabel: matchingContext.navMainLabel,
     }
@@ -1192,11 +1190,27 @@ export function AppSidebar({
   const searchParams = useSearchParams()
   const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
 
+  // Start false to match the server render (no storage access during SSR),
+  // then resolve the real value after mount to avoid a hydration mismatch.
+  const [isWhatsappGraduated, setIsWhatsappGraduated] = React.useState(false)
+
+  React.useEffect(() => {
+    try {
+      const manual = localStorage.getItem("whatsapp_onboarding_graduated")
+      const statusCached = sessionStorage.getItem(
+        "whatsapp_onboarding_graduated"
+      )
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsWhatsappGraduated(manual === "true" || statusCached === "true")
+    } catch {}
+  }, [])
+
   const { navMain, projects, navMainLabel, navHeader } = resolveSidebarMenu({
     surface,
     pathname: pathnameWithoutLocale,
     locale: locale ?? defaultLocale,
     tab: searchParams.get("tab") ?? undefined,
+    isGraduated: isWhatsappGraduated,
   })
 
   const navSecondary = resolveSidebarSecondaryLinks({

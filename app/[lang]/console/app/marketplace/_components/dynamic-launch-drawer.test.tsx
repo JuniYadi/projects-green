@@ -305,4 +305,98 @@ describe("DynamicLaunchDrawer", () => {
 
     expect(await view.findByText("Express Top Up")).toBeDefined()
   })
+
+  it("supports adding custom environment variables and prevents reserved key submission", async () => {
+    const handleDeploy = mock(async () => {})
+    const user = userEvent.setup()
+
+    const templateWithFixed: MarketplaceTemplateItem = {
+      ...mockTemplate,
+      blueprint: {
+        ...mockTemplate.blueprint,
+        envSchema: [
+          {
+            key: "N8N_PORT",
+            label: "Port",
+            defaultValue: "5678",
+            required: true,
+            isSecret: false,
+            dataType: "number",
+            isFixed: true,
+          },
+          {
+            key: "INTERNAL_SECRET",
+            label: "Internal",
+            defaultValue: "hidden_val",
+            required: false,
+            isSecret: false,
+            dataType: "string",
+            isHidden: true,
+          },
+        ],
+      },
+    }
+
+    const view = render(
+      <DynamicLaunchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        template={templateWithFixed}
+        onDeploy={handleDeploy}
+      />
+    )
+
+    // Fixed field should have "Fixed" indicator and be disabled
+    expect(view.getByText("Fixed")).toBeDefined()
+    const portInput = document.querySelector(
+      "#env-field-N8N_PORT"
+    ) as HTMLInputElement
+    expect(portInput.disabled).toBe(true)
+
+    // Hidden field should NOT be rendered in visible env schema list
+    expect(document.querySelector("#env-field-INTERNAL_SECRET")).toBeNull()
+
+    // Add custom env variable
+    const addVarBtn = view.getByRole("button", { name: /Add Variable/i })
+    fireEvent.click(addVarBtn)
+
+    const keyInput = document.querySelector(
+      "input[placeholder='VARIABLE_KEY']"
+    ) as HTMLInputElement
+    const valInput = document.querySelector(
+      "input[placeholder='Value']"
+    ) as HTMLInputElement
+    expect(keyInput).toBeDefined()
+    expect(valInput).toBeDefined()
+
+    // Test reserved key collision validation
+    await user.type(keyInput, "n8n_port")
+    expect(keyInput.value).toBe("N8N_PORT") // Auto-uppercased
+    expect(
+      view.getByText(/"N8N_PORT" is a reserved template variable/i)
+    ).toBeDefined()
+
+    // Deploy button is disabled when there's a collision
+    const deployButton = view.getByText("Confirm & Deploy Instantly")
+    expect((deployButton.closest("button") as HTMLButtonElement).disabled).toBe(
+      true
+    )
+
+    // Change key to a non-reserved name
+    await user.clear(keyInput)
+    await user.type(keyInput, "MY_CUSTOM_CONFIG")
+    await user.type(valInput, "custom_123")
+
+    expect((deployButton.closest("button") as HTMLButtonElement).disabled).toBe(
+      false
+    )
+    fireEvent.click(deployButton)
+
+    expect(handleDeploy).toHaveBeenCalledTimes(1)
+    const payload = (handleDeploy.mock.calls as unknown[][])[0]![0] as {
+      envVars: Record<string, string>
+    }
+    expect(payload.envVars.MY_CUSTOM_CONFIG).toBe("custom_123")
+    expect(payload.envVars.N8N_PORT).toBe("5678")
+  })
 })

@@ -82,10 +82,19 @@ const mockPrisma = {
     })),
   },
   applicationStack: {
-    findUnique: mock(async () => ({ ...stackRecord, clusterId: null })),
-    findUniqueOrThrow: mock(async () => ({ ...stackRecord })),
-    create: mock(async () => ({ ...stackRecord })),
-    update: mock(async () => ({ ...stackRecord })),
+    findFirst: mock(async () => ({
+      ...stackRecord,
+      clusterId: null,
+      envVarsJson: [],
+    })),
+    findUnique: mock(async () => ({
+      ...stackRecord,
+      clusterId: null,
+      envVarsJson: [],
+    })),
+    findUniqueOrThrow: mock(async () => ({ ...stackRecord, envVarsJson: [] })),
+    create: mock(async () => ({ ...stackRecord, envVarsJson: [] })),
+    update: mock(async () => ({ ...stackRecord, envVarsJson: [] })),
     count: mock(async () => 0),
   },
   applicationDeployment: {
