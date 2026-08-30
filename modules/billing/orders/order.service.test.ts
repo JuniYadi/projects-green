@@ -42,11 +42,12 @@ const mockResolveInvoiceEmailRecipients = mock(async () => [
   { email: "billing@example.com" },
 ])
 
+const mockTriggerDeploy = mock(async () => ({
+  deploymentId: "mock-dep-1",
+  status: "QUEUED",
+}))
 mock.module("@/modules/deploy/deploy-pipeline.service", () => ({
-  triggerDeploy: mock(async () => ({
-    deploymentId: "mock-dep-1",
-    status: "QUEUED",
-  })),
+  triggerDeploy: mockTriggerDeploy,
 }))
 mock.module("../email-recipients", () => ({
   resolveInvoiceEmailRecipients: mockResolveInvoiceEmailRecipients,
@@ -838,12 +839,91 @@ describe("BillingOrderService", () => {
       undefined,
       new BillingFulfillmentRegistry([appHostingAdapter])
     )
-
     await service.fulfillOrder("order-1")
     await service.fulfillOrder("order-1")
 
     expect(appHostingAdapter.create).toHaveBeenCalledTimes(1)
     expect(mockPrisma.billingOrder.update).toHaveBeenCalledTimes(1)
+    expect(mockTriggerDeploy).toHaveBeenCalledWith({
+      stackId: "stack-1",
+      triggerType: "GITHUB",
+    })
+  })
+
+  it("skips auto-deploy when autoDeploy is false", async () => {
+    mockTriggerDeploy.mockClear()
+    const charged = orderFixture({
+      status: "CHARGED",
+      billingInvoiceId: "invoice-1",
+      lines: [
+        {
+          ...orderFixture().lines[0],
+          packageCode: "APP_HOSTING",
+          metadataJson: {
+            appHostingFulfillment: {
+              ...appHostingContext,
+              autoDeploy: false,
+            },
+            planId: "plan-1",
+          },
+        },
+      ],
+    })
+    const fulfilled = orderFixture({
+      ...charged,
+      status: "FULFILLED",
+      serviceSubscriptionId: "app-hosting-subscription-1",
+    })
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(charged)
+    mockPrisma.billingOrder.update.mockResolvedValue(fulfilled)
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([appHostingAdapter])
+    )
+
+    await service.fulfillOrder("order-1")
+
+    expect(appHostingAdapter.create).toHaveBeenCalledTimes(1)
+    expect(mockTriggerDeploy).not.toHaveBeenCalled()
+  })
+
+  it("does not fail fulfillment if triggerDeploy throws an error", async () => {
+    mockTriggerDeploy.mockRejectedValueOnce(
+      new Error("Deploy engine unavailable")
+    )
+    const charged = orderFixture({
+      status: "CHARGED",
+      billingInvoiceId: "invoice-1",
+      lines: [
+        {
+          ...orderFixture().lines[0],
+          packageCode: "APP_HOSTING",
+          metadataJson: {
+            appHostingFulfillment: appHostingContext,
+            planId: "plan-1",
+          },
+        },
+      ],
+    })
+    const fulfilled = orderFixture({
+      ...charged,
+      status: "FULFILLED",
+      serviceSubscriptionId: "app-hosting-subscription-1",
+    })
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(charged)
+    mockPrisma.billingOrder.update.mockResolvedValue(fulfilled)
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([appHostingAdapter])
+    )
+
+    const result = await service.fulfillOrder("order-1")
+
+    expect(result.status).toBe("FULFILLED")
+    expect(appHostingAdapter.create).toHaveBeenCalledTimes(1)
+    expect(mockTriggerDeploy).toHaveBeenCalledTimes(1)
   })
   it("fails closed when the transaction cannot acquire the advisory lock", async () => {
     const txWithoutLock = { ...mockPrisma, $executeRaw: undefined }

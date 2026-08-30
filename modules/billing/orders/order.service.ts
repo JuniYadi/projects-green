@@ -12,9 +12,11 @@ import type {
   ResolvedRecurringPrice,
 } from "../pricing/pricing.types"
 import {
+  APP_HOSTING_FULFILLMENT_METADATA_KEY,
   AppHostingFulfillmentError,
   createBillingFulfillmentRegistry,
   sanitizeAppHostingOrderMetadata,
+  type AppHostingFulfillmentContext,
   type BillingFulfillmentInput,
   type BillingFulfillmentRegistry,
 } from "./fulfillment-adapters"
@@ -422,6 +424,7 @@ export class BillingOrderService {
   ): Promise<BillingOrderResult> {
     let adapterAttempted = false
     let attemptedOrderMetadata: Record<string, unknown> = {}
+    let fulfilledAppHostingContext: AppHostingFulfillmentContext | undefined
     const run = async (tx: Prisma.TransactionClient) => {
       const txClient = tx as Prisma.TransactionClient & {
         $executeRaw?: (query: unknown) => Promise<number>
@@ -477,6 +480,11 @@ export class BillingOrderService {
         line.packageCode === "APP_HOSTING"
           ? sanitizeAppHostingOrderMetadata(orderMetadata)
           : orderMetadata
+      if (line.packageCode === "APP_HOSTING") {
+        fulfilledAppHostingContext = input.metadata[
+          APP_HOSTING_FULFILLMENT_METADATA_KEY
+        ] as AppHostingFulfillmentContext | undefined
+      }
       let subscriptionId = order.serviceSubscriptionId
       if (subscriptionId) {
         await adapter.renew(input, tx)
@@ -603,32 +611,23 @@ export class BillingOrderService {
       throw error
     }
 
-    // Auto-trigger deploy for App Hosting order if requested and not already queued
     if (
       result.status === "FULFILLED" &&
-      attemptedOrderMetadata &&
-      attemptedOrderMetadata.appHostingFulfillment &&
-      typeof attemptedOrderMetadata.appHostingFulfillment === "object"
+      fulfilledAppHostingContext?.stackId &&
+      fulfilledAppHostingContext.autoDeploy !== false
     ) {
-      const context = attemptedOrderMetadata.appHostingFulfillment as {
-        stackId?: string
-        sourceType?: "GITHUB" | "PUBLIC" | "TEMPLATE"
-        autoDeploy?: boolean
-      }
-      if (context.stackId && context.autoDeploy !== false) {
-        try {
-          await triggerDeploy({
-            stackId: context.stackId,
-            triggerType: context.sourceType ?? "TEMPLATE",
-          })
-        } catch (deployError) {
-          // Deployment error shouldn't fail fulfillment since subscription & credentials are ready;
-          // stack/deploy monitor or user can retry deployment.
-          console.error(
-            `[BillingOrderService.fulfillOrder] auto-deploy trigger failed for stack ${context.stackId}:`,
-            deployError
-          )
-        }
+      try {
+        await triggerDeploy({
+          stackId: fulfilledAppHostingContext.stackId,
+          triggerType: fulfilledAppHostingContext.sourceType ?? "TEMPLATE",
+        })
+      } catch (deployError) {
+        // Deployment error shouldn't fail fulfillment since subscription & credentials are ready;
+        // stack/deploy monitor or user can retry deployment.
+        console.error(
+          `[BillingOrderService.fulfillOrder] auto-deploy trigger failed for stack ${fulfilledAppHostingContext.stackId}:`,
+          deployError
+        )
       }
     }
 
