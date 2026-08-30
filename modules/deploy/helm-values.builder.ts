@@ -74,6 +74,7 @@ export type HelmValuesInput = {
   cpu?: number | null
   memory?: number | null
   containerPort?: number | null
+  additionalContainerPorts?: Array<{ port: number; name: string }>
   servicePort?: number | null
   domain?: string | null
   edge?: HelmValuesEdgePolicy | null
@@ -136,6 +137,10 @@ export function buildHelmValues(
         containerPort: input.containerPort ?? port,
         name: "http",
       },
+      ...(input.additionalContainerPorts ?? []).map((p) => ({
+        containerPort: p.port,
+        name: p.name,
+      })),
     ],
     resources: {
       requests: { cpu: `${cpu}m`, memory: `${memory}Mi` },

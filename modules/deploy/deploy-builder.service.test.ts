@@ -401,4 +401,44 @@ describe("processQueuedDeployment", () => {
     expect(filesArg[0]?.content).toContain("repository: docker.io/n8nio/n8n")
     expect(filesArg[0]?.content).toContain("tag: latest")
   })
+
+  it("threads deploymentType and additionalPorts from stack metadataJson into the committed Helm values (Hermes case)", async () => {
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      id: "deploy-hermes-1",
+      stackId: "stack-hermes-1",
+      status: "QUEUED",
+      commitSha: null,
+      stack: {
+        id: "stack-hermes-1",
+        slug: "hermes-agent",
+        branchName: "main",
+        repositoryConnectionId: null,
+        framework: null,
+        sourceType: "TEMPLATE",
+        publicSourceUrl: null,
+        publicSourceRef: null,
+        cpu: 500,
+        memory: 1024,
+        customDomain: null,
+        envVarsJson: [],
+        metadataJson: {
+          imageRepository: "nousresearch/hermes-agent:v2026.8.18",
+          deploymentType: "statefulset",
+          additionalPorts: [{ port: 9119, name: "dashboard" }],
+        },
+      },
+    } as never)
+
+    const result = await processQueuedDeployment("deploy-hermes-1")
+
+    expect(result.processed).toBe(true)
+    expect(result.status).toBe("DEPLOYING")
+
+    const [, , filesArg] = commitFilesMock.mock.calls[
+      commitFilesMock.mock.calls.length - 1
+    ] as [string, string, Array<{ path: string; content: string }>]
+    expect(filesArg[0]?.content).toContain("deploymentType: statefulset")
+    expect(filesArg[0]?.content).toContain("containerPort: 9119")
+    expect(filesArg[0]?.content).toContain("name: dashboard")
+  })
 })

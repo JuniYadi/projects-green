@@ -11,6 +11,15 @@ export const appTemplateBlueprintRuntimeSchema = z.object({
     .max(65535, "Port must be at most 65535"),
   healthCheckPath: z.string().trim().optional(),
   runAsNonRoot: z.boolean().default(true),
+  deploymentType: z.enum(["deployment", "statefulset"]).default("deployment"),
+  additionalPorts: z
+    .array(
+      z.object({
+        port: z.number().int().min(1).max(65535),
+        name: z.string().trim().min(1),
+      })
+    )
+    .default([]),
 })
 
 export const appTemplateBlueprintResourcesSchema = z.object({
@@ -53,8 +62,11 @@ export const appTemplateBlueprintSchema = z.object({
   envSchema: z.array(appTemplateBlueprintEnvVarSchema).default([]),
 })
 
-export type AppTemplateBlueprint = z.infer<typeof appTemplateBlueprintSchema>
-export type AppTemplateBlueprintRuntime = z.infer<
+export type AppTemplateBlueprint = z.input<typeof appTemplateBlueprintSchema>
+export type AppTemplateBlueprintParsed = z.infer<
+  typeof appTemplateBlueprintSchema
+>
+export type AppTemplateBlueprintRuntime = z.input<
   typeof appTemplateBlueprintRuntimeSchema
 >
 export type AppTemplateBlueprintResources = z.infer<

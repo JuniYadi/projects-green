@@ -122,6 +122,12 @@ export function TemplateEditorForm({
   const [runAsNonRoot, setRunAsNonRoot] = useState(
     initialData?.blueprintJson?.runtime?.runAsNonRoot ?? true
   )
+  const [deploymentType, setDeploymentType] = useState<
+    "deployment" | "statefulset"
+  >(initialData?.blueprintJson?.runtime?.deploymentType ?? "deployment")
+  const [additionalPorts, setAdditionalPorts] = useState<
+    Array<{ port: number; name: string }>
+  >(initialData?.blueprintJson?.runtime?.additionalPorts || [])
   const [defaultCpu, setDefaultCpu] = useState<number>(
     initialData?.blueprintJson?.resources?.defaultCpu || 500
   )
@@ -180,6 +186,8 @@ export function TemplateEditorForm({
       defaultPort,
       healthCheckPath: healthCheckPath || undefined,
       runAsNonRoot,
+      deploymentType,
+      additionalPorts,
     },
     resources: {
       defaultCpu,
@@ -219,6 +227,28 @@ export function TemplateEditorForm({
   const updateEnvVar = (idx: number, patch: Partial<(typeof envSchema)[0]>) => {
     setEnvSchema(
       envSchema.map((item, i) => (i === idx ? { ...item, ...patch } : item))
+    )
+  }
+
+  const addAdditionalPort = () => {
+    setAdditionalPorts([
+      ...additionalPorts,
+      { port: 8080, name: `port-${additionalPorts.length + 1}` },
+    ])
+  }
+
+  const removeAdditionalPort = (idx: number) => {
+    setAdditionalPorts(additionalPorts.filter((_, i) => i !== idx))
+  }
+
+  const updateAdditionalPort = (
+    idx: number,
+    patch: Partial<(typeof additionalPorts)[0]>
+  ) => {
+    setAdditionalPorts(
+      additionalPorts.map((item, i) =>
+        i === idx ? { ...item, ...patch } : item
+      )
     )
   }
 
@@ -673,6 +703,76 @@ export function TemplateEditorForm({
                       placeholder="/healthz"
                     />
                   </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="runtime-deployment-type">Workload Type</Label>
+                  <Select
+                    value={deploymentType}
+                    onValueChange={(v: "deployment" | "statefulset") =>
+                      setDeploymentType(v)
+                    }
+                  >
+                    <SelectTrigger id="runtime-deployment-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="deployment">Deployment</SelectItem>
+                      <SelectItem value="statefulset">StatefulSet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 rounded-lg border p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">
+                        Additional Ports
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Extra container ports beyond the default port
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addAdditionalPort}
+                      className="gap-1 text-xs"
+                    >
+                      <Plus className="size-3.5" /> Add Port
+                    </Button>
+                  </div>
+                  {additionalPorts.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={item.port}
+                        onChange={(e) =>
+                          updateAdditionalPort(idx, {
+                            port: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="9119"
+                        className="h-8 text-xs"
+                      />
+                      <Input
+                        value={item.name}
+                        onChange={(e) =>
+                          updateAdditionalPort(idx, { name: e.target.value })
+                        }
+                        placeholder="dashboard"
+                        className="h-8 text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeAdditionalPort(idx)}
+                        className="size-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <TrashIcon className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div className="space-y-0.5">

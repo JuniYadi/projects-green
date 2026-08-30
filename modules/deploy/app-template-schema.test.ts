@@ -61,6 +61,55 @@ describe("AppTemplate Prisma Schema & Seed", () => {
     }
   })
 
+  it("corrects the Hermes template to match the real nousresearch/hermes-agent product", () => {
+    const hermes = OFFICIAL_APP_TEMPLATES.find((t) => t.slug === "hermes")
+    expect(hermes).toBeDefined()
+    const runtime = hermes?.blueprint.runtime
+    expect(runtime?.image).toBe("nousresearch/hermes-agent:v2026.8.18")
+    expect(runtime?.defaultPort).toBe(8642)
+    expect(runtime?.healthCheckPath).toBe("/healthz")
+    expect(runtime?.deploymentType).toBe("statefulset")
+    expect(runtime?.additionalPorts).toEqual([
+      { port: 9119, name: "dashboard" },
+    ])
+
+    expect(hermes?.blueprint.storage?.mountPath).toBe("/opt/data")
+
+    expect(hermes?.blueprint.dependencies).toEqual([])
+
+    const envKeys = hermes?.blueprint.envSchema?.map((e) => e.key)
+    expect(envKeys).toEqual([
+      "ANTHROPIC_API_KEY",
+      "HERMES_UID",
+      "HERMES_GID",
+      "API_SERVER_ENABLED",
+      "API_SERVER_HOST",
+      "API_SERVER_KEY",
+    ])
+
+    const apiKeyEnv = hermes?.blueprint.envSchema?.find(
+      (e) => e.key === "ANTHROPIC_API_KEY"
+    )
+    expect(apiKeyEnv?.required).toBe(true)
+    expect(apiKeyEnv?.isSecret).toBe(true)
+
+    for (const key of [
+      "HERMES_UID",
+      "HERMES_GID",
+      "API_SERVER_ENABLED",
+      "API_SERVER_HOST",
+      "API_SERVER_KEY",
+    ]) {
+      const env = hermes?.blueprint.envSchema?.find((e) => e.key === key)
+      expect(env?.required).toBe(false)
+    }
+
+    const apiServerKeyEnv = hermes?.blueprint.envSchema?.find(
+      (e) => e.key === "API_SERVER_KEY"
+    )
+    expect(apiServerKeyEnv?.isSecret).toBe(true)
+  })
+
   it("executes seedOfficialAppTemplates idempotently against mock Prisma delegate", async () => {
     const upserted: Array<{
       slug: string

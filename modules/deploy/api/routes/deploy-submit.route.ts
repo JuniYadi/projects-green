@@ -25,6 +25,8 @@ interface BlueprintRuntimeConfig {
   runtime?: {
     defaultPort?: number
     image?: string
+    deploymentType?: "deployment" | "statefulset"
+    additionalPorts?: Array<{ port: number; name: string }>
   }
   resources?: {
     defaultCpu?: number
@@ -125,6 +127,11 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
     let slug: string
     let managedTemplate: ManagedAppTemplate | undefined
     let dbTemplateImageRepository: string | null = null
+    let dbTemplateDeploymentType: "deployment" | "statefulset" | null = null
+    let dbTemplateAdditionalPorts: Array<{
+      port: number
+      name: string
+    }> | null = null
 
     if (sourceType === "MANAGED_TEMPLATE") {
       managedTemplate = MANAGED_APP_TEMPLATES.find(
@@ -157,6 +164,9 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
             (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig) ??
             null
           dbTemplateImageRepository = blueprint?.runtime?.image ?? null
+          dbTemplateDeploymentType = blueprint?.runtime?.deploymentType ?? null
+          dbTemplateAdditionalPorts =
+            blueprint?.runtime?.additionalPorts ?? null
           template = {
             id: dbTemplate.id as (typeof DEPLOY_TEMPLATES)[number]["id"],
             name: dbTemplate.name,
@@ -313,6 +323,8 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         envVars: body.envVars ?? [],
         imageRepository:
           managedTemplate?.imageRepository ?? dbTemplateImageRepository ?? null,
+        deploymentType: dbTemplateDeploymentType,
+        additionalPorts: dbTemplateAdditionalPorts,
       })
     } catch (error) {
       if (claimedStock) {
