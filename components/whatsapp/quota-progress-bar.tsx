@@ -5,6 +5,8 @@ type QuotaProgressBarProps = {
   total: number
   label?: string
   showPercent?: boolean
+  usedLabel?: string
+  quotaLabel?: string
 }
 
 export function QuotaProgressBar({
@@ -12,6 +14,8 @@ export function QuotaProgressBar({
   total,
   label,
   showPercent = true,
+  usedLabel = "used",
+  quotaLabel = "quota",
 }: QuotaProgressBarProps) {
   const percent = total > 0 ? Math.min(100, (used / total) * 100) : 0
 
@@ -53,8 +57,12 @@ export function QuotaProgressBar({
         />
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{used.toLocaleString()} used</span>
-        <span>{total.toLocaleString()} quota</span>
+        <span>
+          {used.toLocaleString()} {usedLabel}
+        </span>
+        <span>
+          {total.toLocaleString()} {quotaLabel}
+        </span>
       </div>
     </div>
   )

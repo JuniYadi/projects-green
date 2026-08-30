@@ -121,8 +121,9 @@ function getLast30DaysRange(): { from: string; to: string } {
   return { from, to }
 }
 
-function getMonthName(month: number): string {
-  return new Date(2026, month - 1).toLocaleString("en", { month: "short" })
+function getMonthName(month: number, locale?: string): string {
+  const loc = locale === "id" ? "id-ID" : "en-US"
+  return new Date(2026, month - 1).toLocaleString(loc, { month: "short" })
 }
 
 const DAILY_CHART_CONFIG = {
@@ -346,7 +347,9 @@ export default function WhatsAppUsagePage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inbound Count</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {locale === "id" ? "Pesan Masuk" : "Inbound Count"}
+            </CardTitle>
             <ChatCircle className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -369,7 +372,7 @@ export default function WhatsAppUsagePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Outbound Count
+              {locale === "id" ? "Pesan Terkirim" : "Outbound Count"}
             </CardTitle>
             <PaperPlaneTilt className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -427,7 +430,9 @@ export default function WhatsAppUsagePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Monthly Quota Used
+              {locale === "id"
+                ? "Kuota Terpakai Bulan Ini"
+                : "Monthly Quota Used"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -456,7 +461,7 @@ export default function WhatsAppUsagePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Remaining Quota
+              {locale === "id" ? "Sisa Kuota Paket" : "Remaining Quota"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -481,7 +486,7 @@ export default function WhatsAppUsagePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Projected Cost
+              {locale === "id" ? "Estimasi Biaya Bulanan" : "Projected Cost"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -499,14 +504,18 @@ export default function WhatsAppUsagePage() {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Estimated monthly cost
+              {locale === "id"
+                ? "Proyeksi biaya hingga akhir bulan"
+                : "Estimated monthly cost"}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {locale === "id" ? "Saldo Tersedia" : "Balance"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {state === "loading" || !costBreakdown ? (
@@ -519,11 +528,14 @@ export default function WhatsAppUsagePage() {
                 Rp{costBreakdown.balance?.toLocaleString("id-ID") ?? "0"}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">Overage balance</p>
+            <p className="text-xs text-muted-foreground">
+              {locale === "id"
+                ? "Saldo pemakaian tambahan (PAYG)"
+                : "Overage balance"}
+            </p>
           </CardContent>
         </Card>
       </div>
-
       {/* Cost Breakdown by Device */}
       {state === "loaded" && costBreakdown && (
         <Card>
@@ -533,14 +545,14 @@ export default function WhatsAppUsagePage() {
             </CardTitle>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>
-                Projected:{" "}
+                {locale === "id" ? "Estimasi: " : "Projected: "}
                 {costBreakdown.projectedCost.toLocaleString("id-ID", {
                   style: "currency",
                   currency: "IDR",
                 })}
               </span>
               <span>
-                Balance: Rp
+                {locale === "id" ? "Saldo: Rp" : "Balance: Rp"}
                 {costBreakdown.balance?.toLocaleString("id-ID") ?? "0"}
               </span>
             </div>
@@ -556,7 +568,10 @@ export default function WhatsAppUsagePage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">
-                        {dev.phoneNumber ?? "Unknown"}
+                        {dev.phoneNumber ??
+                          (locale === "id"
+                            ? "Nomor Tidak Diketahui"
+                            : "Unknown")}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatWhatsAppText(
@@ -579,6 +594,8 @@ export default function WhatsAppUsagePage() {
                   <QuotaProgressBar
                     used={dev.quotaUsed}
                     total={dev.quotaBase + dev.addonQuotaTotal}
+                    usedLabel={locale === "id" ? "terpakai" : "used"}
+                    quotaLabel={locale === "id" ? "kuota" : "quota"}
                   />
                 </div>
               ))
@@ -635,16 +652,18 @@ export default function WhatsAppUsagePage() {
               >
                 <BarChart
                   data={dailyCounts.map((c) => ({
-                    date: new Date(c.date).toLocaleDateString("en", {
-                      day: "numeric",
-                      month: "short",
-                    }),
+                    date: new Date(c.date).toLocaleDateString(
+                      locale === "id" ? "id-ID" : "en-US",
+                      {
+                        day: "numeric",
+                        month: "short",
+                      }
+                    ),
                     in: c.messageInboxCount,
                     out: c.messageOutboxCount,
                   }))}
                 >
                   <XAxis
-                    dataKey="date"
                     tick={{ fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
@@ -751,7 +770,9 @@ export default function WhatsAppUsagePage() {
       {/* Monthly Comparison */}
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Comparison</CardTitle>
+          <CardTitle>
+            {locale === "id" ? "Perbandingan Bulanan" : "Monthly Comparison"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {state === "loading" ? (
@@ -775,7 +796,7 @@ export default function WhatsAppUsagePage() {
                   >
                     <div>
                       <p className="text-sm font-medium">
-                        {getMonthName(m.month)} {m.year}
+                        {getMonthName(m.month, locale)} {m.year}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatWhatsAppText(
@@ -834,12 +855,14 @@ export default function WhatsAppUsagePage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Time</TableHead>
+                <TableHead>{locale === "id" ? "Waktu" : "Time"}</TableHead>
                 <TableHead>
                   <WhatsAppText id="s10" />
                 </TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Credits</TableHead>
+                <TableHead>
+                  {locale === "id" ? "Kategori" : "Category"}
+                </TableHead>
+                <TableHead>{locale === "id" ? "Kredit" : "Credits"}</TableHead>
                 <TableHead>
                   <WhatsAppText id="s302" locale={locale} />
                 </TableHead>
@@ -907,7 +930,7 @@ export default function WhatsAppUsagePage() {
                             className="gap-1 border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-600 dark:text-amber-400"
                           >
                             <ArrowCounterClockwise className="size-3" />
-                            REFUNDED
+                            {locale === "id" ? "DIKEMBALIKAN" : "REFUNDED"}
                           </Badge>
                         ) : isConfirmed ? (
                           <Badge
@@ -915,7 +938,7 @@ export default function WhatsAppUsagePage() {
                             className="gap-1 bg-emerald-600 text-[10px] text-white"
                           >
                             <CheckCircle className="size-3" weight="fill" />
-                            CONFIRMED
+                            {locale === "id" ? "TERKONFIRMASI" : "CONFIRMED"}
                           </Badge>
                         ) : (
                           <Badge
@@ -923,7 +946,7 @@ export default function WhatsAppUsagePage() {
                             className="gap-1 text-[10px]"
                           >
                             <Clock className="size-3" />
-                            PENDING
+                            {locale === "id" ? "MENUNGGU" : "PENDING"}
                           </Badge>
                         )}
                       </TableCell>
