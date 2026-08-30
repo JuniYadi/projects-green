@@ -491,7 +491,6 @@ const getStackAdditionalPorts = (
       typeof (entry as Record<string, unknown>).name === "string"
   )
 }
-
 async function resolveTemplateImageReference(stack: {
   id: string
   slug: string
