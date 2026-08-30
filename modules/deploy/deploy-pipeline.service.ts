@@ -95,7 +95,7 @@ async function syncJenkinsPipelineForStack(
       slug: stack.slug,
       branch: stack.branchName,
       framework,
-      env,
+      env: env === "prod" ? "prod" : "dev",
     })
 
     console.log(
