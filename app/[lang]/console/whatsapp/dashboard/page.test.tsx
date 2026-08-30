@@ -4,10 +4,20 @@ import { render, waitFor } from "@testing-library/react"
 
 const mockMessages = {
   devices: {
-    list: mock(async () => ({ ok: true, devices: [] })),
+    list: mock(
+      async (): Promise<{
+        ok: boolean
+        devices: Array<{ id: string; phoneNumber: string; status: string }>
+      }> => ({ ok: true, devices: [] })
+    ),
   },
   conversations: {
-    list: mock(async () => ({ ok: true, conversations: [] })),
+    list: mock(
+      async (): Promise<{
+        ok: boolean
+        conversations: Array<Record<string, unknown>>
+      }> => ({ ok: true, conversations: [] })
+    ),
   },
   webhooks: {
     stats: mock(async () => ({
@@ -23,14 +33,43 @@ const mockMessages = {
     })),
   },
   usage: {
-    overview: mock(async () => ({
-      ok: true,
-      month: [],
-    })),
-    daily: mock(async () => ({
-      ok: true,
-      counts: [],
-    })),
+    overview: mock(
+      async (): Promise<{
+        ok: boolean
+        month: Array<{
+          year: number
+          month: number
+          messageInboxCount: number
+          messageOutboxCount: number
+        }>
+        cost?: {
+          totalAmount: number
+          totalEntries: number
+          byCategory: Array<{
+            category: string
+            count: number
+            totalCost: number
+          }>
+        }
+      }> => ({
+        ok: true,
+        month: [],
+        cost: undefined,
+      })
+    ),
+    daily: mock(
+      async (): Promise<{
+        ok: boolean
+        counts: Array<{
+          date: string
+          messageInboxCount: number
+          messageOutboxCount: number
+        }>
+      }> => ({
+        ok: true,
+        counts: [],
+      })
+    ),
   },
   broadcasts: {
     summary: mock(async () => ({

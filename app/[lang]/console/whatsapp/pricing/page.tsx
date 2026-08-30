@@ -78,6 +78,7 @@ type LedgerEntry = {
   createdAt: string
   updatedAt: string
   devicePhoneNumber?: string | null
+  deviceName?: string | null
 }
 
 function formatPhone(phone: string): string {

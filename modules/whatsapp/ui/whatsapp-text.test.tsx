@@ -43,7 +43,7 @@ test("uses the supplied route locale instead of a stale document locale", () => 
 test("formats a complete localized pagination sentence", () => {
   expect(
     formatWhatsAppText("s296", { page: 2, totalPages: 7, total: 63 }, "id")
-  ).toBe("Halaman 2 dari 7 (63 entri)")
+  ).toBe("Halaman 2 dari 7 (63 data)")
   expect(
     formatWhatsAppText("s296", { page: 2, totalPages: 7, total: 63 }, "en")
   ).toBe("Page 2 of 7 (63 entries)")
@@ -59,15 +59,15 @@ test("formats localized WhatsApp console copy without composing literals", () =>
   expect(formatWhatsAppText("s378", { count: 2 }, "id")).toBe(
     "Pratinjau (2 kontak)"
   )
-  expect(formatWhatsAppText("s390", { count: 2 }, "id")).toBe("Impor 2 kontak")
+  expect(formatWhatsAppText("s390", { count: 2 }, "id")).toBe("Impor 2 Kontak")
   expect(
     formatWhatsAppText("s381", { first: "{{1}}", second: "{{2}}" }, "id")
   ).toBe(
-    "Unduh kolom yang sesuai dengan bahasa template. Kolom Nomor WhatsApp dan Nama dikenali otomatis; variabel pesan mengikuti urutan {{1}}, {{2}}, dan seterusnya."
+    "Unduh file template yang sesuai dengan bahasa pilihan. Kolom Nomor WhatsApp dan Nama akan otomatis terdeteksi; variabel pesan menggunakan urutan {{1}}, {{2}}, dst."
   )
   expect(getWhatsAppText("s380", "id")).toBe("Mengirim...")
   expect(getWhatsAppText("s382", "en")).toBe("Recent Deductions")
   expect(getWhatsAppText("s383", "id")).toBe(
-    "5 entri potongan kuota/saldo terbaru"
+    "5 riwayat pemotongan kuota atau saldo terbaru"
   )
 })

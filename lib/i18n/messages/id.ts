@@ -921,6 +921,7 @@ export const idMessages: AppMessages = {
         activationSuccessTitle: "Layanan Berhasil Diaktifkan!",
         activationDescription:
           "Pilih paket langganan dan selesaikan aktivasi tanpa meninggalkan halaman ini.",
+        successToast: "Layanan berhasil diaktifkan!",
         successToastDescription:
           "Pesanan {orderId} telah dibayar dan kuitansi invoice dikirim ke email billing Anda.",
         activationError: "Gagal mengaktifkan layanan. Silakan coba lagi.",
@@ -1413,6 +1414,7 @@ export const idMessages: AppMessages = {
           draftBannerDescription:
             "Broadcast ini berstatus Draf dan belum dikirim. Klik 'Kirim Broadcast' untuk mulai mendistribusikan pesan ke seluruh nomor penerima.",
           sendBroadcast: "Kirim Broadcast",
+          sendingBroadcast: "Mengirim...",
           deliveryProgress: "Progres pengiriman",
           recipientList: "Daftar Penerima",
           recipientListDescription:
