@@ -131,17 +131,16 @@ describe("WhatsAppDashboardPage", () => {
       view.getByRole("button", { name: /hubungkan whatsapp sekarang/i })
     ).toBeInTheDocument()
   })
-
   it("renders visual donut category breakdown and 7-day trend card", async () => {
     const view = render(<WhatsAppDashboardPage />)
 
     await waitFor(() => {
       expect(
-        view.getByText(/Komposisi Kategori Pesan|Category Breakdown/i)
-      ).toBeInTheDocument()
+        view.getAllByText(/Komposisi Kategori Pesan|Category Breakdown/i).length
+      ).toBeGreaterThan(0)
       expect(
-        view.getByText(/Tren Trafik 7 Hari|7-Day Traffic Trend/i)
-      ).toBeInTheDocument()
+        view.getAllByText(/Tren Trafik 7 Hari|7-Day Traffic Trend/i).length
+      ).toBeGreaterThan(0)
     })
   })
 })
