@@ -1,17 +1,11 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
-import {
-  evaluateMustacheTemplate,
-  type TemplateContext,
-} from "./workflow-session"
-import { executeWorkflowNode } from "./workflow-executor"
-import { processWhatsappWorkflowInbound } from "./workflow-runner"
 import type { WorkflowDefinition } from "./workflow.schema"
 
 const mockRedis = {
-  get: mock(async () => null as unknown),
-  set: mock(async () => "OK"),
-  del: mock(async () => 1),
-  eval: mock(async () => 1),
+  get: mock<() => Promise<string | null>>(async () => null),
+  set: mock<() => Promise<string>>(async () => "OK"),
+  del: mock<() => Promise<number>>(async () => 1),
+  eval: mock<() => Promise<number>>(async () => 1),
 }
 
 const mockMessageService = {
@@ -20,7 +14,7 @@ const mockMessageService = {
 
 const mockPrisma = {
   whatsappDevice: {
-    findUnique: mock(async () => null as unknown),
+    findUnique: mock(async () => null),
   },
 }
 
@@ -36,6 +30,12 @@ mock.module("@/modules/whatsapp/messages/messages.service", () => ({
   messageService: mockMessageService,
 }))
 
+import {
+  evaluateMustacheTemplate,
+  type TemplateContext,
+} from "./workflow-session"
+import { executeWorkflowNode } from "./workflow-executor"
+import { processWhatsappWorkflowInbound } from "./workflow-runner"
 describe("modules/whatsapp/workflow - Template Evaluator", () => {
   it("resolves nested mustache variables correctly", () => {
     const context: TemplateContext = {
@@ -393,10 +393,10 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
     mockRedis.set.mockClear()
     mockRedis.del.mockClear()
     mockRedis.eval.mockClear()
-    mockRedis.get.mockResolvedValue(null)
-    mockRedis.set.mockResolvedValue("OK")
-    mockRedis.del.mockResolvedValue(1)
-    mockRedis.eval.mockResolvedValue(1)
+    mockRedis.get.mockImplementation(async () => null)
+    mockRedis.set.mockImplementation(async () => "OK")
+    mockRedis.del.mockImplementation(async () => 1)
+    mockRedis.eval.mockImplementation(async () => 1)
     mockPrisma.whatsappDevice.findUnique.mockReset()
     mockMessageService.sendMessage.mockClear()
   })
