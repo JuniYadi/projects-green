@@ -1452,8 +1452,17 @@ export type AppMessages = {
           statusReceived: string
           statusFailed: string
           statusPending: string
+          statusDescSuccessWebhook: string
+          statusDescFailedWebhook: string
+          statusDescReceivedWebhook: string
+          statusDescSuccessAudit: string
+          statusDescFailedAudit: string
           copyIdSuccess: string
           copyIdFail: string
+          copyIdButton: string
+          copiedButton: string
+          templateLabel: string
+          correlationIdLabel: string
           close: string
         }
       }

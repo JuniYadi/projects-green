@@ -1545,8 +1545,22 @@ export const enMessages: AppMessages = {
           statusReceived: "Received",
           statusFailed: "Failed",
           statusPending: "Pending",
+          statusDescSuccessWebhook:
+            "Message / callback successfully delivered and processed by Meta API.",
+          statusDescFailedWebhook:
+            "Webhook delivery or event processing failed for this event.",
+          statusDescReceivedWebhook:
+            "Inbound webhook message event received from Meta API.",
+          statusDescSuccessAudit:
+            "Organization activity successfully executed.",
+          statusDescFailedAudit:
+            "Activity encountered an issue during execution.",
           copyIdSuccess: "WA Message ID copied to clipboard",
           copyIdFail: "Failed to copy ID",
+          copyIdButton: "Copy ID",
+          copiedButton: "Copied",
+          templateLabel: "Template",
+          correlationIdLabel: "Correlation ID",
           close: "Close",
         },
       },

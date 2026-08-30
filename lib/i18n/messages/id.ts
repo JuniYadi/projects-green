@@ -1562,8 +1562,20 @@ export const idMessages: AppMessages = {
           statusReceived: "Diterima",
           statusFailed: "Gagal",
           statusPending: "Tertunda",
+          statusDescSuccessWebhook:
+            "Pesan / callback berhasil dikirim dan diproses oleh Meta API.",
+          statusDescFailedWebhook:
+            "Pengiriman atau pemrosesan webhook gagal pada event ini.",
+          statusDescReceivedWebhook:
+            "Event webhook pesan masuk diterima dari Meta API.",
+          statusDescSuccessAudit: "Aktivitas organisasi berhasil dieksekusi.",
+          statusDescFailedAudit: "Aktivitas mengalami kendala saat dieksekusi.",
           copyIdSuccess: "ID Pesan berhasil disalin ke clipboard",
           copyIdFail: "Gagal menyalin ID",
+          copyIdButton: "Salin ID",
+          copiedButton: "Disalin",
+          templateLabel: "Template",
+          correlationIdLabel: "ID Korelasi",
           close: "Tutup",
         },
       },
