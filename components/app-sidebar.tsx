@@ -808,7 +808,7 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
           isActive: startsWithRoute(path, "/console/whatsapp/usage"),
         },
         {
-          title: "Pricing & Ledger",
+          title: locale === "id" ? "Tarif & Biaya" : "Pricing & Costs",
           url: localizePathname({
             pathname: "/console/whatsapp/pricing",
             locale,

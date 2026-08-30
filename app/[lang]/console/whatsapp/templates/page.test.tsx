@@ -120,15 +120,9 @@ mock.module("@/modules/whatsapp/templates/api/templates.hooks", () => ({
   useSyncTemplate: mockUseSyncTemplate,
 }))
 
-import { enMessages } from "@/lib/i18n/messages/en"
-
-mock.module("@/lib/i18n/messages", () => ({
-  getMessages: () => enMessages,
-}))
-
 mock.module("@/lib/i18n/pathname", () => ({
   localizePathname: (opts: { pathname: string; locale: string }) =>
-    `/en${opts.pathname}`,
+    `/${opts.locale || "en"}${opts.pathname}`,
   resolveLocaleOrDefault: (lang: string) => lang || "en",
 }))
 

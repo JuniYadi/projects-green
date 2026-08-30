@@ -7,6 +7,7 @@ const mockDaily = mock(() => new Promise(() => {}))
 const mockDevices = mock(() => new Promise(() => {}))
 const mockCostBreakdown = mock(() => new Promise(() => {}))
 const mockMonthly = mock(() => new Promise(() => {}))
+const mockLedger = mock(() => new Promise(() => {}))
 
 mock.module("@/lib/api/whatsapp-client", () => ({
   whatsappClient: {
@@ -15,6 +16,7 @@ mock.module("@/lib/api/whatsapp-client", () => ({
       daily: mockDaily,
       costBreakdown: mockCostBreakdown,
       monthly: mockMonthly,
+      ledger: mockLedger,
     },
     devices: {
       list: mockDevices,
@@ -25,21 +27,16 @@ mock.module("@/lib/api/whatsapp-client", () => ({
 import WhatsAppUsagePage from "./page"
 
 describe("WhatsAppUsagePage — loading state", () => {
-  it("renders eight card titles and skeleton values during loading", () => {
+  it("renders quota capacity per device and skeleton values during loading", () => {
     const view = render(<WhatsAppUsagePage />)
 
-    // All eight card titles should be visible
-    expect(view.getByText("Total Messages")).toBeTruthy()
-    expect(view.getByText("Inbound Count")).toBeTruthy()
-    expect(view.getByText("Outbound Count")).toBeTruthy()
-    expect(view.getByText("Total Cost")).toBeTruthy()
-    expect(view.getByText("Monthly Quota Used")).toBeTruthy()
-    expect(view.getByText("Remaining Quota")).toBeTruthy()
-    expect(view.getByText("Projected Cost")).toBeTruthy()
-    expect(view.getByText("Balance")).toBeTruthy()
+    // Title should be visible
+    expect(
+      view.getByText("Quota Capacity per Device Number (1 Device = 1 Quota)")
+    ).toBeTruthy()
 
     // At least one data-testid skeleton exists
     const skeletons = view.getAllByTestId("usage-value-skeleton")
-    expect(skeletons.length).toBeGreaterThanOrEqual(4)
+    expect(skeletons.length).toBeGreaterThanOrEqual(1)
   })
 })

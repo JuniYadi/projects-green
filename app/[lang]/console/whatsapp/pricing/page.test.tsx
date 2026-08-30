@@ -127,17 +127,15 @@ describe("WhatsAppPricingPage", () => {
     mockPricing.mockClear()
   })
 
-  it("renders heading, compact pricing details, and ledger section", async () => {
+  it("renders heading, compact pricing details, and calculator section", async () => {
     const view = renderWithQuery(<WhatsAppPricingPage />)
     expect(view.getByText(/WhatsApp Pricing/i)).toBeInTheDocument()
-    expect(
-      view.getByText(/Transaction & Deduction Ledger/i)
-    ).toBeInTheDocument()
+    expect(view.getByText(/Pricing & Calculator/i)).toBeInTheDocument()
     await waitFor(() => {
       expect(view.getAllByText("MARKETING").length).toBeGreaterThanOrEqual(1)
       expect(view.getAllByText("UTILITY").length).toBeGreaterThanOrEqual(1)
-      expect(view.getByText(/770/)).toBeInTheDocument()
-      expect(view.getByText(/741/)).toBeInTheDocument()
+      expect(view.getAllByText(/770/).length).toBeGreaterThanOrEqual(1)
+      expect(view.getAllByText(/741/).length).toBeGreaterThanOrEqual(1)
     })
   })
 

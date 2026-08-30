@@ -1,6 +1,5 @@
-import "@/test/register"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { render, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 const mockToastSuccess = mock()
@@ -63,13 +62,11 @@ mock.module("@/components/ui/dialog", () => ({
   ),
   DialogClose: ({
     children,
-    asChild,
   }: {
     children: React.ReactNode
     asChild?: boolean
   }) => <>{children}</>,
 }))
-
 const mockGetCatalogProduct = mock()
 const mockSubmitCheckout = mock()
 const mockGetCheckoutQuote = mock()
@@ -87,12 +84,12 @@ import { ServiceOrderDialog } from "./service-order-dialog"
 
 describe("ServiceOrderDialog", () => {
   beforeEach(() => {
+    cleanup()
+    mockGetCatalogProduct.mockClear()
+    mockGetCheckoutQuote.mockClear()
     mockToastSuccess.mockClear()
     mockToastError.mockClear()
     mockSubmitCheckout.mockClear()
-    mockGetCatalogProduct.mockClear()
-    mockGetCheckoutQuote.mockClear()
-
     mockGetCheckoutQuote.mockResolvedValue({
       ok: true,
       quoteId: "quote-1",
@@ -270,7 +267,7 @@ describe("ServiceOrderDialog", () => {
     await waitFor(() => {
       expect(mockSubmitCheckout).toHaveBeenCalled()
       expect(mockToastSuccess).toHaveBeenCalledWith(
-        "Aktivasi layanan berhasil!",
+        "Layanan berhasil diaktifkan!",
         expect.objectContaining({
           description: expect.stringContaining("order-wa-888"),
         })
@@ -398,6 +395,46 @@ describe("ServiceOrderDialog", () => {
   })
 
   it("submits product-defined answers as provisioningAnswers with device mapping", async () => {
+    mockGetCheckoutQuote.mockResolvedValue({
+      ok: true,
+      quoteId: "quote-1",
+      quoteToken: "token-1",
+      pricingId: "pricing-wa-starter-mo",
+      packageCode: "WHATSAPP",
+      planCode: "WA_STARTER",
+      currency: "IDR",
+      billingPeriod: "MONTHLY",
+      quantity: "1",
+      periodStart: "2026-08-01T00:00:00Z",
+      periodEnd: "2026-09-01T00:00:00Z",
+      subtotal: "99000",
+      discount: "0",
+      firstPayment: "99000",
+      nextRenewal: "2026-09-01T00:00:00Z",
+      addons: [],
+      availableAddons: [],
+      resources: {
+        provisioningFields: [
+          {
+            id: "field-phone",
+            name: "phoneNumber",
+            label: "Nomor WhatsApp Device",
+            type: "text",
+            placeholder: "Contoh: +6281234567890",
+            required: true,
+          },
+          {
+            id: "field-name",
+            name: "displayName",
+            label: "Nama Tampilan Device (Opsional)",
+            type: "text",
+            required: false,
+          },
+        ],
+      },
+      expiresAt: "2026-08-24T00:00:00Z",
+    })
+
     mockSubmitCheckout.mockResolvedValue({
       ok: true,
       orderId: "order-wa-889",
@@ -413,7 +450,6 @@ describe("ServiceOrderDialog", () => {
       periodStart: "2026-08-01T00:00:00Z",
       periodEnd: "2026-09-01T00:00:00Z",
     })
-
     const view = render(
       <ServiceOrderDialog
         productCode="WHATSAPP"
@@ -423,19 +459,17 @@ describe("ServiceOrderDialog", () => {
     )
 
     await waitFor(() => {
-      expect(view.getByTestId("order-input-phoneNumber")).toBeTruthy()
+      expect(view.getByTestId("order-input-displayName")).toBeTruthy()
     })
-
     const phoneInput = view.getByTestId(
       "order-input-phoneNumber"
     ) as HTMLInputElement
-    await userEvent.type(phoneInput, "+6281234567890")
+    fireEvent.change(phoneInput, { target: { value: "+6281234567890" } })
 
     const nameInput = view.getByTestId(
       "order-input-displayName"
     ) as HTMLInputElement
-    await userEvent.type(nameInput, "Support Line")
-
+    fireEvent.change(nameInput, { target: { value: "Support Line" } })
     const checkbox = view.getByTestId(
       "order-confirm-balance-checkbox"
     ) as HTMLInputElement

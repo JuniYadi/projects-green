@@ -1,12 +1,23 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
+
 const mockMessages = {
   devices: {
-    list: mock(async () => ({ ok: true, devices: [] })),
+    list: mock(
+      async (): Promise<{
+        ok: boolean
+        devices: Array<{ id: string; phoneNumber: string; status: string }>
+      }> => ({ ok: true, devices: [] })
+    ),
   },
   conversations: {
-    list: mock(async () => ({ ok: true, conversations: [] })),
+    list: mock(
+      async (): Promise<{
+        ok: boolean
+        conversations: Array<Record<string, unknown>>
+      }> => ({ ok: true, conversations: [] })
+    ),
   },
   webhooks: {
     stats: mock(async () => ({
@@ -22,10 +33,43 @@ const mockMessages = {
     })),
   },
   usage: {
-    overview: mock(async () => ({
-      ok: true,
-      month: [],
-    })),
+    overview: mock(
+      async (): Promise<{
+        ok: boolean
+        month: Array<{
+          year: number
+          month: number
+          messageInboxCount: number
+          messageOutboxCount: number
+        }>
+        cost?: {
+          totalAmount: number
+          totalEntries: number
+          byCategory: Array<{
+            category: string
+            count: number
+            totalCost: number
+          }>
+        }
+      }> => ({
+        ok: true,
+        month: [],
+        cost: undefined,
+      })
+    ),
+    daily: mock(
+      async (): Promise<{
+        ok: boolean
+        counts: Array<{
+          date: string
+          messageInboxCount: number
+          messageOutboxCount: number
+        }>
+      }> => ({
+        ok: true,
+        counts: [],
+      })
+    ),
   },
   broadcasts: {
     summary: mock(async () => ({
@@ -57,14 +101,42 @@ mock.module("@/modules/whatsapp/onboarding/use-whatsapp-onboarding", () => ({
     resetOnboarding: () => {},
   }),
 }))
+
 import WhatsAppDashboardPage from "./page"
 
 describe("WhatsAppDashboardPage", () => {
   beforeEach(() => {
-    mockMessages.devices.list.mockResolvedValue({ ok: true, devices: [] })
+    mockMessages.devices.list.mockResolvedValue({
+      ok: true,
+      devices: [
+        { id: "dev-1", phoneNumber: "+6281234567890", status: "ACTIVE" },
+      ],
+    })
     mockMessages.usage.overview.mockResolvedValue({
       ok: true,
-      month: [],
+      month: [
+        {
+          year: 2026,
+          month: 8,
+          messageInboxCount: 5,
+          messageOutboxCount: 20,
+        },
+      ],
+      cost: {
+        totalAmount: 1500,
+        totalEntries: 25,
+        byCategory: [
+          { category: "MARKETING", count: 15, totalCost: 1000 },
+          { category: "UTILITY", count: 10, totalCost: 500 },
+        ],
+      },
+    })
+    mockMessages.usage.daily.mockResolvedValue({
+      ok: true,
+      counts: [
+        { date: "2026-08-28", messageInboxCount: 2, messageOutboxCount: 8 },
+        { date: "2026-08-29", messageInboxCount: 3, messageOutboxCount: 12 },
+      ],
     })
     mockMessages.conversations.list.mockResolvedValue({
       ok: true,
@@ -77,6 +149,7 @@ describe("WhatsAppDashboardPage", () => {
   })
 
   it("renders subscribe plan CTA in header and zero-devices activation card", async () => {
+    mockMessages.devices.list.mockResolvedValueOnce({ ok: true, devices: [] })
     const view = render(<WhatsAppDashboardPage />)
 
     await waitFor(() => {
@@ -96,5 +169,17 @@ describe("WhatsAppDashboardPage", () => {
     expect(
       view.getByRole("button", { name: /hubungkan whatsapp sekarang/i })
     ).toBeInTheDocument()
+  })
+  it("renders visual donut category breakdown and 7-day trend card", async () => {
+    const view = render(<WhatsAppDashboardPage />)
+
+    await waitFor(() => {
+      expect(
+        view.getAllByText(/Komposisi Kategori Pesan|Category Breakdown/i).length
+      ).toBeGreaterThan(0)
+      expect(
+        view.getAllByText(/Tren Trafik 7 Hari|7-Day Traffic Trend/i).length
+      ).toBeGreaterThan(0)
+    })
   })
 })

@@ -400,7 +400,7 @@ export function FlightHudWidget({
       )}
       <ServiceOrderDialog
         productCode="WHATSAPP"
-        productTitle="WhatsApp Gateway"
+        productTitle="WhatsApp"
         open={isInternalOrderOpen}
         onOpenChange={setIsInternalOrderOpen}
         onSuccess={() => {

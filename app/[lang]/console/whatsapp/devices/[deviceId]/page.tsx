@@ -404,12 +404,12 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       return
     }
     if (!PROFILE_PICTURE_TYPES.includes(file.type)) {
-      toast(deviceMessages.invalidFileType)
+      toast.error(deviceMessages.invalidFileType)
       event.target.value = ""
       return
     }
     if (file.size > PROFILE_PICTURE_SIZE_LIMIT) {
-      toast(deviceMessages.fileTooLarge)
+      toast.error(deviceMessages.fileTooLarge)
       event.target.value = ""
       return
     }
@@ -813,9 +813,11 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       )
       clearProfilePictureSelection()
       setProfileDialogOpen(false)
-      toast(deviceMessages.updated)
+      toast.success(deviceMessages.updated)
     } catch (err) {
-      toast(err instanceof Error ? err.message : deviceMessages.unableToUpdate)
+      toast.error(
+        err instanceof Error ? err.message : deviceMessages.unableToUpdate
+      )
     } finally {
       setProfileSubmitting(false)
     }

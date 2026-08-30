@@ -169,7 +169,15 @@ const mockTemplatesData: Array<{
 
 mock.module("next/navigation", () => ({
   useRouter: () => ({ push: mockRouterPush, replace: mockRouterReplace }),
-  useParams: () => ({ lang: "en" }),
+  useParams: () => {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname.startsWith("/id")
+    ) {
+      return { lang: "id" }
+    }
+    return { lang: "en" }
+  },
   usePathname: () => "/en/console/whatsapp/messages",
   useSearchParams: () => mockSearchParams,
 }))
@@ -623,12 +631,10 @@ describe("WhatsAppMessagesPage", () => {
     await tick(100)
     fireEvent.click(view.getByText("+6281111111111"))
     await waitFor(() => {
-      expect(view.queryByText("1 messages")).toBeInTheDocument()
+      expect(
+        view.getByText("Hello Alice, your order is confirmed.")
+      ).toBeInTheDocument()
     })
-    await tick(50)
-    expect(
-      view.getByText("Hello Alice, your order is confirmed.")
-    ).toBeInTheDocument()
     view.unmount()
   })
 

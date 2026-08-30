@@ -24,6 +24,22 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts"
+import type { ChartConfig } from "@/components/ui/chart"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { AccessRestricted } from "@/modules/whatsapp/ui/access-restricted"
@@ -32,6 +48,17 @@ import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsap
 import { WhatsAppCommandCenter } from "@/modules/whatsapp/onboarding/whatsapp-command-center"
 import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 
+const CATEGORY_COLORS: Record<string, string> = {
+  UTILITY: "var(--color-chart-1, #22c55e)",
+  AUTHENTICATION: "var(--color-chart-2, #3b82f6)",
+  MARKETING: "var(--color-chart-3, #f59e0b)",
+  SERVICE: "var(--color-chart-4, #a855f7)",
+}
+
+const DASHBOARD_CHART_CONFIG = {
+  in: { label: "Pesan Masuk", color: "var(--color-chart-1, #22c55e)" },
+  out: { label: "Pesan Keluar", color: "var(--color-chart-2, #3b82f6)" },
+} satisfies ChartConfig
 type WebhookStats = {
   periodEnd: string
   totalEvents: number
@@ -122,10 +149,17 @@ export default function WhatsAppDashboardPage() {
     null
   )
   const [broadcastTotal, setBroadcastTotal] = React.useState(0)
+  const [dailyCounts, setDailyCounts] = React.useState<
+    { date: string; messageInboxCount: number; messageOutboxCount: number }[]
+  >([])
   const [overview, setOverview] = React.useState<{
     month: { messageInboxCount: number; messageOutboxCount: number }[]
+    cost?: {
+      totalAmount: number
+      totalEntries: number
+      byCategory: { category: string; count: number; totalCost: number }[]
+    }
   } | null>(null)
-
   const loadData = React.useCallback(() => {
     let cancelled = false
 
@@ -136,14 +170,48 @@ export default function WhatsAppDashboardPage() {
           conversationResponse,
           webhookResponse,
           overviewResponse,
+          dailyResponse,
         ] = await Promise.all([
           whatsappClient.devices.list(),
           whatsappClient.conversations.list(),
           whatsappClient.webhooks.stats().catch(() => null),
           whatsappClient.usage.overview().catch(() => null),
+          whatsappClient.usage
+            .daily({
+              from: new Date(Date.now() - 6 * 86400000)
+                .toISOString()
+                .slice(0, 10),
+              to: new Date().toISOString().slice(0, 10),
+            })
+            .catch(() => ({ counts: [] })),
         ])
         if (cancelled) return
         setDevices(deviceResponse.devices)
+        const rawCounts = (dailyResponse?.counts || []) as {
+          date: string
+          messageInboxCount: number
+          messageOutboxCount: number
+        }[]
+        const countsMap = new Map(
+          rawCounts.map((c) => [c.date.slice(0, 10), c])
+        )
+        const filled7Days: {
+          date: string
+          messageInboxCount: number
+          messageOutboxCount: number
+        }[] = []
+        for (let i = 6; i >= 0; i--) {
+          const dStr = new Date(Date.now() - i * 86400000)
+            .toISOString()
+            .slice(0, 10)
+          const found = countsMap.get(dStr)
+          filled7Days.push({
+            date: dStr,
+            messageInboxCount: found?.messageInboxCount ?? 0,
+            messageOutboxCount: found?.messageOutboxCount ?? 0,
+          })
+        }
+        setDailyCounts(filled7Days)
         setConversations(
           conversationResponse.conversations as ConversationListItem[]
         )
@@ -241,7 +309,7 @@ export default function WhatsAppDashboardPage() {
         />
         <ServiceOrderDialog
           productCode="WHATSAPP"
-          productTitle="WhatsApp Gateway"
+          productTitle="WhatsApp"
           open={isOrderOpen}
           onOpenChange={setIsOrderOpen}
           lang={locale}
@@ -262,8 +330,31 @@ export default function WhatsAppDashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t.heading}</h1>
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight">{t.heading}</h1>
+            {webhookStats && (
+              <Badge
+                variant={
+                  webhookStats.failureRate > 5 ? "destructive" : "secondary"
+                }
+                className="text-xs font-normal"
+              >
+                <span
+                  className={`mr-1.5 size-2 rounded-full ${
+                    webhookStats.failureRate > 5
+                      ? "bg-destructive"
+                      : "bg-emerald-500"
+                  }`}
+                />
+                {webhookStats.failureRate === 0
+                  ? locale === "id"
+                    ? "Meta API: Normal (0% Gagal)"
+                    : "Meta API: Normal (0% Failure)"
+                  : `${webhookStats.failureRate}% ${locale === "id" ? "Gagal" : "Failure"}`}
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">{t.description}</p>
         </div>
         <div className="flex gap-2">
@@ -371,7 +462,7 @@ export default function WhatsAppDashboardPage() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      {t.statTotalConversations}
+                      {locale === "id" ? "Pesan Masuk" : "Inbound Messages"}
                     </CardTitle>
                     <ChatCircle
                       className="size-4 text-muted-foreground"
@@ -382,14 +473,16 @@ export default function WhatsAppDashboardPage() {
                     <div className="text-2xl font-bold">
                       {messageInTotal.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">{t.active}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {locale === "id" ? "Total diterima" : "Total received"}
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      {t.statMessagesSent}
+                      {locale === "id" ? "Pesan Keluar" : "Outbound Messages"}
                     </CardTitle>
                     <PaperPlaneTilt
                       className="size-4 text-muted-foreground"
@@ -400,14 +493,16 @@ export default function WhatsAppDashboardPage() {
                     <div className="text-2xl font-bold">
                       {messageOutTotal.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">{t.active}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {locale === "id" ? "Total terkirim" : "Total sent"}
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      {t.statMessagesSent}
+                      {locale === "id" ? "Pesan Broadcast" : "Broadcasts"}
                     </CardTitle>
                     <ChartLine
                       className="size-4 text-muted-foreground"
@@ -417,7 +512,7 @@ export default function WhatsAppDashboardPage() {
                   <CardContent>
                     <div className="text-2xl font-bold">{broadcastTotal}</div>
                     <p className="text-xs text-muted-foreground">
-                      {t.statTotalConversations}
+                      {locale === "id" ? "Kampanye terkirim" : "Campaigns sent"}
                     </p>
                   </CardContent>
                 </Card>
@@ -425,130 +520,294 @@ export default function WhatsAppDashboardPage() {
             )}
           </div>
 
-          {/* {t.deviceHealthTitle} Card */}
-          <Card
-            className={
-              webhookStats && webhookStats.failureRate > 5
-                ? "border-destructive"
-                : undefined
-            }
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {t.deviceHealthTitle}
-              </CardTitle>
-              <ChartLine
-                className="size-4 text-muted-foreground"
-                weight="fill"
-              />
-            </CardHeader>
-            <CardContent>
-              <div
-                className={
-                  webhookStats
-                    ? webhookStats.failureRate > 5
-                      ? "text-2xl font-bold text-destructive"
-                      : webhookStats.failureRate > 2
-                        ? "text-2xl font-bold text-orange-500"
-                        : "text-2xl font-bold"
-                    : "text-2xl font-bold"
-                }
-              >
-                {webhookStats ? `${webhookStats.failureRate}%` : "--"}
-              </div>
-              <div className="flex items-center gap-2">
-                <p className="text-xs text-muted-foreground">
-                  {webhookStats
-                    ? `${webhookStats.failedEvents}/${webhookStats.totalEvents} failed (1h)`
-                    : t.deviceHealthDesc}
-                </p>
-                {webhookStats && (
-                  <WebhookAlertBadge
-                    rate={webhookStats.failureRate}
-                    label={t.disconnected}
-                  />
+          {/* 2-Column Main Row: 7-Day Traffic Trend & Live Chat Stream */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* 7-Day Trend Mini Bar Chart */}
+            <Card className="flex flex-col">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base font-semibold">
+                      {locale === "id"
+                        ? "Tren Trafik 7 Hari"
+                        : "7-Day Traffic Trend"}
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      {locale === "id"
+                        ? "Volume pesan masuk vs keluar 7 hari berturut-turut"
+                        : "Inbound vs outbound volume over 7 consecutive days"}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1">
+                      <span className="size-2 rounded-full bg-emerald-500" />
+                      <span className="text-muted-foreground">
+                        {locale === "id" ? "Masuk" : "Inbound"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="size-2 rounded-full bg-blue-500" />
+                      <span className="text-muted-foreground">
+                        {locale === "id" ? "Keluar" : "Outbound"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 pb-4">
+                {state === "loading" ? (
+                  <Skeleton className="h-[220px] w-full" />
+                ) : (
+                  <ChartContainer
+                    config={DASHBOARD_CHART_CONFIG}
+                    className="h-[220px] w-full"
+                  >
+                    <BarChart
+                      data={dailyCounts.map((c) => ({
+                        date: new Date(c.date).toLocaleDateString(
+                          locale === "id" ? "id-ID" : "en-US",
+                          { day: "numeric", month: "short" }
+                        ),
+                        in: c.messageInboxCount,
+                        out: c.messageOutboxCount,
+                      }))}
+                    >
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={24}
+                      />
+                      <ChartTooltip
+                        content={
+                          <ChartTooltipContent className="border bg-background p-2 shadow-md" />
+                        }
+                      />
+                      <Bar
+                        dataKey="in"
+                        name={locale === "id" ? "Pesan Masuk" : "Inbound"}
+                        fill="#22c55e"
+                        radius={[2, 2, 0, 0]}
+                        maxBarSize={24}
+                      />
+                      <Bar
+                        dataKey="out"
+                        name={locale === "id" ? "Pesan Keluar" : "Outbound"}
+                        fill="#3b82f6"
+                        radius={[2, 2, 0, 0]}
+                        maxBarSize={24}
+                      />
+                    </BarChart>
+                  </ChartContainer>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* {t.conversationsCardTitle} */}
+            {/* Recent Conversations (Live Chat Stream) */}
+            <Card className="flex flex-col">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-base font-semibold">
+                    {t.conversationsCardTitle}
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    {locale === "id"
+                      ? "Obrolan aktif pelanggan dari seluruh perangkat"
+                      : "Recent customer conversations across all devices"}
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" asChild className="text-xs">
+                  <Link href="/console/whatsapp/messages">
+                    {locale === "id" ? "Buka Pesan →" : "View Inbox →"}
+                  </Link>
+                </Button>
+              </CardHeader>
+              <CardContent className="flex-1 space-y-2.5 pb-4">
+                {state === "loading" ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <ChatCircle
+                      className="mb-2 size-8 text-muted-foreground"
+                      weight="fill"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t.disconnected}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {recentConversations.slice(0, 5).map((conversation) => (
+                      <Link
+                        key={conversation.id}
+                        href="/console/whatsapp/messages"
+                        className="flex items-center justify-between rounded-md border p-2.5 transition-colors hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex size-7 items-center justify-center rounded-full bg-primary/10">
+                            <ChatCircle
+                              className="size-3.5 text-primary"
+                              weight="fill"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium">
+                              {conversation.contactPhone}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {conversation.lastDirection === "INBOX"
+                                ? locale === "id"
+                                  ? "Arah: Pesan Masuk"
+                                  : "Direction: Inbound"
+                                : locale === "id"
+                                  ? "Arah: Pesan Keluar"
+                                  : "Direction: Outbound"}
+                              {` · ${conversation._count.whatsappMessages} pesan`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-0.5">
+                          <Badge
+                            variant={
+                              conversation.lastDirection === "INBOX"
+                                ? "secondary"
+                                : "outline"
+                            }
+                            className="px-1.5 py-0 text-[9px]"
+                          >
+                            {conversation.lastDirection === "INBOX"
+                              ? locale === "id"
+                                ? "Masuk"
+                                : "Inbound"
+                              : locale === "id"
+                                ? "Keluar"
+                                : "Outbound"}
+                          </Badge>
+                          {conversation.lastMessageAt && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatRelativeTime(conversation.lastMessageAt)}
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Bottom Full-Width Card: Donut Category Breakdown & Horizontal Bars */}
           <Card>
-            <CardHeader>
-              <CardTitle>{t.conversationsCardTitle}</CardTitle>
-              <CardDescription>
-                {state === "loading"
-                  ? t.deviceHealthDesc
-                  : t.conversationsCardDesc}
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">
+                {locale === "id"
+                  ? "Komposisi Kategori Pesan"
+                  : "Category Breakdown"}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                {locale === "id"
+                  ? "Distribusi pesan berdasarkan percakapan berbayar & layanan resmi Meta"
+                  : "Message distribution by official Meta paid and service categories"}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {state === "loading" ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                </div>
-              ) : conversations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <ChatCircle
-                    className="mb-3 size-10 text-muted-foreground"
-                    weight="fill"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    {t.disconnected}
-                  </p>
-                  <Button variant="outline" className="mt-3" asChild>
-                    <Link href="/console/whatsapp/messages">
-                      {t.viewDevices}
-                    </Link>
-                  </Button>
+                <Skeleton className="h-[140px] w-full" />
+              ) : !overview?.cost?.byCategory ||
+                overview.cost.byCategory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground">
+                  <ChatCircle className="mb-2 size-8 text-muted-foreground" />
+                  <span>
+                    {locale === "id"
+                      ? "Belum ada data kategori bulan ini."
+                      : "No category data available this month."}
+                  </span>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {recentConversations.map((conversation) => (
-                    <Link
-                      key={conversation.id}
-                      href="/console/whatsapp/messages"
-                      className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-9 items-center justify-center rounded-full bg-primary/10">
-                          <ChatCircle
-                            className="size-4 text-primary"
-                            weight="fill"
-                          />
+                <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
+                  <div className="h-[150px] w-[150px] shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={overview.cost.byCategory.map((c) => ({
+                            name: c.category
+                              .replace("WHATSAPP_MESSAGE_", "")
+                              .replace("WHATSAPP_", ""),
+                            value: c.count,
+                            category: c.category,
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={65}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {overview.cost.byCategory.map((entry) => (
+                            <Cell
+                              key={`cell-${entry.category}`}
+                              fill={
+                                CATEGORY_COLORS[entry.category] ??
+                                "hsl(var(--primary))"
+                              }
+                            />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {/* Horizontal Bar Breakdown */}
+                  <div className="w-full space-y-3 text-xs">
+                    {overview.cost.byCategory.map((cat) => {
+                      const cleanName = cat.category
+                        .replace("WHATSAPP_MESSAGE_", "")
+                        .replace("WHATSAPP_", "")
+                      const total = overview.cost?.totalEntries ?? 1
+                      const pct = Number(
+                        ((cat.count / (total || 1)) * 100).toFixed(1)
+                      )
+                      const catColor =
+                        CATEGORY_COLORS[cat.category] ??
+                        CATEGORY_COLORS[cleanName] ??
+                        "hsl(var(--primary))"
+                      return (
+                        <div key={cat.category} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="size-2.5 rounded-full"
+                                style={{ backgroundColor: catColor }}
+                              />
+                              <span className="font-medium">{cleanName}</span>
+                            </div>
+                            <span className="text-muted-foreground">
+                              {cat.count} pesan ({pct}%)
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${Math.min(pct, 100)}%`,
+                                backgroundColor: catColor,
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {conversation.contactPhone}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {(conversation.lastDirection === "INBOX"
-                              ? t.connected
-                              : t.disconnected) +
-                              ` | ${conversation._count.whatsappMessages} messages`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        {conversation.lastDirection === "INBOX" ? (
-                          <Badge variant="secondary" className="text-[10px]">
-                            {t.connected}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px]">
-                            {t.disconnected}
-                          </Badge>
-                        )}
-                        {conversation.lastMessageAt && (
-                          <span className="text-[11px] text-muted-foreground">
-                            {formatRelativeTime(conversation.lastMessageAt)}
-                          </span>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -557,7 +816,7 @@ export default function WhatsAppDashboardPage() {
       )}
       <ServiceOrderDialog
         productCode="WHATSAPP"
-        productTitle="WhatsApp Gateway"
+        productTitle="WhatsApp"
         open={isOrderOpen}
         onOpenChange={setIsOrderOpen}
         lang={locale}

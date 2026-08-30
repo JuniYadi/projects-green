@@ -341,7 +341,14 @@ function ConversationItem({
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-1">
-          <span className="truncate text-sm font-medium">
+          <span
+            className="truncate text-sm font-medium"
+            title={
+              conversation.contactName?.trim()
+                ? formatPhone(conversation.contactPhone)
+                : undefined
+            }
+          >
             {conversation.contactName?.trim() ||
               formatPhone(conversation.contactPhone)}
           </span>
@@ -349,33 +356,21 @@ function ConversationItem({
             {formatConversationTime(conversation.lastMessageAt)}
           </span>
         </div>
-        {conversation.contactName?.trim() && (
-          <div className="truncate text-xs text-muted-foreground">
-            {formatPhone(conversation.contactPhone)}
-          </div>
-        )}
 
-        <div className="mt-1 flex items-center justify-between gap-1">
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            {conversation.lastDirection === "INBOX" ? (
-              <>
-                <ArrowBendDownLeft className="size-3 text-blue-500" />
-                <span>Received</span>
-              </>
-            ) : conversation.lastDirection === "OUTBOX" ? (
-              <>
-                <ArrowBendUpRight className="size-3 text-emerald-500" />
-                <span>Sent</span>
-              </>
-            ) : (
-              <span>No messages</span>
-            )}
-          </span>
-
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {conversation._count.whatsappMessages} msg
-            {conversation._count.whatsappMessages !== 1 ? "s" : ""}
-          </span>
+        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+          {conversation.lastDirection === "INBOX" ? (
+            <>
+              <ArrowBendDownLeft className="size-3 text-blue-500" />
+              <span>Received</span>
+            </>
+          ) : conversation.lastDirection === "OUTBOX" ? (
+            <>
+              <ArrowBendUpRight className="size-3 text-emerald-500" />
+              <span>Sent</span>
+            </>
+          ) : (
+            <span>No messages</span>
+          )}
         </div>
         {/* Device & Org badges for tracking */}
         {(conversation.whatsappDevice ||
@@ -674,18 +669,27 @@ function MessageBubble({
 
           {message.waMessageId && (
             <div
-              className={`absolute top-1 ${
+              className={`absolute top-1/2 -translate-y-1/2 ${
                 isInbox ? "-right-7" : "-left-7"
-              } opacity-0 transition-opacity group-hover:opacity-100`}
+              }`}
             >
-              <Link
-                href={journeyHref}
-                className="flex size-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs backdrop-blur hover:bg-muted hover:text-foreground"
-                title={getWhatsAppText("s132", locale)}
-                aria-label={getWhatsAppText("s132", locale)}
-              >
-                <Info className="size-3" />
-              </Link>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={journeyHref}
+                    className="flex size-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs backdrop-blur hover:bg-muted hover:text-foreground"
+                    aria-label={getWhatsAppText("s132", locale)}
+                  >
+                    <Info className="size-3" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
+                >
+                  {getWhatsAppText("s132", locale)}
+                </TooltipContent>
+              </Tooltip>
             </div>
           )}
         </div>
@@ -1269,7 +1273,11 @@ export function WhatsAppInbox({
       }
       return whatsappClient.messages.send({
         phoneNumber: input.phoneNumber,
-        message: input.message,
+        // Meta's API takes text under `caption` for media messages and
+        // under `message` for plain text — never both. The service only
+        // reads whichever field matches the resolved type.
+        message: input.attachment ? undefined : input.message,
+        caption: input.attachment ? input.message : undefined,
         mediaUrl,
         type,
         deviceId: input.deviceId,
@@ -1326,6 +1334,27 @@ export function WhatsAppInbox({
     },
     [pathname, router, searchParams, setActiveConversationId]
   )
+  // Navigating here via a ?phone= link (e.g. from a notification or another
+  // page) seeds the search box and silently narrows the sidebar to that one
+  // number. Give the user an explicit way to see why and back out of it
+  // without losing the conversation they're currently viewing.
+  const handleClearPhoneFilter = React.useCallback(() => {
+    if (activeConversationId) {
+      setActiveConversationId(activeConversationId)
+    }
+    setSearchQuery("")
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete(PHONE_QUERY_KEY)
+    const qs = next.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [
+    activeConversationId,
+    pathname,
+    router,
+    searchParams,
+    setActiveConversationId,
+    setSearchQuery,
+  ])
   const handleDeleteConversation = (id: string) => {
     setSelectedConversationId(id)
     setDeleteConfirmOpen(true)
@@ -2275,6 +2304,23 @@ export function WhatsAppInbox({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            {searchParams.get(PHONE_QUERY_KEY) ? (
+              <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <span className="truncate">
+                  {getWhatsAppText("s411", locale).replace(
+                    "{phone}",
+                    formatPhone(searchParams.get(PHONE_QUERY_KEY) ?? "")
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearPhoneFilter}
+                  className="shrink-0 font-medium underline-offset-2 hover:underline"
+                >
+                  {getWhatsAppText("s412", locale)}
+                </button>
+              </div>
+            ) : null}
             {labelFilterIds.length > 0 && (
               <div className="mt-2">
                 <FilterPills
@@ -2389,8 +2435,16 @@ export function WhatsAppInbox({
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">
-                      {formatPhone(activeConversation.contactPhone)}
+                    <h3
+                      className="text-sm font-semibold"
+                      title={
+                        activeConversation.contactName?.trim()
+                          ? formatPhone(activeConversation.contactPhone)
+                          : undefined
+                      }
+                    >
+                      {activeConversation.contactName?.trim() ||
+                        formatPhone(activeConversation.contactPhone)}
                     </h3>
                     {activeConversation.whatsappDevice && (
                       <Badge
@@ -2412,10 +2466,6 @@ export function WhatsAppInbox({
                       </Badge>
                     )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {activeConversation._count.whatsappMessages}{" "}
-                    <WhatsAppText id="s55" />
-                  </p>
                 </div>
               </div>
             ) : (

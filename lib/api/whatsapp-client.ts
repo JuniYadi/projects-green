@@ -301,6 +301,7 @@ export const whatsappClient = {
       phoneNumber: string
       message?: string
       mediaUrl?: string
+      caption?: string
       type?: "text" | "image" | "document" | "audio" | "video"
       deviceId?: string
     }) =>
@@ -587,6 +588,7 @@ export const whatsappClient = {
           createdAt: string
           updatedAt: string
           devicePhoneNumber?: string | null
+          deviceName?: string | null
         }[]
         total: number
         page: number

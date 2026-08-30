@@ -129,13 +129,13 @@ describe("upsertWhatsappContactFromMessage", () => {
       where: {
         organizationId_phoneNumber: {
           organizationId: "org-1",
-          phoneNumber: "628123456789",
+          phoneNumber: "+628123456789",
         },
       },
       create: {
         organizationId: "org-1",
-        phoneNumber: "628123456789",
-        name: "628123456789",
+        phoneNumber: "+628123456789",
+        name: "+628123456789",
         email: "",
         status: "ACTIVE",
         contactGroupId: "grp-default-1",
@@ -175,13 +175,13 @@ describe("upsertWhatsappContactFromMessage", () => {
       where: {
         organizationId_phoneNumber: {
           organizationId: "org-1",
-          phoneNumber: "628987654321",
+          phoneNumber: "+628987654321",
         },
       },
       create: {
         organizationId: "org-1",
-        phoneNumber: "628987654321",
-        name: "628987654321",
+        phoneNumber: "+628987654321",
+        name: "+628987654321",
         email: "",
         status: "ACTIVE",
         contactGroupId: "grp-default-1",
@@ -243,12 +243,12 @@ describe("upsertWhatsappContactFromMessage", () => {
       where: {
         organizationId_phoneNumber: {
           organizationId: "org-1",
-          phoneNumber: "628111222333",
+          phoneNumber: "+628111222333",
         },
       },
       create: {
         organizationId: "org-1",
-        phoneNumber: "628111222333",
+        phoneNumber: "+628111222333",
         name: "John Doe",
         email: "",
         status: "ACTIVE",

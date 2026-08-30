@@ -9,6 +9,9 @@ mock.module("next/navigation", () => ({
   useSearchParams: () => ({
     get: () => null,
   }),
+  useParams: () => ({
+    lang: "en",
+  }),
 }))
 mock.module("@/lib/eden", () => ({
   eden: {

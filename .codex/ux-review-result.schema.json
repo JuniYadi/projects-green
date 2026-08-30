@@ -1,0 +1,56 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "passed",
+    "reaction",
+    "friction_points",
+    "prescription",
+    "failure_reason"
+  ],
+  "properties": {
+    "passed": {
+      "type": "boolean",
+      "description": "true if the page loaded and a full review could be performed"
+    },
+    "reaction": {
+      "type": "string",
+      "description": "Brutally honest, immediate first impression of the page (the 3-second rule)"
+    },
+    "friction_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["filter", "element", "quote", "why"],
+        "properties": {
+          "filter": {
+            "type": "string",
+            "description": "Which of the 6 baby friction filters this violates: 3-second-clarity | cognitive-dread | visual-abstraction | scannability | mental-math | click-depth"
+          },
+          "element": {
+            "type": "string",
+            "description": "Exact UI element/region reference (heading, button, table column, etc.)"
+          },
+          "quote": {
+            "type": ["string", "null"],
+            "description": "Verbatim problematic copy/label text, or null if purely visual/structural"
+          },
+          "why": {
+            "type": "string",
+            "description": "Why this confuses or slows down a first-time, zero-context user"
+          }
+        }
+      }
+    },
+    "prescription": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Prioritized concrete fixes: what to delete, simplify, or visually replace"
+    },
+    "failure_reason": {
+      "type": ["string", "null"],
+      "description": "Why the review could not be completed (e.g. auth wall, page crash), or null on success"
+    }
+  }
+}

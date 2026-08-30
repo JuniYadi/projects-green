@@ -5,6 +5,7 @@ import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { toWhatsappContactDTO } from "../contacts.dto"
 import { resolveWhatsappContactGroupId } from "../contacts.service"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
+import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 
 const contactBodySchema = t.Object({
   phoneNumber: t.String({
@@ -213,6 +214,13 @@ export const contactsRoutes = new Elysia({
         }
       }
 
+      // Normalize before the duplicate check and create so contacts are
+      // deduped consistently with the message/webhook upsert path (same
+      // person entered as "0857..." vs "+6285708296482" would otherwise
+      // create two rows).
+      const normalizedPhone =
+        normalizeIndonesianPhoneNumber(body.phoneNumber) ?? body.phoneNumber
+
       // Resolve the contact group: use the requested one, or fall back to a
       // lazily-created default "Ungrouped" group so contacts can be created
       // without requiring a Groups UI.
@@ -234,7 +242,7 @@ export const contactsRoutes = new Elysia({
       const existing = await prisma.whatsappContact.findFirst({
         where: {
           organizationId: whatsappAuth.organizationId!,
-          phoneNumber: body.phoneNumber,
+          phoneNumber: normalizedPhone,
         },
       })
 
@@ -250,6 +258,7 @@ export const contactsRoutes = new Elysia({
       const contact = await prisma.whatsappContact.create({
         data: {
           ...body,
+          phoneNumber: normalizedPhone,
           contactGroupId: resolvedGroup.id,
           organizationId: whatsappAuth.organizationId!,
         },

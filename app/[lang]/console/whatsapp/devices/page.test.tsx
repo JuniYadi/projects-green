@@ -81,14 +81,9 @@ mock.module("@/components/billing/service-order-dialog", () => ({
     props.open ? <div role="dialog">Service Order Dialog</div> : null,
 }))
 
-import { enMessages } from "@/lib/i18n/messages/en"
-
-mock.module("@/lib/i18n/messages", () => ({
-  getMessages: () => enMessages,
-}))
 mock.module("@/lib/i18n/pathname", () => ({
   localizePathname: (opts: { pathname: string; locale: string }) =>
-    `/en${opts.pathname}`,
+    `/${opts.locale || "en"}${opts.pathname}`,
   resolveLocaleOrDefault: (lang: string) => lang || "en",
 }))
 
