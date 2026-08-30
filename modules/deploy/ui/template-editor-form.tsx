@@ -335,12 +335,13 @@ export function TemplateEditorForm({
 
       if (meta.name) setName(meta.name)
       if (meta.slug) setSlug(meta.slug)
-      if (meta.tagline) setTagline(meta.tagline)
-      if (meta.description) setDescription(meta.description)
+      if (meta.tagline !== undefined) setTagline(meta.tagline)
+      if (meta.description !== undefined) setDescription(meta.description)
       if (meta.category) setCategory(meta.category)
-      if (meta.iconUrl) setIconUrl(meta.iconUrl)
-      if (meta.websiteUrl) setWebsiteUrl(meta.websiteUrl)
-      if (meta.documentationUrl) setDocumentationUrl(meta.documentationUrl)
+      if (meta.iconUrl !== undefined) setIconUrl(meta.iconUrl)
+      if (meta.websiteUrl !== undefined) setWebsiteUrl(meta.websiteUrl)
+      if (meta.documentationUrl !== undefined)
+        setDocumentationUrl(meta.documentationUrl)
 
       if (bp.runtime) {
         if (bp.runtime.image) setRuntimeImage(bp.runtime.image)
