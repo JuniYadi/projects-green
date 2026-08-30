@@ -62,8 +62,11 @@ export const appTemplateBlueprintSchema = z.object({
   envSchema: z.array(appTemplateBlueprintEnvVarSchema).default([]),
 })
 
-export type AppTemplateBlueprint = z.infer<typeof appTemplateBlueprintSchema>
-export type AppTemplateBlueprintRuntime = z.infer<
+export type AppTemplateBlueprint = z.input<typeof appTemplateBlueprintSchema>
+export type AppTemplateBlueprintParsed = z.infer<
+  typeof appTemplateBlueprintSchema
+>
+export type AppTemplateBlueprintRuntime = z.input<
   typeof appTemplateBlueprintRuntimeSchema
 >
 export type AppTemplateBlueprintResources = z.infer<

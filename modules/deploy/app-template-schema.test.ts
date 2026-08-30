@@ -77,7 +77,7 @@ describe("AppTemplate Prisma Schema & Seed", () => {
 
     expect(hermes?.blueprint.dependencies).toEqual([])
 
-    const envKeys = hermes?.blueprint.envSchema.map((e) => e.key)
+    const envKeys = hermes?.blueprint.envSchema?.map((e) => e.key)
     expect(envKeys).toEqual([
       "ANTHROPIC_API_KEY",
       "HERMES_UID",
@@ -87,7 +87,7 @@ describe("AppTemplate Prisma Schema & Seed", () => {
       "API_SERVER_KEY",
     ])
 
-    const apiKeyEnv = hermes?.blueprint.envSchema.find(
+    const apiKeyEnv = hermes?.blueprint.envSchema?.find(
       (e) => e.key === "ANTHROPIC_API_KEY"
     )
     expect(apiKeyEnv?.required).toBe(true)
@@ -100,11 +100,11 @@ describe("AppTemplate Prisma Schema & Seed", () => {
       "API_SERVER_HOST",
       "API_SERVER_KEY",
     ]) {
-      const env = hermes?.blueprint.envSchema.find((e) => e.key === key)
+      const env = hermes?.blueprint.envSchema?.find((e) => e.key === key)
       expect(env?.required).toBe(false)
     }
 
-    const apiServerKeyEnv = hermes?.blueprint.envSchema.find(
+    const apiServerKeyEnv = hermes?.blueprint.envSchema?.find(
       (e) => e.key === "API_SERVER_KEY"
     )
     expect(apiServerKeyEnv?.isSecret).toBe(true)
