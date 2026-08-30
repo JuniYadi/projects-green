@@ -13,7 +13,7 @@ const defaultStack = {
   memory: 1024,
   envVarsJson: [
     { key: "NODE_ENV", value: "production" },
-    { key: "DB_URL", value: "shhh", type: "secret" },
+    { key: "DB_URL", value: "postgres://example", type: "plain" },
   ],
 }
 
@@ -57,8 +57,12 @@ type MockEdgeDomain = {
 const mockPrisma = {
   $transaction: mock(async (fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
   applicationStack: {
-    findUnique: mock(async () => defaultStack),
-    findFirst: mock(async () => defaultStack),
+    findUnique: mock(async (..._args: unknown[]) => defaultStack),
+    findFirst: mock(async (..._args: unknown[]) => defaultStack),
+    update: mock(async (..._args: unknown[]) => ({
+      id: "stack-1",
+      lastDeployStatus: "FAILED",
+    })),
   },
   applicationDomain: {
     findFirst: mock(
@@ -66,7 +70,11 @@ const mockPrisma = {
     ),
   },
   applicationDeployment: {
-    findFirst: mock(async () => defaultDeployment),
+    findFirst: mock(async (..._args: unknown[]) => defaultDeployment),
+    update: mock(async (..._args: unknown[]) => ({
+      id: "deploy-1",
+      status: "FAILED",
+    })),
   },
   applicationDeployEvent: {
     findFirst: mock(
@@ -87,7 +95,11 @@ const mockPrisma = {
         metadataJson: Record<string, unknown>
       } | null> => null
     ),
-    create: mock(async () => ({ id: "event-1" })),
+    create: mock(async (..._args: unknown[]) => ({ id: "event-1" })),
+    upsert: mock(async (..._args: unknown[]) => ({ id: "event-1" })),
+  },
+  applicationDeploymentLog: {
+    create: mock(async (..._args: unknown[]) => ({ id: "log-1" })),
   },
 }
 
@@ -150,6 +162,10 @@ describe("handleJenkinsImageReady", () => {
     )
     mockPrisma.applicationDeployEvent.findFirst.mockReset()
     mockPrisma.applicationDeployEvent.findFirst.mockResolvedValue(null)
+    mockPrisma.applicationDeployment.update.mockClear()
+    mockPrisma.applicationStack.update.mockClear()
+    mockPrisma.applicationDeployEvent.upsert.mockClear()
+    mockPrisma.applicationDeploymentLog.create.mockClear()
     mockTx.applicationDeployment.findUnique.mockReset()
     mockTx.applicationDeployment.findUnique.mockResolvedValue(defaultDeployment)
     mockTx.applicationDeployEvent.findUnique.mockReset()
@@ -236,7 +252,7 @@ describe("handleJenkinsImageReady", () => {
     }>
     expect(files[0]?.content).toContain("externalSecret:")
     expect(files[0]?.content).toContain(
-      "vaultPath: tenants/org-1/stacks/stack-1/prod/app-env"
+      "key: tenants/org-1/stacks/stack-1/prod/app-env"
     )
     expect(files[0]?.content).not.toContain("secrets:")
     expect(files[0]?.content).not.toContain("DATABASE_URL")
@@ -304,5 +320,48 @@ describe("handleJenkinsImageReady", () => {
       "MANIFEST_PUSHED",
       "ARGOCD_SYNC_STARTED",
     ])
+  })
+
+  it("marks the deployment FAILED and returns cleanly when secret env vars have no resolved Vault path", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      ...defaultStack,
+      envVarsJson: JSON.stringify([
+        { key: "NODE_ENV", value: "production", type: "plain" },
+        { key: "DB_PASSWORD", value: "shhh", type: "secret" },
+      ]),
+    } as any)
+
+    const res = await handleJenkinsImageReady({
+      slug: "app-metacard-prod",
+      deploymentId: "deploy-1",
+      imageTag: "187",
+    })
+
+    expect(res).toEqual({
+      ok: true,
+      deploymentId: "deploy-1",
+      gitopsCommitSha: null,
+      idempotent: false,
+    })
+    expect(fakeCommit).not.toHaveBeenCalled()
+    expect(mockPrisma.applicationDeployment.update).toHaveBeenCalledTimes(1)
+    const updateArgs = mockPrisma.applicationDeployment.update.mock
+      .calls[0]?.[0] as any
+    expect(updateArgs.where).toEqual({ id: "deploy-1" })
+    expect(updateArgs.data.status).toBe("FAILED")
+    expect(updateArgs.data.failureReason).toMatch(/secret env var/i)
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.applicationStack.update.mock.calls[0]?.[0]).toEqual({
+      where: { id: "stack-1" },
+      data: { lastDeployStatus: "FAILED" },
+    })
+    expect(mockPrisma.applicationDeployEvent.upsert).toHaveBeenCalledTimes(1)
+    const eventArgs = mockPrisma.applicationDeployEvent.upsert.mock
+      .calls[0]?.[0] as any
+    expect(eventArgs.create.type).toBe("DEPLOY_FAILED")
+    expect(mockPrisma.applicationDeploymentLog.create).toHaveBeenCalledTimes(1)
+    const logArgs = mockPrisma.applicationDeploymentLog.create.mock
+      .calls[0]?.[0] as any
+    expect(logArgs.data.status).toBe("FAILED")
   })
 })
