@@ -1,14 +1,23 @@
 import { Elysia, t } from "elysia"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { whatsappAuthPlugin } from "@/lib/whatsapp/auth"
+import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { WorkflowDefinitionSchema } from "./workflow.schema"
 
+type RouteSet = {
+  status?: number | string
+}
+
 export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
-  .use(whatsappAuthPlugin)
-  .get("/", async ({ whatsappAuth }) => {
+  .get("/", async ({ request, set }: { request: Request; set: RouteSet }) => {
+    const whatsappAuth = await resolveAuthContext(request)
     if (!whatsappAuth?.organizationId) {
-      return { ok: false, error: "Organization required", data: [] }
+      set.status = 401
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Organization required.",
+      }
     }
 
     const devices = await prisma.whatsappDevice.findMany({
@@ -45,9 +54,23 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
   })
   .get(
     "/:id",
-    async ({ whatsappAuth, params }) => {
+    async ({
+      request,
+      params,
+      set,
+    }: {
+      request: Request
+      params: { id: string }
+      set: RouteSet
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
       if (!whatsappAuth?.organizationId) {
-        return { ok: false, error: "Organization required" }
+        set.status = 401
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required.",
+        }
       }
 
       const devices = await prisma.whatsappDevice.findMany({
@@ -92,9 +115,23 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
   )
   .post(
     "/save",
-    async ({ whatsappAuth, body }) => {
+    async ({
+      request,
+      body,
+      set,
+    }: {
+      request: Request
+      body: { deviceId: string; workflow: unknown }
+      set: RouteSet
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
       if (!whatsappAuth?.organizationId) {
-        return { ok: false, error: "Organization required" }
+        set.status = 401
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required.",
+        }
       }
 
       const { deviceId, workflow } = body
@@ -146,9 +183,23 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
   )
   .post(
     "/delete",
-    async ({ whatsappAuth, body }) => {
+    async ({
+      request,
+      body,
+      set,
+    }: {
+      request: Request
+      body: { deviceId: string }
+      set: RouteSet
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
       if (!whatsappAuth?.organizationId) {
-        return { ok: false, error: "Organization required" }
+        set.status = 401
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Organization required.",
+        }
       }
 
       const { deviceId } = body
