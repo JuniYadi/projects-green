@@ -827,6 +827,7 @@ export type AppMessages = {
         processingActivation: string
         cancel: string
         activationTitle: string
+        subscribeAction: string
         activationSuccessTitle: string
         activationDescription: string
         successToast: string

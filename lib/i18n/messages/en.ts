@@ -909,7 +909,8 @@ export const enMessages: AppMessages = {
           "I agree to the balance deduction to activate this service.",
         processingActivation: "Processing Activation...",
         cancel: "Cancel",
-        activationTitle: "Activate & Connect {service}",
+        activationTitle: "Subscribe to {service}",
+        subscribeAction: "Subscribe",
         activationSuccessTitle: "Service Activation Successful!",
         activationDescription:
           "Choose a subscription plan and complete activation without leaving this page.",
