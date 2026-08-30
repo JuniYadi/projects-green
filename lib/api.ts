@@ -18,6 +18,7 @@ import { knowledgeRoutes } from "@/modules/docs/api/knowledge.route"
 import { createConsoleAiProvidersRoutes } from "@/modules/ai/api/console-ai-providers.route"
 import { createConsoleAiKnowledgeRoutes } from "@/modules/ai/api/console-ai-knowledge.route"
 import { createConsoleAiAgentsRoutes } from "@/modules/ai/api/console-ai-agents.route"
+import { createConsoleAiWorkflowsRoutes } from "@/modules/ai/api/console-ai-workflows.route"
 import { deployRoutes } from "@/modules/deploy/api/deploy.route"
 import { frameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
 import { githubRoutes } from "@/modules/github/api/github.route"
@@ -296,6 +297,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(createConsoleAiProvidersRoutes())
   .use(createConsoleAiKnowledgeRoutes())
   .use(createConsoleAiAgentsRoutes())
+  .use(createConsoleAiWorkflowsRoutes())
   .use(deployRoutes)
   .use(frameworkDetectionRoutes)
   .use(githubRoutes)

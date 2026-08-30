@@ -5,7 +5,7 @@ import AiAgentsPage from "./page"
 describe("AiAgentsPage", () => {
   it("renders Master Agent Profiles and Create button", () => {
     const html = renderToString(<AiAgentsPage />)
-    expect(html).toContain("AI Agent Persona &amp; Channels")
-    expect(html).toContain("Buat Agen Baru")
+    expect(html).toContain("AI Studio &amp; Asisten WhatsApp")
+    expect(html).toContain("Buat Alur / Asisten AI Baru")
   })
 })
