@@ -307,11 +307,23 @@ function normalizeHref(href: string, activeLocale: "id" | "en"): string {
   }
 
   const clean = href.startsWith("/") ? href : `/${href}`
-
-  // If href doesn't have locale prefix (e.g. /console/billing/topup or /docs/billing), prefix with activeLocale
-  if (!clean.startsWith("/id/") && !clean.startsWith("/en/")) {
-    return `/${activeLocale}${clean}`
+  // Strip existing locale if present to normalize target path
+  let targetPath = clean
+  if (clean.startsWith("/id/") || clean.startsWith("/en/")) {
+    targetPath = clean.slice(3)
   }
 
-  return clean
+  // If link points to /whatsapp/... or /billing/... without /docs or /console prefix, map to docs
+  if (
+    !targetPath.startsWith("/console") &&
+    !targetPath.startsWith("/portal") &&
+    !targetPath.startsWith("/docs") &&
+    !targetPath.startsWith("/api") &&
+    !targetPath.startsWith("/login") &&
+    !targetPath.startsWith("/onboarding")
+  ) {
+    targetPath = `/docs${targetPath}`
+  }
+
+  return `/${activeLocale}${targetPath}`
 }

@@ -475,8 +475,7 @@ describe("resolveSidebarMenu", () => {
       "AI & Bot Builder",
       "Contacts",
       "Catalogs",
-      "Webhook Logs",
-      "Audit Logs",
+      "Logs",
     ])
     expect(navMain.find((item) => item.title === "Dashboard")?.isActive).toBe(
       true
@@ -641,28 +640,29 @@ describe("resolveSidebarMenu", () => {
     expect(apiKeys?.isLocked).toBe(false)
   })
 
-  it("marks Webhook Logs active for its route", () => {
-    const { navMain } = resolveSidebarMenu({
+  it("marks Logs active for whatsapp logs routes", () => {
+    const { navMain: navLogs } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/logs",
+      locale: "en",
+    })
+    expect(navLogs.find((item) => item.title === "Logs")?.isActive).toBe(true)
+
+    const { navMain: navWebhooks } = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/whatsapp/webhook-logs",
       locale: "en",
     })
+    expect(navWebhooks.find((item) => item.title === "Logs")?.isActive).toBe(
+      true
+    )
 
-    expect(
-      navMain.find((item) => item.title === "Webhook Logs")?.isActive
-    ).toBe(true)
-  })
-
-  it("marks Audit Logs active for its route", () => {
-    const { navMain } = resolveSidebarMenu({
+    const { navMain: navAudit } = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/whatsapp/audit-logs",
       locale: "en",
     })
-
-    expect(navMain.find((item) => item.title === "Audit Logs")?.isActive).toBe(
-      true
-    )
+    expect(navAudit.find((item) => item.title === "Logs")?.isActive).toBe(true)
   })
 
   it("shows access profiles instead of the order flow in console vpn context", () => {

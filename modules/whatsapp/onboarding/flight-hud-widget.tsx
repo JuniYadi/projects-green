@@ -66,7 +66,11 @@ export function FlightHudWidget({
     }
   }, [onSubscribeClick, setIsInternalOrderOpen])
 
-  if (isDismissed) {
+  if (
+    isDismissed ||
+    onboarding.isGraduated ||
+    onboarding.progressPercent === 100
+  ) {
     return null
   }
   const { activeMission, progressPercent, missions, level } = onboarding

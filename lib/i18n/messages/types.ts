@@ -1397,6 +1397,75 @@ export type AppMessages = {
         cardTitle: string
         cardDescription: string
       }
+      logs: {
+        heading: string
+        description: string
+        tabMessages: string
+        tabActivity: string
+        cardMessagesTitle: string
+        cardMessagesDesc: string
+        cardActivityTitle: string
+        cardActivityDesc: string
+        searchMessagesPlaceholder: string
+        searchActivityPlaceholder: string
+        colDeviceContact: string
+        colEventType: string
+        colStatus: string
+        colActor: string
+        colTime: string
+        colDetails: string
+        colWaMessageId: string
+        colDeviceId: string
+        colEventId: string
+        colMessageSummary: string
+        colIp: string
+        colDuration: string
+        colLogId: string
+        loadingMessages: string
+        emptyMessages: string
+        loadingActivity: string
+        emptyActivity: string
+        retry: string
+        loadError: string
+        drawer: {
+          titleMessages: string
+          titleActivity: string
+          idLabel: string
+          sectionContact: string
+          sectionStatus: string
+          sectionEvent: string
+          sectionMessageId: string
+          sectionSummary: string
+          sectionTech: string
+          device: string
+          recipientPhone: string
+          eventType: string
+          time: string
+          receivedAt: string
+          activityType: string
+          actor: string
+          ipAddress: string
+          duration: string
+          waMessageId: string
+          payloadType: string
+          statusSuccess: string
+          statusReceived: string
+          statusFailed: string
+          statusPending: string
+          statusDescSuccessWebhook: string
+          statusDescFailedWebhook: string
+          statusDescReceivedWebhook: string
+          statusDescSuccessAudit: string
+          statusDescFailedAudit: string
+          copyIdSuccess: string
+          copyIdFail: string
+          copyIdButton: string
+          copiedButton: string
+          templateLabel: string
+          correlationIdLabel: string
+          close: string
+        }
+      }
       pricing: {
         heading: string
         description: string

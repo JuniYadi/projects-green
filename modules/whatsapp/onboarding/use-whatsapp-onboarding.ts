@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { useWhatsAppOnboardingStore } from "./whatsapp-onboarding.store"
 
 export type WhatsAppFeature =
   | "devices"
@@ -31,7 +32,6 @@ export type OnboardingMission = {
   isActionDialog?: boolean
   completed: boolean
 }
-
 export type WhatsAppOnboardingState = {
   level: OnboardingLevel
   progressPercent: number
@@ -117,29 +117,34 @@ export function useWhatsAppOnboarding(
   const messages = getMessages(locale)
   const obMessages = messages.console.whatsapp.onboarding.missions
 
-  const [manualGraduated, setManualGraduated] = React.useState<boolean>(() => {
-    if (input.bypassGating) return true
-    if (typeof window === "undefined") return false
+  const [manualGraduated, setManualGraduated] = React.useState<boolean>(
+    () => input.bypassGating ?? false
+  )
+
+  React.useEffect(() => {
+    if (input.bypassGating) return
     try {
-      return localStorage.getItem(GRADUATED_STORAGE_KEY) === "true"
-    } catch {
-      return false
-    }
-  })
+      if (localStorage.getItem(GRADUATED_STORAGE_KEY) === "true") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setManualGraduated(true)
+      }
+    } catch {}
+  }, [input.bypassGating])
 
   const [replayLevel, setReplayLevelState] =
-    React.useState<OnboardingLevel | null>(() => {
-      if (typeof window === "undefined") return null
-      try {
-        const saved = localStorage.getItem(REPLAY_LEVEL_STORAGE_KEY)
-        if (saved === "0_pending") return "0_pending"
-        if (saved !== null && !isNaN(Number(saved)))
-          return Number(saved) as OnboardingLevel
-        return null
-      } catch {
-        return null
+    React.useState<OnboardingLevel | null>(null)
+
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REPLAY_LEVEL_STORAGE_KEY)
+      if (saved === "0_pending") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setReplayLevelState("0_pending")
+      } else if (saved !== null && !isNaN(Number(saved))) {
+        setReplayLevelState(Number(saved) as OnboardingLevel)
       }
-    })
+    } catch {}
+  }, [])
 
   const setReplayLevel = React.useCallback((level: OnboardingLevel | null) => {
     setReplayLevelState(level)
@@ -198,16 +203,13 @@ export function useWhatsAppOnboarding(
 
   const isGraduated = manualGraduated || derivedLevel === 3
 
-  React.useEffect(() => {
-    if (typeof window === "undefined") return
-    try {
-      if (isGraduated) {
-        sessionStorage.setItem(GRADUATED_STORAGE_KEY, "true")
-      } else {
-        sessionStorage.removeItem(GRADUATED_STORAGE_KEY)
-      }
-    } catch {}
-  }, [isGraduated])
+  const setIsGraduatedStore = useWhatsAppOnboardingStore(
+    (s) => s.setIsGraduated
+  )
+  const setProgressPercentStore = useWhatsAppOnboardingStore(
+    (s) => s.setProgressPercent
+  )
+
   const numericLevel =
     derivedLevel === "0_pending"
       ? 0.5
@@ -223,6 +225,13 @@ export function useWhatsAppOnboarding(
     if (derivedLevel === 2) return 85
     return 100
   }, [derivedLevel, isGraduated])
+  React.useEffect(() => {
+    setIsGraduatedStore(isGraduated)
+  }, [isGraduated, setIsGraduatedStore])
+
+  React.useEffect(() => {
+    setProgressPercentStore(progressPercent)
+  }, [progressPercent, setProgressPercentStore])
 
   const missions = React.useMemo<OnboardingMission[]>(() => {
     return [
