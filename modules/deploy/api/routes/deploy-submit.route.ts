@@ -24,6 +24,7 @@ import { parsePublicGitUrl } from "../../public-source"
 interface BlueprintRuntimeConfig {
   runtime?: {
     defaultPort?: number
+    image?: string
   }
   resources?: {
     defaultCpu?: number
@@ -123,6 +124,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
     let name: string
     let slug: string
     let managedTemplate: ManagedAppTemplate | undefined
+    let dbTemplateImageRepository: string | null = null
 
     if (sourceType === "MANAGED_TEMPLATE") {
       managedTemplate = MANAGED_APP_TEMPLATES.find(
@@ -154,6 +156,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           const blueprint =
             (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig) ??
             null
+          dbTemplateImageRepository = blueprint?.runtime?.image ?? null
           template = {
             id: dbTemplate.id as (typeof DEPLOY_TEMPLATES)[number]["id"],
             name: dbTemplate.name,
@@ -308,7 +311,8 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         customDomain: body.customDomain ?? null,
         subdomain: body.subdomain ?? null,
         envVars: body.envVars ?? [],
-        imageRepository: managedTemplate?.imageRepository ?? null,
+        imageRepository:
+          managedTemplate?.imageRepository ?? dbTemplateImageRepository ?? null,
       })
     } catch (error) {
       if (claimedStock) {

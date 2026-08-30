@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
+import * as RealClusterIntegrationService from "@/modules/deploy/cluster-integration.service"
 
 const txCreate = mock(async (..._args: unknown[]) => ({ id: "event-1" }))
 const txFindFirst = mock(
@@ -121,6 +122,7 @@ mock.module("@/modules/gitops/gitops.service", () => ({
 }))
 
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
+  ...RealClusterIntegrationService,
   resolveClusterIntegration: mock(async (_stackId: string, type: string) => {
     if (type === "GITOPS") {
       return {
