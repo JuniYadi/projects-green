@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { toast } from "sonner"
 import {
   Robot,
   WhatsappLogo,
@@ -60,6 +61,7 @@ type GeneratedStep = {
   name: string
   type: string
   detail: string
+  captureVariable?: string
 }
 
 export default function AiAgentsPage() {
@@ -85,8 +87,8 @@ export default function AiAgentsPage() {
       text: "Halo! Selamat datang di toko resmi kami. Ada yang bisa kami bantu hari ini?",
     },
   ])
+  const [simVariables, setSimVariables] = useState<Record<string, string>>({})
   const [testInput, setTestInput] = useState("")
-
   const loadAgents = useCallback(async () => {
     try {
       const res = await eden.api.console.ai.agents.get()
@@ -125,6 +127,7 @@ export default function AiAgentsPage() {
           }[]
         }
         summary?: string
+        error?: string
       }
       if (data.ok && data.workflow) {
         setWorkflowSummary(
@@ -145,9 +148,11 @@ export default function AiAgentsPage() {
               (n.config.text as string) ||
               (n.config.bodyText as string) ||
               "Langkah alur",
+            captureVariable: n.config.captureVariable as string | undefined,
           })
         )
         setWorkflowSteps(steps)
+        setSimVariables({})
 
         // Set default name & prompt if empty
         if (!name) setName(data.workflow.name)
@@ -162,9 +167,17 @@ export default function AiAgentsPage() {
             },
           ])
         }
+        toast.success("Alur berhasil dirancang otomatis!")
+      } else {
+        toast.error(data.error || "Gagal merancang alur alur dengan AI.")
       }
     } catch (err) {
       console.error("[ai-workflow] generate error:", err)
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat merancang alur."
+      )
     } finally {
       setGenerating(false)
     }
@@ -178,13 +191,37 @@ export default function AiAgentsPage() {
       { role: "user" as const, text: userMsg },
     ]
 
-    // Simulate next step or AI response
-    if (workflowSteps.length > 1) {
+    // Count user turns so far (including this new user turn)
+    const userTurnCount = nextChat.filter((m) => m.role === "user").length
+    const prevStepIndex = userTurnCount - 1
+    const currentStepIndex = userTurnCount
+
+    // Capture variable from previous prompt step if configured
+    const updatedVariables = { ...simVariables }
+    if (
+      workflowSteps.length > prevStepIndex &&
+      workflowSteps[prevStepIndex]?.captureVariable
+    ) {
+      const varName = workflowSteps[prevStepIndex].captureVariable as string
+      updatedVariables[varName] = userMsg
+      setSimVariables(updatedVariables)
+    }
+
+    // Simulate next step or completion AI response
+    if (workflowSteps.length > currentStepIndex) {
+      const step = workflowSteps[currentStepIndex]
+      let renderedText = step.detail
+
+      // Substitute captured variables
+      for (const [key, value] of Object.entries(updatedVariables)) {
+        renderedText = renderedText.replaceAll(`{{variables.${key}}}`, value)
+      }
+      // Also replace any remaining matching variable templates with generic userMsg if not captured
+      renderedText = renderedText.replace(/\{\{variables\.\w+\}\}/g, userMsg)
+
       nextChat.push({
         role: "bot" as const,
-        text: workflowSteps[1].detail
-          .replace("{{variables.no_resi}}", userMsg)
-          .replace("{{variables.nama_user}}", userMsg),
+        text: renderedText,
       })
     } else {
       nextChat.push({
@@ -198,7 +235,10 @@ export default function AiAgentsPage() {
   }
 
   const handleSave = async () => {
-    if (!name.trim()) return
+    if (!name.trim()) {
+      toast.error("Nama asisten wajib diisi.")
+      return
+    }
 
     setSaving(true)
     try {
@@ -218,9 +258,14 @@ export default function AiAgentsPage() {
         setSystemPrompt("")
         setWorkflowSteps([])
         setWorkflowSummary("")
+        setSimVariables({})
+        toast.success("Asisten AI berhasil disimpan.")
+      } else {
+        toast.error("Gagal menyimpan profil asisten.")
       }
     } catch (err) {
       console.error("[ai-agents] save error:", err)
+      toast.error("Terjadi kesalahan saat menyimpan asisten.")
     } finally {
       setSaving(false)
     }
