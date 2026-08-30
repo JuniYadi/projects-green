@@ -481,6 +481,9 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.find((item) => item.title === "Dashboard")?.isActive).toBe(
       true
     )
+    expect(
+      navMain.find((item) => item.title === "AI & Bot Builder")?.url
+    ).toContain("/console/whatsapp/workflows")
     expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
   })
   it("marks pricing active for its routes", () => {

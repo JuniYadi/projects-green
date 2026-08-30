@@ -859,11 +859,11 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         {
           title: "AI & Bot Builder",
           url: localizePathname({
-            pathname: "/console/ai/agents",
+            pathname: "/console/whatsapp/workflows",
             locale,
           }),
           icon: <RobotIcon />,
-          isActive: startsWithRoute(path, "/console/ai"),
+          isActive: startsWithRoute(path, "/console/whatsapp/workflows"),
         },
         {
           title: "Contacts",
