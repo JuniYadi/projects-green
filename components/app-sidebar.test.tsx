@@ -615,6 +615,29 @@ describe("resolveSidebarMenu", () => {
     expect(apiKeys?.isActive).toBe(true)
   })
 
+  it("locks graduated-only console WhatsApp items by default (no isGraduated passed)", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/api-keys",
+      locale: "en",
+    })
+
+    const apiKeys = navMain.find((item) => item.title === "API Keys")
+    expect(apiKeys?.isLocked).toBe(true)
+  })
+
+  it("unlocks graduated-only console WhatsApp items when isGraduated is true", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/api-keys",
+      locale: "en",
+      isGraduated: true,
+    })
+
+    const apiKeys = navMain.find((item) => item.title === "API Keys")
+    expect(apiKeys?.isLocked).toBe(false)
+  })
+
   it("marks Webhook Logs active for its route", () => {
     const { navMain } = resolveSidebarMenu({
       surface: "console",
