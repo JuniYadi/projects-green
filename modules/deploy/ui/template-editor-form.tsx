@@ -64,9 +64,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { AdminTemplateRecord } from "@/app/[lang]/portal/marketplace/_components/template-inspector-drawer"
-import type {
-  AppTemplateBlueprint,
-  AppTemplatePackage,
+import {
+  appTemplateBlueprintSchema,
+  type AppTemplateBlueprint,
+  type AppTemplatePackage,
 } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 import {
   exportTemplatePackage,
@@ -330,7 +331,15 @@ export function TemplateEditorForm({
         meta = validation.data.metadata
         bp = validation.data.blueprint
       } else {
-        bp = parsed as AppTemplateBlueprint
+        const parseResult = appTemplateBlueprintSchema.safeParse(parsed)
+        if (!parseResult.success) {
+          const firstIssue =
+            parseResult.error.issues[0]?.message ||
+            "Invalid blueprint structure"
+          toast.error(`Invalid blueprint schema: ${firstIssue}`)
+          return
+        }
+        bp = parseResult.data
       }
 
       if (meta.name) setName(meta.name)

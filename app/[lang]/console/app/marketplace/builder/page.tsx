@@ -24,9 +24,10 @@ import {
   exportTemplatePackage,
   validateTemplatePackage,
 } from "@/modules/deploy/blueprint/app-template-blueprint.service"
-import type {
-  AppTemplateBlueprint,
-  AppTemplatePackage,
+import {
+  appTemplateBlueprintSchema,
+  type AppTemplateBlueprint,
+  type AppTemplatePackage,
 } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 import {
   AlertDialog,
@@ -70,6 +71,9 @@ export interface TemplateEnvVar {
   isSecret: boolean
   dataType: "string" | "number" | "boolean" | "select"
   options?: string[]
+  generateRandomHex?: number
+  isFixed?: boolean
+  isHidden?: boolean
 }
 
 export interface TemplateBuilderState {
@@ -257,6 +261,10 @@ export default function TemplateBuilderPage() {
         required: env.required,
         isSecret: env.isSecret,
         dataType: env.dataType,
+        options: env.options,
+        generateRandomHex: env.generateRandomHex,
+        isFixed: env.isFixed,
+        isHidden: env.isHidden,
       })),
     }
   }
@@ -309,7 +317,15 @@ export default function TemplateBuilderPage() {
         meta = validation.data.metadata
         bp = validation.data.blueprint
       } else {
-        bp = parsed as AppTemplateBlueprint
+        const parseResult = appTemplateBlueprintSchema.safeParse(parsed)
+        if (!parseResult.success) {
+          const firstIssue =
+            parseResult.error.issues[0]?.message ||
+            "Invalid blueprint structure"
+          toast.error(`Invalid blueprint schema: ${firstIssue}`)
+          return
+        }
+        bp = parseResult.data
       }
 
       setFormData((prev) => {
@@ -369,6 +385,9 @@ export default function TemplateBuilderPage() {
             isSecret: item.isSecret,
             dataType: item.dataType,
             options: item.options,
+            generateRandomHex: item.generateRandomHex,
+            isFixed: item.isFixed,
+            isHidden: item.isHidden,
           }))
         }
 

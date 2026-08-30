@@ -214,8 +214,12 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
     return tx.applicationStack.create({ data })
   })
-  // Determine env from slug (e.g., "app-myapp-prod" → "prod", default "dev")
-  const env = stack.slug.endsWith("-prod") ? "prod" : "dev"
+  // Determine env from slug (e.g., "app-myapp-prod" → "prod", "-staging" → "staging", default "dev")
+  const env = stack.slug.endsWith("-prod")
+    ? "prod"
+    : stack.slug.endsWith("-staging")
+      ? "staging"
+      : "dev"
 
   // If envVars contains plain key-value pairs (or unreferenced secrets), write them into HashiCorp Vault
   if (Array.isArray(input.envVars) && input.envVars.length > 0) {

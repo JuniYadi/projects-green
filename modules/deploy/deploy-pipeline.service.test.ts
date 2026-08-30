@@ -57,6 +57,9 @@ const mockPrisma = {
     create: mock(() => Promise.resolve({ id: "log-1" })),
     findMany: mock(() => Promise.resolve([])),
   },
+  githubRepositoryConnection: {
+    findUnique: mock(() => Promise.resolve(null)),
+  },
   $transaction: mock((fn: (tx: typeof mockPrisma) => Promise<unknown>) =>
     fn(mockPrisma)
   ),
