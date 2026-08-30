@@ -392,10 +392,12 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
     mockRedis.get.mockClear()
     mockRedis.set.mockClear()
     mockRedis.del.mockClear()
+    mockRedis.eval.mockClear()
     mockRedis.get.mockImplementation(async () => null)
     mockRedis.set.mockImplementation(async () => "OK")
     mockRedis.del.mockImplementation(async () => 1)
     mockRedis.eval.mockImplementation(async () => 1)
+    mockPrisma.whatsappDevice.findUnique.mockReset()
     mockMessageService.sendMessage.mockClear()
   })
 
