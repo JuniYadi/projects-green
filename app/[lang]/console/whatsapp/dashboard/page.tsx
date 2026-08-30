@@ -24,6 +24,22 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import {
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts"
+import type { ChartConfig } from "@/components/ui/chart"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { AccessRestricted } from "@/modules/whatsapp/ui/access-restricted"
@@ -31,6 +47,18 @@ import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
 import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
 import { WhatsAppCommandCenter } from "@/modules/whatsapp/onboarding/whatsapp-command-center"
 import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
+
+const CATEGORY_COLORS: Record<string, string> = {
+  UTILITY: "hsl(var(--chart-1))",
+  AUTHENTICATION: "hsl(var(--chart-2))",
+  MARKETING: "hsl(var(--chart-3))",
+  SERVICE: "hsl(var(--chart-4))",
+}
+
+const DASHBOARD_CHART_CONFIG = {
+  in: { label: "Pesan Masuk", color: "hsl(var(--chart-1))" },
+  out: { label: "Pesan Keluar", color: "hsl(var(--chart-2))" },
+} satisfies ChartConfig
 
 type WebhookStats = {
   periodEnd: string
@@ -122,10 +150,17 @@ export default function WhatsAppDashboardPage() {
     null
   )
   const [broadcastTotal, setBroadcastTotal] = React.useState(0)
+  const [dailyCounts, setDailyCounts] = React.useState<
+    { date: string; messageInboxCount: number; messageOutboxCount: number }[]
+  >([])
   const [overview, setOverview] = React.useState<{
     month: { messageInboxCount: number; messageOutboxCount: number }[]
+    cost?: {
+      totalAmount: number
+      totalEntries: number
+      byCategory: { category: string; count: number; totalCost: number }[]
+    }
   } | null>(null)
-
   const loadData = React.useCallback(() => {
     let cancelled = false
 
@@ -136,13 +171,32 @@ export default function WhatsAppDashboardPage() {
           conversationResponse,
           webhookResponse,
           overviewResponse,
+          dailyResponse,
         ] = await Promise.all([
           whatsappClient.devices.list(),
           whatsappClient.conversations.list(),
           whatsappClient.webhooks.stats().catch(() => null),
           whatsappClient.usage.overview().catch(() => null),
+          whatsappClient.usage
+            .daily({
+              from: new Date(Date.now() - 7 * 86400000)
+                .toISOString()
+                .slice(0, 10),
+              to: new Date().toISOString().slice(0, 10),
+            })
+            .catch(() => ({ counts: [] })),
         ])
         if (cancelled) return
+        setDevices(deviceResponse.devices)
+        if (dailyResponse?.counts) {
+          setDailyCounts(
+            dailyResponse.counts as {
+              date: string
+              messageInboxCount: number
+              messageOutboxCount: number
+            }[]
+          )
+        }
         setDevices(deviceResponse.devices)
         setConversations(
           conversationResponse.conversations as ConversationListItem[]
@@ -425,6 +479,198 @@ export default function WhatsAppDashboardPage() {
             )}
           </div>
 
+          {/* Visual Charts: Donut Category Breakdown & 7-Day Trend Mini Bar */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Donut Chart: Komposisi Kategori Pesan */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold">
+                  {locale === "id"
+                    ? "Komposisi Kategori Pesan"
+                    : "Category Breakdown"}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {locale === "id"
+                    ? "Distribusi pesan berdasarkan kategori resmi Meta bulan ini"
+                    : "Message distribution by official Meta categories this month"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {state === "loading" ? (
+                  <Skeleton className="h-[200px] w-full" />
+                ) : !overview?.cost?.byCategory ||
+                  overview.cost.byCategory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center text-xs text-muted-foreground">
+                    <ChatCircle className="mb-2 size-8 text-muted-foreground" />
+                    <span>
+                      {locale === "id"
+                        ? "Belum ada data kategori bulan ini."
+                        : "No category data available this month."}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+                    <div className="h-[180px] w-[180px] shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={overview.cost.byCategory.map((c) => ({
+                              name: c.category
+                                .replace("WHATSAPP_MESSAGE_", "")
+                                .replace("WHATSAPP_", ""),
+                              value: c.count,
+                              category: c.category,
+                            }))}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={75}
+                            paddingAngle={3}
+                            dataKey="value"
+                          >
+                            {overview.cost.byCategory.map((entry) => (
+                              <Cell
+                                key={`cell-${entry.category}`}
+                                fill={
+                                  CATEGORY_COLORS[entry.category] ??
+                                  "hsl(var(--primary))"
+                                }
+                              />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    {/* Legend */}
+                    <div className="w-full space-y-2 text-xs">
+                      {overview.cost.byCategory.map((cat) => {
+                        const cleanName = cat.category
+                          .replace("WHATSAPP_MESSAGE_", "")
+                          .replace("WHATSAPP_", "")
+                        const total = overview.cost?.totalEntries ?? 1
+                        const pct = ((cat.count / (total || 1)) * 100).toFixed(
+                          1
+                        )
+                        return (
+                          <div
+                            key={cat.category}
+                            className="flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="size-2.5 rounded-full"
+                                style={{
+                                  backgroundColor:
+                                    CATEGORY_COLORS[cat.category] ??
+                                    "hsl(var(--primary))",
+                                }}
+                              />
+                              <span className="font-medium">{cleanName}</span>
+                            </div>
+                            <span className="text-muted-foreground">
+                              {cat.count} msg ({pct}%)
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 7-Day Trend Mini Bar Chart */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base font-semibold">
+                      {locale === "id"
+                        ? "Tren Trafik 7 Hari"
+                        : "7-Day Traffic Trend"}
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      {locale === "id"
+                        ? "Volume pesan masuk vs keluar 7 hari terakhir"
+                        : "Inbound vs outbound volume over the last 7 days"}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1">
+                      <span className="size-2 rounded-full bg-[hsl(var(--chart-1))]" />
+                      <span className="text-muted-foreground">Masuk</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="size-2 rounded-full bg-[hsl(var(--chart-2))]" />
+                      <span className="text-muted-foreground">Keluar</span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {state === "loading" ? (
+                  <Skeleton className="h-[200px] w-full" />
+                ) : dailyCounts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center text-xs text-muted-foreground">
+                    <ChartLine className="mb-2 size-8 text-muted-foreground" />
+                    <span>
+                      {locale === "id"
+                        ? "Belum ada trafik dalam 7 hari terakhir."
+                        : "No traffic data in the last 7 days."}
+                    </span>
+                  </div>
+                ) : (
+                  <ChartContainer
+                    config={DASHBOARD_CHART_CONFIG}
+                    className="h-[180px] w-full"
+                  >
+                    <BarChart
+                      data={dailyCounts.map((c) => ({
+                        date: new Date(c.date).toLocaleDateString(
+                          locale === "id" ? "id-ID" : "en-US",
+                          { day: "numeric", month: "short" }
+                        ),
+                        in: c.messageInboxCount,
+                        out: c.messageOutboxCount,
+                      }))}
+                    >
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={24}
+                      />
+                      <ChartTooltip
+                        content={
+                          <ChartTooltipContent className="border bg-background p-2 shadow-md" />
+                        }
+                      />
+                      <Bar
+                        dataKey="in"
+                        name={locale === "id" ? "Pesan Masuk" : "Inbound"}
+                        fill="var(--color-in)"
+                        radius={[2, 2, 0, 0]}
+                        maxBarSize={24}
+                      />
+                      <Bar
+                        dataKey="out"
+                        name={locale === "id" ? "Pesan Keluar" : "Outbound"}
+                        fill="var(--color-out)"
+                        radius={[2, 2, 0, 0]}
+                        maxBarSize={24}
+                      />
+                    </BarChart>
+                  </ChartContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
           {/* {t.deviceHealthTitle} Card */}
           <Card
             className={

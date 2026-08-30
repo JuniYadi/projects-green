@@ -1,6 +1,7 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
+
 const mockMessages = {
   devices: {
     list: mock(async () => ({ ok: true, devices: [] })),
@@ -25,6 +26,10 @@ const mockMessages = {
     overview: mock(async () => ({
       ok: true,
       month: [],
+    })),
+    daily: mock(async () => ({
+      ok: true,
+      counts: [],
     })),
   },
   broadcasts: {
@@ -57,14 +62,42 @@ mock.module("@/modules/whatsapp/onboarding/use-whatsapp-onboarding", () => ({
     resetOnboarding: () => {},
   }),
 }))
+
 import WhatsAppDashboardPage from "./page"
 
 describe("WhatsAppDashboardPage", () => {
   beforeEach(() => {
-    mockMessages.devices.list.mockResolvedValue({ ok: true, devices: [] })
+    mockMessages.devices.list.mockResolvedValue({
+      ok: true,
+      devices: [
+        { id: "dev-1", phoneNumber: "+6281234567890", status: "ACTIVE" },
+      ],
+    })
     mockMessages.usage.overview.mockResolvedValue({
       ok: true,
-      month: [],
+      month: [
+        {
+          year: 2026,
+          month: 8,
+          messageInboxCount: 5,
+          messageOutboxCount: 20,
+        },
+      ],
+      cost: {
+        totalAmount: 1500,
+        totalEntries: 25,
+        byCategory: [
+          { category: "MARKETING", count: 15, totalCost: 1000 },
+          { category: "UTILITY", count: 10, totalCost: 500 },
+        ],
+      },
+    })
+    mockMessages.usage.daily.mockResolvedValue({
+      ok: true,
+      counts: [
+        { date: "2026-08-28", messageInboxCount: 2, messageOutboxCount: 8 },
+        { date: "2026-08-29", messageInboxCount: 3, messageOutboxCount: 12 },
+      ],
     })
     mockMessages.conversations.list.mockResolvedValue({
       ok: true,
@@ -77,6 +110,7 @@ describe("WhatsAppDashboardPage", () => {
   })
 
   it("renders subscribe plan CTA in header and zero-devices activation card", async () => {
+    mockMessages.devices.list.mockResolvedValueOnce({ ok: true, devices: [] })
     const view = render(<WhatsAppDashboardPage />)
 
     await waitFor(() => {
@@ -96,5 +130,18 @@ describe("WhatsAppDashboardPage", () => {
     expect(
       view.getByRole("button", { name: /hubungkan whatsapp sekarang/i })
     ).toBeInTheDocument()
+  })
+
+  it("renders visual donut category breakdown and 7-day trend card", async () => {
+    const view = render(<WhatsAppDashboardPage />)
+
+    await waitFor(() => {
+      expect(
+        view.getByText(/Komposisi Kategori Pesan|Category Breakdown/i)
+      ).toBeInTheDocument()
+      expect(
+        view.getByText(/Tren Trafik 7 Hari|7-Day Traffic Trend/i)
+      ).toBeInTheDocument()
+    })
   })
 })
