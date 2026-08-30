@@ -1075,12 +1075,16 @@ export function ThunderAiHelpDrawer() {
                             </span>
                             <div className="flex flex-wrap gap-1.5">
                               {message.citations.map((citation) => {
-                                const citationUrl = citation.path.startsWith(
+                                const normalizedPath = citation.path.startsWith(
                                   "/"
                                 )
-                                  ? `/${activeLocale}${citation.path}`
-                                  : `/${activeLocale}/docs/${citation.path}`
-
+                                  ? citation.path
+                                  : `/${citation.path}`
+                                const citationUrl = normalizedPath.startsWith(
+                                  "/docs"
+                                )
+                                  ? `/${activeLocale}${normalizedPath}`
+                                  : `/${activeLocale}/docs${normalizedPath}`
                                 return (
                                   <Link
                                     key={citation.id}

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, act, type RenderResult } from "@testing-library/react"
+import { render, act, cleanup, type RenderResult } from "@testing-library/react"
 
 const mockReplace = mock(() => {})
 let currentPathname = "/en/console"
@@ -37,6 +37,7 @@ import { ThunderAiHelpDrawer } from "./thunder-ai-help-drawer"
 
 describe("ThunderAiHelpDrawer", () => {
   beforeEach(() => {
+    cleanup()
     mockFetch.mockClear()
     mockReplace.mockClear()
     globalThis.fetch = mockFetch as unknown as typeof fetch

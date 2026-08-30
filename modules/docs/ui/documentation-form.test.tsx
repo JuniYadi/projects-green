@@ -1,9 +1,13 @@
 import { describe, expect, it, beforeEach, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { render, waitFor, cleanup } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { DocumentationForm } from "./documentation-form"
 
 describe("DocumentationForm", () => {
+  beforeEach(() => {
+    cleanup()
+  })
+
   it("renders all form fields", () => {
     const view = render(<DocumentationForm />)
 
