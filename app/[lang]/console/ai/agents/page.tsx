@@ -166,15 +166,18 @@ export default function AiAgentsPage() {
         }
         toast.success("Alur berhasil dirancang otomatis!")
       } else {
-        toast.error(data.error || "Gagal merancang alur alur dengan AI.")
+        const errMsg = data.error || "Gagal merancang alur dengan AI."
+        setGenerationError(errMsg)
+        toast.error(errMsg)
       }
     } catch (err) {
       console.error("[ai-workflow] generate error:", err)
-      toast.error(
+      const errMsg =
         err instanceof Error
           ? err.message
           : "Terjadi kesalahan saat merancang alur."
-      )
+      setGenerationError(errMsg)
+      toast.error(errMsg)
     } finally {
       setGenerating(false)
     }
