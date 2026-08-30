@@ -218,4 +218,43 @@ describe("AppTemplateBlueprint Validation & Service", () => {
     expect(result.valid).toBe(false)
     expect(result.errors?.["runtime.additionalPorts.0.name"]).toBeDefined()
   })
+
+  it("enforces isFixed environment variables and prevents user overrides", () => {
+    const blueprintWithFixed: AppTemplateBlueprint = {
+      ...validSampleBlueprint,
+      envSchema: [
+        {
+          key: "HERMES_UID",
+          label: "Hermes UID",
+          defaultValue: "10000",
+          required: false,
+          isSecret: false,
+          dataType: "number",
+          isFixed: true,
+          isHidden: true,
+        },
+        {
+          key: "CUSTOM_VAR",
+          label: "Custom Var",
+          defaultValue: "default",
+          required: false,
+          isSecret: false,
+          dataType: "string",
+        },
+      ],
+    }
+
+    const envVars = buildInitialEnvVars(blueprintWithFixed, {
+      HERMES_UID: "0",
+      CUSTOM_VAR: "overridden",
+      EXTRA_USER_VAR: "extra_val",
+    })
+
+    // HERMES_UID is isFixed so override is ignored
+    expect(envVars.HERMES_UID).toBe("10000")
+    // CUSTOM_VAR is normal so override takes effect
+    expect(envVars.CUSTOM_VAR).toBe("overridden")
+    // EXTRA_USER_VAR passes through
+    expect(envVars.EXTRA_USER_VAR).toBe("extra_val")
+  })
 })

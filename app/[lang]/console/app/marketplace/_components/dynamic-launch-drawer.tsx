@@ -10,8 +10,11 @@ import {
   EyeSlash,
   HardDrive,
   Lightning,
+  Lock,
+  Plus,
   RocketLaunchIcon,
   ShieldCheckIcon,
+  Trash,
   WarningIcon,
 } from "@/components/ui/phosphor-icons"
 import { TemplateLogo } from "./template-logo"
@@ -132,6 +135,9 @@ export function DynamicLaunchDrawer({
   const [cpuOverride, setCpuOverride] = useState<number | null>(null)
   const [memoryOverride, setMemoryOverride] = useState<number | null>(null)
   const [envOverrides, setEnvOverrides] = useState<Record<string, string>>({})
+  const [customEnvVars, setCustomEnvVars] = useState<
+    Array<{ id: string; key: string; value: string }>
+  >([])
   const [revealedSecrets, setRevealedSecrets] = useState<
     Record<string, boolean>
   >({})
@@ -279,9 +285,20 @@ export function DynamicLaunchDrawer({
     return template ? buildInitialEnvVars(template.blueprint) : {}
   }, [template])
 
+  const customEnvRecord = useMemo(() => {
+    const rec: Record<string, string> = {}
+    for (const item of customEnvVars) {
+      const trimmedKey = item.key.trim()
+      if (trimmedKey) {
+        rec[trimmedKey] = item.value
+      }
+    }
+    return rec
+  }, [customEnvVars])
+
   const envValues = useMemo(() => {
-    return { ...initialEnvValues, ...envOverrides }
-  }, [initialEnvValues, envOverrides])
+    return { ...initialEnvValues, ...envOverrides, ...customEnvRecord }
+  }, [initialEnvValues, envOverrides, customEnvRecord])
 
   const appName = useMemo(() => {
     if (appNameOverride !== null) return appNameOverride
@@ -311,8 +328,29 @@ export function DynamicLaunchDrawer({
     }))
   }
 
+  const allEnvSchema = useMemo(() => {
+    return template?.blueprint?.envSchema || []
+  }, [template?.blueprint?.envSchema])
+
+  // Filter out hidden variables from the user configuration view
+  const visibleEnvSchema = useMemo(() => {
+    return allEnvSchema.filter((f) => !f.isHidden)
+  }, [allEnvSchema])
+
+  const reservedKeysSet = useMemo(() => {
+    const set = new Set<string>()
+    for (const item of allEnvSchema) {
+      set.add(item.key)
+    }
+    return set
+  }, [allEnvSchema])
+
+  const hasReservedKeyConflict = useMemo(() => {
+    return customEnvVars.some((item) => reservedKeysSet.has(item.key.trim()))
+  }, [customEnvVars, reservedKeysSet])
+
   const handleConfirmDeploy = async () => {
-    if (!template) return
+    if (!template || hasReservedKeyConflict) return
     const currentRegion = availableRegions.find(
       (r) => r.code === effectiveRegionCode
     )
@@ -333,7 +371,6 @@ export function DynamicLaunchDrawer({
   if (!template) return null
 
   const { blueprint } = template
-  const envSchema = blueprint?.envSchema || []
   const dependencies = blueprint?.dependencies || []
   const storage = blueprint?.storage
 
@@ -633,12 +670,13 @@ export function DynamicLaunchDrawer({
               </div>
             )}
           </div>
-          {/* Dynamic Form Generator from envSchema */}
-          {envSchema.length > 0 && (
+
+          {/* Dynamic Form Generator from visibleEnvSchema */}
+          {visibleEnvSchema.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                  Environment Configuration ({envSchema.length})
+                  Environment Configuration ({visibleEnvSchema.length})
                 </h4>
                 <Badge
                   variant="outline"
@@ -650,22 +688,29 @@ export function DynamicLaunchDrawer({
               </div>
 
               <div className="space-y-3.5">
-                {envSchema.map((field: AppTemplateBlueprintEnvVar) => {
+                {visibleEnvSchema.map((field: AppTemplateBlueprintEnvVar) => {
                   const fieldKey = field.key
                   const val = envValues[fieldKey] ?? ""
                   const isSecret = Boolean(field.isSecret)
                   const isRevealed = Boolean(revealedSecrets[fieldKey])
+                  const isFixed = Boolean(field.isFixed)
 
                   return (
                     <div key={fieldKey} className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <Label
                           htmlFor={`env-field-${fieldKey}`}
-                          className="text-xs font-medium"
+                          className="flex items-center gap-1.5 text-xs font-medium"
                         >
                           {field.label || fieldKey}
                           {field.required && (
-                            <span className="ml-1 text-destructive">*</span>
+                            <span className="text-destructive">*</span>
+                          )}
+                          {isFixed && (
+                            <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+                              <Lock className="size-2.5" />
+                              Fixed
+                            </span>
                           )}
                         </Label>
                         <span className="font-mono text-[10px] text-muted-foreground">
@@ -682,6 +727,7 @@ export function DynamicLaunchDrawer({
                       {field.dataType === "select" && field.options ? (
                         <Select
                           value={val}
+                          disabled={isFixed}
                           onValueChange={(newVal) =>
                             handleEnvChange(fieldKey, newVal)
                           }
@@ -708,6 +754,7 @@ export function DynamicLaunchDrawer({
                         <div className="flex items-center gap-3 pt-1">
                           <Switch
                             id={`env-field-${fieldKey}`}
+                            disabled={isFixed}
                             checked={val === "true" || val === "1"}
                             onCheckedChange={(checked) =>
                               handleEnvChange(
@@ -726,6 +773,7 @@ export function DynamicLaunchDrawer({
                         <div className="relative flex items-center">
                           <Input
                             id={`env-field-${fieldKey}`}
+                            disabled={isFixed}
                             type={
                               isSecret && !isRevealed
                                 ? "password"
@@ -742,9 +790,9 @@ export function DynamicLaunchDrawer({
                             }
                             className={`text-xs ${
                               isSecret ? "pr-9 font-mono" : ""
-                            }`}
+                            } ${isFixed ? "cursor-not-allowed bg-muted/50 opacity-80" : ""}`}
                           />
-                          {isSecret && (
+                          {isSecret && !isFixed && (
                             <button
                               type="button"
                               onClick={() => toggleSecretVisibility(fieldKey)}
@@ -770,6 +818,113 @@ export function DynamicLaunchDrawer({
               </div>
             </div>
           )}
+
+          {/* Custom Environment Variables Section */}
+          <div className="space-y-3 rounded-xl border border-border bg-card/50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-semibold text-foreground">
+                  Custom Environment Variables
+                </h4>
+                <p className="text-[11px] text-muted-foreground">
+                  Add extra environment variables needed for your deployment
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCustomEnvVars((prev) => [
+                    ...prev,
+                    {
+                      id: `custom-${Date.now()}-${Math.random()}`,
+                      key: "",
+                      value: "",
+                    },
+                  ])
+                }}
+                className="h-7 gap-1 text-xs"
+              >
+                <Plus className="size-3.5" />
+                Add Variable
+              </Button>
+            </div>
+
+            {customEnvVars.length > 0 ? (
+              <div className="space-y-2.5 pt-1">
+                {customEnvVars.map((item, idx) => {
+                  const isKeyReserved = reservedKeysSet.has(item.key.trim())
+
+                  return (
+                    <div key={item.id} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5/12">
+                          <Input
+                            placeholder="VARIABLE_KEY"
+                            value={item.key}
+                            onChange={(e) => {
+                              const newKey = e.target.value
+                                .toUpperCase()
+                                .replace(/[^A-Z0-9_]/g, "_")
+                              setCustomEnvVars((prev) =>
+                                prev.map((p, i) =>
+                                  i === idx ? { ...p, key: newKey } : p
+                                )
+                              )
+                            }}
+                            className={`font-mono text-xs ${
+                              isKeyReserved
+                                ? "border-destructive focus-visible:ring-destructive"
+                                : ""
+                            }`}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Input
+                            placeholder="Value"
+                            value={item.value}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setCustomEnvVars((prev) =>
+                                prev.map((p, i) =>
+                                  i === idx ? { ...p, value: val } : p
+                                )
+                              )
+                            }}
+                            className="text-xs"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setCustomEnvVars((prev) =>
+                              prev.filter((_, i) => i !== idx)
+                            )
+                          }}
+                          className="size-8 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash className="size-4" />
+                        </Button>
+                      </div>
+                      {isKeyReserved && (
+                        <p className="text-[10px] font-medium text-destructive">
+                          &quot;{item.key.trim()}&quot; is a reserved template
+                          variable.
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground/70 italic">
+                No custom environment variables added.
+              </p>
+            )}
+          </div>
         </div>
         <SheetFooter className="border-t border-border p-6">
           <div className="flex w-full items-center justify-between gap-3">
@@ -785,7 +940,7 @@ export function DynamicLaunchDrawer({
             <Button
               type="button"
               onClick={handleConfirmDeploy}
-              disabled={isDeploying}
+              disabled={isDeploying || hasReservedKeyConflict}
               className="w-2/3 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {isDeploying ? (

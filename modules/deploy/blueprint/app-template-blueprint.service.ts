@@ -41,7 +41,19 @@ export function buildInitialEnvVars(
   const envVars: Record<string, string> = {}
 
   for (const envDef of blueprint.envSchema ?? []) {
-    const { key, defaultValue, generateRandomHex } = envDef
+    const { key, defaultValue, generateRandomHex, isFixed } = envDef
+
+    // If variable is marked as fixed, ALWAYS enforce its defaultValue/generated value and ignore user overrides
+    if (isFixed) {
+      if (generateRandomHex && generateRandomHex > 0) {
+        envVars[key] = randomBytes(Math.ceil(generateRandomHex / 2))
+          .toString("hex")
+          .slice(0, generateRandomHex)
+      } else if (defaultValue !== undefined) {
+        envVars[key] = defaultValue
+      }
+      continue
+    }
 
     if (userOverrides[key] !== undefined && userOverrides[key] !== "") {
       envVars[key] = userOverrides[key]

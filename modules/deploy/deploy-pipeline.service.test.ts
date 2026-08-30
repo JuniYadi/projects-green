@@ -35,6 +35,7 @@ const mockDeployment = {
 
 const mockPrisma = {
   applicationStack: {
+    findFirst: mock(() => Promise.resolve(mockStack)),
     findUniqueOrThrow: mock(() => Promise.resolve(mockStack)),
     findUnique: mock(() => Promise.resolve(mockStack)),
     create: mock(() => Promise.resolve(mockStack)),
@@ -68,6 +69,19 @@ const releaseManagedStock = mock(async () => {})
 
 mock.module("@/modules/deploy/app-managed-stock.service", () => ({
   releaseManagedStock,
+}))
+const mockWriteSecrets = mock(async () => ({
+  environment: "dev",
+  vaultPath: "tenants/org-1/stacks/stack-1/dev/app-env",
+  version: 1,
+  updatedAt: "2026-08-28T00:00:00.000Z",
+  references: [],
+}))
+
+mock.module("@/modules/secrets/vault-secrets.service", () => ({
+  VaultSecretsService: class {
+    writeSecrets = mockWriteSecrets
+  },
 }))
 
 const { triggerDeploy, createOrUpdateStack, deleteStack } =
@@ -186,5 +200,35 @@ describe("deploy-pipeline.service", () => {
         sourceType: "GITHUB",
       })
     ).rejects.toThrow("STACK_DEPLOY_IN_PROGRESS")
+  })
+
+  it("writes plain envVars into HashiCorp Vault on createOrUpdateStack", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+
+    await createOrUpdateStack({
+      organizationId: "org-1",
+      name: "my-vault-app",
+      slug: "my-vault-app",
+      branchName: "main",
+      rootDirectory: "/",
+      dockerfileDetected: false,
+      envVars: [
+        { key: "API_KEY", value: "secret123" },
+        { key: "PORT", value: "8080" },
+      ],
+      sourceType: "GITHUB",
+    })
+
+    expect(mockWriteSecrets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "dev",
+        secrets: {
+          API_KEY: "secret123",
+          PORT: "8080",
+        },
+      })
+    )
   })
 })

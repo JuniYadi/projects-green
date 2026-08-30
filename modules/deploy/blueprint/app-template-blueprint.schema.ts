@@ -51,6 +51,8 @@ export const appTemplateBlueprintEnvVarSchema = z.object({
   dataType: z.enum(["string", "number", "boolean", "select"]),
   options: z.array(z.string()).optional(),
   generateRandomHex: z.number().int().min(1).optional(),
+  isFixed: z.boolean().default(false).optional(),
+  isHidden: z.boolean().default(false).optional(),
 })
 
 export const appTemplateBlueprintSchema = z.object({

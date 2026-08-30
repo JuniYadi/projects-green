@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { releaseManagedStock } from "@/modules/deploy/app-managed-stock.service"
 import { resolveDefaultAppHostingClusterId } from "@/modules/deploy/cluster-integration.service"
 import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
-
+import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
 /**
  * PGREEN-070 — Deployment Orchestration
  *
@@ -214,10 +214,54 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
     return tx.applicationStack.create({ data })
   })
-
-  // Non-blocking: sync Jenkins pipeline after stack is created/updated
   // Determine env from slug (e.g., "app-myapp-prod" → "prod", default "dev")
   const env = stack.slug.endsWith("-prod") ? "prod" : "dev"
+
+  // If envVars contains plain key-value pairs (or unreferenced secrets), write them into HashiCorp Vault
+  if (Array.isArray(input.envVars) && input.envVars.length > 0) {
+    const plainSecrets: Record<string, string> = {}
+    for (const item of input.envVars) {
+      if (
+        typeof item === "object" &&
+        item !== null &&
+        "key" in item &&
+        "value" in item
+      ) {
+        const envEntry = item as {
+          key: string
+          value: string
+          type?: string
+          source?: string
+        }
+        // If it's not already a resolved vault reference, collect it for Vault storage
+        if (envEntry.source !== "vault" && envEntry.type !== "secret_ref") {
+          const key = String(envEntry.key).trim()
+          if (key) {
+            plainSecrets[key] = String(envEntry.value ?? "")
+          }
+        }
+      }
+    }
+
+    if (Object.keys(plainSecrets).length > 0) {
+      try {
+        const vaultService = new VaultSecretsService()
+        await vaultService.writeSecrets({
+          organizationId: stack.organizationId,
+          stackId: stack.id,
+          environment: env,
+          secrets: plainSecrets,
+        })
+      } catch (vaultError) {
+        console.warn(
+          `[deploy-pipeline] Non-fatal: failed to store environment variables in Vault for stack ${stack.id}:`,
+          vaultError
+        )
+      }
+    }
+  }
+
+  // Non-blocking: sync Jenkins pipeline after stack is created/updated
   syncJenkinsPipelineForStack(
     {
       slug: stack.slug,
