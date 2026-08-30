@@ -222,9 +222,9 @@ export default function WhatsappWorkflowCanvasPage() {
               phoneNumber: d.phoneNumber,
             }))
             setDevices(devList)
-            if (devList.length > 0 && !selectedDeviceId) {
-              setSelectedDeviceId(devList[0].id)
-            }
+            setSelectedDeviceId(
+              (prev) => prev || (devList.length > 0 ? devList[0].id : "")
+            )
           }
         }
 
@@ -285,14 +285,7 @@ export default function WhatsappWorkflowCanvasPage() {
     return () => {
       mounted = false
     }
-  }, [
-    workflowId,
-    toXyFlowNode,
-    toXyFlowEdge,
-    selectedDeviceId,
-    setNodes,
-    setEdges,
-  ])
+  }, [workflowId, toXyFlowNode, toXyFlowEdge, setNodes, setEdges])
 
   // Connection Handler
   const onConnect = useCallback(
