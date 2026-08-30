@@ -9,21 +9,25 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
-  Copy,
-  Check,
   DeviceMobile,
   ChatCircleText,
   Clock,
   WarningCircle,
   Hash,
+  Copy,
+  Check,
+  CheckCircle,
+  ArrowDownLeft,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
-import type { WebhookEventDTO } from "./webhook-event-table"
+import type { WebhookEventRecord } from "@/app/[lang]/console/whatsapp/logs/webhook-logs-tab-content"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { useParams } from "next/navigation"
 
 interface WebhookEventDetailSheetProps {
-  event: WebhookEventDTO | null
+  event: WebhookEventRecord | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -33,184 +37,265 @@ export function WebhookEventDetailSheet({
   open,
   onOpenChange,
 }: WebhookEventDetailSheetProps) {
-  const [copied, setCopied] = React.useState(false)
+  const [copiedId, setCopiedId] = React.useState(false)
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.console.whatsapp.logs.drawer
 
   if (!event) return null
 
-  const handleCopy = async (text: string, label: string) => {
+  const isFailed = event.processingStatus?.toUpperCase() === "FAILED"
+  const isSuccess =
+    event.processingStatus?.toUpperCase() === "SUCCESS" ||
+    event.processingStatus?.toUpperCase() === "DELIVERED" ||
+    event.processingStatus?.toUpperCase() === "READ"
+  const isReceived = event.processingStatus?.toUpperCase() === "RECEIVED"
+
+  const handleCopyId = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
-      setCopied(true)
-      toast.success(`${label} copied to clipboard`)
-      setTimeout(() => setCopied(false), 2000)
+      setCopiedId(true)
+      toast.success(t.copyIdSuccess)
+      setTimeout(() => setCopiedId(false), 2000)
     } catch {
-      toast.error("Failed to copy")
+      toast.error(t.copyIdFail)
     }
   }
 
-  // Extract structured details from metaPayload if available
+  // Extract human-readable details
   const payloadObj = (event.metaPayload as Record<string, unknown>) || {}
-  const isFailed = event.processingStatus === "FAILED"
+  const recipientPhone =
+    event.phoneNumber ||
+    (typeof payloadObj.recipient === "string"
+      ? payloadObj.recipient
+      : undefined) ||
+    (typeof payloadObj.phoneNumber === "string"
+      ? payloadObj.phoneNumber
+      : undefined) ||
+    (typeof payloadObj.to === "string" ? payloadObj.to : undefined)
+  const waMessageId =
+    event.waMessageId ||
+    (typeof payloadObj.waMessageId === "string"
+      ? payloadObj.waMessageId
+      : typeof payloadObj.messageId === "string"
+        ? payloadObj.messageId
+        : undefined)
 
-  // Additional key-value attributes from payload excluding known fields
-  const additionalEntries = Object.entries(payloadObj).filter(([key]) => {
-    return ![
-      "id",
+  const additionalEntries = Object.entries(payloadObj).filter(([key, val]) => {
+    const isExcludedKey = [
       "phoneNumber",
-      "deviceLabel",
+      "recipient",
+      "to",
       "waMessageId",
+      "messageId",
       "eventType",
       "processingStatus",
       "createdAt",
+      "entry",
+      "object",
+      "id",
     ].includes(key)
+    return (
+      !isExcludedKey &&
+      typeof val !== "object" &&
+      val !== null &&
+      val !== undefined
+    )
   })
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-        <SheetHeader className="border-b pb-4">
-          <div className="flex items-center justify-between gap-2">
-            <SheetTitle className="text-base font-semibold">
-              Webhook Event Summary
+      <SheetContent className="w-full overflow-y-auto px-6 py-6 sm:max-w-lg">
+        {/* Header Section */}
+        <SheetHeader className="border-b pb-5">
+          <div className="flex items-center justify-between gap-3">
+            <SheetTitle className="text-lg font-bold tracking-tight">
+              {t.titleMessages}
             </SheetTitle>
-            <div className="flex items-center gap-1.5">
-              <Badge variant="outline">{event.eventType}</Badge>
-              <Badge
-                variant={
-                  event.processingStatus === "SUCCESS"
-                    ? "default"
-                    : isFailed
-                      ? "destructive"
-                      : "secondary"
-                }
-              >
-                {event.processingStatus}
-              </Badge>
-            </div>
+            <Badge
+              variant={
+                isSuccess ? "default" : isFailed ? "destructive" : "secondary"
+              }
+              className="px-2.5 py-0.5 text-xs font-semibold tracking-wide uppercase"
+            >
+              {isSuccess
+                ? t.statusSuccess
+                : isFailed
+                  ? t.statusFailed
+                  : isReceived
+                    ? t.statusReceived
+                    : event.processingStatus}
+            </Badge>
           </div>
-          <SheetDescription className="font-mono text-xs">
-            ID: {event.id} • {new Date(event.createdAt).toLocaleString()}
+          <SheetDescription className="pt-1 font-mono text-xs text-muted-foreground">
+            {t.idLabel}: {event.id}
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Error Banner */}
-          {isFailed && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
-              <WarningCircle className="mt-0.5 size-4 shrink-0" />
-              <div className="space-y-1">
-                <span className="font-semibold">Processing Failed</span>
-                <p className="leading-relaxed">
-                  The webhook event handler failed during event processing.
-                  Check technical details below.
+        <div className="space-y-6 pt-5">
+          {/* Status Hero Card */}
+          <div
+            className={`flex items-start gap-3 rounded-xl border p-4 ${
+              isFailed
+                ? "border-destructive/30 bg-destructive/5 text-destructive"
+                : isSuccess
+                  ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+                  : "border-blue-500/30 bg-blue-500/5 text-blue-700 dark:text-blue-400"
+            }`}
+          >
+            {isFailed ? (
+              <WarningCircle className="mt-0.5 size-5 shrink-0" />
+            ) : isSuccess ? (
+              <CheckCircle className="mt-0.5 size-5 shrink-0" />
+            ) : (
+              <ArrowDownLeft className="mt-0.5 size-5 shrink-0" />
+            )}
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold">
+                  {isSuccess
+                    ? t.statusSuccess
+                    : isFailed
+                      ? t.statusFailed
+                      : isReceived
+                        ? t.statusReceived
+                        : t.statusPending}
+                </span>
+                <span className="font-mono text-xs opacity-80">
+                  {new Date(event.createdAt).toLocaleTimeString(locale)}
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed opacity-90">
+                {isSuccess
+                  ? "Pesan / callback berhasil dikirim dan diproses oleh Meta API."
+                  : isFailed
+                    ? "Pengiriman atau pemrosesan webhook gagal pada event ini."
+                    : "Event webhook pesan masuk diterima dari Meta API."}
+              </p>
+            </div>
+          </div>
+
+          {/* Section 1: Pengiriman & Kontak */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              {t.sectionContact}
+            </h4>
+            <div className="divide-y divide-border/60 rounded-xl border bg-card p-4">
+              <div className="space-y-1 pb-3">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <DeviceMobile className="size-4" />
+                  <span>{t.device}</span>
+                </div>
+                <p className="font-mono text-sm font-semibold text-foreground">
+                  {event.deviceLabel || event.deviceId || "—"}
+                </p>
+              </div>
+
+              {recipientPhone && (
+                <div className="space-y-1 pt-3">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <ChatCircleText className="size-4" />
+                    <span>{t.recipientPhone}</span>
+                  </div>
+                  <p className="font-mono text-sm font-semibold text-foreground">
+                    {recipientPhone}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 2: Status & Tipe Event */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              {t.sectionEvent}
+            </h4>
+            <div className="divide-y divide-border/60 rounded-xl border bg-card p-4">
+              <div className="flex items-center justify-between gap-2 pb-3">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t.eventType}
+                </span>
+                <Badge
+                  variant="outline"
+                  className="font-mono text-xs font-medium capitalize"
+                >
+                  {event.eventType.replace(/_/g, " ")}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-3">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="size-4" />
+                  <span>{t.time}</span>
+                </div>
+                <span className="font-mono text-xs font-medium text-foreground">
+                  {new Date(event.createdAt).toLocaleString(locale)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: WhatsApp Message ID */}
+          {waMessageId && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                {t.sectionMessageId}
+              </h4>
+              <div className="space-y-2 rounded-xl border bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Hash className="size-4" />
+                    <span>{t.waMessageId}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyId(String(waMessageId))}
+                    className="inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs font-medium text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    {copiedId ? (
+                      <>
+                        <Check className="size-3.5 text-emerald-500" />
+                        <span className="text-emerald-600">Disalin</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="size-3.5" />
+                        <span>Salin ID</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="rounded-md border bg-background/80 p-2.5 font-mono text-xs leading-relaxed break-all text-foreground select-all">
+                  {waMessageId}
                 </p>
               </div>
             </div>
           )}
 
-          {/* Structured Key-Value Overview */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="space-y-1 rounded-md border bg-muted/20 p-2.5">
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <DeviceMobile className="size-3.5" />
-                <span className="font-medium">Device:</span>
-              </div>
-              <p className="truncate font-mono font-medium">
-                {event.deviceLabel || "—"}
-              </p>
-              {event.phoneNumber && (
-                <p className="font-mono text-[11px] text-muted-foreground">
-                  {event.phoneNumber}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1 rounded-md border bg-muted/20 p-2.5">
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <Hash className="size-3.5" />
-                <span className="font-medium">WA Message ID:</span>
-              </div>
-              <p className="font-mono text-[11px] break-all">
-                {event.waMessageId || "—"}
-              </p>
-            </div>
-
-            <div className="space-y-1 rounded-md border bg-muted/20 p-2.5">
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <ChatCircleText className="size-3.5" />
-                <span className="font-medium">Event Type:</span>
-              </div>
-              <p className="font-mono font-medium text-foreground">
-                {event.eventType}
-              </p>
-            </div>
-
-            <div className="space-y-1 rounded-md border bg-muted/20 p-2.5">
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <Clock className="size-3.5" />
-                <span className="font-medium">Received At:</span>
-              </div>
-              <p className="text-[11px] text-foreground">
-                {new Date(event.createdAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })}
-              </p>
-            </div>
-          </div>
-
-          {/* Additional Structured Attributes */}
+          {/* Section 4: Atribut Tambahan Payload */}
           {additionalEntries.length > 0 && (
-            <div className="space-y-2 rounded-lg border bg-muted/10 p-3 text-xs">
-              <span className="font-semibold text-muted-foreground">
-                Payload Data Elements
-              </span>
-              <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                {t.sectionTech}
+              </h4>
+              <div className="divide-y divide-border/60 rounded-xl border bg-card p-4">
                 {additionalEntries.map(([key, val]) => (
                   <div
                     key={key}
-                    className="rounded border bg-background/80 p-2"
+                    className="flex items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
                   >
-                    <span className="text-[11px] font-medium text-muted-foreground capitalize">
+                    <span className="text-xs text-muted-foreground capitalize">
                       {key.replace(/([A-Z])/g, " $1")}:
                     </span>
-                    <p className="mt-0.5 truncate font-mono text-[11px] font-medium text-foreground">
-                      {typeof val === "object"
-                        ? JSON.stringify(val)
-                        : String(val)}
-                    </p>
+                    <span className="text-right font-mono text-xs font-medium break-all text-foreground">
+                      {String(val)}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Copy Full Record Button without raw JSON dump */}
-          <div className="flex items-center justify-end pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() =>
-                void handleCopy(
-                  JSON.stringify(event.metaPayload ?? event, null, 2),
-                  "Webhook event payload"
-                )
-              }
-            >
-              {copied ? (
-                <>
-                  <Check className="size-3.5 text-emerald-500" />
-                  Copied Details
-                </>
-              ) : (
-                <>
-                  <Copy className="size-3.5" />
-                  Copy Event Payload
-                </>
-              )}
-            </Button>
-          </div>
         </div>
       </SheetContent>
     </Sheet>
