@@ -440,12 +440,10 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
       ],
       version: 1,
     }
-
-    mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
+    mockPrisma.whatsappDevice.findUnique.mockImplementation(async () => ({
       id: "dev_1",
       features: { botWorkflow: sampleWorkflow },
-    } as never)
-
+    }))
     const res = await processWhatsappWorkflowInbound({
       organizationId: "org_1",
       deviceId: "dev_1",
