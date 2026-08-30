@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ArrowsClockwise } from "@phosphor-icons/react"
-import type { Messages } from "@/lib/i18n/types"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 import { AuditLogDetailSheet } from "@/modules/whatsapp/audit/ui/whatsapp-audit-sheet"
 import { actionTone } from "@/modules/whatsapp/audit/ui/whatsapp-audit-details"
 
@@ -24,6 +24,7 @@ export type AuditLogRecord = {
   action: string
   status?: string | null
   message?: string | null
+  errorMessage?: string | null
   phoneNumber?: string | null
   adminId?: string | null
   actorName?: string | null
@@ -33,7 +34,7 @@ export type AuditLogRecord = {
   ip?: string | null
   durationMs?: number | null
   createdAt: string | Date
-  details?: Record<string, unknown>
+  details?: Record<string, unknown> | null
 }
 
 const DEFAULT_COLUMNS: Record<string, boolean> = {
@@ -78,7 +79,7 @@ export function AuditLogsTabContent({
   messages,
 }: {
   locale: string
-  messages: Messages
+  messages: AppMessages
 }) {
   const [logs, setLogs] = React.useState<AuditLogRecord[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -93,7 +94,14 @@ export function AuditLogsTabContent({
     setError(undefined)
 
     try {
-      const res = await eden.api.whatsapp.audit.get({
+      const res = await (
+        eden.api.whatsapp.audit.get as unknown as (opts: {
+          query: { page: string; limit: string }
+        }) => Promise<{
+          status: number
+          data: { ok?: boolean; data?: unknown[] }
+        }>
+      )({
         query: {
           page: "1",
           limit: "100",
@@ -110,8 +118,7 @@ export function AuditLogsTabContent({
         setLogs(res.data.data as unknown as AuditLogRecord[])
       } else {
         const errData = res.data as
-          | { message?: string; error?: string }
-          | undefined
+          { message?: string; error?: string } | undefined
         throw new Error(errData?.message || errData?.error || t.loadError)
       }
     } catch (err: unknown) {
@@ -158,7 +165,7 @@ export function AuditLogsTabContent({
               variant={
                 tone === "success"
                   ? "default"
-                  : tone === "destructive"
+                  : tone === "danger"
                     ? "destructive"
                     : tone === "warning"
                       ? "outline"

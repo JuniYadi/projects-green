@@ -17,7 +17,7 @@ import { WebhookLogsTabContent } from "./webhook-logs-tab-content"
 import { AuditLogsTabContent } from "./audit-logs-tab-content"
 
 export default function ConsoleWhatsAppLogsPage() {
-  const params = useParams()
+  const params = useParams<{ lang?: string }>()
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()

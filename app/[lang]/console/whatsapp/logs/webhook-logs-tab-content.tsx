@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ArrowsClockwise } from "@phosphor-icons/react"
-import type { Messages } from "@/lib/i18n/types"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 import { WebhookEventDetailSheet } from "@/modules/whatsapp/webhooks/ui/webhook-event-sheet"
 
 export type WebhookEventRecord = {
@@ -27,7 +27,7 @@ export type WebhookEventRecord = {
   eventType: string
   processingStatus: string
   createdAt: string | Date
-  metaPayload?: Record<string, unknown>
+  metaPayload?: Record<string, unknown> | null
 }
 
 const DEFAULT_COLUMNS: Record<string, boolean> = {
@@ -66,7 +66,7 @@ export function WebhookLogsTabContent({
   messages,
 }: {
   locale: string
-  messages: Messages
+  messages: AppMessages
 }) {
   const [events, setEvents] = React.useState<WebhookEventRecord[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -80,7 +80,14 @@ export function WebhookLogsTabContent({
     setErrorMessage("")
 
     try {
-      const res = await eden.api.whatsapp.webhooks.events.get({
+      const res = await (
+        eden.api.whatsapp.webhooks.events.get as unknown as (opts: {
+          query: { page: string; limit: string }
+        }) => Promise<{
+          status: number
+          data: { data?: unknown[] }
+        }>
+      )({
         query: {
           page: "1",
           limit: "100",

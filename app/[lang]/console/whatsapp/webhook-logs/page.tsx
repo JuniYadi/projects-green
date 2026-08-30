@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 
 export default function RedirectToWebhookLogsTab() {
-  const params = useParams()
+  const params = useParams<{ lang?: string }>()
   const router = useRouter()
   const locale = resolveLocaleOrDefault(params?.lang)
 

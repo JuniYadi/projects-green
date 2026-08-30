@@ -131,7 +131,7 @@ export function AuditLogDetailSheet({
                 variant={
                   tone === "success"
                     ? "default"
-                    : tone === "destructive"
+                    : tone === "danger"
                       ? "destructive"
                       : tone === "warning"
                         ? "outline"
