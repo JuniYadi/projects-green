@@ -117,6 +117,7 @@ export default function WhatsappWorkflowCanvasPage() {
   const router = useRouter()
   const lang = (params?.lang as string) || "en"
   const workflowId = params?.id as string
+
   // Top level state
   const [workflowMeta, setWorkflowMeta] = useState(() => ({
     id: workflowId === "new" ? "wf_new" : workflowId,
@@ -129,6 +130,7 @@ export default function WhatsappWorkflowCanvasPage() {
       keywords: ["halo", "menu", "bantuan", "info"],
     },
   }))
+
   const [devices, setDevices] = useState<
     { id: string; name: string; phoneNumber: string }[]
   >([])
@@ -206,17 +208,14 @@ export default function WhatsappWorkflowCanvasPage() {
       setLoadingInitial(true)
       try {
         // Fetch devices
-        // @ts-expect-error eden dynamic route
         const devRes = await eden.api.whatsapp.devices.get()
-        if (devRes.data && devRes.data.ok && Array.isArray(devRes.data.data)) {
+        if (
+          devRes.data &&
+          "devices" in devRes.data &&
+          Array.isArray(devRes.data.devices)
+        ) {
           if (mounted) {
-            const devList = (
-              devRes.data.data as Array<{
-                id: string
-                name?: string
-                phoneNumber: string
-              }>
-            ).map((d) => ({
+            const devList = devRes.data.devices.map((d) => ({
               id: d.id,
               name: d.name || `WhatsApp (${d.phoneNumber})`,
               phoneNumber: d.phoneNumber,
@@ -231,9 +230,8 @@ export default function WhatsappWorkflowCanvasPage() {
         // If existing workflow, fetch from GET /api/whatsapp/workflows/:id
         if (workflowId && workflowId !== "new") {
           try {
-            // @ts-expect-error eden dynamic route
             const wfRes = await eden.api.whatsapp.workflows[workflowId].get()
-            if (wfRes.data && wfRes.data.ok && wfRes.data.data) {
+            if (wfRes.data && "data" in wfRes.data && wfRes.data.data) {
               const wf = wfRes.data.data as WorkflowDefinition & {
                 deviceId?: string
               }
@@ -460,11 +458,10 @@ export default function WhatsappWorkflowCanvasPage() {
     }
     setIsGeneratingAi(true)
     try {
-      // @ts-expect-error eden route
       const res = await eden.api.console.ai.workflows.generate.post({
         prompt: copilotPrompt,
       })
-      if (res.data?.ok && res.data?.workflow) {
+      if (res.data?.ok && "workflow" in res.data && res.data.workflow) {
         const wf = res.data.workflow
         setWorkflowMeta((prev) => ({
           ...prev,
@@ -564,17 +561,18 @@ export default function WhatsappWorkflowCanvasPage() {
         version: 1,
       }
 
-      // @ts-expect-error eden route
       const res = await eden.api.whatsapp.workflows.save.post({
         deviceId: selectedDeviceId,
         workflow: payload,
       })
 
-      if (res.data && res.data.ok) {
+      if (res.data && "ok" in res.data && res.data.ok) {
         toast.success("Alur Bot WhatsApp berhasil disimpan & aktif!")
         router.push(`/${lang}/console/whatsapp/workflows`)
       } else {
-        toast.error(`Gagal simpan: ${res.data?.error || "Unknown error"}`)
+        const err =
+          res.data && "error" in res.data ? res.data.error : "Unknown error"
+        toast.error(`Gagal simpan: ${err}`)
       }
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : "Koneksi gagal"

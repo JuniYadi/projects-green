@@ -146,7 +146,7 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
           {previewText}
         </p>
 
-        {nodeData.config?.captureVariable && (
+        {Boolean(nodeData.config?.captureVariable) && (
           <div className="inline-flex items-center gap-1 rounded border border-border/40 bg-secondary/80 px-2 py-0.5 font-mono text-[10px] text-secondary-foreground">
             <span>save:</span>
             <span className="font-semibold text-primary">
