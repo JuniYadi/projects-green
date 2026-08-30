@@ -1,9 +1,24 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Connection,
+  Edge,
+  Node,
+  BackgroundVariant,
+} from "@xyflow/react"
+import "@xyflow/react/dist/style.css"
+
 import {
   Sparkle,
   FloppyDisk,
@@ -12,14 +27,13 @@ import {
   Trash,
   WhatsappLogo,
   PaperPlaneRight,
-  Lightning,
-  TreeStructure,
   Question,
   ChatCircleText,
   Brain,
   GitBranch,
   Globe,
   SlidersHorizontal,
+  ArrowsClockwise,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
@@ -39,6 +53,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet"
 import type {
   WorkflowDefinition,
@@ -46,17 +61,65 @@ import type {
   WorkflowEdge,
   WorkflowNodeType,
 } from "@/modules/whatsapp/workflow/workflow.schema"
+import { WorkflowNodeComponent } from "./workflow-node"
+
+const initialNodesSample: WorkflowNode[] = [
+  {
+    id: "node_start",
+    type: "send_message",
+    name: "Pesan Pembuka",
+    position: { x: 250, y: 50 },
+    config: {
+      text: "Halo! Selamat datang di layanan WhatsApp resmi kami. Ada yang bisa kami bantu hari ini?",
+    },
+  },
+  {
+    id: "node_ask_name",
+    type: "prompt_input",
+    name: "Tanya Nama Pelanggan",
+    position: { x: 250, y: 220 },
+    config: {
+      question: "Boleh kami tahu nama lengkap Anda?",
+      captureVariable: "customer_name",
+      validation: { type: "text" },
+    },
+  },
+  {
+    id: "node_ai_agent",
+    type: "ai_generate",
+    name: "AI Asisten Solusi",
+    position: { x: 250, y: 400 },
+    config: {
+      prompt:
+        "Sapa pengguna dengan nama {{variables.customer_name}} lalu tanyakan kategori kendala atau produk yang diminati.",
+      captureVariable: "ai_recommendation",
+    },
+  },
+]
+
+const initialEdgesSample: WorkflowEdge[] = [
+  {
+    id: "edge_1",
+    sourceNodeId: "node_start",
+    sourcePort: "default",
+    targetNodeId: "node_ask_name",
+  },
+  {
+    id: "edge_2",
+    sourceNodeId: "node_ask_name",
+    sourcePort: "default",
+    targetNodeId: "node_ai_agent",
+  },
+]
 
 export default function WhatsappWorkflowCanvasPage() {
   const params = useParams()
   const router = useRouter()
   const lang = (params?.lang as string) || "en"
   const workflowId = params?.id as string
-
-  // State
-  const [workflow, setWorkflow] = useState<WorkflowDefinition>(() => ({
-    id: workflowId === "new" ? `wf_new` : workflowId,
-    organizationId: "",
+  // Top level state
+  const [workflowMeta, setWorkflowMeta] = useState(() => ({
+    id: workflowId === "new" ? "wf_new" : workflowId,
     name: "Alur Bot WhatsApp Baru",
     description: "Alur otomatis customer service, kuis & penjualan cerdas",
     isActive: true,
@@ -65,417 +128,557 @@ export default function WhatsappWorkflowCanvasPage() {
       type: "keyword_match",
       keywords: ["halo", "menu", "bantuan", "info"],
     },
-    nodes: [
-      {
-        id: "node_start",
-        type: "send_message",
-        name: "Pesan Pembuka",
-        config: {
-          text: "Halo! Selamat datang di layanan WhatsApp resmi kami. Ada yang bisa kami bantu hari ini?",
-        },
-      },
-      {
-        id: "node_ask_name",
-        type: "prompt_input",
-        name: "Tanya Nama Pelanggan",
-        config: {
-          question: "Boleh kami tahu nama lengkap Anda?",
-          captureVariable: "customer_name",
-          validation: { type: "text" },
-        },
-      },
-      {
-        id: "node_ai_agent",
-        type: "ai_generate",
-        name: "AI Asisten Solusi",
-        config: {
-          prompt:
-            "Sapa pengguna dengan nama {{variables.customer_name}} lalu tanyakan kategori kendala atau produk yang diminati.",
-          captureVariable: "ai_recommendation",
-        },
-      },
-    ],
-    edges: [
-      {
-        id: "edge_1",
-        sourceNodeId: "node_start",
-        sourcePort: "default",
-        targetNodeId: "node_ask_name",
-      },
-      {
-        id: "edge_2",
-        sourceNodeId: "node_ask_name",
-        sourcePort: "default",
-        targetNodeId: "node_ai_agent",
-      },
-    ],
-    version: 1,
   }))
-
   const [devices, setDevices] = useState<
     { id: string; name: string; phoneNumber: string }[]
   >([])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("")
   const [saving, setSaving] = useState(false)
-  const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null)
+  const [, setLoadingInitial] = useState(true)
 
-  // AI Copilot state
+  // React Flow state
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+
+  // AI Copilot
   const [copilotPrompt, setCopilotPrompt] = useState("")
-  const [generating, setGenerating] = useState(false)
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
 
-  // Live Simulator state
+  // Simulator
   const [isSimOpen, setIsSimOpen] = useState(false)
-  const [simChat, setSimChat] = useState<
-    { role: "user" | "bot"; text: string }[]
+  const [simMessages, setSimMessages] = useState<
+    { sender: "bot" | "user"; text: string }[]
   >([])
-  const [simVariables, setSimVariables] = useState<Record<string, string>>({})
   const [simInput, setSimInput] = useState("")
 
-  const loadDevices = useCallback(async () => {
-    try {
-      // @ts-expect-error eden dynamic route
-      const res = await eden.api.console.whatsapp.devices.get()
-      if (res.data && res.data.ok && Array.isArray(res.data.data)) {
-        const devList = res.data.data.map(
-          (d: { id: string; name?: string; phoneNumber: string }) => ({
-            id: d.id,
-            name: d.name || `WhatsApp (${d.phoneNumber})`,
-            phoneNumber: d.phoneNumber,
-          })
-        )
-        setDevices(devList)
-        if (devList.length > 0 && !selectedDeviceId) {
-          setSelectedDeviceId(devList[0].id)
+  const nodeTypes = useMemo(() => ({ custom: WorkflowNodeComponent }), [])
+
+  // Helper convert schema node to xyflow node
+  const toXyFlowNode = useCallback(
+    (node: WorkflowNode, index: number): Node => ({
+      id: node.id,
+      type: "custom",
+      position: node.position || { x: 250, y: index * 180 + 50 },
+      data: {
+        id: node.id,
+        name: node.name,
+        type: node.type,
+        config: node.config || {},
+      },
+    }),
+    []
+  )
+
+  // Helper convert schema edge to xyflow edge
+  const toXyFlowEdge = useCallback(
+    (edge: WorkflowEdge): Edge => ({
+      id: edge.id,
+      source: edge.sourceNodeId,
+      sourceHandle: edge.sourcePort || "default",
+      target: edge.targetNodeId,
+      type: "smoothstep",
+      animated: true,
+      label:
+        edge.sourcePort === "true"
+          ? "TRUE"
+          : edge.sourcePort === "false"
+            ? "FALSE"
+            : undefined,
+      style: {
+        stroke:
+          edge.sourcePort === "true"
+            ? "#10b981"
+            : edge.sourcePort === "false"
+              ? "#f43f5e"
+              : "#0284c7",
+        strokeWidth: 2,
+      },
+    }),
+    []
+  )
+
+  // 1. Load Devices & Existing Workflow data
+  useEffect(() => {
+    let mounted = true
+
+    async function loadData() {
+      setLoadingInitial(true)
+      try {
+        // Fetch devices
+        // @ts-expect-error eden dynamic route
+        const devRes = await eden.api.whatsapp.devices.get()
+        if (devRes.data && devRes.data.ok && Array.isArray(devRes.data.data)) {
+          if (mounted) {
+            const devList = (
+              devRes.data.data as Array<{
+                id: string
+                name?: string
+                phoneNumber: string
+              }>
+            ).map((d) => ({
+              id: d.id,
+              name: d.name || `WhatsApp (${d.phoneNumber})`,
+              phoneNumber: d.phoneNumber,
+            }))
+            setDevices(devList)
+            if (devList.length > 0 && !selectedDeviceId) {
+              setSelectedDeviceId(devList[0].id)
+            }
+          }
+        }
+
+        // If existing workflow, fetch from GET /api/whatsapp/workflows/:id
+        if (workflowId && workflowId !== "new") {
+          try {
+            // @ts-expect-error eden dynamic route
+            const wfRes = await eden.api.whatsapp.workflows[workflowId].get()
+            if (wfRes.data && wfRes.data.ok && wfRes.data.data) {
+              const wf = wfRes.data.data as WorkflowDefinition & {
+                deviceId?: string
+              }
+              if (mounted) {
+                setWorkflowMeta({
+                  id: wf.id,
+                  name: wf.name || "Alur WhatsApp",
+                  description: wf.description || "",
+                  isActive: wf.isActive ?? true,
+                  trigger: wf.trigger || {
+                    id: "trig_1",
+                    type: "keyword_match",
+                    keywords: [],
+                  },
+                })
+                if (wf.deviceId) {
+                  setSelectedDeviceId(wf.deviceId)
+                }
+                if (Array.isArray(wf.nodes) && wf.nodes.length > 0) {
+                  setNodes(wf.nodes.map(toXyFlowNode))
+                  if (Array.isArray(wf.edges)) {
+                    setEdges(wf.edges.map(toXyFlowEdge))
+                  }
+                  return
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(
+              "[workflow] failed to load specific workflow, using defaults:",
+              e
+            )
+          }
+        }
+
+        // Default initial nodes
+        if (mounted) {
+          setNodes(initialNodesSample.map(toXyFlowNode))
+          setEdges(initialEdgesSample.map(toXyFlowEdge))
+        }
+      } catch (err) {
+        console.error("Error loading workflow canvas:", err)
+      } finally {
+        if (mounted) setLoadingInitial(false)
+      }
+    }
+
+    loadData()
+    return () => {
+      mounted = false
+    }
+  }, [
+    workflowId,
+    toXyFlowNode,
+    toXyFlowEdge,
+    selectedDeviceId,
+    setNodes,
+    setEdges,
+  ])
+
+  // Connection Handler
+  const onConnect = useCallback(
+    (params: Connection) => {
+      const isTrue = params.sourceHandle === "true"
+      const isFalse = params.sourceHandle === "false"
+
+      const newEdge: Edge = {
+        ...params,
+        id: `e_${params.source}_${params.sourceHandle || "def"}_${params.target}`,
+        type: "smoothstep",
+        animated: true,
+        label: isTrue ? "TRUE" : isFalse ? "FALSE" : undefined,
+        style: {
+          stroke: isTrue ? "#10b981" : isFalse ? "#f43f5e" : "#0284c7",
+          strokeWidth: 2,
+        },
+      }
+      setEdges((eds) => addEdge(newEdge, eds))
+    },
+    [setEdges]
+  )
+
+  // Node selection for Drawer Inspector
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    setSelectedNodeId(node.id)
+  }, [])
+
+  const selectedNode = useMemo(() => {
+    if (!selectedNodeId) return null
+    return nodes.find((n) => n.id === selectedNodeId) || null
+  }, [nodes, selectedNodeId])
+
+  // Add Node from Palette
+  const handleAddNode = useCallback(
+    (type: WorkflowNodeType) => {
+      const count = nodes.length + 1
+      const id = `node_${Date.now().toString(36)}`
+
+      let defaultName = "Langkah Baru"
+      let defaultConfig: Record<string, unknown> = {}
+
+      if (type === "send_message") {
+        defaultName = `Kirim Pesan #${count}`
+        defaultConfig = { text: "Tulis pesan WhatsApp di sini..." }
+      } else if (type === "prompt_input") {
+        defaultName = `Tanya Input #${count}`
+        defaultConfig = {
+          question: "Apa kebutuhan Anda?",
+          captureVariable: `var_${count}`,
+          validation: { type: "text" },
+        }
+      } else if (type === "ai_generate") {
+        defaultName = `AI Generator #${count}`
+        defaultConfig = {
+          prompt: "Jawab pertanyaan pengguna secara sopan dan informatif.",
+          captureVariable: `ai_output_${count}`,
+        }
+      } else if (type === "condition") {
+        defaultName = `Percabangan / If-Else #${count}`
+        defaultConfig = {
+          leftOperand: "{{variables.customer_input}}",
+          operator: "equals",
+          rightOperand: "1",
+        }
+      } else if (type === "http_request") {
+        defaultName = `HTTP Webhook #${count}`
+        defaultConfig = {
+          method: "GET",
+          url: "https://api.example.com/data",
+          captureVariable: `http_res_${count}`,
+        }
+      } else if (type === "send_interactive") {
+        defaultName = `Tombol Pilihan #${count}`
+        defaultConfig = {
+          bodyText: "Silakan pilih salah satu opsi di bawah ini:",
+          buttons: [
+            { id: "btn_1", title: "Layanan Pelanggan" },
+            { id: "btn_2", title: "Cek Status Pesanan" },
+          ],
         }
       }
-    } catch (err) {
-      console.warn("[canvas] load devices error:", err)
-    }
-  }, [selectedDeviceId])
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadDevices()
-  }, [loadDevices])
+      // Position nicely below the last node or staggered
+      const lastNode = nodes[nodes.length - 1]
+      const position = lastNode
+        ? { x: lastNode.position.x, y: lastNode.position.y + 190 }
+        : { x: 250, y: 100 }
+
+      const newNode: Node = {
+        id,
+        type: "custom",
+        position,
+        data: {
+          id,
+          name: defaultName,
+          type,
+          config: defaultConfig,
+        },
+      }
+
+      setNodes((nds) => [...nds, newNode])
+      setSelectedNodeId(id)
+      toast.success(`Node '${defaultName}' ditambahkan ke canvas`)
+    },
+    [nodes, setNodes]
+  )
+
+  // Update selected node config in state
+  const handleUpdateSelectedNode = useCallback(
+    (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => {
+      if (!selectedNodeId) return
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id === selectedNodeId) {
+            const currentData = n.data as unknown as WorkflowNode
+            return {
+              ...n,
+              data: {
+                ...currentData,
+                config: updater(currentData.config || {}),
+              },
+            }
+          }
+          return n
+        })
+      )
+    },
+    [selectedNodeId, setNodes]
+  )
+
+  const handleUpdateSelectedNodeName = useCallback(
+    (name: string) => {
+      if (!selectedNodeId) return
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id === selectedNodeId) {
+            const currentData = n.data as unknown as WorkflowNode
+            return {
+              ...n,
+              data: {
+                ...currentData,
+                name,
+              },
+            }
+          }
+          return n
+        })
+      )
+    },
+    [selectedNodeId, setNodes]
+  )
+
+  // Delete node
+  const handleDeleteSelectedNode = useCallback(() => {
+    if (!selectedNodeId) return
+    setNodes((nds) => nds.filter((n) => n.id !== selectedNodeId))
+    setEdges((eds) =>
+      eds.filter(
+        (e) => e.source !== selectedNodeId && e.target !== selectedNodeId
+      )
+    )
+    setSelectedNodeId(null)
+    toast.info("Node dihapus dari alur")
+  }, [selectedNodeId, setNodes, setEdges])
 
   // AI Copilot Generator
-  const handleGenerateCanvas = async () => {
-    if (!copilotPrompt.trim()) return
-    setGenerating(true)
+  const handleGenerateAi = async () => {
+    if (!copilotPrompt.trim()) {
+      toast.error("Tuliskan deskripsi bot alur yang diinginkan.")
+      return
+    }
+    setIsGeneratingAi(true)
     try {
+      // @ts-expect-error eden route
       const res = await eden.api.console.ai.workflows.generate.post({
         prompt: copilotPrompt,
       })
-      const data = res.data as {
-        ok: boolean
-        workflow?: {
-          name: string
-          description?: string
-          nodes: WorkflowNode[]
-        }
-        summary?: string
-        error?: string
-      }
-
-      if (data.ok && data.workflow) {
-        const newNodes: WorkflowNode[] = data.workflow.nodes
-        const newEdges: WorkflowEdge[] = []
-        for (let i = 0; i < newNodes.length - 1; i++) {
-          newEdges.push({
-            id: `edge_${Date.now()}_${i}`,
-            sourceNodeId: newNodes[i].id,
-            sourcePort: "default",
-            targetNodeId: newNodes[i + 1].id,
-          })
-        }
-
-        setWorkflow((prev) => ({
+      if (res.data?.ok && res.data?.workflow) {
+        const wf = res.data.workflow
+        setWorkflowMeta((prev) => ({
           ...prev,
-          name: data.workflow?.name || prev.name,
-          description: data.workflow?.description || prev.description,
-          nodes: newNodes,
-          edges: newEdges,
+          name: wf.name || prev.name,
+          description: wf.description || prev.description,
+          trigger: wf.trigger || prev.trigger,
         }))
-        toast.success(
-          "AI Copilot berhasil menyusun seluruh node & edges di canvas!"
-        )
+
+        // Transform generated nodes & edges
+        if (Array.isArray(wf.nodes)) {
+          const generatedNodes = (wf.nodes as WorkflowNode[]).map(
+            (n, idx: number) => ({
+              id: n.id,
+              type: "custom",
+              position: { x: 250, y: idx * 190 + 50 },
+              data: {
+                id: n.id,
+                name: n.name,
+                type: n.type,
+                config: n.config || {},
+              },
+            })
+          )
+          setNodes(generatedNodes)
+
+          if (Array.isArray(wf.edges) && wf.edges.length > 0) {
+            setEdges((wf.edges as WorkflowEdge[]).map(toXyFlowEdge))
+          } else {
+            // Build default linear edges if none
+            const autoEdges: Edge[] = []
+            for (let i = 0; i < generatedNodes.length - 1; i++) {
+              autoEdges.push({
+                id: `e_${generatedNodes[i].id}_${generatedNodes[i + 1].id}`,
+                source: generatedNodes[i].id,
+                sourceHandle: "default",
+                target: generatedNodes[i + 1].id,
+                type: "smoothstep",
+                animated: true,
+                style: { stroke: "#0284c7", strokeWidth: 2 },
+              })
+            }
+            setEdges(autoEdges)
+          }
+        }
+        toast.success("Workflow berhasil di-generate dengan AI Copilot!")
       } else {
-        toast.error(data.error || "Gagal membuat alur dengan AI Copilot.")
+        toast.error("Gagal generate alur: respons AI tidak valid.")
       }
-    } catch (err) {
-      console.error("[canvas] generate error:", err)
-      toast.error("Terjadi kesalahan saat memproses prompt AI.")
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : "Koneksi gagal"
+      toast.error(`Error AI Copilot: ${errorMsg}`)
     } finally {
-      setGenerating(false)
+      setIsGeneratingAi(false)
     }
   }
 
-  // Save workflow to device
-  const handleSaveWorkflow = async () => {
+  // Save Workflow
+  const handleSave = async () => {
     if (!selectedDeviceId) {
-      toast.error("Pilih nomor WhatsApp device terlebih dahulu.")
+      toast.error("Pilih Perangkat WhatsApp tujuan sebelum menyimpan.")
       return
     }
 
     setSaving(true)
     try {
+      // Reconstruct clean WorkflowDefinition for backend
+      const exportNodes: WorkflowNode[] = nodes.map((n) => {
+        const d = n.data as unknown as WorkflowNode
+        return {
+          id: n.id,
+          name: d.name || "Langkah Alur",
+          type: d.type || "send_message",
+          config: d.config || {},
+          position: {
+            x: Math.round(n.position.x),
+            y: Math.round(n.position.y),
+          },
+        }
+      })
+
+      const exportEdges: WorkflowEdge[] = edges.map((e) => ({
+        id: e.id,
+        sourceNodeId: e.source,
+        sourcePort: (e.sourceHandle as string) || "default",
+        targetNodeId: e.target,
+      }))
+
+      const payload: WorkflowDefinition = {
+        id: workflowMeta.id,
+        organizationId: "org_current",
+        name: workflowMeta.name,
+        description: workflowMeta.description,
+        isActive: workflowMeta.isActive,
+        trigger: workflowMeta.trigger as WorkflowDefinition["trigger"],
+        nodes: exportNodes,
+        edges: exportEdges,
+        version: 1,
+      }
+
       // @ts-expect-error eden route
-      const res = await eden.api.console.whatsapp.workflows.save.post({
+      const res = await eden.api.whatsapp.workflows.save.post({
         deviceId: selectedDeviceId,
-        workflow,
+        workflow: payload,
       })
 
       if (res.data && res.data.ok) {
-        toast.success(
-          "Alur canvas berhasil disimpan & diaktifkan di WhatsApp device!"
-        )
+        toast.success("Alur Bot WhatsApp berhasil disimpan & aktif!")
         router.push(`/${lang}/console/whatsapp/workflows`)
       } else {
-        toast.error(res.data?.error || "Gagal menyimpan workflow.")
+        toast.error(`Gagal simpan: ${res.data?.error || "Unknown error"}`)
       }
-    } catch (err) {
-      console.error("[canvas] save error:", err)
-      toast.error("Terjadi kesalahan saat menyimpan alur canvas.")
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : "Koneksi gagal"
+      toast.error(`Gagal menyimpan alur: ${errorMsg}`)
     } finally {
       setSaving(false)
     }
   }
 
-  // Add specific node type
-  const handleAddNode = (type: WorkflowNodeType) => {
-    const timestamp = Date.now()
-    let newNode: WorkflowNode
-
-    switch (type) {
-      case "prompt_input":
-        newNode = {
-          id: `node_prompt_${timestamp}`,
-          type: "prompt_input",
-          name: "Tanya Jawaban User",
-          config: {
-            question: "Ketik jawaban atau pilihan Anda:",
-            captureVariable: `input_${workflow.nodes.length + 1}`,
-          },
-        }
-        break
-      case "ai_generate":
-        newNode = {
-          id: `node_ai_${timestamp}`,
-          type: "ai_generate",
-          name: "Respon AI Cerdas",
-          config: {
-            prompt: "Analisis pesan pengguna dan berikan rekomendasi ringkas.",
-            captureVariable: `ai_reply_${workflow.nodes.length + 1}`,
-          },
-        }
-        break
-      case "condition":
-        newNode = {
-          id: `node_cond_${timestamp}`,
-          type: "condition",
-          name: "Percabangan Logika",
-          config: {
-            leftOperand: `variables.input_${workflow.nodes.length}`,
-            operator: "contains",
-            rightOperand: "ya",
-          },
-        }
-        break
-      case "http_request":
-        newNode = {
-          id: `node_http_${timestamp}`,
-          type: "http_request",
-          name: "Integrasi API / Webhook",
-          config: {
-            url: "https://api.example.com/check",
-            method: "POST",
-            timeoutMs: 5000,
-          },
-        }
-        break
-      case "send_interactive":
-        newNode = {
-          id: `node_interactive_${timestamp}`,
-          type: "send_interactive",
-          name: "Tombol Pilihan Interaktif",
-          config: {
-            bodyText: "Silakan pilih salah satu opsi di bawah ini:",
-            buttons: [
-              { id: "btn_1", title: "Opsi 1" },
-              { id: "btn_2", title: "Opsi 2" },
-            ],
-          },
-        }
-        break
-      default:
-        newNode = {
-          id: `node_msg_${timestamp}`,
-          type: "send_message",
-          name: "Kirim Pesan WhatsApp",
-          config: { text: "Tuliskan pesan Anda di sini." },
-        }
-    }
-
-    setWorkflow((prev) => ({
-      ...prev,
-      nodes: [...prev.nodes, newNode],
-      edges: [
-        ...prev.edges,
-        {
-          id: `edge_${timestamp}`,
-          sourceNodeId: prev.nodes[prev.nodes.length - 1]?.id || newNode.id,
-          sourcePort: "default",
-          targetNodeId: newNode.id,
-        },
-      ],
-    }))
-    setSelectedNode(newNode)
-    toast.success(`Node ${newNode.name} ditambahkan ke canvas.`)
-  }
-
   // Simulator test
   const handleStartSim = () => {
     setIsSimOpen(true)
-    setSimVariables({})
-    if (workflow.nodes.length > 0) {
-      const first = workflow.nodes[0]
-      const text =
-        (first.config.text as string) ||
-        (first.config.question as string) ||
-        (first.config.bodyText as string) ||
-        (first.config.prompt as string) ||
-        "Halo! Alur dimulai."
-      setSimChat([{ role: "bot", text }])
-    }
-  }
-
-  const handleSimReply = () => {
-    if (!simInput.trim()) return
-    const userMsg = simInput.trim()
-    const updatedChat = [...simChat, { role: "user" as const, text: userMsg }]
-    const userCount = updatedChat.filter((m) => m.role === "user").length
-    const currentVars = { ...simVariables }
-
-    // Check if previous node captures variable
-    const prevNodeIndex = userCount - 1
-    if (
-      workflow.nodes.length > prevNodeIndex &&
-      workflow.nodes[prevNodeIndex]?.config.captureVariable
-    ) {
-      const varName = workflow.nodes[prevNodeIndex].config
-        .captureVariable as string
-      currentVars[varName] = userMsg
-      setSimVariables(currentVars)
-    }
-
-    if (workflow.nodes.length > userCount) {
-      const nextNode = workflow.nodes[userCount]
-      let reply =
-        (nextNode.config.text as string) ||
-        (nextNode.config.question as string) ||
-        (nextNode.config.bodyText as string) ||
-        (nextNode.config.prompt as string) ||
-        "Pesan selanjutnya"
-
-      // Replace template variables
-      for (const [k, v] of Object.entries(currentVars)) {
-        reply = reply.replaceAll(`{{variables.${k}}}`, v)
-      }
-      reply = reply.replace(/\{\{variables\.\w+\}\}/g, userMsg)
-
-      updatedChat.push({ role: "bot", text: reply })
+    if (nodes.length > 0) {
+      const first = nodes[0].data as unknown as WorkflowNode
+      const startText =
+        (first?.config?.text as string) ||
+        (first?.config?.question as string) ||
+        `Halo! Alur '${workflowMeta.name}' dimulai.`
+      setSimMessages([{ sender: "bot", text: startText }])
     } else {
-      updatedChat.push({
-        role: "bot",
-        text: `Terima kasih! Pesan Anda "${userMsg}" telah diproses sampai akhir alur.`,
-      })
+      setSimMessages([{ sender: "bot", text: "Alur masih kosong." }])
     }
+  }
 
-    setSimChat(updatedChat)
+  const handleSendSimMessage = () => {
+    if (!simInput.trim()) return
+    const userText = simInput.trim()
+    setSimMessages((prev) => [...prev, { sender: "user", text: userText }])
     setSimInput("")
+
+    setTimeout(() => {
+      setSimMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: `[Bot Respon Otomatis]: Input '${userText}' diterima dan variabel berhasil disimpan.`,
+        },
+      ])
+    }, 600)
   }
 
-  // Node Type Badge & Icon Helper
-  const getNodeMeta = (type: WorkflowNodeType) => {
-    switch (type) {
-      case "prompt_input":
-        return {
-          icon: <Question size={14} className="text-amber-400" />,
-          color: "border-amber-500/40 text-amber-400",
-        }
-      case "ai_generate":
-        return {
-          icon: <Brain size={14} className="text-purple-400" />,
-          color: "border-purple-500/40 text-purple-400",
-        }
-      case "condition":
-        return {
-          icon: <GitBranch size={14} className="text-blue-400" />,
-          color: "border-blue-500/40 text-blue-400",
-        }
-      case "http_request":
-        return {
-          icon: <Globe size={14} className="text-rose-400" />,
-          color: "border-rose-500/40 text-rose-400",
-        }
-      case "send_interactive":
-        return {
-          icon: <SlidersHorizontal size={14} className="text-cyan-400" />,
-          color: "border-cyan-500/40 text-cyan-400",
-        }
-      default:
-        return {
-          icon: <ChatCircleText size={14} className="text-emerald-400" />,
-          color: "border-emerald-500/40 text-emerald-400",
-        }
-    }
-  }
+  const selectedNodeData = selectedNode?.data as unknown as
+    | WorkflowNode
+    | undefined
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6 pt-0">
-      {/* Top Action Bar */}
-      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex h-[calc(100vh-4rem)] flex-1 flex-col gap-4 p-6 pt-0">
+      {/* Top Bar Header */}
+      <div className="flex flex-col gap-4 border-b border-border/60 pb-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
             <Link href={`/${lang}/console/whatsapp/workflows`}>
-              <ArrowLeft size={16} />
+              <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
+
           <div>
             <div className="flex items-center gap-2">
               <Input
-                value={workflow.name}
+                value={workflowMeta.name}
                 onChange={(e) =>
-                  setWorkflow({ ...workflow, name: e.target.value })
+                  setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="h-8 w-64 text-base font-semibold md:w-80"
+                className="h-8 w-64 text-base font-bold tracking-tight md:w-80"
+                placeholder="Nama Alur Bot"
               />
               <Badge
-                variant="secondary"
-                className="bg-emerald-500/10 text-xs text-emerald-600"
+                variant="outline"
+                className="border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
               >
-                Interactive Canvas
+                Visual Graph
               </Badge>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {workflow.description}
+              Drag node untuk menyusun posisi, hubungkan titik port untuk
+              branching alur (True/False/Default).
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="w-52">
+          {/* Device Selector */}
+          <div className="w-56">
             <Select
               value={selectedDeviceId}
               onValueChange={setSelectedDeviceId}
             >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Pilih WhatsApp Device" />
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Pilih No. WhatsApp" />
               </SelectTrigger>
               <SelectContent>
                 {devices.map((d) => (
                   <SelectItem key={d.id} value={d.id} className="text-xs">
-                    {d.name} ({d.phoneNumber})
+                    <div className="flex items-center gap-1.5">
+                      <WhatsappLogo className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>{d.name}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -483,481 +686,625 @@ export default function WhatsappWorkflowCanvasPage() {
           </div>
 
           <Button
-            type="button"
             variant="outline"
             size="sm"
             onClick={handleStartSim}
-            className="h-8 gap-1.5 text-xs"
+            className="h-9 gap-1.5 text-xs font-medium"
           >
-            <Play size={14} weight="fill" className="text-emerald-500" />
-            <span>Tes Simulator</span>
+            <Play className="h-3.5 w-3.5 text-primary" weight="fill" />
+            Simulasi Test
           </Button>
 
           <Button
-            type="button"
-            size="sm"
+            onClick={handleSave}
             disabled={saving}
-            onClick={handleSaveWorkflow}
-            className="h-8 gap-1.5 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
+            size="sm"
+            className="h-9 gap-1.5 text-xs font-medium"
           >
-            <FloppyDisk size={14} weight="bold" />
-            <span>{saving ? "Menyimpan..." : "Simpan & Aktifkan"}</span>
+            <FloppyDisk className="h-3.5 w-3.5" />
+            {saving ? "Menyimpan..." : "Simpan & Terapkan"}
           </Button>
         </div>
       </div>
 
       {/* AI Copilot Prompt Bar */}
-      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-emerald-600">
-            <Sparkle size={16} weight="fill" />
-            <span>AI Copilot Canvas:</span>
+      <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-card/60 p-2.5 shadow-sm backdrop-blur">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Sparkle className="h-4 w-4" weight="fill" />
+        </div>
+        <Input
+          value={copilotPrompt}
+          onChange={(e) => setCopilotPrompt(e.target.value)}
+          placeholder="AI Copilot: contoh 'Buat alur tanya kendala teknis lalu jika urgent hubungkan ke admin CS'..."
+          className="h-8 border-none bg-transparent text-xs shadow-none focus-visible:ring-0"
+          onKeyDown={(e) => e.key === "Enter" && handleGenerateAi()}
+        />
+        <Button
+          size="sm"
+          onClick={handleGenerateAi}
+          disabled={isGeneratingAi}
+          className="h-8 shrink-0 gap-1 text-xs"
+        >
+          {isGeneratingAi ? (
+            <ArrowsClockwise className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkle className="h-3.5 w-3.5" weight="fill" />
+          )}
+          <span>{isGeneratingAi ? "Generating..." : "Generate AI"}</span>
+        </Button>
+      </div>
+
+      {/* Canvas Area with Left Palette Toolbar */}
+      <div className="relative flex flex-1 overflow-hidden rounded-xl border border-border bg-background shadow-inner">
+        {/* Node Palette Bar (Floating Left) */}
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 rounded-xl border border-border/80 bg-card/90 p-2 shadow-lg backdrop-blur">
+          <div className="px-2 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Tambah Node
           </div>
-          <Input
-            placeholder="Contoh: Rancang bot tanya nama, keluhan, validasi percabangan lalu kirimkan solusi AI..."
-            value={copilotPrompt}
-            onChange={(e) => setCopilotPrompt(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleGenerateCanvas()}
-            className="h-8 bg-background text-xs"
-          />
+
           <Button
-            type="button"
+            variant="outline"
             size="sm"
-            disabled={generating || !copilotPrompt.trim()}
-            onClick={handleGenerateCanvas}
-            className="h-8 shrink-0 gap-1 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
+            onClick={() => handleAddNode("send_message")}
+            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-sky-500/50 hover:bg-sky-500/10"
           >
-            <Lightning size={14} weight="fill" />
-            <span>{generating ? "Merancang..." : "Generate di Canvas ✨"}</span>
+            <ChatCircleText className="h-4 w-4 text-sky-400" weight="duotone" />
+            <span>Kirim Pesan</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAddNode("prompt_input")}
+            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-emerald-500/50 hover:bg-emerald-500/10"
+          >
+            <Question className="h-4 w-4 text-emerald-400" weight="duotone" />
+            <span>Tanya Input</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAddNode("condition")}
+            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-amber-500/50 hover:bg-amber-500/10"
+          >
+            <GitBranch className="h-4 w-4 text-amber-400" weight="duotone" />
+            <span>If-Else Cabang</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAddNode("send_interactive")}
+            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-indigo-500/50 hover:bg-indigo-500/10"
+          >
+            <SlidersHorizontal
+              className="h-4 w-4 text-indigo-400"
+              weight="duotone"
+            />
+            <span>Tombol Pilihan</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAddNode("ai_generate")}
+            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-purple-500/50 hover:bg-purple-500/10"
+          >
+            <Brain className="h-4 w-4 text-purple-400" weight="duotone" />
+            <span>AI Response</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAddNode("http_request")}
+            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-pink-500/50 hover:bg-pink-500/10"
+          >
+            <Globe className="h-4 w-4 text-pink-400" weight="duotone" />
+            <span>HTTP Webhook</span>
           </Button>
         </div>
+
+        {/* React Flow Interactive Graph */}
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          minZoom={0.2}
+          maxZoom={2}
+          className="bg-zinc-950"
+        >
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={20}
+            size={1}
+            color="#3f3f46"
+          />
+          <Controls className="!border-border !bg-card !fill-foreground" />
+          <MiniMap
+            nodeColor="#3b82f6"
+            maskColor="rgba(0, 0, 0, 0.7)"
+            className="!overflow-hidden !rounded-lg !border-border !bg-card"
+          />
+        </ReactFlow>
       </div>
 
-      {/* Interactive Visual Canvas Area */}
-      <div className="relative min-h-[540px] flex-1 overflow-auto rounded-xl border border-border bg-zinc-950/90 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] p-6">
-        {/* Canvas Toolbar / Node Palette */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-3">
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <TreeStructure size={16} />
-            <span>
-              Node Graph ({workflow.nodes.length} Nodes &amp;{" "}
-              {workflow.edges.length} Edges)
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 border-zinc-800 bg-zinc-900 text-[11px] text-zinc-300 hover:bg-zinc-800"
-              onClick={() => handleAddNode("send_message")}
-            >
-              <ChatCircleText size={12} className="text-emerald-400" />
-              <span>+ Pesan</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 border-zinc-800 bg-zinc-900 text-[11px] text-zinc-300 hover:bg-zinc-800"
-              onClick={() => handleAddNode("prompt_input")}
-            >
-              <Question size={12} className="text-amber-400" />
-              <span>+ Tanya Input</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 border-zinc-800 bg-zinc-900 text-[11px] text-zinc-300 hover:bg-zinc-800"
-              onClick={() => handleAddNode("ai_generate")}
-            >
-              <Brain size={12} className="text-purple-400" />
-              <span>+ AI LLM</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 border-zinc-800 bg-zinc-900 text-[11px] text-zinc-300 hover:bg-zinc-800"
-              onClick={() => handleAddNode("condition")}
-            >
-              <GitBranch size={12} className="text-blue-400" />
-              <span>+ Kondisi Branch</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 border-zinc-800 bg-zinc-900 text-[11px] text-zinc-300 hover:bg-zinc-800"
-              onClick={() => handleAddNode("http_request")}
-            >
-              <Globe size={12} className="text-rose-400" />
-              <span>+ API Webhook</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Visual Node Flow Layout */}
-        <div className="flex flex-col items-center gap-4 py-4">
-          {/* Trigger Node */}
-          <div className="w-88 rounded-lg border border-emerald-500/40 bg-zinc-900 p-3.5 shadow-lg">
-            <div className="mb-2 flex items-center justify-between border-b border-zinc-800 pb-1.5">
-              <span className="text-[10px] font-bold tracking-wider text-emerald-500 uppercase">
-                ⚡ Trigger Inbound Event
-              </span>
-              <Badge
-                variant="outline"
-                className="border-emerald-500/30 text-[9px] text-emerald-400"
-              >
-                {workflow.trigger.type}
+      {/* Redesigned Node Configuration Drawer (Fix Spacing, Padding, and Complete Forms) */}
+      <Sheet
+        open={Boolean(selectedNode)}
+        onOpenChange={(open) => !open && setSelectedNodeId(null)}
+      >
+        <SheetContent
+          side="right"
+          className="flex h-full w-full flex-col border-l border-border bg-card p-0 text-card-foreground shadow-2xl sm:max-w-xl"
+        >
+          {/* Drawer Header */}
+          <SheetHeader className="shrink-0 border-b border-border/60 px-6 py-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <SheetTitle className="text-lg font-bold">
+                  Konfigurasi Node
+                </SheetTitle>
+                <SheetDescription className="text-xs text-muted-foreground">
+                  Sesuaikan parameter, teks, dan variabel untuk langkah ini.
+                </SheetDescription>
+              </div>
+              <Badge variant="outline" className="font-mono text-xs">
+                {selectedNodeData?.type || ""}
               </Badge>
             </div>
-            <p className="text-xs font-medium text-zinc-200">
-              Kata Kunci:{" "}
-              {workflow.trigger.keywords?.join(", ") || "Semua Pesan Masuk"}
-            </p>
+          </SheetHeader>
+
+          {/* Scrollable Form Body with Generous Padding */}
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+            {selectedNodeData && (
+              <>
+                {/* Node Title */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-foreground">
+                    Nama Label Langkah
+                  </Label>
+                  <Input
+                    value={selectedNodeData.name || ""}
+                    onChange={(e) =>
+                      handleUpdateSelectedNodeName(e.target.value)
+                    }
+                    placeholder="Nama langkah alur"
+                    className="h-9 text-sm"
+                  />
+                </div>
+
+                {/* Form fields by Type */}
+                {selectedNodeData.type === "send_message" && (
+                  <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Teks Pesan WhatsApp
+                      </Label>
+                      <Textarea
+                        rows={4}
+                        value={(selectedNodeData.config?.text as string) || ""}
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            text: e.target.value,
+                          }))
+                        }
+                        placeholder="Halo, terima kasih sudah menghubungi kami..."
+                        className="text-sm leading-relaxed"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Mendukung variabel: {"{{variables.customer_name}}"}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Media URL (Opsional)
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config?.mediaUrl as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            mediaUrl: e.target.value,
+                          }))
+                        }
+                        placeholder="https://example.com/image.jpg"
+                        className="h-9 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedNodeData.type === "prompt_input" && (
+                  <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Pertanyaan ke Pengguna
+                      </Label>
+                      <Textarea
+                        rows={3}
+                        value={
+                          (selectedNodeData.config?.question as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            question: e.target.value,
+                          }))
+                        }
+                        placeholder="Berapa nomor pesanan Anda?"
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Simpan Jawaban ke Variabel
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config
+                            ?.captureVariable as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            captureVariable: e.target.value,
+                          }))
+                        }
+                        placeholder="order_id"
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedNodeData.type === "condition" && (
+                  <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
+                    <div className="rounded border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300">
+                      💡 Hubungkan titik <strong>TRUE (Hijau)</strong> untuk
+                      kondisi terpenuhi, dan <strong>FALSE (Merah)</strong>{" "}
+                      untuk alternatif.
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Variabel / Nilai Kiri
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config?.leftOperand as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            leftOperand: e.target.value,
+                          }))
+                        }
+                        placeholder="{{variables.category}}"
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">Operator</Label>
+                      <Select
+                        value={
+                          (selectedNodeData.config?.operator as string) ||
+                          "equals"
+                        }
+                        onValueChange={(val) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            operator: val,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Pilih Operator" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="equals">
+                            Sama Dengan (equals)
+                          </SelectItem>
+                          <SelectItem value="not_equals">
+                            Tidak Sama (not_equals)
+                          </SelectItem>
+                          <SelectItem value="contains">
+                            Mengandung Kata (contains)
+                          </SelectItem>
+                          <SelectItem value="greater_than">
+                            Lebih Besar (&gt;)
+                          </SelectItem>
+                          <SelectItem value="less_than">
+                            Lebih Kecil (&lt;)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Nilai Pembanding (Kanan)
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config?.rightOperand as string) ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            rightOperand: e.target.value,
+                          }))
+                        }
+                        placeholder="Contoh: 1 / ya / bantuan"
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedNodeData.type === "send_interactive" && (
+                  <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Teks Pesan Menu
+                      </Label>
+                      <Textarea
+                        rows={3}
+                        value={
+                          (selectedNodeData.config?.bodyText as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            bodyText: e.target.value,
+                          }))
+                        }
+                        placeholder="Silakan pilih layanan di bawah:"
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Tombol Pilihan (Maks. 3)
+                      </Label>
+                      {(
+                        (selectedNodeData.config?.buttons as Array<{
+                          id: string
+                          title: string
+                        }>) || []
+                      ).map((btn, bIdx) => (
+                        <div key={bIdx} className="flex items-center gap-2">
+                          <Input
+                            value={btn.title}
+                            onChange={(e) => {
+                              const newTitle = e.target.value
+                              handleUpdateSelectedNode((cfg) => {
+                                const curr =
+                                  (cfg.buttons as Array<{
+                                    id: string
+                                    title: string
+                                  }>) || []
+                                const updated = [...curr]
+                                updated[bIdx] = {
+                                  ...updated[bIdx],
+                                  title: newTitle,
+                                }
+                                return { ...cfg, buttons: updated }
+                              })
+                            }}
+                            className="h-8 text-xs"
+                            placeholder={`Tombol ${bIdx + 1}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedNodeData.type === "ai_generate" && (
+                  <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        System Prompt / Instruksi AI
+                      </Label>
+                      <Textarea
+                        rows={5}
+                        value={
+                          (selectedNodeData.config?.prompt as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            prompt: e.target.value,
+                          }))
+                        }
+                        placeholder="Instruksi spesifik cara menjawab WhatsApp pelanggan..."
+                        className="font-mono text-sm leading-relaxed"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Simpan Hasil AI ke Variabel
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config
+                            ?.captureVariable as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            captureVariable: e.target.value,
+                          }))
+                        }
+                        placeholder="ai_result"
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedNodeData.type === "http_request" && (
+                  <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        HTTP Method
+                      </Label>
+                      <Select
+                        value={
+                          (selectedNodeData.config?.method as string) || "GET"
+                        }
+                        onValueChange={(val) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            method: val,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="GET">GET</SelectItem>
+                          <SelectItem value="POST">POST</SelectItem>
+                          <SelectItem value="PUT">PUT</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Endpoint URL
+                      </Label>
+                      <Input
+                        value={(selectedNodeData.config?.url as string) || ""}
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            url: e.target.value,
+                          }))
+                        }
+                        placeholder="https://api.domain.com/webhook"
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Simpan Response Body ke Variabel
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config
+                            ?.captureVariable as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            captureVariable: e.target.value,
+                          }))
+                        }
+                        placeholder="api_response"
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
-          {/* Connectors & Nodes */}
-          {workflow.nodes.map((node, index) => {
-            const meta = getNodeMeta(node.type)
-            return (
-              <div key={node.id} className="flex flex-col items-center gap-3">
-                {/* Connector Edge Arrow */}
-                <div className="flex flex-col items-center">
-                  <div className="h-6 w-0.5 bg-emerald-500/50" />
-                  <div className="h-2 w-2 rotate-45 border-r-2 border-b-2 border-emerald-500" />
-                </div>
+          {/* Drawer Footer */}
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/60 bg-muted/20 p-6">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelectedNode}
+              className="h-9 gap-1.5 text-xs"
+            >
+              <Trash className="h-4 w-4" />
+              Hapus Node
+            </Button>
 
-                {/* Node Card Box */}
-                <div
-                  onClick={() => setSelectedNode(node)}
-                  className={`w-88 cursor-pointer rounded-lg border bg-zinc-900 p-3.5 shadow-md transition hover:border-emerald-500/60 ${
-                    selectedNode?.id === node.id
-                      ? "border-emerald-500 ring-1 ring-emerald-500"
-                      : "border-zinc-800"
-                  }`}
-                >
-                  <div className="mb-2 flex items-center justify-between border-b border-zinc-800 pb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-bold text-zinc-300">
-                        {index + 1}
-                      </span>
-                      {meta.icon}
-                      <span className="text-xs font-semibold text-zinc-100">
-                        {node.name}
-                      </span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={`text-[9px] ${meta.color}`}
-                    >
-                      {node.type}
-                    </Badge>
-                  </div>
-                  <p className="line-clamp-2 text-xs text-zinc-400">
-                    {(node.config.question as string) ||
-                      (node.config.text as string) ||
-                      (node.config.bodyText as string) ||
-                      (node.config.prompt as string) ||
-                      (node.config.url as string) ||
-                      `Logika: ${String(node.config.leftOperand || "")} ${String(node.config.operator || "")} ${String(node.config.rightOperand || "")}`}
-                  </p>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Node Config Drawer */}
-      <Sheet
-        open={!!selectedNode}
-        onOpenChange={(open) => !open && setSelectedNode(null)}
-      >
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle className="text-base font-semibold">
-              Edit Node: {selectedNode?.name}
-            </SheetTitle>
-          </SheetHeader>
-          {selectedNode && (
-            <div className="space-y-4 py-4 text-xs">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Nama Langkah</Label>
-                <Input
-                  value={selectedNode.name}
-                  onChange={(e) => {
-                    const newName = e.target.value
-                    setSelectedNode({ ...selectedNode, name: newName })
-                    setWorkflow((prev) => ({
-                      ...prev,
-                      nodes: prev.nodes.map((n) =>
-                        n.id === selectedNode.id ? { ...n, name: newName } : n
-                      ),
-                    }))
-                  }}
-                  className="h-8 text-xs"
-                />
-              </div>
-
-              {/* Dynamic Field per node type */}
-              {(selectedNode.type === "send_message" ||
-                selectedNode.type === "prompt_input") && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">
-                    {selectedNode.type === "prompt_input"
-                      ? "Teks Pertanyaan"
-                      : "Teks Pesan"}
-                  </Label>
-                  <Textarea
-                    rows={4}
-                    value={
-                      (selectedNode.config.question as string) ||
-                      (selectedNode.config.text as string) ||
-                      ""
-                    }
-                    onChange={(e) => {
-                      const newText = e.target.value
-                      const key =
-                        selectedNode.type === "prompt_input"
-                          ? "question"
-                          : "text"
-                      const newConfig = {
-                        ...selectedNode.config,
-                        [key]: newText,
-                      }
-                      setSelectedNode({ ...selectedNode, config: newConfig })
-                      setWorkflow((prev) => ({
-                        ...prev,
-                        nodes: prev.nodes.map((n) =>
-                          n.id === selectedNode.id
-                            ? { ...n, config: newConfig }
-                            : n
-                        ),
-                      }))
-                    }}
-                    className="text-xs"
-                  />
-                </div>
-              )}
-
-              {selectedNode.type === "ai_generate" && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Prompt AI Task</Label>
-                  <Textarea
-                    rows={4}
-                    value={(selectedNode.config.prompt as string) || ""}
-                    onChange={(e) => {
-                      const newConfig = {
-                        ...selectedNode.config,
-                        prompt: e.target.value,
-                      }
-                      setSelectedNode({ ...selectedNode, config: newConfig })
-                      setWorkflow((prev) => ({
-                        ...prev,
-                        nodes: prev.nodes.map((n) =>
-                          n.id === selectedNode.id
-                            ? { ...n, config: newConfig }
-                            : n
-                        ),
-                      }))
-                    }}
-                    className="text-xs"
-                  />
-                </div>
-              )}
-
-              {selectedNode.type === "condition" && (
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">
-                      Variabel Target (Left Operand)
-                    </Label>
-                    <Input
-                      value={(selectedNode.config.leftOperand as string) || ""}
-                      onChange={(e) => {
-                        const newConfig = {
-                          ...selectedNode.config,
-                          leftOperand: e.target.value,
-                        }
-                        setSelectedNode({ ...selectedNode, config: newConfig })
-                        setWorkflow((prev) => ({
-                          ...prev,
-                          nodes: prev.nodes.map((n) =>
-                            n.id === selectedNode.id
-                              ? { ...n, config: newConfig }
-                              : n
-                          ),
-                        }))
-                      }}
-                      placeholder="misal: variables.customer_name"
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">
-                      Nilai Pembanding (Right Operand)
-                    </Label>
-                    <Input
-                      value={(selectedNode.config.rightOperand as string) || ""}
-                      onChange={(e) => {
-                        const newConfig = {
-                          ...selectedNode.config,
-                          rightOperand: e.target.value,
-                        }
-                        setSelectedNode({ ...selectedNode, config: newConfig })
-                        setWorkflow((prev) => ({
-                          ...prev,
-                          nodes: prev.nodes.map((n) =>
-                            n.id === selectedNode.id
-                              ? { ...n, config: newConfig }
-                              : n
-                          ),
-                        }))
-                      }}
-                      placeholder="misal: ya"
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {selectedNode.type === "http_request" && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Webhook / Endpoint URL</Label>
-                  <Input
-                    value={(selectedNode.config.url as string) || ""}
-                    onChange={(e) => {
-                      const newConfig = {
-                        ...selectedNode.config,
-                        url: e.target.value,
-                      }
-                      setSelectedNode({ ...selectedNode, config: newConfig })
-                      setWorkflow((prev) => ({
-                        ...prev,
-                        nodes: prev.nodes.map((n) =>
-                          n.id === selectedNode.id
-                            ? { ...n, config: newConfig }
-                            : n
-                        ),
-                      }))
-                    }}
-                    placeholder="https://api.domain.com/webhook"
-                    className="h-8 text-xs"
-                  />
-                </div>
-              )}
-
-              {/* Capture Variable Field */}
-              {(selectedNode.type === "prompt_input" ||
-                selectedNode.type === "ai_generate") && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Simpan ke Nama Variabel</Label>
-                  <Input
-                    value={
-                      (selectedNode.config.captureVariable as string) || ""
-                    }
-                    onChange={(e) => {
-                      const newVar = e.target.value
-                      const newConfig = {
-                        ...selectedNode.config,
-                        captureVariable: newVar,
-                      }
-                      setSelectedNode({ ...selectedNode, config: newConfig })
-                      setWorkflow((prev) => ({
-                        ...prev,
-                        nodes: prev.nodes.map((n) =>
-                          n.id === selectedNode.id
-                            ? { ...n, config: newConfig }
-                            : n
-                        ),
-                      }))
-                    }}
-                    className="h-8 text-xs"
-                    placeholder="misal: jawaban_user"
-                  />
-                </div>
-              )}
-
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="mt-4 h-8 w-full gap-1.5 text-xs"
-                onClick={() => {
-                  setWorkflow((prev) => ({
-                    ...prev,
-                    nodes: prev.nodes.filter((n) => n.id !== selectedNode.id),
-                    edges: prev.edges.filter(
-                      (e) =>
-                        e.sourceNodeId !== selectedNode.id &&
-                        e.targetNodeId !== selectedNode.id
-                    ),
-                  }))
-                  setSelectedNode(null)
-                  toast.success("Node berhasil dihapus dari canvas.")
-                }}
-              >
-                <Trash size={14} />
-                <span>Hapus Node</span>
-              </Button>
-            </div>
-          )}
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setSelectedNodeId(null)}
+              className="h-9 px-5 text-xs"
+            >
+              Selesai Edit
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
 
-      {/* Live WhatsApp Chat Simulator Drawer */}
+      {/* Simulator Sheet */}
       <Sheet open={isSimOpen} onOpenChange={setIsSimOpen}>
-        <SheetContent className="flex flex-col justify-between bg-zinc-950 text-white sm:max-w-md">
-          <div>
-            <SheetHeader className="border-b border-zinc-800 pb-3">
-              <SheetTitle className="flex items-center gap-2 text-base text-white">
-                <WhatsappLogo
-                  size={20}
-                  className="text-emerald-500"
-                  weight="fill"
-                />
-                <span>Simulator WhatsApp Live</span>
-              </SheetTitle>
-            </SheetHeader>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col border-l border-zinc-800 bg-zinc-950 p-6 text-white sm:max-w-md"
+        >
+          <SheetHeader className="border-b border-zinc-800 pb-4">
+            <SheetTitle className="flex items-center gap-2 text-base text-white">
+              <WhatsappLogo
+                className="h-5 w-5 text-emerald-500"
+                weight="fill"
+              />
+              Simulator WhatsApp Bot
+            </SheetTitle>
+          </SheetHeader>
 
-            <div className="max-h-[70vh] flex-1 space-y-2 overflow-y-auto py-4">
-              {simChat.map((msg, i) => (
+          <div className="flex-1 space-y-3 overflow-y-auto py-4">
+            {simMessages.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex ${
+                  msg.sender === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
                 <div
-                  key={i}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${
+                    msg.sender === "user"
+                      ? "rounded-br-none bg-emerald-600 text-white"
+                      : "rounded-bl-none border border-zinc-700 bg-zinc-800 text-zinc-100"
+                  }`}
                 >
-                  <div
-                    className={`max-w-[80%] rounded-lg px-3 py-2 text-xs ${
-                      msg.role === "user"
-                        ? "bg-emerald-600 text-white"
-                        : "bg-zinc-800 text-zinc-200"
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
+                  {msg.text}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
 
-          <div className="flex gap-2 border-t border-zinc-800 pt-3">
+          <div className="flex items-center gap-2 border-t border-zinc-800 pt-4">
             <Input
-              placeholder="Ketik balasan untuk tes alur..."
               value={simInput}
               onChange={(e) => setSimInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSimReply()}
-              className="h-8 border-zinc-700 bg-zinc-900 text-xs text-white"
+              onKeyDown={(e) => e.key === "Enter" && handleSendSimMessage()}
+              placeholder="Ketik balasan pesan..."
+              className="h-9 border-zinc-700 bg-zinc-900 text-xs text-white"
             />
             <Button
-              size="sm"
-              type="button"
-              onClick={handleSimReply}
-              className="h-8 w-8 shrink-0 bg-emerald-600 p-0 hover:bg-emerald-700"
+              size="icon"
+              onClick={handleSendSimMessage}
+              className="h-9 w-9 shrink-0 bg-emerald-600 hover:bg-emerald-700"
             >
-              <PaperPlaneRight size={14} />
+              <PaperPlaneRight className="h-4 w-4" weight="fill" />
             </Button>
           </div>
         </SheetContent>

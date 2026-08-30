@@ -52,7 +52,7 @@ export default function WhatsappWorkflowsPage() {
     setLoading(true)
     try {
       // @ts-expect-error eden dynamic route path
-      const res = await eden.api.console.whatsapp.workflows.get()
+      const res = await eden.api.whatsapp.workflows.get()
       if (res.data && res.data.ok && Array.isArray(res.data.data)) {
         setWorkflows(res.data.data as WorkflowListItem[])
       }
