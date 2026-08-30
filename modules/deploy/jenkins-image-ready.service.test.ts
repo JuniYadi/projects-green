@@ -58,9 +58,12 @@ type MockEdgeDomain = {
 const mockPrisma = {
   $transaction: mock(async (fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
   applicationStack: {
-    findUnique: mock(async () => defaultStack),
-    findFirst: mock(async () => defaultStack),
-    update: mock(async () => ({ id: "stack-1", lastDeployStatus: "FAILED" })),
+    findUnique: mock(async (..._args: unknown[]) => defaultStack),
+    findFirst: mock(async (..._args: unknown[]) => defaultStack),
+    update: mock(async (..._args: unknown[]) => ({
+      id: "stack-1",
+      lastDeployStatus: "FAILED",
+    })),
   },
   applicationDomain: {
     findFirst: mock(
@@ -68,8 +71,11 @@ const mockPrisma = {
     ),
   },
   applicationDeployment: {
-    findFirst: mock(async () => defaultDeployment),
-    update: mock(async () => ({ id: "deploy-1", status: "FAILED" })),
+    findFirst: mock(async (..._args: unknown[]) => defaultDeployment),
+    update: mock(async (..._args: unknown[]) => ({
+      id: "deploy-1",
+      status: "FAILED",
+    })),
   },
   applicationDeployEvent: {
     findFirst: mock(
@@ -90,11 +96,11 @@ const mockPrisma = {
         metadataJson: Record<string, unknown>
       } | null> => null
     ),
-    create: mock(async () => ({ id: "event-1" })),
-    upsert: mock(async () => ({ id: "event-1" })),
+    create: mock(async (..._args: unknown[]) => ({ id: "event-1" })),
+    upsert: mock(async (..._args: unknown[]) => ({ id: "event-1" })),
   },
   applicationDeploymentLog: {
-    create: mock(async () => ({ id: "log-1" })),
+    create: mock(async (..._args: unknown[]) => ({ id: "log-1" })),
   },
 }
 
