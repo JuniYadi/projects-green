@@ -866,10 +866,7 @@ export function ServiceOrderDialog({
                       {t.processingActivation}
                     </span>
                   ) : (
-                    t.activationTitle.replace(
-                      "{service}",
-                      productTitle || productInfo?.name || productCode
-                    )
+                    t.subscribeAction || "Subscribe"
                   )}
                 </Button>
                 <Button

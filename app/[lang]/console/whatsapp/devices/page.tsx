@@ -609,7 +609,7 @@ export default function WhatsAppDevicesPage() {
 
       <ServiceOrderDialog
         productCode="WHATSAPP"
-        productTitle="WhatsApp Gateway"
+        productTitle="WhatsApp"
         open={isOrderOpen}
         onOpenChange={setIsOrderOpen}
         lang={locale}

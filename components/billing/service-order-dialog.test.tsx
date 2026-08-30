@@ -1,6 +1,5 @@
-import "@/test/register"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { render, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 const mockToastSuccess = mock()
@@ -87,9 +86,7 @@ import { ServiceOrderDialog } from "./service-order-dialog"
 
 describe("ServiceOrderDialog", () => {
   beforeEach(() => {
-    mockToastSuccess.mockClear()
-    mockToastError.mockClear()
-    mockSubmitCheckout.mockClear()
+    cleanup()
     mockGetCatalogProduct.mockClear()
     mockGetCheckoutQuote.mockClear()
 

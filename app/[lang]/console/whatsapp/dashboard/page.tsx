@@ -241,7 +241,7 @@ export default function WhatsAppDashboardPage() {
         />
         <ServiceOrderDialog
           productCode="WHATSAPP"
-          productTitle="WhatsApp Gateway"
+          productTitle="WhatsApp"
           open={isOrderOpen}
           onOpenChange={setIsOrderOpen}
           lang={locale}
@@ -557,7 +557,7 @@ export default function WhatsAppDashboardPage() {
       )}
       <ServiceOrderDialog
         productCode="WHATSAPP"
-        productTitle="WhatsApp Gateway"
+        productTitle="WhatsApp"
         open={isOrderOpen}
         onOpenChange={setIsOrderOpen}
         lang={locale}
