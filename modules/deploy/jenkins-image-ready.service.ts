@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { resolveClusterIntegration } from "@/modules/deploy/cluster-integration.service"
 import { buildHelmValues } from "./helm-values.builder"
 import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
-import { recordDeployEventOnce } from "./deploy-event.service"
+import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 
 type PersistedEdgePolicy = {
   domain: string
@@ -229,18 +229,54 @@ export async function handleJenkinsImageReady(
 
   const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
 
-  const values = buildHelmValues({
-    slug: stack.slug,
-    imageRepository,
-    imageTag: input.imageTag,
-    env: envVars,
-    replicas: 1,
-    cpu: stack.cpu,
-    memory: stack.memory,
-    domain: stack.customDomain ?? null,
-    edge,
-    externalSecretVaultPath,
-  })
+  let values: Record<string, unknown>
+  try {
+    values = buildHelmValues({
+      slug: stack.slug,
+      imageRepository,
+      imageTag: input.imageTag,
+      env: envVars,
+      replicas: 1,
+      cpu: stack.cpu,
+      memory: stack.memory,
+      domain: stack.customDomain ?? null,
+      edge,
+      externalSecretVaultPath,
+    })
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Unknown error"
+
+    await prisma.applicationDeployment.update({
+      where: { id: deployment.id },
+      data: {
+        status: "FAILED",
+        failureReason: reason,
+        completedAt: new Date(),
+      },
+    })
+    await prisma.applicationStack.update({
+      where: { id: stack.id },
+      data: { lastDeployStatus: "FAILED" },
+    })
+    await recordDeployEventOnce({
+      deploymentId: deployment.id,
+      type: "DEPLOY_FAILED" as any,
+      message: `Deployment failed: ${reason}`,
+    })
+    await recordDeployLog({
+      deploymentId: deployment.id,
+      scope: "deploy",
+      status: "FAILED",
+      message: reason,
+    })
+
+    return {
+      ok: true,
+      deploymentId: deployment.id,
+      gitopsCommitSha: null,
+      idempotent: false,
+    }
+  }
 
   const valuesYaml = jsYaml.dump(values, {
     indent: 2,

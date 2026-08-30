@@ -95,15 +95,21 @@ const omitUndefined = <T extends Record<string, unknown>>(obj: T): T =>
 export function buildHelmValues(
   input: HelmValuesInput
 ): Record<string, unknown> {
-  const plainEnv: Record<string, string> = {}
-  const secretEnv: Record<string, string> = {}
+  const plainEntries: HelmValuesEnvEntry[] = []
+  const secretEntries: HelmValuesEnvEntry[] = []
 
   for (const e of input.env) {
     if (e.type === "secret") {
-      secretEnv[e.key] = e.value
+      secretEntries.push(e)
     } else {
-      plainEnv[e.key] = e.value
+      plainEntries.push(e)
     }
+  }
+
+  if (secretEntries.length > 0 && !input.externalSecretVaultPath) {
+    throw new Error(
+      `Cannot generate Helm values: ${secretEntries.length} secret env var(s) have no resolved Vault path (externalSecretVaultPath missing)`
+    )
   }
 
   const cpu = input.cpu ?? 500
@@ -216,15 +222,15 @@ export function buildHelmValues(
     }
   }
 
-  if (Object.keys(plainEnv).length > 0) values.env = plainEnv
+  if (plainEntries.length > 0) {
+    values.env = plainEntries.map((e) => ({ name: e.key, value: e.value }))
+  }
   if (input.externalSecretVaultPath) {
     values.externalSecret = {
       enabled: true,
-      vaultPath: input.externalSecretVaultPath,
-      targetSecretName: `app-${input.slug}-k8s-secrets`,
+      secretStoreRef: { kind: "ClusterSecretStore", name: "vault-backend" },
+      dataFrom: [{ extract: { key: input.externalSecretVaultPath } }],
     }
-  } else if (Object.keys(secretEnv).length > 0) {
-    values.secrets = secretEnv
   }
 
   const edge = input.edge

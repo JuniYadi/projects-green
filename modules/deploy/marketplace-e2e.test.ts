@@ -607,8 +607,8 @@ describe("Marketplace & Auto-Provisioning End-to-End Lifecycle", () => {
     })
     expect(helmValues.externalSecret).toEqual({
       enabled: true,
-      vaultPath: canonicalTenantVaultPath,
-      targetSecretName: "app-n8n-app-k8s-secrets",
+      secretStoreRef: { kind: "ClusterSecretStore", name: "vault-backend" },
+      dataFrom: [{ extract: { key: canonicalTenantVaultPath } }],
     })
     expect(helmValues.simpleIngress).toBeDefined()
 
