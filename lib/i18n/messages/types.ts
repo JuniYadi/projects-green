@@ -1433,12 +1433,14 @@ export type AppMessages = {
           idLabel: string
           sectionContact: string
           sectionStatus: string
+          sectionEvent: string
           sectionMessageId: string
           sectionSummary: string
           sectionTech: string
           device: string
           recipientPhone: string
           eventType: string
+          time: string
           receivedAt: string
           activityType: string
           actor: string
