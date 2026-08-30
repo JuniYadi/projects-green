@@ -1,8 +1,12 @@
 "use client"
 
 import * as React from "react"
+import { type ColumnDef } from "@tanstack/react-table"
+import { eden } from "@/lib/eden"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Card,
   CardContent,
@@ -10,103 +14,92 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  AuditLogDTO,
-  AuditLogTable,
-} from "@/modules/whatsapp/audit/ui/whatsapp-audit-table"
+import { ArrowsClockwise } from "@phosphor-icons/react"
 import type { Messages } from "@/lib/i18n/types"
-import { eden } from "@/lib/eden"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { AuditLogDetailSheet } from "@/modules/whatsapp/audit/ui/whatsapp-audit-sheet"
+import { actionTone } from "@/modules/whatsapp/audit/ui/whatsapp-audit-details"
 
-type AuditQuery = {
-  page?: string
-  limit?: string
-  action?: string
-  status?: string
-  deviceId?: string
-  q?: string
-  from?: string
-  to?: string
+export type AuditLogRecord = {
+  id: string
+  action: string
+  status?: string | null
+  message?: string | null
+  phoneNumber?: string | null
+  adminId?: string | null
+  actorName?: string | null
+  actorEmail?: string | null
+  deviceId?: string | null
+  deviceLabel?: string | null
+  ip?: string | null
+  durationMs?: number | null
+  createdAt: string | Date
+  details?: Record<string, unknown>
 }
-const AUDIT_ACTIONS = [
-  "TEMPLATE_SYNC_REQUESTED",
-  "TEMPLATE_SYNCED",
-  "TEMPLATE_SYNC_FAILED",
-  "TEMPLATE_CREATED",
-  "TEMPLATE_CREATE_FAILED",
-  "TEMPLATE_UPDATED",
-  "TEMPLATE_UPDATE_FAILED",
-  "TEMPLATE_DELETED",
-  "DEVICE_INFO_UPDATED",
-  "DEVICE_STATUS_CHANGED",
-  "DEVICE_CALLBACK_URL_UPDATED",
-  "MESSAGE_SENT",
-  "MESSAGE_FAILED",
-  "CONTACT_IMPORTED",
-  "CONTACT_GROUP_CREATED",
-  "CONTACT_GROUP_UPDATED",
-]
 
-const AUDIT_STATUSES = ["OK", "FAILED", "STARTED", "PENDING"]
+const DEFAULT_COLUMNS: Record<string, boolean> = {
+  deviceTarget: true,
+  action: true,
+  status: true,
+  actor: true,
+  createdAt: true,
+  actions: true,
+  message: false,
+  ip: false,
+  durationMs: false,
+  id: false,
+}
+
+function formatActionLabel(action: string) {
+  return action
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function getAuditStatusBadge(
+  status: string | null | undefined,
+  successLabel: string,
+  failLabel: string
+) {
+  const s = status?.toUpperCase() || "OK"
+  if (s === "OK" || s === "SUCCESS") {
+    return <Badge variant="default">{successLabel}</Badge>
+  }
+  if (s === "FAILED") {
+    return <Badge variant="destructive">{failLabel}</Badge>
+  }
+  if (s === "STARTED" || s === "PENDING") {
+    return <Badge variant="secondary">{s}</Badge>
+  }
+  return <Badge variant="outline">{s}</Badge>
+}
 
 export function AuditLogsTabContent({
-  locale: _locale,
-  messages: _messages,
+  messages,
 }: {
   locale: string
   messages: Messages
 }) {
-  const [logs, setLogs] = React.useState<AuditLogDTO[]>([])
+  const [logs, setLogs] = React.useState<AuditLogRecord[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string>()
-  const [page, setPage] = React.useState(1)
-  const [totalPages, setTotalPages] = React.useState(1)
-  const [total, setTotal] = React.useState(0)
-
-  // Filters
-  const [selectedAction, setSelectedAction] = React.useState<string>("All")
-  const [selectedStatus, setSelectedStatus] = React.useState<string>("All")
-  const [deviceId, setDeviceId] = React.useState("")
-  const [search, setSearch] = React.useState("")
-  const [dateFrom, setDateFrom] = React.useState("")
-  const [dateTo, setDateTo] = React.useState("")
+  const [selectedLog, setSelectedLog] = React.useState<AuditLogRecord | null>(
+    null
+  )
+  const t = messages.console.whatsapp.logs
 
   const fetchLogs = React.useCallback(async () => {
     setIsLoading(true)
     setError(undefined)
 
     try {
-      const query: AuditQuery = {
-        page: String(page),
-        limit: "15",
-      }
+      const res = await eden.api.whatsapp.audit.get({
+        query: {
+          page: "1",
+          limit: "100",
+        },
+      })
 
-      if (selectedAction && selectedAction !== "All") {
-        query.action = selectedAction
-      }
-      if (selectedStatus && selectedStatus !== "All") {
-        query.status = selectedStatus
-      }
-      if (deviceId.trim()) {
-        query.deviceId = deviceId.trim()
-      }
-      if (search.trim()) {
-        query.q = search.trim()
-      }
-      if (dateFrom) {
-        query.from = new Date(dateFrom).toISOString()
-      }
-      if (dateTo) {
-        query.to = new Date(dateTo).toISOString()
-      }
-
-      const res = await eden.api.whatsapp.audit.get({ query })
       if (
         res.status === 200 &&
         res.data &&
@@ -114,183 +107,224 @@ export function AuditLogsTabContent({
         res.data.ok &&
         Array.isArray(res.data.data)
       ) {
-        setLogs(res.data.data as unknown as AuditLogDTO[])
-        if (res.data.pagination) {
-          setTotalPages(res.data.pagination.totalPages || 1)
-          setTotal(res.data.pagination.total || 0)
-        }
+        setLogs(res.data.data as unknown as AuditLogRecord[])
       } else {
         const errData = res.data as
           | { message?: string; error?: string }
           | undefined
-        throw new Error(
-          errData?.message || errData?.error || "Failed to load logs"
-        )
+        throw new Error(errData?.message || errData?.error || t.loadError)
       }
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "An unexpected error occurred"
-      )
+      setError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setIsLoading(false)
     }
-  }, [page, selectedAction, selectedStatus, deviceId, search, dateFrom, dateTo])
+  }, [t.loadError])
 
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchLogs()
   }, [fetchLogs])
-  const handleApplyFilters = () => {
-    setPage(1)
-    void fetchLogs()
-  }
 
-  const handleResetFilters = () => {
-    setSelectedAction("All")
-    setSelectedStatus("All")
-    setDeviceId("")
-    setSearch("")
-    setDateFrom("")
-    setDateTo("")
-    setPage(1)
-  }
+  const columns = React.useMemo<ColumnDef<AuditLogRecord>[]>(
+    () => [
+      {
+        id: "deviceTarget",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colDeviceContact} />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span className="font-mono text-xs font-medium text-foreground">
+              {row.original.deviceLabel || row.original.deviceId || "—"}
+            </span>
+            {row.original.phoneNumber && (
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {row.original.phoneNumber}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "action",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colEventType} />
+        ),
+        cell: ({ row }) => {
+          const tone = actionTone(row.original.action)
+          return (
+            <Badge
+              variant={
+                tone === "success"
+                  ? "default"
+                  : tone === "destructive"
+                    ? "destructive"
+                    : tone === "warning"
+                      ? "outline"
+                      : "secondary"
+              }
+              className="text-xs"
+            >
+              {formatActionLabel(row.original.action)}
+            </Badge>
+          )
+        },
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colStatus} />
+        ),
+        cell: ({ row }) =>
+          getAuditStatusBadge(
+            row.original.status,
+            t.drawer.statusSuccess,
+            t.drawer.statusFailed
+          ),
+      },
+      {
+        id: "actor",
+        accessorKey: "actorName",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colActor} />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-foreground">
+              {row.original.actorName || "System"}
+            </span>
+            {row.original.actorEmail && (
+              <span className="text-[11px] text-muted-foreground">
+                {row.original.actorEmail}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colTime} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs whitespace-nowrap text-muted-foreground">
+            {new Date(row.original.createdAt).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: () => <span className="text-xs">{t.colDetails}</span>,
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs font-normal"
+            onClick={() => setSelectedLog(row.original)}
+          >
+            {t.colDetails} →
+          </Button>
+        ),
+      },
+      {
+        accessorKey: "message",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colMessageSummary} />
+        ),
+        cell: ({ row }) => (
+          <span className="line-clamp-1 max-w-[200px] text-xs text-muted-foreground">
+            {row.original.message || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "ip",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colIp} />
+        ),
+        cell: ({ row }) => (
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {row.original.ip || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "durationMs",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colDuration} />
+        ),
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-muted-foreground">
+            {row.original.durationMs != null
+              ? `${row.original.durationMs}ms`
+              : "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "id",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colLogId} />
+        ),
+        cell: ({ row }) => (
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {row.original.id}
+          </span>
+        ),
+      },
+    ],
+    [t]
+  )
 
   return (
     <div className="space-y-6">
-      {/* Filter Card */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Action
-              </label>
-              <Select value={selectedAction} onValueChange={setSelectedAction}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="All Actions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All Actions</SelectItem>
-                  {AUDIT_ACTIONS.map((act) => (
-                    <SelectItem key={act} value={act}>
-                      {act}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Status
-              </label>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All Statuses</SelectItem>
-                  {AUDIT_STATUSES.map((st) => (
-                    <SelectItem key={st} value={st}>
-                      {st}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Device ID
-              </label>
-              <Input
-                placeholder="Filter by device ID"
-                value={deviceId}
-                onChange={(e) => setDeviceId(e.target.value)}
-                className="h-9 text-xs"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Search
-              </label>
-              <Input
-                placeholder="Message, actor, IP..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-9 text-xs"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                From
-              </label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                To
-              </label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-end gap-2 border-t pt-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleResetFilters}
-              className="h-8 text-xs"
-            >
-              Reset
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleApplyFilters}
-              className="h-8 text-xs"
-            >
-              Apply Filters
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Logs Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Audit Log</CardTitle>
-          <CardDescription>
-            WhatsApp organization audit entries and operator actions.
-          </CardDescription>
+          <CardTitle>{t.cardActivityTitle}</CardTitle>
+          <CardDescription>{t.cardActivityDesc}</CardDescription>
         </CardHeader>
         <CardContent>
-          <AuditLogTable
-            logs={logs}
-            isLoading={isLoading}
-            error={error}
-            onRetry={() => void fetchLogs()}
-            pagination={{
-              page,
-              totalPages,
-              total,
-              onPageChange: (newPage) => setPage(newPage),
-            }}
-          />
+          {error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-sm text-destructive">{error}</p>
+              <Button
+                variant="outline"
+                className="mt-3"
+                onClick={() => void fetchLogs()}
+              >
+                <ArrowsClockwise className="mr-2 size-4" />
+                {t.retry}
+              </Button>
+            </div>
+          ) : (
+            <DataTable
+              tableId="console-whatsapp-audit-logs"
+              columns={columns}
+              data={logs}
+              pageSize={10}
+              searchableColumns={[
+                "action",
+                "status",
+                "phoneNumber",
+                "actorName",
+                "message",
+              ]}
+              searchPlaceholder={t.searchActivityPlaceholder}
+              defaultColumnVisibility={DEFAULT_COLUMNS}
+              emptyMessage={isLoading ? t.loadingActivity : t.emptyActivity}
+            />
+          )}
         </CardContent>
       </Card>
+
+      <AuditLogDetailSheet
+        log={selectedLog}
+        open={Boolean(selectedLog)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedLog(null)
+        }}
+      />
     </div>
   )
 }

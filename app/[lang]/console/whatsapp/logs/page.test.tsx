@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { render } from "@testing-library/react"
 
 const mockReplace = mock(() => {})
 
@@ -95,14 +95,14 @@ describe("ConsoleWhatsAppLogsPage", () => {
   it("renders page heading and tabs", async () => {
     const view = render(<ConsoleWhatsAppLogsPage />)
     expect(view.getByText("Logs & Activity Trail")).toBeInTheDocument()
-    expect(view.getByRole("tab", { name: "Webhook Logs" })).toBeInTheDocument()
-    expect(view.getByRole("tab", { name: "Audit Logs" })).toBeInTheDocument()
+    expect(view.getByRole("tab", { name: "Message Logs" })).toBeInTheDocument()
+    expect(view.getByRole("tab", { name: "Activity Logs" })).toBeInTheDocument()
   })
 
-  it("renders webhook logs tab by default", async () => {
+  it("renders message logs tab content by default", async () => {
     const view = render(<ConsoleWhatsAppLogsPage />)
-    await waitFor(() => {
-      expect(view.getAllByText("Event Log").length).toBeGreaterThanOrEqual(1)
-    })
+    expect(
+      view.getAllByText("Message Logs & Delivery Status").length
+    ).toBeGreaterThanOrEqual(1)
   })
 })

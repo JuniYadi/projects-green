@@ -68,11 +68,10 @@ export default function ConsoleWhatsAppLogsPage() {
       <FlightHudWidget locale={locale} onboarding={onboarding} />
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">
-          Logs & Activity Trail
+          {messages.console.whatsapp.logs.heading}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Inspect incoming webhook events, message delivery receipts, and
-          organization audit logs.
+          {messages.console.whatsapp.logs.description}
         </p>
       </div>
 
@@ -82,8 +81,12 @@ export default function ConsoleWhatsAppLogsPage() {
         className="w-full space-y-6"
       >
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="webhooks">Webhook Logs</TabsTrigger>
-          <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+          <TabsTrigger value="webhooks">
+            {messages.console.whatsapp.logs.tabMessages}
+          </TabsTrigger>
+          <TabsTrigger value="audit">
+            {messages.console.whatsapp.logs.tabActivity}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="webhooks" className="m-0 space-y-6">

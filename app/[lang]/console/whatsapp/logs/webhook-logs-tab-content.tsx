@@ -1,7 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { ArrowsClockwise } from "@phosphor-icons/react"
+import { type ColumnDef } from "@tanstack/react-table"
+import { eden } from "@/lib/eden"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -9,92 +14,76 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { eden } from "@/lib/eden"
-import {
-  WebhookEventTable,
-  type WebhookEventDTO,
-} from "@/modules/whatsapp/webhooks/ui/webhook-event-table"
-import {
-  WebhookEventFilter,
-  DEFAULT_FILTER_STATE,
-  type WebhookEventFilterState,
-} from "@/modules/whatsapp/webhooks/ui/webhook-event-filter"
-import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
+import { ArrowsClockwise } from "@phosphor-icons/react"
 import type { Messages } from "@/lib/i18n/types"
+import { WebhookEventDetailSheet } from "@/modules/whatsapp/webhooks/ui/webhook-event-sheet"
 
-type PageState = "loading" | "error" | "loaded"
+export type WebhookEventRecord = {
+  id: string
+  deviceId?: string | null
+  deviceLabel?: string | null
+  phoneNumber?: string | null
+  waMessageId?: string | null
+  eventType: string
+  processingStatus: string
+  createdAt: string | Date
+  metaPayload?: Record<string, unknown>
+}
 
-const EVENT_TYPES = ["inbound_message", "status_update"]
-const PROCESSING_STATUSES = ["PENDING", "SUCCESS", "FAILED"]
+const DEFAULT_COLUMNS: Record<string, boolean> = {
+  devicePhone: true,
+  eventType: true,
+  processingStatus: true,
+  createdAt: true,
+  actions: true,
+  waMessageId: false,
+  deviceId: false,
+  id: false,
+}
 
-function makeDeviceLabel(device: DeviceListItem): string {
-  return `${device.phoneNumber}${device.environment === "SANDBOX" ? " (Sandbox)" : ""}`
+function getEventStatusBadge(status: string) {
+  const upper = status.toUpperCase()
+  if (upper === "SUCCESS" || upper === "DELIVERED" || upper === "READ") {
+    return <Badge variant="default">{status}</Badge>
+  }
+  if (upper === "RECEIVED") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-blue-500 text-blue-600 dark:text-blue-400"
+      >
+        {status}
+      </Badge>
+    )
+  }
+  if (upper === "FAILED") {
+    return <Badge variant="destructive">{status}</Badge>
+  }
+  return <Badge variant="secondary">{status}</Badge>
 }
 
 export function WebhookLogsTabContent({
-  locale: _locale,
   messages,
 }: {
   locale: string
   messages: Messages
 }) {
-  const [pageState, setPageState] = React.useState<PageState>("loading")
-  const [events, setEvents] = React.useState<WebhookEventDTO[]>([])
-  const [devices, setDevices] = React.useState<DeviceListItem[]>([])
+  const [events, setEvents] = React.useState<WebhookEventRecord[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
   const [errorMessage, setErrorMessage] = React.useState("")
-  const [filters, setFilters] =
-    React.useState<WebhookEventFilterState>(DEFAULT_FILTER_STATE)
-  const [page, setPage] = React.useState(1)
-  const [meta, setMeta] = React.useState({
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-  })
-
-  const loadDevices = React.useCallback(async () => {
-    try {
-      const res = await eden.api.whatsapp.devices.get()
-      if (
-        res.status === 200 &&
-        res.data &&
-        "data" in res.data &&
-        Array.isArray(res.data.data)
-      ) {
-        setDevices(res.data.data as unknown as DeviceListItem[])
-      }
-    } catch {
-      // Non-blocking
-    }
-  }, [])
+  const [selectedEvent, setSelectedEvent] =
+    React.useState<WebhookEventRecord | null>(null)
+  const t = messages.console.whatsapp.logs
 
   const loadEvents = React.useCallback(async () => {
-    setPageState("loading")
+    setIsLoading(true)
     setErrorMessage("")
 
     try {
-      const query: Record<string, string> = {
-        page: String(page),
-        limit: "10",
-      }
-
-      if (filters.eventType) query.eventType = filters.eventType
-      if (filters.processingStatus)
-        query.processingStatus = filters.processingStatus
-      if (filters.deviceId) query.deviceId = filters.deviceId
-      if (filters.startDate) query.startDate = filters.startDate
-      if (filters.endDate) query.endDate = filters.endDate
-
       const res = await eden.api.whatsapp.webhooks.events.get({
-        query: query as {
-          page?: string
-          limit?: string
-          deviceId?: string
-          eventType?: string
-          processingStatus?: string
-          startDate?: string
-          endDate?: string
+        query: {
+          page: "1",
+          limit: "100",
         },
       })
 
@@ -104,18 +93,7 @@ export function WebhookLogsTabContent({
         "data" in res.data &&
         Array.isArray(res.data.data)
       ) {
-        setEvents(res.data.data as unknown as WebhookEventDTO[])
-        if ("meta" in res.data && res.data.meta) {
-          setMeta(
-            res.data.meta as unknown as {
-              total: number
-              page: number
-              limit: number
-              totalPages: number
-            }
-          )
-        }
-        setPageState("loaded")
+        setEvents(res.data.data as unknown as WebhookEventRecord[])
       } else {
         const errObj = res.data as
           | { error?: { message?: string } | string; message?: string }
@@ -124,91 +102,167 @@ export function WebhookLogsTabContent({
           typeof errObj?.error === "object"
             ? errObj.error.message
             : errObj?.error || errObj?.message
-        setErrorMessage(
-          errMsg ?? messages.console.whatsapp.webhookLogs.loadFailed
-        )
-        setPageState("error")
+        setErrorMessage(errMsg ?? t.loadError)
       }
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : messages.console.whatsapp.webhookLogs.loadFailed
-      )
-      setPageState("error")
+      setErrorMessage(err instanceof Error ? err.message : t.loadError)
+    } finally {
+      setIsLoading(false)
     }
-  }, [page, filters, messages])
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadDevices()
-  }, [loadDevices])
+  }, [t.loadError])
 
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadEvents()
   }, [loadEvents])
-  const handleFilterChange = (newFilters: WebhookEventFilterState) => {
-    setFilters(newFilters)
-    setPage(1)
-  }
+
+  const columns = React.useMemo<ColumnDef<WebhookEventRecord>[]>(
+    () => [
+      {
+        id: "devicePhone",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colDeviceContact} />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span className="font-mono text-xs font-medium text-foreground">
+              {row.original.deviceLabel || row.original.deviceId || "—"}
+            </span>
+            {row.original.phoneNumber && (
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {row.original.phoneNumber}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "eventType",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colEventType} />
+        ),
+        cell: ({ row }) => (
+          <Badge variant="outline" className="text-xs capitalize">
+            {row.original.eventType.replace(/_/g, " ")}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "processingStatus",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colStatus} />
+        ),
+        cell: ({ row }) => getEventStatusBadge(row.original.processingStatus),
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colTime} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs whitespace-nowrap text-muted-foreground">
+            {new Date(row.original.createdAt).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: () => <span className="text-xs">{t.colDetails}</span>,
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs font-normal"
+            onClick={() => setSelectedEvent(row.original)}
+          >
+            {t.colDetails} →
+          </Button>
+        ),
+      },
+      {
+        accessorKey: "waMessageId",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colWaMessageId} />
+        ),
+        cell: ({ row }) => (
+          <span className="inline-block max-w-[150px] truncate font-mono text-[11px] text-muted-foreground">
+            {row.original.waMessageId || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "deviceId",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colDeviceId} />
+        ),
+        cell: ({ row }) => (
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {row.original.deviceId || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "id",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colEventId} />
+        ),
+        cell: ({ row }) => (
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {row.original.id}
+          </span>
+        ),
+      },
+    ],
+    [t]
+  )
 
   return (
     <div className="space-y-6">
-      <WebhookEventFilter
-        eventTypes={EVENT_TYPES}
-        statuses={PROCESSING_STATUSES}
-        devices={devices.map((d) => ({
-          id: d.id,
-          label: makeDeviceLabel(d),
-        }))}
-        onFilterChange={handleFilterChange}
-        initialFilters={filters}
-        showDeviceFilter={true}
-      />
-
       <Card>
         <CardHeader>
-          <CardTitle>
-            {messages.console.whatsapp.webhookLogs.cardTitle}
-          </CardTitle>
-          <CardDescription>
-            {messages.console.whatsapp.webhookLogs.cardDescription}
-          </CardDescription>
+          <CardTitle>{t.cardMessagesTitle}</CardTitle>
+          <CardDescription>{t.cardMessagesDesc}</CardDescription>
         </CardHeader>
         <CardContent>
-          {pageState === "loaded" && !devices.length && !events.length ? (
+          {errorMessage ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                {messages.console.whatsapp.webhookLogs.noDevices}
-              </p>
+              <p className="text-sm text-destructive">{errorMessage}</p>
               <Button
                 variant="outline"
                 className="mt-3"
-                onClick={() => void loadDevices()}
+                onClick={() => void loadEvents()}
               >
                 <ArrowsClockwise className="mr-2 size-4" />
-                {messages.console.whatsapp.webhookLogs.retry}
+                {t.retry}
               </Button>
             </div>
           ) : (
-            <WebhookEventTable
-              events={events}
-              isLoading={pageState === "loading"}
-              error={pageState === "error" ? errorMessage : undefined}
-              onRetry={() => void loadEvents()}
-              pagination={
-                meta.totalPages > 1
-                  ? {
-                      page: meta.page,
-                      totalPages: meta.totalPages,
-                      onPageChange: (newPage) => setPage(newPage),
-                    }
-                  : undefined
-              }
+            <DataTable
+              tableId="console-whatsapp-message-logs"
+              columns={columns}
+              data={events}
+              pageSize={10}
+              searchableColumns={[
+                "phoneNumber",
+                "eventType",
+                "processingStatus",
+                "waMessageId",
+              ]}
+              searchPlaceholder={t.searchMessagesPlaceholder}
+              defaultColumnVisibility={DEFAULT_COLUMNS}
+              emptyMessage={isLoading ? t.loadingMessages : t.emptyMessages}
             />
           )}
         </CardContent>
       </Card>
+
+      <WebhookEventDetailSheet
+        event={selectedEvent}
+        open={Boolean(selectedEvent)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEvent(null)
+        }}
+      />
     </div>
   )
 }
