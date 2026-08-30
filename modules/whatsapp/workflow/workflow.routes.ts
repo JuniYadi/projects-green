@@ -1,20 +1,20 @@
 import { Elysia, t } from "elysia"
-import { authGuard } from "@/lib/auth/guard"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { whatsappAuthPlugin } from "@/lib/whatsapp/auth"
 import { WorkflowDefinitionSchema } from "./workflow.schema"
 
 export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
-  .use(authGuard)
-  .get("/", async ({ user }) => {
-    if (!user?.organizationId) {
+  .use(whatsappAuthPlugin)
+  .get("/", async ({ whatsappAuth }) => {
+    if (!whatsappAuth?.organizationId) {
       return { ok: false, error: "Organization required", data: [] }
     }
 
     const devices = await prisma.whatsappDevice.findMany({
-      where: { organizationId: user.organizationId },
+      where: { organizationId: whatsappAuth.organizationId },
       select: {
         id: true,
-        name: true,
         phoneNumber: true,
         features: true,
       },
@@ -30,7 +30,7 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
             ...parsed.data,
             device: {
               id: dev.id,
-              name: dev.name,
+              name: `WhatsApp (${dev.phoneNumber})`,
               phoneNumber: dev.phoneNumber,
             },
           })
@@ -45,16 +45,15 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
   })
   .get(
     "/:id",
-    async ({ user, params }) => {
-      if (!user?.organizationId) {
+    async ({ whatsappAuth, params }) => {
+      if (!whatsappAuth?.organizationId) {
         return { ok: false, error: "Organization required" }
       }
 
       const devices = await prisma.whatsappDevice.findMany({
-        where: { organizationId: user.organizationId },
+        where: { organizationId: whatsappAuth.organizationId },
         select: {
           id: true,
-          name: true,
           phoneNumber: true,
           features: true,
         },
@@ -74,7 +73,7 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
                 deviceId: dev.id,
                 device: {
                   id: dev.id,
-                  name: dev.name,
+                  name: `WhatsApp (${dev.phoneNumber})`,
                   phoneNumber: dev.phoneNumber,
                 },
               },
@@ -93,8 +92,8 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
   )
   .post(
     "/save",
-    async ({ user, body }) => {
-      if (!user?.organizationId) {
+    async ({ whatsappAuth, body }) => {
+      if (!whatsappAuth?.organizationId) {
         return { ok: false, error: "Organization required" }
       }
 
@@ -110,7 +109,7 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
       const device = await prisma.whatsappDevice.findFirst({
         where: {
           id: deviceId,
-          organizationId: user.organizationId,
+          organizationId: whatsappAuth.organizationId,
         },
         select: { id: true, features: true },
       })
@@ -119,14 +118,17 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
         return { ok: false, error: "WhatsApp Device not found" }
       }
 
-      const currentFeatures = (device.features as Record<string, unknown>) || {}
+      const currentFeatures =
+        (device.features as Record<string, unknown> | null) || {}
+      const updatedFeatures = {
+        ...currentFeatures,
+        botWorkflow: parsed.data,
+      } as unknown as Prisma.InputJsonValue
+
       await prisma.whatsappDevice.update({
         where: { id: device.id },
         data: {
-          features: {
-            ...currentFeatures,
-            botWorkflow: parsed.data,
-          },
+          features: updatedFeatures,
         },
       })
 
@@ -144,8 +146,8 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
   )
   .post(
     "/delete",
-    async ({ user, body }) => {
-      if (!user?.organizationId) {
+    async ({ whatsappAuth, body }) => {
+      if (!whatsappAuth?.organizationId) {
         return { ok: false, error: "Organization required" }
       }
 
@@ -153,7 +155,7 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
       const device = await prisma.whatsappDevice.findFirst({
         where: {
           id: deviceId,
-          organizationId: user.organizationId,
+          organizationId: whatsappAuth.organizationId,
         },
         select: { id: true, features: true },
       })
@@ -162,13 +164,14 @@ export const whatsappWorkflowRoutes = new Elysia({ prefix: "/workflows" })
         return { ok: false, error: "WhatsApp Device not found" }
       }
 
-      const currentFeatures = (device.features as Record<string, unknown>) || {}
+      const currentFeatures =
+        (device.features as Record<string, unknown> | null) || {}
       const { botWorkflow: _removed, ...remainingFeatures } = currentFeatures
 
       await prisma.whatsappDevice.update({
         where: { id: device.id },
         data: {
-          features: remainingFeatures,
+          features: remainingFeatures as unknown as Prisma.InputJsonValue,
         },
       })
 

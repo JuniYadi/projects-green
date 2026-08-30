@@ -444,8 +444,8 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
       id: "dev_1",
       features: { botWorkflow: sampleWorkflow },
     } as never)
-
     const res = await processWhatsappWorkflowInbound({
+      organizationId: "org_1",
       deviceId: "dev_1",
       contactPhone: "+62812345678",
       inboundMessageText: "info ongkir dong",

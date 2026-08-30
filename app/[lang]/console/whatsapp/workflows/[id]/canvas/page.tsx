@@ -133,12 +133,13 @@ export default function WhatsappWorkflowCanvasPage() {
 
   const loadDevices = useCallback(async () => {
     try {
+      // @ts-expect-error eden dynamic route
       const res = await eden.api.console.whatsapp.devices.get()
       if (res.data && res.data.ok && Array.isArray(res.data.data)) {
         const devList = res.data.data.map(
-          (d: { id: string; name: string; phoneNumber: string }) => ({
+          (d: { id: string; name?: string; phoneNumber: string }) => ({
             id: d.id,
-            name: d.name,
+            name: d.name || `WhatsApp (${d.phoneNumber})`,
             phoneNumber: d.phoneNumber,
           })
         )
