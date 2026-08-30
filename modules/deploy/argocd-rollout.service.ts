@@ -4,6 +4,7 @@ import {
   type ArgoCdClusterConfig,
 } from "./cluster-integration.service"
 import { recordDeployEventOnce } from "./deploy-event.service"
+import { checkIngressReadiness } from "./ingress-readiness.service"
 
 export type ArgoCdApplicationStatus = {
   syncStatus: string | null
@@ -142,6 +143,20 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
         tx
       )
     })
+
+    try {
+      const ingressVerified = await checkIngressReadiness(deployment.id)
+      await prisma.applicationDeployment.update({
+        where: { id: deployment.id },
+        data: { ingressVerified, ingressCheckedAt: new Date() },
+      })
+    } catch (err) {
+      console.error(
+        `[argocd-rollout] Failed to check ingress readiness for ${deployment.stack.slug}:`,
+        err
+      )
+    }
+
     return { completed: true, status }
   }
 

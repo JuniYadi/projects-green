@@ -53,7 +53,7 @@ const sumRestartCount = (pod: KubePod): number => {
   )
 }
 
-const fetchKubeJson = async <T>(
+export const fetchKubeJson = async <T>(
   url: string,
   config: KubeconfigClusterConfig
 ): Promise<T | null> => {
