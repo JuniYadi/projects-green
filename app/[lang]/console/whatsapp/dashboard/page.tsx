@@ -424,7 +424,7 @@ export default function WhatsAppDashboardPage() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      {t.statTotalConversations}
+                      {locale === "id" ? "Pesan Masuk" : "Inbound Messages"}
                     </CardTitle>
                     <ChatCircle
                       className="size-4 text-muted-foreground"
@@ -435,14 +435,16 @@ export default function WhatsAppDashboardPage() {
                     <div className="text-2xl font-bold">
                       {messageInTotal.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">{t.active}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {locale === "id" ? "Total diterima" : "Total received"}
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      {t.statMessagesSent}
+                      {locale === "id" ? "Pesan Keluar" : "Outbound Messages"}
                     </CardTitle>
                     <PaperPlaneTilt
                       className="size-4 text-muted-foreground"
@@ -453,14 +455,16 @@ export default function WhatsAppDashboardPage() {
                     <div className="text-2xl font-bold">
                       {messageOutTotal.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">{t.active}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {locale === "id" ? "Total terkirim" : "Total sent"}
+                    </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      {t.statMessagesSent}
+                      {locale === "id" ? "Pesan Broadcast" : "Broadcasts"}
                     </CardTitle>
                     <ChartLine
                       className="size-4 text-muted-foreground"
@@ -470,7 +474,7 @@ export default function WhatsAppDashboardPage() {
                   <CardContent>
                     <div className="text-2xl font-bold">{broadcastTotal}</div>
                     <p className="text-xs text-muted-foreground">
-                      {t.statTotalConversations}
+                      {locale === "id" ? "Kampanye terkirim" : "Campaigns sent"}
                     </p>
                   </CardContent>
                 </Card>
@@ -773,23 +777,34 @@ export default function WhatsAppDashboardPage() {
                             {conversation.contactPhone}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {(conversation.lastDirection === "INBOX"
-                              ? t.connected
-                              : t.disconnected) +
-                              ` | ${conversation._count.whatsappMessages} messages`}
+                            {conversation.lastDirection === "INBOX"
+                              ? locale === "id"
+                                ? "Arah: Pesan Masuk"
+                                : "Direction: Inbound"
+                              : locale === "id"
+                                ? "Arah: Pesan Keluar"
+                                : "Direction: Outbound"}
+                            {` | ${conversation._count.whatsappMessages} pesan`}
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        {conversation.lastDirection === "INBOX" ? (
-                          <Badge variant="secondary" className="text-[10px]">
-                            {t.connected}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px]">
-                            {t.disconnected}
-                          </Badge>
-                        )}
+                        <Badge
+                          variant={
+                            conversation.lastDirection === "INBOX"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-[10px]"
+                        >
+                          {conversation.lastDirection === "INBOX"
+                            ? locale === "id"
+                              ? "Pesan Masuk"
+                              : "Inbound"
+                            : locale === "id"
+                              ? "Pesan Keluar"
+                              : "Outbound"}
+                        </Badge>
                         {conversation.lastMessageAt && (
                           <span className="text-[11px] text-muted-foreground">
                             {formatRelativeTime(conversation.lastMessageAt)}
