@@ -1,134 +1,21 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
+import { render } from "@testing-library/react"
+import RedirectToWebhookLogsTab from "./page"
 
-const mockDevicesResponse = () =>
-  new Response(
-    JSON.stringify({
-      ok: true,
-      devices: [
-        { id: "d1", phoneNumber: "+6281212345678", environment: "PRODUCTION" },
-        { id: "d2", phoneNumber: "+6281398765432", environment: "SANDBOX" },
-      ],
-    }),
-    { status: 200, headers: { "Content-Type": "application/json" } }
-  )
-
-const mockEventsResponse = () =>
-  new Response(
-    JSON.stringify({
-      ok: true,
-      data: [
-        {
-          id: "e1",
-          eventType: "inbound_message",
-          processingStatus: "SUCCESS",
-          createdAt: "2026-06-22T10:00:00Z",
-          waMessageId: "wamid_123",
-        },
-        {
-          id: "e2",
-          eventType: "status_update",
-          processingStatus: "PENDING",
-          createdAt: "2026-06-22T11:00:00Z",
-          waMessageId: null,
-        },
-      ],
-      meta: { total: 2, page: 1, limit: 20, totalPages: 1 },
-    }),
-    { status: 200, headers: { "Content-Type": "application/json" } }
-  )
-
-const mockFetch = mock((input: string | Request) => {
-  const url = typeof input === "string" ? input : input.url
-  const pathname = new URL(url, "http://localhost:3300").pathname
-  if (pathname.startsWith("/api/whatsapp/devices")) {
-    return Promise.resolve(mockDevicesResponse())
-  }
-  return Promise.resolve(mockEventsResponse())
-})
+const mockReplace = mock(() => {})
 
 mock.module("next/navigation", () => ({
   useRouter: () => ({
     push: mock(() => {}),
-    replace: mock(() => {}),
+    replace: mockReplace,
   }),
   useParams: () => ({ lang: "en" }),
   useSearchParams: () => new URLSearchParams(),
 }))
-mock.module("@/modules/whatsapp/onboarding/use-whatsapp-onboarding", () => ({
-  useWhatsAppOnboarding: () => ({
-    isFeatureLocked: () => false,
-    isGraduated: true,
-    level: 3,
-    progressPercent: 100,
-    missions: [],
-    activeMission: {
-      title: "Completed",
-      subtitle: "Done",
-      description: "Done",
-      actionLabel: "Done",
-      completed: true,
-    },
-    graduateNow: () => {},
-    resetOnboarding: () => {},
-  }),
-}))
 
-globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch
-
-import { render, waitFor } from "@testing-library/react"
-import ConsoleWhatsAppWebhookLogsPage from "./page"
-describe("ConsoleWhatsAppWebhookLogsPage", () => {
-  beforeEach(() => {
-    mockFetch.mockClear()
-  })
-
-  it("renders the page heading", async () => {
-    const view = render(<ConsoleWhatsAppWebhookLogsPage />)
-
-    await waitFor(() => {
-      expect(view.getByRole("heading", { name: "Webhook Logs" })).toBeTruthy()
-    })
-  })
-
-  it("renders the page description", async () => {
-    const view = render(<ConsoleWhatsAppWebhookLogsPage />)
-
-    await waitFor(() => {
-      expect(
-        view.getAllByText(
-          "View and inspect incoming WhatsApp webhook events across your devices."
-        ).length
-      ).toBeGreaterThan(0)
-    })
-  })
-
-  it("loads and displays events from /api/whatsapp/webhooks/events", async () => {
-    const view = render(<ConsoleWhatsAppWebhookLogsPage />)
-
-    await waitFor(() => {
-      expect(view.getAllByText("Inbound Message").length).toBeGreaterThan(0)
-    })
-
-    const eventCall = mockFetch.mock.calls.some(([input]) => {
-      const url = typeof input === "string" ? input : (input as Request).url
-      return url.includes("/api/whatsapp/webhooks/events")
-    })
-    expect(eventCall).toBeTruthy()
-  })
-  it("shows error state with Retry button when API call fails", async () => {
-    mockFetch.mockImplementation((input: string | Request) => {
-      const url = typeof input === "string" ? input : input.url
-      const pathname = new URL(url, "http://localhost:3300").pathname
-      if (pathname.startsWith("/api/whatsapp/devices")) {
-        return Promise.resolve(mockDevicesResponse())
-      }
-      return Promise.reject(new Error("Failed to load webhook events"))
-    })
-
-    const view = render(<ConsoleWhatsAppWebhookLogsPage />)
-
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: "Retry" })).toBeTruthy()
-    })
+describe("RedirectToWebhookLogsTab", () => {
+  it("redirects to the unified logs page", () => {
+    render(<RedirectToWebhookLogsTab />)
+    expect(mockReplace).toHaveBeenCalledWith("/en/console/whatsapp/logs")
   })
 })

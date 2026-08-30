@@ -885,23 +885,16 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
           isLocked: !isGraduated,
         },
         {
-          title: "Webhook Logs",
+          title: "Logs",
           url: localizePathname({
-            pathname: "/console/whatsapp/webhook-logs",
+            pathname: "/console/whatsapp/logs",
             locale,
           }),
           icon: <ListMagnifyingGlassIcon />,
-          isActive: startsWithRoute(path, "/console/whatsapp/webhook-logs"),
-          isLocked: !isGraduated,
-        },
-        {
-          title: "Audit Logs",
-          url: localizePathname({
-            pathname: "/console/whatsapp/audit-logs",
-            locale,
-          }),
-          icon: <ListMagnifyingGlassIcon />,
-          isActive: startsWithRoute(path, "/console/whatsapp/audit-logs"),
+          isActive:
+            startsWithRoute(path, "/console/whatsapp/logs") ||
+            startsWithRoute(path, "/console/whatsapp/webhook-logs") ||
+            startsWithRoute(path, "/console/whatsapp/audit-logs"),
           isLocked: !isGraduated,
         },
       ]
