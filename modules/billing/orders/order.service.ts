@@ -24,6 +24,7 @@ import {
   invoiceEmailService,
   type InvoiceEmailService,
 } from "@/modules/invoices/email.service"
+import { triggerDeploy } from "@/modules/deploy/deploy-pipeline.service"
 export type BillingOrderResult = {
   orderId: string
   status: "PENDING" | "CHARGED" | "FULFILLED" | "FAILED" | "CANCELLED"
@@ -581,8 +582,9 @@ export class BillingOrderService {
       })
     }
 
+    let result: BillingOrderResult
     try {
-      return transactionClient
+      result = transactionClient
         ? await run(transactionClient)
         : await this.prisma.$transaction(run)
     } catch (error) {
@@ -600,6 +602,37 @@ export class BillingOrderService {
       }
       throw error
     }
+
+    // Auto-trigger deploy for App Hosting order if requested and not already queued
+    if (
+      result.status === "FULFILLED" &&
+      attemptedOrderMetadata &&
+      attemptedOrderMetadata.appHostingFulfillment &&
+      typeof attemptedOrderMetadata.appHostingFulfillment === "object"
+    ) {
+      const context = attemptedOrderMetadata.appHostingFulfillment as {
+        stackId?: string
+        sourceType?: "GITHUB" | "PUBLIC" | "TEMPLATE"
+        autoDeploy?: boolean
+      }
+      if (context.stackId && context.autoDeploy !== false) {
+        try {
+          await triggerDeploy({
+            stackId: context.stackId,
+            triggerType: context.sourceType ?? "TEMPLATE",
+          })
+        } catch (deployError) {
+          // Deployment error shouldn't fail fulfillment since subscription & credentials are ready;
+          // stack/deploy monitor or user can retry deployment.
+          console.error(
+            `[BillingOrderService.fulfillOrder] auto-deploy trigger failed for stack ${context.stackId}:`,
+            deployError
+          )
+        }
+      }
+    }
+
+    return result
   }
 
   async renewServiceSubscription(

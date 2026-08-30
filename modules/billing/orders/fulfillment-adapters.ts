@@ -26,9 +26,10 @@ export const APP_HOSTING_FULFILLMENT_METADATA_KEY = "appHostingFulfillment"
 export const appHostingFulfillmentContextSchema = z
   .object({
     stackId: z.string().min(1),
-    deploymentId: z.string().min(1),
+    deploymentId: z.string().min(1).optional(),
     sourceType: z.enum(["GITHUB", "PUBLIC", "TEMPLATE"]),
     resourcePlanId: z.enum(["starter", "pro", "payg"]),
+    autoDeploy: z.boolean().optional(),
   })
   .strict()
 

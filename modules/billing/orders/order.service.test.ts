@@ -42,6 +42,12 @@ const mockResolveInvoiceEmailRecipients = mock(async () => [
   { email: "billing@example.com" },
 ])
 
+mock.module("@/modules/deploy/deploy-pipeline.service", () => ({
+  triggerDeploy: mock(async () => ({
+    deploymentId: "mock-dep-1",
+    status: "QUEUED",
+  })),
+}))
 mock.module("../email-recipients", () => ({
   resolveInvoiceEmailRecipients: mockResolveInvoiceEmailRecipients,
 }))
