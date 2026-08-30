@@ -111,9 +111,9 @@ describe("WhatsApp Onboarding Engine", () => {
 
     expect(result.current.missions.map((mission) => mission.title)).toEqual([
       "Aktifkan Paket WhatsApp",
-      "Alokasi Nomor & Perangkat",
+      "Verifikasi Nomor & Perangkat",
       "Kirim Pesan Pertama",
-      "Buat & Setujui Template Pesan",
+      "Buat & Ajukan Template Pesan",
       "Buat API Key Produksi",
     ])
     expect(

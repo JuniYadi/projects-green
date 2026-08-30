@@ -51,6 +51,15 @@ describe("FlightHudWidget", () => {
     expect(view.queryByText("Onboarding Guide")).not.toBeInTheDocument()
     localStorage.removeItem("whatsapp_onboarding_hud_closed")
   })
+  it("hides the widget when isGraduated is true or progressPercent is 100", () => {
+    const graduatedState: WhatsAppOnboardingState = {
+      ...mockState,
+      isGraduated: true,
+      progressPercent: 100,
+    }
+    const view = render(<FlightHudWidget onboarding={graduatedState} />)
+    expect(view.queryByText("Onboarding Guide")).not.toBeInTheDocument()
+  })
 
   it("renders the onboarding guide pill", () => {
     const view = render(<FlightHudWidget onboarding={mockState} />)

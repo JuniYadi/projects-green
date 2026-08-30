@@ -48,6 +48,7 @@ import {
   Storefront as StorefrontIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { useWhatsAppOnboardingStore } from "@/modules/whatsapp/onboarding/whatsapp-onboarding.store"
 const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
 
 const startsWithRoute = (pathname: string, route: string) => {
@@ -69,8 +70,7 @@ export type AppSidebarOrganization = {
   id: string | null
   name: string | null
 }
-
-type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+export type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   surface: AppSidebarSurface
   user: AppSidebarUser
   organization: AppSidebarOrganization
@@ -1199,20 +1199,14 @@ export function AppSidebar({
   const searchParams = useSearchParams()
   const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
 
-  // Start false to match the server render (no storage access during SSR),
-  // then resolve the real value after mount to avoid a hydration mismatch.
-  const [isWhatsappGraduated, setIsWhatsappGraduated] = React.useState(false)
+  const isGraduatedStore = useWhatsAppOnboardingStore((s) => s.isGraduated)
+  const syncFromStorage = useWhatsAppOnboardingStore((s) => s.syncFromStorage)
 
   React.useEffect(() => {
-    try {
-      const manual = localStorage.getItem("whatsapp_onboarding_graduated")
-      const statusCached = sessionStorage.getItem(
-        "whatsapp_onboarding_graduated"
-      )
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsWhatsappGraduated(manual === "true" || statusCached === "true")
-    } catch {}
-  }, [])
+    syncFromStorage()
+  }, [syncFromStorage])
+
+  const isWhatsappGraduated = isGraduatedStore
 
   const { navMain, projects, navMainLabel, navHeader } = resolveSidebarMenu({
     surface,
