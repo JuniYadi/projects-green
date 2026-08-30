@@ -7,9 +7,7 @@ import {
 import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useParams, useSearchParams } from "next/navigation"
-import Link from "next/link"
 import {
-  CurrencyDollar,
   Phone,
   Warning,
   Info,
@@ -61,7 +59,7 @@ import {
 } from "@/components/ui/table"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type LedgerEntry = {
   id: string
@@ -318,6 +316,7 @@ export default function WhatsAppPricingPage() {
           </Button>
           <Button
             size="sm"
+            variant="outline"
             onClick={() => setIsOrderOpen(true)}
             className="gap-1.5"
           >
@@ -435,7 +434,7 @@ export default function WhatsAppPricingPage() {
                         step={500}
                         onValueChange={(val) => setMarketingVolume(val[0] ?? 0)}
                       />
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground/90">
                         <span>
                           @Rp {marketingPrice.toLocaleString("id-ID")}/msg
                         </span>
@@ -467,7 +466,7 @@ export default function WhatsAppPricingPage() {
                         step={250}
                         onValueChange={(val) => setUtilityVolume(val[0] ?? 0)}
                       />
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground/90">
                         <span>
                           @Rp {utilityPrice.toLocaleString("id-ID")}/msg
                         </span>
@@ -499,7 +498,7 @@ export default function WhatsAppPricingPage() {
                         step={100}
                         onValueChange={(val) => setAuthVolume(val[0] ?? 0)}
                       />
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground/90">
                         <span>@Rp {authPrice.toLocaleString("id-ID")}/msg</span>
                         <span className="font-medium text-foreground">
                           Rp {totalAuthCost.toLocaleString("id-ID")}
@@ -557,6 +556,28 @@ export default function WhatsAppPricingPage() {
               targetDevices.every((d) => (d.quotaRemaining ?? 0) <= 0)
             const isMixed = !allActive && !noneActive
 
+            const quotaStatusLabel = allActive
+              ? ""
+              : isMixed
+                ? isIndonesian
+                  ? " (Tersisa Sebagian)"
+                  : " (Partial)"
+                : isIndonesian
+                  ? " (Habis)"
+                  : " (Exhausted)"
+
+            const paygStatusLabel = noneActive
+              ? isIndonesian
+                ? " (Aktif)"
+                : " (Active)"
+              : isMixed
+                ? isIndonesian
+                  ? " (Otomatis Saat Kuota Habis)"
+                  : " (Partial Fallback)"
+                : isIndonesian
+                  ? " (Otomatis Saat Kuota Habis)"
+                  : " (Fallback)"
+
             return (
               <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -569,48 +590,28 @@ export default function WhatsAppPricingPage() {
                           ? "text-emerald-600 dark:text-emerald-400"
                           : isMixed
                             ? "text-amber-600 dark:text-amber-400"
-                            : "text-destructive line-through"
+                            : "text-destructive line-through opacity-90"
                       }`}
                     >
-                      Quota Credit{" "}
-                      {allActive ? "" : isMixed ? "(Partial)" : "(Exhausted)"}
+                      {isIndonesian ? "Kredit Kuota Paket" : "Quota Credit"}
+                      {quotaStatusLabel}
                     </span>
                     <WhatsAppText id="s96" />
                     <span
                       className={`font-semibold ${
                         noneActive
                           ? "text-emerald-600 dark:text-emerald-400"
-                          : isMixed
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-amber-600 dark:text-amber-400"
+                          : "text-amber-600 dark:text-amber-400"
                       }`}
                     >
-                      PAYG Overage{" "}
-                      {noneActive
-                        ? "(Active)"
-                        : isMixed
-                          ? "(Partial Fallback)"
-                          : "(Fallback)"}
+                      {isIndonesian
+                        ? "Tarif Pemakaian Tambahan (PAYG)"
+                        : "PAYG Overage"}
+                      {paygStatusLabel}
                     </span>
                     <WhatsAppText id="s97" />
                   </span>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="ml-3 h-7 shrink-0 text-xs"
-                >
-                  <Link
-                    href={localizePathname({
-                      pathname: "/console/billing/topup",
-                      locale,
-                    })}
-                  >
-                    <CurrencyDollar className="mr-1 size-3.5" />
-                    Top Up Balance
-                  </Link>
-                </Button>
               </div>
             )
           })()}
@@ -620,7 +621,9 @@ export default function WhatsAppPricingPage() {
             <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle className="text-base font-semibold">
-                  WhatsApp Category Rates & Tier Comparison
+                  {isIndonesian
+                    ? "Daftar Tarif Kategori & Perbandingan Tier"
+                    : "WhatsApp Category Rates & Tier Comparison"}
                 </CardTitle>
                 <CardDescription className="text-xs">
                   <WhatsAppText id="s98" />
@@ -693,12 +696,13 @@ export default function WhatsAppPricingPage() {
                               {formatPhone(device.phoneNumber)}
                             </span>
                             <Badge variant="outline" className="text-xs">
-                              Country: {device.country}
+                              {isIndonesian ? "Negara" : "Country"}:{" "}
+                              {device.country}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">
-                              Rate Tier:
+                              {isIndonesian ? "Tingkat Tier:" : "Rate Tier:"}
                             </span>
                             <Badge
                               variant="secondary"
@@ -755,7 +759,9 @@ export default function WhatsAppPricingPage() {
                                   >
                                     BASE{" "}
                                     {activeTier === "BASE" && !isReferenceDevice
-                                      ? "(Active)"
+                                      ? isIndonesian
+                                        ? "(Aktif Saat Ini)"
+                                        : "(Active)"
                                       : ""}
                                   </span>
                                 </th>
@@ -775,7 +781,9 @@ export default function WhatsAppPricingPage() {
                                     TIER 1{" "}
                                     {activeTier === "TIER_1" &&
                                     !isReferenceDevice
-                                      ? "(Active)"
+                                      ? isIndonesian
+                                        ? "(Aktif Saat Ini)"
+                                        : "(Active)"
                                       : ""}
                                   </span>
                                 </th>
@@ -795,7 +803,9 @@ export default function WhatsAppPricingPage() {
                                     TIER 2{" "}
                                     {activeTier === "TIER_2" &&
                                     !isReferenceDevice
-                                      ? "(Active)"
+                                      ? isIndonesian
+                                        ? "(Aktif Saat Ini)"
+                                        : "(Active)"
                                       : ""}
                                   </span>
                                 </th>
@@ -817,9 +827,13 @@ export default function WhatsAppPricingPage() {
                                     TIER 3{" "}
                                     {activeTier === "TIER_3" &&
                                     !isReferenceDevice
-                                      ? "(Active)"
+                                      ? isIndonesian
+                                        ? "(Aktif Saat Ini)"
+                                        : "(Active)"
                                       : isReferenceDevice
-                                        ? "(Promo)"
+                                        ? isIndonesian
+                                          ? "(Harga Promo)"
+                                          : "(Promo)"
                                         : ""}
                                   </span>
                                 </th>
@@ -983,7 +997,8 @@ export default function WhatsAppPricingPage() {
                   <WhatsAppText id="s105" />
                 </CardDescription>
                 <CardTitle className="text-xl font-bold">
-                  {ledgerSummary.totalCredits.toLocaleString()} Credits
+                  {ledgerSummary.totalCredits.toLocaleString()}{" "}
+                  {isIndonesian ? "Kredit" : "Credits"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -995,10 +1010,11 @@ export default function WhatsAppPricingPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-xs">
-                  Refunded / Reverted
+                  {isIndonesian ? "Kredit Dikembalikan" : "Refunded / Reverted"}
                 </CardDescription>
                 <CardTitle className="text-xl font-bold text-amber-500">
-                  {ledgerSummary.totalRefundedCredits.toLocaleString()} Credits
+                  {ledgerSummary.totalRefundedCredits.toLocaleString()}{" "}
+                  {isIndonesian ? "Kredit" : "Credits"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1010,10 +1026,13 @@ export default function WhatsAppPricingPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-xs">
-                  Net Billed Credits
+                  {isIndonesian
+                    ? "Total Pemakaian Bersih"
+                    : "Net Billed Credits"}
                 </CardDescription>
                 <CardTitle className="text-xl font-bold text-emerald-600">
-                  {ledgerSummary.activeCredits.toLocaleString()} Credits
+                  {ledgerSummary.activeCredits.toLocaleString()}{" "}
+                  {isIndonesian ? "Kredit" : "Credits"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1030,7 +1049,9 @@ export default function WhatsAppPricingPage() {
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <CardTitle className="text-base font-semibold">
-                    Transaction & Deduction Ledger
+                    {isIndonesian
+                      ? "Riwayat Pemotongan & Pengembalian Kuota"
+                      : "Transaction & Deduction Ledger"}
                   </CardTitle>
                   <CardDescription className="text-xs">
                     <WhatsAppText id="s109" />
@@ -1071,10 +1092,18 @@ export default function WhatsAppPricingPage() {
                       <SelectItem value="all">
                         <WhatsAppText id="s111" />
                       </SelectItem>
-                      <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                      <SelectItem value="PENDING">Pending Verify</SelectItem>
+                      <SelectItem value="CONFIRMED">
+                        {isIndonesian ? "Berhasil Dipotong" : "Confirmed"}
+                      </SelectItem>
+                      <SelectItem value="PENDING">
+                        {isIndonesian
+                          ? "Menunggu Verifikasi"
+                          : "Pending Verify"}
+                      </SelectItem>
                       <SelectItem value="REFUNDED">
-                        Refunded / Reverted
+                        {isIndonesian
+                          ? "Dibatalkan / Dikembalikan"
+                          : "Refunded / Reverted"}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -1089,7 +1118,9 @@ export default function WhatsAppPricingPage() {
                     }}
                   >
                     <SelectTrigger className="text-xs">
-                      <SelectValue placeholder="Category" />
+                      <SelectValue
+                        placeholder={isIndonesian ? "Kategori" : "Category"}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">
@@ -1172,16 +1203,16 @@ export default function WhatsAppPricingPage() {
                           {isIndonesian ? "Waktu" : "Time"}
                         </TableHead>
                         <TableHead>
-                          {isIndonesian ? "Penerima" : "Recipient"}
+                          {isIndonesian ? "Nomor Tujuan" : "Recipient"}
                         </TableHead>
                         <TableHead>
-                          {isIndonesian ? "Kategori" : "Category"}
+                          {isIndonesian ? "Kategori Pesan" : "Category"}
                         </TableHead>
                         <TableHead>
                           {isIndonesian ? "Status" : "Status"}
                         </TableHead>
                         <TableHead className="text-right">
-                          {isIndonesian ? "Perubahan Kredit" : "Credits"}
+                          {isIndonesian ? "Pemotongan Kredit" : "Credits"}
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1253,13 +1284,14 @@ export default function WhatsAppPricingPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-xs text-muted-foreground">
-                    <WhatsAppText id="s126" />
+                    {isIndonesian ? "Halaman " : "Page "}
                     <span className="font-medium text-foreground">{page}</span>
-                    <WhatsAppText id="s127" />
+                    {isIndonesian ? " dari " : " of "}
                     <span className="font-medium text-foreground">
                       {totalPages}
-                    </span>
-                    ({ledgerTotal} <WhatsAppText id="s128" />)
+                    </span>{" "}
+                    ({ledgerTotal}{" "}
+                    {isIndonesian ? "total transaksi" : "entries"})
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -1269,7 +1301,7 @@ export default function WhatsAppPricingPage() {
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       className="text-xs"
                     >
-                      <WhatsAppText id="s129" />
+                      <WhatsAppText id="s304" />
                     </Button>
                     <Button
                       variant="outline"
@@ -1280,7 +1312,7 @@ export default function WhatsAppPricingPage() {
                       }
                       className="text-xs"
                     >
-                      <WhatsAppText id="s130" />
+                      <WhatsAppText id="s305" />
                     </Button>
                   </div>
                 </div>
