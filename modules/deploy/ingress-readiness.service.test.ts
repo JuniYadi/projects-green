@@ -2,10 +2,14 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 const mockPrisma = {
   applicationDeployment: {
-    findUnique: mock(async () => ({
+    findUnique: mock(async (..._args: unknown[]) => ({
       id: "deploy-1",
       stackId: "stack-1",
-      stack: { id: "stack-1", slug: "app-test", customDomain: "example.com" },
+      stack: {
+        id: "stack-1",
+        slug: "app-test",
+        customDomain: "example.com" as string | null,
+      },
     })),
   },
 }

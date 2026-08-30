@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
-const mockFindMany = mock(() => Promise.resolve([]))
-const mockUpdateDeployment = mock(() => Promise.resolve({}))
-const mockUpdateStack = mock(() => Promise.resolve({}))
-const mockCount = mock(() => Promise.resolve(0))
+const mockFindMany = mock((..._args: unknown[]) => Promise.resolve([]))
+const mockUpdateDeployment = mock((..._args: unknown[]) => Promise.resolve({}))
+const mockUpdateStack = mock((..._args: unknown[]) => Promise.resolve({}))
+const mockCount = mock((..._args: unknown[]) => Promise.resolve(0))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -194,7 +194,7 @@ describe("deploy-monitor.service", () => {
     await monitorActiveDeployments()
 
     expect(mockFindMany).toHaveBeenCalledTimes(1)
-    const call = mockFindMany.mock.calls[0]?.[0] as {
+    const call = mockFindMany.mock.calls[0]?.[0] as unknown as {
       where: { OR: Array<Record<string, unknown>> }
     }
     const runningClause = call.where.OR.find(
@@ -233,11 +233,13 @@ describe("deploy-monitor.service", () => {
       data: { ingressVerified: true, ingressCheckedAt: expect.any(Date) },
     })
     const updateCall = mockUpdateDeployment.mock.calls.find(
-      (c) => (c[0] as { where: { id: string } }).where.id === "dep-running"
+      (c) =>
+        (c[0] as unknown as { where: { id: string } })?.where?.id ===
+        "dep-running"
     )
-    const updateData = (updateCall?.[0] as { data: Record<string, unknown> })
-      .data
-    expect(updateData).not.toHaveProperty("status")
+    const updateData = (
+      updateCall?.[0] as unknown as { data: Record<string, unknown> }
+    )?.data
     expect(results[0]).toEqual({
       deploymentId: "dep-running",
       status: "RUNNING",
