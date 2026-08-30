@@ -2,10 +2,10 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 import type { WorkflowDefinition } from "./workflow.schema"
 
 const mockRedis = {
-  get: mock<() => Promise<string | null>>(async () => null),
-  set: mock<() => Promise<string>>(async () => "OK"),
-  del: mock<() => Promise<number>>(async () => 1),
-  eval: mock<() => Promise<number>>(async () => 1),
+  get: mock(async () => null),
+  set: mock(async () => "OK"),
+  del: mock(async () => 1),
+  eval: mock(async () => 1),
 }
 
 const mockMessageService = {
@@ -392,12 +392,10 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
     mockRedis.get.mockClear()
     mockRedis.set.mockClear()
     mockRedis.del.mockClear()
-    mockRedis.eval.mockClear()
     mockRedis.get.mockImplementation(async () => null)
     mockRedis.set.mockImplementation(async () => "OK")
     mockRedis.del.mockImplementation(async () => 1)
     mockRedis.eval.mockImplementation(async () => 1)
-    mockPrisma.whatsappDevice.findUnique.mockReset()
     mockMessageService.sendMessage.mockClear()
   })
 

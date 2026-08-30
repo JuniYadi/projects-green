@@ -77,16 +77,12 @@ export default function AiAgentsPage() {
   // AI Workflow Assistant Builder States
   const [assistantPrompt, setAssistantPrompt] = useState("")
   const [generating, setGenerating] = useState(false)
+  const [generationError, setGenerationError] = useState("")
   const [workflowSummary, setWorkflowSummary] = useState("")
   const [workflowSteps, setWorkflowSteps] = useState<GeneratedStep[]>([])
   const [simulatedChat, setSimulatedChat] = useState<
     { role: "user" | "bot"; text: string }[]
-  >([
-    {
-      role: "bot",
-      text: "Halo! Selamat datang di toko resmi kami. Ada yang bisa kami bantu hari ini?",
-    },
-  ])
+  >([])
   const [simVariables, setSimVariables] = useState<Record<string, string>>({})
   const [testInput, setTestInput] = useState("")
   const loadAgents = useCallback(async () => {
@@ -108,8 +104,8 @@ export default function AiAgentsPage() {
   const handleGenerateWorkflow = async (presetPrompt?: string) => {
     const promptToUse = presetPrompt || assistantPrompt
     if (!promptToUse.trim()) return
-
     setGenerating(true)
+    setGenerationError("")
     try {
       const res = await eden.api.console.ai.workflows.generate.post({
         prompt: promptToUse,
@@ -130,6 +126,7 @@ export default function AiAgentsPage() {
         error?: string
       }
       if (data.ok && data.workflow) {
+        setGenerationError("")
         setWorkflowSummary(
           data.summary || "Alur berhasil dirancang otomatis oleh AI."
         )
@@ -182,7 +179,6 @@ export default function AiAgentsPage() {
       setGenerating(false)
     }
   }
-
   const handleSimulateReply = () => {
     if (!testInput.trim()) return
     const userMsg = testInput.trim()
@@ -392,17 +388,20 @@ export default function AiAgentsPage() {
                       </span>
                     </Button>
                   </div>
+                  {generationError && (
+                    <p className="text-xs text-destructive">
+                      {generationError}
+                    </p>
+                  )}
                 </div>
-
                 {workflowSummary && (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="flex items-center gap-2 text-xs font-medium text-emerald-600">
                       <CheckCircle size={16} weight="fill" />
                       <span>{workflowSummary}</span>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {/* Workflow Steps Preview */}
                       <div className="space-y-2 rounded-lg border border-border bg-card p-3">
                         <Label className="text-xs font-semibold">
                           Langkah Alur yang Dibuat:
