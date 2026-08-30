@@ -1,9 +1,13 @@
-import { describe, expect, it } from "bun:test"
-
-import type { AppTemplateBlueprint } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+import { describe, it, expect } from "bun:test"
+import {
+  type AppTemplateBlueprint,
+  type AppTemplatePackage,
+} from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 import {
   buildInitialEnvVars,
+  exportTemplatePackage,
   validateBlueprint,
+  validateTemplatePackage,
 } from "@/modules/deploy/blueprint/app-template-blueprint.service"
 
 const validSampleBlueprint: AppTemplateBlueprint = {
@@ -256,5 +260,40 @@ describe("AppTemplateBlueprint Validation & Service", () => {
     expect(envVars.CUSTOM_VAR).toBe("overridden")
     // EXTRA_USER_VAR passes through
     expect(envVars.EXTRA_USER_VAR).toBe("extra_val")
+  })
+
+  it("validates and exports full template package bundle", () => {
+    const exported = exportTemplatePackage({
+      name: "Hermes Agent",
+      slug: "hermes-agent",
+      tagline: "AI workspace",
+      category: "AI",
+      blueprint: validSampleBlueprint,
+    })
+
+    expect(exported.exportVersion).toBe("1.0.0")
+    expect(exported.metadata.name).toBe("Hermes Agent")
+    expect(exported.metadata.slug).toBe("hermes-agent")
+    expect(exported.metadata.category).toBe("AI")
+    expect(exported.blueprint.runtime.image).toBe("ghost:5-alpine")
+
+    const validation = validateTemplatePackage(exported)
+    expect(validation.valid).toBe(true)
+    expect(validation.data).toBeDefined()
+  })
+
+  it("rejects invalid template package bundle missing required fields", () => {
+    const invalidPkg = {
+      exportVersion: "1.0.0",
+      metadata: {
+        name: "",
+        slug: "hermes",
+      },
+      blueprint: validSampleBlueprint,
+    }
+
+    const validation = validateTemplatePackage(invalidPkg)
+    expect(validation.valid).toBe(false)
+    expect(validation.errors?.["metadata.name"]).toBeDefined()
   })
 })
