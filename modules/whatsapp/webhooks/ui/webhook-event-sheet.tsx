@@ -168,10 +168,10 @@ export function WebhookEventDetailSheet({
               </div>
               <p className="text-xs leading-relaxed opacity-90">
                 {isSuccess
-                  ? "Pesan / callback berhasil dikirim dan diproses oleh Meta API."
+                  ? t.statusDescSuccessWebhook
                   : isFailed
-                    ? "Pengiriman atau pemrosesan webhook gagal pada event ini."
-                    : "Event webhook pesan masuk diterima dari Meta API."}
+                    ? t.statusDescFailedWebhook
+                    : t.statusDescReceivedWebhook}
               </p>
             </div>
           </div>
@@ -256,12 +256,14 @@ export function WebhookEventDetailSheet({
                     {copiedId ? (
                       <>
                         <Check className="size-3.5 text-emerald-500" />
-                        <span className="text-emerald-600">Disalin</span>
+                        <span className="text-emerald-600">
+                          {t.copiedButton}
+                        </span>
                       </>
                     ) : (
                       <>
                         <Copy className="size-3.5" />
-                        <span>Salin ID</span>
+                        <span>{t.copyIdButton}</span>
                       </>
                     )}
                   </button>

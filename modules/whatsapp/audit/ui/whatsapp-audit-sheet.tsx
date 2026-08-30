@@ -187,8 +187,8 @@ export function AuditLogDetailSheet({
                 {(log as { errorMessage?: string }).errorMessage ||
                   log.message ||
                   (isSuccess
-                    ? "Aktivitas organisasi berhasil dieksekusi."
-                    : "Aktivitas mengalami kendala saat dieksekusi.")}
+                    ? t.statusDescSuccessAudit
+                    : t.statusDescFailedAudit)}
               </p>
             </div>
           </div>
@@ -234,7 +234,7 @@ export function AuditLogDetailSheet({
                   <div className="space-y-1 pb-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Info className="size-4" />
-                      <span>Template</span>
+                      <span>{t.templateLabel}</span>
                     </div>
                     <p className="font-mono text-sm font-semibold text-foreground">
                       {templateName}
@@ -258,12 +258,14 @@ export function AuditLogDetailSheet({
                         {copiedId ? (
                           <>
                             <Check className="size-3.5 text-emerald-500" />
-                            <span className="text-emerald-600">Disalin</span>
+                            <span className="text-emerald-600">
+                              {t.copiedButton}
+                            </span>
                           </>
                         ) : (
                           <>
                             <Copy className="size-3.5" />
-                            <span>Salin ID</span>
+                            <span>{t.copyIdButton}</span>
                           </>
                         )}
                       </button>
@@ -348,7 +350,7 @@ export function AuditLogDetailSheet({
               {correlationId && (
                 <div className="flex items-center justify-between gap-2 py-3">
                   <span className="text-xs text-muted-foreground">
-                    Correlation ID
+                    {t.correlationIdLabel}
                   </span>
                   <span className="text-right font-mono text-[11px] break-all text-foreground">
                     {correlationId}
