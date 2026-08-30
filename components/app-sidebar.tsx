@@ -857,6 +857,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
           isLocked: !isGraduated,
         },
         {
+          title: "AI & Bot Builder",
+          url: localizePathname({
+            pathname: "/console/ai/agents",
+            locale,
+          }),
+          icon: <RobotIcon />,
+          isActive: startsWithRoute(path, "/console/ai"),
+        },
+        {
           title: "Contacts",
           url: localizePathname({
             pathname: "/console/whatsapp/contacts",

@@ -472,6 +472,7 @@ describe("resolveSidebarMenu", () => {
       "Templates",
       "Messages",
       "Broadcasts",
+      "AI & Bot Builder",
       "Contacts",
       "Catalogs",
       "Webhook Logs",
