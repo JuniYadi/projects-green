@@ -93,7 +93,11 @@ export class WhatsappMessagePricingService {
       }
     })
     const countries = [
-      ...new Set(deviceCountries.map((device) => device.country)),
+      ...new Set(
+        deviceCountries.length > 0
+          ? deviceCountries.map((device) => device.country)
+          : ["ID"]
+      ),
     ]
 
     const [rates, basePrices] = await Promise.all([
@@ -137,8 +141,21 @@ export class WhatsappMessagePricingService {
         basePriceByCountryAndCategory.set(key, bp)
     }
 
+    const targetDeviceList =
+      deviceCountries.length > 0
+        ? deviceCountries
+        : [
+            {
+              id: "reference",
+              phoneNumber: "+6281200000000",
+              country: "ID",
+              rateTier: "BASE",
+              quotaRemaining: 0,
+            },
+          ]
+
     return {
-      devices: deviceCountries.map((device) => ({
+      devices: targetDeviceList.map((device) => ({
         deviceId: device.id,
         phoneNumber: device.phoneNumber,
         country: device.country,
