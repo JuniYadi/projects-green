@@ -341,7 +341,14 @@ function ConversationItem({
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-1">
-          <span className="truncate text-sm font-medium">
+          <span
+            className="truncate text-sm font-medium"
+            title={
+              conversation.contactName?.trim()
+                ? formatPhone(conversation.contactPhone)
+                : undefined
+            }
+          >
             {conversation.contactName?.trim() ||
               formatPhone(conversation.contactPhone)}
           </span>
@@ -349,33 +356,21 @@ function ConversationItem({
             {formatConversationTime(conversation.lastMessageAt)}
           </span>
         </div>
-        {conversation.contactName?.trim() && (
-          <div className="truncate text-xs text-muted-foreground">
-            {formatPhone(conversation.contactPhone)}
-          </div>
-        )}
 
-        <div className="mt-1 flex items-center justify-between gap-1">
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            {conversation.lastDirection === "INBOX" ? (
-              <>
-                <ArrowBendDownLeft className="size-3 text-blue-500" />
-                <span>Received</span>
-              </>
-            ) : conversation.lastDirection === "OUTBOX" ? (
-              <>
-                <ArrowBendUpRight className="size-3 text-emerald-500" />
-                <span>Sent</span>
-              </>
-            ) : (
-              <span>No messages</span>
-            )}
-          </span>
-
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {conversation._count.whatsappMessages} msg
-            {conversation._count.whatsappMessages !== 1 ? "s" : ""}
-          </span>
+        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+          {conversation.lastDirection === "INBOX" ? (
+            <>
+              <ArrowBendDownLeft className="size-3 text-blue-500" />
+              <span>Received</span>
+            </>
+          ) : conversation.lastDirection === "OUTBOX" ? (
+            <>
+              <ArrowBendUpRight className="size-3 text-emerald-500" />
+              <span>Sent</span>
+            </>
+          ) : (
+            <span>No messages</span>
+          )}
         </div>
         {/* Device & Org badges for tracking */}
         {(conversation.whatsappDevice ||
@@ -2393,8 +2388,16 @@ export function WhatsAppInbox({
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">
-                      {formatPhone(activeConversation.contactPhone)}
+                    <h3
+                      className="text-sm font-semibold"
+                      title={
+                        activeConversation.contactName?.trim()
+                          ? formatPhone(activeConversation.contactPhone)
+                          : undefined
+                      }
+                    >
+                      {activeConversation.contactName?.trim() ||
+                        formatPhone(activeConversation.contactPhone)}
                     </h3>
                     {activeConversation.whatsappDevice && (
                       <Badge
@@ -2416,10 +2419,6 @@ export function WhatsAppInbox({
                       </Badge>
                     )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {activeConversation._count.whatsappMessages}{" "}
-                    <WhatsAppText id="s55" />
-                  </p>
                 </div>
               </div>
             ) : (

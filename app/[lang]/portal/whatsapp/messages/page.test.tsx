@@ -273,7 +273,6 @@ describe("Portal WhatsAppMessagesPage", () => {
       expect(mockConversationsGet).toHaveBeenCalledWith("conversation-1")
       expect(view.getByText("Hello from WhatsApp")).toBeInTheDocument()
     })
-    expect(view.getByText("2 messages")).toBeInTheDocument()
   })
 
   it("sends quick reply from the portal when session window is open", async () => {

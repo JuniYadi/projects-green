@@ -623,12 +623,10 @@ describe("WhatsAppMessagesPage", () => {
     await tick(100)
     fireEvent.click(view.getByText("+6281111111111"))
     await waitFor(() => {
-      expect(view.queryByText("1 messages")).toBeInTheDocument()
+      expect(
+        view.getByText("Hello Alice, your order is confirmed.")
+      ).toBeInTheDocument()
     })
-    await tick(50)
-    expect(
-      view.getByText("Hello Alice, your order is confirmed.")
-    ).toBeInTheDocument()
     view.unmount()
   })
 
