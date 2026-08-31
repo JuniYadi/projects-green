@@ -38,6 +38,8 @@ import {
   UploadSimple,
   Star,
   DotsThreeVertical,
+  X,
+  MapTrifold,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -147,7 +149,6 @@ export default function WhatsappWorkflowCanvasPage() {
     ],
     []
   )
-
   // Top level state
   const [workflowMeta, setWorkflowMeta] = useState(() => ({
     id: workflowId === "new" ? "wf_new" : workflowId,
@@ -158,9 +159,19 @@ export default function WhatsappWorkflowCanvasPage() {
     trigger: {
       id: "trig_1",
       type: "keyword_match" as const,
-      keywords: [],
+      keywords: ["help", "info", "menu"],
     },
   }))
+
+  // AI Copilot State
+  const [copilotPrompt, setCopilotPrompt] = useState("")
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [showCopilot, setShowCopilot] = useState(false)
+  const [showMiniMap, setShowMiniMap] = useState(false)
+  // Simulator
+  const [isSimOpen, setIsSimOpen] = useState(false)
+  const [simSession, setSimSession] = useState<SimulatorSession | null>(null)
+  const [simInput, setSimInput] = useState("")
   const [devices, setDevices] = useState<
     { id: string; name: string; phoneNumber: string }[]
   >([])
@@ -172,15 +183,6 @@ export default function WhatsappWorkflowCanvasPage() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-
-  // AI Copilot
-  const [copilotPrompt, setCopilotPrompt] = useState("")
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
-
-  // Simulator
-  const [isSimOpen, setIsSimOpen] = useState(false)
-  const [simSession, setSimSession] = useState<SimulatorSession | null>(null)
-  const [simInput, setSimInput] = useState("")
 
   const nodeTypes = useMemo(() => ({ custom: WorkflowNodeComponent }), [])
 
@@ -867,10 +869,9 @@ export default function WhatsappWorkflowCanvasPage() {
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Device Selector */}
-          <div className="w-48 sm:w-56">
+          <div className="w-44 sm:w-52">
             <Select
               value={selectedDeviceId}
               onValueChange={setSelectedDeviceId}
@@ -891,6 +892,23 @@ export default function WhatsappWorkflowCanvasPage() {
             </Select>
           </div>
 
+          {/* AI Copilot Toggle Button */}
+          <Button
+            variant={showCopilot ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowCopilot((prev) => !prev)}
+            className={`h-8 gap-1.5 text-xs font-medium ${showCopilot ? "border-primary/40 bg-primary/10 text-primary" : ""}`}
+            title={t.canvas.generateAi}
+          >
+            <Sparkle
+              className="h-3.5 w-3.5"
+              weight={showCopilot ? "fill" : "regular"}
+            />
+            <span className="hidden md:inline">AI Copilot</span>
+          </Button>
+
+          <div className="mx-0.5 h-4 w-px bg-border/60" />
+
           {/* Primary Action 1: Test Simulator */}
           <Button
             variant="outline"
@@ -907,7 +925,7 @@ export default function WhatsappWorkflowCanvasPage() {
             onClick={handleSave}
             disabled={saving}
             size="sm"
-            className="h-8 gap-1.5 text-xs font-medium"
+            className="h-8 gap-1.5 bg-emerald-600 text-xs font-medium text-white hover:bg-emerald-700"
           >
             <FloppyDisk className="h-3.5 w-3.5" />
             <span>{saving ? t.canvas.saving : t.canvas.saveAndDeploy}</span>
@@ -939,6 +957,13 @@ export default function WhatsappWorkflowCanvasPage() {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                onClick={() => setShowMiniMap((prev) => !prev)}
+                className="cursor-pointer gap-2 text-xs"
+              >
+                <MapTrifold className="h-3.5 w-3.5" />
+                <span>{showMiniMap ? "Hide MiniMap" : "Show MiniMap"}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={handleExportJson}
                 className="cursor-pointer gap-2 text-xs"
               >
@@ -967,34 +992,46 @@ export default function WhatsappWorkflowCanvasPage() {
 
       {/* Canvas Area with Floating Toolbars */}
       <div className="relative flex flex-1 overflow-hidden rounded-xl border border-border bg-background shadow-inner">
-        {/* AI Copilot Floating Top Center Bar */}
-        <div className="absolute top-4 left-1/2 z-10 flex w-full max-w-lg -translate-x-1/2 items-center gap-2 rounded-xl border border-border/80 bg-card/90 p-2 shadow-lg backdrop-blur">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Sparkle className="h-3.5 w-3.5" weight="fill" />
+        {/* AI Copilot Collapsible Floating Bar */}
+        {showCopilot && (
+          <div className="absolute top-4 left-1/2 z-20 flex w-full max-w-lg -translate-x-1/2 animate-in items-center gap-2 rounded-xl border border-primary/30 bg-card/95 p-2 shadow-xl backdrop-blur duration-200 fade-in slide-in-from-top-2">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Sparkle className="h-3.5 w-3.5" weight="fill" />
+            </div>
+            <Input
+              value={copilotPrompt}
+              onChange={(e) => setCopilotPrompt(e.target.value)}
+              placeholder={t.canvas.copilotPlaceholder}
+              className="h-7 border-none bg-transparent text-xs shadow-none focus-visible:ring-0"
+              onKeyDown={(e) => e.key === "Enter" && handleGenerateAi()}
+              autoFocus
+            />
+            <Button
+              size="sm"
+              onClick={handleGenerateAi}
+              disabled={isGeneratingAi}
+              className="h-7 shrink-0 gap-1 px-2.5 text-[11px]"
+            >
+              {isGeneratingAi ? (
+                <ArrowsClockwise className="h-3 w-3 animate-spin" />
+              ) : (
+                <Sparkle className="h-3 w-3" weight="fill" />
+              )}
+              <span>
+                {isGeneratingAi ? t.canvas.generating : t.canvas.generateAi}
+              </span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowCopilot(false)}
+              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+              title="Close"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
           </div>
-          <Input
-            value={copilotPrompt}
-            onChange={(e) => setCopilotPrompt(e.target.value)}
-            placeholder={t.canvas.copilotPlaceholder}
-            className="h-7 border-none bg-transparent text-xs shadow-none focus-visible:ring-0"
-            onKeyDown={(e) => e.key === "Enter" && handleGenerateAi()}
-          />
-          <Button
-            size="sm"
-            onClick={handleGenerateAi}
-            disabled={isGeneratingAi}
-            className="h-7 shrink-0 gap-1 px-2.5 text-[11px]"
-          >
-            {isGeneratingAi ? (
-              <ArrowsClockwise className="h-3 w-3 animate-spin" />
-            ) : (
-              <Sparkle className="h-3 w-3" weight="fill" />
-            )}
-            <span>
-              {isGeneratingAi ? t.canvas.generating : t.canvas.generateAi}
-            </span>
-          </Button>
-        </div>
+        )}
 
         {/* Node Palette Bar (Floating Left) */}
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 rounded-xl border border-border/80 bg-card/90 p-1.5 shadow-lg backdrop-blur">
@@ -1088,13 +1125,15 @@ export default function WhatsappWorkflowCanvasPage() {
             color="#3f3f46"
           />
           <Controls className="!border-border !bg-card !fill-foreground" />
-          <MiniMap
-            width={90}
-            height={55}
-            nodeColor="#10b981"
-            maskColor="rgba(0, 0, 0, 0.45)"
-            className="!overflow-hidden !rounded-md !border !border-border/40 !bg-card/80 !shadow-sm backdrop-blur"
-          />
+          {showMiniMap && (
+            <MiniMap
+              width={90}
+              height={55}
+              nodeColor="#10b981"
+              maskColor="rgba(0, 0, 0, 0.45)"
+              className="!overflow-hidden !rounded-md !border !border-border/40 !bg-card/80 !shadow-sm backdrop-blur"
+            />
+          )}
         </ReactFlow>
       </div>
 
