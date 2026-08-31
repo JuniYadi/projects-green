@@ -85,13 +85,13 @@ export class AnalyticsService {
       const preInbound = existing?.messageInboxCount ?? 0
       const preOutbound = existing?.messageOutboxCount ?? 0
 
-      // Upsert with new totals (not increment — replace)
+      // Upsert with new totals (replace with Meta authoritative counts, not add to previous)
       if (existing) {
         await prisma.whatsappDailyCount.update({
           where: { id: existing.id },
           data: {
-            messageInboxCount: preInbound + metaInbound,
-            messageOutboxCount: preOutbound + metaOutbound,
+            messageInboxCount: metaInbound,
+            messageOutboxCount: metaOutbound,
           },
         })
       } else {
