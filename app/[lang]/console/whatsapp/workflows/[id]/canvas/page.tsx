@@ -1089,9 +1089,11 @@ export default function WhatsappWorkflowCanvasPage() {
           />
           <Controls className="!border-border !bg-card !fill-foreground" />
           <MiniMap
-            nodeColor="#3b82f6"
-            maskColor="rgba(0, 0, 0, 0.7)"
-            className="!overflow-hidden !rounded-lg !border-border !bg-card"
+            width={90}
+            height={55}
+            nodeColor="#10b981"
+            maskColor="rgba(0, 0, 0, 0.45)"
+            className="!overflow-hidden !rounded-md !border !border-border/40 !bg-card/80 !shadow-sm backdrop-blur"
           />
         </ReactFlow>
       </div>
