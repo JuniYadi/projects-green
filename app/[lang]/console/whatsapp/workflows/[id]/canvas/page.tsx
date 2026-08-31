@@ -88,7 +88,7 @@ import { WORKFLOW_TEMPLATES } from "@/modules/whatsapp/workflow/workflow-templat
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { WorkflowNodeComponent } from "./workflow-node"
-
+import { DeletableEdge } from "./deletable-edge"
 export default function WhatsappWorkflowCanvasPage() {
   const params = useParams()
   const router = useRouter()
@@ -185,7 +185,8 @@ export default function WhatsappWorkflowCanvasPage() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
   const nodeTypes = useMemo(() => ({ custom: WorkflowNodeComponent }), [])
-
+  const edgeTypes = useMemo(() => ({ deletable: DeletableEdge }), [])
+  const dataLoadedRef = React.useRef(false)
   // Delete node by ID (for card trash icon or keyboard)
   const handleDeleteNodeById = useCallback(
     (nodeId: string) => {
@@ -201,7 +202,16 @@ export default function WhatsappWorkflowCanvasPage() {
     [selectedNodeId, setNodes, setEdges, t]
   )
 
-  // Delete edges callback
+  // Delete edge by ID (middle X button)
+  const handleDeleteEdgeById = useCallback(
+    (edgeId: string) => {
+      setEdges((eds) => eds.filter((e) => e.id !== edgeId))
+      toast.info("Garis koneksi dihapus")
+    },
+    [setEdges]
+  )
+
+  // Delete edges callback (keyboard / selection)
   const onEdgesDelete = useCallback(
     (deletedEdges: Edge[]) => {
       const deletedIds = new Set(deletedEdges.map((e) => e.id))
@@ -210,7 +220,6 @@ export default function WhatsappWorkflowCanvasPage() {
     },
     [setEdges]
   )
-
   // Helper convert schema node to xyflow node
   const toXyFlowNode = useCallback(
     (node: WorkflowNode, index: number): Node => ({
@@ -227,34 +236,33 @@ export default function WhatsappWorkflowCanvasPage() {
     }),
     [handleDeleteNodeById]
   )
-  // Helper convert schema edge to xyflow edge
+  // Helper convert schema edge to xyflow edge with deletable type and callback
   const toXyFlowEdge = useCallback(
-    (edge: WorkflowEdge): Edge => ({
-      id: edge.id,
-      source: edge.sourceNodeId,
-      sourceHandle: edge.sourcePort || "default",
-      target: edge.targetNodeId,
-      type: "smoothstep",
-      animated: true,
-      label:
-        edge.sourcePort === "true"
-          ? "TRUE"
-          : edge.sourcePort === "false"
-            ? "FALSE"
-            : undefined,
-      style: {
-        stroke:
-          edge.sourcePort === "true"
-            ? "#10b981"
-            : edge.sourcePort === "false"
-              ? "#f43f5e"
-              : "#0284c7",
-        strokeWidth: 2,
-      },
-    }),
-    []
-  )
+    (edge: WorkflowEdge): Edge => {
+      const isTrue = edge.sourcePort === "true"
+      const isFalse = edge.sourcePort === "false"
+      const edgeLabel = isTrue ? "TRUE" : isFalse ? "FALSE" : undefined
 
+      return {
+        id: edge.id,
+        source: edge.sourceNodeId,
+        sourceHandle: edge.sourcePort || "default",
+        target: edge.targetNodeId,
+        type: "deletable",
+        animated: true,
+        label: edgeLabel,
+        data: {
+          onDelete: handleDeleteEdgeById,
+          label: edgeLabel,
+        },
+        style: {
+          stroke: isTrue ? "#10b981" : isFalse ? "#f43f5e" : "#0284c7",
+          strokeWidth: 2,
+        },
+      }
+    },
+    [handleDeleteEdgeById]
+  )
   const currentWorkflow = useMemo<WorkflowDefinition>(
     () => ({
       id: workflowMeta.id,
@@ -290,11 +298,13 @@ export default function WhatsappWorkflowCanvasPage() {
 
   const templateId = searchParams?.get("template")
 
-  // 1. Load Devices & Existing Workflow data
+  // 1. Load Devices & Existing Workflow data (runs strictly once per workflowId)
   useEffect(() => {
     let mounted = true
 
     async function loadData() {
+      if (dataLoadedRef.current) return
+      dataLoadedRef.current = true
       setLoadingInitial(true)
       try {
         // Fetch devices
@@ -342,7 +352,6 @@ export default function WhatsappWorkflowCanvasPage() {
           }
           return
         }
-
         // If existing workflow, fetch from GET /api/whatsapp/workflows/:id
         if (workflowId && workflowId !== "new") {
           try {
@@ -412,18 +421,24 @@ export default function WhatsappWorkflowCanvasPage() {
     t.canvas.namePlaceholder,
   ])
 
-  // Connection Handler
+  // Connection Handler (creates deletable custom edge with middle X button)
   const onConnect = useCallback(
     (params: Connection) => {
       const isTrue = params.sourceHandle === "true"
       const isFalse = params.sourceHandle === "false"
+      const edgeLabel = isTrue ? "TRUE" : isFalse ? "FALSE" : undefined
+      const edgeId = `e_${params.source}_${params.sourceHandle || "def"}_${params.target}_${Date.now().toString(36)}`
 
       const newEdge: Edge = {
         ...params,
-        id: `e_${params.source}_${params.sourceHandle || "def"}_${params.target}`,
-        type: "smoothstep",
+        id: edgeId,
+        type: "deletable",
         animated: true,
-        label: isTrue ? "TRUE" : isFalse ? "FALSE" : undefined,
+        label: edgeLabel,
+        data: {
+          onDelete: handleDeleteEdgeById,
+          label: edgeLabel,
+        },
         style: {
           stroke: isTrue ? "#10b981" : isFalse ? "#f43f5e" : "#0284c7",
           strokeWidth: 2,
@@ -431,7 +446,7 @@ export default function WhatsappWorkflowCanvasPage() {
       }
       setEdges((eds) => addEdge(newEdge, eds))
     },
-    [setEdges]
+    [setEdges, handleDeleteEdgeById]
   )
 
   // Node selection for Drawer Inspector
@@ -1140,6 +1155,7 @@ export default function WhatsappWorkflowCanvasPage() {
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           deleteKeyCode={["Backspace", "Delete"]}
           multiSelectionKeyCode={["Meta", "Ctrl"]}
           fitView
