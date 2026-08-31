@@ -39,6 +39,9 @@ describe("WhatsappWorkflowsPage UI", () => {
 
   it("renders localized header and create button", async () => {
     const view = render(<WhatsappWorkflowsPage />)
+    expect(
+      view.getByRole("heading", { level: 1, name: "AI & Bot Workflows" })
+    ).toBeInTheDocument()
     await waitFor(() =>
       expect(
         view.getByRole("heading", {

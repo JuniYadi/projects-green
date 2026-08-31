@@ -122,20 +122,23 @@ export default function WhatsappWorkflowCanvasPage() {
     [t]
   )
 
-  const initialEdgesSample: WorkflowEdge[] = [
-    {
-      id: "edge_1",
-      sourceNodeId: "node_start",
-      sourcePort: "default",
-      targetNodeId: "node_ask_name",
-    },
-    {
-      id: "edge_2",
-      sourceNodeId: "node_ask_name",
-      sourcePort: "default",
-      targetNodeId: "node_ai_agent",
-    },
-  ]
+  const initialEdgesSample = useMemo<WorkflowEdge[]>(
+    () => [
+      {
+        id: "edge_1",
+        sourceNodeId: "node_start",
+        sourcePort: "default",
+        targetNodeId: "node_ask_name",
+      },
+      {
+        id: "edge_2",
+        sourceNodeId: "node_ask_name",
+        sourcePort: "default",
+        targetNodeId: "node_ai_agent",
+      },
+    ],
+    []
+  )
 
   // Top level state
   const [workflowMeta, setWorkflowMeta] = useState(() => ({
@@ -364,12 +367,14 @@ export default function WhatsappWorkflowCanvasPage() {
     }
   }, [
     initialNodesSample,
+    initialEdgesSample,
     templateId,
     toXyFlowNode,
     toXyFlowEdge,
     workflowId,
     setNodes,
     setEdges,
+    t.canvas.namePlaceholder,
   ])
 
   // Connection Handler

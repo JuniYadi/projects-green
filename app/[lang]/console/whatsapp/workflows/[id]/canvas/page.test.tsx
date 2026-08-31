@@ -1,5 +1,5 @@
-import { describe, expect, it, mock } from "bun:test"
-import { act, render, waitFor } from "@testing-library/react"
+import { describe, expect, it, mock, afterEach } from "bun:test"
+import { act, cleanup, render, waitFor } from "@testing-library/react"
 import { renderToString } from "react-dom/server"
 import {
   createSimulatorSession,
@@ -43,6 +43,7 @@ global.ResizeObserver = class {
 import WhatsappWorkflowCanvasPage from "./page"
 
 describe("Canvas simulator integration", () => {
+  afterEach(cleanup)
   it("runs a template graph when a simulated customer message is sent", () => {
     const workflow = WORKFLOW_TEMPLATES[0].workflow
     let session = createSimulatorSession(workflow)
