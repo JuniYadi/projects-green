@@ -186,15 +186,22 @@ export function BillingDashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{account.formattedBalance}</p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.billing.accountAge.replace(
-                  "{age}",
-                  account.accountAge
-                )}
-              </p>
+              <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {messages.console.billing.accountAge.replace(
+                    "{age}",
+                    account.accountAge
+                  )}
+                </span>
+                <Link
+                  href="/console/billing/transactions"
+                  className="font-medium text-primary hover:underline"
+                >
+                  {messages.console.billing.viewStatement} &rarr;
+                </Link>
+              </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">
