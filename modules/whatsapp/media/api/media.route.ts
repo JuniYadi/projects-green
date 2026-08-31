@@ -275,7 +275,7 @@ export const mediaRoutes = new Elysia({
   // GET /:id/download — stream binary
   .get(
     "/:id/download",
-    async ({ request, params: { id }, set }: any) => {
+    async ({ request, params: { id }, query, set }: any) => {
       const auth = await resolveAuthContext(request)
       if (!auth) {
         set.status = 401
@@ -324,6 +324,19 @@ export const mediaRoutes = new Elysia({
       const stat = fs.statSync(storePath)
       const fileName = storePath.split("/").pop() ?? "download"
 
+      // Determine disposition:
+      // If query ?download=true is explicitly passed, force attachment download.
+      // Otherwise, for images, stickers, audio, video, and PDF, default to "inline"
+      // so browser <img> tags and media players render directly without triggering save dialogs.
+      const isMediaPreview =
+        record.mimeType.startsWith("image/") ||
+        record.mimeType.startsWith("audio/") ||
+        record.mimeType.startsWith("video/") ||
+        record.mimeType === "application/pdf"
+
+      const dispositionType =
+        query?.download === "true" || !isMediaPreview ? "attachment" : "inline"
+
       // ponytail: streaming via blob — fs.createReadStream is cleanest but Elysia
       // handles blob well enough for this payload size
       const blob = new Blob([fs.readFileSync(storePath)], {
@@ -334,8 +347,9 @@ export const mediaRoutes = new Elysia({
         status: 200,
         headers: {
           "Content-Type": record.mimeType,
-          "Content-Disposition": `attachment; filename="${fileName}"`,
+          "Content-Disposition": `${dispositionType}; filename="${fileName}"`,
           "Content-Length": String(stat.size),
+          "Cache-Control": "public, max-age=31536000, immutable",
         },
       })
     },
@@ -346,10 +360,21 @@ export const mediaRoutes = new Elysia({
           description: "Media record ID",
         }),
       }),
+      query: t.Optional(
+        t.Object({
+          download: t.Optional(
+            t.String({
+              example: "true",
+              description:
+                "Force attachment download instead of inline preview",
+            })
+          ),
+        })
+      ),
       detail: {
-        summary: "Download Media Content",
+        summary: "Download / Preview Media Content",
         description:
-          "Streams the binary content of a stored WhatsApp media file with proper MIME headers.",
+          "Streams binary content of a stored WhatsApp media file with inline preview for images/audio/stickers or attachment on download.",
         tags: ["WhatsApp Media"],
       },
     }

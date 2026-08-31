@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
+import fs from "node:fs"
 import { workosNodeMock } from "../../../../test/workos-node-mock"
-
 const mockAuthContext = {
   current: null as {
     organizationId?: string
@@ -196,6 +196,60 @@ describe("media.route", () => {
       const data = await res.json()
       expect(data.ok).toBe(true)
       expect(data.media.id).toBe("med-1")
+    })
+  })
+  describe("GET /media/:id/download", () => {
+    it("serves image/sticker with inline Content-Disposition for preview", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+      }
+      const tmpFile = "/tmp/test-sticker.webp"
+      fs.writeFileSync(tmpFile, Buffer.from("fake-webp-binary"))
+      mockGetMetadata.mockResolvedValueOnce({
+        id: "med-sticker-1",
+        organizationId: "org-1",
+        mimeType: "image/webp",
+        fileSize: 16,
+        storePath: tmpFile,
+      } as unknown as never)
+      mockGetStoragePath.mockReturnValueOnce(tmpFile)
+
+      const res = await app.handle(
+        new Request("http://localhost/media/med-sticker-1/download")
+      )
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get("Content-Type")).toBe("image/webp")
+      expect(res.headers.get("Content-Disposition")).toContain("inline")
+      expect(res.headers.get("Cache-Control")).toContain("public")
+      fs.unlinkSync(tmpFile)
+    })
+
+    it("forces attachment Content-Disposition when ?download=true is passed", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+      }
+      const tmpFile = "/tmp/test-image.png"
+      fs.writeFileSync(tmpFile, Buffer.from("fake-png-binary"))
+      mockGetMetadata.mockResolvedValueOnce({
+        id: "med-img-1",
+        organizationId: "org-1",
+        mimeType: "image/png",
+        fileSize: 15,
+        storePath: tmpFile,
+      } as unknown as never)
+      mockGetStoragePath.mockReturnValueOnce(tmpFile)
+
+      const res = await app.handle(
+        new Request("http://localhost/media/med-img-1/download?download=true")
+      )
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get("Content-Type")).toBe("image/png")
+      expect(res.headers.get("Content-Disposition")).toContain("attachment")
+      fs.unlinkSync(tmpFile)
     })
   })
 
