@@ -1147,6 +1147,7 @@ export type AppMessages = {
         nameDeclined: string
         nameExpired: string
         nameUnset: string
+        metaUnavailable: string
         quota: string
         dailyLimit: string
         balance: string

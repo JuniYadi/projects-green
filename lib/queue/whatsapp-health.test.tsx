@@ -11,6 +11,9 @@ mock.module("@/lib/prisma", () => ({
       findUnique: findUniqueMock,
       findMany: findManyMock,
     },
+    authPlatformUserRole: {
+      findMany: mock(async () => []),
+    },
   },
 }))
 
@@ -23,11 +26,15 @@ const redisMultiMock = mock(() => ({
   exec: pipelineExecMock,
 }))
 const redisDelMock = mock(async (_key: string) => 1)
+const redisGetMock = mock(async (_key: string) => null as string | null)
+const redisSetMock = mock(async () => "OK")
 
 mock.module("@/lib/redis", () => ({
   redis: {
     multi: redisMultiMock,
     del: redisDelMock,
+    get: redisGetMock,
+    set: redisSetMock,
   },
 }))
 
@@ -54,7 +61,24 @@ mock.module("@/modules/whatsapp/devices/business-profile.service", () => ({
   syncDeviceFromMeta: syncDeviceFromMetaMock,
   recordMetaRefreshUnavailable: recordMetaRefreshUnavailableMock,
 }))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganization: mock(async (id: string) => ({
+    id,
+    name: `Org ${id}`,
+  })),
+  getCachedOrganizations: mock(async () => new Map()),
+}))
+const trackAndNotifyDeviceStateChangeMock = mock(async () => ({
+  changed: false,
+  diffs: [],
+}))
+const sendDailyDeviceDigestMock = mock(async () => undefined)
 
+mock.module("@/modules/whatsapp/devices/device-state-tracker", () => ({
+  trackAndNotifyDeviceStateChange: trackAndNotifyDeviceStateChangeMock,
+  sendDailyDeviceDigest: sendDailyDeviceDigestMock,
+  deviceStateKey: (id: string) => `whatsapp:device:state:${id}`,
+}))
 const sendEmailMock = mock(async (_args: unknown) => undefined)
 
 mock.module("@/lib/queue/email", () => ({
@@ -198,7 +222,8 @@ const resetMocks = () => {
     recordMetaRefreshUnavailableMock,
     sendEmailMock,
     decryptWhatsAppTokenMock,
-    metaClientConstructorMock,
+    trackAndNotifyDeviceStateChangeMock,
+    sendDailyDeviceDigestMock,
     metaRequestMock,
     emitCycleEnqueuedMock,
     emitUnavailableMock,
@@ -279,11 +304,15 @@ describe("WhatsAppHealthJob.handle", () => {
     enqueueMock.mockRestore()
   })
 
+  it("executes daily digest when dailyDigest flag is set", async () => {
+    await WhatsAppHealthJob.handle({ data: { dailyDigest: true } })
+    expect(sendDailyDeviceDigestMock).toHaveBeenCalled()
+  })
+
   it("checks one device when the job is not a cycle", async () => {
     await WhatsAppHealthJob.handle({
       data: { deviceId: "d1", cycle: false },
     })
-
     expect(findUniqueMock).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "d1" } })
     )

@@ -1,32 +1,53 @@
-import { describe, expect, it } from "bun:test"
-import { render, screen } from "@testing-library/react"
-import { MetaNameStatusBadge } from "./meta-name-status-badge"
+import "@/test/register"
+import { afterEach, describe, expect, it, mock } from "bun:test"
+import { render } from "@testing-library/react"
 
+let currentLocale = "en"
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: currentLocale }),
+}))
+
+import { MetaNameStatusBadge } from "./meta-name-status-badge"
 describe("MetaNameStatusBadge", () => {
+  afterEach(() => {
+    currentLocale = "en"
+  })
+
   it("renders approved badge correctly", () => {
-    render(<MetaNameStatusBadge nameStatus="APPROVED" />)
-    expect(screen.getByText(/approved|disetujui/i)).toBeDefined()
+    const view = render(<MetaNameStatusBadge nameStatus="APPROVED" />)
+    expect(view.getByText("Approved")).toBeInTheDocument()
   })
 
   it("renders with verified name when showName is true", () => {
-    render(
+    const view = render(
       <MetaNameStatusBadge
         nameStatus="APPROVED"
         verifiedName="Acme Corp"
         showName
       />
     )
-    expect(screen.getByText("Acme Corp")).toBeDefined()
-    expect(screen.getByText(/approved|disetujui/i)).toBeDefined()
+    expect(view.getByText("Acme Corp")).toBeInTheDocument()
+    expect(view.getByText("Approved")).toBeInTheDocument()
   })
 
   it("handles unavailable sync state", () => {
-    render(
+    const view = render(
       <MetaNameStatusBadge
         nameStatus="APPROVED"
         profile={{ meta_name_status_sync_state: "UNAVAILABLE" }}
       />
     )
-    expect(screen.getByText("Meta unavailable")).toBeDefined()
+    expect(view.getByText("Meta unavailable")).toBeInTheDocument()
+  })
+
+  it("renders Indonesian translation when locale is id", () => {
+    currentLocale = "id"
+    const view = render(
+      <MetaNameStatusBadge
+        nameStatus="APPROVED"
+        profile={{ meta_name_status_sync_state: "UNAVAILABLE" }}
+      />
+    )
+    expect(view.getByText("Meta tidak tersedia")).toBeInTheDocument()
   })
 })
