@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import {
   ReactFlow,
@@ -66,74 +66,88 @@ import type {
   WorkflowNodeType,
 } from "@/modules/whatsapp/workflow/workflow.schema"
 import { WorkflowDefinitionSchema } from "@/modules/whatsapp/workflow/workflow.schema"
+import {
+  createSimulatorSession,
+  stepSimulatorSession,
+} from "@/modules/whatsapp/workflow/workflow-simulator"
+import type {
+  SimulatorMessage,
+  SimulatorSession,
+} from "@/modules/whatsapp/workflow/workflow-simulator"
+import { WORKFLOW_TEMPLATES } from "@/modules/whatsapp/workflow/workflow-templates"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { WorkflowNodeComponent } from "./workflow-node"
-
-const initialNodesSample: WorkflowNode[] = [
-  {
-    id: "node_start",
-    type: "send_message",
-    name: "Pesan Pembuka",
-    position: { x: 250, y: 50 },
-    config: {
-      text: "Halo! Selamat datang di layanan WhatsApp resmi kami. Ada yang bisa kami bantu hari ini?",
-    },
-  },
-  {
-    id: "node_ask_name",
-    type: "prompt_input",
-    name: "Tanya Nama Pelanggan",
-    position: { x: 250, y: 220 },
-    config: {
-      question: "Boleh kami tahu nama lengkap Anda?",
-      captureVariable: "customer_name",
-      validation: { type: "text" },
-    },
-  },
-  {
-    id: "node_ai_agent",
-    type: "ai_generate",
-    name: "AI Asisten Solusi",
-    position: { x: 250, y: 400 },
-    config: {
-      prompt:
-        "Sapa pengguna dengan nama {{variables.customer_name}} lalu tanyakan kategori kendala atau produk yang diminati.",
-      captureVariable: "ai_recommendation",
-    },
-  },
-]
-
-const initialEdgesSample: WorkflowEdge[] = [
-  {
-    id: "edge_1",
-    sourceNodeId: "node_start",
-    sourcePort: "default",
-    targetNodeId: "node_ask_name",
-  },
-  {
-    id: "edge_2",
-    sourceNodeId: "node_ask_name",
-    sourcePort: "default",
-    targetNodeId: "node_ai_agent",
-  },
-]
 
 export default function WhatsappWorkflowCanvasPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const lang = (params?.lang as string) || "en"
   const workflowId = params?.id as string
+  const locale = resolveLocaleOrDefault(lang)
+  const t = getMessages(locale).console.whatsappWorkflows
+
+  const initialNodesSample = useMemo<WorkflowNode[]>(
+    () => [
+      {
+        id: "node_start",
+        type: "send_message",
+        name: t.canvas.nodes.sendMessage,
+        position: { x: 250, y: 50 },
+        config: { text: t.inspector.messageTextPlaceholder },
+      },
+      {
+        id: "node_ask_name",
+        type: "prompt_input",
+        name: t.canvas.nodes.promptInput,
+        position: { x: 250, y: 220 },
+        config: {
+          question: t.inspector.questionPlaceholder,
+          captureVariable: "customer_name",
+          validation: { type: "text" },
+        },
+      },
+      {
+        id: "node_ai_agent",
+        type: "ai_generate",
+        name: t.canvas.nodes.aiGenerate,
+        position: { x: 250, y: 400 },
+        config: {
+          prompt: t.inspector.aiPromptPlaceholder,
+          captureVariable: "ai_recommendation",
+        },
+      },
+    ],
+    [t]
+  )
+
+  const initialEdgesSample: WorkflowEdge[] = [
+    {
+      id: "edge_1",
+      sourceNodeId: "node_start",
+      sourcePort: "default",
+      targetNodeId: "node_ask_name",
+    },
+    {
+      id: "edge_2",
+      sourceNodeId: "node_ask_name",
+      sourcePort: "default",
+      targetNodeId: "node_ai_agent",
+    },
+  ]
 
   // Top level state
   const [workflowMeta, setWorkflowMeta] = useState(() => ({
     id: workflowId === "new" ? "wf_new" : workflowId,
-    name: "Alur Bot WhatsApp Baru",
-    description: "Alur otomatis customer service, kuis & penjualan cerdas",
+    name: "",
+    description: "",
     isActive: true,
     isDefault: false,
     trigger: {
       id: "trig_1",
-      type: "keyword_match",
-      keywords: ["halo", "menu", "bantuan", "info"],
+      type: "keyword_match" as const,
+      keywords: [],
     },
   }))
   const [devices, setDevices] = useState<
@@ -154,9 +168,7 @@ export default function WhatsappWorkflowCanvasPage() {
 
   // Simulator
   const [isSimOpen, setIsSimOpen] = useState(false)
-  const [simMessages, setSimMessages] = useState<
-    { sender: "bot" | "user"; text: string }[]
-  >([])
+  const [simSession, setSimSession] = useState<SimulatorSession | null>(null)
   const [simInput, setSimInput] = useState("")
 
   const nodeTypes = useMemo(() => ({ custom: WorkflowNodeComponent }), [])
@@ -205,6 +217,41 @@ export default function WhatsappWorkflowCanvasPage() {
     []
   )
 
+  const currentWorkflow = useMemo<WorkflowDefinition>(
+    () => ({
+      id: workflowMeta.id,
+      organizationId: "org_current",
+      name: workflowMeta.name,
+      description: workflowMeta.description,
+      isActive: workflowMeta.isActive,
+      isDefault: workflowMeta.isDefault,
+      trigger: workflowMeta.trigger,
+      nodes: nodes.map((node) => {
+        const data = node.data as unknown as WorkflowNode
+        return {
+          id: node.id,
+          name: data.name || t.canvas.nodes.sendMessage,
+          type: data.type || "send_message",
+          config: data.config || {},
+          position: {
+            x: Math.round(node.position.x),
+            y: Math.round(node.position.y),
+          },
+        }
+      }),
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        sourceNodeId: edge.source,
+        sourcePort: edge.sourceHandle || "default",
+        targetNodeId: edge.target,
+      })),
+      version: 1,
+    }),
+    [edges, nodes, t.canvas.nodes.sendMessage, workflowMeta]
+  )
+
+  const templateId = searchParams?.get("template")
+
   // 1. Load Devices & Existing Workflow data
   useEffect(() => {
     let mounted = true
@@ -228,7 +275,7 @@ export default function WhatsappWorkflowCanvasPage() {
               }>
             ).map((d) => ({
               id: d.id,
-              name: d.name || `WhatsApp (${d.phoneNumber})`,
+              name: d.name || d.phoneNumber,
               phoneNumber: d.phoneNumber,
             }))
             setDevices(devList)
@@ -236,6 +283,26 @@ export default function WhatsappWorkflowCanvasPage() {
               (prev) => prev || (devList.length > 0 ? devList[0].id : "")
             )
           }
+        }
+
+        const template = templateId
+          ? WORKFLOW_TEMPLATES.find((item) => item.id === templateId)
+          : undefined
+        if (workflowId === "new" && template) {
+          if (mounted) {
+            const workflow = template.workflow
+            setWorkflowMeta({
+              id: "wf_new",
+              name: workflow.name,
+              description: workflow.description || "",
+              isActive: workflow.isActive,
+              isDefault: workflow.isDefault,
+              trigger: workflow.trigger,
+            })
+            setNodes(workflow.nodes.map(toXyFlowNode))
+            setEdges(workflow.edges.map(toXyFlowEdge))
+          }
+          return
         }
 
         // If existing workflow, fetch from GET /api/whatsapp/workflows/:id
@@ -249,7 +316,7 @@ export default function WhatsappWorkflowCanvasPage() {
               if (mounted) {
                 setWorkflowMeta({
                   id: wf.id,
-                  name: wf.name || "Alur WhatsApp",
+                  name: wf.name || t.canvas.namePlaceholder,
                   description: wf.description || "",
                   isActive: wf.isActive ?? true,
                   isDefault: wf.isDefault ?? false,
@@ -295,7 +362,15 @@ export default function WhatsappWorkflowCanvasPage() {
     return () => {
       mounted = false
     }
-  }, [workflowId, toXyFlowNode, toXyFlowEdge, setNodes, setEdges])
+  }, [
+    initialNodesSample,
+    templateId,
+    toXyFlowNode,
+    toXyFlowEdge,
+    workflowId,
+    setNodes,
+    setEdges,
+  ])
 
   // Connection Handler
   const onConnect = useCallback(
@@ -335,46 +410,46 @@ export default function WhatsappWorkflowCanvasPage() {
       const count = nodes.length + 1
       const id = `node_${Date.now().toString(36)}`
 
-      let defaultName = "Langkah Baru"
+      let defaultName = t.canvas.addNodeHeader
       let defaultConfig: Record<string, unknown> = {}
 
       if (type === "send_message") {
-        defaultName = `Kirim Pesan #${count}`
-        defaultConfig = { text: "Tulis pesan WhatsApp di sini..." }
+        defaultName = `${t.canvas.nodes.sendMessage} #${count}`
+        defaultConfig = { text: t.inspector.messageTextPlaceholder }
       } else if (type === "prompt_input") {
-        defaultName = `Tanya Input #${count}`
+        defaultName = `${t.canvas.nodes.promptInput} #${count}`
         defaultConfig = {
-          question: "Apa kebutuhan Anda?",
+          question: t.inspector.questionPlaceholder,
           captureVariable: `var_${count}`,
           validation: { type: "text" },
         }
       } else if (type === "ai_generate") {
-        defaultName = `AI Generator #${count}`
+        defaultName = `${t.canvas.nodes.aiGenerate} #${count}`
         defaultConfig = {
-          prompt: "Jawab pertanyaan pengguna secara sopan dan informatif.",
+          prompt: t.inspector.aiPromptPlaceholder,
           captureVariable: `ai_output_${count}`,
         }
       } else if (type === "condition") {
-        defaultName = `Percabangan / If-Else #${count}`
+        defaultName = `${t.canvas.nodes.condition} #${count}`
         defaultConfig = {
           leftOperand: "{{variables.customer_input}}",
           operator: "equals",
           rightOperand: "1",
         }
       } else if (type === "http_request") {
-        defaultName = `HTTP Webhook #${count}`
+        defaultName = `${t.canvas.nodes.httpRequest} #${count}`
         defaultConfig = {
           method: "GET",
           url: "https://api.example.com/data",
           captureVariable: `http_res_${count}`,
         }
       } else if (type === "send_interactive") {
-        defaultName = `Tombol Pilihan #${count}`
+        defaultName = `${t.canvas.nodes.interactiveButtons} #${count}`
         defaultConfig = {
-          bodyText: "Silakan pilih salah satu opsi di bawah ini:",
+          bodyText: t.inspector.interactiveTextLabel,
           buttons: [
-            { id: "btn_1", title: "Layanan Pelanggan" },
-            { id: "btn_2", title: "Cek Status Pesanan" },
+            { id: "btn_1", title: t.canvas.nodes.sendMessage },
+            { id: "btn_2", title: t.canvas.nodes.promptInput },
           ],
         }
       }
@@ -399,9 +474,8 @@ export default function WhatsappWorkflowCanvasPage() {
 
       setNodes((nds) => [...nds, newNode])
       setSelectedNodeId(id)
-      toast.success(`Node '${defaultName}' ditambahkan ke canvas`)
     },
-    [nodes, setNodes]
+    [nodes, setNodes, t]
   )
 
   // Update selected node config in state
@@ -459,13 +533,12 @@ export default function WhatsappWorkflowCanvasPage() {
       )
     )
     setSelectedNodeId(null)
-    toast.info("Node dihapus dari alur")
   }, [selectedNodeId, setNodes, setEdges])
 
   // AI Copilot Generator
   const handleGenerateAi = async () => {
     if (!copilotPrompt.trim()) {
-      toast.error("Tuliskan deskripsi bot alur yang diinginkan.")
+      toast.error(t.canvas.copilotPlaceholder)
       return
     }
     setIsGeneratingAi(true)
@@ -518,13 +591,13 @@ export default function WhatsappWorkflowCanvasPage() {
             setEdges(autoEdges)
           }
         }
-        toast.success("Workflow berhasil di-generate dengan AI Copilot!")
+        toast.success(t.canvas.generateAi)
       } else {
-        toast.error("Gagal generate alur: respons AI tidak valid.")
+        toast.error(t.canvas.generating)
       }
     } catch (e: unknown) {
-      const errorMsg = e instanceof Error ? e.message : "Koneksi gagal"
-      toast.error(`Error AI Copilot: ${errorMsg}`)
+      const errorMsg = e instanceof Error ? e.message : t.canvas.generating
+      toast.error(`${t.canvas.generating}: ${errorMsg}`)
     } finally {
       setIsGeneratingAi(false)
     }
@@ -533,7 +606,7 @@ export default function WhatsappWorkflowCanvasPage() {
   // Save Workflow
   const handleSave = async () => {
     if (!selectedDeviceId) {
-      toast.error("Pilih Perangkat WhatsApp tujuan sebelum menyimpan.")
+      toast.error(t.canvas.selectDevicePlaceholder)
       return
     }
 
@@ -544,7 +617,7 @@ export default function WhatsappWorkflowCanvasPage() {
         const d = n.data as unknown as WorkflowNode
         return {
           id: n.id,
-          name: d.name || "Langkah Alur",
+          name: d.name || t.canvas.addNodeHeader,
           type: d.type || "send_message",
           config: d.config || {},
           position: {
@@ -579,16 +652,16 @@ export default function WhatsappWorkflowCanvasPage() {
       })
 
       if (res.data && "ok" in res.data && res.data.ok) {
-        toast.success("Alur Bot WhatsApp berhasil disimpan & aktif!")
+        toast.success(t.canvas.saveAndDeploy)
         router.push(`/${lang}/console/whatsapp/workflows`)
       } else {
         const err =
-          res.data && "error" in res.data ? res.data.error : "Unknown error"
-        toast.error(`Gagal simpan: ${err}`)
+          res.data && "error" in res.data ? res.data.error : t.canvas.saving
+        toast.error(`${t.canvas.saving}: ${err}`)
       }
     } catch (e: unknown) {
-      const errorMsg = e instanceof Error ? e.message : "Koneksi gagal"
-      toast.error(`Gagal menyimpan alur: ${errorMsg}`)
+      const errorMsg = e instanceof Error ? e.message : t.canvas.saving
+      toast.error(`${t.canvas.saving}: ${errorMsg}`)
     } finally {
       setSaving(false)
     }
@@ -600,7 +673,7 @@ export default function WhatsappWorkflowCanvasPage() {
         const d = n.data as unknown as WorkflowNode
         return {
           id: n.id,
-          name: d.name || "Langkah Alur",
+          name: d.name || t.canvas.addNodeHeader,
           type: d.type || "send_message",
           config: d.config || {},
           position: {
@@ -643,10 +716,10 @@ export default function WhatsappWorkflowCanvasPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      toast.success("Workflow berhasil di-export ke JSON!")
+      toast.success(t.canvas.exportJson)
     } catch (e: unknown) {
       toast.error(
-        `Gagal export JSON: ${e instanceof Error ? e.message : "Error"}`
+        `${t.canvas.exportJson}: ${e instanceof Error ? e.message : t.canvas.exportJson}`
       )
     }
   }
@@ -665,7 +738,7 @@ export default function WhatsappWorkflowCanvasPage() {
 
         if (!validated.success) {
           toast.error(
-            `Format JSON tidak valid: ${validated.error.issues[0]?.message || "Schema error"}`
+            `${t.canvas.importJson}: ${validated.error.issues[0]?.message || t.canvas.importJson}`
           )
           return
         }
@@ -687,10 +760,10 @@ export default function WhatsappWorkflowCanvasPage() {
           setEdges(data.edges.map(toXyFlowEdge))
         }
 
-        toast.success(`Workflow "${data.name}" berhasil di-import!`)
+        toast.success(t.canvas.importJson)
       } catch (err: unknown) {
         toast.error(
-          `Gagal membaca file JSON: ${err instanceof Error ? err.message : "Invalid JSON"}`
+          `${t.canvas.importJson}: ${err instanceof Error ? err.message : t.canvas.importJson}`
         )
       } finally {
         e.target.value = ""
@@ -700,40 +773,53 @@ export default function WhatsappWorkflowCanvasPage() {
   }
 
   // Simulator test
+  const createInitialSimSession = useCallback(() => {
+    const session = createSimulatorSession(currentWorkflow)
+    return stepSimulatorSession(session, currentWorkflow)
+  }, [currentWorkflow])
+
   const handleStartSim = () => {
+    setSimSession(createInitialSimSession())
+    setSimInput("")
     setIsSimOpen(true)
-    if (nodes.length > 0) {
-      const first = nodes[0].data as unknown as WorkflowNode
-      const startText =
-        (first?.config?.text as string) ||
-        (first?.config?.question as string) ||
-        `Halo! Alur '${workflowMeta.name}' dimulai.`
-      setSimMessages([{ sender: "bot", text: startText }])
-    } else {
-      setSimMessages([{ sender: "bot", text: "Alur masih kosong." }])
-    }
+  }
+
+  const handleResetSim = () => {
+    setSimSession(createInitialSimSession())
+    setSimInput("")
   }
 
   const handleSendSimMessage = () => {
-    if (!simInput.trim()) return
     const userText = simInput.trim()
-    setSimMessages((prev) => [...prev, { sender: "user", text: userText }])
-    setSimInput("")
+    if (!userText) return
 
-    setTimeout(() => {
-      setSimMessages((prev) => [
-        ...prev,
-        {
-          sender: "bot",
-          text: `[Bot Respon Otomatis]: Input '${userText}' diterima dan variabel berhasil disimpan.`,
-        },
-      ])
-    }, 600)
+    setSimSession((previous) => {
+      const session = previous || createInitialSimSession()
+      return stepSimulatorSession(session, currentWorkflow, userText)
+    })
+    setSimInput("")
+  }
+
+  const formatSimulatorMessage = (message: SimulatorMessage) => {
+    if (message.sender !== "system") return message.text
+
+    if (message.text.startsWith("Saved: ")) {
+      return t.simulator.variableCapturedToast.replace(
+        "{name}",
+        message.text.slice("Saved: ".length)
+      )
+    }
+
+    const branch = message.text.match(/=> (TRUE|FALSE)$/)?.[1]
+    if (branch) {
+      return t.simulator.branchTaken.replace("{branch}", branch)
+    }
+
+    return message.text
   }
 
   const selectedNodeData = selectedNode?.data as unknown as
-    | WorkflowNode
-    | undefined
+    WorkflowNode | undefined
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-1 flex-col gap-4 p-6 pt-0">
@@ -754,18 +840,17 @@ export default function WhatsappWorkflowCanvasPage() {
                   setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
                 }
                 className="h-8 w-64 text-base font-bold tracking-tight md:w-80"
-                placeholder="Nama Alur Bot"
+                placeholder={t.canvas.namePlaceholder}
               />
               <Badge
                 variant="outline"
                 className="border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
               >
-                Visual Graph
+                {t.canvas.badgeVisualGraph}
               </Badge>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Drag node untuk menyusun posisi, hubungkan titik port untuk
-              branching alur (True/False/Default).
+              {t.canvas.dragHint}
             </p>
           </div>
         </div>
@@ -778,7 +863,7 @@ export default function WhatsappWorkflowCanvasPage() {
               onValueChange={setSelectedDeviceId}
             >
               <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Pilih No. WhatsApp" />
+                <SelectValue placeholder={t.canvas.selectDevicePlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {devices.map((d) => (
@@ -798,7 +883,9 @@ export default function WhatsappWorkflowCanvasPage() {
               className={`h-3.5 w-3.5 ${workflowMeta.isDefault ? "fill-amber-500 text-amber-500" : "text-muted-foreground"}`}
               weight={workflowMeta.isDefault ? "fill" : "regular"}
             />
-            <span className="text-xs font-medium">Default</span>
+            <span className="text-xs font-medium">
+              {t.canvas.defaultToggle}
+            </span>
             <Switch
               checked={workflowMeta.isDefault}
               onCheckedChange={(checked) =>
@@ -816,13 +903,13 @@ export default function WhatsappWorkflowCanvasPage() {
             className="h-9 gap-1.5 text-xs font-medium"
           >
             <DownloadSimple className="h-3.5 w-3.5" />
-            Export JSON
+            {t.canvas.exportJson}
           </Button>
 
           {/* Import JSON Button */}
           <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">
             <UploadSimple className="h-3.5 w-3.5" />
-            Import JSON
+            {t.canvas.importJson}
             <input
               type="file"
               accept=".json,application/json"
@@ -838,7 +925,7 @@ export default function WhatsappWorkflowCanvasPage() {
             className="h-9 gap-1.5 text-xs font-medium"
           >
             <Play className="h-3.5 w-3.5 text-primary" weight="fill" />
-            Simulasi Test
+            {t.canvas.simulateTest}
           </Button>
 
           <Button
@@ -848,7 +935,7 @@ export default function WhatsappWorkflowCanvasPage() {
             className="h-9 gap-1.5 text-xs font-medium"
           >
             <FloppyDisk className="h-3.5 w-3.5" />
-            {saving ? "Menyimpan..." : "Simpan & Terapkan"}
+            {saving ? t.canvas.saving : t.canvas.saveAndDeploy}
           </Button>
         </div>
       </div>
@@ -861,7 +948,7 @@ export default function WhatsappWorkflowCanvasPage() {
         <Input
           value={copilotPrompt}
           onChange={(e) => setCopilotPrompt(e.target.value)}
-          placeholder="AI Copilot: contoh 'Buat alur tanya kendala teknis lalu jika urgent hubungkan ke admin CS'..."
+          placeholder={t.canvas.copilotPlaceholder}
           className="h-8 border-none bg-transparent text-xs shadow-none focus-visible:ring-0"
           onKeyDown={(e) => e.key === "Enter" && handleGenerateAi()}
         />
@@ -876,7 +963,9 @@ export default function WhatsappWorkflowCanvasPage() {
           ) : (
             <Sparkle className="h-3.5 w-3.5" weight="fill" />
           )}
-          <span>{isGeneratingAi ? "Generating..." : "Generate AI"}</span>
+          <span>
+            {isGeneratingAi ? t.canvas.generating : t.canvas.generateAi}
+          </span>
         </Button>
       </div>
 
@@ -885,7 +974,7 @@ export default function WhatsappWorkflowCanvasPage() {
         {/* Node Palette Bar (Floating Left) */}
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 rounded-xl border border-border/80 bg-card/90 p-2 shadow-lg backdrop-blur">
           <div className="px-2 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Tambah Node
+            {t.canvas.addNodeHeader}
           </div>
 
           <Button
@@ -895,7 +984,7 @@ export default function WhatsappWorkflowCanvasPage() {
             className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-sky-500/50 hover:bg-sky-500/10"
           >
             <ChatCircleText className="h-4 w-4 text-sky-400" weight="duotone" />
-            <span>Kirim Pesan</span>
+            <span>{t.canvas.nodes.sendMessage}</span>
           </Button>
 
           <Button
@@ -905,7 +994,7 @@ export default function WhatsappWorkflowCanvasPage() {
             className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-emerald-500/50 hover:bg-emerald-500/10"
           >
             <Question className="h-4 w-4 text-emerald-400" weight="duotone" />
-            <span>Tanya Input</span>
+            <span>{t.canvas.nodes.promptInput}</span>
           </Button>
 
           <Button
@@ -915,7 +1004,7 @@ export default function WhatsappWorkflowCanvasPage() {
             className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-amber-500/50 hover:bg-amber-500/10"
           >
             <GitBranch className="h-4 w-4 text-amber-400" weight="duotone" />
-            <span>If-Else Cabang</span>
+            <span>{t.canvas.nodes.condition}</span>
           </Button>
 
           <Button
@@ -928,7 +1017,7 @@ export default function WhatsappWorkflowCanvasPage() {
               className="h-4 w-4 text-indigo-400"
               weight="duotone"
             />
-            <span>Tombol Pilihan</span>
+            <span>{t.canvas.nodes.interactiveButtons}</span>
           </Button>
 
           <Button
@@ -938,7 +1027,7 @@ export default function WhatsappWorkflowCanvasPage() {
             className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-purple-500/50 hover:bg-purple-500/10"
           >
             <Brain className="h-4 w-4 text-purple-400" weight="duotone" />
-            <span>AI Response</span>
+            <span>{t.canvas.nodes.aiGenerate}</span>
           </Button>
 
           <Button
@@ -948,7 +1037,7 @@ export default function WhatsappWorkflowCanvasPage() {
             className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-pink-500/50 hover:bg-pink-500/10"
           >
             <Globe className="h-4 w-4 text-pink-400" weight="duotone" />
-            <span>HTTP Webhook</span>
+            <span>{t.canvas.nodes.httpRequest}</span>
           </Button>
         </div>
 
@@ -996,10 +1085,10 @@ export default function WhatsappWorkflowCanvasPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <SheetTitle className="text-lg font-bold">
-                  Konfigurasi Node
+                  {t.inspector.drawerTitle}
                 </SheetTitle>
                 <SheetDescription className="text-xs text-muted-foreground">
-                  Sesuaikan parameter, teks, dan variabel untuk langkah ini.
+                  {t.inspector.drawerSubtitle}
                 </SheetDescription>
               </div>
               <Badge variant="outline" className="font-mono text-xs">
@@ -1015,14 +1104,14 @@ export default function WhatsappWorkflowCanvasPage() {
                 {/* Node Title */}
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold text-foreground">
-                    Nama Label Langkah
+                    {t.inspector.stepNameLabel}
                   </Label>
                   <Input
                     value={selectedNodeData.name || ""}
                     onChange={(e) =>
                       handleUpdateSelectedNodeName(e.target.value)
                     }
-                    placeholder="Nama langkah alur"
+                    placeholder={t.inspector.stepNamePlaceholder}
                     className="h-9 text-sm"
                   />
                 </div>
@@ -1032,7 +1121,7 @@ export default function WhatsappWorkflowCanvasPage() {
                   <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Teks Pesan WhatsApp
+                        {t.inspector.messageTextLabel}
                       </Label>
                       <Textarea
                         rows={4}
@@ -1043,17 +1132,17 @@ export default function WhatsappWorkflowCanvasPage() {
                             text: e.target.value,
                           }))
                         }
-                        placeholder="Halo, terima kasih sudah menghubungi kami..."
+                        placeholder={t.inspector.messageTextPlaceholder}
                         className="text-sm leading-relaxed"
                       />
                       <p className="text-[11px] text-muted-foreground">
-                        Mendukung variabel: {"{{variables.customer_name}}"}
+                        {t.inspector.variableHint}
                       </p>
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Media URL (Opsional)
+                        {t.inspector.mediaUrlLabel}
                       </Label>
                       <Input
                         value={
@@ -1065,7 +1154,7 @@ export default function WhatsappWorkflowCanvasPage() {
                             mediaUrl: e.target.value,
                           }))
                         }
-                        placeholder="https://example.com/image.jpg"
+                        placeholder={t.inspector.mediaUrlPlaceholder}
                         className="h-9 text-xs"
                       />
                     </div>
@@ -1076,7 +1165,7 @@ export default function WhatsappWorkflowCanvasPage() {
                   <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Pertanyaan ke Pengguna
+                        {t.inspector.questionLabel}
                       </Label>
                       <Textarea
                         rows={3}
@@ -1089,14 +1178,14 @@ export default function WhatsappWorkflowCanvasPage() {
                             question: e.target.value,
                           }))
                         }
-                        placeholder="Berapa nomor pesanan Anda?"
+                        placeholder={t.inspector.questionPlaceholder}
                         className="text-sm"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Simpan Jawaban ke Variabel
+                        {t.inspector.variableNameLabel}
                       </Label>
                       <Input
                         value={
@@ -1109,7 +1198,7 @@ export default function WhatsappWorkflowCanvasPage() {
                             captureVariable: e.target.value,
                           }))
                         }
-                        placeholder="order_id"
+                        placeholder={t.inspector.variableNamePlaceholder}
                         className="h-9 font-mono text-xs"
                       />
                     </div>
@@ -1119,14 +1208,12 @@ export default function WhatsappWorkflowCanvasPage() {
                 {selectedNodeData.type === "condition" && (
                   <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
                     <div className="rounded border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300">
-                      💡 Hubungkan titik <strong>TRUE (Hijau)</strong> untuk
-                      kondisi terpenuhi, dan <strong>FALSE (Merah)</strong>{" "}
-                      untuk alternatif.
+                      {t.inspector.conditionHint}
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Variabel / Nilai Kiri
+                        {t.inspector.leftOperandLabel}
                       </Label>
                       <Input
                         value={
@@ -1138,13 +1225,15 @@ export default function WhatsappWorkflowCanvasPage() {
                             leftOperand: e.target.value,
                           }))
                         }
-                        placeholder="{{variables.category}}"
+                        placeholder={t.inspector.leftOperandLabel}
                         className="h-9 font-mono text-xs"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-xs font-semibold">Operator</Label>
+                      <Label className="text-xs font-semibold">
+                        {t.inspector.operatorLabel}
+                      </Label>
                       <Select
                         value={
                           (selectedNodeData.config?.operator as string) ||
@@ -1158,23 +1247,25 @@ export default function WhatsappWorkflowCanvasPage() {
                         }
                       >
                         <SelectTrigger className="h-9 text-xs">
-                          <SelectValue placeholder="Pilih Operator" />
+                          <SelectValue
+                            placeholder={t.inspector.operatorLabel}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="equals">
-                            Sama Dengan (equals)
+                            {t.inspector.operators.equals}
                           </SelectItem>
                           <SelectItem value="not_equals">
-                            Tidak Sama (not_equals)
+                            {t.inspector.operators.notEquals}
                           </SelectItem>
                           <SelectItem value="contains">
-                            Mengandung Kata (contains)
+                            {t.inspector.operators.contains}
                           </SelectItem>
                           <SelectItem value="greater_than">
-                            Lebih Besar (&gt;)
+                            {t.inspector.operators.greaterThan}
                           </SelectItem>
                           <SelectItem value="less_than">
-                            Lebih Kecil (&lt;)
+                            {t.inspector.operators.lessThan}
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -1182,7 +1273,7 @@ export default function WhatsappWorkflowCanvasPage() {
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Nilai Pembanding (Kanan)
+                        {t.inspector.rightOperandLabel}
                       </Label>
                       <Input
                         value={
@@ -1195,7 +1286,7 @@ export default function WhatsappWorkflowCanvasPage() {
                             rightOperand: e.target.value,
                           }))
                         }
-                        placeholder="Contoh: 1 / ya / bantuan"
+                        placeholder={t.inspector.rightOperandLabel}
                         className="h-9 font-mono text-xs"
                       />
                     </div>
@@ -1206,7 +1297,7 @@ export default function WhatsappWorkflowCanvasPage() {
                   <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Teks Pesan Menu
+                        {t.inspector.interactiveTextLabel}
                       </Label>
                       <Textarea
                         rows={3}
@@ -1219,14 +1310,14 @@ export default function WhatsappWorkflowCanvasPage() {
                             bodyText: e.target.value,
                           }))
                         }
-                        placeholder="Silakan pilih layanan di bawah:"
+                        placeholder={t.inspector.interactiveTextLabel}
                         className="text-sm"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Tombol Pilihan (Maks. 3)
+                        {t.inspector.buttonsHeader}
                       </Label>
                       {(
                         (selectedNodeData.config?.buttons as Array<{
@@ -1254,7 +1345,7 @@ export default function WhatsappWorkflowCanvasPage() {
                               })
                             }}
                             className="h-8 text-xs"
-                            placeholder={`Tombol ${bIdx + 1}`}
+                            placeholder={t.inspector.buttonPlaceholder}
                           />
                         </div>
                       ))}
@@ -1266,7 +1357,7 @@ export default function WhatsappWorkflowCanvasPage() {
                   <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        System Prompt / Instruksi AI
+                        {t.inspector.aiPromptLabel}
                       </Label>
                       <Textarea
                         rows={5}
@@ -1279,14 +1370,14 @@ export default function WhatsappWorkflowCanvasPage() {
                             prompt: e.target.value,
                           }))
                         }
-                        placeholder="Instruksi spesifik cara menjawab WhatsApp pelanggan..."
+                        placeholder={t.inspector.aiPromptPlaceholder}
                         className="font-mono text-sm leading-relaxed"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Simpan Hasil AI ke Variabel
+                        {t.inspector.aiVariableLabel}
                       </Label>
                       <Input
                         value={
@@ -1299,7 +1390,7 @@ export default function WhatsappWorkflowCanvasPage() {
                             captureVariable: e.target.value,
                           }))
                         }
-                        placeholder="ai_result"
+                        placeholder={t.inspector.variableNamePlaceholder}
                         className="h-9 font-mono text-xs"
                       />
                     </div>
@@ -1310,7 +1401,7 @@ export default function WhatsappWorkflowCanvasPage() {
                   <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        HTTP Method
+                        {t.inspector.httpMethodLabel}
                       </Label>
                       <Select
                         value={
@@ -1336,7 +1427,7 @@ export default function WhatsappWorkflowCanvasPage() {
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Endpoint URL
+                        {t.inspector.httpUrlLabel}
                       </Label>
                       <Input
                         value={(selectedNodeData.config?.url as string) || ""}
@@ -1346,14 +1437,14 @@ export default function WhatsappWorkflowCanvasPage() {
                             url: e.target.value,
                           }))
                         }
-                        placeholder="https://api.domain.com/webhook"
+                        placeholder={t.inspector.httpUrlLabel}
                         className="h-9 font-mono text-xs"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Simpan Response Body ke Variabel
+                        {t.inspector.httpVariableLabel}
                       </Label>
                       <Input
                         value={
@@ -1366,7 +1457,7 @@ export default function WhatsappWorkflowCanvasPage() {
                             captureVariable: e.target.value,
                           }))
                         }
-                        placeholder="api_response"
+                        placeholder={t.inspector.httpVariableLabel}
                         className="h-9 font-mono text-xs"
                       />
                     </div>
@@ -1385,7 +1476,7 @@ export default function WhatsappWorkflowCanvasPage() {
               className="h-9 gap-1.5 text-xs"
             >
               <Trash className="h-4 w-4" />
-              Hapus Node
+              {t.inspector.deleteNodeButton}
             </Button>
 
             <Button
@@ -1394,7 +1485,7 @@ export default function WhatsappWorkflowCanvasPage() {
               onClick={() => setSelectedNodeId(null)}
               className="h-9 px-5 text-xs"
             >
-              Selesai Edit
+              {t.inspector.doneEditingButton}
             </Button>
           </div>
         </SheetContent>
@@ -1407,34 +1498,71 @@ export default function WhatsappWorkflowCanvasPage() {
           className="flex w-full flex-col border-l border-zinc-800 bg-zinc-950 p-6 text-white sm:max-w-md"
         >
           <SheetHeader className="border-b border-zinc-800 pb-4">
-            <SheetTitle className="flex items-center gap-2 text-base text-white">
-              <WhatsappLogo
-                className="h-5 w-5 text-emerald-500"
-                weight="fill"
-              />
-              Simulator WhatsApp Bot
-            </SheetTitle>
+            <div className="flex items-center justify-between gap-3">
+              <SheetTitle className="flex items-center gap-2 text-base text-white">
+                <WhatsappLogo
+                  className="h-5 w-5 text-emerald-500"
+                  weight="fill"
+                />
+                {t.simulator.title}
+              </SheetTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetSim}
+                aria-label={t.simulator.resetSession}
+                className="h-8 gap-1.5 text-xs text-zinc-300 hover:text-white"
+              >
+                <ArrowsClockwise className="h-3.5 w-3.5" />
+                {t.simulator.resetSession}
+              </Button>
+            </div>
           </SheetHeader>
 
           <div className="flex-1 space-y-3 overflow-y-auto py-4">
-            {simMessages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${
-                  msg.sender === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${
-                    msg.sender === "user"
-                      ? "rounded-br-none bg-emerald-600 text-white"
-                      : "rounded-bl-none border border-zinc-700 bg-zinc-800 text-zinc-100"
-                  }`}
-                >
-                  {msg.text}
-                </div>
-              </div>
-            ))}
+            {simSession?.history.length ? (
+              simSession.history.map((message, index) => {
+                const isSystem = message.sender === "system"
+                const isUser = message.sender === "user"
+                return (
+                  <div
+                    key={`${message.timestamp}-${index}`}
+                    className={`flex ${
+                      isSystem
+                        ? "justify-center"
+                        : isUser
+                          ? "justify-end"
+                          : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={
+                        isSystem
+                          ? "rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[11px] text-zinc-400"
+                          : `max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${
+                              isUser
+                                ? "rounded-br-none bg-emerald-600 text-white"
+                                : "rounded-bl-none border border-zinc-700 bg-zinc-800 text-zinc-100"
+                            }`
+                      }
+                    >
+                      {!isSystem && (
+                        <div className="mb-1 text-[10px] font-medium opacity-60">
+                          {isUser
+                            ? t.simulator.simulatedUser
+                            : t.simulator.simulatedBot}
+                        </div>
+                      )}
+                      {formatSimulatorMessage(message)}
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <p className="rounded-lg border border-dashed border-zinc-700 p-4 text-center text-xs text-zinc-400">
+                {t.simulator.emptyAlert}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-2 border-t border-zinc-800 pt-4">
@@ -1442,12 +1570,13 @@ export default function WhatsappWorkflowCanvasPage() {
               value={simInput}
               onChange={(e) => setSimInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendSimMessage()}
-              placeholder="Ketik balasan pesan..."
+              placeholder={t.simulator.inputPlaceholder}
               className="h-9 border-zinc-700 bg-zinc-900 text-xs text-white"
             />
             <Button
               size="icon"
               onClick={handleSendSimMessage}
+              aria-label={t.simulator.sendTooltip}
               className="h-9 w-9 shrink-0 bg-emerald-600 hover:bg-emerald-700"
             >
               <PaperPlaneRight className="h-4 w-4" weight="fill" />
