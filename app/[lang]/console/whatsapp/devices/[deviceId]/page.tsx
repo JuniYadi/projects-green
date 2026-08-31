@@ -199,21 +199,22 @@ type WhatsAppProfilePreviewProps = {
   device: DeviceDetail
   profile: Record<string, unknown> | null
   messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["devices"]
+  onEdit?: () => void
 }
 
 function WhatsAppProfilePreview({
   device,
   profile,
   messages,
+  onEdit,
 }: WhatsAppProfilePreviewProps) {
   const displayName =
     device.verifiedName ||
     getProfileString(profile, "name") ||
     (device.name !== device.phoneNumber ? device.name : null) ||
     device.phoneNumber
-  const about =
-    getProfileString(profile, "about") ||
-    getProfileString(profile, "description")
+  const about = getProfileString(profile, "about")
+  const description = getProfileString(profile, "description")
   const email = getProfileString(profile, "email")
   const websites = Array.isArray(profile?.websites)
     ? (profile?.websites as string[]).filter(Boolean)
@@ -223,9 +224,13 @@ function WhatsAppProfilePreview({
     getProfileString(profile, "category") ||
     getProfileString(profile, "vertical")
   const profilePictureUrl = getProfileString(profile, "profile_picture_url")
-  const isVerified =
-    device.nameStatus?.toUpperCase() === "APPROVED" ||
-    profile?.isOfficialBusinessAccount === true
+  // OBA (Green Badge) in Meta requires official OBA approval, not just standard approved display name
+  const isOBAVerified =
+    profile?.isOfficialBusinessAccount === true ||
+    (profile as Record<string, unknown> | null)?.official_business_account ===
+      "true" ||
+    (profile as Record<string, unknown> | null)
+      ?.is_official_business_account === true
 
   return (
     <Card
@@ -239,16 +244,30 @@ function WhatsAppProfilePreview({
               <WhatsAppText id="s71" />
             </CardTitle>
           </div>
-          <Badge
-            variant="outline"
-            className="border-white/20 bg-white/10 text-[11px] font-normal text-white"
-          >
-            <WhatsAppText id="s72" />
-          </Badge>
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px] font-medium text-white hover:bg-white/20 hover:text-white"
+                onClick={onEdit}
+              >
+                <PencilSimple className="mr-1 size-3.5" />
+                Edit
+              </Button>
+            )}
+            <Badge
+              variant="outline"
+              className="border-white/20 bg-white/10 text-[11px] font-normal text-white"
+            >
+              <WhatsAppText id="s72" />
+            </Badge>
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6 p-5">
+      <CardContent className="space-y-5 p-5">
         <div className="flex items-center gap-4">
           <Avatar className="size-16 border-2 border-emerald-500/20 shadow-sm">
             {profilePictureUrl ? (
@@ -266,11 +285,11 @@ function WhatsAppProfilePreview({
               <p className="truncate text-base font-bold text-foreground">
                 {displayName}
               </p>
-              {isVerified && (
+              {isOBAVerified && (
                 <CheckCircle
                   weight="fill"
                   className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                  aria-label="Verified"
+                  aria-label="Official Business Account"
                 />
               )}
             </div>
@@ -290,12 +309,13 @@ function WhatsAppProfilePreview({
           </div>
         </div>
 
+        {/* About (Status) */}
         <div className="rounded-xl border bg-muted/30 p-3.5 text-xs">
           <p className="mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-            <WhatsAppText id="s73" />
+            <WhatsAppText id="s73" /> (Status)
           </p>
           {about ? (
-            <p className="leading-relaxed whitespace-pre-wrap text-foreground/90">
+            <p className="leading-relaxed font-medium break-words whitespace-pre-wrap text-foreground/90">
               {about}
             </p>
           ) : (
@@ -305,6 +325,19 @@ function WhatsAppProfilePreview({
           )}
         </div>
 
+        {/* Description (Long Bio) if set */}
+        {description && (
+          <div className="rounded-xl border bg-muted/20 p-3.5 text-xs">
+            <p className="mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+              Description (Bio)
+            </p>
+            <p className="leading-relaxed break-words whitespace-pre-wrap text-foreground/90">
+              {description}
+            </p>
+          </div>
+        )}
+
+        {/* Business Details */}
         <div className="space-y-2.5 text-xs">
           <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             <WhatsAppText id="s75" />
@@ -325,7 +358,7 @@ function WhatsAppProfilePreview({
                 <WhatsAppText id="s12" />
               </span>
               {email ? (
-                <span className="font-medium">{email}</span>
+                <span className="font-medium break-all">{email}</span>
               ) : (
                 <span className="text-muted-foreground italic">
                   <WhatsAppText id="s76" />
@@ -333,11 +366,18 @@ function WhatsAppProfilePreview({
               )}
             </div>
             <div className="flex items-start justify-between gap-2">
-              <span className="text-muted-foreground">Website</span>
+              <span className="shrink-0 text-muted-foreground">Website</span>
               {websites.length > 0 ? (
-                <span className="max-w-[200px] truncate text-right font-medium">
-                  {websites.join(", ")}
-                </span>
+                <div className="flex max-w-[240px] flex-col items-end gap-0.5 text-right font-medium break-all">
+                  {websites.map((w, idx) => (
+                    <span
+                      key={idx}
+                      className="text-emerald-700 dark:text-emerald-400"
+                    >
+                      {w}
+                    </span>
+                  ))}
+                </div>
               ) : (
                 <span className="text-muted-foreground italic">
                   <WhatsAppText id="s76" />
@@ -345,9 +385,11 @@ function WhatsAppProfilePreview({
               )}
             </div>
             <div className="flex items-start justify-between gap-2">
-              <span className="text-muted-foreground">Address</span>
+              <span className="shrink-0 text-muted-foreground">Address</span>
               {address ? (
-                <span className="text-right font-medium">{address}</span>
+                <span className="max-w-[240px] text-right font-medium break-words">
+                  {address}
+                </span>
               ) : (
                 <span className="text-muted-foreground italic">
                   <WhatsAppText id="s76" />
@@ -755,12 +797,13 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           </Card>
         </div>
 
-        {/* Right Column: WhatsApp Business Profile Preview */}
+        {/* Right Column: WhatsApp Business Profile Preview with direct edit button */}
         <div className="lg:col-span-5">
           <WhatsAppProfilePreview
             device={device}
             profile={profile}
             messages={deviceMessages}
+            onEdit={() => setProfileDialogOpen(true)}
           />
         </div>
       </div>
@@ -839,7 +882,10 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button
+          size="sm"
+          className="bg-emerald-600 font-medium text-white shadow-xs hover:bg-emerald-700"
+        >
           <PencilSimple className="mr-2 size-4" />
           <WhatsAppText id="s83" />
         </Button>
