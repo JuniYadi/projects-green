@@ -70,7 +70,6 @@ const PROFILE_PICTURE_TYPES = ["image/jpeg", "image/png"]
 const PROFILE_PICTURE_SIZE_LIMIT = 5 * 1024 * 1024
 
 type ProfileFormState = {
-  about: string
   description: string
   address: string
   email: string
@@ -81,7 +80,6 @@ type ProfileFormState = {
 }
 
 const EMPTY_PROFILE_FORM: ProfileFormState = {
-  about: "",
   description: "",
   address: "",
   email: "",
@@ -98,8 +96,8 @@ const toProfileForm = (
 
   return {
     ...EMPTY_PROFILE_FORM,
-    about: (profile?.about as string) || "",
-    description: (profile?.description as string) || "",
+    description:
+      (profile?.description as string) || (profile?.about as string) || "",
     address: (profile?.address as string) || "",
     email: (profile?.email as string) || "",
     profile_picture_url: (profile?.profile_picture_url as string) || "",
@@ -213,8 +211,9 @@ function WhatsAppProfilePreview({
     getProfileString(profile, "name") ||
     (device.name !== device.phoneNumber ? device.name : null) ||
     device.phoneNumber
-  const about = getProfileString(profile, "about")
-  const description = getProfileString(profile, "description")
+  const description =
+    getProfileString(profile, "description") ||
+    getProfileString(profile, "about")
   const email = getProfileString(profile, "email")
   const websites = Array.isArray(profile?.websites)
     ? (profile?.websites as string[]).filter(Boolean)
@@ -309,14 +308,14 @@ function WhatsAppProfilePreview({
           </div>
         </div>
 
-        {/* About (Status) */}
+        {/* Description / Profile Info */}
         <div className="rounded-xl border bg-muted/30 p-3.5 text-xs">
           <p className="mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-            <WhatsAppText id="s73" /> (Status)
+            Description (Profile Info)
           </p>
-          {about ? (
+          {description ? (
             <p className="leading-relaxed font-medium break-words whitespace-pre-wrap text-foreground/90">
-              {about}
+              {description}
             </p>
           ) : (
             <p className="text-muted-foreground italic">
@@ -324,18 +323,6 @@ function WhatsAppProfilePreview({
             </p>
           )}
         </div>
-
-        {/* Description (Long Bio) if set */}
-        {description && (
-          <div className="rounded-xl border bg-muted/20 p-3.5 text-xs">
-            <p className="mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-              Description (Bio)
-            </p>
-            <p className="leading-relaxed break-words whitespace-pre-wrap text-foreground/90">
-              {description}
-            </p>
-          </div>
-        )}
 
         {/* Business Details */}
         <div className="space-y-2.5 text-xs">
@@ -814,14 +801,12 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
     setProfileSubmitting(true)
     try {
       const payload: Record<string, unknown> = { messaging_product: "whatsapp" }
-      const trimmedAbout = profileForm.about.trim()
       const trimmedDescription = profileForm.description.trim()
       const trimmedAddress = profileForm.address.trim()
       const trimmedEmail = profileForm.email.trim()
       const trimmedWebsite1 = profileForm.website1.trim()
       const trimmedWebsite2 = profileForm.website2.trim()
 
-      if (trimmedAbout) payload.about = trimmedAbout
       if (trimmedDescription) payload.description = trimmedDescription
       if (trimmedAddress) payload.address = trimmedAddress
       if (trimmedEmail) payload.email = trimmedEmail
@@ -994,42 +979,24 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Tab 1: About & Info */}
+              {/* Tab 1: Profile & Business Info */}
               <TabsContent value="about" className="space-y-4 pt-3">
                 <div className="grid gap-1.5">
                   <div className="flex items-center justify-between">
                     <Label
-                      htmlFor="profile-about"
+                      htmlFor="profile-description"
                       className="text-xs font-medium"
                     >
-                      <WhatsAppText id="s85" />
+                      Description (Profile Info)
                     </Label>
                     <span className="text-[10px] text-muted-foreground">
-                      {profileForm.about.length}/139
+                      {profileForm.description.length}/512
                     </span>
                   </div>
-                  <Input
-                    id="profile-about"
-                    maxLength={139}
-                    value={profileForm.about}
-                    onChange={(e) =>
-                      setProfileForm((f) => ({ ...f, about: e.target.value }))
-                    }
-                    placeholder={getWhatsAppText("s86", locale)}
-                    className="text-xs"
-                  />
-                </div>
-
-                <div className="grid gap-1.5">
-                  <Label
-                    htmlFor="profile-description"
-                    className="text-xs font-medium"
-                  >
-                    <WhatsAppText id="s87" />
-                  </Label>
                   <Textarea
                     id="profile-description"
-                    rows={3}
+                    rows={4}
+                    maxLength={512}
                     value={profileForm.description}
                     onChange={(e) =>
                       setProfileForm((f) => ({
@@ -1192,7 +1159,6 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 device={device}
                 profile={{
                   name: device.verifiedName || device.name,
-                  about: profileForm.about,
                   description: profileForm.description,
                   address: profileForm.address,
                   email: profileForm.email,
@@ -1208,7 +1174,11 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                   vertical: profileForm.vertical,
                   profile_picture_url: profilePictureUrl,
                   isOfficialBusinessAccount:
-                    device.nameStatus?.toUpperCase() === "APPROVED",
+                    profile?.isOfficialBusinessAccount === true ||
+                    (profile as Record<string, unknown> | null)
+                      ?.official_business_account === "true" ||
+                    (profile as Record<string, unknown> | null)
+                      ?.is_official_business_account === true,
                 }}
                 messages={deviceMessages}
               />
