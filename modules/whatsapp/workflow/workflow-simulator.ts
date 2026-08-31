@@ -11,8 +11,7 @@ import type {
 import {
   evaluateMustacheTemplate,
   type TemplateContext,
-} from "./workflow-session"
-
+} from "./workflow-template"
 export type SimulatorMessage = {
   sender: "bot" | "user" | "system"
   text: string
