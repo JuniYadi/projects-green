@@ -1,15 +1,28 @@
 import { render } from "@react-email/components"
 
-import { InvoiceCreatedEmail } from "@/modules/invoices/emails/invoice-created"
-import { InvoicePaidEmail } from "@/modules/invoices/emails/invoice-paid"
-import { InvoiceOverdueEmail } from "@/modules/invoices/emails/invoice-overdue"
 import { InvoiceCancelledEmail } from "@/modules/invoices/emails/invoice-cancelled"
+import { InvoiceCreatedEmail } from "@/modules/invoices/emails/invoice-created"
+import { InvoiceOverdueEmail } from "@/modules/invoices/emails/invoice-overdue"
+import { InvoicePaidEmail } from "@/modules/invoices/emails/invoice-paid"
+import { PaymentConfirmationSubmittedEmail } from "@/modules/invoices/emails/payment-confirmation-submitted"
 import { PaymentReminderEmail } from "@/modules/invoices/emails/payment-reminder"
-import { TicketCreatedEmail } from "@/modules/support-tickets/emails/ticket-created"
-import { TicketRepliedEmail } from "@/modules/support-tickets/emails/ticket-replied"
 import { TicketClosedEmail } from "@/modules/support-tickets/emails/ticket-closed"
+import { TicketCreatedEmail } from "@/modules/support-tickets/emails/ticket-created"
+import { TicketNewAdminAlertEmail } from "@/modules/support-tickets/emails/ticket-new-admin-alert"
+import { TicketRepliedEmail } from "@/modules/support-tickets/emails/ticket-replied"
+import { ProvisioningFailedEmail } from "@/modules/vpn/emails/provisioning-failed"
+import { ProvisioningSuccessEmail } from "@/modules/vpn/emails/provisioning-success"
+import { RenewalFailedEmail } from "@/modules/vpn/emails/renewal-failed"
+import { RenewalSuccessEmail } from "@/modules/vpn/emails/renewal-success"
+import { SubscriptionCancelledEmail } from "@/modules/vpn/emails/subscription-cancelled"
+import { SubscriptionCreatedEmail } from "@/modules/vpn/emails/subscription-created"
+import { SubscriptionExpiredEmail } from "@/modules/vpn/emails/subscription-expired"
+import { SubscriptionSuspendedEmail } from "@/modules/vpn/emails/subscription-suspended"
+import { DailyDeviceDigestEmail } from "@/modules/whatsapp/emails/daily-device-digest"
+import { DeviceDisconnectedEmail } from "@/modules/whatsapp/emails/device-disconnected"
+import { DeviceStateChangeEmail } from "@/modules/whatsapp/emails/device-state-change"
 
-export type EmailTemplateCategory = "Invoice" | "Support"
+export type EmailTemplateCategory = "Invoice" | "Support" | "VPN" | "WhatsApp"
 
 export type EmailTemplateMeta = {
   id: string
@@ -91,6 +104,7 @@ const REPLY_MOCK = {
 }
 
 export const EMAIL_TEMPLATES: EmailTemplateMeta[] = [
+  // Invoices
   {
     id: "invoice-created",
     name: "Invoice Created",
@@ -127,6 +141,15 @@ export const EMAIL_TEMPLATES: EmailTemplateMeta[] = [
     from: "billing@yourapp.com",
   },
   {
+    id: "payment-confirmation-submitted",
+    name: "Payment Confirmation Submitted",
+    category: "Invoice",
+    subject: "Payment Confirmation Received for Invoice {{invoiceNumber}}",
+    from: "billing@yourapp.com",
+  },
+
+  // Support
+  {
     id: "ticket-created",
     name: "Ticket Created",
     category: "Support",
@@ -147,6 +170,94 @@ export const EMAIL_TEMPLATES: EmailTemplateMeta[] = [
     subject: "Support ticket #{{ticketNumber}} has been closed",
     from: "support@yourapp.com",
   },
+  {
+    id: "ticket-new-admin-alert",
+    name: "Ticket Staff Alert",
+    category: "Support",
+    subject: "New support ticket #{{ticketNumber}} - {{subject}}",
+    from: "support@yourapp.com",
+  },
+
+  // VPN
+  {
+    id: "vpn-subscription-created",
+    name: "VPN Subscription Created",
+    category: "VPN",
+    subject: "Your VPN subscription is being provisioned",
+    from: "support@yourapp.com",
+  },
+  {
+    id: "vpn-provisioning-success",
+    name: "VPN Provisioning Success",
+    category: "VPN",
+    subject: "Your VPN account is ready",
+    from: "support@yourapp.com",
+  },
+  {
+    id: "vpn-provisioning-failed",
+    name: "VPN Provisioning Failed",
+    category: "VPN",
+    subject: "VPN Account Setup Issue",
+    from: "support@yourapp.com",
+  },
+  {
+    id: "vpn-renewal-success",
+    name: "VPN Renewal Success",
+    category: "VPN",
+    subject: "VPN Subscription Renewed Successfully",
+    from: "billing@yourapp.com",
+  },
+  {
+    id: "vpn-renewal-failed",
+    name: "VPN Renewal Failed",
+    category: "VPN",
+    subject: "Action Required: VPN Subscription Renewal Failed",
+    from: "billing@yourapp.com",
+  },
+  {
+    id: "vpn-subscription-suspended",
+    name: "VPN Subscription Suspended",
+    category: "VPN",
+    subject: "Your VPN subscription has been suspended",
+    from: "billing@yourapp.com",
+  },
+  {
+    id: "vpn-subscription-expired",
+    name: "VPN Subscription Expired",
+    category: "VPN",
+    subject: "Your VPN subscription has expired",
+    from: "billing@yourapp.com",
+  },
+  {
+    id: "vpn-subscription-cancelled",
+    name: "VPN Subscription Cancelled",
+    category: "VPN",
+    subject: "Your VPN subscription has been cancelled",
+    from: "billing@yourapp.com",
+  },
+
+  // WhatsApp
+  {
+    id: "whatsapp-device-state-change",
+    name: "WhatsApp Device State Change",
+    category: "WhatsApp",
+    subject: "WhatsApp Device State Changed - {{deviceName}}",
+    from: "alerts@yourapp.com",
+  },
+  {
+    id: "whatsapp-device-disconnected",
+    name: "WhatsApp Device Disconnected",
+    category: "WhatsApp",
+    subject: "WhatsApp Device Disconnected - {{deviceName}}",
+    from: "alerts@yourapp.com",
+  },
+  {
+    id: "whatsapp-daily-device-digest",
+    name: "WhatsApp Daily Device Digest",
+    category: "WhatsApp",
+    subject: "Daily WhatsApp Device Digest",
+    from: "alerts@yourapp.com",
+  },
 ]
 
 export async function renderEmailTemplate(id: string): Promise<string> {
@@ -166,6 +277,17 @@ export async function renderEmailTemplate(id: string): Promise<string> {
       )
     case "payment-reminder":
       return render(<PaymentReminderEmail {...INVOICE_MOCK} />)
+    case "payment-confirmation-submitted":
+      return render(
+        <PaymentConfirmationSubmittedEmail
+          invoiceNumber="INV-2026-001"
+          amount="$150.00"
+          bankName="Bank Central Asia (BCA)"
+          senderName="John Doe"
+          confirmationId="conf_abc123"
+        />
+      )
+
     case "ticket-created":
       return render(<TicketCreatedEmail ticket={TICKET_MOCK} />)
     case "ticket-replied":
@@ -174,6 +296,127 @@ export async function renderEmailTemplate(id: string): Promise<string> {
       )
     case "ticket-closed":
       return render(<TicketClosedEmail ticket={TICKET_MOCK} />)
+    case "ticket-new-admin-alert":
+      return render(
+        <TicketNewAdminAlertEmail
+          ticket={TICKET_MOCK}
+          requesterName="John Doe"
+          requesterEmail="john@acme.corp"
+          variant="created"
+          organization={{
+            organizationId: "org_preview",
+            organizationName: "Acme Corporation",
+          }}
+        />
+      )
+
+    case "vpn-subscription-created":
+      return render(
+        <SubscriptionCreatedEmail
+          organizationName="Acme Corporation"
+          packageName="Enterprise VPN"
+        />
+      )
+    case "vpn-provisioning-success":
+      return render(
+        <ProvisioningSuccessEmail
+          organizationName="Acme Corporation"
+          packageName="Enterprise VPN"
+        />
+      )
+    case "vpn-provisioning-failed":
+      return render(
+        <ProvisioningFailedEmail
+          organizationName="Acme Corporation"
+          packageName="Enterprise VPN"
+          errorMessage="Radius server handshake timeout during provisioning."
+        />
+      )
+    case "vpn-renewal-success":
+      return render(
+        <RenewalSuccessEmail
+          organizationName="Acme Corporation"
+          packageName="Enterprise VPN"
+        />
+      )
+    case "vpn-renewal-failed":
+      return render(
+        <RenewalFailedEmail
+          organizationName="Acme Corporation"
+          packageName="Enterprise VPN"
+        />
+      )
+    case "vpn-subscription-suspended":
+      return render(
+        <SubscriptionSuspendedEmail
+          organizationName="Acme Corporation"
+          packageName="Enterprise VPN"
+        />
+      )
+    case "vpn-subscription-expired":
+      return render(
+        <SubscriptionExpiredEmail
+          organizationName="Acme Corporation"
+          packageName="Enterprise VPN"
+        />
+      )
+    case "vpn-subscription-cancelled":
+      return render(
+        <SubscriptionCancelledEmail
+          organizationName="Acme Corporation"
+          packageName="Enterprise VPN"
+        />
+      )
+
+    case "whatsapp-device-state-change":
+      return render(
+        <DeviceStateChangeEmail
+          deviceName="Primary Support WA"
+          phoneNumber="+6281234567890"
+          orgName="Acme Corporation"
+          changes={[
+            {
+              field: "Status",
+              oldValue: "CONNECTED",
+              newValue: "DISCONNECTED",
+            },
+          ]}
+          changedAt="January 15, 2026 14:30 UTC"
+        />
+      )
+    case "whatsapp-device-disconnected":
+      return render(
+        <DeviceDisconnectedEmail
+          deviceName="Primary Support WA"
+          phoneNumber="+6281234567890"
+          orgName="Acme Corporation"
+          disconnectedAt="January 15, 2026 14:30 UTC"
+        />
+      )
+    case "whatsapp-daily-device-digest":
+      return render(
+        <DailyDeviceDigestEmail
+          devices={[
+            {
+              id: "dev_1",
+              phoneNumber: "+6281234567890",
+              displayName: "Support Hotline",
+              orgName: "Acme Corporation",
+              nameStatus: "APPROVED",
+              qualityRating: "GREEN",
+              status: "CONNECTED",
+            },
+          ]}
+          generatedAt="January 15, 2026 00:00 UTC"
+          stats={{
+            totalDevices: 1,
+            connectedDevices: 1,
+            disconnectedDevices: 0,
+            degradedDevices: 0,
+          }}
+        />
+      )
+
     default:
       return ""
   }

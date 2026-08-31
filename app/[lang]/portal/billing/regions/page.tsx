@@ -118,8 +118,7 @@ export default function PortalBillingRegionsPage() {
           await eden.api.admin.regions.get()
         if (resError || !payload || !payload.ok) {
           const errPayload = (resError?.value || payload) as
-            | { message?: string }
-            | undefined
+            { message?: string } | undefined
           throw new Error(errPayload?.message || "Failed to fetch regions")
         }
         if (!cancelled) {
@@ -452,7 +451,7 @@ export default function PortalBillingRegionsPage() {
   )
 
   return (
-    <div className="container mx-auto space-y-6 py-6">
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -672,6 +671,6 @@ export default function PortalBillingRegionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </main>
   )
 }
