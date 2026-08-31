@@ -43,7 +43,28 @@ describe("WhatsAppDeviceClient business profile", () => {
     expect(result).toBeNull()
   })
 
-  it("getBusinessProfile returns unwrapped profile fields", async () => {
+  it("getBusinessProfile returns direct profile fields from Meta API", async () => {
+    const profileData = {
+      about: "We provide DevOps services",
+      email: "support@example.com",
+      websites: ["https://example.com"],
+      vertical: "PROF_SERVICES",
+    }
+
+    globalThis.fetch = mock(
+      async () =>
+        new Response(JSON.stringify({ data: [profileData] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+    ) as unknown as typeof globalThis.fetch
+
+    const client = createClient()
+    const result = await client.getBusinessProfile()
+    expect(result).toEqual(profileData)
+  })
+
+  it("getBusinessProfile returns unwrapped profile fields when wrapped in business_profile", async () => {
     const profileData = {
       about: "We provide DevOps services",
       email: "support@example.com",

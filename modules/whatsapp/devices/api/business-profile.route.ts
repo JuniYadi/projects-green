@@ -111,20 +111,18 @@ export const businessProfileRoutes = new Elysia({
       throw e
     }
   })
-  .post("/picture", async ({ request, params: { id }, set }: any) => {
+  .post("/picture", async ({ request, params: { id }, body, set }: any) => {
     const auth = await resolveDeviceAuth(request)
     if (!auth) return toUnauthorized(set)
     if (!auth.organizationId) {
       return toBadRequest(set, "Organization context required.")
     }
-
     const contentType = request.headers.get("content-type") ?? ""
     if (!contentType.includes("multipart/form-data")) {
       return toBadRequest(set, "Expected multipart/form-data.")
     }
 
-    const formData = await request.formData()
-    const file = formData.get("file")
+    const file = body?.file
     if (!(file instanceof File)) {
       set.status = 422
       return {

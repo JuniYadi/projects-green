@@ -49,12 +49,14 @@ export type WhatsAppBusinessProfile = z.infer<
   typeof whatsappBusinessProfileSchema
 >
 
-/** Meta GET response shape: { data: [{ business_profile: { ... } }] } */
+/** Meta GET response shape: { data: [{ about, description, ... }] } or legacy wrapper */
 export const metaGetBusinessProfileResponseSchema = z.object({
   data: z.array(
-    z.object({
-      business_profile: whatsappBusinessProfileSchema,
-    })
+    whatsappBusinessProfileSchema.or(
+      z.object({
+        business_profile: whatsappBusinessProfileSchema,
+      })
+    )
   ),
 })
 

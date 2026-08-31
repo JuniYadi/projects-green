@@ -345,14 +345,17 @@ export class WhatsAppDeviceClient {
     )
 
     const result = await this.httpClient.request<{
-      data: Array<{ business_profile: Record<string, unknown> }>
+      data: Array<
+        Record<string, unknown> & {
+          business_profile?: Record<string, unknown>
+        }
+      >
     }>("GET_BUSINESS_PROFILE", endpoint.toString(), "GET")
 
-    // ponytail: Meta returns empty data[] when no profile exists
-    if (!result.data?.[0]?.business_profile) return null
-    return result.data[0].business_profile
+    const item = result.data?.[0]
+    if (!item) return null
+    return (item.business_profile ?? item) as Record<string, unknown>
   }
-
   async updateBusinessProfile(
     data: Record<string, unknown>
   ): Promise<{ success: boolean }> {

@@ -16,7 +16,15 @@ import {
   PaperPlaneTilt,
   ChartDonut,
   ArrowsClockwise,
+  Camera,
+  Globe,
+  Buildings,
+  EnvelopeSimple,
+  MapPin,
+  Info,
+  Trash,
 } from "@phosphor-icons/react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { detectCountryFromPhone } from "@/modules/whatsapp/messages/phone-number"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -33,7 +41,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -63,7 +70,6 @@ const PROFILE_PICTURE_TYPES = ["image/jpeg", "image/png"]
 const PROFILE_PICTURE_SIZE_LIMIT = 5 * 1024 * 1024
 
 type ProfileFormState = {
-  about: string
   description: string
   address: string
   email: string
@@ -74,7 +80,6 @@ type ProfileFormState = {
 }
 
 const EMPTY_PROFILE_FORM: ProfileFormState = {
-  about: "",
   description: "",
   address: "",
   email: "",
@@ -91,8 +96,8 @@ const toProfileForm = (
 
   return {
     ...EMPTY_PROFILE_FORM,
-    about: (profile?.about as string) || "",
-    description: (profile?.description as string) || "",
+    description:
+      (profile?.description as string) || (profile?.about as string) || "",
     address: (profile?.address as string) || "",
     email: (profile?.email as string) || "",
     profile_picture_url: (profile?.profile_picture_url as string) || "",
@@ -192,21 +197,25 @@ type WhatsAppProfilePreviewProps = {
   device: DeviceDetail
   profile: Record<string, unknown> | null
   messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["devices"]
+  onEdit?: () => void
+  showHeader?: boolean
 }
 
 function WhatsAppProfilePreview({
   device,
   profile,
   messages,
+  onEdit,
+  showHeader = true,
 }: WhatsAppProfilePreviewProps) {
   const displayName =
     device.verifiedName ||
     getProfileString(profile, "name") ||
     (device.name !== device.phoneNumber ? device.name : null) ||
     device.phoneNumber
-  const about =
-    getProfileString(profile, "about") ||
-    getProfileString(profile, "description")
+  const description =
+    getProfileString(profile, "description") ||
+    getProfileString(profile, "about")
   const email = getProfileString(profile, "email")
   const websites = Array.isArray(profile?.websites)
     ? (profile?.websites as string[]).filter(Boolean)
@@ -216,32 +225,51 @@ function WhatsAppProfilePreview({
     getProfileString(profile, "category") ||
     getProfileString(profile, "vertical")
   const profilePictureUrl = getProfileString(profile, "profile_picture_url")
-  const isVerified =
-    device.nameStatus?.toUpperCase() === "APPROVED" ||
-    profile?.isOfficialBusinessAccount === true
+  // OBA (Green Badge) in Meta requires official OBA approval, not just standard approved display name
+  const isOBAVerified =
+    profile?.isOfficialBusinessAccount === true ||
+    (profile as Record<string, unknown> | null)?.official_business_account ===
+      "true" ||
+    (profile as Record<string, unknown> | null)
+      ?.is_official_business_account === true
 
   return (
     <Card
       data-testid="whatsapp-profile-preview"
       className="overflow-hidden border shadow-sm [--card-spacing:0px]"
     >
-      <CardHeader className="bg-emerald-800 px-5 py-4 text-white dark:bg-emerald-950">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-semibold tracking-wide text-white">
-              <WhatsAppText id="s71" />
-            </CardTitle>
+      {showHeader && (
+        <CardHeader className="bg-emerald-800 px-5 py-4 text-white dark:bg-emerald-950">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold tracking-wide text-white">
+                <WhatsAppText id="s71" />
+              </CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              {onEdit && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] font-medium text-white hover:bg-white/20 hover:text-white"
+                  onClick={onEdit}
+                >
+                  <PencilSimple className="mr-1 size-3.5" />
+                  Edit
+                </Button>
+              )}
+              <Badge
+                variant="outline"
+                className="border-white/20 bg-white/10 text-[11px] font-normal text-white"
+              >
+                <WhatsAppText id="s72" />
+              </Badge>
+            </div>
           </div>
-          <Badge
-            variant="outline"
-            className="border-white/20 bg-white/10 text-[11px] font-normal text-white"
-          >
-            <WhatsAppText id="s72" />
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-6 p-5">
+        </CardHeader>
+      )}
+      <CardContent className="space-y-5 p-5">
         <div className="flex items-center gap-4">
           <Avatar className="size-16 border-2 border-emerald-500/20 shadow-sm">
             {profilePictureUrl ? (
@@ -259,11 +287,11 @@ function WhatsAppProfilePreview({
               <p className="truncate text-base font-bold text-foreground">
                 {displayName}
               </p>
-              {isVerified && (
+              {isOBAVerified && (
                 <CheckCircle
                   weight="fill"
                   className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                  aria-label="Verified"
+                  aria-label="Official Business Account"
                 />
               )}
             </div>
@@ -283,13 +311,14 @@ function WhatsAppProfilePreview({
           </div>
         </div>
 
+        {/* Description / Profile Info */}
         <div className="rounded-xl border bg-muted/30 p-3.5 text-xs">
           <p className="mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-            <WhatsAppText id="s73" />
+            Description
           </p>
-          {about ? (
-            <p className="leading-relaxed whitespace-pre-wrap text-foreground/90">
-              {about}
+          {description ? (
+            <p className="leading-relaxed font-medium break-words whitespace-pre-wrap text-foreground/90">
+              {description}
             </p>
           ) : (
             <p className="text-muted-foreground italic">
@@ -298,6 +327,7 @@ function WhatsAppProfilePreview({
           )}
         </div>
 
+        {/* Business Details */}
         <div className="space-y-2.5 text-xs">
           <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             <WhatsAppText id="s75" />
@@ -318,7 +348,7 @@ function WhatsAppProfilePreview({
                 <WhatsAppText id="s12" />
               </span>
               {email ? (
-                <span className="font-medium">{email}</span>
+                <span className="font-medium break-all">{email}</span>
               ) : (
                 <span className="text-muted-foreground italic">
                   <WhatsAppText id="s76" />
@@ -326,11 +356,18 @@ function WhatsAppProfilePreview({
               )}
             </div>
             <div className="flex items-start justify-between gap-2">
-              <span className="text-muted-foreground">Website</span>
+              <span className="shrink-0 text-muted-foreground">Website</span>
               {websites.length > 0 ? (
-                <span className="max-w-[200px] truncate text-right font-medium">
-                  {websites.join(", ")}
-                </span>
+                <div className="flex max-w-[240px] flex-col items-end gap-0.5 text-right font-medium break-all">
+                  {websites.map((w, idx) => (
+                    <span
+                      key={idx}
+                      className="text-emerald-700 dark:text-emerald-400"
+                    >
+                      {w}
+                    </span>
+                  ))}
+                </div>
               ) : (
                 <span className="text-muted-foreground italic">
                   <WhatsAppText id="s76" />
@@ -338,9 +375,11 @@ function WhatsAppProfilePreview({
               )}
             </div>
             <div className="flex items-start justify-between gap-2">
-              <span className="text-muted-foreground">Address</span>
+              <span className="shrink-0 text-muted-foreground">Address</span>
               {address ? (
-                <span className="text-right font-medium">{address}</span>
+                <span className="max-w-[240px] text-right font-medium break-words">
+                  {address}
+                </span>
               ) : (
                 <span className="text-muted-foreground italic">
                   <WhatsAppText id="s76" />
@@ -748,12 +787,13 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           </Card>
         </div>
 
-        {/* Right Column: WhatsApp Business Profile Preview */}
+        {/* Right Column: WhatsApp Business Profile Preview with direct edit button */}
         <div className="lg:col-span-5">
           <WhatsAppProfilePreview
             device={device}
             profile={profile}
             messages={deviceMessages}
+            onEdit={() => setProfileDialogOpen(true)}
           />
         </div>
       </div>
@@ -764,14 +804,12 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
     setProfileSubmitting(true)
     try {
       const payload: Record<string, unknown> = { messaging_product: "whatsapp" }
-      const trimmedAbout = profileForm.about.trim()
       const trimmedDescription = profileForm.description.trim()
       const trimmedAddress = profileForm.address.trim()
       const trimmedEmail = profileForm.email.trim()
       const trimmedWebsite1 = profileForm.website1.trim()
       const trimmedWebsite2 = profileForm.website2.trim()
 
-      if (trimmedAbout) payload.about = trimmedAbout
       if (trimmedDescription) payload.description = trimmedDescription
       if (trimmedAddress) payload.address = trimmedAddress
       if (trimmedEmail) payload.email = trimmedEmail
@@ -832,167 +870,325 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button
+          size="sm"
+          className="bg-emerald-600 font-medium text-white shadow-xs hover:bg-emerald-700"
+        >
           <PencilSimple className="mr-2 size-4" />
           <WhatsAppText id="s83" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            <WhatsAppText id="s83" />
-          </DialogTitle>
-          <DialogDescription>
-            <WhatsAppText id="s84" />
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="profile-about">
-              <WhatsAppText id="s85" />
-            </Label>
-            <Input
-              id="profile-about"
-              maxLength={139}
-              value={profileForm.about}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, about: e.target.value }))
-              }
-              placeholder={getWhatsAppText("s86", locale)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-description">
-              <WhatsAppText id="s87" />
-            </Label>
-            <Textarea
-              id="profile-description"
-              value={profileForm.description}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, description: e.target.value }))
-              }
-              placeholder={getWhatsAppText("s88", locale)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-address">Address</Label>
-            <Input
-              id="profile-address"
-              value={profileForm.address}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, address: e.target.value }))
-              }
-              placeholder="Business address"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-email">
-              <WhatsAppText id="s12" />
-            </Label>
-            <Input
-              id="profile-email"
-              type="email"
-              value={profileForm.email}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, email: e.target.value }))
-              }
-              placeholder="contact@example.com"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-picture-file">
-              <WhatsAppText id="s89" />
-            </Label>
-            <div className="flex items-center gap-3">
-              <Avatar size="lg">
-                <AvatarImage
-                  src={profilePictureUrl}
-                  alt="WhatsApp profile picture preview"
-                />
-                <AvatarFallback>
-                  {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative placeholder icon */}
-                  <Image
-                    className="size-5 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 gap-1">
-                <Input
-                  id="profile-picture-file"
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  onChange={handleProfilePictureChange}
-                />
-                <p className="text-xs text-muted-foreground">
+      <DialogContent className="max-h-[92vh] gap-0 overflow-y-auto p-0 sm:max-w-4xl">
+        <div className="grid grid-cols-1 divide-y lg:grid-cols-12 lg:divide-x lg:divide-y-0">
+          {/* Left Column: Organized Tabbed Form */}
+          <div className="flex flex-col space-y-6 p-6 lg:col-span-7">
+            <DialogHeader className="space-y-1 p-0">
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+                <PencilSimple className="size-5 text-emerald-600 dark:text-emerald-400" />
+                <WhatsAppText id="s83" />
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                <WhatsAppText id="s84" />
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Modern Avatar / Branding Section */}
+            <div className="space-y-2 rounded-xl border bg-muted/20 p-4">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="profile-picture-file"
+                  className="text-xs font-medium"
+                >
+                  <WhatsAppText id="s89" />
+                </Label>
+                <span className="text-[11px] text-muted-foreground">
                   <WhatsAppText id="s90" />
-                </p>
-                {profilePictureFile && (
-                  <p className="truncate text-xs font-medium">
-                    {profilePictureFile.name}
+                </span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="group relative">
+                  <Avatar className="size-18 border-2 border-border shadow-xs">
+                    <AvatarImage
+                      src={profilePictureUrl}
+                      alt="WhatsApp profile picture preview"
+                    />
+                    <AvatarFallback className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                      {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative placeholder icon */}
+                      <Image
+                        className="size-6 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                    </AvatarFallback>
+                  </Avatar>
+                  <label
+                    htmlFor="profile-picture-file"
+                    className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    title="Change profile picture"
+                  >
+                    <Camera className="size-5" />
+                  </label>
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="profile-picture-file"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-xs font-medium shadow-xs transition-colors hover:bg-muted/50"
+                    >
+                      <Camera className="size-3.5 text-muted-foreground" />
+                      <span>Upload New Photo</span>
+                    </label>
+                    {profilePictureFile && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                        onClick={clearProfilePictureSelection}
+                      >
+                        <Trash className="mr-1 size-3.5" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <Input
+                    id="profile-picture-file"
+                    type="file"
+                    className="sr-only"
+                    accept="image/jpeg,image/png"
+                    onChange={handleProfilePictureChange}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    JPEG/PNG, max 5MB. 640x640 px recommended.
                   </p>
-                )}
+                  {profilePictureFile && (
+                    <p className="truncate text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      {profilePictureFile.name}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* Form Tabs */}
+            <Tabs defaultValue="about" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="about" className="text-xs">
+                  <Info className="mr-1.5 size-3.5" />
+                  About & Info
+                </TabsTrigger>
+                <TabsTrigger value="contact" className="text-xs">
+                  <MapPin className="mr-1.5 size-3.5" />
+                  Contact & Links
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Tab 1: Profile & Business Info */}
+              <TabsContent value="about" className="space-y-4 pt-3">
+                <div className="grid gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="profile-description"
+                      className="text-xs font-medium"
+                    >
+                      Description
+                    </Label>
+                    <span className="text-[10px] text-muted-foreground">
+                      {profileForm.description.length}/512
+                    </span>
+                  </div>
+                  <Textarea
+                    id="profile-description"
+                    rows={4}
+                    maxLength={512}
+                    value={profileForm.description}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder={getWhatsAppText("s88", locale)}
+                    className="resize-none text-xs"
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label
+                    htmlFor="profile-vertical"
+                    className="text-xs font-medium"
+                  >
+                    Business Category
+                  </Label>
+                  <Select
+                    value={profileForm.vertical}
+                    onValueChange={(v) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        vertical: v as Vertical,
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="profile-vertical" className="text-xs">
+                      <SelectValue
+                        placeholder={getWhatsAppText("s91", locale)}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VERTICALS.map((v) => (
+                        <SelectItem key={v} value={v} className="text-xs">
+                          {v
+                            .replace(/_/g, " ")
+                            .toLowerCase()
+                            .replace(/\b\w/g, (c) => c.toUpperCase())}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </TabsContent>
+
+              {/* Tab 2: Contact & Links */}
+              <TabsContent value="contact" className="space-y-4 pt-3">
+                <div className="grid gap-1.5">
+                  <Label
+                    htmlFor="profile-email"
+                    className="flex items-center gap-1.5 text-xs font-medium"
+                  >
+                    <EnvelopeSimple className="size-3.5 text-muted-foreground" />
+                    <span>Business Email</span>
+                  </Label>
+                  <Input
+                    id="profile-email"
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    placeholder="contact@company.com"
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label
+                    htmlFor="profile-address"
+                    className="flex items-center gap-1.5 text-xs font-medium"
+                  >
+                    <Buildings className="size-3.5 text-muted-foreground" />
+                    <span>Address</span>
+                  </Label>
+                  <Input
+                    id="profile-address"
+                    value={profileForm.address}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({ ...f, address: e.target.value }))
+                    }
+                    placeholder="Building, street name, city, postal code"
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5 text-xs font-medium">
+                    <Globe className="size-3.5 text-muted-foreground" />
+                    <span>Websites (Max 2 URLs)</span>
+                  </Label>
+                  <div className="space-y-2">
+                    <Input
+                      id="profile-website1"
+                      type="url"
+                      value={profileForm.website1}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          website1: e.target.value,
+                        }))
+                      }
+                      placeholder="https://example.com"
+                      className="text-xs"
+                    />
+                    <Input
+                      id="profile-website2"
+                      type="url"
+                      value={profileForm.website2}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          website2: e.target.value,
+                        }))
+                      }
+                      placeholder="https://second-website.com (optional)"
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Dialog Footer Actions */}
+            <div className="mt-auto flex items-center justify-end gap-2 border-t pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setProfileDialogOpen(false)}
+              >
+                <WhatsAppText id="s15" />
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveProfile}
+                disabled={profileSubmitting}
+              >
+                {profileSubmitting
+                  ? deviceMessages.saving
+                  : deviceMessages.saveChanges || "Save Changes"}
+              </Button>
+            </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-website1">Website 1</Label>
-            <Input
-              id="profile-website1"
-              type="url"
-              value={profileForm.website1}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, website1: e.target.value }))
-              }
-              placeholder="https://example.com"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-website2">Website 2</Label>
-            <Input
-              id="profile-website2"
-              type="url"
-              value={profileForm.website2}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, website2: e.target.value }))
-              }
-              placeholder="https://example2.com"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-vertical">Vertical</Label>
-            <Select
-              value={profileForm.vertical}
-              onValueChange={(v) =>
-                setProfileForm((f) => ({
-                  ...f,
-                  vertical: v as Vertical,
-                }))
-              }
-            >
-              <SelectTrigger id="profile-vertical">
-                <SelectValue placeholder={getWhatsAppText("s91", locale)} />
-              </SelectTrigger>
-              <SelectContent>
-                {VERTICALS.map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {v.replace(/_/g, " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+          {/* Right Column: Real-Time Live WhatsApp Card Preview */}
+          <div className="flex flex-col justify-start bg-muted/20 p-6 lg:col-span-5">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Live Preview
+              </p>
+              <Badge variant="outline" className="bg-background text-[10px]">
+                Live updates
+              </Badge>
+            </div>
+
+            <div className="w-full">
+              <WhatsAppProfilePreview
+                showHeader={false}
+                device={device}
+                profile={{
+                  name: device.verifiedName || device.name,
+                  description: profileForm.description,
+                  address: profileForm.address,
+                  email: profileForm.email,
+                  websites: [profileForm.website1, profileForm.website2].filter(
+                    Boolean
+                  ),
+                  category: profileForm.vertical
+                    ? profileForm.vertical
+                        .replace(/_/g, " ")
+                        .toLowerCase()
+                        .replace(/\b\w/g, (c) => c.toUpperCase())
+                    : "",
+                  vertical: profileForm.vertical,
+                  profile_picture_url: profilePictureUrl,
+                  isOfficialBusinessAccount:
+                    profile?.isOfficialBusinessAccount === true ||
+                    (profile as Record<string, unknown> | null)
+                      ?.official_business_account === "true" ||
+                    (profile as Record<string, unknown> | null)
+                      ?.is_official_business_account === true,
+                }}
+                messages={deviceMessages}
+              />
+            </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setProfileDialogOpen(false)}>
-            <WhatsAppText id="s15" />
-          </Button>
-          <Button onClick={handleSaveProfile} disabled={profileSubmitting}>
-            {profileSubmitting
-              ? deviceMessages.saving
-              : deviceMessages.saveChanges || "Save"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

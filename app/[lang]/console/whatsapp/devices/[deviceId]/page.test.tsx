@@ -243,7 +243,7 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
       const preview = view.getByTestId("whatsapp-profile-preview")
       expect(within(preview).getByText("Green Support")).toBeTruthy()
       expect(
-        within(preview).getByText("Loaded profile about text")
+        within(preview).getByText("Official support channel for Green platform")
       ).toBeTruthy()
     })
 
@@ -305,7 +305,7 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
     })
 
     fireEvent.click(view.getByRole("button", { name: "Edit WhatsApp Profile" }))
-    fireEvent.change(await view.findByLabelText("About"), {
+    fireEvent.change(await view.findByLabelText("Description"), {
       target: { value: "Edited profile about text" },
     })
     fireEvent.click(view.getByRole("button", { name: "Save" }))
