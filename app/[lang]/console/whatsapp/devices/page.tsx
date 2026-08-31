@@ -32,10 +32,8 @@ import { detectCountryFromPhone } from "@/modules/whatsapp/messages/phone-number
 import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
 import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
-import type {
-  DeviceListItem,
-  DeviceStatus,
-} from "@/modules/whatsapp/devices/devices.schemas"
+import { MetaNameStatusBadge } from "@/modules/whatsapp/ui/meta-name-status-badge"
+import type { DeviceStatus } from "@/modules/whatsapp/devices/devices.schemas"
 // ─── Status badge ───────────────────────────────────────────────────────────
 
 type DeviceStatusBadgeProps = {
@@ -71,54 +69,6 @@ function getCountryFlagEmoji(iso: string): string {
   return String.fromCodePoint(...codePoints)
 }
 // ─── Meta Name Status badge ──────────────────────────────────────────────────
-
-type NameStatusBadgeProps = {
-  nameStatus: string | null | undefined
-  verifiedName: string | null | undefined
-  messages: ReturnType<typeof getMessages>
-}
-
-function NameStatusBadge({
-  nameStatus,
-  verifiedName,
-  messages,
-}: NameStatusBadgeProps) {
-  const status = (nameStatus ?? "UNSET").toUpperCase()
-  const variant: Record<
-    string,
-    "success" | "warning" | "destructive" | "secondary"
-  > = {
-    APPROVED: "success",
-    PENDING_REVIEW: "warning",
-    DECLINED: "destructive",
-    EXPIRED: "destructive",
-    UNSET: "secondary",
-  }
-
-  const label: Record<string, string> = {
-    APPROVED: messages.console.whatsapp.devices.nameApproved,
-    PENDING_REVIEW: messages.console.whatsapp.devices.namePending,
-    DECLINED: messages.console.whatsapp.devices.nameDeclined,
-    EXPIRED: messages.console.whatsapp.devices.nameExpired,
-    UNSET: messages.console.whatsapp.devices.nameUnset,
-  }
-
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-sm font-medium text-foreground">
-        {verifiedName || "—"}
-      </span>
-      <div>
-        <Badge
-          variant={variant[status] ?? "secondary"}
-          className="px-1.5 py-0 text-[10px] font-normal"
-        >
-          {label[status] ?? status}
-        </Badge>
-      </div>
-    </div>
-  )
-}
 
 // ─── Quota Progress Bar with Tooltip ─────────────────────────────────────────
 
@@ -345,10 +295,10 @@ export default function WhatsAppDevicesPage() {
           (device.name !== device.phoneNumber ? device.name : null)
 
         return (
-          <NameStatusBadge
+          <MetaNameStatusBadge
             nameStatus={device.nameStatus}
             verifiedName={name}
-            messages={messages}
+            showName
           />
         )
       },

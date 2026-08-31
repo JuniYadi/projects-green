@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma"
 import { toDeviceDetail } from "@/modules/whatsapp/devices/devices.dto"
 import type { DeviceDetail } from "@/modules/whatsapp/devices/devices.schemas"
 import { Badge } from "@/components/ui/badge"
+import { MetaNameStatusBadge } from "@/modules/whatsapp/ui/meta-name-status-badge"
 import {
   Card,
   CardContent,
@@ -110,7 +111,40 @@ export default async function PortalWhatsAppDeviceDetailPage({
         <CardContent>
           <dl className="space-y-3">
             <InfoRow label="Phone Number" value={device.phoneNumber} />
-            <InfoRow label="Name" value={device.name || "-"} />
+            <InfoRow
+              label="Display Name"
+              value={device.verifiedName || device.name || "-"}
+            />
+            <InfoRow
+              label="Meta Name Status"
+              value={
+                <MetaNameStatusBadge
+                  nameStatus={device.nameStatus}
+                  verifiedName={device.verifiedName}
+                  profile={device.whatsappProfile}
+                />
+              }
+            />
+            {device.qualityRating && (
+              <InfoRow
+                label="Quality Rating"
+                value={
+                  <Badge variant="outline" className="capitalize">
+                    {device.qualityRating.toLowerCase()}
+                  </Badge>
+                }
+              />
+            )}
+            <InfoRow
+              label="Device Status"
+              value={
+                <Badge
+                  variant={device.status === "ACTIVE" ? "default" : "secondary"}
+                >
+                  {device.status}
+                </Badge>
+              }
+            />
             <InfoRow
               label="Environment"
               value={<Badge variant="outline">{device.environment}</Badge>}
