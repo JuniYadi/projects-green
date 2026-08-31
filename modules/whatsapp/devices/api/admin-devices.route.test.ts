@@ -34,6 +34,9 @@ const mockTransaction = mock<(...args: any[]) => any>(
         delete: mockDelete,
         findFirst: mock(async () => null),
       },
+      whatsappMedia: {
+        deleteMany: mock(async () => ({ count: 0 })),
+      },
       whatsappMetaApp: {
         findUnique: mock(async () => ({ id: "meta-1", active: true })),
       },
