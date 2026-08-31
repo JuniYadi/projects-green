@@ -311,7 +311,7 @@ function WhatsAppProfilePreview({
         {/* Description / Profile Info */}
         <div className="rounded-xl border bg-muted/30 p-3.5 text-xs">
           <p className="mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-            Description (Profile Info)
+            Description
           </p>
           {description ? (
             <p className="leading-relaxed font-medium break-words whitespace-pre-wrap text-foreground/90">
@@ -987,7 +987,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                       htmlFor="profile-description"
                       className="text-xs font-medium"
                     >
-                      Description (Profile Info)
+                      Description
                     </Label>
                     <span className="text-[10px] text-muted-foreground">
                       {profileForm.description.length}/512

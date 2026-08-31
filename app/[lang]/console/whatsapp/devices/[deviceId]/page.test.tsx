@@ -305,7 +305,7 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
     })
 
     fireEvent.click(view.getByRole("button", { name: "Edit WhatsApp Profile" }))
-    fireEvent.change(await view.findByLabelText("Description (Profile Info)"), {
+    fireEvent.change(await view.findByLabelText("Description"), {
       target: { value: "Edited profile about text" },
     })
     fireEvent.click(view.getByRole("button", { name: "Save" }))
