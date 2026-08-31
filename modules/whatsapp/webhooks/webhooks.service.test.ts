@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-
+import fs from "node:fs"
 // ---------------------------------------------------------------------------
 // Mock leaf dependency @/lib/prisma only.
 // See AGENTS.md: test-guidelines > mock.module — Module Cache Rules
@@ -49,13 +49,34 @@ const mockPrisma = {
   whatsappMonthlyCount: {
     upsert: mock(async () => ({})),
   },
+  whatsappMedia: {
+    findUnique: mock(async () => null),
+    upsert: mock(async () => ({
+      id: "media-1",
+      metaMediaId: "meta-sticker-123",
+      organizationId: "org-1",
+      mimeType: "image/webp",
+      createdAt: new Date(),
+    })),
+  },
+  whatsappDevice: {
+    findUniqueOrThrow: mock(async () => ({
+      id: "device-1",
+      tokenEncrypted: "token",
+    })),
+    findUnique: mock(async () => ({
+      id: "device-1",
+      tokenEncrypted: "token",
+    })),
+    update: mock(async () => ({})),
+  },
   whatsappWebhook: {
     findMany: mock(async () => []),
   },
   whatsappBillingLedger: {
-    findFirst: mock(async () => null) as ReturnType<typeof mock>,
-    update: mock(async () => ({})) as ReturnType<typeof mock>,
-    updateMany: mock(async () => ({ count: 1 })) as ReturnType<typeof mock>,
+    findFirst: mock(async () => null),
+    update: mock(async () => ({})),
+    updateMany: mock(async () => ({ count: 1 })),
   },
 }
 
@@ -689,6 +710,50 @@ describe("processInboundMessage", () => {
         lastDirection: "INBOX",
       }),
     })
+  })
+
+  it("stores media with CDN URL when S3 CDN is configured", async () => {
+    const origCdn = process.env.S3_CDN_URL
+    process.env.S3_CDN_URL = "https://cdn.pfnapp.id"
+
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue({
+      id: "conv-1",
+      contactPhone: "+6281226622293",
+    } as any)
+    mockPrisma.whatsappMessage.create.mockResolvedValue({
+      id: "msg-sticker-1",
+      metadata: {},
+    } as any)
+    mockPrisma.whatsappMessage.update = mock(async () => ({}))
+    mockPrisma.whatsappMedia.findUnique.mockResolvedValue({
+      id: "media-1",
+      metaMediaId: "meta-sticker-123",
+      organizationId: "org-1",
+      mimeType: "image/webp",
+      storePath: "/tmp/fake-sticker.webp",
+      createdAt: new Date(),
+    })
+
+    const tmpFake = "/tmp/fake-sticker.webp"
+    fs.writeFileSync(tmpFake, Buffer.from("fake-data"))
+
+    await processInboundMessage(
+      {
+        from: "6281226622293",
+        id: "wamid.sticker.1",
+        timestamp: "1787218010",
+        type: "sticker",
+        sticker: { id: "meta-sticker-123", mime_type: "image/webp" },
+      },
+      "device-1",
+      "org-1"
+    )
+
+    expect(mockPrisma.whatsappMessage.create).toHaveBeenCalled()
+    fs.unlinkSync(tmpFake)
+
+    if (origCdn) process.env.S3_CDN_URL = origCdn
+    else delete process.env.S3_CDN_URL
   })
 })
 describe("processDeliveryStatus", () => {

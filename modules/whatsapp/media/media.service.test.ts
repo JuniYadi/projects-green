@@ -37,8 +37,18 @@ mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   },
 }))
 
-const { uploadAndSave, downloadAndSave, deleteLocal, isExpired, expiryStatus } =
-  await import("./media.service")
+const {
+  uploadAndSave,
+  downloadAndSave,
+  deleteLocal,
+  isExpired,
+  expiryStatus,
+  buildWhatsAppMediaS3Key,
+  getWhatsAppMediaCdnUrl,
+  getExtensionFromMime,
+  getStoragePath,
+  listMedia,
+} = await import("./media.service")
 
 describe("media.service", () => {
   // ponytail: temp dir for each test to avoid cross-test FS pollution
@@ -172,7 +182,6 @@ describe("media.service", () => {
         organizationId: "org-1",
         createdAt: new Date(),
         updatedAt: new Date(),
-        sha256: null,
       })
 
       const result = await downloadAndSave("device-1", "org-1", "media-1")
@@ -189,22 +198,67 @@ describe("media.service", () => {
         id: "record-1",
         storePath,
         metaMediaId: "media-1",
-        deviceId: "device-1",
-        mimeType: "image/jpeg",
-        fileSize: 100,
-        downloadedAt: new Date(),
-        expiresAt: new Date(),
-        organizationId: "org-1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        sha256: null,
       })
-
       mockTx.whatsappMedia.delete.mockResolvedValue({})
 
       await deleteLocal("media-1")
       expect(mockTx.whatsappMedia.delete).toHaveBeenCalled()
       expect(fs.existsSync(storePath)).toBe(false)
+    })
+
+    it("handles null record gracefully", async () => {
+      mockTx.whatsappMedia.findUnique.mockResolvedValue(null)
+      await deleteLocal("non-existent")
+      expect(mockTx.whatsappMedia.delete).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("helper functions", () => {
+    it("buildWhatsAppMediaS3Key generates key", () => {
+      const key = buildWhatsAppMediaS3Key("org-1", "media-1", "webp")
+      expect(key).toBeString()
+      expect(key).toContain("media-1")
+    })
+
+    it("getWhatsAppMediaCdnUrl handles custom CDN and endpoint fallbacks", () => {
+      const origCdn = process.env.S3_CDN_URL
+      process.env.S3_CDN_URL = "https://cdn.example.com"
+      expect(getWhatsAppMediaCdnUrl("key/file.webp")).toBe(
+        "https://cdn.example.com/key/file.webp"
+      )
+      delete process.env.S3_CDN_URL
+      process.env.S3_ENDPOINT = "https://s3.example.com"
+      expect(getWhatsAppMediaCdnUrl("key/file.webp")).toBe(
+        "https://s3.example.com/key/file.webp"
+      )
+      if (origCdn) process.env.S3_CDN_URL = origCdn
+    })
+
+    it("getExtensionFromMime detects file extensions accurately", () => {
+      expect(getExtensionFromMime("image/webp")).toBe("webp")
+      expect(getExtensionFromMime("image/jpeg")).toBe("jpg")
+      expect(getExtensionFromMime("image/png")).toBe("png")
+      expect(getExtensionFromMime("audio/ogg")).toBe("ogg")
+      expect(getExtensionFromMime("video/mp4")).toBe("mp4")
+      expect(getExtensionFromMime("application/pdf")).toBe("pdf")
+      expect(getExtensionFromMime("other/binary")).toBe("bin")
+    })
+
+    it("getStoragePath resolves fallback path if file exists", () => {
+      expect(
+        getStoragePath({
+          storePath: null,
+          metaMediaId: "media-xyz",
+          deviceId: "device-xyz",
+        })
+      ).toBeNull()
+    })
+
+    it("listMedia queries prisma media records", async () => {
+      mockTx.whatsappMedia.findMany.mockResolvedValueOnce([])
+      const res = await listMedia("org-1", "device-1")
+      expect(res).toEqual([])
+      expect(mockTx.whatsappMedia.findMany).toHaveBeenCalled()
     })
   })
 })

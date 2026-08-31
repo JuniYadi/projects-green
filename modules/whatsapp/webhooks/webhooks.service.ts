@@ -198,7 +198,7 @@ export async function processInboundMessage(
   if (mediaId) {
     downloadAndSave(deviceId, organizationId, mediaId)
       .then((record) => {
-        // Calculate CDN URL
+        const hasCdn = !!(process.env.S3_CDN_URL || process.env.S3_ENDPOINT)
         const ext = getExtensionFromMime(record.mimeType)
         const s3Key = buildWhatsAppMediaS3Key(
           record.organizationId,
@@ -206,22 +206,26 @@ export async function processInboundMessage(
           ext,
           record.createdAt
         )
-        const cdnUrl = getWhatsAppMediaCdnUrl(s3Key)
 
-        // Update the message metadata and direct CDN mediaUrl
         const existingMeta =
           (whatsappMessage.metadata as Record<string, unknown>) ?? {}
         existingMeta.whatsappMediaId = record.id
         existingMeta.mediaDownloaded = true
-        existingMeta.s3Key = s3Key
-        existingMeta.cdnUrl = cdnUrl
+
+        let targetMediaUrl = `__stored:${record.id}`
+        if (hasCdn) {
+          const cdnUrl = getWhatsAppMediaCdnUrl(s3Key)
+          existingMeta.s3Key = s3Key
+          existingMeta.cdnUrl = cdnUrl
+          targetMediaUrl = cdnUrl
+        }
 
         prisma.whatsappMessage
           .update({
             where: { id: whatsappMessage.id },
             data: {
               metadata: existingMeta as Prisma.InputJsonValue,
-              mediaUrl: cdnUrl,
+              mediaUrl: targetMediaUrl,
             },
           })
           .catch((err: unknown) =>
