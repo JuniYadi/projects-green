@@ -202,6 +202,9 @@ describe("media.route", () => {
   })
   describe("GET /media/:id/download", () => {
     it("redirects 302 directly to S3 CDN URL when CDN configured", async () => {
+      const origCdn = process.env.S3_CDN_URL
+      process.env.S3_CDN_URL = "https://cdn.pfnapp.id"
+
       mockAuthContext.current = {
         organizationId: "org-1",
         type: "workos",
@@ -221,6 +224,9 @@ describe("media.route", () => {
 
       expect(res.status).toBe(302)
       expect(res.headers.get("location")).toContain("cdn.pfnapp.id")
+
+      if (origCdn) process.env.S3_CDN_URL = origCdn
+      else delete process.env.S3_CDN_URL
     })
 
     it("falls back to attachment download when CDN not configured", async () => {

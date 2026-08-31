@@ -220,17 +220,14 @@ describe("media.service", () => {
       expect(key).toContain("media-1")
     })
 
-    it("getWhatsAppMediaCdnUrl handles custom CDN and endpoint fallbacks", () => {
+    it("getWhatsAppMediaCdnUrl uses S3_CDN_URL and returns empty string when absent", () => {
       const origCdn = process.env.S3_CDN_URL
       process.env.S3_CDN_URL = "https://cdn.example.com"
       expect(getWhatsAppMediaCdnUrl("key/file.webp")).toBe(
         "https://cdn.example.com/key/file.webp"
       )
       delete process.env.S3_CDN_URL
-      process.env.S3_ENDPOINT = "https://s3.example.com"
-      expect(getWhatsAppMediaCdnUrl("key/file.webp")).toBe(
-        "https://s3.example.com/key/file.webp"
-      )
+      expect(getWhatsAppMediaCdnUrl("key/file.webp")).toBe("")
       if (origCdn) process.env.S3_CDN_URL = origCdn
     })
 

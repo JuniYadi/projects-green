@@ -22,10 +22,10 @@ export function buildWhatsAppMediaS3Key(
 }
 
 export function getWhatsAppMediaCdnUrl(s3Key: string): string {
-  const cdn = process.env.S3_CDN_URL || process.env.S3_ENDPOINT || ""
+  const cdn = process.env.S3_CDN_URL || ""
   const cleanCdn = cdn.replace(/\/+$/, "")
   const cleanKey = s3Key.replace(/^\/+/, "")
-  return `${cleanCdn}/${cleanKey}`
+  return cleanCdn ? `${cleanCdn}/${cleanKey}` : ""
 }
 
 export function getExtensionFromMime(mimeType: string): string {

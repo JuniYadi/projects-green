@@ -315,7 +315,7 @@ export const mediaRoutes = new Elysia({
       const cdnUrl = getWhatsAppMediaCdnUrl(s3Key)
 
       // If CDN URL configured, redirect immediately
-      if (process.env.S3_CDN_URL || process.env.S3_ENDPOINT) {
+      if (process.env.S3_CDN_URL) {
         return Response.redirect(cdnUrl, 302)
       }
 

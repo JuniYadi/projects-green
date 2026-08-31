@@ -198,7 +198,7 @@ export async function processInboundMessage(
   if (mediaId) {
     downloadAndSave(deviceId, organizationId, mediaId)
       .then((record) => {
-        const hasCdn = !!(process.env.S3_CDN_URL || process.env.S3_ENDPOINT)
+        const hasCdn = Boolean(process.env.S3_CDN_URL)
         const ext = getExtensionFromMime(record.mimeType)
         const s3Key = buildWhatsAppMediaS3Key(
           record.organizationId,

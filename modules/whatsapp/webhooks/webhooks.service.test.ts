@@ -24,11 +24,15 @@ const mockPrisma = {
     })) as ReturnType<typeof mock>,
   },
   whatsappMessage: {
-    findFirst: mock(async () => null) as ReturnType<typeof mock>,
+    findFirst: mock(async () => null as any),
     create: mock(async (args: any) => ({
       id: "msg-1",
       ...args.data,
       createdAt: new Date(),
+    })),
+    update: mock(async (args: any) => ({
+      id: "msg-1",
+      ...args.data,
     })),
   },
   whatsappMessageStatus: {
@@ -50,7 +54,7 @@ const mockPrisma = {
     upsert: mock(async () => ({})),
   },
   whatsappMedia: {
-    findUnique: mock(async () => null),
+    findUnique: mock(async () => null as any),
     upsert: mock(async () => ({
       id: "media-1",
       metaMediaId: "meta-sticker-123",
@@ -74,7 +78,7 @@ const mockPrisma = {
     findMany: mock(async () => []),
   },
   whatsappBillingLedger: {
-    findFirst: mock(async () => null),
+    findFirst: mock(async () => null as any),
     update: mock(async () => ({})),
     updateMany: mock(async () => ({ count: 1 })),
   },
@@ -724,7 +728,6 @@ describe("processInboundMessage", () => {
       id: "msg-sticker-1",
       metadata: {},
     } as any)
-    mockPrisma.whatsappMessage.update = mock(async () => ({}))
     mockPrisma.whatsappMedia.findUnique.mockResolvedValue({
       id: "media-1",
       metaMediaId: "meta-sticker-123",
@@ -732,7 +735,7 @@ describe("processInboundMessage", () => {
       mimeType: "image/webp",
       storePath: "/tmp/fake-sticker.webp",
       createdAt: new Date(),
-    })
+    } as any)
 
     const tmpFake = "/tmp/fake-sticker.webp"
     fs.writeFileSync(tmpFake, Buffer.from("fake-data"))
@@ -771,20 +774,26 @@ describe("processDeliveryStatus", () => {
   })
 
   it("confirms billing ledger on successful delivery", async () => {
-    mockPrisma.whatsappMessage.findFirst = mock(async () => ({
-      id: "msg-1",
-      conversationId: "conv-1",
-      conversation: {
-        contactPhone: "6281234567890",
-        organizationId: "org-1",
-        whatsappDeviceId: "dev-1",
-      },
-    }))
-    mockPrisma.whatsappBillingLedger.findFirst = mock(async () => ({
-      id: "ledger-1",
-      waMessageId: "wamid.ok.1",
-      status: "CHARGED_PENDING_VERIFY",
-    }))
+    mockPrisma.whatsappMessage.findFirst = mock(
+      async () =>
+        ({
+          id: "msg-1",
+          conversationId: "conv-1",
+          conversation: {
+            contactPhone: "6281234567890",
+            organizationId: "org-1",
+            whatsappDeviceId: "dev-1",
+          },
+        }) as any
+    )
+    mockPrisma.whatsappBillingLedger.findFirst = mock(
+      async () =>
+        ({
+          id: "ledger-1",
+          waMessageId: "wamid.ok.1",
+          status: "CHARGED_PENDING_VERIFY",
+        }) as any
+    )
 
     const result = await processDeliveryStatus(
       {
@@ -813,22 +822,28 @@ describe("processDeliveryStatus", () => {
   })
 
   it("reverts billing ledger on failed delivery", async () => {
-    mockPrisma.whatsappMessage.findFirst = mock(async () => ({
-      id: "msg-1",
-      conversationId: "conv-1",
-      conversation: {
-        contactPhone: "6281234567890",
-        organizationId: "org-1",
-        whatsappDeviceId: "dev-1",
-      },
-    }))
-    mockPrisma.whatsappBillingLedger.findFirst = mock(async () => ({
-      id: "ledger-1",
-      waMessageId: "wamid.fail.1",
-      status: "CHARGED_PENDING_VERIFY",
-      quotaValue: 1,
-      whatsappDeviceId: "dev-1",
-    }))
+    mockPrisma.whatsappMessage.findFirst = mock(
+      async () =>
+        ({
+          id: "msg-1",
+          conversationId: "conv-1",
+          conversation: {
+            contactPhone: "6281234567890",
+            organizationId: "org-1",
+            whatsappDeviceId: "dev-1",
+          },
+        }) as any
+    )
+    mockPrisma.whatsappBillingLedger.findFirst = mock(
+      async () =>
+        ({
+          id: "ledger-1",
+          waMessageId: "wamid.fail.1",
+          status: "CHARGED_PENDING_VERIFY",
+          quotaValue: 1,
+          whatsappDeviceId: "dev-1",
+        }) as any
+    )
 
     const result = await processDeliveryStatus(
       {
