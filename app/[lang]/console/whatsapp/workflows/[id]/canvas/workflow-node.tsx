@@ -106,33 +106,40 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
 
   return (
     <div
-      className={`group relative max-w-[320px] min-w-[280px] rounded-xl border bg-card/95 p-4 text-card-foreground shadow-lg backdrop-blur transition-all ${
+      className={`group relative max-w-[230px] min-w-[200px] rounded-xl border bg-card/95 p-2.5 text-card-foreground shadow-md backdrop-blur transition-all ${
         selected
           ? "border-primary ring-2 shadow-primary/10 ring-primary/40"
-          : "border-border/80 hover:border-border hover:shadow-md"
+          : "border-border/80 hover:border-border hover:shadow-sm"
       }`}
     >
-      {/* Target input handle at Top */}
+      {/* Multi-Directional Target Handles (Top + Left) */}
       <Handle
         type="target"
         position={Position.Top}
-        className="!h-3 !w-3 !rounded-full !border-2 !border-background !bg-muted-foreground transition-all group-hover:!bg-primary"
+        id="target-top"
+        className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-muted-foreground transition-all group-hover:!bg-primary"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="target-left"
+        className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-muted-foreground transition-all group-hover:!bg-primary"
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2.5">
-        <div className="flex items-center gap-2 overflow-hidden">
+      <div className="flex items-center justify-between gap-1.5 border-b border-border/50 pb-1.5">
+        <div className="flex items-center gap-1.5 overflow-hidden">
           <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${details.color}`}
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${details.color}`}
           >
-            <Icon weight="duotone" className="h-4 w-4" />
+            <Icon weight="duotone" className="h-3.5 w-3.5" />
           </div>
           <div className="min-w-0">
-            <h4 className="truncate text-sm font-semibold tracking-tight">
+            <h4 className="truncate text-xs font-semibold tracking-tight">
               {nodeData.name}
             </h4>
             <span
-              className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-medium tracking-wider uppercase ${details.badgeClass}`}
+              className={`py-0.2 inline-block rounded border px-1 text-[9px] font-medium tracking-wider uppercase ${details.badgeClass}`}
             >
               {details.label}
             </span>
@@ -141,13 +148,13 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
       </div>
 
       {/* Body preview */}
-      <div className="mt-3 space-y-1.5">
-        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+      <div className="mt-1.5 space-y-1">
+        <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
           {previewText}
         </p>
 
         {Boolean(nodeData.config?.captureVariable) && (
-          <div className="inline-flex items-center gap-1 rounded border border-border/40 bg-secondary/80 px-2 py-0.5 font-mono text-[10px] text-secondary-foreground">
+          <div className="py-0.2 inline-flex items-center gap-1 rounded border border-border/40 bg-secondary/80 px-1.5 font-mono text-[9px] text-secondary-foreground">
             <span>save:</span>
             <span className="font-semibold text-primary">
               {String(nodeData.config.captureVariable)}
@@ -156,42 +163,41 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
         )}
       </div>
 
-      {/* Output handles */}
+      {/* Multi-Directional Source Handles */}
       {isCondition ? (
-        <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-2.5 text-[11px] font-medium">
-          {/* True Port (Left/Green) */}
-          <div className="relative flex items-center gap-1 text-emerald-400">
-            <Handle
-              type="source"
-              position={Position.Bottom}
-              id="true"
-              style={{ left: "25%" }}
-              className="!h-3 !w-3 !rounded-full !border-2 !border-background !bg-emerald-500 transition-transform hover:scale-125"
-            />
-            <span className="ml-1 font-mono text-[10px] font-bold">TRUE</span>
-          </div>
-
-          {/* False Port (Right/Rose) */}
-          <div className="relative flex items-center gap-1 text-rose-400">
-            <span className="mr-1 font-mono text-[10px] font-bold">FALSE</span>
-            <Handle
-              type="source"
-              position={Position.Bottom}
-              id="false"
-              style={{ left: "75%" }}
-              className="!h-3 !w-3 !rounded-full !border-2 !border-background !bg-rose-500 transition-transform hover:scale-125"
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="mt-3 flex justify-center">
+        <>
+          {/* True Port (Right side) */}
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="true"
+            className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-emerald-500 transition-transform hover:scale-125"
+          />
+          {/* False Port (Bottom side) */}
           <Handle
             type="source"
             position={Position.Bottom}
-            id="default"
-            className="!h-3 !w-3 !rounded-full !border-2 !border-background !bg-primary transition-all group-hover:scale-125"
+            id="false"
+            className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-rose-500 transition-transform hover:scale-125"
           />
-        </div>
+        </>
+      ) : (
+        <>
+          {/* Default Right Source */}
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="default"
+            className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-primary transition-all group-hover:scale-125"
+          />
+          {/* Default Bottom Source */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="default-bottom"
+            className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-primary transition-all group-hover:scale-125"
+          />
+        </>
       )}
     </div>
   )

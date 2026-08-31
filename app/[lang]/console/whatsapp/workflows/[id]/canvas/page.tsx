@@ -37,7 +37,15 @@ import {
   DownloadSimple,
   UploadSimple,
   Star,
+  DotsThreeVertical,
 } from "@phosphor-icons/react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -860,14 +868,14 @@ export default function WhatsappWorkflowCanvasPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           {/* Device Selector */}
-          <div className="w-56">
+          <div className="w-48 sm:w-56">
             <Select
               value={selectedDeviceId}
               onValueChange={setSelectedDeviceId}
             >
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder={t.canvas.selectDevicePlaceholder} />
               </SelectTrigger>
               <SelectContent>
@@ -882,102 +890,114 @@ export default function WhatsappWorkflowCanvasPage() {
               </SelectContent>
             </Select>
           </div>
-          {/* Default Workflow Toggle */}
-          <div className="flex items-center gap-1.5 rounded-lg border border-border/70 bg-card/60 px-2.5 py-1 text-xs">
-            <Star
-              className={`h-3.5 w-3.5 ${workflowMeta.isDefault ? "fill-amber-500 text-amber-500" : "text-muted-foreground"}`}
-              weight={workflowMeta.isDefault ? "fill" : "regular"}
-            />
-            <span className="text-xs font-medium">
-              {t.canvas.defaultToggle}
-            </span>
-            <Switch
-              checked={workflowMeta.isDefault}
-              onCheckedChange={(checked) =>
-                setWorkflowMeta((prev) => ({ ...prev, isDefault: checked }))
-              }
-              className="scale-75 data-[state=checked]:bg-amber-500"
-            />
-          </div>
 
-          {/* Export JSON Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportJson}
-            className="h-9 gap-1.5 text-xs font-medium"
-          >
-            <DownloadSimple className="h-3.5 w-3.5" />
-            {t.canvas.exportJson}
-          </Button>
-
-          {/* Import JSON Button */}
-          <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">
-            <UploadSimple className="h-3.5 w-3.5" />
-            {t.canvas.importJson}
-            <input
-              type="file"
-              accept=".json,application/json"
-              onChange={handleImportJson}
-              className="hidden"
-            />
-          </label>
-
+          {/* Primary Action 1: Test Simulator */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleStartSim}
-            className="h-9 gap-1.5 text-xs font-medium"
+            className="h-8 gap-1.5 text-xs font-medium"
           >
             <Play className="h-3.5 w-3.5 text-primary" weight="fill" />
-            {t.canvas.simulateTest}
+            <span className="hidden sm:inline">{t.canvas.simulateTest}</span>
           </Button>
 
+          {/* Primary Action 2: Save & Deploy */}
           <Button
             onClick={handleSave}
             disabled={saving}
             size="sm"
-            className="h-9 gap-1.5 text-xs font-medium"
+            className="h-8 gap-1.5 text-xs font-medium"
           >
             <FloppyDisk className="h-3.5 w-3.5" />
-            {saving ? t.canvas.saving : t.canvas.saveAndDeploy}
+            <span>{saving ? t.canvas.saving : t.canvas.saveAndDeploy}</span>
+          </Button>
+
+          {/* Secondary Actions in Compact Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <DotsThreeVertical className="h-4 w-4" weight="bold" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <div className="flex items-center justify-between px-2 py-1.5 text-xs font-medium">
+                <div className="flex items-center gap-1.5">
+                  <Star
+                    className={`h-3.5 w-3.5 ${workflowMeta.isDefault ? "fill-amber-500 text-amber-500" : "text-muted-foreground"}`}
+                    weight={workflowMeta.isDefault ? "fill" : "regular"}
+                  />
+                  <span>{t.canvas.defaultToggle}</span>
+                </div>
+                <Switch
+                  checked={workflowMeta.isDefault}
+                  onCheckedChange={(checked) =>
+                    setWorkflowMeta((prev) => ({ ...prev, isDefault: checked }))
+                  }
+                  className="scale-75 data-[state=checked]:bg-amber-500"
+                />
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleExportJson}
+                className="cursor-pointer gap-2 text-xs"
+              >
+                <DownloadSimple className="h-3.5 w-3.5" />
+                <span>{t.canvas.exportJson}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer gap-2 text-xs"
+              >
+                <label className="flex w-full cursor-pointer items-center gap-2">
+                  <UploadSimple className="h-3.5 w-3.5" />
+                  <span>{t.canvas.importJson}</span>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleImportJson}
+                    className="hidden"
+                  />
+                </label>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Canvas Area with Floating Toolbars */}
+      <div className="relative flex flex-1 overflow-hidden rounded-xl border border-border bg-background shadow-inner">
+        {/* AI Copilot Floating Top Center Bar */}
+        <div className="absolute top-4 left-1/2 z-10 flex w-full max-w-lg -translate-x-1/2 items-center gap-2 rounded-xl border border-border/80 bg-card/90 p-2 shadow-lg backdrop-blur">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Sparkle className="h-3.5 w-3.5" weight="fill" />
+          </div>
+          <Input
+            value={copilotPrompt}
+            onChange={(e) => setCopilotPrompt(e.target.value)}
+            placeholder={t.canvas.copilotPlaceholder}
+            className="h-7 border-none bg-transparent text-xs shadow-none focus-visible:ring-0"
+            onKeyDown={(e) => e.key === "Enter" && handleGenerateAi()}
+          />
+          <Button
+            size="sm"
+            onClick={handleGenerateAi}
+            disabled={isGeneratingAi}
+            className="h-7 shrink-0 gap-1 px-2.5 text-[11px]"
+          >
+            {isGeneratingAi ? (
+              <ArrowsClockwise className="h-3 w-3 animate-spin" />
+            ) : (
+              <Sparkle className="h-3 w-3" weight="fill" />
+            )}
+            <span>
+              {isGeneratingAi ? t.canvas.generating : t.canvas.generateAi}
+            </span>
           </Button>
         </div>
-      </div>
 
-      {/* AI Copilot Prompt Bar */}
-      <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-card/60 p-2.5 shadow-sm backdrop-blur">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Sparkle className="h-4 w-4" weight="fill" />
-        </div>
-        <Input
-          value={copilotPrompt}
-          onChange={(e) => setCopilotPrompt(e.target.value)}
-          placeholder={t.canvas.copilotPlaceholder}
-          className="h-8 border-none bg-transparent text-xs shadow-none focus-visible:ring-0"
-          onKeyDown={(e) => e.key === "Enter" && handleGenerateAi()}
-        />
-        <Button
-          size="sm"
-          onClick={handleGenerateAi}
-          disabled={isGeneratingAi}
-          className="h-8 shrink-0 gap-1 text-xs"
-        >
-          {isGeneratingAi ? (
-            <ArrowsClockwise className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Sparkle className="h-3.5 w-3.5" weight="fill" />
-          )}
-          <span>
-            {isGeneratingAi ? t.canvas.generating : t.canvas.generateAi}
-          </span>
-        </Button>
-      </div>
-
-      {/* Canvas Area with Left Palette Toolbar */}
-      <div className="relative flex flex-1 overflow-hidden rounded-xl border border-border bg-background shadow-inner">
         {/* Node Palette Bar (Floating Left) */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 rounded-xl border border-border/80 bg-card/90 p-2 shadow-lg backdrop-blur">
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 rounded-xl border border-border/80 bg-card/90 p-1.5 shadow-lg backdrop-blur">
           <div className="px-2 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
             {t.canvas.addNodeHeader}
           </div>

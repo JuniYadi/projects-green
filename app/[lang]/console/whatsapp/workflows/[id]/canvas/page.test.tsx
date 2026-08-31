@@ -80,9 +80,9 @@ describe("Canvas simulator integration", () => {
 
     expect(html).toContain("Visual graph")
     expect(html).toContain("Add a step")
-    expect(html).toContain("Export JSON")
+    expect(html).toContain("Simulate test")
+    expect(html).toContain("Save and deploy")
   })
-
   it("opens the localized inspector drawer for a canvas step", async () => {
     const view = render(<WhatsappWorkflowCanvasPage />)
 
