@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import { getPresignedGetUrl } from "@/lib/storage/s3-storage"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { toMediaDTO } from "../media.dto"
 import {
@@ -304,7 +305,7 @@ export const mediaRoutes = new Elysia({
         return { ok: false, error: "FORBIDDEN", message: "Access denied." }
       }
 
-      // Return 302 Redirect directly to CDN URL if available
+      // Return 302 Redirect with S3 Presigned GET URL if S3/CDN configured
       const ext = getExtensionFromMime(record.mimeType)
       const s3Key = buildWhatsAppMediaS3Key(
         record.organizationId,
@@ -312,13 +313,18 @@ export const mediaRoutes = new Elysia({
         ext,
         record.createdAt
       )
-      const cdnUrl = getWhatsAppMediaCdnUrl(s3Key)
 
-      // If CDN URL configured, redirect immediately
       if (process.env.S3_CDN_URL) {
-        return Response.redirect(cdnUrl, 302)
+        try {
+          const presignedUrl = await getPresignedGetUrl({
+            storageKey: s3Key,
+            expiresInSeconds: 1800, // 30 minutes
+          })
+          return Response.redirect(presignedUrl, 302)
+        } catch {
+          // Fallback to local streaming if presigning fails
+        }
       }
-
       // Fallback: local disk streaming if S3 CDN not configured
       let storePath = getStoragePath(record)
       if (!storePath) {
