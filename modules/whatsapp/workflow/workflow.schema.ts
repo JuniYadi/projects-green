@@ -153,7 +153,7 @@ export const WorkflowDefinitionSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
-  isDefault: z.boolean().default(false),
+  isDefault: z.boolean().optional().default(false),
   trigger: WorkflowTriggerSchema,
   nodes: z.array(WorkflowNodeSchema),
   edges: z.array(WorkflowEdgeSchema),

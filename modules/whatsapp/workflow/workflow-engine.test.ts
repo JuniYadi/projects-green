@@ -25,18 +25,13 @@ mock.module("@/lib/redis", () => ({
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
-
 mock.module("@/modules/whatsapp/messages/messages.service", () => ({
-  messageService: {
-    sendMessage: mockMessageService.sendMessage,
-  },
+  messageService: mockMessageService,
 }))
-import {
-  evaluateMustacheTemplate,
-  type TemplateContext,
-} from "./workflow-session"
-import { executeWorkflowNode } from "./workflow-executor"
-import { processWhatsappWorkflowInbound } from "./workflow-runner"
+const { evaluateMustacheTemplate } = await import("./workflow-session")
+type TemplateContext = import("./workflow-session").TemplateContext
+const { executeWorkflowNode } = await import("./workflow-executor")
+const { processWhatsappWorkflowInbound } = await import("./workflow-runner")
 describe("modules/whatsapp/workflow - Template Evaluator", () => {
   it("resolves nested mustache variables correctly", () => {
     const context: TemplateContext = {

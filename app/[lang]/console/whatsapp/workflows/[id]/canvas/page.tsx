@@ -38,6 +38,7 @@ import {
   UploadSimple,
   Star,
 } from "@phosphor-icons/react"
+import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -62,6 +63,7 @@ import type {
   WorkflowDefinition,
   WorkflowEdge,
   WorkflowNode,
+  WorkflowNodeType,
 } from "@/modules/whatsapp/workflow/workflow.schema"
 import { WorkflowDefinitionSchema } from "@/modules/whatsapp/workflow/workflow.schema"
 import { WorkflowNodeComponent } from "./workflow-node"
@@ -218,7 +220,13 @@ export default function WhatsappWorkflowCanvasPage() {
           Array.isArray(devRes.data.devices)
         ) {
           if (mounted) {
-            const devList = devRes.data.devices.map((d) => ({
+            const devList = (
+              devRes.data.devices as Array<{
+                id: string
+                name?: string
+                phoneNumber: string
+              }>
+            ).map((d) => ({
               id: d.id,
               name: d.name || `WhatsApp (${d.phoneNumber})`,
               phoneNumber: d.phoneNumber,

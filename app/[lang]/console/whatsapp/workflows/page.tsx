@@ -14,6 +14,7 @@ import {
   Sparkle,
   Star,
 } from "@phosphor-icons/react"
+import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import {
   Card,
