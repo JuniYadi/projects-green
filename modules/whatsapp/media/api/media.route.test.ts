@@ -65,6 +65,11 @@ mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
     })),
   },
 }))
+mock.module("@/lib/storage/s3-storage", () => ({
+  getPresignedGetUrl: mock(
+    async () => "https://cdn.pfnapp.id/mock/s3/key?presigned=true"
+  ),
+}))
 
 const { mediaRoutes } = await import("./media.route")
 
@@ -201,7 +206,7 @@ describe("media.route", () => {
     })
   })
   describe("GET /media/:id/download", () => {
-    it("redirects 302 directly to S3 CDN URL when CDN configured", async () => {
+    it("redirects 302 directly to S3 Presigned URL when S3/CDN configured", async () => {
       const origCdn = process.env.S3_CDN_URL
       process.env.S3_CDN_URL = "https://cdn.pfnapp.id"
 
@@ -224,6 +229,7 @@ describe("media.route", () => {
 
       expect(res.status).toBe(302)
       expect(res.headers.get("location")).toContain("cdn.pfnapp.id")
+      expect(res.headers.get("location")).toContain("presigned=true")
 
       if (origCdn) process.env.S3_CDN_URL = origCdn
       else delete process.env.S3_CDN_URL
