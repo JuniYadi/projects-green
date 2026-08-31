@@ -68,11 +68,13 @@ mock.module("@/components/ui/dialog", () => ({
   }) => <>{children}</>,
 }))
 const mockGetCatalogProduct = mock()
+const mockGetAccount = mock()
 const mockSubmitCheckout = mock()
 const mockGetCheckoutQuote = mock()
 
 mock.module("@/lib/billing-client", () => ({
   getCatalogProduct: mockGetCatalogProduct,
+  getAccount: mockGetAccount,
 }))
 
 mock.module("@/app/[lang]/console/billing/checkout/checkout-client", () => ({
@@ -86,9 +88,17 @@ describe("ServiceOrderDialog", () => {
   beforeEach(() => {
     cleanup()
     mockGetCatalogProduct.mockClear()
+    mockGetAccount.mockClear()
+    mockSubmitCheckout.mockClear()
     mockGetCheckoutQuote.mockClear()
     mockToastSuccess.mockClear()
     mockToastError.mockClear()
+    mockGetAccount.mockResolvedValue({
+      ok: true,
+      balanceIdr: "0",
+      formattedBalance: "Rp 0",
+      currency: "IDR",
+    })
     mockSubmitCheckout.mockClear()
     mockGetCheckoutQuote.mockResolvedValue({
       ok: true,
@@ -502,6 +512,83 @@ describe("ServiceOrderDialog", () => {
           type: "text",
         },
       ])
+    })
+  })
+  it("renders quick top up CTA when balance is insufficient", async () => {
+    mockGetCatalogProduct.mockResolvedValueOnce({
+      ok: true,
+      product: {
+        code: "WHATSAPP",
+        name: "WhatsApp Service",
+        description: "Official WhatsApp messaging",
+        plans: [
+          {
+            id: "plan-1",
+            code: "PRO",
+            name: "Pro Plan",
+            description: "For scaling business",
+            offers: [
+              {
+                id: "price-1",
+                pricingId: "price-1",
+                billingPeriod: "MONTHLY",
+                periodPrice: "150000",
+                currency: "IDR",
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    mockGetCheckoutQuote.mockResolvedValueOnce({
+      ok: true,
+      quoteId: "quote-1",
+      pricingId: "price-1",
+      packageCode: "WHATSAPP",
+      planCode: "PRO",
+      currency: "IDR",
+      billingPeriod: "MONTHLY",
+      quantity: "1",
+      periodStart: "2026-06-01T00:00:00Z",
+      periodEnd: "2026-07-01T00:00:00Z",
+      subtotal: "150000",
+      discount: "0",
+      firstPayment: "150000",
+      nextRenewal: "2026-07-01T00:00:00Z",
+      addons: [],
+      voucher: null,
+      expiresAt: "2026-06-01T01:00:00Z",
+    })
+
+    mockGetAccount.mockResolvedValueOnce({
+      ok: true,
+      balanceIdr: "0",
+      formattedBalance: "Rp 0",
+      currency: "IDR",
+    })
+
+    const view = render(
+      <ServiceOrderDialog
+        productCode="WHATSAPP"
+        open={true}
+        lang="id"
+        onOpenChange={() => {}}
+      />
+    )
+
+    await waitFor(() => {
+      expect(view.getByText(/Saldo Wallet Saat Ini/i)).toBeInTheDocument()
+      expect(view.getByText(/Saldo tidak mencukupi/i)).toBeInTheDocument()
+      expect(
+        view.getByRole("button", { name: /Top Up Instan/i })
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(view.getByRole("button", { name: /Top Up Instan/i }))
+
+    await waitFor(() => {
+      expect(view.getByText("Isi Ulang Kilat")).toBeInTheDocument()
     })
   })
 })
