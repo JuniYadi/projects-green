@@ -640,6 +640,39 @@ function MessageBubble({
                 </div>
               ) : null}
             </>
+          ) : message.messageType === "sticker" ? (
+            <div className="py-1">
+              {message.mediaUrl?.startsWith("__stored:") ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={`/api/whatsapp/media/${message.mediaUrl.replace("__stored:", "")}/download`}
+                  alt="Sticker"
+                  className="size-32 object-contain"
+                  loading="lazy"
+                />
+              ) : (
+                <span className="italic opacity-60">🎨 (Sticker)</span>
+              )}
+            </div>
+          ) : message.messageType === "image" && message.mediaUrl ? (
+            <div className="space-y-1.5 py-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={
+                  message.mediaUrl.startsWith("__stored:")
+                    ? `/api/whatsapp/media/${message.mediaUrl.replace("__stored:", "")}/download`
+                    : message.mediaUrl
+                }
+                alt="Image"
+                className="max-h-60 max-w-full rounded-md object-contain"
+                loading="lazy"
+              />
+              {message.body ? (
+                <p className="leading-relaxed break-words whitespace-pre-wrap">
+                  {message.body}
+                </p>
+              ) : null}
+            </div>
           ) : (
             <p className="leading-relaxed break-words whitespace-pre-wrap">
               {message.body || (
