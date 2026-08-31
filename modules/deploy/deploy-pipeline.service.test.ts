@@ -72,6 +72,7 @@ const releaseManagedStock = mock(async () => {})
 
 mock.module("@/modules/deploy/app-managed-stock.service", () => ({
   releaseManagedStock,
+  claimManagedStock: mock(async () => ({})),
 }))
 const mockWriteSecrets = mock(async () => ({
   environment: "dev",
