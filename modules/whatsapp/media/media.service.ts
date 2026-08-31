@@ -1,12 +1,37 @@
 import { prisma } from "@/lib/prisma"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
+import { getS3Client, getS3Config } from "@/lib/storage/s3-storage"
 import fs from "node:fs"
 import path from "node:path"
 
 const STORAGE_BASE = path.join(process.cwd(), "storage", "whatsapp", "media")
-const EXPIRY_DAYS = 30
-// ponytail: local FS, S3 when there's actual traffic pressure
+const EXPIRY_DAYS = 3650 // 10 years retention when saved to CDN/S3
 
+export function getPublicCdnUrl(s3Key: string): string {
+  const cdn = process.env.S3_CDN_URL || process.env.S3_ENDPOINT || ""
+  const cleanCdn = cdn.replace(/\/+$/, "")
+  const cleanKey = s3Key.replace(/^\/+/, "")
+  return `${cleanCdn}/${cleanKey}`
+}
+
+export function buildWhatsAppMediaS3Key(
+  organizationId: string,
+  deviceId: string,
+  mediaId: string,
+  extension = "webp"
+): string {
+  return `whatsapp/${organizationId}/${deviceId}/${mediaId}.${extension}`
+}
+
+function getExtensionFromMime(mimeType: string): string {
+  if (mimeType.includes("webp")) return "webp"
+  if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg"
+  if (mimeType.includes("png")) return "png"
+  if (mimeType.includes("ogg") || mimeType.includes("opus")) return "ogg"
+  if (mimeType.includes("mp4")) return "mp4"
+  if (mimeType.includes("pdf")) return "pdf"
+  return "bin"
+}
 export type ExpiryStatus = "green" | "yellow" | "red"
 
 export async function uploadAndSave(
@@ -34,6 +59,20 @@ export async function uploadAndSave(
   const storePath = path.join(dir, `${mediaId}`)
   // ponytail: store as mediaId (not fileName) so upload/download share one path pattern
   fs.writeFileSync(storePath, Buffer.from(file))
+
+  // Upload to S3 CDN for permanent retention
+  const ext = getExtensionFromMime(mimeType)
+  const s3Key = buildWhatsAppMediaS3Key(organizationId, deviceId, mediaId, ext)
+  try {
+    const s3 = getS3Client()
+    const s3File = s3.file(s3Key, { type: mimeType })
+    await s3File.write(file)
+  } catch (s3Err) {
+    console.warn(
+      `[mediaService] S3 upload failed for outbound media ${mediaId}:`,
+      s3Err
+    )
+  }
 
   let record
   try {
@@ -107,6 +146,25 @@ export async function downloadAndSave(
   fs.mkdirSync(dir, { recursive: true })
   const storePath = path.join(dir, `${metaMediaId}`)
   fs.writeFileSync(storePath, Buffer.from(binary))
+
+  // Upload to S3 CDN for permanent retention
+  const ext = getExtensionFromMime(meta.mime_type)
+  const s3Key = buildWhatsAppMediaS3Key(
+    organizationId,
+    deviceId,
+    metaMediaId,
+    ext
+  )
+  try {
+    const s3 = getS3Client()
+    const s3File = s3.file(s3Key, { type: meta.mime_type })
+    await s3File.write(binary)
+  } catch (s3Err) {
+    console.warn(
+      `[mediaService] S3 upload failed for media ${metaMediaId}:`,
+      s3Err
+    )
+  }
 
   const key = existing ? { id: existing.id } : { metaMediaId }
   const record = await prisma.whatsappMedia.upsert({
