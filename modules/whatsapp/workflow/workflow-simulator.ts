@@ -275,18 +275,18 @@ export function stepSimulatorSession(
 
       case "ai_generate": {
         const config = node.config as unknown as AiGenerateNodeConfig
-        const prompt = evaluateMustacheTemplate(
-          asString(config.prompt),
-          templateContext
-        )
-        const mockResponse = `[AI Respon]: Menjawab pertanyaan "${prompt.slice(
-          0,
-          30
-        )}..."`
         const captureVariable = asString(
           config.captureVariable,
           `ai_${node.id}`
         )
+        const prompt = evaluateMustacheTemplate(
+          asString(config.prompt),
+          templateContext
+        )
+        const mockResponse = `[AI Response]: Answering question "${prompt.slice(
+          0,
+          40
+        )}..."`
 
         session.variables[captureVariable] = mockResponse
         session.stepOutputs[node.id] = { generatedText: mockResponse }

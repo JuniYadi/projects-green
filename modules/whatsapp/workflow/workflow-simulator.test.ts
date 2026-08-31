@@ -255,11 +255,11 @@ describe("workflow simulator", () => {
 
     expect(session.history[0]?.text).toBe("Choose \n[Yes] [No]")
     expect(session.variables.answer).toBe(
-      '[AI Respon]: Menjawab pertanyaan "Help ..."'
+      '[AI Response]: Answering question "Help ..."'
     )
     expect(session.variables.response).toEqual({ status: 200, mockData: true })
     expect(session.stepOutputs.ai).toEqual({
-      generatedText: '[AI Respon]: Menjawab pertanyaan "Help ..."',
+      generatedText: '[AI Response]: Answering question "Help ..."',
     })
     expect(session.isCompleted).toBe(true)
   })

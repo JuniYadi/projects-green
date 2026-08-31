@@ -74,6 +74,7 @@ import type {
   WorkflowEdge,
   WorkflowNode,
   WorkflowNodeType,
+  WorkflowTrigger,
 } from "@/modules/whatsapp/workflow/workflow.schema"
 import { WorkflowDefinitionSchema } from "@/modules/whatsapp/workflow/workflow.schema"
 import {
@@ -150,7 +151,14 @@ export default function WhatsappWorkflowCanvasPage() {
     []
   )
   // Top level state
-  const [workflowMeta, setWorkflowMeta] = useState(() => ({
+  const [workflowMeta, setWorkflowMeta] = useState<{
+    id: string
+    name: string
+    description: string
+    isActive: boolean
+    isDefault: boolean
+    trigger: WorkflowTrigger
+  }>(() => ({
     id: workflowId === "new" ? "wf_new" : workflowId,
     name: "",
     description: "",
@@ -158,7 +166,7 @@ export default function WhatsappWorkflowCanvasPage() {
     isDefault: false,
     trigger: {
       id: "trig_1",
-      type: "keyword_match" as const,
+      type: "keyword_match",
       keywords: ["help", "info", "menu"],
     },
   }))
@@ -169,6 +177,11 @@ export default function WhatsappWorkflowCanvasPage() {
   const [showCopilot, setShowCopilot] = useState(false)
   const [showMiniMap, setShowMiniMap] = useState(false)
   // Simulator
+  // React Flow state
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  // Simulator
   const [isSimOpen, setIsSimOpen] = useState(false)
   const [simSession, setSimSession] = useState<SimulatorSession | null>(null)
   const [simInput, setSimInput] = useState("")
@@ -178,15 +191,11 @@ export default function WhatsappWorkflowCanvasPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("")
   const [saving, setSaving] = useState(false)
   const [, setLoadingInitial] = useState(true)
-
-  // React Flow state
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-
   const nodeTypes = useMemo(() => ({ custom: WorkflowNodeComponent }), [])
   const edgeTypes = useMemo(() => ({ deletable: DeletableEdge }), [])
-  const dataLoadedRef = React.useRef(false)
+  const [hasLoadedData, setHasLoadedData] = useState(false)
+  const edgeCounterRef = React.useRef(0)
+
   // Delete node by ID (for card trash icon or keyboard)
   const handleDeleteNodeById = useCallback(
     (nodeId: string) => {
@@ -194,21 +203,21 @@ export default function WhatsappWorkflowCanvasPage() {
       setEdges((eds) =>
         eds.filter((e) => e.source !== nodeId && e.target !== nodeId)
       )
-      if (selectedNodeId === nodeId) {
-        setSelectedNodeId(null)
-      }
+      setSelectedNodeId((currentSelected) =>
+        currentSelected === nodeId ? null : currentSelected
+      )
       toast.info(t.inspector.deleteNodeButton)
     },
-    [selectedNodeId, setNodes, setEdges, t]
+    [setNodes, setEdges, t]
   )
 
   // Delete edge by ID (middle X button)
   const handleDeleteEdgeById = useCallback(
     (edgeId: string) => {
       setEdges((eds) => eds.filter((e) => e.id !== edgeId))
-      toast.info("Garis koneksi dihapus")
+      toast.info(t.inspector.deleteNodeButton || "Edge deleted")
     },
-    [setEdges]
+    [setEdges, t]
   )
 
   // Delete edges callback (keyboard / selection)
@@ -216,9 +225,9 @@ export default function WhatsappWorkflowCanvasPage() {
     (deletedEdges: Edge[]) => {
       const deletedIds = new Set(deletedEdges.map((e) => e.id))
       setEdges((eds) => eds.filter((e) => !deletedIds.has(e.id)))
-      toast.info("Garis koneksi dihapus")
+      toast.info(t.inspector.deleteNodeButton || "Edge deleted")
     },
-    [setEdges]
+    [setEdges, t]
   )
   // Helper convert schema node to xyflow node
   const toXyFlowNode = useCallback(
@@ -298,13 +307,12 @@ export default function WhatsappWorkflowCanvasPage() {
 
   const templateId = searchParams?.get("template")
 
-  // 1. Load Devices & Existing Workflow data (runs strictly once per workflowId)
+  // 1. Load Devices & Existing Workflow data
   useEffect(() => {
     let mounted = true
 
     async function loadData() {
-      if (dataLoadedRef.current) return
-      dataLoadedRef.current = true
+      if (hasLoadedData) return
       setLoadingInitial(true)
       try {
         // Fetch devices
@@ -401,15 +409,18 @@ export default function WhatsappWorkflowCanvasPage() {
       } catch (err) {
         console.error("Error loading workflow canvas:", err)
       } finally {
-        if (mounted) setLoadingInitial(false)
+        if (mounted) {
+          setLoadingInitial(false)
+          setHasLoadedData(true)
+        }
       }
     }
-
     loadData()
     return () => {
       mounted = false
     }
   }, [
+    hasLoadedData,
     initialNodesSample,
     initialEdgesSample,
     templateId,
@@ -427,7 +438,8 @@ export default function WhatsappWorkflowCanvasPage() {
       const isTrue = params.sourceHandle === "true"
       const isFalse = params.sourceHandle === "false"
       const edgeLabel = isTrue ? "TRUE" : isFalse ? "FALSE" : undefined
-      const edgeId = `e_${params.source}_${params.sourceHandle || "def"}_${params.target}_${Date.now().toString(36)}`
+      edgeCounterRef.current += 1
+      const edgeId = `e_${params.source}_${params.sourceHandle || "def"}_${params.target}_${edgeCounterRef.current}_${Date.now()}`
 
       const newEdge: Edge = {
         ...params,
@@ -1173,11 +1185,10 @@ export default function WhatsappWorkflowCanvasPage() {
           <Controls className="!border-border !bg-card !fill-foreground" />
           {showMiniMap && (
             <MiniMap
-              width={90}
-              height={55}
               nodeColor="#10b981"
               maskColor="rgba(0, 0, 0, 0.45)"
               className="!overflow-hidden !rounded-md !border !border-border/40 !bg-card/80 !shadow-sm backdrop-blur"
+              style={{ width: 90, height: 55 }}
             />
           )}
         </ReactFlow>

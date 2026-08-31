@@ -89,6 +89,7 @@ describe("WhatsappWorkflowsPage UI", () => {
   it("renders active workflow cards with localized badges and actions", async () => {
     mockGetWorkflows.mockResolvedValue({
       data: {
+        ok: true,
         data: [
           {
             id: "wf-1",
@@ -96,8 +97,15 @@ describe("WhatsappWorkflowsPage UI", () => {
             description: "Answers customer questions",
             isActive: true,
             isDefault: true,
-            trigger: { type: "keyword_match" },
-            nodes: [{ id: "one" }, { id: "two" }],
+            trigger: {
+              id: "trig-1",
+              type: "keyword_match",
+              keywords: ["help"],
+            },
+            nodes: [
+              { id: "one", name: "One", type: "send_message" },
+              { id: "two", name: "Two", type: "send_message" },
+            ],
             edges: [],
             device: {
               id: "device-1",
@@ -108,16 +116,16 @@ describe("WhatsappWorkflowsPage UI", () => {
           {
             id: "wf-2",
             name: "Inactive flow",
+            description: "",
             isActive: false,
             isDefault: false,
-            trigger: { type: "manual" },
+            trigger: { id: "trig-2", type: "whatsapp_inbound", keywords: [] },
             nodes: [],
             edges: [],
           },
         ],
       },
-    })
-
+    } as never)
     const view = render(<WhatsappWorkflowsPage />)
 
     await waitFor(() =>
@@ -129,6 +137,7 @@ describe("WhatsappWorkflowsPage UI", () => {
     expect(view.getByText("Inactive")).toBeInTheDocument()
     expect(view.getByText("2 nodes")).toBeInTheDocument()
     expect(view.getByText("Trigger: keyword_match")).toBeInTheDocument()
+    expect(view.getByText("Trigger: whatsapp_inbound")).toBeInTheDocument()
     expect(view.getByText("Support number")).toBeInTheDocument()
     expect(
       view.getAllByRole("link", { name: "Open canvas" })[0]

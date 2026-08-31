@@ -81,7 +81,8 @@ export const DeletableEdge = memo(function DeletableEdge({
                 edgeData.onDelete?.(id)
               }}
               className="hover:text-destructive-foreground flex h-4 w-4 items-center justify-center rounded-full border border-border/80 bg-card/95 text-muted-foreground shadow-sm transition-all hover:scale-110 hover:border-destructive hover:bg-destructive"
-              title="Hapus garis"
+              title="Delete edge"
+              aria-label="Delete edge"
             >
               <X className="h-2.5 w-2.5" weight="bold" />
             </button>

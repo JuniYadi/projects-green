@@ -155,7 +155,8 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
               nodeData.onDelete?.(nodeData.id)
             }}
             className="shrink-0 rounded p-1 text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
-            title="Hapus node"
+            title="Delete node"
+            aria-label="Delete node"
           >
             <Trash className="h-3 w-3" />
           </button>
