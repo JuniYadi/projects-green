@@ -186,6 +186,31 @@ export default function WhatsappWorkflowCanvasPage() {
 
   const nodeTypes = useMemo(() => ({ custom: WorkflowNodeComponent }), [])
 
+  // Delete node by ID (for card trash icon or keyboard)
+  const handleDeleteNodeById = useCallback(
+    (nodeId: string) => {
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId))
+      setEdges((eds) =>
+        eds.filter((e) => e.source !== nodeId && e.target !== nodeId)
+      )
+      if (selectedNodeId === nodeId) {
+        setSelectedNodeId(null)
+      }
+      toast.info(t.inspector.deleteNodeButton)
+    },
+    [selectedNodeId, setNodes, setEdges, t]
+  )
+
+  // Delete edges callback
+  const onEdgesDelete = useCallback(
+    (deletedEdges: Edge[]) => {
+      const deletedIds = new Set(deletedEdges.map((e) => e.id))
+      setEdges((eds) => eds.filter((e) => !deletedIds.has(e.id)))
+      toast.info("Garis koneksi dihapus")
+    },
+    [setEdges]
+  )
+
   // Helper convert schema node to xyflow node
   const toXyFlowNode = useCallback(
     (node: WorkflowNode, index: number): Node => ({
@@ -197,11 +222,11 @@ export default function WhatsappWorkflowCanvasPage() {
         name: node.name,
         type: node.type,
         config: node.config || {},
+        onDelete: handleDeleteNodeById,
       },
     }),
-    []
+    [handleDeleteNodeById]
   )
-
   // Helper convert schema edge to xyflow edge
   const toXyFlowEdge = useCallback(
     (edge: WorkflowEdge): Edge => ({
@@ -484,13 +509,14 @@ export default function WhatsappWorkflowCanvasPage() {
           name: defaultName,
           type,
           config: defaultConfig,
+          onDelete: handleDeleteNodeById,
         },
       }
 
       setNodes((nds) => [...nds, newNode])
       setSelectedNodeId(id)
     },
-    [nodes, setNodes, t]
+    [nodes, setNodes, t, handleDeleteNodeById]
   )
 
   // Update selected node config in state
@@ -582,6 +608,7 @@ export default function WhatsappWorkflowCanvasPage() {
                 name: n.name,
                 type: n.type,
                 config: n.config || {},
+                onDelete: handleDeleteNodeById,
               },
             })
           )
@@ -1109,9 +1136,12 @@ export default function WhatsappWorkflowCanvasPage() {
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onEdgesDelete={onEdgesDelete}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
+          deleteKeyCode={["Backspace", "Delete"]}
+          multiSelectionKeyCode={["Meta", "Ctrl"]}
           fitView
           fitViewOptions={{ padding: 0.35, maxZoom: 0.85 }}
           minZoom={0.2}

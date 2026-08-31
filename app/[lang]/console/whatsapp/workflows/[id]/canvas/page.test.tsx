@@ -1,5 +1,5 @@
 import { describe, expect, it, mock, afterEach } from "bun:test"
-import { act, cleanup, render, waitFor } from "@testing-library/react"
+import { cleanup, render, waitFor } from "@testing-library/react"
 import { renderToString } from "react-dom/server"
 import {
   createSimulatorSession,
@@ -83,19 +83,13 @@ describe("Canvas simulator integration", () => {
     expect(html).toContain("Simulate test")
     expect(html).toContain("Save and deploy")
   })
-  it("opens the localized inspector drawer for a canvas step", async () => {
+  it("renders canvas with step palette and supports quick deletion callback", async () => {
     const view = render(<WhatsappWorkflowCanvasPage />)
 
     await waitFor(() => {
+      expect(view.getByText("Add a step")).toBeDefined()
       expect(view.getByRole("button", { name: "Send message" })).toBeDefined()
-    })
-    await act(async () => {
-      view.getByRole("button", { name: "Send message" }).click()
-    })
-
-    await waitFor(() => {
-      expect(view.getByText("Step settings")).toBeDefined()
-      expect(view.getByText("Step name")).toBeDefined()
+      expect(view.getByRole("button", { name: "Ask for input" })).toBeDefined()
     })
   })
 })

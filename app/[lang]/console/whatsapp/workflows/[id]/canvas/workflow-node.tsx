@@ -10,6 +10,7 @@ import {
   Globe,
   SlidersHorizontal,
   Lightning,
+  Trash,
 } from "@phosphor-icons/react"
 import type { WorkflowNodeType } from "@/modules/whatsapp/workflow/workflow.schema"
 
@@ -19,8 +20,8 @@ export type WorkflowCustomNodeData = {
   type: WorkflowNodeType
   config: Record<string, unknown>
   isSelected?: boolean
+  onDelete?: (id: string) => void
 }
-
 const nodeTypeDetails: Record<
   WorkflowNodeType | "trigger",
   {
@@ -126,9 +127,9 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
         className="!h-2.5 !w-2.5 !rounded-full !border-2 !border-background !bg-muted-foreground transition-all group-hover:!bg-primary"
       />
 
-      {/* Header */}
+      {/* Header with Quick Delete Button */}
       <div className="flex items-center justify-between gap-1.5 border-b border-border/50 pb-1.5">
-        <div className="flex items-center gap-1.5 overflow-hidden">
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
           <div
             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${details.color}`}
           >
@@ -145,9 +146,21 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
             </span>
           </div>
         </div>
-      </div>
 
-      {/* Body preview */}
+        {nodeData.onDelete && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              nodeData.onDelete?.(nodeData.id)
+            }}
+            className="shrink-0 rounded p-1 text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+            title="Hapus node"
+          >
+            <Trash className="h-3 w-3" />
+          </button>
+        )}
+      </div>
       <div className="mt-1.5 space-y-1">
         <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
           {previewText}
