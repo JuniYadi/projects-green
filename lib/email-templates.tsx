@@ -329,7 +329,6 @@ export async function renderEmailTemplate(id: string): Promise<string> {
         <ProvisioningFailedEmail
           organizationName="Acme Corporation"
           packageName="Enterprise VPN"
-          errorMessage="Radius server handshake timeout during provisioning."
         />
       )
     case "vpn-renewal-success":
@@ -390,6 +389,7 @@ export async function renderEmailTemplate(id: string): Promise<string> {
           deviceName="Primary Support WA"
           phoneNumber="+6281234567890"
           orgName="Acme Corporation"
+          lastHeartbeatAt="January 15, 2026 14:00 UTC"
           disconnectedAt="January 15, 2026 14:30 UTC"
         />
       )
@@ -409,10 +409,11 @@ export async function renderEmailTemplate(id: string): Promise<string> {
           ]}
           generatedAt="January 15, 2026 00:00 UTC"
           stats={{
-            totalDevices: 1,
-            connectedDevices: 1,
-            disconnectedDevices: 0,
-            degradedDevices: 0,
+            total: 1,
+            approved: 1,
+            pending: 0,
+            declinedOrExpired: 0,
+            active: 1,
           }}
         />
       )

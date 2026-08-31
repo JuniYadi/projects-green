@@ -1,10 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { NextRequest, NextResponse } from "next/server"
 
-const mockAuthkit = mock(async () => ({
-  session: { user: null },
-  headers: new Headers(),
-}))
+const mockAuthkit = mock(
+  async (): Promise<{
+    session: {
+      user: { id: string; email?: string } | null
+      role?: string
+      roles?: string[]
+    }
+    headers: Headers
+  }> => ({
+    session: { user: null },
+    headers: new Headers(),
+  })
+)
 
 const mockHandleAuthkitHeaders = mock(
   (_req: unknown, headers: Headers, options?: { redirect?: string }) => {
