@@ -1,7 +1,6 @@
-import Link from "next/link"
-
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DailyOperationsView } from "@/modules/portal/daily-operations/ui/daily-operations-view"
+import { dailyOperationsService } from "@/modules/portal/daily-operations/daily-operations.service"
 
 export default async function PortalPage({
   params,
@@ -12,50 +11,27 @@ export default async function PortalPage({
 }>) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
+  const overview = await dailyOperationsService.getOverview()
 
-  const entryPoints = [
-    {
-      title: "Documentation Registry",
-      href: localizePathname({ pathname: "/portal/documentations", locale }),
-      description:
-        "Create and maintain contextual UI docs for routes and team workflows.",
-    },
-    {
-      title: "Support Tickets",
-      href: localizePathname({ pathname: "/portal/support-tickets", locale }),
-      description:
-        "Manage, prioritize, and reply to all support tickets across organizations.",
-    },
+  const metrics = [...overview.actionRequired, ...overview.queueSummary]
+  const workspacePaths = [
+    "/portal/documentations",
+    "/portal/support-tickets",
+    "/portal/billing",
+    "/portal/app",
   ]
+  const localizedHrefs = Object.fromEntries(
+    [
+      ...metrics.map((metric) => [metric.key, metric.href] as const),
+      ...workspacePaths.map((pathname) => [pathname, pathname] as const),
+    ].map(([key, pathname]) => [key, localizePathname({ pathname, locale })])
+  )
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Portal</h1>
-        <p className="text-sm text-muted-foreground">
-          Choose a workspace entry point to manage documentation, billing, or
-          support tickets.
-        </p>
-      </header>
-
-      <section className="grid gap-6 md:grid-cols-3">
-        {entryPoints.map((entry) => (
-          <Card key={entry.title}>
-            <CardHeader>
-              <CardTitle className="text-base">{entry.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <p className="text-muted-foreground">{entry.description}</p>
-              <Link
-                href={entry.href}
-                className="font-medium text-primary underline-offset-4 hover:underline"
-              >
-                Open
-              </Link>
-            </CardContent>
-          </Card>
-        ))}
-      </section>
-    </main>
+    <DailyOperationsView
+      overview={overview}
+      localizedHrefs={localizedHrefs}
+      locale={locale}
+    />
   )
 }
