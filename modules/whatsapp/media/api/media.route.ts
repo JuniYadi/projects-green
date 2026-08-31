@@ -11,6 +11,9 @@ import {
   listMedia,
   expiryStatus,
   getStoragePath,
+  buildWhatsAppMediaS3Key,
+  getWhatsAppMediaCdnUrl,
+  getExtensionFromMime,
 } from "../media.service"
 import {
   SUPPORTED_MIME_TYPES,
@@ -301,7 +304,22 @@ export const mediaRoutes = new Elysia({
         return { ok: false, error: "FORBIDDEN", message: "Access denied." }
       }
 
-      // Try local storage first, fall back to download from Meta
+      // Return 302 Redirect directly to CDN URL if available
+      const ext = getExtensionFromMime(record.mimeType)
+      const s3Key = buildWhatsAppMediaS3Key(
+        record.organizationId,
+        record.metaMediaId,
+        ext,
+        record.createdAt
+      )
+      const cdnUrl = getWhatsAppMediaCdnUrl(s3Key)
+
+      // If CDN URL configured, redirect immediately
+      if (process.env.S3_CDN_URL || process.env.S3_ENDPOINT) {
+        return Response.redirect(cdnUrl, 302)
+      }
+
+      // Fallback: local disk streaming if S3 CDN not configured
       let storePath = getStoragePath(record)
       if (!storePath) {
         record = await downloadAndSave(
@@ -323,26 +341,17 @@ export const mediaRoutes = new Elysia({
 
       const stat = fs.statSync(storePath)
       const fileName = storePath.split("/").pop() ?? "download"
-
-      // Determine disposition:
-      // If query ?download=true is explicitly passed, force attachment download.
-      // Otherwise, for images, stickers, audio, video, and PDF, default to "inline"
-      // so browser <img> tags and media players render directly without triggering save dialogs.
       const isMediaPreview =
         record.mimeType.startsWith("image/") ||
         record.mimeType.startsWith("audio/") ||
         record.mimeType.startsWith("video/") ||
         record.mimeType === "application/pdf"
-
       const dispositionType =
         query?.download === "true" || !isMediaPreview ? "attachment" : "inline"
 
-      // ponytail: streaming via blob — fs.createReadStream is cleanest but Elysia
-      // handles blob well enough for this payload size
       const blob = new Blob([fs.readFileSync(storePath)], {
         type: record.mimeType,
       })
-
       return new Response(blob, {
         status: 200,
         headers: {

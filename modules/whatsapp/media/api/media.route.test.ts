@@ -54,8 +54,10 @@ mock.module("../media.service", () => ({
   downloadAndSave: mockDownloadAndSave,
   getStoragePath: mockGetStoragePath,
   expiryStatus: mockExpiryStatus,
+  buildWhatsAppMediaS3Key: () => "mock/s3/key",
+  getWhatsAppMediaCdnUrl: () => "https://cdn.pfnapp.id/mock/s3/key",
+  getExtensionFromMime: () => "webp",
 }))
-
 mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   WhatsAppDeviceClient: {
     fromDevice: mock(async () => ({
@@ -199,40 +201,41 @@ describe("media.route", () => {
     })
   })
   describe("GET /media/:id/download", () => {
-    it("serves image/sticker with inline Content-Disposition for preview", async () => {
+    it("redirects 302 directly to S3 CDN URL when CDN configured", async () => {
       mockAuthContext.current = {
         organizationId: "org-1",
         type: "workos",
       }
-      const tmpFile = "/tmp/test-sticker.webp"
-      fs.writeFileSync(tmpFile, Buffer.from("fake-webp-binary"))
       mockGetMetadata.mockResolvedValueOnce({
         id: "med-sticker-1",
         organizationId: "org-1",
+        metaMediaId: "meta-123",
         mimeType: "image/webp",
         fileSize: 16,
-        storePath: tmpFile,
+        createdAt: new Date(),
       } as unknown as never)
-      mockGetStoragePath.mockReturnValueOnce(tmpFile)
 
       const res = await app.handle(
         new Request("http://localhost/media/med-sticker-1/download")
       )
 
-      expect(res.status).toBe(200)
-      expect(res.headers.get("Content-Type")).toBe("image/webp")
-      expect(res.headers.get("Content-Disposition")).toContain("inline")
-      expect(res.headers.get("Cache-Control")).toContain("public")
-      fs.unlinkSync(tmpFile)
+      expect(res.status).toBe(302)
+      expect(res.headers.get("location")).toContain("cdn.pfnapp.id")
     })
 
-    it("forces attachment Content-Disposition when ?download=true is passed", async () => {
+    it("falls back to attachment download when CDN not configured", async () => {
+      const origCdn = process.env.S3_CDN_URL
+      const origEndpoint = process.env.S3_ENDPOINT
+      delete process.env.S3_CDN_URL
+      delete process.env.S3_ENDPOINT
+
       mockAuthContext.current = {
         organizationId: "org-1",
         type: "workos",
       }
       const tmpFile = "/tmp/test-image.png"
       fs.writeFileSync(tmpFile, Buffer.from("fake-png-binary"))
+
       mockGetMetadata.mockResolvedValueOnce({
         id: "med-img-1",
         organizationId: "org-1",
@@ -250,10 +253,10 @@ describe("media.route", () => {
       expect(res.headers.get("Content-Type")).toBe("image/png")
       expect(res.headers.get("Content-Disposition")).toContain("attachment")
       fs.unlinkSync(tmpFile)
-    })
-  })
 
-  describe("DELETE /media/:id", () => {
+      if (origCdn) process.env.S3_CDN_URL = origCdn
+      if (origEndpoint) process.env.S3_ENDPOINT = origEndpoint
+    })
     it("deletes media from local storage and Meta", async () => {
       mockAuthContext.current = {
         organizationId: "org-1",

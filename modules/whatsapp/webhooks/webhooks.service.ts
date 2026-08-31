@@ -8,7 +8,12 @@ import {
 } from "./webhooks.dto"
 import { webhookDispatcher } from "./webhook-dispatcher.service"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
-import { downloadAndSave } from "@/modules/whatsapp/media/media.service"
+import {
+  downloadAndSave,
+  buildWhatsAppMediaS3Key,
+  getWhatsAppMediaCdnUrl,
+  getExtensionFromMime,
+} from "@/modules/whatsapp/media/media.service"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 import { WhatsappBillingService } from "@/modules/whatsapp/billing/whatsapp-billing.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
@@ -193,18 +198,30 @@ export async function processInboundMessage(
   if (mediaId) {
     downloadAndSave(deviceId, organizationId, mediaId)
       .then((record) => {
-        // Update the message metadata with media reference
+        // Calculate CDN URL
+        const ext = getExtensionFromMime(record.mimeType)
+        const s3Key = buildWhatsAppMediaS3Key(
+          record.organizationId,
+          record.metaMediaId,
+          ext,
+          record.createdAt
+        )
+        const cdnUrl = getWhatsAppMediaCdnUrl(s3Key)
+
+        // Update the message metadata and direct CDN mediaUrl
         const existingMeta =
           (whatsappMessage.metadata as Record<string, unknown>) ?? {}
         existingMeta.whatsappMediaId = record.id
         existingMeta.mediaDownloaded = true
+        existingMeta.s3Key = s3Key
+        existingMeta.cdnUrl = cdnUrl
 
         prisma.whatsappMessage
           .update({
             where: { id: whatsappMessage.id },
             data: {
               metadata: existingMeta as Prisma.InputJsonValue,
-              mediaUrl: `__stored:${record.id}`,
+              mediaUrl: cdnUrl,
             },
           })
           .catch((err: unknown) =>

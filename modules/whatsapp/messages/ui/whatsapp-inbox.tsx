@@ -642,10 +642,14 @@ function MessageBubble({
             </>
           ) : message.messageType === "sticker" ? (
             <div className="py-1">
-              {message.mediaUrl?.startsWith("__stored:") ? (
+              {message.mediaUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
-                  src={`/api/whatsapp/media/${message.mediaUrl.replace("__stored:", "")}/download`}
+                  src={
+                    message.mediaUrl.startsWith("__stored:")
+                      ? `/api/whatsapp/media/${message.mediaUrl.replace("__stored:", "")}/download`
+                      : message.mediaUrl
+                  }
                   alt="Sticker"
                   className="size-32 object-contain"
                   loading="lazy"
