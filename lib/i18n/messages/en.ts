@@ -499,7 +499,6 @@ export const enMessages: AppMessages = {
         statusOpen: "Open",
         statusPaid: "Paid",
         statusVoid: "Void",
-        emptyAll: "No transactions found.",
         emptyFiltered: "No transactions match your filters.",
         notAvailable: "N/A",
         methodVirtualAccount: "Virtual Account",

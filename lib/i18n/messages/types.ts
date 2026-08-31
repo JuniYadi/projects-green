@@ -122,6 +122,7 @@ export type AppMessages = {
       heading: string
       description: string
       usage: string
+      transactions: string
       alerts: string
       topUpBalance: string
       viewStatement: string

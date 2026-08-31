@@ -504,7 +504,6 @@ export const idMessages: AppMessages = {
         statusOpen: "Terbuka",
         statusPaid: "Dibayar",
         statusVoid: "Batal",
-        emptyAll: "Tidak ada transaksi.",
         emptyFiltered: "Tidak ada transaksi yang cocok dengan filter Anda.",
         notAvailable: "T/A",
         methodVirtualAccount: "Virtual Account",
