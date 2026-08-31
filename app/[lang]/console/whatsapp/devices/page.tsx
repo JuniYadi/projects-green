@@ -33,7 +33,10 @@ import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsap
 import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
 import { MetaNameStatusBadge } from "@/modules/whatsapp/ui/meta-name-status-badge"
-import type { DeviceStatus } from "@/modules/whatsapp/devices/devices.schemas"
+import type {
+  DeviceListItem,
+  DeviceStatus,
+} from "@/modules/whatsapp/devices/devices.schemas"
 // ─── Status badge ───────────────────────────────────────────────────────────
 
 type DeviceStatusBadgeProps = {

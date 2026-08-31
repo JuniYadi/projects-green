@@ -41,7 +41,7 @@ export const DailyDeviceDigestEmail = ({
     <Html>
       <Head />
       <Preview>
-        [Daily Digest] WhatsApp Device Status Summary ({stats.total} Devices)
+        {`[Daily Digest] WhatsApp Device Status Summary (${stats.total} Devices)`}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>

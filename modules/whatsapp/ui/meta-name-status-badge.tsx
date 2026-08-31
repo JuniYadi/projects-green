@@ -56,7 +56,7 @@ export function MetaNameStatusBadge({
   if (syncState === "UNAVAILABLE") {
     return (
       <Badge variant="secondary" className={className}>
-        Meta unavailable
+        {messages.metaUnavailable}
       </Badge>
     )
   }

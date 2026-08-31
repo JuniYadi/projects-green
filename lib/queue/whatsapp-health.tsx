@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma"
 import { BaseJob } from "@/lib/queue/base-job"
 import { sendEmail } from "@/lib/queue/email"
 import { redis } from "@/lib/redis"
+import { getCachedOrganization } from "@/lib/workos-directory"
 import { devicesService } from "@/modules/whatsapp/devices/devices.service"
 import {
   recordMetaRefreshUnavailable,
@@ -73,8 +74,7 @@ async function clearMissCount(deviceId: string): Promise<void> {
 // ── Health Check ─────────────────────────────────────────────────────────────
 
 type HealthCheckResult =
-  | { ok: true; connected: boolean }
-  | { ok: false; error: string }
+  { ok: true; connected: boolean } | { ok: false; error: string }
 
 export async function checkDeviceHealth(params: {
   organizationId: string
@@ -231,11 +231,16 @@ async function checkSingleDevice(deviceId: string): Promise<void> {
 
     // Metadata must never turn a healthy connection into a failed health check.
     try {
-      const profile = await syncDeviceFromMeta(deviceId, device.organizationId)
+      const profile = (await syncDeviceFromMeta(
+        deviceId,
+        device.organizationId
+      )) as Record<string, unknown>
+      const org = await getCachedOrganization(device.organizationId)
+      const orgName = org?.name ?? device.organizationId
       await trackAndNotifyDeviceStateChange({
         deviceId,
         phoneNumber: device.phoneNumber ?? "",
-        orgName: device.organizationId,
+        orgName,
         currentState: {
           nameStatus: (profile.name_status as string) || null,
           verifiedName: (profile.verified_name as string) || null,

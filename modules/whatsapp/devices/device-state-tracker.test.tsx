@@ -36,6 +36,19 @@ mock.module("@/lib/queue/email", () => ({
 mock.module("@/lib/platform-admin-emails", () => ({
   getPlatformSuperAdminEmails: mockGetPlatformSuperAdminEmails,
 }))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganizations: mock(async (ids: string[]) => {
+    const map = new Map()
+    for (const id of ids) {
+      map.set(id, { id, name: `Org Name for ${id}` })
+    }
+    return map
+  }),
+  getCachedOrganization: mock(async (id: string) => ({
+    id,
+    name: `Org Name for ${id}`,
+  })),
+}))
 
 mock.module("@react-email/components", () => ({
   render: mock(async () => "<html>Mock Email</html>"),

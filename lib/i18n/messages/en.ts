@@ -1265,6 +1265,7 @@ export const enMessages: AppMessages = {
         nameDeclined: "Declined",
         nameExpired: "Expired",
         nameUnset: "Unset",
+        metaUnavailable: "Meta unavailable",
         quota: "Quota: {used} / {total} msgs",
         dailyLimit: "Daily limit: {limit} msgs",
         balance: "Balance: Rp{amount}",

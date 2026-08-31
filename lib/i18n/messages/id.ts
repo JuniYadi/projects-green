@@ -1275,6 +1275,7 @@ export const idMessages: AppMessages = {
         nameDeclined: "Ditolak",
         nameExpired: "Kedaluwarsa",
         nameUnset: "Belum Diatur",
+        metaUnavailable: "Meta tidak tersedia",
         quota: "Kuota: {used} / {total} pesan",
         dailyLimit: "Batas harian: {limit} pesan",
         balance: "Saldo: Rp{amount}",

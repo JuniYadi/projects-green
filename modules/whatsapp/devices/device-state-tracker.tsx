@@ -3,6 +3,7 @@ import { redis } from "@/lib/redis"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/queue/email"
 import { getPlatformSuperAdminEmails } from "@/lib/platform-admin-emails"
+import { getCachedOrganizations } from "@/lib/workos-directory"
 import {
   DeviceStateChangeEmail,
   type DeviceStateChangeDiff,
@@ -52,44 +53,35 @@ export async function trackAndNotifyDeviceStateChange(params: {
     const diffs: DeviceStateChangeDiff[] = []
 
     if (previousState) {
-      if (
-        currentState.nameStatus &&
-        previousState.nameStatus !== currentState.nameStatus
-      ) {
+      if (previousState.nameStatus !== currentState.nameStatus) {
         diffs.push({
           field: "Meta Name Status",
           oldValue: previousState.nameStatus ?? "UNSET",
-          newValue: currentState.nameStatus,
+          newValue: currentState.nameStatus ?? "UNSET",
         })
       }
 
-      if (
-        currentState.verifiedName &&
-        previousState.verifiedName !== currentState.verifiedName
-      ) {
+      if (previousState.verifiedName !== currentState.verifiedName) {
         diffs.push({
           field: "Verified Display Name",
           oldValue: previousState.verifiedName ?? "EMPTY",
-          newValue: currentState.verifiedName,
+          newValue: currentState.verifiedName ?? "EMPTY",
         })
       }
 
-      if (
-        currentState.qualityRating &&
-        previousState.qualityRating !== currentState.qualityRating
-      ) {
+      if (previousState.qualityRating !== currentState.qualityRating) {
         diffs.push({
           field: "Quality Rating",
           oldValue: previousState.qualityRating ?? "UNKNOWN",
-          newValue: currentState.qualityRating,
+          newValue: currentState.qualityRating ?? "UNKNOWN",
         })
       }
 
-      if (currentState.status && previousState.status !== currentState.status) {
+      if (previousState.status !== currentState.status) {
         diffs.push({
           field: "Connection Status",
           oldValue: previousState.status ?? "UNKNOWN",
-          newValue: currentState.status,
+          newValue: currentState.status ?? "UNKNOWN",
         })
       }
     }
@@ -172,6 +164,9 @@ export async function sendDailyDeviceDigest(): Promise<void> {
   let declinedOrExpired = 0
   let active = 0
 
+  const orgIds = Array.from(new Set(devices.map((d) => d.organizationId)))
+  const orgMap = await getCachedOrganizations(orgIds)
+
   const items: DeviceDigestItem[] = devices.map((d) => {
     const profile =
       d.whatsappProfile &&
@@ -201,11 +196,14 @@ export async function sendDailyDeviceDigest(): Promise<void> {
 
     if (d.status === "ACTIVE") active++
 
+    const resolvedOrg = orgMap.get(d.organizationId)
+    const orgName = resolvedOrg?.name ?? d.organizationId
+
     return {
       id: d.id,
       phoneNumber: d.phoneNumber,
       displayName: verifiedName,
-      orgName: d.organizationId,
+      orgName,
       nameStatus,
       qualityRating,
       status: d.status,

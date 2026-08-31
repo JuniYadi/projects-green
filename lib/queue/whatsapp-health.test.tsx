@@ -61,6 +61,13 @@ mock.module("@/modules/whatsapp/devices/business-profile.service", () => ({
   syncDeviceFromMeta: syncDeviceFromMetaMock,
   recordMetaRefreshUnavailable: recordMetaRefreshUnavailableMock,
 }))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganization: mock(async (id: string) => ({
+    id,
+    name: `Org ${id}`,
+  })),
+  getCachedOrganizations: mock(async () => new Map()),
+}))
 const trackAndNotifyDeviceStateChangeMock = mock(async () => ({
   changed: false,
   diffs: [],
