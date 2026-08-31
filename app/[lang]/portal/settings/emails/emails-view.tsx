@@ -36,7 +36,7 @@ export function EmailsView() {
   return (
     <div className="flex h-[calc(100vh-220px)] gap-6">
       {/* Left: template list */}
-      <aside className="w-56 shrink-0 overflow-y-auto rounded-lg border bg-card">
+      <aside className="w-64 shrink-0 overflow-y-auto rounded-lg border bg-card">
         <div className="space-y-4 p-2">
           {loadingList
             ? Array.from({ length: 5 }).map((_, i) => (

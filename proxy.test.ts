@@ -1,24 +1,61 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { NextRequest, NextResponse } from "next/server"
 
-mock.module("@workos-inc/authkit-nextjs", () => ({
-  authkit: mock(async () => ({
+const mockAuthkit = mock(
+  async (): Promise<{
+    session: {
+      user: { id: string; email?: string } | null
+      role?: string
+      roles?: string[]
+    }
+    headers: Headers
+  }> => ({
     session: { user: null },
     headers: new Headers(),
-  })),
-  handleAuthkitHeaders: mock(
-    (_req: unknown, _headers: unknown, options?: { redirect?: string }) => {
-      if (options?.redirect) {
-        return NextResponse.redirect(
+  })
+)
+
+const mockHandleAuthkitHeaders = mock(
+  (_req: unknown, headers: Headers, options?: { redirect?: string }) => {
+    const res = options?.redirect
+      ? NextResponse.redirect(
           new URL(options.redirect, "http://localhost:3300")
         )
-      }
-      return NextResponse.next()
+      : NextResponse.next()
+    const setCookie = headers?.get("set-cookie")
+    if (setCookie) {
+      res.headers.set("set-cookie", setCookie)
     }
-  ),
-  partitionAuthkitHeaders: mock((_req: unknown, headers: unknown) => ({
-    requestHeaders: (headers as Headers | undefined) || new Headers(),
-  })),
+    return res
+  }
+)
+
+const mockPartitionAuthkitHeaders = mock((_req: unknown, headers: Headers) => {
+  const responseHeaders = new Headers()
+  const setCookie = headers?.get("set-cookie")
+  if (setCookie) {
+    responseHeaders.set("set-cookie", setCookie)
+  }
+  return {
+    requestHeaders: headers || new Headers(),
+    responseHeaders,
+  }
+})
+
+const mockApplyResponseHeaders = mock(
+  (response: NextResponse, responseHeaders: Headers) => {
+    for (const [key, val] of responseHeaders) {
+      response.headers.set(key, val)
+    }
+    return response
+  }
+)
+
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  authkit: mockAuthkit,
+  handleAuthkitHeaders: mockHandleAuthkitHeaders,
+  partitionAuthkitHeaders: mockPartitionAuthkitHeaders,
+  applyResponseHeaders: mockApplyResponseHeaders,
 }))
 
 import proxy from "./proxy"
@@ -68,5 +105,55 @@ describe("proxy middleware", () => {
     expect(res.status).toBe(307)
     const location = res.headers.get("location")
     expect(location).toBe("https://pfnapp.id/en/docs")
+  })
+
+  it("forwards Set-Cookie to response on /api requests when session refreshes", async () => {
+    const authkitHeaders = new Headers()
+    authkitHeaders.set(
+      "set-cookie",
+      "wos-session=refreshed_api_session; Path=/"
+    )
+    mockAuthkit.mockResolvedValueOnce({
+      session: {
+        user: { id: "user_api_123", email: "dev@example.com" },
+        role: "user",
+      },
+      headers: authkitHeaders,
+    })
+
+    const req = new NextRequest("http://localhost:3300/api/whatsapp/templates")
+    const res = await proxy(req)
+
+    expect(res.headers.get("set-cookie")).toContain(
+      "wos-session=refreshed_api_session"
+    )
+  })
+
+  it("forwards Set-Cookie during unlocalized pathname redirect", async () => {
+    const authkitHeaders = new Headers()
+    authkitHeaders.set(
+      "set-cookie",
+      "wos-session=refreshed_redirect_session; Path=/"
+    )
+    mockAuthkit.mockResolvedValueOnce({
+      session: {
+        user: { id: "user_redir_123", email: "dev@example.com" },
+        role: "user",
+      },
+      headers: authkitHeaders,
+    })
+
+    const req = new NextRequest("http://localhost:3300/console", {
+      headers: {
+        "accept-language": "en",
+      },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toBe("http://localhost:3300/en/console")
+    expect(res.headers.get("set-cookie")).toContain(
+      "wos-session=refreshed_redirect_session"
+    )
   })
 })
