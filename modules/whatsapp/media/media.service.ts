@@ -1,28 +1,25 @@
 import { prisma } from "@/lib/prisma"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
-import { getS3Client, getS3Config } from "@/lib/storage/s3-storage"
+import { getS3Client, buildS3StorageKey } from "@/lib/storage/s3-storage"
 import fs from "node:fs"
 import path from "node:path"
 
 const STORAGE_BASE = path.join(process.cwd(), "storage", "whatsapp", "media")
 const EXPIRY_DAYS = 3650 // 10 years retention when saved to CDN/S3
 
-export function getPublicCdnUrl(s3Key: string): string {
-  const cdn = process.env.S3_CDN_URL || process.env.S3_ENDPOINT || ""
-  const cleanCdn = cdn.replace(/\/+$/, "")
-  const cleanKey = s3Key.replace(/^\/+/, "")
-  return `${cleanCdn}/${cleanKey}`
-}
-
 export function buildWhatsAppMediaS3Key(
   organizationId: string,
-  deviceId: string,
   mediaId: string,
-  extension = "webp"
+  extension = "webp",
+  now?: Date
 ): string {
-  return `whatsapp/${organizationId}/${deviceId}/${mediaId}.${extension}`
+  return buildS3StorageKey({
+    organizationId,
+    fileId: mediaId,
+    filename: `media.${extension}`,
+    now,
+  })
 }
-
 function getExtensionFromMime(mimeType: string): string {
   if (mimeType.includes("webp")) return "webp"
   if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg"
@@ -60,9 +57,9 @@ export async function uploadAndSave(
   // ponytail: store as mediaId (not fileName) so upload/download share one path pattern
   fs.writeFileSync(storePath, Buffer.from(file))
 
-  // Upload to S3 CDN for permanent retention
+  // Upload to S3 CDN for permanent retention (standard encrypted tenant isolation)
   const ext = getExtensionFromMime(mimeType)
-  const s3Key = buildWhatsAppMediaS3Key(organizationId, deviceId, mediaId, ext)
+  const s3Key = buildWhatsAppMediaS3Key(organizationId, mediaId, ext)
   try {
     const s3 = getS3Client()
     const s3File = s3.file(s3Key, { type: mimeType })
@@ -147,14 +144,9 @@ export async function downloadAndSave(
   const storePath = path.join(dir, `${metaMediaId}`)
   fs.writeFileSync(storePath, Buffer.from(binary))
 
-  // Upload to S3 CDN for permanent retention
+  // Upload to S3 CDN for permanent retention (standard encrypted tenant isolation)
   const ext = getExtensionFromMime(meta.mime_type)
-  const s3Key = buildWhatsAppMediaS3Key(
-    organizationId,
-    deviceId,
-    metaMediaId,
-    ext
-  )
+  const s3Key = buildWhatsAppMediaS3Key(organizationId, metaMediaId, ext)
   try {
     const s3 = getS3Client()
     const s3File = s3.file(s3Key, { type: meta.mime_type })

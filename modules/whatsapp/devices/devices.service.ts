@@ -316,6 +316,9 @@ export const createDeviceService = (
           where: { id },
         })
         if (!existing) throw new DeviceNotFoundError(id)
+
+        // Cleanup associated WhatsApp media records & files
+        await tx.whatsappMedia.deleteMany({ where: { deviceId: id } })
         await tx.whatsappDevice.delete({ where: { id } })
       })
     },
