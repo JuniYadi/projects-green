@@ -65,6 +65,7 @@ import { FilterPills } from "@/components/ui/filter-pills"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import { CDNAsset } from "@/components/ui/cdn-asset"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
@@ -643,16 +644,11 @@ function MessageBubble({
           ) : message.messageType === "sticker" ? (
             <div className="py-1">
               {message.mediaUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={
-                    message.mediaUrl.startsWith("__stored:")
-                      ? `/api/whatsapp/media/${message.mediaUrl.replace("__stored:", "")}/download`
-                      : message.mediaUrl
-                  }
+                <CDNAsset
+                  url={message.mediaUrl}
+                  type="sticker"
                   alt="Sticker"
-                  className="size-32 object-contain"
-                  loading="lazy"
+                  imageClassName="size-32 object-contain"
                 />
               ) : (
                 <span className="italic opacity-60">🎨 (Sticker)</span>
@@ -660,19 +656,27 @@ function MessageBubble({
             </div>
           ) : message.messageType === "image" && message.mediaUrl ? (
             <div className="space-y-1.5 py-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={
-                  message.mediaUrl.startsWith("__stored:")
-                    ? `/api/whatsapp/media/${message.mediaUrl.replace("__stored:", "")}/download`
-                    : message.mediaUrl
-                }
+              <CDNAsset
+                url={message.mediaUrl}
+                type="image"
                 alt="Image"
-                className="max-h-60 max-w-full rounded-md object-contain"
-                loading="lazy"
+                imageClassName="max-h-60 max-w-full rounded-md object-contain"
               />
               {message.body ? (
                 <p className="leading-relaxed break-words whitespace-pre-wrap">
+                  {message.body}
+                </p>
+              ) : null}
+            </div>
+          ) : message.messageType === "document" && message.mediaUrl ? (
+            <div className="space-y-1.5 py-1">
+              <CDNAsset
+                url={message.mediaUrl}
+                type="document"
+                filename={message.body || "document"}
+              />
+              {message.body ? (
+                <p className="text-xs leading-relaxed break-words whitespace-pre-wrap text-muted-foreground">
                   {message.body}
                 </p>
               ) : null}
