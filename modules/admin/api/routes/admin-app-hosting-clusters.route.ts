@@ -13,7 +13,10 @@ import {
   integrationMetaJsonSchemas,
   integrationSecretPatchSchemas,
 } from "@/modules/admin/api/admin.schema"
-import { requireSuperAdmin } from "@/modules/admin/api/admin.guards"
+import {
+  requireSuperAdmin,
+  type AdminApiError,
+} from "@/modules/admin/api/admin.guards"
 import {
   getClusterEndpoint,
   upsertClusterEndpoint,

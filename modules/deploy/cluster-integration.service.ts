@@ -89,8 +89,8 @@ export type JenkinsClusterConfig = {
   dslOwner: string
   dslRepo: string
   gitCredentialId: string
-  sharedLibraryName?: string
-  sharedLibraryBranch?: string
+  sharedLibraryName: string | null
+  sharedLibraryBranch: string | null
 }
 
 export type GitOpsClusterConfig = {

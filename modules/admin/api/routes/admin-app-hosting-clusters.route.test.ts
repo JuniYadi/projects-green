@@ -30,47 +30,53 @@ const mockGetClusterById = mock(
   async (): Promise<ClusterAdminDTO | null> => null
 )
 
-const mockCreateCluster = mock(async (): Promise<ClusterAdminDTO> => ({
-  id: "cl_1",
-  code: "us-east-1",
-  name: "US East",
-  region: "us-east-1",
-  regionId: "reg-us-east-1",
-  status: "ACTIVE",
-  isDefault: false,
-  metadataJson: null,
-  integrations: [],
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-}))
+const mockCreateCluster = mock(
+  async (): Promise<ClusterAdminDTO> => ({
+    id: "cl_1",
+    code: "us-east-1",
+    name: "US East",
+    region: "us-east-1",
+    regionId: "reg-us-east-1",
+    status: "ACTIVE",
+    isDefault: false,
+    metadataJson: null,
+    integrations: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  })
+)
 
-const mockUpdateCluster = mock(async (): Promise<ClusterAdminDTO> => ({
-  id: "cl_1",
-  code: "us-east-1",
-  name: "Updated",
-  region: "us-east-1",
-  regionId: "reg-us-east-1",
-  status: "ACTIVE",
-  isDefault: false,
-  metadataJson: null,
-  integrations: [],
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-}))
+const mockUpdateCluster = mock(
+  async (): Promise<ClusterAdminDTO> => ({
+    id: "cl_1",
+    code: "us-east-1",
+    name: "Updated",
+    region: "us-east-1",
+    regionId: "reg-us-east-1",
+    status: "ACTIVE",
+    isDefault: false,
+    metadataJson: null,
+    integrations: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  })
+)
 
-const mockUpdateClusterStatus = mock(async (): Promise<ClusterAdminDTO> => ({
-  id: "cl_1",
-  code: "us-east-1",
-  name: "US East",
-  region: "us-east-1",
-  regionId: "reg-us-east-1",
-  status: "ACTIVE",
-  isDefault: false,
-  metadataJson: null,
-  integrations: [],
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-}))
+const mockUpdateClusterStatus = mock(
+  async (): Promise<ClusterAdminDTO> => ({
+    id: "cl_1",
+    code: "us-east-1",
+    name: "US East",
+    region: "us-east-1",
+    regionId: "reg-us-east-1",
+    status: "ACTIVE",
+    isDefault: false,
+    metadataJson: null,
+    integrations: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  })
+)
 
 const mockUpsertClusterIntegration = mock(
   async (): Promise<ClusterIntegrationAdminDTO> => ({
@@ -797,7 +803,7 @@ describe("Admin App Hosting Clusters Routes", () => {
     it("returns 401 when endpoint access is unauthenticated", async () => {
       const app = new Elysia().use(
         createAdminAppHostingClusterRoutes({
-          requireSuperAdmin: async (set) => {
+          requireSuperAdmin: async (set: unknown) => {
             if (set && typeof set === "object" && "status" in set) {
               Object.assign(set, { status: 401 })
             }

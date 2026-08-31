@@ -36,7 +36,7 @@ import {
 export async function processQueuedDeployment(deploymentId: string) {
   const deployment = await prisma.applicationDeployment.findUnique({
     where: { id: deploymentId },
-    include: { stack: true },
+    include: { stack: { include: { template: true } } },
   })
 
   if (!deployment || deployment.status !== "QUEUED") {
@@ -445,7 +445,7 @@ export async function processQueuedDeployment(deploymentId: string) {
 }
 
 type QueuedTemplateDeployment = Prisma.ApplicationDeploymentGetPayload<{
-  include: { stack: true }
+  include: { stack: { include: { template: true } } }
 }>
 
 const parseTemplateImageReference = (

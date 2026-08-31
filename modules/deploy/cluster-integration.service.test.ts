@@ -13,9 +13,14 @@ const mockPrisma = {
   },
 }
 
-const mockRedisGet = mock(async () => null as string | null)
-const mockRedisSet = mock(async () => "OK")
-const mockRedisDel = mock(async () => 1)
+const mockRedisGet = mock((_key: string) =>
+  Promise.resolve(null as string | null)
+)
+const mockRedisSet = mock(
+  (_key: string, _val: string, _mode?: string, _ttl?: number) =>
+    Promise.resolve("OK")
+)
+const mockRedisDel = mock((_key: string) => Promise.resolve(1))
 
 mock.module("@/lib/redis", () => ({
   redis: {
@@ -148,7 +153,8 @@ describe("cluster-integration.service", () => {
     await setCachedClusterIntegrationSecrets("cluster-1", "ARGOCD", secrets)
 
     expect(mockRedisSet).toHaveBeenCalledTimes(1)
-    const [key, ciphertext, mode, ttl] = mockRedisSet.mock.calls[0]
+    const [key, ciphertext, mode, ttl] = mockRedisSet.mock
+      .calls[0] as unknown as [string, string, string, number]
     expect(key).toBe("sec:cluster:creds:cluster-1:ARGOCD")
     expect(ciphertext).not.toContain(ARGOCD_TOKEN)
     expect(mode).toBe("EX")
@@ -232,9 +238,8 @@ describe("cluster-integration.service", () => {
 
     expect(config.pat).toBe(GITOPS_PAT)
     expect(mockRedisSet).toHaveBeenCalledTimes(1)
-    expect(mockRedisSet.mock.calls[0][0]).toBe(
-      "sec:cluster:creds:cluster-1:GITOPS"
-    )
+    const [calledKey] = mockRedisSet.mock.calls[0] as unknown as [string]
+    expect(calledKey).toBe("sec:cluster:creds:cluster-1:GITOPS")
   })
 
   it("resolveAppHostingClusterForStack uses stack clusterId when set", async () => {
