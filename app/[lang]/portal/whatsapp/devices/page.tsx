@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table"
 import { StatusBadge, DeviceEmptyState } from "./_components/devices-ui"
 import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
+import { MetaNameStatusBadge } from "@/modules/whatsapp/ui/meta-name-status-badge"
 import { SyncButton } from "./_components/sync-button"
 import { Button } from "@/components/ui/button"
 import {
@@ -276,7 +277,8 @@ export default async function PortalWhatsAppDevicesPage({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Organization Name</TableHead>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Name / Phone</TableHead>
+                    <TableHead>Meta Name Status</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Health</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
@@ -301,10 +303,18 @@ export default async function PortalWhatsAppDevicesPage({
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{device.displayName}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="font-medium">
+                          {device.verifiedName || device.displayName}
+                        </div>
+                        <div className="font-mono text-xs text-muted-foreground">
                           {device.phoneNumber}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <MetaNameStatusBadge
+                          nameStatus={device.nameStatus}
+                          verifiedName={device.verifiedName}
+                        />
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={device.status} />
