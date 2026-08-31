@@ -16,7 +16,15 @@ import {
   PaperPlaneTilt,
   ChartDonut,
   ArrowsClockwise,
+  Camera,
+  Globe,
+  Buildings,
+  EnvelopeSimple,
+  MapPin,
+  Info,
+  Trash,
 } from "@phosphor-icons/react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { detectCountryFromPhone } from "@/modules/whatsapp/messages/phone-number"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -33,7 +41,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -837,162 +844,331 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           <WhatsAppText id="s83" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            <WhatsAppText id="s83" />
-          </DialogTitle>
-          <DialogDescription>
-            <WhatsAppText id="s84" />
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="profile-about">
-              <WhatsAppText id="s85" />
-            </Label>
-            <Input
-              id="profile-about"
-              maxLength={139}
-              value={profileForm.about}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, about: e.target.value }))
-              }
-              placeholder={getWhatsAppText("s86", locale)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-description">
-              <WhatsAppText id="s87" />
-            </Label>
-            <Textarea
-              id="profile-description"
-              value={profileForm.description}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, description: e.target.value }))
-              }
-              placeholder={getWhatsAppText("s88", locale)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-address">Address</Label>
-            <Input
-              id="profile-address"
-              value={profileForm.address}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, address: e.target.value }))
-              }
-              placeholder="Business address"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-email">
-              <WhatsAppText id="s12" />
-            </Label>
-            <Input
-              id="profile-email"
-              type="email"
-              value={profileForm.email}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, email: e.target.value }))
-              }
-              placeholder="contact@example.com"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-picture-file">
-              <WhatsAppText id="s89" />
-            </Label>
-            <div className="flex items-center gap-3">
-              <Avatar size="lg">
-                <AvatarImage
-                  src={profilePictureUrl}
-                  alt="WhatsApp profile picture preview"
-                />
-                <AvatarFallback>
-                  {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative placeholder icon */}
-                  <Image
-                    className="size-5 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 gap-1">
-                <Input
-                  id="profile-picture-file"
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  onChange={handleProfilePictureChange}
-                />
-                <p className="text-xs text-muted-foreground">
+      <DialogContent className="max-h-[92vh] gap-0 overflow-y-auto p-0 sm:max-w-4xl">
+        <div className="grid grid-cols-1 divide-y lg:grid-cols-12 lg:divide-x lg:divide-y-0">
+          {/* Left Column: Organized Tabbed Form */}
+          <div className="flex flex-col space-y-6 p-6 lg:col-span-7">
+            <DialogHeader className="space-y-1 p-0">
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+                <PencilSimple className="size-5 text-emerald-600 dark:text-emerald-400" />
+                <WhatsAppText id="s83" />
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                <WhatsAppText id="s84" />
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Modern Avatar / Branding Section */}
+            <div className="space-y-2 rounded-xl border bg-muted/20 p-4">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="profile-picture-file"
+                  className="text-xs font-medium"
+                >
+                  <WhatsAppText id="s89" />
+                </Label>
+                <span className="text-[11px] text-muted-foreground">
                   <WhatsAppText id="s90" />
-                </p>
-                {profilePictureFile && (
-                  <p className="truncate text-xs font-medium">
-                    {profilePictureFile.name}
+                </span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="group relative">
+                  <Avatar className="size-18 border-2 border-border shadow-xs">
+                    <AvatarImage
+                      src={profilePictureUrl}
+                      alt="WhatsApp profile picture preview"
+                    />
+                    <AvatarFallback className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                      {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative placeholder icon */}
+                      <Image
+                        className="size-6 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                    </AvatarFallback>
+                  </Avatar>
+                  <label
+                    htmlFor="profile-picture-file"
+                    className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    title="Change profile picture"
+                  >
+                    <Camera className="size-5" />
+                  </label>
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="profile-picture-file"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-xs font-medium shadow-xs transition-colors hover:bg-muted/50"
+                    >
+                      <Camera className="size-3.5 text-muted-foreground" />
+                      <span>Upload New Photo</span>
+                    </label>
+                    {profilePictureFile && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                        onClick={clearProfilePictureSelection}
+                      >
+                        <Trash className="mr-1 size-3.5" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <Input
+                    id="profile-picture-file"
+                    type="file"
+                    className="sr-only"
+                    accept="image/jpeg,image/png"
+                    onChange={handleProfilePictureChange}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    JPEG/PNG, max 5MB. 640x640 px recommended.
                   </p>
-                )}
+                  {profilePictureFile && (
+                    <p className="truncate text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      {profilePictureFile.name}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* Form Tabs */}
+            <Tabs defaultValue="about" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="about" className="text-xs">
+                  <Info className="mr-1.5 size-3.5" />
+                  About & Info
+                </TabsTrigger>
+                <TabsTrigger value="contact" className="text-xs">
+                  <MapPin className="mr-1.5 size-3.5" />
+                  Contact & Links
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Tab 1: About & Info */}
+              <TabsContent value="about" className="space-y-4 pt-3">
+                <div className="grid gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="profile-about"
+                      className="text-xs font-medium"
+                    >
+                      <WhatsAppText id="s85" />
+                    </Label>
+                    <span className="text-[10px] text-muted-foreground">
+                      {profileForm.about.length}/139
+                    </span>
+                  </div>
+                  <Input
+                    id="profile-about"
+                    maxLength={139}
+                    value={profileForm.about}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({ ...f, about: e.target.value }))
+                    }
+                    placeholder={getWhatsAppText("s86", locale)}
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label
+                    htmlFor="profile-description"
+                    className="text-xs font-medium"
+                  >
+                    <WhatsAppText id="s87" />
+                  </Label>
+                  <Textarea
+                    id="profile-description"
+                    rows={3}
+                    value={profileForm.description}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder={getWhatsAppText("s88", locale)}
+                    className="resize-none text-xs"
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label
+                    htmlFor="profile-vertical"
+                    className="text-xs font-medium"
+                  >
+                    Business Category
+                  </Label>
+                  <Select
+                    value={profileForm.vertical}
+                    onValueChange={(v) =>
+                      setProfileForm((f) => ({
+                        ...f,
+                        vertical: v as Vertical,
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="profile-vertical" className="text-xs">
+                      <SelectValue
+                        placeholder={getWhatsAppText("s91", locale)}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VERTICALS.map((v) => (
+                        <SelectItem key={v} value={v} className="text-xs">
+                          {v
+                            .replace(/_/g, " ")
+                            .toLowerCase()
+                            .replace(/\b\w/g, (c) => c.toUpperCase())}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </TabsContent>
+
+              {/* Tab 2: Contact & Links */}
+              <TabsContent value="contact" className="space-y-4 pt-3">
+                <div className="grid gap-1.5">
+                  <Label
+                    htmlFor="profile-email"
+                    className="flex items-center gap-1.5 text-xs font-medium"
+                  >
+                    <EnvelopeSimple className="size-3.5 text-muted-foreground" />
+                    <span>Business Email</span>
+                  </Label>
+                  <Input
+                    id="profile-email"
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    placeholder="contact@company.com"
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label
+                    htmlFor="profile-address"
+                    className="flex items-center gap-1.5 text-xs font-medium"
+                  >
+                    <Buildings className="size-3.5 text-muted-foreground" />
+                    <span>Address</span>
+                  </Label>
+                  <Input
+                    id="profile-address"
+                    value={profileForm.address}
+                    onChange={(e) =>
+                      setProfileForm((f) => ({ ...f, address: e.target.value }))
+                    }
+                    placeholder="Building, street name, city, postal code"
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5 text-xs font-medium">
+                    <Globe className="size-3.5 text-muted-foreground" />
+                    <span>Websites (Max 2 URLs)</span>
+                  </Label>
+                  <div className="space-y-2">
+                    <Input
+                      id="profile-website1"
+                      type="url"
+                      value={profileForm.website1}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          website1: e.target.value,
+                        }))
+                      }
+                      placeholder="https://example.com"
+                      className="text-xs"
+                    />
+                    <Input
+                      id="profile-website2"
+                      type="url"
+                      value={profileForm.website2}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          website2: e.target.value,
+                        }))
+                      }
+                      placeholder="https://second-website.com (optional)"
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Dialog Footer Actions */}
+            <div className="mt-auto flex items-center justify-end gap-2 border-t pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setProfileDialogOpen(false)}
+              >
+                <WhatsAppText id="s15" />
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveProfile}
+                disabled={profileSubmitting}
+              >
+                {profileSubmitting
+                  ? deviceMessages.saving
+                  : deviceMessages.saveChanges || "Save Changes"}
+              </Button>
+            </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-website1">Website 1</Label>
-            <Input
-              id="profile-website1"
-              type="url"
-              value={profileForm.website1}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, website1: e.target.value }))
-              }
-              placeholder="https://example.com"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-website2">Website 2</Label>
-            <Input
-              id="profile-website2"
-              type="url"
-              value={profileForm.website2}
-              onChange={(e) =>
-                setProfileForm((f) => ({ ...f, website2: e.target.value }))
-              }
-              placeholder="https://example2.com"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="profile-vertical">Vertical</Label>
-            <Select
-              value={profileForm.vertical}
-              onValueChange={(v) =>
-                setProfileForm((f) => ({
-                  ...f,
-                  vertical: v as Vertical,
-                }))
-              }
-            >
-              <SelectTrigger id="profile-vertical">
-                <SelectValue placeholder={getWhatsAppText("s91", locale)} />
-              </SelectTrigger>
-              <SelectContent>
-                {VERTICALS.map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {v.replace(/_/g, " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+          {/* Right Column: Real-Time Live WhatsApp Card Preview */}
+          <div className="flex flex-col justify-start bg-muted/20 p-6 lg:col-span-5">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Live Preview
+              </p>
+              <Badge variant="outline" className="bg-background text-[10px]">
+                Live updates
+              </Badge>
+            </div>
+
+            <div className="w-full">
+              <WhatsAppProfilePreview
+                device={device}
+                profile={{
+                  name: device.verifiedName || device.name,
+                  about: profileForm.about,
+                  description: profileForm.description,
+                  address: profileForm.address,
+                  email: profileForm.email,
+                  websites: [profileForm.website1, profileForm.website2].filter(
+                    Boolean
+                  ),
+                  category: profileForm.vertical
+                    ? profileForm.vertical
+                        .replace(/_/g, " ")
+                        .toLowerCase()
+                        .replace(/\b\w/g, (c) => c.toUpperCase())
+                    : "",
+                  vertical: profileForm.vertical,
+                  profile_picture_url: profilePictureUrl,
+                  isOfficialBusinessAccount:
+                    device.nameStatus?.toUpperCase() === "APPROVED",
+                }}
+                messages={deviceMessages}
+              />
+            </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setProfileDialogOpen(false)}>
-            <WhatsAppText id="s15" />
-          </Button>
-          <Button onClick={handleSaveProfile} disabled={profileSubmitting}>
-            {profileSubmitting
-              ? deviceMessages.saving
-              : deviceMessages.saveChanges || "Save"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
