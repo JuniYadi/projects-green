@@ -176,21 +176,31 @@ export class ConfirmationService {
         throw new Error("Billing account not found for invoice")
       }
 
-      // Credit balance within the same transaction via the injected service.
-      await this.billingTransactions.creditBalance(
-        {
-          organizationId: invoice.billingAccount.organizationId,
-          amount: new Decimal(amount),
-          currency: invoice.billingAccount.currency,
-          source: "TOPUP",
-          reason: "Manual payment confirmed",
-          idempotencyKey: `manual:${id}`,
-          invoiceId: invoice.id,
-          metadata: { confirmedBy: adminUserId, confirmationId: id },
-        },
-        tx
-      )
+      const isInvoiceAlreadyPaid = invoice.status === "PAID"
 
+      // Only credit balance and transition invoice if not already paid
+      if (!isInvoiceAlreadyPaid) {
+        // Credit balance within the same transaction via the injected service.
+        await this.billingTransactions.creditBalance(
+          {
+            organizationId: invoice.billingAccount.organizationId,
+            amount: new Decimal(amount),
+            currency: invoice.billingAccount.currency,
+            source: "TOPUP",
+            reason: "Manual payment confirmed",
+            idempotencyKey: `manual:${id}`,
+            invoiceId: invoice.id,
+            metadata: { confirmedBy: adminUserId, confirmationId: id },
+          },
+          tx
+        )
+
+        // Mark invoice as paid
+        await tx.billingInvoice.update({
+          where: { id: confirmation.invoiceId },
+          data: { status: "PAID", paidAt: new Date() },
+        })
+      }
       // Mark confirmation as approved
       await tx.paymentConfirmation.update({
         where: { id },
@@ -199,12 +209,6 @@ export class ConfirmationService {
           reviewedBy: adminUserId,
           reviewedAt: new Date(),
         },
-      })
-
-      // Mark invoice as paid
-      await tx.billingInvoice.update({
-        where: { id: confirmation.invoiceId },
-        data: { status: "PAID", paidAt: new Date() },
       })
 
       // Audit log (payment-specific)

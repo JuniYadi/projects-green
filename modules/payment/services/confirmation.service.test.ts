@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, mock, spyOn } from "bun:test"
+import type { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MockVal = Record<string, any> | null
@@ -152,6 +153,41 @@ describe("ConfirmationService", () => {
       )
     })
 
+    it("approves confirmation without duplicate credit if invoice is already PAID", async () => {
+      mockPaymentConfirmation.findUnique.mockResolvedValueOnce({
+        id: "conf-123",
+        status: "PENDING",
+        amount: 50000,
+        invoiceId: "inv-123",
+        invoice: {
+          id: "inv-123",
+          invoiceNumber: "TOP-ABC123",
+          status: "PAID",
+          totalAmount: { toNumber: () => 50000 },
+          billingAccount: {
+            organizationId: "org-123",
+            currency: "IDR",
+          },
+        },
+      })
+
+      const mockCreditBalance = mock(() => Promise.resolve({}))
+      const customService = new ConfirmationService({
+        creditBalance: mockCreditBalance,
+      } as unknown as BillingTransactionService)
+
+      const result = await customService.approve("conf-123", "admin-1")
+
+      expect(result.invoiceId).toBe("inv-123")
+      expect(mockCreditBalance).not.toHaveBeenCalled()
+      expect(mockInvoice.update).not.toHaveBeenCalled()
+      expect(mockPaymentConfirmation.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "conf-123" },
+          data: expect.objectContaining({ status: "APPROVED" }),
+        })
+      )
+    })
     it("throws when confirmation not found", async () => {
       mockPaymentConfirmation.findUnique.mockResolvedValueOnce(null)
 

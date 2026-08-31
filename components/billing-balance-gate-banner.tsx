@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { FiAlertTriangle, FiArrowUpCircle, FiX } from "react-icons/fi"
 import { Lightning } from "@/components/ui/phosphor-icons"
-import { ExpressTopupModal } from "@/components/billing/express-topup-modal"
+import { QuickTopUpDialog } from "@/components/billing/quick-top-up-dialog"
 import {
   Alert,
   AlertDescription,
@@ -122,7 +122,7 @@ export function BillingBalanceGateBanner({
           </AlertAction>
         </Alert>
       </div>
-      <ExpressTopupModal
+      <QuickTopUpDialog
         open={expressOpen}
         onOpenChange={setExpressOpen}
         currentBalance={formattedBalance}

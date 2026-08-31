@@ -835,6 +835,15 @@ export type AppMessages = {
         activationError: string
         systemError: string
         invalidField: string
+        currentBalance: string
+        insufficientBalance: string
+        shortageAmount: string
+        quickTopUp: string
+        periodMonthly: string
+        periodAnnual: string
+        periodDaily: string
+        periodQuarterly: string
+        periodWeekly: string
       }
       setupStatus: {
         heading: string

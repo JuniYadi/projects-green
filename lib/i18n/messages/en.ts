@@ -921,6 +921,15 @@ export const enMessages: AppMessages = {
         systemError:
           "A system error occurred while processing the transaction.",
         invalidField: "Input format is invalid for the specified pattern.",
+        currentBalance: "Current Wallet Balance",
+        insufficientBalance: "Insufficient balance for this subscription.",
+        shortageAmount: "Short {amount}",
+        quickTopUp: "Quick Top-Up",
+        periodMonthly: "Monthly",
+        periodAnnual: "Annual",
+        periodDaily: "Daily",
+        periodQuarterly: "Quarterly",
+        periodWeekly: "Weekly",
       },
       setupStatus: {
         heading: "Billing setup incomplete",
