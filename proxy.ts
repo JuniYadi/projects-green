@@ -1,4 +1,5 @@
 import {
+  applyResponseHeaders,
   authkit,
   handleAuthkitHeaders,
   partitionAuthkitHeaders,
@@ -54,7 +55,13 @@ const shouldSkipLocaleRouting = (pathname: string) => {
 }
 
 const withLocaleCookie = (response: NextResponse, locale: AppLocale) => {
+  const existingCookies = response.headers.getSetCookie?.() ?? []
   response.cookies.set(localeCookieName, locale, { path: "/" })
+  for (const cookie of existingCookies) {
+    if (!cookie.startsWith(`${localeCookieName}=`)) {
+      response.headers.append("set-cookie", cookie)
+    }
+  }
   return response
 }
 
@@ -171,7 +178,7 @@ export default async function proxy(request: NextRequest) {
     // partitionAuthkitHeaders merges the fresh AuthKit headers (x-workos-middleware,
     // x-workos-session, etc.) into the request headers.  These are required for
     // downstream withAuth() calls in Elysia route handlers.
-    const { requestHeaders } = partitionAuthkitHeaders(
+    const { requestHeaders, responseHeaders } = partitionAuthkitHeaders(
       sanitizedRequest,
       headers
     )
@@ -202,10 +209,12 @@ export default async function proxy(request: NextRequest) {
       }
     }
 
+    const apiResponse = NextResponse.next({
+      request: { headers: requestHeaders },
+    })
+
     return withLocaleCookie(
-      NextResponse.next({
-        request: { headers: requestHeaders },
-      }),
+      applyResponseHeaders(apiResponse, responseHeaders),
       locale
     )
   }
@@ -216,13 +225,6 @@ export default async function proxy(request: NextRequest) {
     getLocaleFromPathname(pathname)
   const locale = localeFromPathname ?? getPreferredLocale(request)
   const normalizedPathname = pathnameWithoutLocale
-
-  if (!localeFromPathname && !shouldSkipLocaleRouting(normalizedPathname)) {
-    const localizedPathname = withLocalePrefix(normalizedPathname, locale)
-    const redirectUrl = getRequestUrl(`${localizedPathname}${search}`, request)
-
-    return withLocaleCookie(NextResponse.redirect(redirectUrl), locale)
-  }
 
   const responseOptions = (options?: { redirect: string }) => {
     if (!options) {
@@ -236,6 +238,13 @@ export default async function proxy(request: NextRequest) {
       handleAuthkitHeaders(sanitizedRequest, headers, options),
       locale
     )
+  }
+
+  if (!localeFromPathname && !shouldSkipLocaleRouting(normalizedPathname)) {
+    const localizedPathname = withLocalePrefix(normalizedPathname, locale)
+    const redirectUrl = getRequestUrl(`${localizedPathname}${search}`, request)
+
+    return responseOptions({ redirect: redirectUrl.toString() })
   }
 
   if (isProtectedPath(normalizedPathname) && !session.user) {
