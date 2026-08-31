@@ -17,7 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Pencil, Power } from "@phosphor-icons/react"
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Pencil,
+  Power,
+  Trash,
+} from "@phosphor-icons/react"
 
 import {
   INTEGRATION_TYPES,
@@ -206,6 +213,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const [clusterMetadata, setClusterMetadata] = useState<ClusterMetadataInput>(
     {}
   )
+  const [copiedField, setCopiedField] = useState<string | null>(null)
   const [metadataFieldErrors, setMetadataFieldErrors] = useState<FieldErrors>(
     {}
   )
@@ -214,7 +222,12 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const [newIntegrationType, setNewIntegrationType] = useState<
     (typeof INTEGRATION_TYPES)[number]
   >(INTEGRATION_TYPES[0])
-
+  const copyToClipboard = (text: string, fieldKey: string) => {
+    if (!text) return
+    void navigator.clipboard.writeText(text)
+    setCopiedField(fieldKey)
+    setTimeout(() => setCopiedField(null), 2000)
+  }
   useEffect(() => {
     let cancelled = false
 
@@ -599,10 +612,54 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         throw new Error(payload?.message ?? "Failed to toggle integration.")
       }
 
-      setRetry((v) => v + 1)
+      setCluster((previous) =>
+        previous
+          ? {
+              ...previous,
+              integrations: previous.integrations.map((item) =>
+                item.id === integration.id
+                  ? { ...item, isActive: !item.isActive }
+                  : item
+              ),
+            }
+          : previous
+      )
     } catch (cause) {
+      console.error("Failed to toggle integration status:", cause)
       alert(
         cause instanceof Error ? cause.message : "Failed to toggle integration."
+      )
+    }
+  }
+
+  const handleIntegrationDelete = async (integration: ClusterIntegration) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the ${INTEGRATION_TYPE_LABELS[integration.type] ?? integration.type} integration?`
+    )
+    if (!confirmDelete) return
+
+    try {
+      const { data: payload } =
+        await eden.api.admin["app-hosting"].clusters[clusterId].integrations[
+          integration.type
+        ].delete()
+      if (!payload || !payload.ok) {
+        throw new Error(payload?.message ?? "Unable to delete integration.")
+      }
+      setCluster((previous) =>
+        previous
+          ? {
+              ...previous,
+              integrations: previous.integrations.filter(
+                (item) => item.id !== integration.id
+              ),
+            }
+          : previous
+      )
+    } catch (cause) {
+      console.error("Failed to delete integration:", cause)
+      alert(
+        cause instanceof Error ? cause.message : "Unable to delete integration."
       )
     }
   }
@@ -645,30 +702,72 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={() =>
-            router.push(
-              localizePathname({ pathname: "/portal/app/clusters", locale })
-            )
-          }
-        >
-          <ArrowLeft size={16} />
-        </Button>
-        <div>
-          <h2 className="text-xl font-semibold">{cluster.name}</h2>
-          <p className="text-sm text-muted-foreground">
-            {cluster.code} — {cluster.region}
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/40 pb-4">
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() =>
+              router.push(
+                localizePathname({ pathname: "/portal/app/clusters", locale })
+              )
+            }
+          >
+            <ArrowLeft size={16} />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold">{cluster.name}</h2>
+              <Badge variant={STATUS_VARIANT[cluster.status] ?? "outline"}>
+                {STATUS_LABEL[cluster.status] ?? cluster.status}
+              </Badge>
+              {cluster.isDefault && <Badge variant="success">Default</Badge>}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Code: <span className="font-mono">{cluster.code}</span> • Region:{" "}
+              {cluster.region}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {!cluster.isDefault && cluster.status === "ACTIVE" && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void handleStatusChange("ACTIVE", true)}
+              disabled={statusSaving}
+            >
+              Set as Default
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            variant={cluster.status === "ACTIVE" ? "destructive" : "default"}
+            onClick={() =>
+              void handleStatusChange(
+                cluster.status === "ACTIVE" ? "DEPRECATED" : "ACTIVE",
+                cluster.isDefault
+              )
+            }
+            disabled={statusSaving}
+          >
+            {cluster.status === "ACTIVE"
+              ? "Deactivate Cluster"
+              : "Activate Cluster"}
+          </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Metadata</CardTitle>
+          <CardTitle>Cluster & Scheduling Settings</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Core configuration and default pod scheduling parameters for this
+            cluster.
+          </p>
         </CardHeader>
         <CardContent>
           {metadataError && (
@@ -680,17 +779,22 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
             </div>
           )}
           <form onSubmit={handleMetadataSave} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="cluster-name">Name</Label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="cluster-name" className="text-xs font-medium">
+                  Name
+                </Label>
                 <Input
                   id="cluster-name"
                   value={clusterName}
                   onChange={(event) => setClusterName(event.target.value)}
+                  className="h-8 text-xs"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cluster-region">Region</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="cluster-region" className="text-xs font-medium">
+                  Region
+                </Label>
                 <Select
                   value={selectedRegionId}
                   onValueChange={(val) => {
@@ -700,20 +804,20 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   }}
                   disabled={regionsLoading || regions.length === 0}
                 >
-                  <SelectTrigger id="cluster-region">
+                  <SelectTrigger id="cluster-region" className="h-8 text-xs">
                     <SelectValue
                       placeholder={
                         regionsLoading
-                          ? "Loading regions..."
+                          ? "Loading..."
                           : regions.length === 0
-                            ? "No active regions available"
-                            : "Select a region"
+                            ? "No regions"
+                            : "Select region"
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
                     {regions.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
+                      <SelectItem key={r.id} value={r.id} className="text-xs">
                         {r.flag ? `${r.flag} ` : ""}
                         {r.name} ({r.code})
                       </SelectItem>
@@ -721,88 +825,338 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cluster-kubernetes-version">
-                Kubernetes Version
-              </Label>
-              <Input
-                id="cluster-kubernetes-version"
-                value={clusterMetadata.kubernetesVersion ?? ""}
-                onChange={(event) =>
-                  setClusterMetadata((prev: ClusterMetadataInput) => ({
-                    ...prev,
-                    kubernetesVersion: event.target.value || undefined,
-                  }))
-                }
-                placeholder="e.g. 1.28"
-              />
-              {metadataFieldErrors.kubernetesVersion && (
-                <p className="text-xs text-destructive">
-                  {metadataFieldErrors.kubernetesVersion}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cluster-node-pool-name">Node Pool Name</Label>
-              <Input
-                id="cluster-node-pool-name"
-                value={clusterMetadata.nodePoolName ?? ""}
-                onChange={(event) =>
-                  setClusterMetadata((prev: ClusterMetadataInput) => ({
-                    ...prev,
-                    nodePoolName: event.target.value || undefined,
-                  }))
-                }
-              />
-              {metadataFieldErrors.nodePoolName && (
-                <p className="text-xs text-destructive">
-                  {metadataFieldErrors.nodePoolName}
-                </p>
-              )}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="cluster-node-pool-instance-type">
-                  Node Pool Instance Type
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="cluster-storage-class"
+                  className="text-xs font-medium"
+                >
+                  Storage Class
                 </Label>
                 <Input
-                  id="cluster-node-pool-instance-type"
-                  value={clusterMetadata.nodePoolInstanceType ?? ""}
+                  id="cluster-storage-class"
+                  value={clusterMetadata.storageClass ?? ""}
                   onChange={(event) =>
                     setClusterMetadata((prev: ClusterMetadataInput) => ({
                       ...prev,
-                      nodePoolInstanceType: event.target.value || undefined,
+                      storageClass: event.target.value || undefined,
                     }))
                   }
+                  placeholder="e.g. openebs-lvmpv"
+                  className="h-8 font-mono text-xs"
                 />
-                {metadataFieldErrors.nodePoolInstanceType && (
+                {metadataFieldErrors.storageClass && (
                   <p className="text-xs text-destructive">
-                    {metadataFieldErrors.nodePoolInstanceType}
+                    {metadataFieldErrors.storageClass}
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cluster-node-count">Node Count</Label>
-                <Input
-                  id="cluster-node-count"
-                  type="number"
-                  min="1"
-                  value={clusterMetadata.nodeCount ?? ""}
-                  onChange={(event) =>
-                    setClusterMetadata((prev: ClusterMetadataInput) => ({
-                      ...prev,
-                      nodeCount: event.target.value
-                        ? Number(event.target.value)
-                        : undefined,
-                    }))
-                  }
-                />
-                {metadataFieldErrors.nodeCount && (
-                  <p className="text-xs text-destructive">
-                    {metadataFieldErrors.nodeCount}
-                  </p>
-                )}
+            </div>
+
+            {/* ── Compact Node Selectors & Tolerations side-by-side or stacked ── */}
+            <div className="grid gap-3 lg:grid-cols-2">
+              {/* ── Node Selectors ── */}
+              <div className="flex flex-col justify-between rounded-xl border border-border bg-card/40 p-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-semibold">
+                        Node Selectors
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Target node labels for pod placement.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const current = {
+                          ...(clusterMetadata.nodeSelector ?? {}),
+                        }
+                        current[`label-${Date.now()}`] = ""
+                        setClusterMetadata((prev: ClusterMetadataInput) => ({
+                          ...prev,
+                          nodeSelector: current,
+                        }))
+                      }}
+                    >
+                      + Add Label
+                    </Button>
+                  </div>
+
+                  {Object.entries(clusterMetadata.nodeSelector ?? {}).length ===
+                  0 ? (
+                    <div className="rounded-lg border border-dashed border-border/80 p-2.5 text-center text-xs text-muted-foreground">
+                      No node selectors (default scheduling)
+                    </div>
+                  ) : (
+                    <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
+                      {Object.entries(clusterMetadata.nodeSelector ?? {}).map(
+                        ([key, val], idx) => (
+                          <div key={idx} className="flex items-center gap-1.5">
+                            <Input
+                              placeholder="Key"
+                              value={key}
+                              onChange={(e) => {
+                                const newKey = e.target.value
+                                const entries = Object.entries(
+                                  clusterMetadata.nodeSelector ?? {}
+                                )
+                                const updated: Record<string, string> = {}
+                                entries.forEach(([k, v], i) => {
+                                  if (i === idx) {
+                                    updated[newKey] = v
+                                  } else {
+                                    updated[k] = v
+                                  }
+                                })
+                                setClusterMetadata(
+                                  (prev: ClusterMetadataInput) => ({
+                                    ...prev,
+                                    nodeSelector: updated,
+                                  })
+                                )
+                              }}
+                              className="h-7 flex-1 font-mono text-xs"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              :
+                            </span>
+                            <Input
+                              placeholder="Value"
+                              value={val}
+                              onChange={(e) => {
+                                const current = {
+                                  ...(clusterMetadata.nodeSelector ?? {}),
+                                }
+                                current[key] = e.target.value
+                                setClusterMetadata(
+                                  (prev: ClusterMetadataInput) => ({
+                                    ...prev,
+                                    nodeSelector: current,
+                                  })
+                                )
+                              }}
+                              className="h-7 flex-1 font-mono text-xs"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
+                              onClick={() => {
+                                const current = {
+                                  ...(clusterMetadata.nodeSelector ?? {}),
+                                }
+                                delete current[key]
+                                setClusterMetadata(
+                                  (prev: ClusterMetadataInput) => ({
+                                    ...prev,
+                                    nodeSelector:
+                                      Object.keys(current).length > 0
+                                        ? current
+                                        : undefined,
+                                  })
+                                )
+                              }}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Tolerations ── */}
+              <div className="flex flex-col justify-between rounded-xl border border-border bg-card/40 p-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-semibold">
+                        Tolerations
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Node taint tolerances for pods.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const current = [...(clusterMetadata.tolerations ?? [])]
+                        current.push({
+                          key: "",
+                          operator: "Equal",
+                          value: "",
+                          effect: "NoSchedule",
+                        })
+                        setClusterMetadata((prev: ClusterMetadataInput) => ({
+                          ...prev,
+                          tolerations: current,
+                        }))
+                      }}
+                    >
+                      + Add Toleration
+                    </Button>
+                  </div>
+
+                  {(clusterMetadata.tolerations ?? []).length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border/80 p-2.5 text-center text-xs text-muted-foreground">
+                      No tolerations configured
+                    </div>
+                  ) : (
+                    <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
+                      {(clusterMetadata.tolerations ?? []).map((tol, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 p-1.5"
+                        >
+                          <Input
+                            placeholder="Key"
+                            value={tol.key}
+                            onChange={(e) => {
+                              const current = [
+                                ...(clusterMetadata.tolerations ?? []),
+                              ]
+                              current[idx] = {
+                                ...current[idx],
+                                key: e.target.value,
+                              }
+                              setClusterMetadata(
+                                (prev: ClusterMetadataInput) => ({
+                                  ...prev,
+                                  tolerations: current,
+                                })
+                              )
+                            }}
+                            className="h-7 w-24 font-mono text-xs"
+                          />
+                          <Select
+                            value={tol.operator ?? "Equal"}
+                            onValueChange={(val) => {
+                              const current = [
+                                ...(clusterMetadata.tolerations ?? []),
+                              ]
+                              current[idx] = {
+                                ...current[idx],
+                                operator: val as "Equal" | "Exists",
+                              }
+                              setClusterMetadata(
+                                (prev: ClusterMetadataInput) => ({
+                                  ...prev,
+                                  tolerations: current,
+                                })
+                              )
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-20 text-[11px]">
+                              <SelectValue placeholder="Op" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Equal" className="text-xs">
+                                Equal
+                              </SelectItem>
+                              <SelectItem value="Exists" className="text-xs">
+                                Exists
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            placeholder="Value"
+                            value={tol.value ?? ""}
+                            disabled={tol.operator === "Exists"}
+                            onChange={(e) => {
+                              const current = [
+                                ...(clusterMetadata.tolerations ?? []),
+                              ]
+                              current[idx] = {
+                                ...current[idx],
+                                value: e.target.value,
+                              }
+                              setClusterMetadata(
+                                (prev: ClusterMetadataInput) => ({
+                                  ...prev,
+                                  tolerations: current,
+                                })
+                              )
+                            }}
+                            className="h-7 flex-1 font-mono text-xs"
+                          />
+                          <Select
+                            value={tol.effect ?? "NoSchedule"}
+                            onValueChange={(val) => {
+                              const current = [
+                                ...(clusterMetadata.tolerations ?? []),
+                              ]
+                              current[idx] = {
+                                ...current[idx],
+                                effect: val as
+                                  | "NoSchedule"
+                                  | "PreferNoSchedule"
+                                  | "NoExecute",
+                              }
+                              setClusterMetadata(
+                                (prev: ClusterMetadataInput) => ({
+                                  ...prev,
+                                  tolerations: current,
+                                })
+                              )
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-28 text-[11px]">
+                              <SelectValue placeholder="Effect" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem
+                                value="NoSchedule"
+                                className="text-xs"
+                              >
+                                NoSchedule
+                              </SelectItem>
+                              <SelectItem
+                                value="PreferNoSchedule"
+                                className="text-xs"
+                              >
+                                PreferNoSchedule
+                              </SelectItem>
+                              <SelectItem value="NoExecute" className="text-xs">
+                                NoExecute
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              const current = [
+                                ...(clusterMetadata.tolerations ?? []),
+                              ]
+                              current.splice(idx, 1)
+                              setClusterMetadata(
+                                (prev: ClusterMetadataInput) => ({
+                                  ...prev,
+                                  tolerations:
+                                    current.length > 0 ? current : undefined,
+                                })
+                              )
+                            }}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="space-y-2">
@@ -825,42 +1179,12 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 </p>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
               <Button type="submit" size="sm" disabled={metadataSaving}>
-                {metadataSaving ? "Saving..." : "Save Cluster"}
+                {metadataSaving ? "Saving..." : "Save Settings"}
               </Button>
-              <Badge variant={STATUS_VARIANT[cluster.status] ?? "outline"}>
-                {STATUS_LABEL[cluster.status] ?? cluster.status}
-              </Badge>
-              {cluster.isDefault ? (
-                <Badge variant="success">Default</Badge>
-              ) : cluster.status === "ACTIVE" ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleStatusChange("ACTIVE", true)}
-                  disabled={statusSaving}
-                >
-                  Set as default
-                </Button>
-              ) : null}
             </div>
           </form>
-          <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="text-muted-foreground">Created</dt>
-              <dd className="mt-1">
-                {new Date(cluster.createdAt).toLocaleDateString()}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Updated</dt>
-              <dd className="mt-1">
-                {new Date(cluster.updatedAt).toLocaleDateString()}
-              </dd>
-            </div>
-          </dl>
         </CardContent>
       </Card>
       <Card>
@@ -895,10 +1219,39 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           ) : (
             <form onSubmit={handleEndpointSave} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint-managed-base-domain">
-                    Managed Base Domain
-                  </Label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="endpoint-managed-base-domain"
+                      className="text-xs font-medium"
+                    >
+                      Managed Base Domain
+                    </Label>
+                    {endpoint.managedBaseDomain && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                        onClick={() =>
+                          copyToClipboard(
+                            endpoint.managedBaseDomain,
+                            "baseDomain"
+                          )
+                        }
+                      >
+                        {copiedField === "baseDomain" ? (
+                          <>
+                            <Check size={12} className="text-emerald-500" />
+                            <span className="text-emerald-500">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                   <Input
                     id="endpoint-managed-base-domain"
                     name="managedBaseDomain"
@@ -909,6 +1262,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                         managedBaseDomain: event.target.value,
                       }))
                     }
+                    className="font-mono text-xs"
+                    placeholder="e.g. pfnapp.dev"
                     aria-invalid={Boolean(
                       endpointFieldErrors.managedBaseDomain
                     )}
@@ -919,8 +1274,36 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     </p>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint-cname-target">CNAME Target</Label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="endpoint-cname-target"
+                      className="text-xs font-medium"
+                    >
+                      CNAME Target
+                    </Label>
+                    {endpoint.cnameTarget && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                        onClick={() =>
+                          copyToClipboard(endpoint.cnameTarget, "cname")
+                        }
+                      >
+                        {copiedField === "cname" ? (
+                          <>
+                            <Check size={12} className="text-emerald-500" />
+                            <span className="text-emerald-500">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                   <Input
                     id="endpoint-cname-target"
                     name="cnameTarget"
@@ -931,6 +1314,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                         cnameTarget: event.target.value,
                       }))
                     }
+                    className="font-mono text-xs"
+                    placeholder="e.g. cname-sg.pfnapp.com"
                     aria-invalid={Boolean(endpointFieldErrors.cnameTarget)}
                   />
                   {endpointFieldErrors.cnameTarget && (
@@ -1022,7 +1407,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           )}
         </CardContent>
       </Card>
-
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Integrations</CardTitle>
@@ -1064,15 +1448,10 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">
+                      <span className="text-sm font-medium">
                         {INTEGRATION_TYPE_LABELS[integration.type] ??
                           integration.type}
                       </span>
-                      <Badge
-                        variant={integration.isActive ? "success" : "secondary"}
-                      >
-                        {integration.isActive ? "Active" : "Inactive"}
-                      </Badge>
                     </div>
                     {integration.secretPreview && (
                       <p className="text-xs text-muted-foreground">
@@ -1093,15 +1472,31 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon-xs"
+                      size="xs"
+                      className={
+                        integration.isActive
+                          ? "text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
+                          : "text-muted-foreground hover:bg-muted"
+                      }
                       onClick={() => handleIntegrationToggle(integration)}
-                      title={integration.isActive ? "Deactivate" : "Activate"}
+                      title={
+                        integration.isActive
+                          ? "Click to Deactivate"
+                          : "Click to Activate"
+                      }
                     >
-                      {integration.isActive ? (
-                        <Power size={14} />
-                      ) : (
-                        <Power size={14} />
-                      )}
+                      <Power size={14} className="mr-1" />
+                      {integration.isActive ? "Active" : "Inactive"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={() => void handleIntegrationDelete(integration)}
+                      title="Delete integration"
+                    >
+                      <Trash size={14} />
                     </Button>
                   </div>
                 </div>

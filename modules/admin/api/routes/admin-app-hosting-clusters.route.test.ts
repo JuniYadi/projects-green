@@ -101,6 +101,14 @@ const mockUpdateClusterIntegrationStatus = mock(
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 )
+
+const mockDeleteClusterIntegration = mock(async () => ({
+  id: "int_1",
+  clusterId: "cl_1",
+  type: "JENKINS",
+  deleted: true,
+}))
+
 const mockGetClusterEndpoint = mock(
   async (): Promise<AppHostingClusterEndpointDTO> => ({
     id: "endpoint_1",
@@ -115,7 +123,7 @@ const mockGetClusterEndpoint = mock(
 
 const mockUpsertClusterEndpoint = mock(
   async (): Promise<AppHostingClusterEndpointDTO> => ({
-    id: "endpoint_1",
+    id: "ep_1",
     clusterId: "cl_1",
     managedBaseDomain: "apps.example.com",
     cnameTarget: "edge.example.net",
@@ -125,8 +133,8 @@ const mockUpsertClusterEndpoint = mock(
   })
 )
 
-class MockEdgeNotFoundError extends Error {}
-class MockEdgeValidationError extends Error {}
+class EdgeNotFoundError extends Error {}
+class EdgeValidationError extends Error {}
 class MockClusterIntegrationValidationError extends Error {
   issues: never[] = []
 }
@@ -139,17 +147,15 @@ mock.module("@/modules/deploy/cluster-management.service", () => ({
   updateClusterStatus: mockUpdateClusterStatus,
   upsertClusterIntegration: mockUpsertClusterIntegration,
   updateClusterIntegrationStatus: mockUpdateClusterIntegrationStatus,
+  deleteClusterIntegration: mockDeleteClusterIntegration,
   ClusterIntegrationValidationError: MockClusterIntegrationValidationError,
 }))
-
 mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
   getClusterEndpoint: mockGetClusterEndpoint,
   upsertClusterEndpoint: mockUpsertClusterEndpoint,
-  EdgeNotFoundError: MockEdgeNotFoundError,
-  EdgeValidationError: MockEdgeValidationError,
+  EdgeNotFoundError,
+  EdgeValidationError,
 }))
-
-// ── Guard mock ───────────────────────────────────────
 
 const mockRequireSuperAdmin = mock(
   async (set: unknown): Promise<AdminActorContext | AdminApiError> => {
@@ -165,7 +171,6 @@ const mockRequireSuperAdmin = mock(
 mock.module("@/modules/admin/api/admin.guards", () => ({
   requireSuperAdmin: mockRequireSuperAdmin,
 }))
-
 // ── Dynamic import after mocks ───────────────────────
 
 const { createAdminAppHostingClusterRoutes } =
@@ -725,7 +730,6 @@ describe("Admin App Hosting Clusters Routes", () => {
   })
 
   // ── PATCH .../integrations/:type/status
-
   describe("PATCH .../integrations/:type/status", () => {
     it("toggles integration isActive", async () => {
       mockRequireSuperAdmin.mockImplementationOnce(async () => ({
@@ -761,13 +765,45 @@ describe("Admin App Hosting Clusters Routes", () => {
       expect(body.data).not.toHaveProperty("secretCiphertext")
     })
   })
+
+  // ── DELETE .../integrations/:type
+
+  describe("DELETE .../integrations/:type", () => {
+    it("deletes integration successfully", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      mockDeleteClusterIntegration.mockResolvedValueOnce({
+        id: "int_1",
+        clusterId: "cl_1",
+        type: "JENKINS",
+        deleted: true,
+      })
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/integrations/JENKINS`, {
+          method: "DELETE",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.deleted).toBe(true)
+      expect(body.data.type).toBe("JENKINS")
+    })
+  })
   // ── GET/PUT /admin/app-hosting/clusters/:id/endpoint
 
   describe("cluster edge endpoint", () => {
     it("returns 401 when endpoint access is unauthenticated", async () => {
       const app = new Elysia().use(
         createAdminAppHostingClusterRoutes({
-          requireSuperAdmin: async (set) => {
+          requireSuperAdmin: async (set: unknown) => {
             if (set && typeof set === "object" && "status" in set) {
               Object.assign(set, { status: 401 })
             }
@@ -855,7 +891,7 @@ describe("Admin App Hosting Clusters Routes", () => {
         platformRole: "super_admin",
       }))
       mockGetClusterEndpoint.mockRejectedValueOnce(
-        new MockEdgeNotFoundError("cluster edge endpoint not found")
+        new EdgeNotFoundError("cluster edge endpoint not found")
       )
 
       const app = new Elysia().use(createAdminAppHostingClusterRoutes())
@@ -872,7 +908,6 @@ describe("Admin App Hosting Clusters Routes", () => {
         message: "cluster edge endpoint not found",
       })
     })
-
     it("upserts a cluster endpoint", async () => {
       mockRequireSuperAdmin.mockImplementationOnce(async () => ({
         ok: true as const,
@@ -944,7 +979,7 @@ describe("Admin App Hosting Clusters Routes", () => {
         platformRole: "super_admin",
       }))
       mockUpsertClusterEndpoint.mockRejectedValueOnce(
-        new MockEdgeValidationError(
+        new EdgeValidationError(
           "ipv4Addresses must contain only IPv4 addresses"
         )
       )

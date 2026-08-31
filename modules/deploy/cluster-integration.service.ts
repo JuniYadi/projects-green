@@ -7,9 +7,53 @@ import {
 } from "@/lib/encryption"
 import { prisma } from "@/lib/prisma"
 import { VaultClient } from "@/lib/vault/vault-client"
+import { redis } from "@/lib/redis"
 
 const CLUSTER_INTEGRATION_KEY_SALT = "app-hosting-cluster-integration"
 const CLUSTER_INTEGRATION_KEY_INFO_PREFIX = "app-hosting-integration-v"
+
+export const CLUSTER_CREDS_CACHE_TTL_SECS = 86400
+
+export function getClusterCredsCacheKey(
+  clusterId: string,
+  type: string
+): string {
+  return `sec:cluster:creds:${clusterId}:${type}`
+}
+
+export async function getCachedClusterIntegrationSecrets(
+  clusterId: string,
+  type: string
+): Promise<Record<string, unknown> | null> {
+  try {
+    const ciphertext = await redis.get(getClusterCredsCacheKey(clusterId, type))
+    if (!ciphertext) return null
+    return decryptClusterIntegrationSecrets(ciphertext)
+  } catch {
+    return null
+  }
+}
+
+export async function setCachedClusterIntegrationSecrets(
+  clusterId: string,
+  type: string,
+  secrets: Record<string, unknown>
+): Promise<void> {
+  const ciphertext = encryptClusterIntegrationSecrets(secrets)
+  await redis.set(
+    getClusterCredsCacheKey(clusterId, type),
+    ciphertext,
+    "EX",
+    CLUSTER_CREDS_CACHE_TTL_SECS
+  )
+}
+
+export async function invalidateClusterIntegrationCache(
+  clusterId: string,
+  type: string
+): Promise<void> {
+  await redis.del(getClusterCredsCacheKey(clusterId, type))
+}
 
 const getClusterIntegrationEncryptionKey = (keyVersion = 1): Buffer => {
   const secret = process.env.ENCRYPTION_KEY
@@ -26,8 +70,17 @@ export type AppHostingClusterSummary = {
   code: string
   name: string
   region: string
+  storageClass?: string
+  nodeSelector?: Record<string, string>
+  tolerations?: Array<{
+    key: string
+    operator?: string
+    value?: string
+    effect: string
+    tolerationSeconds?: number
+  }>
+  managedBaseDomain?: string
 }
-
 export type JenkinsClusterConfig = {
   baseUrl: string
   username: string
@@ -248,8 +301,34 @@ function buildTypedConfig<T extends keyof ClusterIntegrationConfigMap>(
         secrets
       ) as ClusterIntegrationConfigMap[T]
     default:
-      throw new Error(`Unsupported cluster integration type: ${String(type)}`)
+      throw new Error(`Unsupported cluster integration type: ${type}`)
   }
+}
+
+function mapClusterMetadata(metadataJson: unknown): {
+  storageClass?: string
+  nodeSelector?: Record<string, string>
+  tolerations?: AppHostingClusterSummary["tolerations"]
+} {
+  const meta =
+    metadataJson && typeof metadataJson === "object"
+      ? (metadataJson as Record<string, unknown>)
+      : {}
+  const storageClass =
+    typeof meta.storageClass === "string" && meta.storageClass.trim().length > 0
+      ? meta.storageClass.trim()
+      : undefined
+  const nodeSelector =
+    meta.nodeSelector &&
+    typeof meta.nodeSelector === "object" &&
+    !Array.isArray(meta.nodeSelector)
+      ? (meta.nodeSelector as Record<string, string>)
+      : undefined
+  const tolerations = Array.isArray(meta.tolerations)
+    ? (meta.tolerations as AppHostingClusterSummary["tolerations"])
+    : undefined
+
+  return { storageClass, nodeSelector, tolerations }
 }
 
 export async function resolveAppHostingClusterForStack(
@@ -262,29 +341,35 @@ export async function resolveAppHostingClusterForStack(
   if (!stack) {
     throw new Error(`Application stack not found: ${stackId}`)
   }
-
   if (stack.clusterId) {
     const cluster = await prisma.appHostingCluster.findUnique({
       where: { id: stack.clusterId },
-      include: { region: true },
+      include: { region: true, endpoint: true },
     })
     if (!cluster) {
-      throw new Error("No active default App Hosting cluster configured")
+      throw new Error(`Referenced cluster ${stack.clusterId} not found`)
     }
     if (cluster.status !== "ACTIVE") {
       throw new Error("No active default App Hosting cluster configured")
     }
+    const { storageClass, nodeSelector, tolerations } = mapClusterMetadata(
+      cluster.metadataJson
+    )
     return {
       id: cluster.id,
       code: cluster.code,
       name: cluster.name,
       region: cluster.region?.name ?? "Global",
+      storageClass,
+      nodeSelector,
+      tolerations,
+      managedBaseDomain: cluster.endpoint?.managedBaseDomain ?? undefined,
     }
   }
 
   const defaults = await prisma.appHostingCluster.findMany({
     where: { status: "ACTIVE", isDefault: true },
-    include: { region: true },
+    include: { region: true, endpoint: true },
   })
   if (defaults.length === 0) {
     throw new Error("No active default App Hosting cluster configured")
@@ -293,11 +378,18 @@ export async function resolveAppHostingClusterForStack(
     throw new Error("Multiple active default App Hosting clusters configured")
   }
   const cluster = defaults[0]
+  const { storageClass, nodeSelector, tolerations } = mapClusterMetadata(
+    cluster.metadataJson
+  )
   return {
     id: cluster.id,
     code: cluster.code,
     name: cluster.name,
     region: cluster.region?.name ?? "Global",
+    storageClass,
+    nodeSelector,
+    tolerations,
+    managedBaseDomain: cluster.endpoint?.managedBaseDomain ?? undefined,
   }
 }
 
@@ -339,6 +431,14 @@ export async function resolveClusterIntegration<
       ? (integration.metaJson as Record<string, unknown>)
       : {}
 
+  const cachedSecrets = await getCachedClusterIntegrationSecrets(
+    cluster.id,
+    type
+  )
+  if (cachedSecrets) {
+    return buildTypedConfig(type, meta, cachedSecrets)
+  }
+
   let secrets: Record<string, unknown> = {}
   const vaultPath = typeof meta.vaultPath === "string" ? meta.vaultPath : null
 
@@ -364,6 +464,9 @@ export async function resolveClusterIntegration<
       integration.secretCiphertext,
       integration.keyVersion
     )
+  }
+  if (Object.keys(secrets).length > 0) {
+    await setCachedClusterIntegrationSecrets(cluster.id, type, secrets)
   }
 
   return buildTypedConfig(type, meta, secrets)

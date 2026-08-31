@@ -6,8 +6,9 @@ import { VaultClient } from "@/lib/vault/vault-client"
 import {
   decryptClusterIntegrationSecrets,
   encryptClusterIntegrationSecrets,
+  invalidateClusterIntegrationCache,
   maskClusterIntegrationSecret,
-} from "@/modules/deploy/cluster-integration.service"
+} from "./cluster-integration.service"
 import {
   clusterMetadataSchema,
   integrationMetaJsonSchemas,
@@ -412,6 +413,7 @@ export async function upsertClusterIntegration(
       secretPreview,
     },
   })
+  await invalidateClusterIntegrationCache(clusterId, type)
 
   return {
     id: row.id,
@@ -445,6 +447,7 @@ export async function updateClusterIntegrationStatus(
     where: { id: integration.id },
     data: { isActive },
   })
+  await invalidateClusterIntegrationCache(clusterId, type)
 
   // Secret-safe DTO
   return {
@@ -455,5 +458,34 @@ export async function updateClusterIntegrationStatus(
     isActive: row.isActive,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  }
+}
+
+export async function deleteClusterIntegration(
+  clusterId: string,
+  type: AppHostingClusterIntegrationType
+) {
+  throwIfNotFound(
+    await prisma.appHostingCluster.findUnique({ where: { id: clusterId } }),
+    "Cluster"
+  )
+
+  const integration = throwIfNotFound(
+    await prisma.appHostingClusterIntegration.findFirst({
+      where: { clusterId, type },
+    }),
+    "Integration"
+  )
+
+  await prisma.appHostingClusterIntegration.delete({
+    where: { id: integration.id },
+  })
+  await invalidateClusterIntegrationCache(clusterId, type)
+
+  return {
+    id: integration.id,
+    clusterId,
+    type,
+    deleted: true,
   }
 }
