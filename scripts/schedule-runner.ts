@@ -101,7 +101,15 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     expression: "0 * * * *",
     buildJobId: (d) => `vpn-renewal-${d.toISOString().slice(0, 13)}`,
   },
-  // 5. Daily Tasks (UTC)
+  // 5. Daily Tasks (UTC - 00:00 UTC = 07:00 WIB)
+  {
+    name: "whatsapp-daily-device-digest",
+    queueName: WhatsAppHealthJob.queue,
+    jobName: WhatsAppHealthJob.jobName,
+    expression: "0 0 * * *",
+    buildJobId: (d) => `wa-digest-${d.toISOString().slice(0, 10)}`,
+    payload: { dailyDigest: true },
+  },
   {
     name: "daily-count-cleanup",
     queueName: BILLING_DAILY_RESET_QUEUE,
