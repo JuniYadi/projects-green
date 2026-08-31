@@ -12,8 +12,8 @@ const mockListOrganizations = mock(
   })
 )
 
-mock.module("@workos-inc/authkit-nextjs", () => ({
-  getWorkOS: mock(() => ({
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: mock(() => ({
     organizations: { listOrganizations: mockListOrganizations },
     userManagement: {},
   })),
