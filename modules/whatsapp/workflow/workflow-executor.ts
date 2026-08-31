@@ -3,7 +3,7 @@ import { messageService } from "@/modules/whatsapp/messages/messages.service"
 import {
   evaluateMustacheTemplate,
   type TemplateContext,
-} from "./workflow-session"
+} from "./workflow-template"
 import {
   type WorkflowNode,
   PromptInputNodeConfigSchema,

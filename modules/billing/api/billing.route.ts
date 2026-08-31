@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { prisma } from "@/lib/prisma"
+import type { AlertVertical, AlertEventType } from "@prisma/client"
 
 import {
   getOrCreateAccountWithContacts,
@@ -396,6 +397,96 @@ export const createBillingRoutes = (deps: Partial<BillingRouteDeps> = {}) => {
             500,
             "INTERNAL_ERROR",
             "Unable to update alert preferences."
+          )
+        }
+      })
+      .get("/alerts/rules", async ({ set, query }) => {
+        const auth = await authenticate()
+        if (!auth.user) {
+          return toError(set, 401, "UNAUTHORIZED", "You must be signed in.")
+        }
+        if (!auth.organizationId) {
+          return toError(
+            set,
+            403,
+            "NO_ORGANIZATION",
+            "No active organization found."
+          )
+        }
+
+        const vertical = (query?.vertical as AlertVertical) || "WHATSAPP"
+        try {
+          const { getAlertRulesForVertical } =
+            await import("../alerts/billing-alerts.service")
+          const rules = await getAlertRulesForVertical(
+            auth.organizationId,
+            vertical
+          )
+          return { ok: true as const, vertical, rules }
+        } catch (err) {
+          console.error("[Billing] GET /alerts/rules error:", err)
+          return toError(
+            set,
+            500,
+            "INTERNAL_ERROR",
+            "Unable to fetch alert rules."
+          )
+        }
+      })
+      .put("/alerts/rules", async ({ set, body }) => {
+        const auth = await authenticate()
+        if (!auth.user) {
+          return toError(set, 401, "UNAUTHORIZED", "You must be signed in.")
+        }
+        if (!auth.organizationId) {
+          return toError(
+            set,
+            403,
+            "NO_ORGANIZATION",
+            "No active organization found."
+          )
+        }
+
+        const payload = body as {
+          vertical: AlertVertical
+          eventType: AlertEventType
+          targetId?: string
+          isEnabled?: boolean
+          thresholdValue?: number
+          channels?: string[]
+          metadata?: Record<string, unknown> | null
+        }
+
+        if (!payload.vertical || !payload.eventType) {
+          return toError(
+            set,
+            400,
+            "VALIDATION_ERROR",
+            "vertical and eventType are required."
+          )
+        }
+
+        try {
+          const { upsertAlertRule } =
+            await import("../alerts/billing-alerts.service")
+          const rule = await upsertAlertRule({
+            organizationId: auth.organizationId,
+            vertical: payload.vertical,
+            eventType: payload.eventType,
+            targetId: payload.targetId,
+            isEnabled: payload.isEnabled,
+            thresholdValue: payload.thresholdValue,
+            channels: payload.channels,
+            metadata: payload.metadata,
+          })
+          return { ok: true as const, rule }
+        } catch (err) {
+          console.error("[Billing] PUT /alerts/rules error:", err)
+          return toError(
+            set,
+            500,
+            "INTERNAL_ERROR",
+            "Unable to update alert rule."
           )
         }
       })

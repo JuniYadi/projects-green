@@ -30,4 +30,26 @@ describe("i18n messages", () => {
       Object.keys(enMessages.indonesianLocale).sort()
     )
   })
+  it("contains matching WhatsApp workflow dictionary structure", () => {
+    expect(enMessages.console.whatsappWorkflows).toBeDefined()
+    expect(idMessages.console.whatsappWorkflows).toBeDefined()
+    expect(enMessages.console.whatsappWorkflows.title).toBe(
+      "AI & Bot Workflows"
+    )
+    expect(idMessages.console.whatsappWorkflows.title).toBe(
+      "Alur Bot & AI WhatsApp"
+    )
+    expect(enMessages.console.whatsappWorkflows.simulator.title).toBe(
+      "WhatsApp Bot Simulator"
+    )
+    expect(idMessages.console.whatsappWorkflows.simulator.title).toBe(
+      "Simulator Bot WhatsApp"
+    )
+    expect(
+      enMessages.console.whatsappWorkflows.templates.customerSupportTitle
+    ).toBe("Customer Support Bot")
+    expect(Object.keys(idMessages.console.whatsappWorkflows).sort()).toEqual(
+      Object.keys(enMessages.console.whatsappWorkflows).sort()
+    )
+  })
 })

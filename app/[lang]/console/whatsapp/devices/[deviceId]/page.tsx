@@ -682,9 +682,15 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 style={{ width: `${quotaPercent}%` }}
               />
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              {remainingQuota.toLocaleString()} msgs remaining
-            </p>
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>{remainingQuota.toLocaleString()} msgs remaining</span>
+              <a
+                href={`/${locale}/console/billing/alerts`}
+                className="text-primary hover:underline"
+              >
+                Alert policy ↗
+              </a>
+            </div>
           </CardContent>
         </Card>
       </div>

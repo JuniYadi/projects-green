@@ -8,6 +8,7 @@
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/queue/email"
 
+import { resolveAlertRule } from "@/modules/billing/alerts/billing-alerts.service"
 export const QUOTA_THRESHOLDS = [50, 80, 90, 100] as const
 export type QuotaThreshold = (typeof QUOTA_THRESHOLDS)[number]
 
@@ -41,6 +42,26 @@ export const quotaAlertService: QuotaAlertService = {
     currentCost: number,
     quotaBase: number
   ) {
+    // 1. Resolve alert rule from Redis cache (Target-specific override -> Org default "*" -> Code fallback)
+    const rule = await resolveAlertRule(
+      organizationId,
+      "WHATSAPP",
+      "QUOTA_LOW",
+      deviceId
+    )
+
+    if (rule && !rule.isEnabled) {
+      return // Alert disabled for this target/org
+    }
+
+    // Custom thresholds if present in metadata, else rule threshold or fallback default
+    const customThresholds =
+      rule?.metadata && Array.isArray(rule.metadata.thresholds)
+        ? (rule.metadata.thresholds as number[])
+        : rule?.thresholdValue
+          ? [Number(rule.thresholdValue)]
+          : (QUOTA_THRESHOLDS as readonly number[])
+
     const billingContacts = await prisma.billingContact.findMany({
       where: {
         billingAccount: { organizationId },
@@ -69,11 +90,10 @@ export const quotaAlertService: QuotaAlertService = {
       select: { threshold: true },
     })
     const sentThresholds = new Set(existingAlerts.map((a) => a.threshold))
-    const crossedThresholds = QUOTA_THRESHOLDS.filter(
+    const crossedThresholds = customThresholds.filter(
       (threshold) =>
         currentPercent >= threshold && !sentThresholds.has(threshold)
     )
-
     await Promise.allSettled(
       crossedThresholds.map(async (threshold) => {
         try {

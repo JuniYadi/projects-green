@@ -1935,6 +1935,113 @@ export type AppMessages = {
         }
       }
     }
+    whatsappWorkflows: {
+      title: string
+      subtitle: string
+      createNewButton: string
+      loadingList: string
+      emptyState: {
+        title: string
+        description: string
+        createCta: string
+        step1Title: string
+        step1Desc: string
+        step2Title: string
+        step2Desc: string
+        step3Title: string
+        step3Desc: string
+      }
+      templates: {
+        heading: string
+        useTemplate: string
+        customerSupportTitle: string
+        customerSupportDesc: string
+        orderTrackingTitle: string
+        orderTrackingDesc: string
+        leadGenTitle: string
+        leadGenDesc: string
+      }
+      card: {
+        nodesCount: string
+        triggerPrefix: string
+        openCanvas: string
+        defaultBadge: string
+        activeBadge: string
+        inactiveBadge: string
+      }
+      canvas: {
+        namePlaceholder: string
+        badgeVisualGraph: string
+        dragHint: string
+        selectDevicePlaceholder: string
+        defaultToggle: string
+        exportJson: string
+        importJson: string
+        simulateTest: string
+        saveAndDeploy: string
+        saving: string
+        copilotPlaceholder: string
+        generateAi: string
+        generating: string
+        addNodeHeader: string
+        nodes: {
+          sendMessage: string
+          promptInput: string
+          condition: string
+          interactiveButtons: string
+          aiGenerate: string
+          httpRequest: string
+        }
+      }
+      inspector: {
+        drawerTitle: string
+        drawerSubtitle: string
+        stepNameLabel: string
+        stepNamePlaceholder: string
+        messageTextLabel: string
+        messageTextPlaceholder: string
+        mediaUrlLabel: string
+        mediaUrlPlaceholder: string
+        variableHint: string
+        questionLabel: string
+        questionPlaceholder: string
+        variableNameLabel: string
+        variableNamePlaceholder: string
+        conditionHint: string
+        leftOperandLabel: string
+        operatorLabel: string
+        rightOperandLabel: string
+        operators: {
+          equals: string
+          notEquals: string
+          contains: string
+          greaterThan: string
+          lessThan: string
+        }
+        interactiveTextLabel: string
+        buttonsHeader: string
+        buttonPlaceholder: string
+        aiPromptLabel: string
+        aiPromptPlaceholder: string
+        aiVariableLabel: string
+        httpMethodLabel: string
+        httpUrlLabel: string
+        httpVariableLabel: string
+        deleteNodeButton: string
+        doneEditingButton: string
+      }
+      simulator: {
+        title: string
+        emptyAlert: string
+        inputPlaceholder: string
+        sendTooltip: string
+        resetSession: string
+        simulatedUser: string
+        simulatedBot: string
+        variableCapturedToast: string
+        branchTaken: string
+      }
+    }
     invoices: {
       heading: string
       description: string

@@ -4,6 +4,7 @@ const mockBillingContactFindMany = mock(async (): Promise<unknown[]> => [])
 const mockWhatsappDeviceFindUnique = mock(async (): Promise<unknown> => null)
 const mockQuotaAlertFindMany = mock(async (): Promise<unknown[]> => [])
 const mockQuotaAlertCreate = mock(async () => ({}))
+const mockBillingAlertRuleFindMany = mock(async (): Promise<unknown[]> => [])
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -16,6 +17,9 @@ mock.module("@/lib/prisma", () => ({
     whatsappQuotaAlert: {
       findMany: mockQuotaAlertFindMany,
       create: mockQuotaAlertCreate,
+    },
+    billingAlertRule: {
+      findMany: mockBillingAlertRuleFindMany,
     },
   },
 }))
@@ -35,6 +39,7 @@ describe("quotaAlertService", () => {
     mockQuotaAlertFindMany.mockClear()
     mockQuotaAlertCreate.mockClear()
     mockSendEmail.mockClear()
+    mockBillingAlertRuleFindMany.mockClear()
   })
 
   it("exports correct quota thresholds", () => {

@@ -21,6 +21,11 @@ const mockTx = {
   billingInvoice: {
     count: vi.fn(),
   },
+  billingAlertRule: {
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+    deleteMany: vi.fn(),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({
@@ -849,5 +854,71 @@ describe("auth guard (shared across endpoints)", () => {
       const data = await response.json()
       expect(data.error).toBe("NO_ORGANIZATION")
     }
+  })
+})
+
+describe("GET and PUT /alerts/rules", () => {
+  beforeEach(() => {
+    resetMocks()
+  })
+
+  it("returns alert rules for vertical", async () => {
+    mockTx.billingAlertRule.findMany.mockResolvedValue([])
+
+    const app = new Elysia().use(
+      createBillingRoutes({
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/alerts/rules?vertical=WHATSAPP")
+    )
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(body.vertical).toBe("WHATSAPP")
+  })
+
+  it("upserts alert rule", async () => {
+    mockTx.billingAlertRule.upsert.mockResolvedValue({
+      id: "rule_1",
+      organizationId: "org_1",
+      vertical: "WHATSAPP",
+      eventType: "QUOTA_LOW",
+      targetId: "*",
+      isEnabled: true,
+      thresholdValue: 85,
+      channels: ["EMAIL"],
+    })
+
+    const app = new Elysia().use(
+      createBillingRoutes({
+        authenticate: async () =>
+          ({
+            user: { id: "user_1", email: "owner@example.com" },
+            organizationId: "org_1",
+          }) as MockAuthContext,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/alerts/rules", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vertical: "WHATSAPP",
+          eventType: "QUOTA_LOW",
+          thresholdValue: 85,
+        }),
+      })
+    )
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
   })
 })

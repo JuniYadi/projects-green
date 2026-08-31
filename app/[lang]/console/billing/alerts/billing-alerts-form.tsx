@@ -12,14 +12,22 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Spinner, Warning, ChartLineUp, Receipt } from "@phosphor-icons/react"
+import {
+  Spinner,
+  Warning,
+  ChartLineUp,
+  Receipt,
+  ChatCircleText,
+  CloudCheck,
+  ShieldCheck,
+} from "@phosphor-icons/react"
+import { Badge } from "@/components/ui/badge"
 import {
   getBillingAccount,
   updateBillingAlerts,
   type AlertPreferences,
   type AlertPreferencesInput,
 } from "@/lib/billing-client"
-
 const defaultPreferences: AlertPreferences = {
   balanceThresholdEnabled: false,
   balanceThresholdAmount: 50000,
@@ -276,6 +284,108 @@ export function BillingAlertsForm() {
           )}
         </CardContent>
       </Card>
+      {/* WhatsApp Multi-Device Quota & Usage Alert Policy */}
+      <Card className="border-emerald-500/20 bg-emerald-500/[0.02]">
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <ChatCircleText size={22} weight="fill" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <CardTitle>WhatsApp API Quota & Usage Alerts</CardTitle>
+                  <Badge variant="outline" className="text-xs font-normal">
+                    Multi-Device Unified
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Automated email alerts sent to Billing Contacts when any
+                  WhatsApp device crosses usage thresholds.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">
+                  Automatic Quota Thresholds (All Devices)
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Triggers instant email notification per-device at predefined
+                  levels:
+                </p>
+              </div>
+              <Badge
+                variant="secondary"
+                className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              >
+                Active (50%, 80%, 90%, 100%)
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <span className="inline-flex items-center rounded-md border bg-background px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                50% Notice
+              </span>
+              <span className="inline-flex items-center rounded-md border bg-background px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                80% Warning
+              </span>
+              <span className="inline-flex items-center rounded-md border bg-background px-2.5 py-1 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                90% Critical
+              </span>
+              <span className="inline-flex items-center rounded-md border bg-background px-2.5 py-1 text-xs font-semibold text-destructive">
+                100% Exhausted (PAYG)
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Other Verticals (Coming Soon Placeholders) */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="opacity-75">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CloudCheck size={20} className="text-muted-foreground" />
+                <CardTitle className="text-sm">App Hosting Alerts</CardTitle>
+              </div>
+              <Badge variant="secondary" className="text-[10px]">
+                Coming Soon
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              CPU, RAM spikes, container crash-loops, and egress bandwidth
+              threshold alerts.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="opacity-75">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={20} className="text-muted-foreground" />
+                <CardTitle className="text-sm">VPN WireGuard Alerts</CardTitle>
+              </div>
+              <Badge variant="secondary" className="text-[10px]">
+                Coming Soon
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              Subscription expiry warning and bandwidth limit notification for
+              client devices.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Invoice Reminders — now handled by Billing Contacts */}
       <Card>
