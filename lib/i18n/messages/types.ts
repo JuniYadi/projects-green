@@ -122,13 +122,14 @@ export type AppMessages = {
       heading: string
       description: string
       usage: string
+      transactions: string
       alerts: string
       topUpBalance: string
+      viewStatement: string
       balance: string
       nextInvoice: string
       accountAge: string
       estMonthly: string
-      transactions: string
       basedOnActiveSubscriptions: string
       estimatedMonthlyAverage: string
       activeSubscriptions: string
@@ -428,6 +429,8 @@ export type AppMessages = {
         heading: string
         description: string
         cardTitle: string
+        tabStatements: string
+        tabInvoices: string
         typeTopUp: string
         typeInvoice: string
         typeAdjustment: string
@@ -436,12 +439,15 @@ export type AppMessages = {
         method: string
         amount: string
         date: string
+        balanceActivity: string
+        typeCredit: string
+        typeDebit: string
         searchPlaceholder: string
+        searchStatementsPlaceholder: string
         statusAll: string
         statusOpen: string
         statusPaid: string
         statusVoid: string
-        emptyAll: string
         emptyFiltered: string
         notAvailable: string
         methodVirtualAccount: string

@@ -84,48 +84,155 @@ export const createBillingAccountRoutes = (
     ...deps,
   }
 
-  return new Elysia().get("/account", async ({ set }) => {
-    const auth = await authenticate()
+  return new Elysia()
+    .get("/account", async ({ set }) => {
+      const auth = await authenticate()
 
-    if (!auth.user) {
-      return toUnauthorized(set)
-    }
-
-    if (!auth.organizationId) {
-      return toForbidden(set, "No active organization found for billing.")
-    }
-
-    try {
-      // JIT upsert: find or create BillingAccount for org
-      const account = await ensureBillingAccountForOrg({
-        organizationId: auth.organizationId,
-        getOrganizationAction,
-      })
-
-      const balance = account.balance
-      // Single source of truth: `currency` drives both transactions and
-      // display. `preferredCurrency` is deprecated (see CURRENCY-FIX-STRATEGY).
-      const currency = account.currency
-      const isPositive = balance.gt(0)
-      const warnThreshold = await getWarnThresholdForCurrency(currency)
-      const isAboveWarn = balance.gte(warnThreshold)
-      const accountAge = daysSince(account.createdAt)
-
-      return {
-        ok: true as const,
-        organizationId: account.organizationId,
-        currency,
-        balanceIdr: balance.toFixed(2),
-        formattedBalance: formatBillingMoney(balance.toFixed(2), currency),
-        isAboveWarn,
-        isPositive,
-        accountAge,
+      if (!auth.user) {
+        return toUnauthorized(set)
       }
-    } catch (error) {
-      console.error("[BillingAccount] Error:", error)
-      return toServerError(set, "Unable to load billing account right now.")
-    }
-  })
+
+      if (!auth.organizationId) {
+        return toForbidden(set, "No active organization found for billing.")
+      }
+
+      try {
+        // JIT upsert: find or create BillingAccount for org
+        const account = await ensureBillingAccountForOrg({
+          organizationId: auth.organizationId,
+          getOrganizationAction,
+        })
+
+        const balance = account.balance
+        // Single source of truth: `currency` drives both transactions and
+        // display. `preferredCurrency` is deprecated (see CURRENCY-FIX-STRATEGY).
+        const currency = account.currency
+        const isPositive = balance.gt(0)
+        const warnThreshold = await getWarnThresholdForCurrency(currency)
+        const isAboveWarn = balance.gte(warnThreshold)
+        const accountAge = daysSince(account.createdAt)
+
+        return {
+          ok: true as const,
+          organizationId: account.organizationId,
+          currency,
+          balanceIdr: balance.toFixed(2),
+          formattedBalance: formatBillingMoney(balance.toFixed(2), currency),
+          isAboveWarn,
+          isPositive,
+          accountAge,
+        }
+      } catch (error) {
+        console.error("[BillingAccount] Error:", error)
+        return toServerError(set, "Unable to load billing account right now.")
+      }
+    })
+    .get("/account/statement", async ({ query, set }) => {
+      const auth = await authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      if (!auth.organizationId) {
+        return toForbidden(set, "No active organization found for billing.")
+      }
+
+      try {
+        const account = await ensureBillingAccountForOrg({
+          organizationId: auth.organizationId,
+          getOrganizationAction,
+        })
+
+        const rawPage = Number(
+          (query as Record<string, unknown> | undefined)?.page ?? 1
+        )
+        const rawLimit = Number(
+          (query as Record<string, unknown> | undefined)?.limit ?? 20
+        )
+        const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1
+        const limit =
+          Number.isInteger(rawLimit) && rawLimit > 0 && rawLimit <= 100
+            ? rawLimit
+            : 20
+        const skip = (page - 1) * limit
+
+        const [adjustments, total] = await Promise.all([
+          prisma.billingAdjustment.findMany({
+            where: { billingAccountId: account.id },
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+            include: {
+              invoice: {
+                select: {
+                  id: true,
+                  invoiceNumber: true,
+                  status: true,
+                },
+              },
+            },
+          }),
+          prisma.billingAdjustment.count({
+            where: { billingAccountId: account.id },
+          }),
+        ])
+
+        const totalPages = Math.ceil(total / limit)
+
+        return {
+          ok: true as const,
+          account: {
+            id: account.id,
+            organizationId: account.organizationId,
+            currency: account.currency,
+            balanceIdr: account.balance.toFixed(2),
+            formattedBalance: formatBillingMoney(
+              account.balance.toFixed(2),
+              account.currency
+            ),
+          },
+          statements: adjustments.map((adj) => {
+            const rawMetadata =
+              adj.metadataJson && typeof adj.metadataJson === "object"
+                ? (adj.metadataJson as Record<string, unknown>)
+                : null
+
+            return {
+              id: adj.id,
+              type: adj.adjustmentType,
+              amount: adj.amount.toFixed(2),
+              currency: adj.currency,
+              reason: adj.reason,
+              source: (rawMetadata?.source as string | undefined) ?? null,
+              balanceBefore:
+                (rawMetadata?.balanceBefore as string | number | undefined) ??
+                null,
+              balanceAfter:
+                (rawMetadata?.balanceAfter as string | number | undefined) ??
+                null,
+              createdAt: adj.createdAt.toISOString(),
+              invoice: adj.invoice
+                ? {
+                    id: adj.invoice.id,
+                    invoiceNumber: adj.invoice.invoiceNumber,
+                    status: adj.invoice.status,
+                  }
+                : null,
+            }
+          }),
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+          },
+        }
+      } catch (error) {
+        console.error("[BillingAccountStatement] Error:", error)
+        return toServerError(set, "Unable to load billing statement right now.")
+      }
+    })
 }
 
 export const billingAccountRoutes = createBillingAccountRoutes()

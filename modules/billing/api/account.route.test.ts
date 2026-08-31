@@ -342,6 +342,76 @@ describe("GET /account - JIT upsert", () => {
   })
 })
 
+describe("GET /account/statement", () => {
+  const mockEnsureBillingAccountForOrg = vi.fn()
+  const mockGetOrganizationAction = vi.fn()
+  const mockGetWarnThresholdForCurrency = vi.fn()
+
+  const mockAuth = {
+    user: { id: "user-1", email: "test@example.com" },
+    organizationId: "org_123",
+  }
+
+  const createRoute = () =>
+    createBillingAccountRoutes({
+      authenticate: async () => mockAuth,
+      ensureBillingAccountForOrg: mockEnsureBillingAccountForOrg,
+      getOrganizationAction: mockGetOrganizationAction as (
+        orgId: string
+      ) => Promise<Organization>,
+      getWarnThresholdForCurrency: mockGetWarnThresholdForCurrency,
+    })
+
+  it("returns 401 when unauthenticated", async () => {
+    const app = createBillingAccountRoutes({
+      authenticate: async () => ({ user: null, organizationId: null }),
+    })
+    const res = await app.handle(
+      new Request("http://localhost/account/statement")
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it("returns 403 when organization is missing", async () => {
+    const app = createBillingAccountRoutes({
+      authenticate: async () => ({
+        user: { id: "user-1" },
+        organizationId: null,
+      }),
+    })
+    const res = await app.handle(
+      new Request("http://localhost/account/statement")
+    )
+    expect(res.status).toBe(403)
+  })
+
+  it("returns statement entries and summary for organization", async () => {
+    const mockAccount = {
+      id: "acc-statement-1",
+      organizationId: "org_123",
+      balance: new Decimal(150000),
+      currency: "IDR",
+      createdAt: new Date("2026-05-01"),
+      updatedAt: new Date(),
+    }
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+
+    const app = createRoute()
+    const res = await app.handle(
+      new Request("http://localhost/account/statement?page=1&limit=10")
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.account.id).toBe("acc-statement-1")
+    expect(json.account.currency).toBe("IDR")
+    expect(Array.isArray(json.statements)).toBe(true)
+    expect(json.pagination.page).toBe(1)
+    expect(json.pagination.limit).toBe(10)
+  })
+})
+
 // Test schema validation
 describe("billingSchemas", () => {
   describe("topupSchema", () => {
