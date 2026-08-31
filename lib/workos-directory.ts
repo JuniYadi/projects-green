@@ -21,10 +21,21 @@
  *   const org = await getCachedOrganization(orgId)  // { id, name }
  */
 
-import { getWorkOS } from "@workos-inc/authkit-nextjs"
+import { createWorkOS, WorkOS } from "@workos-inc/node"
 import { redis } from "@/lib/redis"
 
 const CACHE_TTL_SECONDS = 60 * 60 // 1 hour
+let _workos: WorkOS | null = null
+
+const getWorkOSClient = () => {
+  if (!_workos) {
+    _workos = createWorkOS({
+      apiKey: process.env.WORKOS_API_KEY ?? "",
+      clientId: process.env.WORKOS_CLIENT_ID ?? "",
+    })
+  }
+  return _workos
+}
 
 export type WorkOSDirectoryUser = {
   id: string
@@ -79,7 +90,7 @@ export async function getCachedUser(
 
   // 2. Fetch from WorkOS
   try {
-    const workos = getWorkOS()
+    const workos = getWorkOSClient()
     const user = await workos.userManagement.getUser(workosUserId)
     const result: WorkOSDirectoryUser = {
       id: user.id,
@@ -122,7 +133,7 @@ export async function getCachedOrganization(
 
   // 2. Fetch from WorkOS
   try {
-    const workos = getWorkOS()
+    const workos = getWorkOSClient()
     const org = await workos.organizations.getOrganization(workosOrgId)
 
     const result: WorkOSDirectoryOrg = {
@@ -191,7 +202,7 @@ export async function getCachedOrganizations(
  * point lookups. This is intended for cross-tenant admin inventory views.
  */
 export async function listCachedOrganizations(): Promise<WorkOSDirectoryOrg[]> {
-  const workos = getWorkOS()
+  const workos = getWorkOSClient()
   const organizations: WorkOSDirectoryOrg[] = []
   let after: string | undefined
 
@@ -264,7 +275,7 @@ export async function getCachedOrganizationMetadata(
 
   // 2. Fetch from WorkOS
   try {
-    const workos = getWorkOS()
+    const workos = getWorkOSClient()
     const result = await workos.userManagement.listOrganizationMemberships({
       organizationId: workosOrgId,
     })

@@ -445,8 +445,8 @@ export class BillingCycleService {
     organizationId: string
   ): Promise<string | null> {
     try {
-      const { getWorkOS } = await import("@workos-inc/authkit-nextjs")
-      const workos = getWorkOS()
+      const { createWorkOS } = await import("@workos-inc/node")
+      const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
       const memberships =
         await workos.userManagement.listOrganizationMemberships({
           organizationId,
