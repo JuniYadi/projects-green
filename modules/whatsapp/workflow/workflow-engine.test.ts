@@ -25,17 +25,13 @@ mock.module("@/lib/redis", () => ({
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
-
 mock.module("@/modules/whatsapp/messages/messages.service", () => ({
   messageService: mockMessageService,
 }))
-
-import {
-  evaluateMustacheTemplate,
-  type TemplateContext,
-} from "./workflow-session"
-import { executeWorkflowNode } from "./workflow-executor"
-import { processWhatsappWorkflowInbound } from "./workflow-runner"
+const { evaluateMustacheTemplate } = await import("./workflow-session")
+type TemplateContext = import("./workflow-session").TemplateContext
+const { executeWorkflowNode } = await import("./workflow-executor")
+const { processWhatsappWorkflowInbound } = await import("./workflow-runner")
 describe("modules/whatsapp/workflow - Template Evaluator", () => {
   it("resolves nested mustache variables correctly", () => {
     const context: TemplateContext = {
@@ -399,6 +395,10 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
     mockRedis.eval.mockImplementation(async () => 1)
     mockPrisma.whatsappDevice.findUnique.mockClear()
     mockMessageService.sendMessage.mockClear()
+    mockMessageService.sendMessage.mockImplementation(async () => ({
+      jobId: "job_1",
+      messageId: "msg_1",
+    }))
   })
 
   it("triggers and runs a multi-node workflow sequentially from keyword match", async () => {
@@ -407,6 +407,7 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
       organizationId: "org_1",
       name: "Cek Ongkir",
       isActive: true,
+      isDefault: false,
       trigger: {
         id: "trig_1",
         type: "keyword_match",
@@ -455,5 +456,53 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
     expect(res.handled).toBe(true)
     expect(res.reason).toBe("PAUSED_AT_INPUT")
     expect(mockMessageService.sendMessage).toHaveBeenCalledTimes(2)
+  })
+  it("triggers isDefault workflow immediately even when keyword does not match", async () => {
+    const defaultWorkflow: WorkflowDefinition = {
+      id: "wf_default_fallback",
+      organizationId: "org_1",
+      name: "Default Greeting",
+      isActive: true,
+      isDefault: true,
+      trigger: {
+        id: "trig_def",
+        type: "keyword_match",
+        keywords: ["khusus"],
+      },
+      nodes: [
+        {
+          id: "node_start_def",
+          type: "send_message",
+          name: "Welcome",
+          config: {
+            text: "Selamat datang di bot default kami.",
+            messageType: "text",
+          },
+        },
+      ],
+      edges: [],
+      version: 1,
+    }
+
+    mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
+      id: "dev_1",
+      features: { botWorkflow: defaultWorkflow },
+    } as never)
+
+    const res = await processWhatsappWorkflowInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62899999999",
+      inboundMessageText: "random unrecognised query",
+    })
+
+    expect(res.handled).toBe(true)
+    expect(res.reason).toBe("WORKFLOW_COMPLETED")
+    expect(res.workflowId).toBe("wf_default_fallback")
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Selamat datang di bot default kami.",
+      })
+    )
   })
 })

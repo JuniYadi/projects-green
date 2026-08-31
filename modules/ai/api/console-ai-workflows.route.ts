@@ -40,6 +40,7 @@ export function buildTemplateWorkflow(
         options?.description ||
         "Alur otomatis tanya nomor resi lalu balas status pengiriman",
       isActive: true,
+      isDefault: false,
       trigger: {
         id: "trig_resi",
         type: "keyword_match",
@@ -104,6 +105,7 @@ export function buildTemplateWorkflow(
         options?.description ||
         "Alur pengumpulan data prospek (Nama & Kebutuhan) secara bertahap",
       isActive: true,
+      isDefault: false,
       trigger: {
         id: "trig_reg",
         type: "keyword_match",
@@ -179,6 +181,7 @@ export function buildTemplateWorkflow(
       options?.description ||
       "Alur otomatis menyapa pelanggan dengan tombol menu pilihan",
     isActive: true,
+    isDefault: false,
     trigger: {
       id: "trig_welcome",
       type: "keyword_match",
