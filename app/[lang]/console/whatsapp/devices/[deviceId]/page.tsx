@@ -198,6 +198,7 @@ type WhatsAppProfilePreviewProps = {
   profile: Record<string, unknown> | null
   messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["devices"]
   onEdit?: () => void
+  showHeader?: boolean
 }
 
 function WhatsAppProfilePreview({
@@ -205,6 +206,7 @@ function WhatsAppProfilePreview({
   profile,
   messages,
   onEdit,
+  showHeader = true,
 }: WhatsAppProfilePreviewProps) {
   const displayName =
     device.verifiedName ||
@@ -236,36 +238,37 @@ function WhatsAppProfilePreview({
       data-testid="whatsapp-profile-preview"
       className="overflow-hidden border shadow-sm [--card-spacing:0px]"
     >
-      <CardHeader className="bg-emerald-800 px-5 py-4 text-white dark:bg-emerald-950">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-semibold tracking-wide text-white">
-              <WhatsAppText id="s71" />
-            </CardTitle>
-          </div>
-          <div className="flex items-center gap-2">
-            {onEdit && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[11px] font-medium text-white hover:bg-white/20 hover:text-white"
-                onClick={onEdit}
+      {showHeader && (
+        <CardHeader className="bg-emerald-800 px-5 py-4 text-white dark:bg-emerald-950">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold tracking-wide text-white">
+                <WhatsAppText id="s71" />
+              </CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              {onEdit && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] font-medium text-white hover:bg-white/20 hover:text-white"
+                  onClick={onEdit}
+                >
+                  <PencilSimple className="mr-1 size-3.5" />
+                  Edit
+                </Button>
+              )}
+              <Badge
+                variant="outline"
+                className="border-white/20 bg-white/10 text-[11px] font-normal text-white"
               >
-                <PencilSimple className="mr-1 size-3.5" />
-                Edit
-              </Button>
-            )}
-            <Badge
-              variant="outline"
-              className="border-white/20 bg-white/10 text-[11px] font-normal text-white"
-            >
-              <WhatsAppText id="s72" />
-            </Badge>
+                <WhatsAppText id="s72" />
+              </Badge>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-
+        </CardHeader>
+      )}
       <CardContent className="space-y-5 p-5">
         <div className="flex items-center gap-4">
           <Avatar className="size-16 border-2 border-emerald-500/20 shadow-sm">
@@ -1156,6 +1159,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
 
             <div className="w-full">
               <WhatsAppProfilePreview
+                showHeader={false}
                 device={device}
                 profile={{
                   name: device.verifiedName || device.name,
