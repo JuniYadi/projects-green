@@ -86,8 +86,14 @@ function clusterError(
   }
 }
 
-export const createAdminAppHostingClusterRoutes = (deps = {}) => {
-  const { requireSuperAdmin: guard = requireSuperAdmin } = { ...deps }
+export type AdminClusterRouteDeps = {
+  requireSuperAdmin?: typeof requireSuperAdmin
+}
+
+export const createAdminAppHostingClusterRoutes = (
+  deps: AdminClusterRouteDeps = {}
+) => {
+  const { requireSuperAdmin: guard = requireSuperAdmin } = deps
   return (
     new Elysia()
       // ── GET list ─────────────────────────────────

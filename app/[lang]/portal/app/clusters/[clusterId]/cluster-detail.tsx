@@ -237,7 +237,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           await eden.api.admin.regions.get()
         if (resError || !payload || !payload.ok) {
           const errPayload = (resError?.value || payload) as
-            { message?: string } | undefined
+            | { message?: string }
+            | undefined
           throw new Error(errPayload?.message || "Failed to load regions")
         }
         if (cancelled) return
@@ -625,6 +626,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       )
     } catch (cause) {
       console.error("Failed to toggle integration status:", cause)
+      alert(
+        cause instanceof Error ? cause.message : "Failed to toggle integration."
+      )
     }
   }
 

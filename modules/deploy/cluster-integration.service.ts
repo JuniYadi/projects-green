@@ -301,8 +301,34 @@ function buildTypedConfig<T extends keyof ClusterIntegrationConfigMap>(
         secrets
       ) as ClusterIntegrationConfigMap[T]
     default:
-      throw new Error(`Unsupported cluster integration type: ${String(type)}`)
+      throw new Error(`Unsupported cluster integration type: ${type}`)
   }
+}
+
+function mapClusterMetadata(metadataJson: unknown): {
+  storageClass?: string
+  nodeSelector?: Record<string, string>
+  tolerations?: AppHostingClusterSummary["tolerations"]
+} {
+  const meta =
+    metadataJson && typeof metadataJson === "object"
+      ? (metadataJson as Record<string, unknown>)
+      : {}
+  const storageClass =
+    typeof meta.storageClass === "string" && meta.storageClass.trim().length > 0
+      ? meta.storageClass.trim()
+      : undefined
+  const nodeSelector =
+    meta.nodeSelector &&
+    typeof meta.nodeSelector === "object" &&
+    !Array.isArray(meta.nodeSelector)
+      ? (meta.nodeSelector as Record<string, string>)
+      : undefined
+  const tolerations = Array.isArray(meta.tolerations)
+    ? (meta.tolerations as AppHostingClusterSummary["tolerations"])
+    : undefined
+
+  return { storageClass, nodeSelector, tolerations }
 }
 
 export async function resolveAppHostingClusterForStack(
@@ -326,25 +352,9 @@ export async function resolveAppHostingClusterForStack(
     if (cluster.status !== "ACTIVE") {
       throw new Error("No active default App Hosting cluster configured")
     }
-    const meta =
-      cluster.metadataJson && typeof cluster.metadataJson === "object"
-        ? (cluster.metadataJson as Record<string, unknown>)
-        : {}
-    const storageClass =
-      typeof meta.storageClass === "string" &&
-      meta.storageClass.trim().length > 0
-        ? meta.storageClass.trim()
-        : undefined
-    const nodeSelector =
-      meta.nodeSelector &&
-      typeof meta.nodeSelector === "object" &&
-      !Array.isArray(meta.nodeSelector)
-        ? (meta.nodeSelector as Record<string, string>)
-        : undefined
-    const tolerations = Array.isArray(meta.tolerations)
-      ? (meta.tolerations as AppHostingClusterSummary["tolerations"])
-      : undefined
-
+    const { storageClass, nodeSelector, tolerations } = mapClusterMetadata(
+      cluster.metadataJson
+    )
     return {
       id: cluster.id,
       code: cluster.code,
@@ -368,24 +378,9 @@ export async function resolveAppHostingClusterForStack(
     throw new Error("Multiple active default App Hosting clusters configured")
   }
   const cluster = defaults[0]
-  const meta =
-    cluster.metadataJson && typeof cluster.metadataJson === "object"
-      ? (cluster.metadataJson as Record<string, unknown>)
-      : {}
-  const storageClass =
-    typeof meta.storageClass === "string" && meta.storageClass.trim().length > 0
-      ? meta.storageClass.trim()
-      : undefined
-  const nodeSelector =
-    meta.nodeSelector &&
-    typeof meta.nodeSelector === "object" &&
-    !Array.isArray(meta.nodeSelector)
-      ? (meta.nodeSelector as Record<string, string>)
-      : undefined
-  const tolerations = Array.isArray(meta.tolerations)
-    ? (meta.tolerations as AppHostingClusterSummary["tolerations"])
-    : undefined
-
+  const { storageClass, nodeSelector, tolerations } = mapClusterMetadata(
+    cluster.metadataJson
+  )
   return {
     id: cluster.id,
     code: cluster.code,
