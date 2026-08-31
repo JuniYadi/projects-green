@@ -20,7 +20,15 @@ export function buildWhatsAppMediaS3Key(
     now,
   })
 }
-function getExtensionFromMime(mimeType: string): string {
+
+export function getWhatsAppMediaCdnUrl(s3Key: string): string {
+  const cdn = process.env.S3_CDN_URL || ""
+  const cleanCdn = cdn.replace(/\/+$/, "")
+  const cleanKey = s3Key.replace(/^\/+/, "")
+  return cleanCdn ? `${cleanCdn}/${cleanKey}` : ""
+}
+
+export function getExtensionFromMime(mimeType: string): string {
   if (mimeType.includes("webp")) return "webp"
   if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg"
   if (mimeType.includes("png")) return "png"
