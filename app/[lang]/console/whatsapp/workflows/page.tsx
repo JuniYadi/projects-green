@@ -12,8 +12,8 @@ import {
   XCircle,
   GitFork,
   Sparkle,
+  Star,
 } from "@phosphor-icons/react"
-import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -29,6 +29,7 @@ export type WorkflowListItem = {
   name: string
   description?: string
   isActive: boolean
+  isDefault?: boolean
   trigger: {
     type: string
     keywords?: string[]
@@ -134,21 +135,31 @@ export default function WhatsappWorkflowsPage() {
                       {wf.description || "Alur bot otomatis WhatsApp"}
                     </CardDescription>
                   </div>
-                  {wf.isActive ? (
-                    <Badge
-                      variant="secondary"
-                      className="gap-1 bg-emerald-500/10 text-[10px] text-emerald-600"
-                    >
-                      <CheckCircle size={12} weight="fill" /> Aktif
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant="outline"
-                      className="gap-1 text-[10px] text-muted-foreground"
-                    >
-                      <XCircle size={12} /> Nonaktif
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {wf.isDefault && (
+                      <Badge
+                        variant="secondary"
+                        className="gap-1 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400"
+                      >
+                        <Star size={12} weight="fill" /> Default
+                      </Badge>
+                    )}
+                    {wf.isActive ? (
+                      <Badge
+                        variant="secondary"
+                        className="gap-1 bg-emerald-500/10 text-[10px] text-emerald-600"
+                      >
+                        <CheckCircle size={12} weight="fill" /> Aktif
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="gap-1 text-[10px] text-muted-foreground"
+                      >
+                        <XCircle size={12} /> Nonaktif
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
 

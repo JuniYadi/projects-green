@@ -32,6 +32,13 @@ describe("WhatsappWorkflowCanvasPage", () => {
     expect(html).toContain("Simulasi Test")
   })
 
+  it("renders Export JSON, Import JSON, and Default workflow toggle", () => {
+    const html = renderToString(<WhatsappWorkflowCanvasPage />)
+    expect(html).toContain("Export JSON")
+    expect(html).toContain("Import JSON")
+    expect(html).toContain("Default")
+  })
+
   it("renders node type palette buttons", () => {
     const html = renderToString(<WhatsappWorkflowCanvasPage />)
     expect(html).toContain("Kirim Pesan")

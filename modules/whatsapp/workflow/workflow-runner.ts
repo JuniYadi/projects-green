@@ -110,7 +110,9 @@ export async function processWhatsappWorkflowInbound(
       // Check trigger matching
       const trigger = activeWorkflow.trigger
       let matched = false
-      if (trigger.type === "whatsapp_inbound") {
+      if (activeWorkflow.isDefault) {
+        matched = true
+      } else if (trigger.type === "whatsapp_inbound") {
         matched = true
       } else if (trigger.type === "keyword_match" && trigger.keywords.length) {
         matched = trigger.keywords.some((kw) =>
@@ -119,7 +121,6 @@ export async function processWhatsappWorkflowInbound(
       } else if (trigger.type === "button_payload" && buttonPayload) {
         matched = trigger.keywords.includes(buttonPayload)
       }
-
       if (!matched) {
         return { handled: false, reason: "TRIGGER_NOT_MATCHED" }
       }

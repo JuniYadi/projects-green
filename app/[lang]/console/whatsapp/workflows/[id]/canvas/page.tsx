@@ -34,8 +34,10 @@ import {
   Globe,
   SlidersHorizontal,
   ArrowsClockwise,
+  DownloadSimple,
+  UploadSimple,
+  Star,
 } from "@phosphor-icons/react"
-import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -55,12 +57,13 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
+import { Switch } from "@/components/ui/switch"
 import type {
   WorkflowDefinition,
-  WorkflowNode,
   WorkflowEdge,
-  WorkflowNodeType,
+  WorkflowNode,
 } from "@/modules/whatsapp/workflow/workflow.schema"
+import { WorkflowDefinitionSchema } from "@/modules/whatsapp/workflow/workflow.schema"
 import { WorkflowNodeComponent } from "./workflow-node"
 
 const initialNodesSample: WorkflowNode[] = [
@@ -124,13 +127,13 @@ export default function WhatsappWorkflowCanvasPage() {
     name: "Alur Bot WhatsApp Baru",
     description: "Alur otomatis customer service, kuis & penjualan cerdas",
     isActive: true,
+    isDefault: false,
     trigger: {
       id: "trig_1",
       type: "keyword_match",
       keywords: ["halo", "menu", "bantuan", "info"],
     },
   }))
-
   const [devices, setDevices] = useState<
     { id: string; name: string; phoneNumber: string }[]
   >([])
@@ -241,6 +244,7 @@ export default function WhatsappWorkflowCanvasPage() {
                   name: wf.name || "Alur WhatsApp",
                   description: wf.description || "",
                   isActive: wf.isActive ?? true,
+                  isDefault: wf.isDefault ?? false,
                   trigger: wf.trigger || {
                     id: "trig_1",
                     type: "keyword_match",
@@ -555,12 +559,12 @@ export default function WhatsappWorkflowCanvasPage() {
         name: workflowMeta.name,
         description: workflowMeta.description,
         isActive: workflowMeta.isActive,
+        isDefault: workflowMeta.isDefault,
         trigger: workflowMeta.trigger as WorkflowDefinition["trigger"],
         nodes: exportNodes,
         edges: exportEdges,
         version: 1,
       }
-
       const res = await eden.api.whatsapp.workflows.save.post({
         deviceId: selectedDeviceId,
         workflow: payload,
@@ -580,6 +584,111 @@ export default function WhatsappWorkflowCanvasPage() {
     } finally {
       setSaving(false)
     }
+  }
+  // Export JSON functionality
+  const handleExportJson = () => {
+    try {
+      const exportNodes: WorkflowNode[] = nodes.map((n) => {
+        const d = n.data as unknown as WorkflowNode
+        return {
+          id: n.id,
+          name: d.name || "Langkah Alur",
+          type: d.type || "send_message",
+          config: d.config || {},
+          position: {
+            x: Math.round(n.position.x),
+            y: Math.round(n.position.y),
+          },
+        }
+      })
+
+      const exportEdges: WorkflowEdge[] = edges.map((e) => ({
+        id: e.id,
+        sourceNodeId: e.source,
+        sourcePort: (e.sourceHandle as string) || "default",
+        targetNodeId: e.target,
+      }))
+
+      const exportData: WorkflowDefinition = {
+        id: workflowMeta.id,
+        organizationId: "org_current",
+        name: workflowMeta.name,
+        description: workflowMeta.description,
+        isActive: workflowMeta.isActive,
+        isDefault: workflowMeta.isDefault,
+        trigger: workflowMeta.trigger as WorkflowDefinition["trigger"],
+        nodes: exportNodes,
+        edges: exportEdges,
+        version: 1,
+      }
+
+      const jsonStr = JSON.stringify(exportData, null, 2)
+      const blob = new Blob([jsonStr], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      const sanitizedName =
+        workflowMeta.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") ||
+        "workflow"
+      a.download = `${sanitizedName}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success("Workflow berhasil di-export ke JSON!")
+    } catch (e: unknown) {
+      toast.error(
+        `Gagal export JSON: ${e instanceof Error ? e.message : "Error"}`
+      )
+    }
+  }
+
+  // Import JSON functionality
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string
+        const parsed = JSON.parse(content)
+        const validated = WorkflowDefinitionSchema.safeParse(parsed)
+
+        if (!validated.success) {
+          toast.error(
+            `Format JSON tidak valid: ${validated.error.issues[0]?.message || "Schema error"}`
+          )
+          return
+        }
+
+        const data = validated.data
+        setWorkflowMeta((prev) => ({
+          ...prev,
+          name: data.name || prev.name,
+          description: data.description || prev.description,
+          isActive: data.isActive ?? prev.isActive,
+          isDefault: data.isDefault ?? prev.isDefault,
+          trigger: data.trigger || prev.trigger,
+        }))
+
+        if (Array.isArray(data.nodes) && data.nodes.length > 0) {
+          setNodes(data.nodes.map(toXyFlowNode))
+        }
+        if (Array.isArray(data.edges)) {
+          setEdges(data.edges.map(toXyFlowEdge))
+        }
+
+        toast.success(`Workflow "${data.name}" berhasil di-import!`)
+      } catch (err: unknown) {
+        toast.error(
+          `Gagal membaca file JSON: ${err instanceof Error ? err.message : "Invalid JSON"}`
+        )
+      } finally {
+        e.target.value = ""
+      }
+    }
+    reader.readAsText(file)
   }
 
   // Simulator test
@@ -675,6 +784,44 @@ export default function WhatsappWorkflowCanvasPage() {
               </SelectContent>
             </Select>
           </div>
+          {/* Default Workflow Toggle */}
+          <div className="flex items-center gap-1.5 rounded-lg border border-border/70 bg-card/60 px-2.5 py-1 text-xs">
+            <Star
+              className={`h-3.5 w-3.5 ${workflowMeta.isDefault ? "fill-amber-500 text-amber-500" : "text-muted-foreground"}`}
+              weight={workflowMeta.isDefault ? "fill" : "regular"}
+            />
+            <span className="text-xs font-medium">Default</span>
+            <Switch
+              checked={workflowMeta.isDefault}
+              onCheckedChange={(checked) =>
+                setWorkflowMeta((prev) => ({ ...prev, isDefault: checked }))
+              }
+              className="scale-75 data-[state=checked]:bg-amber-500"
+            />
+          </div>
+
+          {/* Export JSON Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportJson}
+            className="h-9 gap-1.5 text-xs font-medium"
+          >
+            <DownloadSimple className="h-3.5 w-3.5" />
+            Export JSON
+          </Button>
+
+          {/* Import JSON Button */}
+          <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">
+            <UploadSimple className="h-3.5 w-3.5" />
+            Import JSON
+            <input
+              type="file"
+              accept=".json,application/json"
+              onChange={handleImportJson}
+              className="hidden"
+            />
+          </label>
 
           <Button
             variant="outline"
@@ -807,9 +954,9 @@ export default function WhatsappWorkflowCanvasPage() {
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.2 }}
+          fitViewOptions={{ padding: 0.35, maxZoom: 0.85 }}
           minZoom={0.2}
-          maxZoom={2}
+          maxZoom={1.5}
           className="bg-zinc-950"
         >
           <Background
