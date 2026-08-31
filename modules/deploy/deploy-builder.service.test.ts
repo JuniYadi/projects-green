@@ -83,6 +83,14 @@ mock.module("@/modules/gitops/gitops.service", () => ({
 }))
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
   ...RealClusterIntegrationService,
+  resolveAppHostingClusterForStack: mock(async (_stackId: string) => ({
+    id: "cluster-1",
+    code: "sgp",
+    name: "Singapore Production",
+    region: "Singapore",
+    storageClass: "openebs-lvmpv",
+    managedBaseDomain: "pfnapp.dev",
+  })),
   resolveClusterIntegration: mock(async (_id: string, type: string) => {
     if (type === "JENKINS") {
       return {

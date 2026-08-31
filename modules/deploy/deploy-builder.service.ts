@@ -7,13 +7,14 @@ import {
   type JenkinsApiConfig,
 } from "@/modules/jenkins/jenkins.service"
 import {
+  resolveAppHostingClusterForStack,
   resolveClusterIntegration,
   type GitOpsClusterConfig,
   type JenkinsClusterConfig,
   type RegistryClusterConfig,
-} from "@/modules/deploy/cluster-integration.service"
-import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
+} from "./cluster-integration.service"
 import { AppManifestBuilder } from "@/modules/gitops/builders"
+import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
 import * as jsYaml from "js-yaml"
 import { buildHelmValues } from "./helm-values.builder"
 import {
@@ -519,6 +520,7 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
   const stack = deployment.stack
 
   try {
+    const cluster = await resolveAppHostingClusterForStack(stack.id)
     const gitopsConfig = await resolveClusterIntegration(stack.id, "GITOPS")
     const { imageRepository, imageTag } =
       await resolveTemplateImageReference(stack)
@@ -528,6 +530,38 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
     )
     const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
 
+    // Dynamic domain fallback: customDomain -> slug.managedBaseDomain -> null
+    const resolvedDomain =
+      stack.customDomain ??
+      (cluster.managedBaseDomain
+        ? `${stack.slug}.${cluster.managedBaseDomain}`
+        : null)
+
+    // Template Blueprint Storage
+    const templateBlueprint =
+      (stack.template?.blueprintJson as Record<string, unknown> | null) ?? null
+    const blueprintStorage =
+      templateBlueprint && typeof templateBlueprint.storage === "object"
+        ? (templateBlueprint.storage as Record<string, unknown>)
+        : null
+
+    const storageConfig =
+      blueprintStorage && blueprintStorage.enabled === true
+        ? {
+            enabled: true,
+            mountPath:
+              typeof blueprintStorage.mountPath === "string"
+                ? blueprintStorage.mountPath
+                : "/data",
+            size:
+              typeof blueprintStorage.sizeGbDefault === "number"
+                ? `${blueprintStorage.sizeGbDefault}Gi`
+                : "5Gi",
+            storageClass: cluster.storageClass,
+            accessMode: "ReadWriteOnce",
+          }
+        : null
+
     const values = buildHelmValues({
       slug: stack.slug,
       imageRepository,
@@ -536,13 +570,15 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
       replicas: 1,
       cpu: stack.cpu,
       memory: stack.memory,
-      domain: stack.customDomain ?? null,
+      domain: resolvedDomain,
       edge,
       externalSecretVaultPath,
+      storage: storageConfig,
+      nodeSelector: cluster.nodeSelector,
+      tolerations: cluster.tolerations,
       deploymentType: getStackDeploymentType(stack.metadataJson),
       additionalContainerPorts: getStackAdditionalPorts(stack.metadataJson),
     })
-
     const { gitopsCommitSha } = await prisma.$transaction((tx) =>
       commitHelmValuesAndAdvanceToDeploying({
         deployment: { id: deployment.id, commitSha: deployment.commitSha },

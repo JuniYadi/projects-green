@@ -2,6 +2,7 @@ import * as jsYaml from "js-yaml"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
+  resolveAppHostingClusterForStack,
   resolveClusterIntegration,
   type GitOpsClusterConfig,
 } from "@/modules/deploy/cluster-integration.service"
@@ -225,7 +226,7 @@ export async function handleJenkinsImageReady(
 
   const deployment = await findActiveDeployment(stack.id, input)
   if (!deployment) return empty
-
+  const cluster = await resolveAppHostingClusterForStack(stack.id)
   const gitopsConfig = await resolveClusterIntegration(
     deployment.stackId,
     "GITOPS"
@@ -244,6 +245,11 @@ export async function handleJenkinsImageReady(
   )
 
   const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
+  const resolvedDomain =
+    stack.customDomain ??
+    (cluster.managedBaseDomain
+      ? `${stack.slug}.${cluster.managedBaseDomain}`
+      : null)
 
   let values: Record<string, unknown>
   try {
@@ -255,7 +261,9 @@ export async function handleJenkinsImageReady(
       replicas: 1,
       cpu: stack.cpu,
       memory: stack.memory,
-      domain: stack.customDomain ?? null,
+      domain: resolvedDomain,
+      nodeSelector: cluster.nodeSelector,
+      tolerations: cluster.tolerations,
       edge,
       externalSecretVaultPath,
     })

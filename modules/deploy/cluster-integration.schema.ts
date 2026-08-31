@@ -24,16 +24,28 @@ export const INTEGRATION_TYPE_LABELS: Record<string, string> = {
   PROMETHEUS: "Prometheus",
 }
 
+// ── Toleration Schema ──────────────────────────────────────
+
+export const clusterTolerationSchema = z.strictObject({
+  key: z.string().trim().min(1, "Key is required"),
+  operator: z.enum(["Equal", "Exists"]).default("Equal").optional(),
+  value: z.string().trim().optional(),
+  effect: z
+    .enum(["NoSchedule", "PreferNoSchedule", "NoExecute"])
+    .default("NoSchedule"),
+  tolerationSeconds: z.number().int().positive().optional(),
+})
+export type ClusterTolerationInput = z.infer<typeof clusterTolerationSchema>
+
 // ── Cluster Metadata Schema ────────────────────────────
 
 export const clusterMetadataSchema = z.strictObject({
-  kubernetesVersion: z.string().trim().min(1).optional(),
-  nodePoolName: z.string().trim().min(1).optional(),
-  nodePoolInstanceType: z.string().trim().min(1).optional(),
-  nodeCount: z.number().int().positive().optional(),
   notes: z.string().trim().optional(),
   namespacePattern: z.string().trim().min(1).optional(),
   labelSelector: z.string().trim().min(1).optional(),
+  storageClass: z.string().trim().min(1).optional(),
+  nodeSelector: z.record(z.string(), z.string()).optional(),
+  tolerations: z.array(clusterTolerationSchema).optional(),
   vaultPath: z.string().trim().min(1).optional(),
   vaultVersion: z.number().int().positive().optional(),
 })

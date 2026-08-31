@@ -13,10 +13,7 @@ import {
   integrationMetaJsonSchemas,
   integrationSecretPatchSchemas,
 } from "@/modules/admin/api/admin.schema"
-import {
-  requireSuperAdmin,
-  type AdminApiError,
-} from "@/modules/admin/api/admin.guards"
+import { requireSuperAdmin } from "@/modules/admin/api/admin.guards"
 import {
   getClusterEndpoint,
   upsertClusterEndpoint,
@@ -31,6 +28,7 @@ import {
   updateClusterStatus,
   upsertClusterIntegration,
   updateClusterIntegrationStatus,
+  deleteClusterIntegration,
   ClusterIntegrationValidationError,
 } from "@/modules/deploy/cluster-management.service"
 
@@ -85,15 +83,8 @@ function clusterError(
   }
 }
 
-type AdminClusterRouteDeps = {
-  requireSuperAdmin?: typeof requireSuperAdmin
-}
-
-export const createAdminAppHostingClusterRoutes = (
-  deps: AdminClusterRouteDeps = {}
-) => {
-  const { requireSuperAdmin: guard = requireSuperAdmin } = deps
-
+export const createAdminAppHostingClusterRoutes = (deps = {}) => {
+  const { requireSuperAdmin: guard = requireSuperAdmin } = { ...deps }
   return (
     new Elysia()
       // ── GET list ─────────────────────────────────
@@ -347,6 +338,36 @@ export const createAdminAppHostingClusterRoutes = (
           }
         },
         { body: updateIntegrationStatusBodySchema }
+      )
+
+      // ── DELETE integration ───────────────────────
+      .delete(
+        "/admin/app-hosting/clusters/:id/integrations/:type",
+        async ({ params, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
+
+          if (!isIntegrationType(params.type)) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "UNPROCESSABLE",
+              message: `Invalid integration type: ${params.type}`,
+            }
+          }
+
+          try {
+            const result = await deleteClusterIntegration(
+              params.id,
+              params.type
+            )
+            return { ok: true as const, data: result }
+          } catch (error) {
+            return clusterError(set, error)
+          }
+        }
       )
   )
 }

@@ -24,6 +24,7 @@ const mockPrismaAppHostingClusterIntegration = {
   update: mock(),
   findFirst: mock(),
   findUnique: mock(),
+  delete: mock(),
 }
 const mockPrismaTransaction = mock(async (fn: (tx: unknown) => unknown) => {
   return fn({
@@ -53,6 +54,16 @@ mock.module("@/lib/vault/vault-client", () => ({
   },
   VaultSecretNotFoundError: class VaultSecretNotFoundError extends Error {},
 }))
+
+const mockRedisDel = mock(async () => 1)
+mock.module("@/lib/redis", () => ({
+  redis: {
+    get: mock(async () => null as string | null),
+    set: mock(async () => "OK"),
+    del: mockRedisDel,
+  },
+}))
+
 // ── Dynamic import after mocks ───────────────────────
 
 const {
@@ -63,6 +74,7 @@ const {
   updateClusterStatus,
   upsertClusterIntegration,
   updateClusterIntegrationStatus,
+  deleteClusterIntegration,
 } = await import("@/modules/deploy/cluster-management.service")
 
 // ── Helpers ──────────────────────────────────────────
@@ -109,6 +121,7 @@ describe("ClusterManagementService", () => {
   beforeEach(() => {
     process.env.ENCRYPTION_KEY = "test-encryption-key"
     mock.clearAllMocks()
+    mockRedisDel.mockResolvedValue(1)
     mockPrismaAppHostingClusterIntegration.findUnique.mockResolvedValue(null)
   })
 
@@ -348,6 +361,10 @@ describe("ClusterManagementService", () => {
         })
       )
       expect(result.type).toBe("JENKINS")
+      expect(mockRedisDel).toHaveBeenCalledWith(
+        "sec:cluster:creds:cl_1:JENKINS"
+      )
+
       // Must not expose ciphertext
       expect(result).not.toHaveProperty("secretCiphertext")
     })
@@ -422,6 +439,9 @@ describe("ClusterManagementService", () => {
       )
 
       expect(result.isActive).toBe(false)
+      expect(mockRedisDel).toHaveBeenCalledWith(
+        "sec:cluster:creds:cl_1:JENKINS"
+      )
     })
 
     it("returns secret-safe DTO", async () => {
@@ -457,6 +477,33 @@ describe("ClusterManagementService", () => {
       await expect(
         updateClusterIntegrationStatus("cl_1", "JENKINS", true)
       ).rejects.toThrow("NOT_FOUND")
+    })
+  })
+
+  describe("deleteClusterIntegration", () => {
+    it("deletes integration and invalidates its credential cache", async () => {
+      mockPrismaAppHostingCluster.findUnique.mockResolvedValue(fakeCluster())
+      mockPrismaAppHostingClusterIntegration.findFirst.mockResolvedValue(
+        fakeIntegration()
+      )
+      mockPrismaAppHostingClusterIntegration.delete.mockResolvedValue(
+        fakeIntegration()
+      )
+
+      const result = await deleteClusterIntegration("cl_1", "JENKINS")
+
+      expect(result).toEqual({
+        id: "int_1",
+        clusterId: "cl_1",
+        type: "JENKINS",
+        deleted: true,
+      })
+      expect(
+        mockPrismaAppHostingClusterIntegration.delete
+      ).toHaveBeenCalledWith({ where: { id: "int_1" } })
+      expect(mockRedisDel).toHaveBeenCalledWith(
+        "sec:cluster:creds:cl_1:JENKINS"
+      )
     })
   })
 })

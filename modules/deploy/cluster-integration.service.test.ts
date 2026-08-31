@@ -13,13 +13,30 @@ const mockPrisma = {
   },
 }
 
+const mockRedisGet = mock(async () => null as string | null)
+const mockRedisSet = mock(async () => "OK")
+const mockRedisDel = mock(async () => 1)
+
+mock.module("@/lib/redis", () => ({
+  redis: {
+    get: mockRedisGet,
+    set: mockRedisSet,
+    del: mockRedisDel,
+  },
+}))
+
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
 const {
+  CLUSTER_CREDS_CACHE_TTL_SECS,
   encryptClusterIntegrationSecrets,
   decryptClusterIntegrationSecrets,
+  getClusterCredsCacheKey,
+  getCachedClusterIntegrationSecrets,
+  setCachedClusterIntegrationSecrets,
+  invalidateClusterIntegrationCache,
   maskClusterIntegrationSecret,
   resolveAppHostingClusterForStack,
   resolveClusterIntegration,
@@ -37,6 +54,12 @@ describe("cluster-integration.service", () => {
 
   beforeEach(() => {
     process.env.ENCRYPTION_KEY = "test-key"
+    mockRedisGet.mockReset()
+    mockRedisGet.mockResolvedValue(null)
+    mockRedisSet.mockReset()
+    mockRedisSet.mockResolvedValue("OK")
+    mockRedisDel.mockReset()
+    mockRedisDel.mockResolvedValue(1)
     mockPrisma.applicationStack.findUnique.mockClear()
     mockPrisma.appHostingCluster.findUnique.mockClear()
     mockPrisma.appHostingCluster.findMany.mockClear()
@@ -86,6 +109,134 @@ describe("cluster-integration.service", () => {
     expect(maskClusterIntegrationSecret({ token: 1234 })).toBeNull()
   })
 
+  it("builds credential cache keys and uses the 24-hour TTL", async () => {
+    const secrets = { pat: GITOPS_PAT }
+    const ciphertext = encryptClusterIntegrationSecrets(secrets)
+
+    expect(CLUSTER_CREDS_CACHE_TTL_SECS).toBe(86400)
+    expect(getClusterCredsCacheKey("cluster-1", "GITOPS")).toBe(
+      "sec:cluster:creds:cluster-1:GITOPS"
+    )
+
+    mockRedisGet.mockResolvedValue(ciphertext)
+    await expect(
+      getCachedClusterIntegrationSecrets("cluster-1", "GITOPS")
+    ).resolves.toEqual(secrets)
+    expect(mockRedisGet).toHaveBeenCalledWith(
+      "sec:cluster:creds:cluster-1:GITOPS"
+    )
+  })
+
+  it("returns null for a cache miss or Redis/decryption error", async () => {
+    await expect(
+      getCachedClusterIntegrationSecrets("cluster-1", "GITOPS")
+    ).resolves.toBeNull()
+
+    mockRedisGet.mockRejectedValueOnce(new Error("Redis unavailable"))
+    await expect(
+      getCachedClusterIntegrationSecrets("cluster-1", "GITOPS")
+    ).resolves.toBeNull()
+
+    mockRedisGet.mockResolvedValueOnce("invalid ciphertext")
+    await expect(
+      getCachedClusterIntegrationSecrets("cluster-1", "GITOPS")
+    ).resolves.toBeNull()
+  })
+
+  it("encrypts cache values and invalidates the exact credential key", async () => {
+    const secrets = { token: ARGOCD_TOKEN }
+    await setCachedClusterIntegrationSecrets("cluster-1", "ARGOCD", secrets)
+
+    expect(mockRedisSet).toHaveBeenCalledTimes(1)
+    const [key, ciphertext, mode, ttl] = mockRedisSet.mock.calls[0]
+    expect(key).toBe("sec:cluster:creds:cluster-1:ARGOCD")
+    expect(ciphertext).not.toContain(ARGOCD_TOKEN)
+    expect(mode).toBe("EX")
+    expect(ttl).toBe(86400)
+    expect(decryptClusterIntegrationSecrets(ciphertext)).toEqual(secrets)
+
+    await invalidateClusterIntegrationCache("cluster-1", "ARGOCD")
+    expect(mockRedisDel).toHaveBeenCalledWith(
+      "sec:cluster:creds:cluster-1:ARGOCD"
+    )
+  })
+
+  it("uses cached secrets and skips Vault on a cache hit", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValue({
+      clusterId: "cluster-1",
+    })
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValue({
+      id: "cluster-1",
+      code: "sgp",
+      name: "Singapore",
+      region: { name: "Singapore" },
+      status: "ACTIVE",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-1",
+      type: "GITOPS",
+      metaJson: {
+        repo: "pfnapp/gitops",
+        branch: "main",
+        basePath: "apps/{slug}",
+        vaultPath: "admin/clusters/cluster-1/integrations/GITOPS",
+      },
+      secretCiphertext: "not-used",
+      keyVersion: 1,
+      isActive: true,
+    })
+    mockRedisGet.mockResolvedValue(
+      encryptClusterIntegrationSecrets({ pat: GITOPS_PAT })
+    )
+    const readKV = mock(async () => ({ pat: "vault-value" }))
+
+    const config = await resolveClusterIntegration("stack-1", "GITOPS", {
+      readKV,
+    })
+
+    expect(config.pat).toBe(GITOPS_PAT)
+    expect(readKV).not.toHaveBeenCalled()
+    expect(mockRedisSet).not.toHaveBeenCalled()
+  })
+
+  it("caches secrets resolved from Vault after a cache miss", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValue({
+      clusterId: "cluster-1",
+    })
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValue({
+      id: "cluster-1",
+      code: "sgp",
+      name: "Singapore",
+      region: { name: "Singapore" },
+      status: "ACTIVE",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-1",
+      type: "GITOPS",
+      metaJson: {
+        repo: "pfnapp/gitops",
+        branch: "main",
+        basePath: "apps/{slug}",
+        vaultPath: "admin/clusters/cluster-1/integrations/GITOPS",
+        vaultVersion: 1,
+      },
+      secretCiphertext: null,
+      keyVersion: 1,
+      isActive: true,
+    })
+    const readKV = mock(async () => ({ pat: GITOPS_PAT }))
+
+    const config = await resolveClusterIntegration("stack-1", "GITOPS", {
+      readKV,
+    })
+
+    expect(config.pat).toBe(GITOPS_PAT)
+    expect(mockRedisSet).toHaveBeenCalledTimes(1)
+    expect(mockRedisSet.mock.calls[0][0]).toBe(
+      "sec:cluster:creds:cluster-1:GITOPS"
+    )
+  })
+
   it("resolveAppHostingClusterForStack uses stack clusterId when set", async () => {
     mockPrisma.applicationStack.findUnique.mockResolvedValue({
       clusterId: "cluster-1",
@@ -104,10 +255,12 @@ describe("cluster-integration.service", () => {
       code: "sgp",
       name: "Singapore Production",
       region: "Singapore",
+      storageClass: undefined,
+      managedBaseDomain: undefined,
     })
     expect(mockPrisma.appHostingCluster.findUnique).toHaveBeenCalledWith({
       where: { id: "cluster-1" },
-      include: { region: true },
+      include: { region: true, endpoint: true },
     })
   })
 
@@ -128,7 +281,7 @@ describe("cluster-integration.service", () => {
     expect(cluster.code).toBe("sgp")
     expect(mockPrisma.appHostingCluster.findMany).toHaveBeenCalledWith({
       where: { status: "ACTIVE", isDefault: true },
-      include: { region: true },
+      include: { region: true, endpoint: true },
     })
   })
 

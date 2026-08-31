@@ -84,10 +84,17 @@ export type HelmValuesInput = {
   readinessProbe?: HelmValuesProbe | null
   startupProbe?: HelmValuesProbe | null
   haproxy?: HelmValuesHAProxyConfig | null
+  nodeSelector?: Record<string, string> | null
+  tolerations?: Array<{
+    key: string
+    operator?: string
+    value?: string
+    effect: string
+    tolerationSeconds?: number
+  }> | null
   reloader?: boolean
   runAsNonRoot?: boolean
 }
-
 const omitUndefined = <T extends Record<string, unknown>>(obj: T): T =>
   Object.fromEntries(
     Object.entries(obj).filter(([, value]) => value !== undefined)
@@ -308,6 +315,14 @@ export function buildHelmValues(
     }
 
     values.simpleIngress = [ingress]
+  }
+
+  if (input.nodeSelector && Object.keys(input.nodeSelector).length > 0) {
+    values.nodeSelector = input.nodeSelector
+  }
+
+  if (input.tolerations && input.tolerations.length > 0) {
+    values.tolerations = input.tolerations
   }
 
   return omitUndefined(values)
