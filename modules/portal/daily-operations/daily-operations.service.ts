@@ -39,7 +39,7 @@ type MetricDefinition = {
   since?: Date
   activeMessage: string
   cleanMessage: string
-  unavailableMessage: string
+  unavailableMessage?: string
 }
 
 const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
@@ -102,7 +102,7 @@ const createMetric = async (
     oldestAt,
     ageMinutes: getAgeMinutes(oldestAt, now),
     message: !available
-      ? definition.unavailableMessage
+      ? (definition.unavailableMessage ?? "Antrean tidak dapat dimuat")
       : count === 0
         ? definition.cleanMessage
         : definition.activeMessage.replace("{count}", String(count)),
@@ -141,6 +141,7 @@ export class DailyOperationsService {
           where: { status: "PENDING" },
           activeMessage: "{count} pembayaran menunggu konfirmasi",
           cleanMessage: "Semua pembayaran telah dikonfirmasi",
+          unavailableMessage: "Antrean tidak dapat dimuat",
         },
       },
       {
@@ -154,6 +155,7 @@ export class DailyOperationsService {
           where: { status: { in: ["FAILED", "BUILDING"] } },
           activeMessage: "{count} deployment perlu ditindaklanjuti",
           cleanMessage: "Antrean bersih",
+          unavailableMessage: "Antrean tidak dapat dimuat",
         },
       },
       {
@@ -167,6 +169,7 @@ export class DailyOperationsService {
           where: { status: { in: ["OPEN", "IN_PROGRESS"] } },
           activeMessage: "{count} tiket menunggu respons",
           cleanMessage: "Antrean bersih",
+          unavailableMessage: "Antrean tidak dapat dimuat",
         },
       },
       {
@@ -186,6 +189,7 @@ export class DailyOperationsService {
           },
           activeMessage: "{count} invoice perlu ditindaklanjuti",
           cleanMessage: "Antrean bersih",
+          unavailableMessage: "Antrean tidak dapat dimuat",
         },
       },
       {
@@ -200,6 +204,7 @@ export class DailyOperationsService {
           since,
           activeMessage: "{count} order baru",
           cleanMessage: "Antrean bersih",
+          unavailableMessage: "Antrean tidak dapat dimuat",
         },
       },
       {
@@ -214,6 +219,7 @@ export class DailyOperationsService {
           since,
           activeMessage: "{count} invoice baru",
           cleanMessage: "Antrean bersih",
+          unavailableMessage: "Antrean tidak dapat dimuat",
         },
       },
     ]

@@ -4,7 +4,7 @@ import { DailyOperationsService } from "./daily-operations.service"
 import type { DailyOperationsPrisma } from "./daily-operations.service"
 
 const count = mock(async () => 0)
-const findFirst = mock(async () => null)
+const findFirst = mock(async (): Promise<{ createdAt: Date } | null> => null)
 
 const prismaMock: DailyOperationsPrisma = {
   paymentConfirmation: { count, findFirst },

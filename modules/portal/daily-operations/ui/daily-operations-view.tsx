@@ -123,6 +123,7 @@ function MetricCard({
 }: {
   metric: DailyOperationsMetricDTO
   localizedHrefs?: Record<string, string>
+  locale: Locale
   action: boolean
 }) {
   const status = getStatus(metric, locale)
