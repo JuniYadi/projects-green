@@ -2085,9 +2085,11 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         })
       }
 
-      // Status History Steps
+      // Status History Steps from internal message tracking
+      const recordedStatuses = new Set<string>()
       if (message?.statusHistory && message.statusHistory.length > 0) {
         for (const st of message.statusHistory) {
+          recordedStatuses.add(st.status.toUpperCase())
           timeline.push({
             id: st.id,
             status: st.status,
@@ -2099,19 +2101,39 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         }
       }
 
-      // Webhook Dispatch Steps
+      // Webhook Dispatch Steps: only add if not already tracked or if message has no statusHistory
       for (const we of webhookEvents) {
-        timeline.push({
-          id: `step-webhook-${we.id}`,
-          status: we.processingStatus,
-          timestamp: we.createdAt.toISOString(),
-          error: we.errorMessage ?? null,
-          label: `Webhook Received (${we.eventType})`,
-          description: `Processing: ${we.processingStatus}`,
-        })
+        const meta = extractEventMetadata(we.metaPayload, we.eventType)
+        const deliverySt = meta.deliveryStatus?.toUpperCase()
+        if (deliverySt && !recordedStatuses.has(deliverySt)) {
+          recordedStatuses.add(deliverySt)
+          timeline.push({
+            id: `step-webhook-${we.id}`,
+            status: deliverySt,
+            timestamp: we.createdAt.toISOString(),
+            error: we.errorMessage ?? null,
+            label: `Delivery Status: ${deliverySt}`,
+            description: we.errorMessage
+              ? `Error: ${we.errorMessage}`
+              : undefined,
+          })
+        } else if (
+          !deliverySt &&
+          (!message ||
+            !message.statusHistory ||
+            message.statusHistory.length === 0)
+        ) {
+          timeline.push({
+            id: `step-webhook-${we.id}`,
+            status: we.processingStatus,
+            timestamp: we.createdAt.toISOString(),
+            error: we.errorMessage ?? null,
+            label: `Webhook Received (${we.eventType})`,
+            description: `Processing: ${we.processingStatus}`,
+          })
+        }
       }
       timeline.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
-
       // Resolve fallback webhook metadata if available
       const firstWebhook = webhookEvents[0]
       const webhookMetadata = firstWebhook

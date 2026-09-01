@@ -1921,6 +1921,7 @@ describe("messagesRoutes", () => {
           id: "webhook-1",
           eventType: "status_update",
           processingStatus: "SUCCESS",
+          metaPayload: { status: "read", id: "wamid.123" },
           createdAt: new Date("2026-08-20T12:05:00.000Z"),
           errorMessage: null,
         },
