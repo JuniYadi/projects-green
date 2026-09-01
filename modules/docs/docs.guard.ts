@@ -29,7 +29,7 @@ export type ActiveBanInfo = {
   reason?: string | null
 }
 
-export const MAX_PROMPT_LENGTH = 800
+export const MAX_PROMPT_LENGTH = 5000
 export const IP_RATE_LIMIT_MAX = 15
 export const IP_RATE_LIMIT_WINDOW_MS = 60_000 // 60s
 export const USER_RATE_LIMIT_MAX = 5
