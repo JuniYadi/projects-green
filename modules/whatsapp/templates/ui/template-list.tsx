@@ -11,8 +11,8 @@ import {
   Lightning,
   WarningCircle,
   ArrowsClockwise,
+  Warning,
 } from "@phosphor-icons/react"
-
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
@@ -224,21 +224,27 @@ export function TemplateList({
               {template.category && (
                 <Badge
                   variant="outline"
-                  className="text-xs"
+                  className={`flex items-center gap-1 font-mono text-xs ${
+                    template.requestedCategory &&
+                    template.requestedCategory !== template.category
+                      ? "border-amber-500/40 bg-amber-500/10 font-semibold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300"
+                      : ""
+                  }`}
                   title={
                     template.requestedCategory &&
                     template.requestedCategory !== template.category
-                      ? `Diajukan: ${template.requestedCategory} -> Disetujui Meta: ${template.category}`
+                      ? `Diajukan: ${template.requestedCategory} -> Disetujui Meta: ${template.category} (Kategori disesuaikan otomatis oleh Meta)`
                       : undefined
                   }
                 >
-                  {template.category}
                   {template.requestedCategory &&
                     template.requestedCategory !== template.category && (
-                      <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400">
-                        (Meta)
-                      </span>
+                      <Warning
+                        weight="fill"
+                        className="size-3.5 text-amber-600 dark:text-amber-400"
+                      />
                     )}
+                  <span>{template.category}</span>
                 </Badge>
               )}
               <TemplateStatusBadge

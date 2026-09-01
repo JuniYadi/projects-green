@@ -27,6 +27,7 @@ import {
   ChatsCircle,
   FileCode,
   DotsThree,
+  Sparkle,
 } from "@phosphor-icons/react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -255,6 +256,22 @@ export function TemplateDetailView({
   const activePayload = currentLanguage
     ? generateTemplatePayload(template, currentLanguage, variableValues)
     : null
+  const triggerAskPAudit = () => {
+    const langBody = currentLanguage?.body ?? ""
+    const prompt =
+      locale === "en"
+        ? `Please audit this WhatsApp message template (${template.slug}). It was originally submitted as ${template.requestedCategory ?? "UTILITY"}, but Meta approved it as ${template.category ?? "MARKETING"}.\n\nTemplate Body:\n"""\n${langBody}\n"""\n\nWhy did Meta classify this as Marketing? What specific words or phrasing triggered this, and how can I rewrite it so it qualifies as Utility?`
+        : `Tolong analisis template WhatsApp ini (${template.slug}). Template ini awalnya diajukan sebagai ${template.requestedCategory ?? "UTILITY"}, namun Meta menyetujuinya sebagai ${template.category ?? "MARKETING"}.\n\nIsi Teks Template:\n"""\n${langBody}\n"""\n\nKenapa Meta mengklasifikasikan pesan ini sebagai Marketing? Kata atau kalimat mana yang memicu kategori Marketing, dan bagaimana rekomendasi revisi teksnya agar bisa lolos sebagai Utility?`
+
+    window.dispatchEvent(
+      new CustomEvent("ask_p_query", {
+        detail: {
+          prompt,
+          autoSend: true,
+        },
+      })
+    )
+  }
 
   const activeJsonString = activePayload
     ? JSON.stringify(activePayload, null, 2)
@@ -448,34 +465,54 @@ export function TemplateDetailView({
               <div className="rounded-full bg-amber-500/20 p-2 text-amber-700 dark:text-amber-300">
                 <Info weight="fill" className="size-5" />
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                  {locale === "en"
-                    ? "Category Reclassified by Meta"
-                    : "Kategori Disesuaikan Otomatis oleh Meta"}
-                </p>
-                <p className="text-xs leading-relaxed text-amber-800/90 dark:text-amber-200/90">
-                  {locale === "en" ? (
-                    <>
-                      This template was originally submitted as{" "}
-                      <strong>{template.requestedCategory}</strong>, but Meta
-                      classified and approved it as{" "}
-                      <strong>{template.category}</strong> based on message
-                      content analysis. Billing will follow Meta&apos;s{" "}
-                      {template.category} rates.
-                    </>
-                  ) : (
-                    <>
-                      Template ini awalnya diajukan sebagai kategori{" "}
-                      <strong>{template.requestedCategory}</strong>, namun Meta
-                      secara otomatis menyetujuinya sebagai{" "}
-                      <strong>{template.category}</strong> berdasarkan hasil
-                      analisis konten pesan. Tarif pengiriman pesan akan
-                      mengikuti ketentuan kategori {template.category} dari
-                      Meta.
-                    </>
-                  )}
-                </p>
+              <div className="flex-1 space-y-2">
+                <div>
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    {locale === "en"
+                      ? "Category Reclassified by Meta"
+                      : "Kategori Disesuaikan Otomatis oleh Meta"}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-800/90 dark:text-amber-200/90">
+                    {locale === "en" ? (
+                      <>
+                        This template was originally submitted as{" "}
+                        <strong>{template.requestedCategory}</strong>, but Meta
+                        classified and approved it as{" "}
+                        <strong>{template.category}</strong> based on message
+                        content analysis. Billing will follow Meta&apos;s{" "}
+                        {template.category} rates.
+                      </>
+                    ) : (
+                      <>
+                        Template ini awalnya diajukan sebagai kategori{" "}
+                        <strong>{template.requestedCategory}</strong>, namun
+                        Meta secara otomatis menyetujuinya sebagai{" "}
+                        <strong>{template.category}</strong> berdasarkan hasil
+                        analisis konten pesan. Tarif pengiriman pesan akan
+                        mengikuti ketentuan kategori {template.category} dari
+                        Meta.
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                <div className="pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={triggerAskPAudit}
+                    className="h-8 border-amber-500/40 bg-amber-500/10 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-500/20 dark:text-amber-100"
+                  >
+                    <Sparkle
+                      weight="fill"
+                      className="mr-1.5 size-3.5 text-amber-600 dark:text-amber-400"
+                    />
+                    {locale === "en"
+                      ? "Ask P: Why Marketing & Get Fix Recommendations"
+                      : "Tanya P: Analisis Alasan Marketing & Rekomendasi"}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

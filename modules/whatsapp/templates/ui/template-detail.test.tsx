@@ -172,6 +172,35 @@ describe("TemplateDetailView", () => {
     ).toBeInTheDocument()
     expect(view.getByText("(Diubah Meta dari UTILITY)")).toBeInTheDocument()
   })
+  it("dispatches ask_p_query event when clicking Ask P audit button in reclassification banner", () => {
+    const dispatchSpy = mock()
+    const originalDispatch = window.dispatchEvent
+    window.dispatchEvent = dispatchSpy
+
+    try {
+      const view = render(
+        <TemplateDetailView
+          {...propsFor({
+            template: {
+              ...baseTemplate,
+              category: "MARKETING",
+              requestedCategory: "UTILITY",
+            },
+          })}
+        />
+      )
+
+      const askPBtn = view.getByRole("button", {
+        name: /Ask P: Why Marketing & Get Fix Recommendations/i,
+      })
+      expect(askPBtn).toBeInTheDocument()
+
+      fireEvent.click(askPBtn)
+      expect(dispatchSpy).toHaveBeenCalledTimes(1)
+    } finally {
+      window.dispatchEvent = originalDispatch
+    }
+  })
 
   it("omits the Meta notice when no reason is available", () => {
     const view = render(<TemplateDetailView {...propsFor()} />)

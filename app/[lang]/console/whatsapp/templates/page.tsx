@@ -17,6 +17,7 @@ import {
   CloudArrowUp,
   CloudSlash,
   Question,
+  Warning,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -299,22 +300,23 @@ export default function ConsoleTemplatesPage() {
               {currentMeta.label}
             </Badge>
           )}
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="flex cursor-help items-center p-0.5">
-                <span
-                  className={`size-2 rounded-full ring-2 ring-background ${currentSync.dotClass}`}
-                />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              <p className="font-semibold">{currentSync.tooltip}</p>
-              <p className="text-[10px] text-muted-foreground">
-                Local DB: {syncStatus}
-              </p>
-            </TooltipContent>
-          </Tooltip>
+          {syncStatus !== "SYNCED" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="flex cursor-help items-center p-0.5">
+                  <span
+                    className={`size-2 rounded-full ring-2 ring-background ${currentSync.dotClass}`}
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <p className="font-semibold">{currentSync.tooltip}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Local DB: {syncStatus}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </TooltipProvider>
     )
@@ -367,7 +369,54 @@ export default function ConsoleTemplatesPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Category" />
       ),
-      cell: ({ row }) => row.original.category ?? "—",
+      cell: ({ row }) => {
+        const cat = row.original.category
+        const requestedCat = row.original.requestedCategory
+        const isReclassified = requestedCat && cat && requestedCat !== cat
+
+        if (!cat) return "—"
+
+        if (isReclassified) {
+          return (
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="flex w-fit cursor-help items-center gap-1 border-amber-500/40 bg-amber-500/10 font-mono text-xs font-semibold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300"
+                  >
+                    <Warning
+                      weight="fill"
+                      className="size-3.5 text-amber-600 dark:text-amber-400"
+                    />
+                    <span>{cat}</span>
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs">
+                  <p className="font-semibold text-amber-700 dark:text-amber-300">
+                    Kategori Disesuaikan Otomatis oleh Meta
+                  </p>
+                  <p className="mt-1 leading-relaxed text-muted-foreground">
+                    Template ini diajukan sebagai{" "}
+                    <span className="font-semibold text-foreground">
+                      {requestedCat}
+                    </span>
+                    , tetapi disetujui Meta sebagai{" "}
+                    <span className="font-semibold text-foreground">{cat}</span>
+                    . Tarif pesan mengikuti kategori {cat}.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )
+        }
+
+        return (
+          <Badge variant="outline" className="font-mono text-xs">
+            {cat}
+          </Badge>
+        )
+      },
     },
     {
       accessorFn: (row) => row.languages?.map((l) => l.lang).join(", ") ?? "",
