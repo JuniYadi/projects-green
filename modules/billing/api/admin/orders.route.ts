@@ -200,8 +200,8 @@ export const createAdminOrdersRoutes = (deps: AdminOrdersRouteDeps = {}) => {
         return {
           ok: false as const,
           error:
-            message === "ORDER_NOT_CHARGED"
-              ? "ORDER_NOT_CHARGED"
+            message === "ORDER_NOT_CHARGED" || message === "ORDER_LINE_INVALID"
+              ? message
               : "INTERNAL_SERVER_ERROR",
           message,
         }

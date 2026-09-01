@@ -197,4 +197,34 @@ describe("admin orders route", () => {
     expect(body.data.status).toBe("FULFILLED")
     expect(mockFulfill).toHaveBeenCalledWith("order-1")
   })
+
+  it("returns ORDER_LINE_INVALID error for invalid line", async () => {
+    const mockFulfill = mock(async () => {
+      throw new Error("ORDER_LINE_INVALID")
+    })
+    const app = new Elysia().use(
+      createAdminOrdersRoutes({
+        requireSuperAdmin: guard,
+        prisma: db as never,
+        orderService: {
+          cancelOrder: mock(),
+          fulfillOrder: mockFulfill,
+        } as never,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/orders/order-1/fulfill", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(400)
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+    }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORDER_LINE_INVALID")
+  })
 })
