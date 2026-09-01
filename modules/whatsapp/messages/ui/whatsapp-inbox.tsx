@@ -641,6 +641,15 @@ function MessageBubble({
                 </div>
               ) : null}
             </>
+          ) : message.messageType === "reaction" ? (
+            <div className="flex items-center gap-1.5 py-1">
+              <span className="text-2xl leading-none">
+                {message.body || "👍"}
+              </span>
+              <span className="text-[11px] text-muted-foreground italic">
+                (Reaksi)
+              </span>
+            </div>
           ) : message.messageType === "sticker" ? (
             <div className="py-1">
               {message.mediaUrl ? (
@@ -653,6 +662,35 @@ function MessageBubble({
               ) : (
                 <span className="italic opacity-60">🎨 (Sticker)</span>
               )}
+            </div>
+          ) : message.messageType === "audio" ? (
+            <div className="py-1">
+              {message.mediaUrl ? (
+                <CDNAsset
+                  url={message.mediaUrl}
+                  type="audio"
+                  alt="Audio message"
+                />
+              ) : (
+                <span className="italic opacity-60">🎵 (Audio)</span>
+              )}
+            </div>
+          ) : message.messageType === "video" ? (
+            <div className="space-y-1.5 py-1">
+              {message.mediaUrl ? (
+                <CDNAsset
+                  url={message.mediaUrl}
+                  type="video"
+                  alt="Video message"
+                />
+              ) : (
+                <span className="italic opacity-60">🎥 (Video)</span>
+              )}
+              {message.body ? (
+                <p className="leading-relaxed break-words whitespace-pre-wrap">
+                  {message.body}
+                </p>
+              ) : null}
             </div>
           ) : message.messageType === "image" && message.mediaUrl ? (
             <div className="space-y-1.5 py-1">

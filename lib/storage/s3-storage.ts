@@ -31,15 +31,13 @@ export function getS3Config(): S3StorageConfig {
     "mock-secret-key"
   const publicUrlPrefix = cdnUrl || process.env.S3_PUBLIC_URL_PREFIX
 
-  // If S3_CDN_URL is configured, use CDN hostname as endpoint so presigned URLs
-  // are signed for the CDN domain without exposing the underlying S3 provider.
   let endpoint = rawEndpoint
-  if (cdnUrl) {
-    try {
-      endpoint = cdnUrl.startsWith("http") ? new URL(cdnUrl).host : cdnUrl
-    } catch {
-      // Keep raw endpoint
-    }
+  if (
+    endpoint &&
+    !endpoint.startsWith("http://") &&
+    !endpoint.startsWith("https://")
+  ) {
+    endpoint = `https://${endpoint}`
   }
 
   return {
