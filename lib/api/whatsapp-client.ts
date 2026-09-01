@@ -175,6 +175,19 @@ export const whatsappClient = {
           method: "POST",
         }
       ),
+    resetQuota: (
+      id: string,
+      input?: { organizationId?: string; targetQuota?: number; reason?: string }
+    ) =>
+      serverFetch<{
+        ok: boolean
+        device: DeviceDetail
+        previousQuotaBaseOut: number
+        newQuotaBaseOut: number
+      }>(`/api/admin/devices/${id}/reset-quota`, {
+        method: "POST",
+        body: JSON.stringify(input ?? {}),
+      }),
     syncTemplates: async (id: string) => {
       const res = (await eden.api.whatsapp.devices[id][
         "sync-templates"

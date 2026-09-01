@@ -13,6 +13,7 @@ import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
   addonQuotaTopUpSchema,
   adminCreateDeviceSchema,
+  resetQuotaSchema,
   topUpInputSchema,
   updateDeviceSchema,
   DeviceNotFoundError,
@@ -812,6 +813,78 @@ export const createAdminDevicesRoutes = (
         return toServerError(set, "Unable to top up addon quota.")
       }
     })
+    .post(
+      "/:id/reset-quota",
+      async ({
+        params: { id },
+        body,
+        set,
+      }: {
+        params: { id: string }
+        body: unknown
+        set: RouteSet
+      }) => {
+        const actor = await guard(set)
+        if (isAdminError(actor)) return actor
+
+        const parsed = resetQuotaSchema.safeParse(body ?? {})
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Invalid input.",
+            fields: fieldErrorMapFromIssues(parsed.error.issues),
+          }
+        }
+
+        const { organizationId, targetQuota, reason } = parsed.data
+
+        try {
+          const service = createDeviceService()
+          const { device, previousQuotaBaseOut, newQuotaBaseOut } =
+            await service.resetQuota(id, {
+              organizationId,
+              targetQuota,
+              reason,
+            })
+
+          logWhatsappAuditEvent({
+            action: "DEVICE_QUOTA_RESET",
+            organizationId: device.organizationId,
+            deviceId: id,
+            adminId: actor.userId,
+            message: `Device quota reset from ${previousQuotaBaseOut} to ${newQuotaBaseOut}`,
+            status: "OK",
+            details: {
+              previousQuotaBaseOut,
+              newQuotaBaseOut,
+              quotaBase: device.quotaBase,
+              targetQuota: targetQuota ?? null,
+              reason: reason ?? null,
+            },
+          })
+
+          return {
+            ok: true as const,
+            device,
+            previousQuotaBaseOut,
+            newQuotaBaseOut,
+          }
+        } catch (error) {
+          if (error instanceof DeviceNotFoundError) {
+            set.status = 404
+            return {
+              ok: false as const,
+              error: "NOT_FOUND" as const,
+              message: "Device not found.",
+            }
+          }
+          console.error("[AdminDevices] Reset quota error:", error)
+          return toServerError(set, "Unable to reset device quota.")
+        }
+      }
+    )
 }
 
 export const createAdminWhatsappDevicesRoutes = (

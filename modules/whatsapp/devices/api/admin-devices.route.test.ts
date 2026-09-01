@@ -6,6 +6,8 @@ import { describe, it, expect, beforeEach, mock } from "bun:test"
 import { Elysia } from "elysia"
 import { Prisma } from "@prisma/client"
 
+mock.module("server-only", () => ({}))
+
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockFindMany = mock<(...args: any[]) => any>(async () => [])
@@ -1258,6 +1260,107 @@ describe("Admin Devices Routes", () => {
         expect.objectContaining({
           action: "DEVICE_QUOTA_TOPUP",
           details: { amount: 1000, reason: "Monthly top-up" },
+        })
+      )
+    })
+  })
+
+  describe("POST /:id/reset-quota", () => {
+    it("returns 401 when unauthenticated", async () => {
+      const app = createTestApp(mockUnauthorized)
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/reset-quota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 404 when device not found", async () => {
+      mockFindUnique.mockResolvedValue(null)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/nonexistent/reset-quota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        })
+      )
+      const body = await res.json()
+      expect(res.status).toBe(404)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("returns 200 and resets quotaBaseOut to quotaBase with audit log", async () => {
+      const existingDevice = {
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+        status: "ACTIVE",
+        balance: 0,
+        quotaBase: 1000,
+        quotaBaseOut: 50,
+        dailyLimitMessage: 100,
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+        whatsappMetaAppId: "meta-1",
+        whatsappMetaApp: null,
+        callbackUrl: null,
+        expiredAt: null,
+        whatsappProfile: null,
+        features: null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      }
+      const updatedDevice = {
+        ...existingDevice,
+        quotaBaseOut: 1000,
+      }
+
+      mockFindUnique.mockResolvedValue(existingDevice)
+      mockUpdate.mockResolvedValue(updatedDevice)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/reset-quota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "Monthly manual reset" }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.previousQuotaBaseOut).toBe(50)
+      expect(body.newQuotaBaseOut).toBe(1000)
+      expect(body.device.quotaBaseOut).toBe(1000)
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "dev-1" },
+          data: {
+            quotaBaseOut: 1000,
+          },
+        })
+      )
+
+      expect(mockLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "DEVICE_QUOTA_RESET",
+          organizationId: "org-1",
+          deviceId: "dev-1",
+          adminId: "admin-1",
+          status: "OK",
+          details: expect.objectContaining({
+            previousQuotaBaseOut: 50,
+            newQuotaBaseOut: 1000,
+            reason: "Monthly manual reset",
+          }),
         })
       )
     })
