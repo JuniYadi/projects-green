@@ -503,6 +503,16 @@ export const enMessages: AppMessages = {
         notAvailable: "N/A",
         methodVirtualAccount: "Virtual Account",
         methodManualBank: "Manual Bank Transfer",
+        balanceAfter: "Ending Balance",
+        currentBalance: "Current Balance",
+        totalCredit: "Total Top-Up / Inflow",
+        totalDebit: "Total Usage / Outflow",
+        topUpCta: "Top-Up Balance",
+        invoicesShortcut:
+          "Looking for billing invoices and subscription receipts?",
+        invoicesShortcutDesc:
+          "Check full tax invoices, status, and download receipts in the invoices tab or dedicated page.",
+        viewInvoicesLink: "View All Invoices",
       },
       subscriptions: {
         heading: "Subscriptions",

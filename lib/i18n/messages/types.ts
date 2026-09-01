@@ -452,6 +452,14 @@ export type AppMessages = {
         notAvailable: string
         methodVirtualAccount: string
         methodManualBank: string
+        balanceAfter: string
+        currentBalance: string
+        totalCredit: string
+        totalDebit: string
+        topUpCta: string
+        invoicesShortcut: string
+        invoicesShortcutDesc: string
+        viewInvoicesLink: string
       }
       subscriptions: {
         heading: string

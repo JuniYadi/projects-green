@@ -508,6 +508,16 @@ export const idMessages: AppMessages = {
         notAvailable: "T/A",
         methodVirtualAccount: "Virtual Account",
         methodManualBank: "Transfer Bank Manual",
+        balanceAfter: "Saldo Akhir",
+        currentBalance: "Saldo Saat Ini",
+        totalCredit: "Total Top-Up / Pemasukan",
+        totalDebit: "Total Pemakaian / Pengeluaran",
+        topUpCta: "Isi Ulang Saldo",
+        invoicesShortcut:
+          "Mencari invoice tagihan & bukti pembayaran langganan?",
+        invoicesShortcutDesc:
+          "Lihat faktur pajak lengkap, status, dan unduh bukti bayar di tab invoice atau halaman invoice khusus.",
+        viewInvoicesLink: "Lihat Semua Invoice",
       },
       subscriptions: {
         heading: "Langganan",

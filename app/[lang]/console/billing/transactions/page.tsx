@@ -16,8 +16,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
+import { QuickTopUpDialog } from "@/components/billing/quick-top-up-dialog"
 import { formatBalanceTransaction } from "@/modules/billing/user-labels"
-import { ArrowLeftIcon } from "@phosphor-icons/react"
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Plus,
+  Receipt,
+  TrendDown,
+  TrendUp,
+  Wallet,
+} from "@phosphor-icons/react"
 
 interface Transaction {
   id: string
@@ -30,6 +39,14 @@ interface Transaction {
   createdAt: string
   dueDate: string | null
   metadata: Record<string, unknown> | null
+}
+
+interface StatementAccount {
+  id: string
+  organizationId: string
+  currency: string
+  balanceIdr: string
+  formattedBalance: string
 }
 
 interface StatementItem {
@@ -54,9 +71,11 @@ export default function TransactionsPage() {
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
   const transactionMessages = messages.console.billing.transactionsPage
+  const [account, setAccount] = useState<StatementAccount | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [statements, setStatements] = useState<StatementItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [topUpOpen, setTopUpOpen] = useState(false)
   useEffect(() => {
     let cancelled = false
 
@@ -69,19 +88,22 @@ export default function TransactionsPage() {
 
         if (cancelled) return
 
-        if (historyRes.status === "fulfilled" && historyRes.value.data?.ok) {
-          setTransactions(
-            (historyRes.value.data.data ?? []) as unknown as Transaction[]
-          )
-        }
-
         if (
           statementRes.status === "fulfilled" &&
           statementRes.value.data?.ok
         ) {
+          const resData = statementRes.value.data
+          if (resData.account) {
+            setAccount(resData.account as unknown as StatementAccount)
+          }
           setStatements(
-            (statementRes.value.data.statements ??
-              []) as unknown as StatementItem[]
+            (resData.statements ?? []) as unknown as StatementItem[]
+          )
+        }
+
+        if (historyRes.status === "fulfilled" && historyRes.value.data?.ok) {
+          setTransactions(
+            (historyRes.value.data.data ?? []) as unknown as Transaction[]
           )
         }
       } catch {
@@ -239,11 +261,37 @@ export default function TransactionsPage() {
               className={`text-right text-sm font-semibold ${
                 isCredit
                   ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-foreground"
+                  : "text-rose-600 dark:text-rose-400"
               }`}
             >
               {isCredit ? "+" : "−"}{" "}
               {formatCurrency(row.original.amount, row.original.currency)}
+            </span>
+          )
+        },
+      },
+      {
+        accessorKey: "balanceAfter",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={transactionMessages.balanceAfter}
+          />
+        ),
+        cell: ({ row }) => {
+          if (
+            row.original.balanceAfter === null ||
+            row.original.balanceAfter === undefined
+          ) {
+            return (
+              <span className="text-right text-xs text-muted-foreground">
+                -
+              </span>
+            )
+          }
+          return (
+            <span className="text-right text-sm font-medium text-foreground">
+              {formatCurrency(row.original.balanceAfter, row.original.currency)}
             </span>
           )
         },
@@ -354,23 +402,152 @@ export default function TransactionsPage() {
     locale,
     transactionMessages,
   ])
+  const summaryMetrics = useMemo(() => {
+    let totalCredit = 0
+    let totalDebit = 0
+    for (const item of statements) {
+      const amt = Number(item.amount) || 0
+      if (item.type === "CREDIT") {
+        totalCredit += amt
+      } else {
+        totalDebit += amt
+      }
+    }
+    return {
+      totalCredit,
+      totalDebit,
+    }
+  }, [statements])
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <header className="space-y-1">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/${locale}/console/billing`}>
-              <ArrowLeftIcon className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-semibold">
-            {transactionMessages.heading}
-          </h1>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href={`/${locale}/console/billing`}>
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <h1 className="text-2xl font-semibold">
+              {transactionMessages.heading}
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {transactionMessages.description}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {transactionMessages.description}
-        </p>
+        <div>
+          <Button
+            onClick={() => setTopUpOpen(true)}
+            className="flex items-center gap-1.5"
+          >
+            <Plus className="h-4 w-4" weight="bold" />
+            {transactionMessages.topUpCta}
+          </Button>
+        </div>
       </header>
+
+      {/* Summary Cards */}
+      <section className="grid gap-4 sm:grid-cols-3">
+        <Card className="border-border bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {transactionMessages.currentBalance}
+            </CardTitle>
+            <div className="rounded-md bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
+              <Wallet className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-7 w-32" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">
+                {account?.formattedBalance ??
+                  formatCurrency(
+                    statements[0]?.balanceAfter ?? 0,
+                    account?.currency ?? "IDR"
+                  )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {transactionMessages.totalCredit}
+            </CardTitle>
+            <div className="rounded-md bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
+              <TrendUp className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-7 w-32" />
+            ) : (
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                +
+                {formatCurrency(
+                  summaryMetrics.totalCredit,
+                  account?.currency ?? "IDR"
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {transactionMessages.totalDebit}
+            </CardTitle>
+            <div className="rounded-md bg-rose-500/10 p-2 text-rose-600 dark:text-rose-400">
+              <TrendDown className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-7 w-32" />
+            ) : (
+              <div className="text-2xl font-bold text-foreground">
+                −
+                {formatCurrency(
+                  summaryMetrics.totalDebit,
+                  account?.currency ?? "IDR"
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Invoices Shortcut Helper */}
+      <div className="flex flex-col items-start justify-between gap-3 rounded-lg border border-border bg-muted/40 p-4 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3">
+          <div className="rounded-md bg-background p-2 text-muted-foreground shadow-sm">
+            <Receipt className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              {transactionMessages.invoicesShortcut}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {transactionMessages.invoicesShortcutDesc}
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" asChild className="shrink-0">
+          <Link
+            href={`/${locale}/console/billing/invoices`}
+            className="flex items-center gap-1"
+          >
+            {transactionMessages.viewInvoicesLink}
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </Button>
+      </div>
 
       <Tabs defaultValue="statements" className="space-y-4">
         <TabsList>
@@ -401,6 +578,7 @@ export default function TransactionsPage() {
                   tableId="console-billing-statements"
                   columns={statementColumns}
                   data={statements}
+                  pageSize={10}
                   searchableColumns={["reason"]}
                   searchPlaceholder={
                     transactionMessages.searchStatementsPlaceholder
@@ -431,7 +609,6 @@ export default function TransactionsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="invoices" className="space-y-4">
           <Card>
             <CardHeader>
@@ -451,6 +628,7 @@ export default function TransactionsPage() {
                   tableId="console-billing-transactions"
                   columns={invoiceColumns}
                   data={transactions}
+                  pageSize={10}
                   searchableColumns={["invoiceNumber"]}
                   searchPlaceholder={transactionMessages.searchPlaceholder}
                   facetFilters={[
@@ -484,6 +662,26 @@ export default function TransactionsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <QuickTopUpDialog
+        open={topUpOpen}
+        onOpenChange={setTopUpOpen}
+        currentBalance={account?.formattedBalance}
+        currency={(account?.currency as "IDR" | "USD") || "IDR"}
+        lang={locale}
+        onSuccess={() => {
+          // reload statements data
+          eden.api.billing.account.statement.get().then((res) => {
+            if (res.data?.ok) {
+              if (res.data.account) {
+                setAccount(res.data.account as unknown as StatementAccount)
+              }
+              setStatements(
+                (res.data.statements ?? []) as unknown as StatementItem[]
+              )
+            }
+          })
+        }}
+      />
     </main>
   )
 }
