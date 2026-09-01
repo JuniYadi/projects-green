@@ -101,6 +101,8 @@ export type TemplateListItem = {
   slug: string
   name: string
   description: string | null
+  category?: string | null
+  requestedCategory?: string | null
   syncStatus: string
   metaStatus: string | null
   lastSyncedAt: string | null

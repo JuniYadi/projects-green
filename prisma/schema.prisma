@@ -2285,7 +2285,8 @@ model WhatsappTemplate {
   slug           String
   name           String
   description    String?
-  category       WhatsappBillingCategory?
+  category          WhatsappBillingCategory?
+  requestedCategory WhatsappBillingCategory?
   syncStatus     WhatsappTemplateSyncStatus  @default(NOT_SYNCED)
   metaStatus     WhatsappTemplateMetaStatus?
   lastSyncedAt   DateTime?

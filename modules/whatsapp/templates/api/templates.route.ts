@@ -757,6 +757,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             name,
             description,
             category: category as WhatsappBillingCategory,
+            requestedCategory: category as WhatsappBillingCategory,
             whatsappDeviceId: device.id,
             organizationId: targetOrgId,
             syncStatus: "NOT_SYNCED",

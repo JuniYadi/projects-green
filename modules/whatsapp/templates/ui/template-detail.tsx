@@ -297,8 +297,23 @@ export function TemplateDetailView({
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="font-mono">{template.slug}</span>
             <span>•</span>
-            <Badge variant="outline" className="font-mono text-xs">
+            <Badge
+              variant="outline"
+              className="font-mono text-xs"
+              title={
+                template.requestedCategory &&
+                template.requestedCategory !== template.category
+                  ? `Diajukan sebagai ${template.requestedCategory}, namun disetujui Meta sebagai ${template.category}`
+                  : undefined
+              }
+            >
               Kategori Meta: {template.category ?? "Tidak tersedia"}
+              {template.requestedCategory &&
+                template.requestedCategory !== template.category && (
+                  <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400">
+                    (Diubah Meta dari {template.requestedCategory})
+                  </span>
+                )}
             </Badge>
             <span>•</span>
             {template.device ? (
@@ -423,6 +438,48 @@ export function TemplateDetailView({
           </CardContent>
         </Card>
       )}
+
+      {/* Meta Category Reclassification Banner */}
+      {template.requestedCategory &&
+        template.category &&
+        template.requestedCategory !== template.category && (
+          <Card className="border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/15">
+            <CardContent className="flex items-start gap-3 p-4">
+              <div className="rounded-full bg-amber-500/20 p-2 text-amber-700 dark:text-amber-300">
+                <Info weight="fill" className="size-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                  {locale === "en"
+                    ? "Category Reclassified by Meta"
+                    : "Kategori Disesuaikan Otomatis oleh Meta"}
+                </p>
+                <p className="text-xs leading-relaxed text-amber-800/90 dark:text-amber-200/90">
+                  {locale === "en" ? (
+                    <>
+                      This template was originally submitted as{" "}
+                      <strong>{template.requestedCategory}</strong>, but Meta
+                      classified and approved it as{" "}
+                      <strong>{template.category}</strong> based on message
+                      content analysis. Billing will follow Meta&apos;s{" "}
+                      {template.category} rates.
+                    </>
+                  ) : (
+                    <>
+                      Template ini awalnya diajukan sebagai kategori{" "}
+                      <strong>{template.requestedCategory}</strong>, namun Meta
+                      secara otomatis menyetujuinya sebagai{" "}
+                      <strong>{template.category}</strong> berdasarkan hasil
+                      analisis konten pesan. Tarif pengiriman pesan akan
+                      mengikuti ketentuan kategori {template.category} dari
+                      Meta.
+                    </>
+                  )}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
       {!isRejected && metaReason && metaReason !== "NONE" && (
         <Card className="border-primary/30 bg-primary/5">

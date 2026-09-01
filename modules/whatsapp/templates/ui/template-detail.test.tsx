@@ -153,6 +153,25 @@ describe("TemplateDetailView", () => {
     expect(view.getByText("Approved")).toBeInTheDocument()
     expect(view.queryByText("Rejected")).not.toBeInTheDocument()
   })
+  it("renders a reclassification banner when requestedCategory differs from category", () => {
+    const view = render(
+      <TemplateDetailView
+        {...propsFor({
+          template: {
+            ...baseTemplate,
+            category: "MARKETING",
+            requestedCategory: "UTILITY",
+          },
+        })}
+      />
+    )
+
+    expect(view.getByText("Category Reclassified by Meta")).toBeInTheDocument()
+    expect(
+      view.getByText(/This template was originally submitted as/i)
+    ).toBeInTheDocument()
+    expect(view.getByText("(Diubah Meta dari UTILITY)")).toBeInTheDocument()
+  })
 
   it("omits the Meta notice when no reason is available", () => {
     const view = render(<TemplateDetailView {...propsFor()} />)
