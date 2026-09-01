@@ -634,6 +634,50 @@ export class BillingOrderService {
     return result
   }
 
+  async cancelOrder(
+    orderId: string,
+    reason?: string
+  ): Promise<BillingOrderResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await this.loadOrder(orderId, tx)
+      if (order.status === "CANCELLED") {
+        return toResult(order)
+      }
+      if (order.status !== "PENDING" && order.status !== "FAILED") {
+        throw new Error("ORDER_CANNOT_BE_CANCELLED")
+      }
+
+      // If invoice exists and still pending/open, void it
+      if (order.billingInvoiceId) {
+        await tx.billingInvoice.updateMany({
+          where: {
+            id: order.billingInvoiceId,
+            status: { in: ["DRAFT", "ISSUED", "OVERDUE"] },
+          },
+          data: {
+            status: "VOID",
+          },
+        })
+      }
+
+      const orderMetadata = metadataObject(order.metadataJson)
+      const updated = await tx.billingOrder.update({
+        where: { id: order.id },
+        data: {
+          status: "CANCELLED",
+          metadataJson: jsonObject({
+            ...orderMetadata,
+            cancelledAt: new Date().toISOString(),
+            cancelReason: reason || "Cancelled by admin",
+          }),
+        },
+        include: { lines: true },
+      })
+
+      return toResult(updated)
+    })
+  }
+
   async renewServiceSubscription(
     subscriptionId: string,
     now = new Date()

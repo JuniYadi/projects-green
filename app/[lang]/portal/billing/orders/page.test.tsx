@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 
 const mockGetAdminOrders = mock()
+const mockCancelAdminOrder = mock()
+const mockFulfillAdminOrder = mock()
 
 mock.module("@/lib/billing-client", () => ({
   getAdminOrders: mockGetAdminOrders,
+  cancelAdminOrder: mockCancelAdminOrder,
+  fulfillAdminOrder: mockFulfillAdminOrder,
   billingPeriodLabel: (period: string) => period,
 }))
 
@@ -57,7 +61,11 @@ const emptyResult = {
 
 beforeEach(() => {
   mockGetAdminOrders.mockReset()
+  mockCancelAdminOrder.mockReset()
+  mockFulfillAdminOrder.mockReset()
   mockGetAdminOrders.mockResolvedValue(emptyResult)
+  mockCancelAdminOrder.mockResolvedValue({ ok: true, data: {} })
+  mockFulfillAdminOrder.mockResolvedValue({ ok: true, data: {} })
 })
 
 describe("BillingOrdersPage", () => {
