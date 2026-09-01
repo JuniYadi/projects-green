@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
   Sheet,
   SheetContent,
@@ -9,6 +10,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   DeviceMobile,
   ChatCircleText,
@@ -19,11 +27,14 @@ import {
   Check,
   CheckCircle,
   ArrowDownLeft,
+  ArrowSquareOut,
+  Path,
+  WhatsappLogo,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import type { WebhookEventRecord } from "@/app/[lang]/console/whatsapp/logs/webhook-logs-tab-content"
 import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import { useParams } from "next/navigation"
 
 interface WebhookEventDetailSheetProps {
@@ -207,6 +218,74 @@ export function WebhookEventDetailSheet({
               </p>
             </div>
           </div>
+          {(waMessageId || recipientPhone || event.deviceId) && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                {t.sectionActions}
+              </h4>
+              <div className="flex flex-col gap-2 rounded-xl border bg-card p-3 shadow-xs">
+                {waMessageId && (
+                  <Button
+                    asChild
+                    variant="default"
+                    size="sm"
+                    className="w-full justify-start gap-2 bg-emerald-600 font-medium text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                  >
+                    <Link
+                      href={localizePathname({
+                        pathname: `/console/whatsapp/messages/${encodeURIComponent(waMessageId)}`,
+                        locale,
+                      })}
+                    >
+                      <Path className="size-4 shrink-0" />
+                      <span>{t.actionViewJourney}</span>
+                      <ArrowSquareOut className="ml-auto size-3.5 opacity-70" />
+                    </Link>
+                  </Button>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {recipientPhone && (
+                    <>
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="min-w-[140px] flex-1 justify-start gap-2 text-xs"
+                      >
+                        <Link
+                          href={localizePathname({
+                            pathname: `/console/whatsapp/messages?phone=${encodeURIComponent(recipientPhone.replace(/\D/g, ""))}`,
+                            locale,
+                          })}
+                        >
+                          <ChatCircleText className="size-4 shrink-0 text-emerald-600" />
+                          <span>{t.actionViewInbox}</span>
+                        </Link>
+                      </Button>
+
+                      <Button
+                        asChild
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1.5 text-xs text-muted-foreground hover:text-emerald-600"
+                      >
+                        <a
+                          href={`https://wa.me/${recipientPhone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <WhatsappLogo className="size-4 shrink-0 text-emerald-500" />
+                          <span>{t.actionOpenWhatsApp}</span>
+                          <ArrowSquareOut className="size-3 opacity-60" />
+                        </a>
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Section 1: Pengiriman & Kontak */}
           <div className="space-y-3">
@@ -223,9 +302,36 @@ export function WebhookEventDetailSheet({
                       : t.directionFrom + " (" + t.device + ")"}
                   </span>
                 </div>
-                <p className="font-mono text-sm font-semibold text-foreground">
-                  {event.deviceLabel || event.deviceId || "—"}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help font-mono text-sm font-semibold text-foreground underline decoration-dotted underline-offset-4">
+                          {event.deviceLabel || event.deviceId || "—"}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        <p className="font-semibold">{t.deviceTooltip}</p>
+                        <p className="font-mono text-muted-foreground">
+                          {event.deviceId || "—"}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  {event.deviceId && (
+                    <Link
+                      href={localizePathname({
+                        pathname: `/console/whatsapp/devices/${event.deviceId}`,
+                        locale,
+                      })}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <span>{t.actionViewDevice}</span>
+                      <ArrowSquareOut className="size-3" />
+                    </Link>
+                  )}
+                </div>
               </div>
 
               {recipientPhone && (
@@ -238,9 +344,21 @@ export function WebhookEventDetailSheet({
                         : t.directionTo + " (" + t.recipientPhone + ")"}
                     </span>
                   </div>
-                  <p className="font-mono text-sm font-semibold text-foreground">
-                    {recipientPhone}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-sm font-semibold text-foreground">
+                      {recipientPhone}
+                    </p>
+                    <Link
+                      href={localizePathname({
+                        pathname: `/console/whatsapp/messages?phone=${encodeURIComponent(recipientPhone.replace(/\D/g, ""))}`,
+                        locale,
+                      })}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                    >
+                      <span>{t.actionViewInbox}</span>
+                      <ArrowSquareOut className="size-3" />
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>

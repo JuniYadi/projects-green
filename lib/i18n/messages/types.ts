@@ -1502,6 +1502,12 @@ export type AppMessages = {
           copiedButton: string
           templateLabel: string
           correlationIdLabel: string
+          actionViewJourney: string
+          actionViewInbox: string
+          actionOpenWhatsApp: string
+          actionViewDevice: string
+          sectionActions: string
+          deviceTooltip: string
           close: string
         }
       }

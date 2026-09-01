@@ -8,16 +8,21 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ArrowsClockwise } from "@phosphor-icons/react"
+import { ArrowsClockwise, DeviceMobile, User } from "@phosphor-icons/react"
 import type { AppMessages } from "@/lib/i18n/messages/types"
 import { WebhookEventDetailSheet } from "@/modules/whatsapp/webhooks/ui/webhook-event-sheet"
-
 export type WebhookEventRecord = {
   id: string
   deviceId?: string | null
@@ -31,16 +36,15 @@ export type WebhookEventRecord = {
   createdAt: string | Date
   metaPayload?: Record<string, unknown> | null
 }
-
 const DEFAULT_COLUMNS: Record<string, boolean> = {
-  deviceContact: true,
-  eventType: true,
+  device: true,
+  contact: true,
   deliveryStatus: true,
   createdAt: true,
   actions: true,
+  eventType: false,
   processingStatus: false,
   waMessageId: false,
-  deviceId: false,
   id: false,
 }
 
@@ -170,68 +174,64 @@ export function WebhookLogsTabContent({
   const columns = React.useMemo<ColumnDef<WebhookEventRecord>[]>(
     () => [
       {
-        id: "deviceContact",
-        accessorFn: (row) =>
-          `${row.deviceLabel || row.deviceId || ""} ${row.phoneNumber || ""}`,
+        id: "device",
+        accessorFn: (row) => `${row.deviceLabel || row.deviceId || ""}`,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={t.colDeviceContact} />
+          <DataTableColumnHeader column={column} title={t.colDevice} />
         ),
         cell: ({ row }) => {
-          const isInbound = row.original.eventType === "inbound_message"
-          const deviceDisplay =
+          const deviceLabel =
             row.original.deviceLabel || row.original.deviceId || "—"
-          const contactPhone = row.original.phoneNumber
+          const deviceId = row.original.deviceId
 
           return (
-            <div className="flex flex-col gap-1 py-0.5">
-              <div className="flex items-center gap-1.5 font-mono text-xs font-semibold text-foreground">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase">
-                  {t.directionFrom}:
-                </span>
-                <span>
-                  {isInbound
-                    ? formatPhoneIndonesian(contactPhone)
-                    : formatPhoneIndonesian(deviceDisplay)}
-                </span>
+            <div className="flex items-center gap-2 py-0.5">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/50 text-muted-foreground">
+                <DeviceMobile className="size-4" />
               </div>
-              <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-                <span className="text-[10px] font-medium text-primary uppercase">
-                  {t.directionTo}:
-                </span>
-                <span className="font-medium text-foreground/90">
-                  {isInbound
-                    ? formatPhoneIndonesian(deviceDisplay)
-                    : formatPhoneIndonesian(contactPhone)}
-                </span>
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="max-w-[160px] cursor-help truncate font-mono text-xs font-semibold text-foreground underline decoration-dotted underline-offset-4">
+                      {deviceLabel}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <p className="font-semibold">{t.drawer.deviceTooltip}</p>
+                    <p className="font-mono text-muted-foreground">
+                      {deviceId || "—"}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )
         },
       },
       {
-        accessorKey: "eventType",
+        id: "contact",
+        accessorFn: (row) => `${row.phoneNumber || ""}`,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={t.colEventType} />
+          <DataTableColumnHeader
+            column={column}
+            title={t.colRecipientContact}
+          />
         ),
         cell: ({ row }) => {
-          const snippet = row.original.messageBody
+          const contactPhone = row.original.phoneNumber
+          if (!contactPhone)
+            return <span className="text-xs text-muted-foreground">—</span>
 
           return (
-            <div className="flex max-w-[220px] flex-col gap-1">
-              <Badge
-                variant="outline"
-                className="w-fit text-xs font-medium capitalize"
-              >
-                {row.original.eventType.replace(/_/g, " ")}
-              </Badge>
-              {snippet && (
-                <span
-                  className="truncate font-sans text-xs text-muted-foreground italic"
-                  title={snippet}
-                >
-                  &ldquo;{snippet}&rdquo;
+            <div className="flex items-center gap-2 py-0.5">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <User className="size-3.5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-mono text-xs font-medium text-foreground">
+                  {formatPhoneIndonesian(contactPhone)}
                 </span>
-              )}
+              </div>
             </div>
           )
         },
@@ -254,8 +254,8 @@ export function WebhookLogsTabContent({
           <DataTableColumnHeader column={column} title={t.colTime} />
         ),
         cell: ({ row }) => (
-          <span className="text-xs whitespace-nowrap text-muted-foreground">
-            {new Date(row.original.createdAt).toLocaleString()}
+          <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">
+            {new Date(row.original.createdAt).toLocaleTimeString()}
           </span>
         ),
       },
@@ -271,6 +271,20 @@ export function WebhookLogsTabContent({
           >
             {t.colDetails} →
           </Button>
+        ),
+      },
+      {
+        accessorKey: "eventType",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.colEventType} />
+        ),
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className="w-fit text-xs font-medium capitalize"
+          >
+            {row.original.eventType.replace(/_/g, " ")}
+          </Badge>
         ),
       },
       {
@@ -290,22 +304,11 @@ export function WebhookLogsTabContent({
       {
         accessorKey: "waMessageId",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={t.colWaMessageId} />
-        ),
-        cell: ({ row }) => (
-          <span className="inline-block max-w-[150px] truncate font-mono text-[11px] text-muted-foreground">
-            {row.original.waMessageId || "—"}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "deviceId",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={t.colDeviceId} />
+          <DataTableColumnHeader column={column} title="WA Message ID" />
         ),
         cell: ({ row }) => (
           <span className="font-mono text-[11px] text-muted-foreground">
-            {row.original.deviceId || "—"}
+            {row.original.waMessageId || "—"}
           </span>
         ),
       },
