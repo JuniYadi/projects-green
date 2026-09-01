@@ -847,6 +847,7 @@ export async function listWebhookEvents(
         whatsappDevice: {
           select: {
             phoneNumber: true,
+            whatsappProfile: true,
           },
         },
       },

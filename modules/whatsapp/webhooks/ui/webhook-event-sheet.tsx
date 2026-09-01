@@ -29,7 +29,6 @@ import {
   ArrowDownLeft,
   ArrowSquareOut,
   Path,
-  WhatsappLogo,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import type { WebhookEventRecord } from "@/app/[lang]/console/whatsapp/logs/webhook-logs-tab-content"
@@ -244,45 +243,24 @@ export function WebhookEventDetailSheet({
                   </Button>
                 )}
 
-                <div className="flex flex-wrap items-center gap-2">
-                  {recipientPhone && (
-                    <>
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="min-w-[140px] flex-1 justify-start gap-2 text-xs"
-                      >
-                        <Link
-                          href={localizePathname({
-                            pathname: `/console/whatsapp/messages?phone=${encodeURIComponent(recipientPhone.replace(/\D/g, ""))}`,
-                            locale,
-                          })}
-                        >
-                          <ChatCircleText className="size-4 shrink-0 text-emerald-600" />
-                          <span>{t.actionViewInbox}</span>
-                        </Link>
-                      </Button>
-
-                      <Button
-                        asChild
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1.5 text-xs text-muted-foreground hover:text-emerald-600"
-                      >
-                        <a
-                          href={`https://wa.me/${recipientPhone.replace(/\D/g, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <WhatsappLogo className="size-4 shrink-0 text-emerald-500" />
-                          <span>{t.actionOpenWhatsApp}</span>
-                          <ArrowSquareOut className="size-3 opacity-60" />
-                        </a>
-                      </Button>
-                    </>
-                  )}
-                </div>
+                {recipientPhone && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start gap-2 text-xs"
+                  >
+                    <Link
+                      href={localizePathname({
+                        pathname: `/console/whatsapp/messages?phone=${encodeURIComponent(recipientPhone.replace(/\D/g, ""))}`,
+                        locale,
+                      })}
+                    >
+                      <ChatCircleText className="size-4 shrink-0 text-emerald-600" />
+                      <span>{t.actionViewInbox}</span>
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -307,13 +285,21 @@ export function WebhookEventDetailSheet({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="cursor-help font-mono text-sm font-semibold text-foreground underline decoration-dotted underline-offset-4">
-                          {event.deviceLabel || event.deviceId || "—"}
+                          {event.deviceName ||
+                            event.deviceLabel ||
+                            event.deviceId ||
+                            "—"}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="text-xs">
                         <p className="font-semibold">{t.deviceTooltip}</p>
                         <p className="font-mono text-muted-foreground">
-                          {event.deviceId || "—"}
+                          {event.devicePhone
+                            ? event.devicePhone.replace(
+                                /(\+?\d{2})(\d{3})(\d{4})(\d+)/,
+                                "$1 $2-$3-$4"
+                              )
+                            : event.deviceId || "—"}
                         </p>
                       </TooltipContent>
                     </Tooltip>

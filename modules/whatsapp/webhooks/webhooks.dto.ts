@@ -15,6 +15,8 @@ export type WhatsappWebhookEventDTO = {
   deliveryStatus?: string | null
   messageBody?: string | null
   deviceLabel?: string | null
+  deviceName?: string | null
+  devicePhone?: string | null
   errorMessage: string | null
   processedAt: Date | null
   createdAt: Date
@@ -112,11 +114,11 @@ export function extractEventMetadata(
     messageBody: null,
   }
 }
-
 type WhatsappWebhookEventWithDevice =
   Prisma.WhatsappWebhookEventGetPayload<Prisma.WhatsappWebhookEventDefaultArgs> & {
     whatsappDevice?: {
       phoneNumber: string
+      whatsappProfile?: Prisma.JsonValue | null
     } | null
   }
 
@@ -125,7 +127,26 @@ export function toWebhookEventDTO(
 ): WhatsappWebhookEventDTO {
   const extracted = extractEventMetadata(event.metaPayload, event.eventType)
   const device = event.whatsappDevice
-  const deviceLabel = device?.phoneNumber ?? null
+  const devicePhone = device?.phoneNumber ?? null
+  const profile =
+    device?.whatsappProfile &&
+    typeof device.whatsappProfile === "object" &&
+    !Array.isArray(device.whatsappProfile)
+      ? (device.whatsappProfile as Record<string, unknown>)
+      : null
+  const deviceName =
+    (profile &&
+    typeof profile.name === "string" &&
+    profile.name.trim().length > 0
+      ? profile.name.trim()
+      : null) ||
+    (profile &&
+    typeof profile.verified_name === "string" &&
+    profile.verified_name.trim().length > 0
+      ? profile.verified_name.trim()
+      : null) ||
+    devicePhone ||
+    event.whatsappDeviceId
 
   return {
     id: event.id,
@@ -137,7 +158,9 @@ export function toWebhookEventDTO(
     phoneNumber: extracted.phoneNumber,
     deliveryStatus: extracted.deliveryStatus ?? event.processingStatus,
     messageBody: extracted.messageBody ?? null,
-    deviceLabel,
+    deviceLabel: deviceName,
+    deviceName,
+    devicePhone,
     errorMessage: event.errorMessage ?? null,
     processedAt: event.processedAt,
     createdAt: event.createdAt,

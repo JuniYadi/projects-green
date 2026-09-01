@@ -27,6 +27,8 @@ export type WebhookEventRecord = {
   id: string
   deviceId?: string | null
   deviceLabel?: string | null
+  deviceName?: string | null
+  devicePhone?: string | null
   phoneNumber?: string | null
   waMessageId?: string | null
   eventType: string
@@ -175,14 +177,22 @@ export function WebhookLogsTabContent({
     () => [
       {
         id: "device",
-        accessorFn: (row) => `${row.deviceLabel || row.deviceId || ""}`,
+        accessorFn: (row) =>
+          `${row.deviceName || row.deviceLabel || row.deviceId || ""}`,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t.colDevice} />
         ),
         cell: ({ row }) => {
-          const deviceLabel =
-            row.original.deviceLabel || row.original.deviceId || "—"
-          const deviceId = row.original.deviceId
+          const deviceName =
+            row.original.deviceName ||
+            row.original.deviceLabel ||
+            row.original.deviceId ||
+            "—"
+          const devicePhone =
+            row.original.devicePhone ||
+            row.original.phoneNumber ||
+            row.original.deviceId ||
+            "—"
 
           return (
             <div className="flex items-center gap-2 py-0.5">
@@ -193,13 +203,13 @@ export function WebhookLogsTabContent({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="max-w-[160px] cursor-help truncate font-mono text-xs font-semibold text-foreground underline decoration-dotted underline-offset-4">
-                      {deviceLabel}
+                      {deviceName}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-xs">
                     <p className="font-semibold">{t.drawer.deviceTooltip}</p>
                     <p className="font-mono text-muted-foreground">
-                      {deviceId || "—"}
+                      {formatPhoneIndonesian(devicePhone)}
                     </p>
                   </TooltipContent>
                 </Tooltip>
