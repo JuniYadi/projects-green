@@ -83,7 +83,7 @@ export const createAdminOrdersRoutes = (deps: AdminOrdersRouteDeps = {}) => {
   const guard = deps.requireSuperAdmin ?? requireSuperAdmin
   const db = deps.prisma ?? defaultPrisma
   const orderService =
-    deps.orderService ?? new BillingOrderService({ transactions: undefined })
+    deps.orderService ?? new BillingOrderService(defaultPrisma)
 
   return new Elysia()
     .get("/admin/orders", async ({ query, set }) => {

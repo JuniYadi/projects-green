@@ -477,6 +477,7 @@ describe("BillingOrderService", () => {
     )
     mockPrisma.billingInvoice = {
       findUnique: mock(async () => ({ invoiceNumber: "INV-20260819-0001" })),
+      updateMany: mockBillingInvoiceUpdateMany,
     }
     mockPrisma.billingAccount.findUnique.mockResolvedValue({
       ...account,
@@ -519,6 +520,7 @@ describe("BillingOrderService", () => {
     )
     mockPrisma.billingInvoice = {
       findUnique: mock(async () => ({ invoiceNumber: "INV-20260819-0001" })),
+      updateMany: mockBillingInvoiceUpdateMany,
     }
     mockPrisma.billingAccount.findUnique.mockResolvedValue({
       ...account,
