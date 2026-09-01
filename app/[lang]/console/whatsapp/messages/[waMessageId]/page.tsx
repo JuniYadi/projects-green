@@ -295,7 +295,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
                       <span className="text-muted-foreground">
                         <WhatsAppText id="s371" locale={params?.lang} />
                       </span>
-                      <span className="font-medium text-emerald-600">
+                      <span className="font-mono font-medium text-foreground">
                         {journey.billing.status}
                       </span>
                     </div>
