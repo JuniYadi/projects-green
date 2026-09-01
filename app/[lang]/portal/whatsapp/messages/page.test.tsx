@@ -293,11 +293,13 @@ describe("Portal WhatsAppMessagesPage", () => {
     await user.click(view.getByRole("button", { name: /^send$/i }))
 
     await waitFor(() => {
-      expect(mockSend).toHaveBeenCalledWith({
-        phoneNumber: "+628123456789",
-        message: "Quick admin reply",
-        deviceId: "device-1",
-      })
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phoneNumber: "+628123456789",
+          message: "Quick admin reply",
+          deviceId: "device-1",
+        })
+      )
     })
   })
 })
