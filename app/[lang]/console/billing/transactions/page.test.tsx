@@ -28,13 +28,13 @@ mock.module("@/lib/eden", () => ({
   },
 }))
 
-describe("TransactionsPage with Statement & Invoices tabs", () => {
+describe("TransactionsPage with Balance Statement view", () => {
   beforeEach(() => {
     mockHistoryGet.mockReset()
     mockStatementGet.mockReset()
   })
 
-  it("renders both statements and invoices tabs", async () => {
+  it("renders balance statement with summary cards and ending balance", async () => {
     mockStatementGet.mockResolvedValueOnce({
       data: {
         ok: true,
@@ -77,35 +77,11 @@ describe("TransactionsPage with Statement & Invoices tabs", () => {
         ],
       },
     })
-
-    mockHistoryGet.mockResolvedValueOnce({
-      data: {
-        ok: true,
-        data: [
-          {
-            id: "inv-1",
-            invoiceNumber: "TOP-001",
-            status: "PAID",
-            type: "TOP_UP",
-            paymentMethod: "QRIS",
-            totalAmount: 50000,
-            currency: "IDR",
-            createdAt: new Date("2026-05-01").toISOString(),
-            dueDate: null,
-            metadata: null,
-          },
-        ],
-      },
-    })
-
     const view = render(<TransactionsPage />)
 
     await waitFor(() => {
       expect(
         view.getAllByText("Balance Statement (Debit/Credit)").length
-      ).toBeGreaterThanOrEqual(1)
-      expect(
-        view.getAllByText("Invoices & Top-Up History").length
       ).toBeGreaterThanOrEqual(1)
     })
 

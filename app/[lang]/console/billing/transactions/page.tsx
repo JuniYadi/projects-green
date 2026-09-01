@@ -14,8 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
 import { QuickTopUpDialog } from "@/components/billing/quick-top-up-dialog"
 import { formatBalanceTransaction } from "@/modules/billing/user-labels"
 import {
@@ -27,20 +25,6 @@ import {
   TrendUp,
   Wallet,
 } from "@phosphor-icons/react"
-
-interface Transaction {
-  id: string
-  invoiceNumber: string
-  status: string
-  type: string
-  paymentMethod: string | null
-  totalAmount: number
-  currency: string
-  createdAt: string
-  dueDate: string | null
-  metadata: Record<string, unknown> | null
-}
-
 interface StatementAccount {
   id: string
   organizationId: string
@@ -72,7 +56,6 @@ export default function TransactionsPage() {
   const messages = getMessages(locale)
   const transactionMessages = messages.console.billing.transactionsPage
   const [account, setAccount] = useState<StatementAccount | null>(null)
-  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [statements, setStatements] = useState<StatementItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [topUpOpen, setTopUpOpen] = useState(false)
@@ -81,29 +64,17 @@ export default function TransactionsPage() {
 
     async function loadData() {
       try {
-        const [historyRes, statementRes] = await Promise.allSettled([
-          eden.api.payments.history.get(),
-          eden.api.billing.account.statement.get(),
-        ])
+        const res = await eden.api.billing.account.statement.get()
 
         if (cancelled) return
 
-        if (
-          statementRes.status === "fulfilled" &&
-          statementRes.value.data?.ok
-        ) {
-          const resData = statementRes.value.data
+        if (res.data?.ok) {
+          const resData = res.data
           if (resData.account) {
             setAccount(resData.account as unknown as StatementAccount)
           }
           setStatements(
             (resData.statements ?? []) as unknown as StatementItem[]
-          )
-        }
-
-        if (historyRes.status === "fulfilled" && historyRes.value.data?.ok) {
-          setTransactions(
-            (historyRes.value.data.data ?? []) as unknown as Transaction[]
           )
         }
       } catch {
@@ -148,41 +119,6 @@ export default function TransactionsPage() {
         }).format(new Date(dateStr))
       },
     [locale, transactionMessages.notAvailable]
-  )
-
-  const formatPaymentMethod = useMemo(
-    () =>
-      (method: string | null): string => {
-        if (!method) return "-"
-        switch (method) {
-          case "VA":
-            return transactionMessages.methodVirtualAccount
-          case "QRIS":
-            return "QRIS"
-          case "MANUAL_BANK":
-            return transactionMessages.methodManualBank
-          default:
-            return method
-        }
-      },
-    [transactionMessages]
-  )
-
-  const formatTransactionType = useMemo(
-    () =>
-      (type: string): string => {
-        switch (type) {
-          case "TOP_UP":
-            return transactionMessages.typeTopUp
-          case "INVOICE":
-            return transactionMessages.typeInvoice
-          case "ADJUSTMENT":
-            return transactionMessages.typeAdjustment
-          default:
-            return type
-        }
-      },
-    [transactionMessages]
   )
 
   const statementColumns = useMemo<ColumnDef<StatementItem>[]>(() => {
@@ -312,96 +248,6 @@ export default function TransactionsPage() {
       },
     ]
   }, [formatCurrency, formatDate, locale, transactionMessages])
-  const invoiceColumns = useMemo<ColumnDef<Transaction>[]>(() => {
-    return [
-      {
-        accessorKey: "invoiceNumber",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={transactionMessages.invoice}
-          />
-        ),
-        cell: ({ row }) => (
-          <div>
-            <Link
-              href={`/${locale}/console/billing/invoices/${row.original.id}`}
-              className="font-medium text-primary hover:underline"
-            >
-              {row.original.invoiceNumber}
-            </Link>
-            <p className="text-xs text-muted-foreground">
-              {formatTransactionType(row.original.type)}
-            </p>
-          </div>
-        ),
-      },
-      {
-        accessorKey: "status",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={transactionMessages.status}
-          />
-        ),
-        cell: ({ row }) => (
-          <InvoiceStatusBadge
-            status={row.original.status as "OPEN" | "PAID" | "VOID"}
-            lang={locale}
-          />
-        ),
-      },
-      {
-        accessorKey: "paymentMethod",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={transactionMessages.method}
-          />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm">
-            {formatPaymentMethod(row.original.paymentMethod)}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "totalAmount",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={transactionMessages.amount}
-          />
-        ),
-        cell: ({ row }) => (
-          <span className="text-right text-sm font-medium">
-            {formatCurrency(row.original.totalAmount, row.original.currency)}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "createdAt",
-        header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={transactionMessages.date}
-          />
-        ),
-        cell: ({ row }) => (
-          <span className="text-right text-xs text-muted-foreground">
-            {formatDate(row.original.createdAt)}
-          </span>
-        ),
-      },
-    ]
-  }, [
-    formatCurrency,
-    formatDate,
-    formatPaymentMethod,
-    formatTransactionType,
-    locale,
-    transactionMessages,
-  ])
   const summaryMetrics = useMemo(() => {
     let totalCredit = 0
     let totalDebit = 0
@@ -549,119 +395,54 @@ export default function TransactionsPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="statements" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="statements">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
             {transactionMessages.tabStatements}
-          </TabsTrigger>
-          <TabsTrigger value="invoices">
-            {transactionMessages.tabInvoices}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="statements" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {transactionMessages.tabStatements}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12" />
-                  ))}
-                </div>
-              ) : (
-                <DataTable
-                  tableId="console-billing-statements"
-                  columns={statementColumns}
-                  data={statements}
-                  pageSize={10}
-                  searchableColumns={["reason"]}
-                  searchPlaceholder={
-                    transactionMessages.searchStatementsPlaceholder
-                  }
-                  facetFilters={[
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12" />
+              ))}
+            </div>
+          ) : (
+            <DataTable
+              tableId="console-billing-statements"
+              columns={statementColumns}
+              data={statements}
+              pageSize={10}
+              searchableColumns={["reason"]}
+              searchPlaceholder={
+                transactionMessages.searchStatementsPlaceholder
+              }
+              facetFilters={[
+                {
+                  columnId: "type",
+                  label: transactionMessages.status,
+                  allLabel: transactionMessages.statusAll,
+                  options: [
                     {
-                      columnId: "type",
-                      label: transactionMessages.status,
-                      allLabel: transactionMessages.statusAll,
-                      options: [
-                        {
-                          label: transactionMessages.statusAll,
-                          value: "ALL",
-                        },
-                        {
-                          label: transactionMessages.typeCredit,
-                          value: "CREDIT",
-                        },
-                        {
-                          label: transactionMessages.typeDebit,
-                          value: "DEBIT",
-                        },
-                      ],
+                      label: transactionMessages.statusAll,
+                      value: "ALL",
                     },
-                  ]}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="invoices" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {transactionMessages.tabInvoices}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12" />
-                  ))}
-                </div>
-              ) : (
-                <DataTable
-                  tableId="console-billing-transactions"
-                  columns={invoiceColumns}
-                  data={transactions}
-                  pageSize={10}
-                  searchableColumns={["invoiceNumber"]}
-                  searchPlaceholder={transactionMessages.searchPlaceholder}
-                  facetFilters={[
                     {
-                      columnId: "status",
-                      label: transactionMessages.status,
-                      allLabel: transactionMessages.statusAll,
-                      options: [
-                        {
-                          label: transactionMessages.statusAll,
-                          value: "ALL",
-                        },
-                        {
-                          label: transactionMessages.statusOpen,
-                          value: "OPEN",
-                        },
-                        {
-                          label: transactionMessages.statusPaid,
-                          value: "PAID",
-                        },
-                        {
-                          label: transactionMessages.statusVoid,
-                          value: "VOID",
-                        },
-                      ],
+                      label: transactionMessages.typeCredit,
+                      value: "CREDIT",
                     },
-                  ]}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                    {
+                      label: transactionMessages.typeDebit,
+                      value: "DEBIT",
+                    },
+                  ],
+                },
+              ]}
+            />
+          )}
+        </CardContent>
+      </Card>
       <QuickTopUpDialog
         open={topUpOpen}
         onOpenChange={setTopUpOpen}
