@@ -1267,7 +1267,7 @@ describe("Admin Devices Routes", () => {
 
   describe("POST /:id/reset-quota", () => {
     it("returns 401 when unauthenticated", async () => {
-      const app = createTestApp(mockUnauthorized)
+      const app = createTestApp(unauthorizedContext())
       const res = await app.handle(
         new Request(`${BASE}/dev-1/reset-quota`, {
           method: "POST",

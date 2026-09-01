@@ -429,10 +429,11 @@ export const createDeviceService = (
         throw new DeviceNotOwnedError()
       }
 
-      const previousQuotaBaseOut = existing.quotaBaseOut
+      const previousQuotaBaseOut = Number(existing.quotaBaseOut)
       const newQuotaBaseOut =
-        opts?.targetQuota !== undefined ? opts.targetQuota : existing.quotaBase
-
+        opts?.targetQuota !== undefined
+          ? opts.targetQuota
+          : Number(existing.quotaBase)
       const updated = await db.whatsappDevice.update({
         where: { id },
         data: {
