@@ -95,14 +95,14 @@ const getRouteContext = (routePath: string): RouteContextConfig => {
       descriptionId:
         "Perangkat Cloud API, template pesan Meta, dan pengiriman siaran",
       starterPromptsEn: [
-        "How do I create and submit Meta message templates?",
+        "Why did Meta change my template category from Utility to Marketing?",
+        "How do I create and submit Meta message templates without rejections?",
         "How do I generate and manage WhatsApp API keys?",
-        "How do WhatsApp webhooks and delivery logs work?",
       ],
       starterPromptsId: [
-        "Bagaimana cara membuat dan mengajukan template Meta?",
+        "Kenapa kategori template saya berubah dari Utility jadi Marketing oleh Meta?",
+        "Bagaimana cara membuat template agar disetujui Meta sebagai Utility?",
         "Bagaimana cara membuat dan mengelola API key WhatsApp?",
-        "Bagaimana cara kerja webhook dan log pengiriman pesan?",
       ],
       relatedDocs: [
         {
@@ -380,6 +380,9 @@ export function ThunderAiHelpDrawer() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const sendChatMessageRef = useRef<(text: string) => Promise<void>>(
+    async () => {}
+  )
   const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
   const activeLocale = locale === "id" ? "id" : "en"
   const isId = activeLocale === "id"
@@ -429,6 +432,7 @@ export function ThunderAiHelpDrawer() {
       return () => clearTimeout(timer)
     }
   }, [isOpen, activeTab])
+
   useEffect(() => {
     if (!isOpen || activeTab !== "docs") {
       return
@@ -449,9 +453,7 @@ export function ThunderAiHelpDrawer() {
         )
 
         const payload = (await response.json().catch(() => null)) as
-          | UiDocSuccessResponse
-          | UiDocErrorResponse
-          | null
+          UiDocSuccessResponse | UiDocErrorResponse | null
 
         if (!isActive) {
           return
@@ -536,7 +538,6 @@ export function ThunderAiHelpDrawer() {
     if (isSending) {
       return
     }
-
     const trimmedInput = text.trim()
     if (!trimmedInput) {
       return
@@ -691,6 +692,42 @@ export function ThunderAiHelpDrawer() {
       setIsSending(false)
     }
   }
+  useEffect(() => {
+    sendChatMessageRef.current = sendChatMessage
+  })
+
+  // Support window-level event to open Ask P with custom prompt (e.g. from WhatsApp Template Audit)
+  useEffect(() => {
+    const handleAskPEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        prompt?: string
+        autoSend?: boolean
+      }>
+      const prompt = customEvent.detail?.prompt?.trim()
+      const autoSend = customEvent.detail?.autoSend ?? false
+
+      const next = new URLSearchParams(searchParams.toString())
+      next.set(KB_QUERY_KEY, ACTIVE_VALUE)
+      next.delete(DOC_QUERY_KEY)
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false })
+
+      if (prompt) {
+        if (autoSend) {
+          // Send immediately after drawer opens
+          setTimeout(() => {
+            void sendChatMessageRef.current(prompt)
+          }, 100)
+        } else {
+          setInput(prompt)
+        }
+      }
+    }
+
+    window.addEventListener("ask_p_query", handleAskPEvent)
+    return () => {
+      window.removeEventListener("ask_p_query", handleAskPEvent)
+    }
+  }, [pathname, router, searchParams])
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
