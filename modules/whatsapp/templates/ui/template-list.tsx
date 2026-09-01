@@ -222,8 +222,23 @@ export function TemplateList({
             </div>
             <div className="flex items-center gap-2">
               {template.category && (
-                <Badge variant="outline" className="text-xs">
+                <Badge
+                  variant="outline"
+                  className="text-xs"
+                  title={
+                    template.requestedCategory &&
+                    template.requestedCategory !== template.category
+                      ? `Diajukan: ${template.requestedCategory} -> Disetujui Meta: ${template.category}`
+                      : undefined
+                  }
+                >
                   {template.category}
+                  {template.requestedCategory &&
+                    template.requestedCategory !== template.category && (
+                      <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400">
+                        (Meta)
+                      </span>
+                    )}
                 </Badge>
               )}
               <TemplateStatusBadge

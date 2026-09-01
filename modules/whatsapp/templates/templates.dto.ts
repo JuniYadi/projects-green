@@ -43,6 +43,7 @@ export type WhatsappTemplateDTO = Pick<
   | "createdAt"
   | "updatedAt"
   | "category"
+  | "requestedCategory"
 > & {
   languages?: WhatsappTemplateLanguageDTO[]
   device?: WhatsappTemplateDeviceDTO | null
@@ -111,6 +112,7 @@ export function toWhatsappTemplateDTO(
     createdAt: template.createdAt,
     updatedAt: template.updatedAt,
     category: template.category,
+    requestedCategory: template.requestedCategory,
     device: rawDevice
       ? {
           id: rawDevice.id,

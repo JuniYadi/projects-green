@@ -1099,12 +1099,12 @@ export function TemplateForm({
                   <Textarea
                     ref={textareaRef}
                     id="body"
-                    rows={5}
+                    rows={6}
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
                     maxLength={1024}
                     placeholder="Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}}. Terima kasih telah berbelanja!"
-                    className="rounded-t-none"
+                    className="min-h-[160px] resize-y rounded-t-none font-mono text-sm leading-relaxed"
                   />
                   {errors.body && (
                     <p className="text-xs text-destructive">{errors.body}</p>
