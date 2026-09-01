@@ -46,17 +46,17 @@ describe("docs.guard - inspectPromptSafety", () => {
     expect(result.ok).toBe(true)
   })
 
-  it("rejects inputs exceeding max character limit (> 800 chars)", () => {
-    const longText = "a".repeat(801)
+  it("rejects inputs exceeding max character limit (> 5000 chars)", () => {
+    const longText = "a".repeat(5001)
     const result = inspectPromptSafety(longText)
     expect(result.ok).toBe(false)
     expect(result.reason).toBe("OVERSIZE")
-    expect(result.message).toContain("800")
+    expect(result.message).toContain("5000")
   })
 
-  it("accepts inputs exactly at 800 characters", () => {
-    const text800 = "a".repeat(800)
-    const result = inspectPromptSafety(text800)
+  it("accepts inputs exactly at 5000 characters", () => {
+    const text5000 = "a".repeat(5000)
+    const result = inspectPromptSafety(text5000)
     expect(result.ok).toBe(true)
   })
 
