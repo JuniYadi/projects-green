@@ -39,6 +39,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/standard-fonts ./standard-fonts
+COPY --from=builder /app/standard-fonts ./node_modules/pdfkit/js/standard-fonts
 
 # Copy Prisma schema for runtime migrations/introspection
 COPY prisma ./prisma
