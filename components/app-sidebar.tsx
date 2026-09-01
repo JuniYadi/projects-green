@@ -628,6 +628,12 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/console/billing",
       },
       {
+        title: "Usage",
+        url: localizePathname({ pathname: "/console/billing/usage", locale }),
+        icon: <ChartLineIcon />,
+        isActive: startsWithRoute(path, "/console/billing/usage"),
+      },
+      {
         title: "Services",
         url: localizePathname({
           pathname: "/console/billing/services",
@@ -655,18 +661,6 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/console/billing/invoices"),
       },
       {
-        title: "Usage",
-        url: localizePathname({ pathname: "/console/billing/usage", locale }),
-        icon: <ChartLineIcon />,
-        isActive: startsWithRoute(path, "/console/billing/usage"),
-      },
-      {
-        title: "Alerts",
-        url: localizePathname({ pathname: "/console/billing/alerts", locale }),
-        icon: <Lightning />,
-        isActive: startsWithRoute(path, "/console/billing/alerts"),
-      },
-      {
         title: "Transactions",
         url: localizePathname({
           pathname: "/console/billing/transactions",
@@ -674,6 +668,12 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <WalletIcon />,
         isActive: startsWithRoute(path, "/console/billing/transactions"),
+      },
+      {
+        title: "Alerts",
+        url: localizePathname({ pathname: "/console/billing/alerts", locale }),
+        icon: <Lightning />,
+        isActive: startsWithRoute(path, "/console/billing/alerts"),
       },
       {
         title: "Vouchers",
