@@ -28,6 +28,7 @@ export interface WhatsAppTemplate {
   syncStatus?: "NOT_SYNCED" | "SYNCING" | "SYNCED" | "FAILED"
   metaStatus?: "APPROVED" | "PENDING" | "REJECTED" | null
   category?: "MARKETING" | "UTILITY" | "AUTHENTICATION" | null
+  requestedCategory?: "MARKETING" | "UTILITY" | "AUTHENTICATION" | null
   languages: WhatsAppTemplateLanguage[]
   device?: WhatsAppTemplateDevice | null
   createdAt: string
