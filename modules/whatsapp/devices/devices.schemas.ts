@@ -64,6 +64,12 @@ export const adminCreateDeviceSchema = createDeviceSchema.extend({
   whatsappProfile: z.record(z.string(), z.unknown()).optional(),
 })
 export type AdminCreateDeviceInput = z.infer<typeof adminCreateDeviceSchema>
+export const resetQuotaSchema = z.object({
+  organizationId: z.string().trim().min(1).optional(),
+  targetQuota: z.number().int().nonnegative().optional(),
+  reason: z.string().trim().max(500).optional(),
+})
+export type ResetQuotaInput = z.infer<typeof resetQuotaSchema>
 
 export const updateDeviceSchema = z.object({
   phoneNumber: z
@@ -257,4 +263,16 @@ export type DeviceService = {
     amount: number,
     opts?: { organizationId?: string; reason?: string }
   ) => Promise<DeviceDetail>
+  resetQuota: (
+    id: string,
+    opts?: {
+      organizationId?: string
+      targetQuota?: number
+      reason?: string
+    }
+  ) => Promise<{
+    device: DeviceDetail
+    previousQuotaBaseOut: number
+    newQuotaBaseOut: number
+  }>
 }

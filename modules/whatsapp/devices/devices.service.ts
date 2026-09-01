@@ -416,6 +416,37 @@ export const createDeviceService = (
         throw error
       }
     },
+
+    async resetQuota(id, opts = {}) {
+      const existing = await db.whatsappDevice.findUnique({
+        where: { id },
+      })
+      if (!existing) throw new DeviceNotFoundError(id)
+      if (
+        opts?.organizationId &&
+        existing.organizationId !== opts.organizationId
+      ) {
+        throw new DeviceNotOwnedError()
+      }
+
+      const previousQuotaBaseOut = Number(existing.quotaBaseOut)
+      const newQuotaBaseOut =
+        opts?.targetQuota !== undefined
+          ? opts.targetQuota
+          : Number(existing.quotaBase)
+      const updated = await db.whatsappDevice.update({
+        where: { id },
+        data: {
+          quotaBaseOut: newQuotaBaseOut,
+        },
+      })
+
+      return {
+        device: _toDeviceDetail(updated as PrismaDeviceFields),
+        previousQuotaBaseOut,
+        newQuotaBaseOut,
+      }
+    },
   }
 }
 

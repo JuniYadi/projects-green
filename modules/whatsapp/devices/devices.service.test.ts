@@ -321,4 +321,52 @@ describe("devices service token storage", () => {
       whatsappPhoneId: null,
     })
   })
+
+  it("resets quotaBaseOut to quotaBase by default", async () => {
+    const existing = device({ quotaBase: 2500, quotaBaseOut: 120 })
+    findUnique.mockResolvedValueOnce(existing)
+    update.mockImplementationOnce(
+      async (args: { data: Record<string, unknown> }) =>
+        device({ ...existing, ...args.data })
+    )
+
+    const service = createDeviceService({
+      prisma: {
+        whatsappDevice: { findUnique, update },
+      } as never,
+    })
+
+    const result = await service.resetQuota("dev_1")
+    expect(result.previousQuotaBaseOut).toBe(120)
+    expect(result.newQuotaBaseOut).toBe(2500)
+    expect(result.device.quotaBaseOut).toBe(2500)
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "dev_1" },
+      data: { quotaBaseOut: 2500 },
+    })
+  })
+
+  it("resets quotaBaseOut to custom targetQuota when provided", async () => {
+    const existing = device({ quotaBase: 2500, quotaBaseOut: 120 })
+    findUnique.mockResolvedValueOnce(existing)
+    update.mockImplementationOnce(
+      async (args: { data: Record<string, unknown> }) =>
+        device({ ...existing, ...args.data })
+    )
+
+    const service = createDeviceService({
+      prisma: {
+        whatsappDevice: { findUnique, update },
+      } as never,
+    })
+
+    const result = await service.resetQuota("dev_1", { targetQuota: 5000 })
+    expect(result.previousQuotaBaseOut).toBe(120)
+    expect(result.newQuotaBaseOut).toBe(5000)
+    expect(result.device.quotaBaseOut).toBe(5000)
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "dev_1" },
+      data: { quotaBaseOut: 5000 },
+    })
+  })
 })

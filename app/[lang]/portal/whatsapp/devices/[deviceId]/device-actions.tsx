@@ -12,6 +12,7 @@ import {
   Trash,
   CloudArrowDown,
   Heartbeat,
+  ArrowCounterClockwise,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -41,8 +42,10 @@ export function DeviceActions({
   const [actionState, setActionState] = useState<ActionState>("idle")
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deactivateOpen, setDeactivateOpen] = useState(false)
+  const [resetQuotaOpen, setResetQuotaOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeactivating, setIsDeactivating] = useState(false)
+  const [isResettingQuota, setIsResettingQuota] = useState(false)
 
   async function handleVerify() {
     setActionState("verifying")
@@ -95,6 +98,30 @@ export function DeviceActions({
       toast.error(message)
     } finally {
       setActionState("idle")
+    }
+  }
+  async function handleResetQuota() {
+    setIsResettingQuota(true)
+    try {
+      const res = await whatsappClient.devices.resetQuota(deviceId)
+
+      if (!res.ok) {
+        throw new Error(
+          (res as { message?: string })?.message || "Failed to reset quota"
+        )
+      }
+
+      toast.success(
+        `Quota reset successfully to ${res.newQuotaBaseOut.toLocaleString()}`
+      )
+      setResetQuotaOpen(false)
+      router.refresh()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to reset quota"
+      toast.error(message)
+    } finally {
+      setIsResettingQuota(false)
     }
   }
 
@@ -170,6 +197,15 @@ export function DeviceActions({
           <CloudArrowDown weight="bold" className="mr-1.5 size-4" />
           {actionState === "syncing" ? "Syncing..." : "Template Sync"}
         </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setResetQuotaOpen(true)}
+          disabled={actionState !== "idle"}
+        >
+          <ArrowCounterClockwise weight="bold" className="mr-1.5 size-4" />
+          Reset Quota
+        </Button>
         <Button size="sm" variant="outline" asChild>
           <Link href={editHref}>
             <PencilSimple weight="bold" className="mr-1.5 size-4" />
@@ -196,6 +232,30 @@ export function DeviceActions({
         </Button>
       </div>
 
+      {/* Reset Quota Confirmation */}
+      <Dialog open={resetQuotaOpen} onOpenChange={setResetQuotaOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Monthly Quota</DialogTitle>
+            <DialogDescription>
+              This will reset the device remaining outbound quota (quotaBaseOut)
+              back to its base quota limit. An audit log will be recorded.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setResetQuotaOpen(false)}
+              disabled={isResettingQuota}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleResetQuota} disabled={isResettingQuota}>
+              {isResettingQuota ? "Resetting..." : "Confirm Reset"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Deactivate Confirmation */}
       <Dialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>
         <DialogContent>
