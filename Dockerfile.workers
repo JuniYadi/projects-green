@@ -15,6 +15,7 @@ COPY tsconfig.json ./
 COPY prisma ./prisma
 ENV DATABASE_URL=postgresql://localhost:5432/dummy
 RUN bun prisma generate
+RUN bun run scripts/copy-standard-fonts.ts
 
 # Bundle worker code with inlined JS dependencies (BullMQ, ioredis, AI SDK, etc.)
 # Keep only native/engine packages external (@prisma/client, @prisma/adapter-pg, pg)

@@ -71,7 +71,8 @@
     "test:lint": "bun run scripts/lint-test-quality.ts",
     "test:policy": "bun run scripts/lint-test-policy.ts",
     "prepare": "husky",
-    "docker:db:run": "docker compose -f docker-compose.db.yml up -d"
+    "docker:db:run": "docker compose -f docker-compose.db.yml up -d",
+    "postinstall": "bun run scripts/copy-standard-fonts.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

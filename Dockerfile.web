@@ -16,6 +16,7 @@ COPY . .
 # Generate Prisma client (dummy URL — generate never connects)
 ENV DATABASE_URL=postgresql://localhost:5432/dummy
 RUN bun prisma generate
+RUN bun run scripts/copy-standard-fonts.ts
 
 # AuthKit inlines this public callback during the Next.js build. Keep the
 # production value in the image build input; runtime Pod env cannot override it.

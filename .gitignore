@@ -19,6 +19,7 @@ prisma/seeds/*.sql
 # next.js
 /.next/
 /out/
+/standard-fonts/
 
 # production
 /build
