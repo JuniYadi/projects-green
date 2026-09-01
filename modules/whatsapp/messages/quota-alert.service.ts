@@ -6,8 +6,8 @@
  */
 
 import { prisma } from "@/lib/prisma"
+import { createEmailLog } from "@/lib/email-log"
 import { sendEmail } from "@/lib/queue/email"
-
 import { resolveAlertRule } from "@/modules/billing/alerts/billing-alerts.service"
 export const QUOTA_THRESHOLDS = [50, 80, 90, 100] as const
 export type QuotaThreshold = (typeof QUOTA_THRESHOLDS)[number]
@@ -109,6 +109,8 @@ export const quotaAlertService: QuotaAlertService = {
             sendQuotaEmail({
               to,
               orgName,
+              organizationId,
+              deviceId,
               devicePhone: phoneDisplay,
               threshold,
               currentPercent,
@@ -125,24 +127,26 @@ export const quotaAlertService: QuotaAlertService = {
 type QuotaEmailParams = {
   to: string
   orgName: string
+  organizationId: string
+  deviceId: string
   devicePhone: string
   threshold: number
   currentPercent: number
   currentCost: number
   quotaBase: number
 }
-
 async function sendQuotaEmail(params: QuotaEmailParams): Promise<void> {
   const {
     to,
     orgName,
+    organizationId,
+    deviceId,
     devicePhone,
     threshold,
     currentPercent,
     currentCost,
     quotaBase,
   } = params
-
   const subject =
     threshold === 100
       ? `[Action Required] WhatsApp quota exhausted on ${devicePhone}`
@@ -203,5 +207,15 @@ async function sendQuotaEmail(params: QuotaEmailParams): Promise<void> {
 </html>
   `
 
-  await sendEmail({ to, subject, html })
+  const emailLogId = await createEmailLog({
+    recipientEmail: to,
+    type: "WHATSAPP_QUOTA_ALERT",
+    subject,
+    bodyHtml: html,
+    organizationId,
+    relatedEntityType: "WhatsappDevice",
+    relatedEntityId: deviceId,
+  })
+
+  await sendEmail({ to, subject, html, emailLogId: emailLogId ?? undefined })
 }

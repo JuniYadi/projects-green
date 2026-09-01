@@ -29,6 +29,11 @@ mock.module("@/lib/queue/email", () => ({
   sendEmail: mockSendEmail,
 }))
 
+const mockCreateEmailLog = mock(async () => "email-log-quota-1")
+mock.module("@/lib/email-log", () => ({
+  createEmailLog: mockCreateEmailLog,
+}))
+
 const { quotaAlertService, QUOTA_THRESHOLDS } =
   await import("./quota-alert.service")
 
@@ -39,6 +44,8 @@ describe("quotaAlertService", () => {
     mockQuotaAlertFindMany.mockClear()
     mockQuotaAlertCreate.mockClear()
     mockSendEmail.mockClear()
+    mockCreateEmailLog.mockClear()
+    mockCreateEmailLog.mockResolvedValue("email-log-quota-1")
     mockBillingAlertRuleFindMany.mockClear()
   })
 
@@ -99,16 +106,28 @@ describe("quotaAlertService", () => {
     })
 
     // 2 emails * 1 threshold = 2 sendEmail calls
+    expect(mockCreateEmailLog).toHaveBeenCalledTimes(2)
+    expect(mockCreateEmailLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientEmail: "billing@example.com",
+        type: "WHATSAPP_QUOTA_ALERT",
+        organizationId: "org-1",
+        relatedEntityType: "WhatsappDevice",
+        relatedEntityId: "dev-1",
+      })
+    )
     expect(mockSendEmail).toHaveBeenCalledTimes(2)
     const email1 = (mockSendEmail.mock.calls as unknown[][])[0][0] as {
       to: string
       subject: string
       html: string
+      emailLogId?: string
     }
     expect(email1.to).toBe("billing@example.com")
     expect(email1.subject).toContain("80% quota reached")
     expect(email1.html).toContain("+628123456789")
     expect(email1.html).toContain("85%")
+    expect(email1.emailLogId).toBe("email-log-quota-1")
   })
 
   it("handles 100% quota exhausted alert with action required subject and danger style", async () => {
