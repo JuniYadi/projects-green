@@ -115,4 +115,116 @@ describe("admin orders route", () => {
       })
     )
   })
+
+  it("cancels a pending order", async () => {
+    const mockCancel = mock(async () => ({
+      orderId: "order-1",
+      status: "CANCELLED" as const,
+      subscriptionId: null,
+      invoiceId: null,
+      invoiceLineId: null,
+      amount: "300000",
+      currency: "IDR",
+      billingPeriod: "MONTHLY" as const,
+      periodStart: "2026-01-01",
+      periodEnd: "2026-02-01",
+    }))
+    const app = new Elysia().use(
+      createAdminOrdersRoutes({
+        requireSuperAdmin: guard,
+        prisma: db as never,
+        orderService: {
+          cancelOrder: mockCancel,
+          fulfillOrder: mock(),
+        } as never,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/orders/order-1/cancel", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason: "Duplicate order" }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      ok: boolean
+      data: { status: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data.status).toBe("CANCELLED")
+    expect(mockCancel).toHaveBeenCalledWith("order-1", "Duplicate order")
+  })
+
+  it("fulfills a charged order", async () => {
+    const mockFulfill = mock(async () => ({
+      orderId: "order-1",
+      status: "FULFILLED" as const,
+      subscriptionId: "sub-1",
+      invoiceId: "inv-1",
+      invoiceLineId: "line-1",
+      amount: "300000",
+      currency: "IDR",
+      billingPeriod: "MONTHLY" as const,
+      periodStart: "2026-01-01",
+      periodEnd: "2026-02-01",
+    }))
+    const app = new Elysia().use(
+      createAdminOrdersRoutes({
+        requireSuperAdmin: guard,
+        prisma: db as never,
+        orderService: {
+          cancelOrder: mock(),
+          fulfillOrder: mockFulfill,
+        } as never,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/orders/order-1/fulfill", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      ok: boolean
+      data: { status: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data.status).toBe("FULFILLED")
+    expect(mockFulfill).toHaveBeenCalledWith("order-1")
+  })
+
+  it("returns ORDER_LINE_INVALID error for invalid line", async () => {
+    const mockFulfill = mock(async () => {
+      throw new Error("ORDER_LINE_INVALID")
+    })
+    const app = new Elysia().use(
+      createAdminOrdersRoutes({
+        requireSuperAdmin: guard,
+        prisma: db as never,
+        orderService: {
+          cancelOrder: mock(),
+          fulfillOrder: mockFulfill,
+        } as never,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/orders/order-1/fulfill", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(400)
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+    }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ORDER_LINE_INVALID")
+  })
 })

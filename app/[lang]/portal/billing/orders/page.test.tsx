@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { render, waitFor, fireEvent } from "@testing-library/react"
 
 const mockGetAdminOrders = mock()
+const mockCancelAdminOrder = mock()
+const mockFulfillAdminOrder = mock()
 
 mock.module("@/lib/billing-client", () => ({
   getAdminOrders: mockGetAdminOrders,
+  cancelAdminOrder: mockCancelAdminOrder,
+  fulfillAdminOrder: mockFulfillAdminOrder,
   billingPeriodLabel: (period: string) => period,
 }))
 
@@ -57,7 +61,11 @@ const emptyResult = {
 
 beforeEach(() => {
   mockGetAdminOrders.mockReset()
+  mockCancelAdminOrder.mockReset()
+  mockFulfillAdminOrder.mockReset()
   mockGetAdminOrders.mockResolvedValue(emptyResult)
+  mockCancelAdminOrder.mockResolvedValue({ ok: true, data: {} })
+  mockFulfillAdminOrder.mockResolvedValue({ ok: true, data: {} })
 })
 
 describe("BillingOrdersPage", () => {
@@ -96,5 +104,56 @@ describe("BillingOrdersPage", () => {
     await waitFor(() => expect(view.getByText("Export CSV")).toBeTruthy())
     expect(view.getByText("Page 1 of 3")).toBeTruthy()
     expect(view.getByText("Next")).toBeTruthy()
+  })
+
+  it("opens order details drawer when row is clicked", async () => {
+    mockGetAdminOrders.mockResolvedValueOnce({
+      ok: true,
+      orders: [
+        {
+          ...baseOrder,
+          metadata: {
+            provisioningAnswers: {
+              domain: "example.com",
+              phpVersion: "8.3",
+            },
+          },
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    })
+    const view = render(<BillingOrdersPage />)
+    await waitFor(() => expect(view.getByText("APP_HOSTING")).toBeTruthy())
+    const row = view.getByText("APP_HOSTING").closest("tr")
+    expect(row).toBeTruthy()
+    if (row) fireEvent.click(row)
+
+    await waitFor(() => {
+      expect(view.getByText("Order ord_1")).toBeTruthy()
+      expect(view.getByText("Organization: org_1")).toBeTruthy()
+      expect(view.getByText("example.com")).toBeTruthy()
+    })
+  })
+
+  it("renders pending order with cancel button in details sheet", async () => {
+    mockGetAdminOrders.mockResolvedValueOnce({
+      ok: true,
+      orders: [
+        {
+          ...baseOrder,
+          status: "PENDING",
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    })
+    const view = render(<BillingOrdersPage />)
+    await waitFor(() => expect(view.getByText("PENDING")).toBeTruthy())
+
+    const row = view.getByText("PENDING").closest("tr")
+    if (row) fireEvent.click(row)
+
+    await waitFor(() => {
+      expect(view.getByText("Cancel Order")).toBeTruthy()
+    })
   })
 })

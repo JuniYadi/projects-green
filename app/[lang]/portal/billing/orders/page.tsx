@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
+import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -24,18 +26,41 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import {
   getAdminOrders,
+  cancelAdminOrder,
+  fulfillAdminOrder,
   billingPeriodLabel,
   type AdminOrder,
 } from "@/lib/billing-client"
 import { formatKey } from "@/lib/format-key"
 import { formatBillingMoney } from "@/modules/billing/format-money"
-
+import {
+  MoreHorizontal,
+  Ban,
+  PlayCircle,
+  ExternalLink,
+  Eye,
+} from "lucide-react"
 const STATUSES = [
   { value: "all", label: "All statuses" },
   { value: "PENDING", label: "Pending" },
@@ -75,6 +100,9 @@ function fulfillmentStatus(fulfilledAt: string | null): string {
 }
 
 export function BillingOrdersPage() {
+  const params = useParams()
+  const lang = (params?.lang as string) || "en"
+
   const [orders, setOrders] = useState<AdminOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -87,9 +115,19 @@ export function BillingOrdersPage() {
   const [billingPeriod, setBillingPeriod] = useState<string>("all")
   const [from, setFrom] = useState<string>("")
   const [to, setTo] = useState<string>("")
-  const [selectedOrderResponses, setSelectedOrderResponses] =
-    useState<AdminOrder | null>(null)
 
+  const [activeOrder, setActiveOrder] = useState<AdminOrder | null>(null)
+  const [confirmCancelOrder, setConfirmCancelOrder] =
+    useState<AdminOrder | null>(null)
+  const [confirmFulfillOrder, setConfirmFulfillOrder] =
+    useState<AdminOrder | null>(null)
+  const [actionReason, setActionReason] = useState<string>("")
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const reloadOrders = () => {
+    void load(page, { status, packageCode, billingPeriod, from, to })
+  }
   const load = useCallback(
     async (
       pageNum: number,
@@ -141,7 +179,6 @@ export function BillingOrdersPage() {
   )
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load(page, { status, packageCode, billingPeriod, from, to })
   }, [load, page, status, packageCode, billingPeriod, from, to])
 
@@ -166,6 +203,47 @@ export function BillingOrdersPage() {
     setPage(1)
   }, [])
 
+  const handleCancelOrder = async () => {
+    if (!confirmCancelOrder) return
+    setActionLoading(true)
+    setActionError(null)
+    try {
+      await cancelAdminOrder(confirmCancelOrder.id, actionReason || undefined)
+      setConfirmCancelOrder(null)
+      setActionReason("")
+      if (activeOrder?.id === confirmCancelOrder.id) {
+        setActiveOrder(null)
+      }
+      reloadOrders()
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Failed to cancel order."
+      )
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleFulfillOrder = async () => {
+    if (!confirmFulfillOrder) return
+    setActionLoading(true)
+    setActionError(null)
+    try {
+      await fulfillAdminOrder(confirmFulfillOrder.id)
+      setConfirmFulfillOrder(null)
+      if (activeOrder?.id === confirmFulfillOrder.id) {
+        setActiveOrder(null)
+      }
+      reloadOrders()
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Failed to fulfill order."
+      )
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const handleExportCsv = useCallback(() => {
     const headers = [
       "Order ID",
@@ -182,7 +260,6 @@ export function BillingOrdersPage() {
       "Invoice Status",
       "Created",
     ]
-
     const rows = orders.map((order) => [
       order.id,
       order.organizationId,
@@ -339,9 +416,15 @@ export function BillingOrdersPage() {
                       </TableRow>
                     ) : (
                       orders.map((order) => (
-                        <TableRow key={order.id}>
-                          <TableCell>
-                            <div className="font-mono text-xs">{order.id}</div>
+                        <TableRow
+                          key={order.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setActiveOrder(order)}
+                        >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <div className="font-mono text-xs font-semibold">
+                              {order.id}
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               {order.organizationId}
                             </div>
@@ -379,43 +462,70 @@ export function BillingOrdersPage() {
                           <TableCell>
                             {fulfillmentStatus(order.fulfilledAt)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             {order.invoice ? (
-                              <span className="text-xs">
+                              <Link
+                                href={`/${lang}/portal/billing/invoices`}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                              >
                                 {order.invoice.invoiceNumber}
-                                <br />
-                                {order.invoice.status}
-                              </span>
+                                <ExternalLink className="h-3 w-3" />
+                              </Link>
                             ) : (
                               "—"
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
-                            {(() => {
-                              const meta = (order.metadata ?? {}) as Record<
-                                string,
-                                unknown
-                              >
-                              const answers = (meta.provisioningAnswers ??
-                                (typeof meta.device === "object"
-                                  ? meta.device
-                                  : null) ??
-                                {}) as Record<string, unknown>
-                              const hasAnswers = Object.keys(answers).length > 0
-
-                              if (!hasAnswers) return "—"
-                              return (
-                                <Button
-                                  variant="ghost"
-                                  size="xs"
-                                  onClick={() =>
-                                    setSelectedOrderResponses(order)
-                                  }
-                                >
-                                  View Responses
+                          <TableCell
+                            className="text-right"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="xs">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Actions</span>
                                 </Button>
-                              )
-                            })()}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => setActiveOrder(order)}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                {order.status === "PENDING" && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        setActionError(null)
+                                        setActionReason("")
+                                        setConfirmCancelOrder(order)
+                                      }}
+                                    >
+                                      <Ban className="mr-2 h-4 w-4" />
+                                      Cancel Order
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {order.status === "CHARGED" &&
+                                  !order.fulfilledAt && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setActionError(null)
+                                          setConfirmFulfillOrder(order)
+                                        }}
+                                      >
+                                        <PlayCircle className="mr-2 h-4 w-4" />
+                                        Fulfill / Provision
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))
@@ -457,70 +567,258 @@ export function BillingOrdersPage() {
           )}
         </CardContent>
       </Card>
-      {/* Modal Dialog to View Order Form Responses */}
-      <Dialog
-        open={Boolean(selectedOrderResponses)}
+      {/* Order Details Sheet (Drawer) */}
+      <Sheet
+        open={Boolean(activeOrder)}
         onOpenChange={(open) => {
-          if (!open) setSelectedOrderResponses(null)
+          if (!open) setActiveOrder(null)
+        }}
+      >
+        <SheetContent className="overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="text-left font-mono">
+              Order {activeOrder?.id}
+            </SheetTitle>
+            <SheetDescription className="text-left">
+              Organization: {activeOrder?.organizationId}
+            </SheetDescription>
+          </SheetHeader>
+          {activeOrder && (
+            <div className="mt-6 flex flex-col gap-6 text-sm">
+              {/* Status Section */}
+              <div className="rounded-lg border p-4">
+                <div className="text-xs font-semibold text-muted-foreground uppercase">
+                  Order Status
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <Badge variant={paymentStatusVariant(activeOrder.status)}>
+                    {activeOrder.status}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Fulfillment: {fulfillmentStatus(activeOrder.fulfilledAt)}
+                  </span>
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Created: {new Date(activeOrder.createdAt).toLocaleString()}
+                </div>
+              </div>
+
+              {/* Items & Billing Details */}
+              <div className="rounded-lg border p-4">
+                <div className="text-xs font-semibold text-muted-foreground uppercase">
+                  Package & Pricing
+                </div>
+                {activeOrder.line ? (
+                  <div className="mt-2 flex flex-col gap-1">
+                    <div className="font-medium">
+                      {activeOrder.line.packageCode} (
+                      {activeOrder.line.planCode})
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Period:{" "}
+                      {billingPeriodLabel(activeOrder.line.billingPeriod)}
+                    </div>
+                    <div className="mt-2 text-base font-semibold">
+                      Total:{" "}
+                      {formatBillingMoney(
+                        activeOrder.totalAmount,
+                        activeOrder.currency
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-2 text-muted-foreground">—</div>
+                )}
+
+                {activeOrder.invoice && (
+                  <div className="mt-4 border-t pt-3">
+                    <div className="text-xs text-muted-foreground">
+                      Linked Invoice
+                    </div>
+                    <Link
+                      href={`/${lang}/portal/billing/invoices`}
+                      className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                    >
+                      {activeOrder.invoice.invoiceNumber} (
+                      {activeOrder.invoice.status})
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Provisioning Answers & Metadata */}
+              {(() => {
+                const meta = (activeOrder.metadata ?? {}) as Record<
+                  string,
+                  unknown
+                >
+                const answers = (meta.provisioningAnswers ??
+                  (typeof meta.device === "object" ? meta.device : null) ??
+                  {}) as Record<string, unknown>
+                const answerEntries = Object.entries(answers).filter(
+                  ([key, val]) =>
+                    key !== "_provisioningFields" &&
+                    (typeof val === "string" ||
+                      typeof val === "number" ||
+                      typeof val === "boolean")
+                )
+
+                if (answerEntries.length === 0) return null
+
+                return (
+                  <div className="rounded-lg border p-4">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase">
+                      Form & Provisioning Responses
+                    </div>
+                    <div className="mt-3 flex flex-col gap-2">
+                      {answerEntries.map(([key, val]) => (
+                        <div
+                          key={key}
+                          className="flex flex-col gap-0.5 rounded bg-muted/40 p-2 text-xs"
+                        >
+                          <span className="text-muted-foreground">
+                            {formatKey(key)}
+                          </span>
+                          <span className="font-mono font-medium">
+                            {typeof val === "boolean"
+                              ? val
+                                ? "Yes"
+                                : "No"
+                              : String(val)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Drawer Actions */}
+              <div className="flex flex-col gap-2 pt-2">
+                {activeOrder.status === "PENDING" && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setActionError(null)
+                      setActionReason("")
+                      setConfirmCancelOrder(activeOrder)
+                    }}
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    Cancel Order
+                  </Button>
+                )}
+                {activeOrder.status === "CHARGED" &&
+                  !activeOrder.fulfilledAt && (
+                    <Button
+                      onClick={() => {
+                        setActionError(null)
+                        setConfirmFulfillOrder(activeOrder)
+                      }}
+                    >
+                      <PlayCircle className="mr-2 h-4 w-4" />
+                      Fulfill / Provision Order
+                    </Button>
+                  )}
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Cancel Order Confirmation Dialog */}
+      <Dialog
+        open={Boolean(confirmCancelOrder)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmCancelOrder(null)
+            setActionError(null)
+          }
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Order Form Responses</DialogTitle>
+            <DialogTitle>Cancel Order</DialogTitle>
             <DialogDescription>
-              Submitted configuration and provisioning parameters for Order{" "}
+              Are you sure you want to cancel Order{" "}
               <span className="font-mono font-medium text-foreground">
-                {selectedOrderResponses?.id}
+                {confirmCancelOrder?.id}
               </span>
-              .
+              ? Any unpaid invoice associated with this order will be voided.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            {(() => {
-              if (!selectedOrderResponses) return null
-              const meta = (selectedOrderResponses.metadata ?? {}) as Record<
-                string,
-                unknown
-              >
-              const answers = (meta.provisioningAnswers ??
-                (typeof meta.device === "object" ? meta.device : null) ??
-                {}) as Record<string, unknown>
-
-              const entries = Object.entries(answers).filter(
-                ([key, val]) =>
-                  key !== "_provisioningFields" &&
-                  val !== null &&
-                  val !== undefined &&
-                  typeof val !== "object"
-              )
-
-              if (entries.length === 0) {
-                return (
-                  <p className="text-center text-xs text-muted-foreground">
-                    No custom form field responses recorded.
-                  </p>
-                )
-              }
-
-              return (
-                <div className="grid gap-2.5">
-                  {entries.map(([key, val]) => (
-                    <div
-                      key={key}
-                      className="flex flex-col justify-between rounded-md border bg-muted/20 p-2.5 text-xs"
-                    >
-                      <span className="font-medium text-muted-foreground">
-                        {formatKey(key)}
-                      </span>
-                      <span className="mt-1 font-mono font-semibold text-foreground">
-                        {String(val)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )
-            })()}
+          <div className="py-2">
+            <Label htmlFor="cancel-reason" className="text-xs">
+              Cancellation Reason (optional)
+            </Label>
+            <Input
+              id="cancel-reason"
+              placeholder="Reason for cancellation"
+              value={actionReason}
+              onChange={(e) => setActionReason(e.target.value)}
+              className="mt-1.5"
+            />
+            {actionError && (
+              <p className="mt-2 text-xs text-destructive">{actionError}</p>
+            )}
           </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmCancelOrder(null)}
+              disabled={actionLoading}
+            >
+              Keep Order
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelOrder}
+              disabled={actionLoading}
+            >
+              {actionLoading ? "Cancelling..." : "Confirm Cancel"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fulfill Order Confirmation Dialog */}
+      <Dialog
+        open={Boolean(confirmFulfillOrder)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmFulfillOrder(null)
+            setActionError(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Fulfill Order</DialogTitle>
+            <DialogDescription>
+              Manually trigger provisioning for Order{" "}
+              <span className="font-mono font-medium text-foreground">
+                {confirmFulfillOrder?.id}
+              </span>
+              . This will create or renew the associated subscription and
+              trigger deployment.
+            </DialogDescription>
+          </DialogHeader>
+          {actionError && (
+            <p className="text-xs text-destructive">{actionError}</p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmFulfillOrder(null)}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleFulfillOrder} disabled={actionLoading}>
+              {actionLoading ? "Provisioning..." : "Confirm Fulfill"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </main>

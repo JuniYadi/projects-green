@@ -4,6 +4,9 @@ import type { PrismaClient } from "@prisma/client"
 import type { BillingFulfillmentInput } from "./fulfillment-adapters"
 import { RecurringPriceResolutionError } from "../pricing/pricing.types"
 
+const mockBillingInvoiceFindUnique = mock()
+const mockBillingInvoiceUpdateMany = mock()
+
 const mockPrisma = {
   $transaction: mock(),
   $executeRaw: mock(),
@@ -24,7 +27,10 @@ const mockPrisma = {
     update: mock(),
   },
   whatsappDevice: { count: mock() },
-  billingInvoice: { findUnique: mock() },
+  billingInvoice: {
+    findUnique: mockBillingInvoiceFindUnique,
+    updateMany: mockBillingInvoiceUpdateMany,
+  },
   voucher: {
     findUnique: mock<() => Promise<unknown>>(async () => null),
     update: mock(),
@@ -172,7 +178,9 @@ beforeEach(() => {
   for (const model of Object.values(mockPrisma)) {
     if (typeof model === "function") model.mockReset()
     else if (model && typeof model === "object") {
-      for (const fn of Object.values(model)) fn.mockReset()
+      for (const fn of Object.values(model)) {
+        if (typeof fn === "function") fn.mockReset()
+      }
     }
   }
   adapter.create.mockReset()
@@ -187,8 +195,19 @@ beforeEach(() => {
   mockPrisma.$executeRaw.mockResolvedValue(0)
   mockResolveRecurringPrice.mockResolvedValue(pricing)
   mockPrisma.$transaction.mockImplementation(
-    async (fn: (tx: unknown) => unknown) => fn(mockPrisma)
+    async (fn: (tx: unknown) => unknown) =>
+      fn({
+        ...mockPrisma,
+        billingInvoice: {
+          findUnique: mockBillingInvoiceFindUnique,
+          updateMany: mockBillingInvoiceUpdateMany,
+        },
+      })
   )
+  mockBillingInvoiceFindUnique.mockReset()
+  mockBillingInvoiceUpdateMany.mockReset()
+  mockBillingInvoiceFindUnique.mockResolvedValue(null)
+  mockBillingInvoiceUpdateMany.mockResolvedValue({ count: 0 })
   mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
   mockPrisma.billingOrder.findUnique.mockResolvedValue(null)
   mockPrisma.billingOrder.create.mockImplementation(
@@ -458,6 +477,7 @@ describe("BillingOrderService", () => {
     )
     mockPrisma.billingInvoice = {
       findUnique: mock(async () => ({ invoiceNumber: "INV-20260819-0001" })),
+      updateMany: mockBillingInvoiceUpdateMany,
     }
     mockPrisma.billingAccount.findUnique.mockResolvedValue({
       ...account,
@@ -500,6 +520,7 @@ describe("BillingOrderService", () => {
     )
     mockPrisma.billingInvoice = {
       findUnique: mock(async () => ({ invoiceNumber: "INV-20260819-0001" })),
+      updateMany: mockBillingInvoiceUpdateMany,
     }
     mockPrisma.billingAccount.findUnique.mockResolvedValue({
       ...account,
@@ -1274,5 +1295,72 @@ describe("BillingOrderService", () => {
     await service.renewServiceSubscription("subscription-1", newerPeriodStart)
 
     expect(mockPrisma.serviceSubscription.update).not.toHaveBeenCalled()
+  })
+
+  it("cancels a pending order and voids unpaid invoices", async () => {
+    const pendingOrder = orderFixture({
+      status: "PENDING",
+      billingInvoiceId: "inv-pending-1",
+    })
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(pendingOrder)
+    mockBillingInvoiceUpdateMany.mockResolvedValue({ count: 1 })
+    mockPrisma.billingOrder.update.mockResolvedValue({
+      ...pendingOrder,
+      status: "CANCELLED",
+    })
+
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+
+    const result = await service.cancelOrder(
+      "order-1",
+      "Customer requested cancellation"
+    )
+    expect(result.status).toBe("CANCELLED")
+    expect(mockBillingInvoiceUpdateMany).toHaveBeenCalledWith({
+      where: {
+        id: "inv-pending-1",
+        status: { in: ["DRAFT", "ISSUED", "OVERDUE"] },
+      },
+      data: { status: "VOID" },
+    })
+    expect(mockPrisma.billingOrder.update).toHaveBeenCalled()
+  })
+
+  it("returns immediately when cancelling an already cancelled order", async () => {
+    const cancelledOrder = orderFixture({
+      status: "CANCELLED",
+    })
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(cancelledOrder)
+
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+
+    const result = await service.cancelOrder("order-1")
+    expect(result.status).toBe("CANCELLED")
+    expect(mockPrisma.billingOrder.update).not.toHaveBeenCalled()
+  })
+
+  it("throws error when trying to cancel a charged or fulfilled order", async () => {
+    const fulfilledOrder = orderFixture({
+      status: "FULFILLED",
+    })
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(fulfilledOrder)
+
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+
+    await expect(service.cancelOrder("order-1")).rejects.toThrow(
+      "ORDER_CANNOT_BE_CANCELLED"
+    )
   })
 })

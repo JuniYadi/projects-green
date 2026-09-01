@@ -1023,6 +1023,24 @@ export async function getAdminOrders(params?: {
   const suffix = query.toString() ? `?${query.toString()}` : ""
   return fetchBilling<AdminOrdersResponse>(`/api/billing/admin/orders${suffix}`)
 }
+
+export async function cancelAdminOrder(
+  orderId: string,
+  reason?: string
+): Promise<{ ok: true; data: unknown }> {
+  return fetchBilling(`/api/billing/admin/orders/${orderId}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  })
+}
+
+export async function fulfillAdminOrder(
+  orderId: string
+): Promise<{ ok: true; data: unknown }> {
+  return fetchBilling(`/api/billing/admin/orders/${orderId}/fulfill`, {
+    method: "POST",
+  })
+}
 // ─── Customer Catalog ──────────────────────────────────────────────────
 
 export type CatalogOffer = {
