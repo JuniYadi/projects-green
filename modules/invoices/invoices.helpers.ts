@@ -98,10 +98,17 @@ export const formatInvoiceCurrency = (
   currency = "USD",
   locale = DEFAULT_LOCALE
 ) => {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(amount)
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+    }).format(amount)
+  } catch {
+    return new Intl.NumberFormat(DEFAULT_LOCALE, {
+      style: "currency",
+      currency: "USD",
+    }).format(amount)
+  }
 }
 
 export const formatInvoiceDate = (
@@ -135,23 +142,37 @@ export const formatInvoiceDate = (
  */
 export const getNextRenewalDate = (periodEnd: string | null): string | null => {
   if (!periodEnd) return null
+
   const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/
-  let year: number
-  let month: number
-  let day: number
+  let date: Date
 
   if (dateOnlyPattern.test(periodEnd)) {
-    const parts = periodEnd.split("-").map(Number)
-    year = parts[0]
-    month = parts[1] - 1
-    day = parts[2]
+    const [year, month, day] = periodEnd.split("-").map(Number)
+    date = new Date(Date.UTC(year, month - 1, day))
+
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return null
+    }
   } else {
-    const parsed = new Date(periodEnd)
-    year = parsed.getUTCFullYear()
-    month = parsed.getUTCMonth()
-    day = parsed.getUTCDate()
+    date = new Date(periodEnd)
   }
 
-  const nextRenewalUtc = new Date(Date.UTC(year, month, day + 1, 0, 0, 0, 0))
+  if (Number.isNaN(date.getTime())) return null
+
+  const nextRenewalUtc = new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() + 1,
+      0,
+      0,
+      0,
+      0
+    )
+  )
   return nextRenewalUtc.toISOString()
 }

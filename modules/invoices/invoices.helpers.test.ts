@@ -34,6 +34,9 @@ describe("invoice helpers", () => {
     )
     expect(formatInvoiceDate(null, "en-US")).toBe("-")
   })
+  it("falls back to USD for an invalid currency code", () => {
+    expect(formatInvoiceCurrency(149.5, "not-a-currency")).toBe("$149.50")
+  })
   it("returns a fallback label, tone, and warning for unknown status", () => {
     const originalWarn = console.warn
     const calls: unknown[][] = []
@@ -70,5 +73,8 @@ describe("invoice helpers", () => {
       "2026-10-01T00:00:00.000Z"
     )
     expect(getNextRenewalDate("2026-09-30")).toBe("2026-10-01T00:00:00.000Z")
+  })
+  it("returns null for an invalid periodEnd date", () => {
+    expect(getNextRenewalDate("not-a-date")).toBeNull()
   })
 })

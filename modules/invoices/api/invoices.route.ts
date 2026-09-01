@@ -39,6 +39,8 @@ import { buildInvoicePdfBytes } from "@/modules/invoices/invoice-pdf"
 import { BankAccountService } from "@/modules/payment/services/bank-account.service"
 import { prisma } from "@/lib/prisma"
 import { getTenantOrganizationById } from "@/modules/tenants/services/tenant-workos.service"
+import type { TenantOrganizationSummary } from "@/modules/tenants/contracts/tenant-api.contract"
+
 const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   status: z
@@ -393,7 +395,17 @@ export const createInvoicesRoutes = (
             )
           : null
 
-        const org = orgId ? await getTenantOrganizationById(orgId) : null
+        let org: TenantOrganizationSummary | null = null
+        if (orgId) {
+          try {
+            org = await getTenantOrganizationById(orgId)
+          } catch (error) {
+            console.warn(
+              "[invoices] Failed to resolve organization for invoice PDF:",
+              error instanceof Error ? error.message : error
+            )
+          }
+        }
         let bankAccounts: Array<{
           bankName: string
           bankCode: string

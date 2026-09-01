@@ -18,6 +18,13 @@ mock.module("@/modules/payment/services/bank-account.service", () => ({
     this.getActiveAccounts = mockGetActiveAccounts
   }),
 }))
+const mockGetTenantOrganizationById = mock(async () => ({
+  name: "Acme Inc",
+  metadata: {},
+}))
+mock.module("@/modules/tenants/services/tenant-workos.service", () => ({
+  getTenantOrganizationById: mockGetTenantOrganizationById,
+}))
 
 import { createInvoicesRoutes } from "@/modules/invoices/api/invoices.route"
 import type { InvoiceEmailService } from "@/modules/invoices/email.service"
@@ -268,6 +275,20 @@ describe("invoices routes", () => {
     expect(response.headers.get("content-type")).toBe("application/pdf")
     const bytes = await response.arrayBuffer()
     expect(bytes.byteLength).toBeGreaterThan(200)
+  })
+  it("returns PDF without organization metadata when WorkOS lookup fails", async () => {
+    mockGetTenantOrganizationById.mockReset()
+    mockGetTenantOrganizationById.mockRejectedValueOnce(
+      new Error("WorkOS unavailable")
+    )
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/pdf")
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toBe("application/pdf")
   })
 
   it("returns 401 on pdf endpoint when unauthenticated", async () => {
