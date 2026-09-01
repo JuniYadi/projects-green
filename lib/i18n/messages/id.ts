@@ -1544,10 +1544,17 @@ export const idMessages: AppMessages = {
         searchMessagesPlaceholder: "Cari nomor HP, status, atau ID pesan...",
         searchActivityPlaceholder:
           "Cari aktivitas, status, pelaksana, atau nomor...",
-        colDeviceContact: "Perangkat / Kontak",
+        colDeviceContact: "Perangkat ➔ Kontak",
+        colDevice: "Perangkat Pengirim",
+        colRecipientContact: "Penerima / Kontak",
         colEventType: "Tipe Event",
-        colStatus: "Status",
+        colStatus: "Status Pengiriman",
+        colProcessingStatus: "Pemrosesan",
         colActor: "Pelaksana",
+        directionTo: "Ke",
+        directionFrom: "Dari",
+        senderDevice: "Perangkat (Pengirim)",
+        recipientContact: "Kontak (Pelanggan)",
         colTime: "Waktu",
         colDetails: "Rincian",
         colWaMessageId: "ID Pesan (WA ID)",
@@ -1575,6 +1582,8 @@ export const idMessages: AppMessages = {
           sectionTech: "Informasi Teknis Operasional",
           device: "Perangkat",
           recipientPhone: "Nomor Tujuan Pelanggan",
+          directionTo: "Ke",
+          directionFrom: "Dari",
           eventType: "Tipe Event",
           time: "Waktu",
           receivedAt: "Waktu Diterima",
@@ -1588,12 +1597,21 @@ export const idMessages: AppMessages = {
           statusReceived: "Diterima",
           statusFailed: "Gagal",
           statusPending: "Tertunda",
+          statusSent: "Terkirim",
+          statusDelivered: "Sampai",
+          statusRead: "Dibaca",
           statusDescSuccessWebhook:
             "Pesan / callback berhasil dikirim dan diproses oleh Meta API.",
           statusDescFailedWebhook:
             "Pengiriman atau pemrosesan webhook gagal pada event ini.",
           statusDescReceivedWebhook:
-            "Event webhook pesan masuk diterima dari Meta API.",
+            "Pesan masuk dari pelanggan diterima melalui WhatsApp.",
+          statusDescSentWebhook:
+            "Pesan telah diterima dan dikirimkan oleh server WhatsApp.",
+          statusDescDeliveredWebhook:
+            "Pesan telah sampai di perangkat WhatsApp pelanggan.",
+          statusDescReadWebhook:
+            "Pesan telah dibuka dan dibaca oleh pelanggan.",
           statusDescSuccessAudit: "Aktivitas organisasi berhasil dieksekusi.",
           statusDescFailedAudit: "Aktivitas mengalami kendala saat dieksekusi.",
           copyIdSuccess: "ID Pesan berhasil disalin ke clipboard",

@@ -13,13 +13,13 @@ export type WhatsappWebhookEventDTO = {
   waMessageId: string | null
   phoneNumber?: string | null
   deliveryStatus?: string | null
+  messageBody?: string | null
   deviceLabel?: string | null
   errorMessage: string | null
   processedAt: Date | null
   createdAt: Date
   metaPayload?: Record<string, unknown> | null
 }
-
 /**
  * Webhook event detail DTO — includes metaPayload for single-event views.
  */
@@ -32,9 +32,15 @@ export function extractEventMetadata(
   waMessageId: string | null
   phoneNumber: string | null
   deliveryStatus: string | null
+  messageBody?: string | null
 } {
   if (!payload || typeof payload !== "object") {
-    return { waMessageId: null, phoneNumber: null, deliveryStatus: null }
+    return {
+      waMessageId: null,
+      phoneNumber: null,
+      deliveryStatus: null,
+      messageBody: null,
+    }
   }
 
   let p = payload as Record<string, unknown>
@@ -76,21 +82,35 @@ export function extractEventMetadata(
       waMessageId: id,
       phoneNumber: recipientId,
       deliveryStatus: statusStr,
+      messageBody: null,
     }
   }
 
-  // Case 2: Inbound message payload directly (e.g. { id, from, type })
+  // Case 2: Inbound message payload directly (e.g. { id, from, type, text })
   if (eventType === "inbound_message") {
     const from = typeof p.from === "string" ? p.from : null
     const id = typeof p.id === "string" ? p.id : null
+    const textObj = p.text as { body?: string } | undefined
+    const body =
+      typeof textObj?.body === "string"
+        ? textObj.body
+        : typeof p.body === "string"
+          ? p.body
+          : null
     return {
       waMessageId: id,
       phoneNumber: from,
       deliveryStatus: "RECEIVED",
+      messageBody: body,
     }
   }
 
-  return { waMessageId: null, phoneNumber: null, deliveryStatus: null }
+  return {
+    waMessageId: null,
+    phoneNumber: null,
+    deliveryStatus: null,
+    messageBody: null,
+  }
 }
 
 type WhatsappWebhookEventWithDevice =
@@ -116,8 +136,9 @@ export function toWebhookEventDTO(
     waMessageId: event.waMessageId ?? extracted.waMessageId,
     phoneNumber: extracted.phoneNumber,
     deliveryStatus: extracted.deliveryStatus ?? event.processingStatus,
+    messageBody: extracted.messageBody ?? null,
     deviceLabel,
-    errorMessage: event.errorMessage,
+    errorMessage: event.errorMessage ?? null,
     processedAt: event.processedAt,
     createdAt: event.createdAt,
     metaPayload:

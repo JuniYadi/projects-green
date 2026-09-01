@@ -26,42 +26,86 @@ export type WebhookEventRecord = {
   waMessageId?: string | null
   eventType: string
   processingStatus: string
+  deliveryStatus?: string | null
+  messageBody?: string | null
   createdAt: string | Date
   metaPayload?: Record<string, unknown> | null
 }
 
 const DEFAULT_COLUMNS: Record<string, boolean> = {
-  devicePhone: true,
+  deviceContact: true,
   eventType: true,
-  processingStatus: true,
+  deliveryStatus: true,
   createdAt: true,
   actions: true,
+  processingStatus: false,
   waMessageId: false,
   deviceId: false,
   id: false,
 }
 
-function getEventStatusBadge(status: string) {
-  const upper = status.toUpperCase()
-  if (upper === "SUCCESS" || upper === "DELIVERED" || upper === "READ") {
-    return <Badge variant="default">{status}</Badge>
-  }
-  if (upper === "RECEIVED") {
+function getDeliveryStatusBadge(
+  deliveryStatus: string | null | undefined,
+  processingStatus: string
+) {
+  const status = (deliveryStatus || processingStatus || "").toUpperCase()
+  if (status === "READ") {
     return (
       <Badge
-        variant="outline"
-        className="border-blue-500 text-blue-600 dark:text-blue-400"
+        variant="default"
+        className="border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
       >
-        {status}
+        READ
       </Badge>
     )
   }
-  if (upper === "FAILED") {
-    return <Badge variant="destructive">{status}</Badge>
+  if (status === "DELIVERED") {
+    return (
+      <Badge
+        variant="default"
+        className="border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300"
+      >
+        DELIVERED
+      </Badge>
+    )
   }
-  return <Badge variant="secondary">{status}</Badge>
+  if (status === "SENT") {
+    return (
+      <Badge
+        variant="secondary"
+        className="border-purple-500/30 bg-purple-500/15 text-purple-700 dark:text-purple-300"
+      >
+        SENT
+      </Badge>
+    )
+  }
+  if (status === "RECEIVED") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+      >
+        RECEIVED
+      </Badge>
+    )
+  }
+  if (status === "FAILED") {
+    return <Badge variant="destructive">FAILED</Badge>
+  }
+  return <Badge variant="secondary">{status || "PENDING"}</Badge>
 }
 
+function formatPhoneIndonesian(phone: string | null | undefined): string {
+  if (!phone) return "—"
+  const clean = phone.replace(/\D/g, "")
+  if (clean.startsWith("62") && clean.length >= 10) {
+    return `+62 ${clean.slice(2, 5)}-${clean.slice(5, 9)}-${clean.slice(9)}`
+  }
+  if (clean.startsWith("08") && clean.length >= 10) {
+    return `${clean.slice(0, 4)}-${clean.slice(4, 8)}-${clean.slice(8)}`
+  }
+  return phone
+}
 export function WebhookLogsTabContent({
   messages,
 }: {
@@ -126,40 +170,83 @@ export function WebhookLogsTabContent({
   const columns = React.useMemo<ColumnDef<WebhookEventRecord>[]>(
     () => [
       {
-        id: "devicePhone",
+        id: "deviceContact",
+        accessorFn: (row) =>
+          `${row.deviceLabel || row.deviceId || ""} ${row.phoneNumber || ""}`,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t.colDeviceContact} />
         ),
-        cell: ({ row }) => (
-          <div className="flex flex-col">
-            <span className="font-mono text-xs font-medium text-foreground">
-              {row.original.deviceLabel || row.original.deviceId || "—"}
-            </span>
-            {row.original.phoneNumber && (
-              <span className="font-mono text-[11px] text-muted-foreground">
-                {row.original.phoneNumber}
-              </span>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const isInbound = row.original.eventType === "inbound_message"
+          const deviceDisplay =
+            row.original.deviceLabel || row.original.deviceId || "—"
+          const contactPhone = row.original.phoneNumber
+
+          return (
+            <div className="flex flex-col gap-1 py-0.5">
+              <div className="flex items-center gap-1.5 font-mono text-xs font-semibold text-foreground">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase">
+                  {t.directionFrom}:
+                </span>
+                <span>
+                  {isInbound
+                    ? formatPhoneIndonesian(contactPhone)
+                    : formatPhoneIndonesian(deviceDisplay)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                <span className="text-[10px] font-medium text-primary uppercase">
+                  {t.directionTo}:
+                </span>
+                <span className="font-medium text-foreground/90">
+                  {isInbound
+                    ? formatPhoneIndonesian(deviceDisplay)
+                    : formatPhoneIndonesian(contactPhone)}
+                </span>
+              </div>
+            </div>
+          )
+        },
       },
       {
         accessorKey: "eventType",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t.colEventType} />
         ),
-        cell: ({ row }) => (
-          <Badge variant="outline" className="text-xs capitalize">
-            {row.original.eventType.replace(/_/g, " ")}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const snippet = row.original.messageBody
+
+          return (
+            <div className="flex max-w-[220px] flex-col gap-1">
+              <Badge
+                variant="outline"
+                className="w-fit text-xs font-medium capitalize"
+              >
+                {row.original.eventType.replace(/_/g, " ")}
+              </Badge>
+              {snippet && (
+                <span
+                  className="truncate font-sans text-xs text-muted-foreground italic"
+                  title={snippet}
+                >
+                  &ldquo;{snippet}&rdquo;
+                </span>
+              )}
+            </div>
+          )
+        },
       },
       {
-        accessorKey: "processingStatus",
+        id: "deliveryStatus",
+        accessorFn: (row) => row.deliveryStatus || row.processingStatus,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t.colStatus} />
         ),
-        cell: ({ row }) => getEventStatusBadge(row.original.processingStatus),
+        cell: ({ row }) =>
+          getDeliveryStatusBadge(
+            row.original.deliveryStatus,
+            row.original.processingStatus
+          ),
       },
       {
         accessorKey: "createdAt",
@@ -184,6 +271,20 @@ export function WebhookLogsTabContent({
           >
             {t.colDetails} →
           </Button>
+        ),
+      },
+      {
+        accessorKey: "processingStatus",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={t.colProcessingStatus}
+          />
+        ),
+        cell: ({ row }) => (
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {row.original.processingStatus}
+          </span>
         ),
       },
       {
@@ -252,6 +353,7 @@ export function WebhookLogsTabContent({
               searchableColumns={[
                 "phoneNumber",
                 "eventType",
+                "deliveryStatus",
                 "processingStatus",
                 "waMessageId",
               ]}

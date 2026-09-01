@@ -45,12 +45,18 @@ export function WebhookEventDetailSheet({
 
   if (!event) return null
 
-  const isFailed = event.processingStatus?.toUpperCase() === "FAILED"
-  const isSuccess =
-    event.processingStatus?.toUpperCase() === "SUCCESS" ||
-    event.processingStatus?.toUpperCase() === "DELIVERED" ||
-    event.processingStatus?.toUpperCase() === "READ"
-  const isReceived = event.processingStatus?.toUpperCase() === "RECEIVED"
+  const deliveryStatus = (
+    event.deliveryStatus ||
+    event.processingStatus ||
+    ""
+  ).toUpperCase()
+
+  const isFailed = deliveryStatus === "FAILED"
+  const isRead = deliveryStatus === "READ"
+  const isDelivered = deliveryStatus === "DELIVERED"
+  const isSent = deliveryStatus === "SENT"
+  const isReceived =
+    deliveryStatus === "RECEIVED" || event.eventType === "inbound_message"
 
   const handleCopyId = async (text: string) => {
     try {
@@ -115,17 +121,29 @@ export function WebhookEventDetailSheet({
             </SheetTitle>
             <Badge
               variant={
-                isSuccess ? "default" : isFailed ? "destructive" : "secondary"
+                isRead || isDelivered
+                  ? "default"
+                  : isSent
+                    ? "secondary"
+                    : isReceived
+                      ? "outline"
+                      : isFailed
+                        ? "destructive"
+                        : "secondary"
               }
               className="px-2.5 py-0.5 text-xs font-semibold tracking-wide uppercase"
             >
-              {isSuccess
-                ? t.statusSuccess
-                : isFailed
-                  ? t.statusFailed
-                  : isReceived
-                    ? t.statusReceived
-                    : event.processingStatus}
+              {isRead
+                ? t.statusRead
+                : isDelivered
+                  ? t.statusDelivered
+                  : isSent
+                    ? t.statusSent
+                    : isReceived
+                      ? t.statusReceived
+                      : isFailed
+                        ? t.statusFailed
+                        : deliveryStatus || event.processingStatus}
             </Badge>
           </div>
           <SheetDescription className="pt-1 font-mono text-xs text-muted-foreground">
@@ -139,39 +157,53 @@ export function WebhookEventDetailSheet({
             className={`flex items-start gap-3 rounded-xl border p-4 ${
               isFailed
                 ? "border-destructive/30 bg-destructive/5 text-destructive"
-                : isSuccess
+                : isRead || isDelivered
                   ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
-                  : "border-blue-500/30 bg-blue-500/5 text-blue-700 dark:text-blue-400"
+                  : isReceived
+                    ? "border-sky-500/30 bg-sky-500/5 text-sky-700 dark:text-sky-400"
+                    : "border-purple-500/30 bg-purple-500/5 text-purple-700 dark:text-purple-400"
             }`}
           >
             {isFailed ? (
               <WarningCircle className="mt-0.5 size-5 shrink-0" />
-            ) : isSuccess ? (
+            ) : isRead || isDelivered ? (
               <CheckCircle className="mt-0.5 size-5 shrink-0" />
-            ) : (
+            ) : isReceived ? (
               <ArrowDownLeft className="mt-0.5 size-5 shrink-0" />
+            ) : (
+              <Check className="mt-0.5 size-5 shrink-0" />
             )}
             <div className="flex-1 space-y-1">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold">
-                  {isSuccess
-                    ? t.statusSuccess
-                    : isFailed
-                      ? t.statusFailed
-                      : isReceived
-                        ? t.statusReceived
-                        : t.statusPending}
+                  {isRead
+                    ? t.statusRead
+                    : isDelivered
+                      ? t.statusDelivered
+                      : isSent
+                        ? t.statusSent
+                        : isReceived
+                          ? t.statusReceived
+                          : isFailed
+                            ? t.statusFailed
+                            : t.statusPending}
                 </span>
                 <span className="font-mono text-xs opacity-80">
                   {new Date(event.createdAt).toLocaleTimeString(locale)}
                 </span>
               </div>
               <p className="text-xs leading-relaxed opacity-90">
-                {isSuccess
-                  ? t.statusDescSuccessWebhook
-                  : isFailed
-                    ? t.statusDescFailedWebhook
-                    : t.statusDescReceivedWebhook}
+                {isRead
+                  ? t.statusDescReadWebhook
+                  : isDelivered
+                    ? t.statusDescDeliveredWebhook
+                    : isSent
+                      ? t.statusDescSentWebhook
+                      : isReceived
+                        ? t.statusDescReceivedWebhook
+                        : isFailed
+                          ? t.statusDescFailedWebhook
+                          : t.statusDescSuccessWebhook}
               </p>
             </div>
           </div>
@@ -185,7 +217,11 @@ export function WebhookEventDetailSheet({
               <div className="space-y-1 pb-3">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <DeviceMobile className="size-4" />
-                  <span>{t.device}</span>
+                  <span>
+                    {isReceived
+                      ? t.directionTo + " (" + t.device + ")"
+                      : t.directionFrom + " (" + t.device + ")"}
+                  </span>
                 </div>
                 <p className="font-mono text-sm font-semibold text-foreground">
                   {event.deviceLabel || event.deviceId || "—"}
@@ -196,7 +232,11 @@ export function WebhookEventDetailSheet({
                 <div className="space-y-1 pt-3">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <ChatCircleText className="size-4" />
-                    <span>{t.recipientPhone}</span>
+                    <span>
+                      {isReceived
+                        ? t.directionFrom + " (" + t.recipientPhone + ")"
+                        : t.directionTo + " (" + t.recipientPhone + ")"}
+                    </span>
                   </div>
                   <p className="font-mono text-sm font-semibold text-foreground">
                     {recipientPhone}
@@ -235,8 +275,6 @@ export function WebhookEventDetailSheet({
               </div>
             </div>
           </div>
-
-          {/* Section 3: WhatsApp Message ID */}
           {waMessageId && (
             <div className="space-y-3">
               <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">

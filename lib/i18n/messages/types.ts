@@ -1433,9 +1433,16 @@ export type AppMessages = {
         searchMessagesPlaceholder: string
         searchActivityPlaceholder: string
         colDeviceContact: string
+        colDevice: string
+        colRecipientContact: string
         colEventType: string
         colStatus: string
+        colProcessingStatus: string
         colActor: string
+        directionTo: string
+        directionFrom: string
+        senderDevice: string
+        recipientContact: string
         colTime: string
         colDetails: string
         colWaMessageId: string
@@ -1463,6 +1470,8 @@ export type AppMessages = {
           sectionTech: string
           device: string
           recipientPhone: string
+          directionTo: string
+          directionFrom: string
           eventType: string
           time: string
           receivedAt: string
@@ -1476,9 +1485,15 @@ export type AppMessages = {
           statusReceived: string
           statusFailed: string
           statusPending: string
+          statusSent: string
+          statusDelivered: string
+          statusRead: string
           statusDescSuccessWebhook: string
           statusDescFailedWebhook: string
           statusDescReceivedWebhook: string
+          statusDescSentWebhook: string
+          statusDescDeliveredWebhook: string
+          statusDescReadWebhook: string
           statusDescSuccessAudit: string
           statusDescFailedAudit: string
           copyIdSuccess: string
