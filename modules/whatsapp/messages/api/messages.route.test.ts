@@ -2043,6 +2043,9 @@ describe("messagesRoutes", () => {
           waMessageId: "wamid:inbound:123",
           organizationId: "org-1",
         },
+        include: {
+          whatsappDevice: true,
+        },
         orderBy: { createdAt: "asc" },
       })
     })
