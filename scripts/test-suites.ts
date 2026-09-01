@@ -75,6 +75,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "modules/vouchers/",
       "modules/vpn/",
       "scripts/billing-cron.ts",
+      "scripts/copy-standard-fonts.ts",
       "scripts/deploy-migrate.ts",
       "scripts/seed-billing.ts",
       "scripts/seed-vpn-server-coordinates.ts",

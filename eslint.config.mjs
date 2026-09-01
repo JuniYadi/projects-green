@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "graphify-out/**",
+    "standard-fonts/**",
     // Test files - lower strictness
     "test/**",
     "e2e/**",

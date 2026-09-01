@@ -35,7 +35,7 @@ import {
   type PlatformAccessRole,
 } from "@/lib/platform-role"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { buildInvoicePdfBytes } from "@/modules/invoices/invoice-pdf"
+
 import { BankAccountService } from "@/modules/payment/services/bank-account.service"
 import { prisma } from "@/lib/prisma"
 import { getTenantOrganizationById } from "@/modules/tenants/services/tenant-workos.service"
@@ -267,8 +267,7 @@ export const createInvoicesRoutes = (
             status: parsedQuery.data.status,
             sortBy: parsedQuery.data.sortBy as InvoiceListSortBy | undefined,
             sortDir: parsedQuery.data.sortDir as
-              | InvoiceSortDirection
-              | undefined,
+              InvoiceSortDirection | undefined,
           },
         })
 
@@ -419,7 +418,8 @@ export const createInvoicesRoutes = (
             // Non-blocking: PDF renders without payment details
           }
         }
-
+        const { buildInvoicePdfBytes } =
+          await import("@/modules/invoices/invoice-pdf")
         const buffer = await buildInvoicePdfBytes(
           invoice,
           org

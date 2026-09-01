@@ -1,13 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  serverExternalPackages: [
-    "pino",
-    "pino-pretty",
-    "ssh2",
-    "@react-pdf/renderer",
-    "pdfkit",
-  ],
+  serverExternalPackages: ["pino", "pino-pretty", "ssh2"],
   images: {
     unoptimized: true,
   },

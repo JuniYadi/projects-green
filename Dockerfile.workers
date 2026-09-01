@@ -15,6 +15,7 @@ COPY tsconfig.json ./
 COPY prisma ./prisma
 ENV DATABASE_URL=postgresql://localhost:5432/dummy
 RUN bun prisma generate
+RUN bun run scripts/copy-standard-fonts.ts
 
 # Bundle worker code with inlined JS dependencies (BullMQ, ioredis, AI SDK, etc.)
 # Keep only native/engine packages external (@prisma/client, @prisma/adapter-pg, pg)
@@ -55,8 +56,10 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 # Copy Prisma schema (needed for runtime introspection / migration status)
 COPY --from=builder /app/prisma ./prisma
 
-# Copy the bundled worker and native assets
+# Copy the bundled worker, fonts, and native assets
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/standard-fonts ./standard-fonts
 
 ENV NODE_ENV=production
 
