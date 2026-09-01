@@ -55,8 +55,10 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 # Copy Prisma schema (needed for runtime introspection / migration status)
 COPY --from=builder /app/prisma ./prisma
 
-# Copy the bundled worker and native assets
+# Copy the bundled worker, fonts, and native assets
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/standard-fonts ./standard-fonts
 
 ENV NODE_ENV=production
 

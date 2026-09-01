@@ -93,7 +93,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@react-email/components": "^1.0.12",
-    "@react-pdf/renderer": "^4.5.1",
+    "@react-pdf/renderer": "4.5.1",
     "@sinclair/typebox": "^0.34.49",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/react-form": "^1.32.0",

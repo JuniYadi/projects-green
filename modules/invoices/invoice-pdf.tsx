@@ -1,11 +1,40 @@
+import path from "node:path"
 import {
   Document,
+  Font,
   Page,
   Text,
   View,
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer"
+
+const regularFontPath = path.resolve(
+  process.cwd(),
+  "public/fonts/Roboto-Regular.ttf"
+)
+const boldFontPath = path.resolve(process.cwd(), "public/fonts/Roboto-Bold.ttf")
+
+Font.register({
+  family: "Roboto",
+  fonts: [
+    { src: regularFontPath, fontWeight: 400 },
+    { src: boldFontPath, fontWeight: 700 },
+  ],
+})
+
+Font.register({
+  family: "Helvetica",
+  fonts: [
+    { src: regularFontPath, fontWeight: 400 },
+    { src: boldFontPath, fontWeight: 700 },
+  ],
+})
+
+Font.register({
+  family: "Helvetica-Bold",
+  src: boldFontPath,
+})
 
 import { getEmailBaseUrl } from "@/lib/email-url"
 import {
