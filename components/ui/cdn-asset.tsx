@@ -92,8 +92,9 @@ export async function fetchPresignedUrl(rawUrl: string): Promise<string> {
     const { data, error } = await eden.api.storage.s3["view-url"].get({
       $query: { storageKey },
     })
-    if (error || !data || !("viewUrl" in data))
-      throw new Error("Presign failed")
+    if (error || !data || !("viewUrl" in data)) {
+      return rawUrl
+    }
     return data.viewUrl || rawUrl
   } catch {
     return rawUrl
@@ -260,7 +261,35 @@ export function CDNAsset({
     )
   }
 
-  // 5. Render Sticker & Image (Direct Preview)
+  // 5. Render Audio
+  if (resolvedType === "audio") {
+    return (
+      <div className={cn("py-1", className)} {...props}>
+        <audio
+          src={finalSrc || url}
+          controls
+          preload="metadata"
+          className="h-10 max-w-xs"
+        />
+      </div>
+    )
+  }
+
+  // 6. Render Video
+  if (resolvedType === "video") {
+    return (
+      <div className={cn("overflow-hidden rounded-md", className)} {...props}>
+        <video
+          src={finalSrc || url}
+          controls
+          preload="metadata"
+          className="max-h-60 max-w-full rounded-md"
+        />
+      </div>
+    )
+  }
+
+  // 7. Render Sticker & Image (Direct Preview)
   return (
     <div className={cn("overflow-hidden", className)} {...props}>
       {/* eslint-disable-next-line @next/next/no-img-element */}

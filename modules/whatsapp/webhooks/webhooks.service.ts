@@ -306,9 +306,33 @@ export function extractMessageBody(
     return payload.text.body
   }
 
+  if (msgType === "reaction") {
+    const reaction = (payload as Record<string, unknown>).reaction as
+      | { emoji?: string }
+      | undefined
+    if (reaction?.emoji) {
+      return reaction.emoji
+    }
+  }
+
   if (msgType === "location" && payload.location) {
     const loc = payload.location
     return `Location: ${loc.latitude},${loc.longitude}${loc.name ? ` (${loc.name})` : ""}`
+  }
+
+  if (msgType === "contacts") {
+    const contacts = (payload as Record<string, unknown>).contacts as
+      | Array<{
+          name?: { formatted_name?: string }
+          phones?: Array<{ phone?: string; wa_id?: string }>
+        }>
+      | undefined
+    if (Array.isArray(contacts) && contacts.length > 0) {
+      const first = contacts[0]
+      const name = first.name?.formatted_name ?? "Contact"
+      const phone = first.phones?.[0]?.phone ?? first.phones?.[0]?.wa_id ?? ""
+      return phone ? `${name} (${phone})` : name
+    }
   }
 
   if (msgType === "interactive" && typeof payload.interactive === "object") {
@@ -331,6 +355,34 @@ export function extractMessageBody(
   if (msgType === "button" && typeof payload.button === "object") {
     const button = payload.button as Record<string, unknown>
     return String(button.text ?? "")
+  }
+
+  if (
+    msgType === "image" &&
+    payload.image &&
+    typeof payload.image === "object"
+  ) {
+    const img = payload.image as { caption?: string }
+    if (img.caption) return img.caption
+  }
+
+  if (
+    msgType === "video" &&
+    payload.video &&
+    typeof payload.video === "object"
+  ) {
+    const vid = payload.video as { caption?: string }
+    if (vid.caption) return vid.caption
+  }
+
+  if (
+    msgType === "document" &&
+    payload.document &&
+    typeof payload.document === "object"
+  ) {
+    const doc = payload.document as { caption?: string; filename?: string }
+    if (doc.caption) return doc.caption
+    if (doc.filename) return doc.filename
   }
 
   if (msgType === "order" && typeof payload.order === "object") {
