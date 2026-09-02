@@ -155,9 +155,23 @@ const createWorkOSMock = mock(() => ({
 mock.module("@workos-inc/node", () => ({
   createWorkOS: createWorkOSMock,
 }))
-
-mock.module("@react-email/components", () => ({
+const passthrough = ({ children }: { children?: unknown }) => children
+mock.module("react-email", () => ({
   render: mock(async () => "<html />"),
+  Body: passthrough,
+  Button: passthrough,
+  Column: passthrough,
+  Container: passthrough,
+  Head: passthrough,
+  Heading: passthrough,
+  Hr: passthrough,
+  Html: passthrough,
+  Img: passthrough,
+  Link: passthrough,
+  Preview: passthrough,
+  Row: passthrough,
+  Section: passthrough,
+  Text: passthrough,
 }))
 
 mock.module("@/modules/whatsapp/emails/device-disconnected", () => ({

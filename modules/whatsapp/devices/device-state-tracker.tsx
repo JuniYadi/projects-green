@@ -1,4 +1,4 @@
-import { render } from "@react-email/components"
+import { render } from "react-email"
 import { redis } from "@/lib/redis"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/queue/email"

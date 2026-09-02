@@ -10,7 +10,7 @@
  * Device heartbeat: `lastHeartbeatAt` on `WhatsappDevice`.
  */
 
-import { render } from "@react-email/components"
+import { render } from "react-email"
 import { prisma } from "@/lib/prisma"
 import { BaseJob } from "@/lib/queue/base-job"
 import { sendEmail } from "@/lib/queue/email"

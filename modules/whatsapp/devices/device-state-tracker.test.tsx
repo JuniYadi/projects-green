@@ -50,7 +50,7 @@ mock.module("@/lib/workos-directory", () => ({
   })),
 }))
 
-mock.module("@react-email/components", () => ({
+mock.module("react-email", () => ({
   render: mock(async () => "<html>Mock Email</html>"),
   Body: ({ children }: { children: React.ReactNode }) => children,
   Container: ({ children }: { children: React.ReactNode }) => children,

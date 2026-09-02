@@ -9,7 +9,7 @@ import {
   Preview,
   Section,
   Text,
-} from "@react-email/components"
+} from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
 import type { SupportTicket } from "../support-ticket.types"
 import { SUPPORT_TICKET_DEPARTMENT_LABELS } from "../support-ticket.types"

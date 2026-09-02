@@ -1,5 +1,5 @@
 import React from "react"
-import { Hr, Section, Text } from "@react-email/components"
+import { Hr, Section, Text } from "react-email"
 import type { InvoiceEmailLineItem } from "./types"
 
 interface InvoiceSummaryProps {

@@ -1,4 +1,4 @@
-import { render } from "@react-email/components"
+import { render } from "react-email"
 
 import { createEmailLog } from "@/lib/email-log"
 import { sendEmail } from "@/lib/queue/email"
