@@ -41,7 +41,7 @@ const defaultDeps: AdminUsageRouteDeps = {
 
 const querySchema = z.object({
   days: z.coerce.number().min(1).max(365).default(30),
-  orgId: z.string().uuid().optional(),
+  orgId: z.string().trim().min(1).optional(),
 })
 
 const toUnauthorized = (set: RouteSet) => {

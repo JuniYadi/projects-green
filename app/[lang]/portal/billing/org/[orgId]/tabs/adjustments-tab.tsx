@@ -64,7 +64,7 @@ export function AdjustmentsTab({ orgId }: AdjustmentsTabProps) {
       <AdjustmentForm
         open={formOpen}
         onOpenChange={setFormOpen}
-        tenantId={orgId}
+        organizationId={orgId}
         onSuccess={handleRefresh}
       />
     </div>

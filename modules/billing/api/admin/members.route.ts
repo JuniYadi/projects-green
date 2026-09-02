@@ -120,7 +120,7 @@ export interface MemberBillingDetail extends MemberBillingSummary {
 }
 
 const listQuerySchema = z.object({
-  orgId: z.string().uuid().optional(),
+  orgId: z.string().trim().min(1).optional(),
 })
 
 export const createAdminMembersRoutes = (

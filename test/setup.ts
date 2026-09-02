@@ -4,6 +4,8 @@ import { afterEach, expect, mock } from "bun:test"
 import { cleanup, configure } from "@testing-library/react"
 import * as matchers from "@testing-library/jest-dom/matchers"
 
+mock.module("server-only", () => ({}))
+
 // Prevent ioredis from attempting real connections during tests
 mock.module("ioredis", () => ({
   default: class MockRedis {
