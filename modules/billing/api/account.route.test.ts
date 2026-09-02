@@ -491,9 +491,9 @@ describe("billingSchemas", () => {
   })
 
   describe("adminAdjustSchema", () => {
-    it("validates correct CREDIT input", async () => {
+    it("validates correct CREDIT input with WorkOS organizationId", async () => {
       const validInput = {
-        organizationId: "550e8400-e29b-41d4-a716-446655440000",
+        organizationId: "org_01M0M7SZR23ST4N33CHGKBTSXT",
         type: "CREDIT",
         amount: 5000,
         reason: "Refund for downtime",
@@ -503,7 +503,7 @@ describe("billingSchemas", () => {
       expect(result.success).toBe(true)
     })
 
-    it("validates correct DEBIT input", async () => {
+    it("validates correct DEBIT input with UUID organizationId", async () => {
       const validInput = {
         organizationId: "550e8400-e29b-41d4-a716-446655440000",
         type: "DEBIT",
@@ -515,9 +515,9 @@ describe("billingSchemas", () => {
       expect(result.success).toBe(true)
     })
 
-    it("rejects invalid organizationId UUID", async () => {
+    it("rejects empty organizationId", async () => {
       const invalidInput = {
-        organizationId: "not-a-uuid",
+        organizationId: "   ",
         type: "CREDIT",
         amount: 5000,
         reason: "Test",
@@ -526,7 +526,6 @@ describe("billingSchemas", () => {
       const result = adminAdjustSchema.safeParse(invalidInput)
       expect(result.success).toBe(false)
     })
-
     it("rejects invalid type", async () => {
       const invalidInput = {
         organizationId: "550e8400-e29b-41d4-a716-446655440000",

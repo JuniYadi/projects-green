@@ -74,7 +74,7 @@ describe("AdminBillingContactsRoute", () => {
       expect(body.error).toBe("FORBIDDEN")
     })
 
-    it("returns 422 when orgId is not a valid UUID", async () => {
+    it("returns 422 when orgId is empty", async () => {
       const app = new Elysia()
         .use(
           createAdminBillingContactsRoutes({
@@ -85,7 +85,7 @@ describe("AdminBillingContactsRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/billing/orgs/invalid-uuid/contacts")
+        new Request("http://localhost/admin/billing/orgs/%20/contacts")
       )
 
       expect(response.status).toBe(422)

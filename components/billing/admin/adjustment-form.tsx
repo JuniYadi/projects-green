@@ -27,7 +27,8 @@ import { toast } from "sonner"
 type AdjustmentFormProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  tenantId: string
+  organizationId?: string
+  tenantId?: string
   onSuccess?: () => void
 }
 
@@ -36,6 +37,7 @@ type AdjustmentType = "CREDIT" | "DEBIT"
 export function AdjustmentForm({
   open,
   onOpenChange,
+  organizationId,
   tenantId,
   onSuccess,
 }: AdjustmentFormProps) {
@@ -91,8 +93,9 @@ export function AdjustmentForm({
     setServerError(null)
 
     try {
+      const targetOrgId = organizationId || tenantId || ""
       const { data } = await eden.api.billing.admin.adjust.post({
-        tenantId,
+        organizationId: targetOrgId,
         type,
         amount,
         reason: reason.trim(),

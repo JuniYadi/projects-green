@@ -13,9 +13,9 @@ import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 const MAX_BALANCE = new Decimal("999999999.99")
 
 const adminTopupSchema = z.object({
-  orgId: z.string().uuid(),
+  orgId: z.string().trim().min(1),
   amount: z.number().int().min(1),
-  reason: z.string().min(1).max(500).default("Admin topup"),
+  reason: z.string().trim().min(1).max(500).default("Admin topup"),
 })
 
 type BillingAuthContext = {

@@ -14,10 +14,17 @@ import {
   testIsAdmin,
 } from "@/test/helpers/test-auth"
 
+const mockEmitBillingAudit = mock()
+mock.module("@/modules/billing/audit/audit.service", () => ({
+  emitBillingAudit: (...args: unknown[]) => mockEmitBillingAudit(...args),
+  logBillingAuditEvent: (...args: unknown[]) => mockEmitBillingAudit(...args),
+}))
+
 const mockFindUnique = mock()
 const mockUpdate = mock()
 const mockCreate = mock()
 const mockTransaction = mock()
+const mockAuditLogCreate = mock()
 
 const mockPrismaClient = {
   billingAccount: {
@@ -26,6 +33,9 @@ const mockPrismaClient = {
   },
   billingAdjustment: {
     create: mockCreate,
+  },
+  billingAuditLog: {
+    create: mockAuditLogCreate,
   },
   $transaction: mockTransaction,
 }
@@ -132,7 +142,7 @@ describe("AdminAdjustRoute", () => {
       expect(body.error).toBe("VALIDATION_ERROR")
     })
 
-    it("returns 422 for invalid organizationId (not UUID)", async () => {
+    it("returns 422 for empty organizationId", async () => {
       const app = new Elysia()
         .use(
           createAdminBillingRoutes({
@@ -148,7 +158,7 @@ describe("AdminAdjustRoute", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            organizationId: "not-a-uuid",
+            organizationId: "   ",
             type: "CREDIT",
             amount: 50000,
             reason: "Test",

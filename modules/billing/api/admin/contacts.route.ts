@@ -56,7 +56,7 @@ export const createAdminBillingContactsRoutes = (
       }
 
       const { orgId } = params as { orgId: string }
-      const parsed = z.string().uuid().safeParse(orgId)
+      const parsed = z.string().trim().min(1).safeParse(orgId)
       if (!parsed.success) {
         set.status = 422
         return {

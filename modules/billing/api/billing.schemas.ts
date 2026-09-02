@@ -18,10 +18,10 @@ export type TopupInput = z.infer<typeof topupSchema>
 // ─── Admin Adjust ──────────────────────────────────────────────────────────────
 
 export const adminAdjustSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.string().trim().min(1),
   type: z.enum(["CREDIT", "DEBIT"]),
   amount: z.number().int().min(1),
-  reason: z.string().min(1).max(500),
+  reason: z.string().trim().min(1).max(500),
 })
 
 export type AdminAdjustInput = z.infer<typeof adminAdjustSchema>
