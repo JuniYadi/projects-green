@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { z } from "zod"
+import type { ResolvedAiProvider } from "@/modules/ai/ai-provider.factory"
 
 const streamTextMock = mock(() => ({ textStream: "stream" }))
 const generateObjectMock = mock(async () => ({ object: { answer: "ok" } }))

@@ -220,14 +220,19 @@ export default function WhatsAppContactsPage() {
       toolName: "whatsapp.contact.normalize",
       input: { phoneNumber, defaultCountryCode: "62" },
     })
-    if (res.error || !res.data?.success || !res.data?.data) {
+    const data = res.data as
+      | {
+          success?: boolean
+          data?: { normalized: string; isValid: boolean }
+          error?: string
+        }
+      | undefined
+    if (res.error || !data?.success || !data?.data) {
       throw new Error(
-        String(
-          res.data?.error || res.error || "Unable to normalize phone number"
-        )
+        String(data?.error || res.error || "Unable to normalize phone number")
       )
     }
-    return res.data.data as { normalized: string; isValid: boolean }
+    return data.data
   }, [])
 
   const handleAdd = async () => {

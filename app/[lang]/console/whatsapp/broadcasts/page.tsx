@@ -101,12 +101,13 @@ export default function WhatsAppBroadcastsPage() {
         toolName: "whatsapp.broadcast.preflight",
         input: { broadcastId: broadcast.id },
       })
-      if (res.error || !res.data?.success || !res.data?.data) {
-        throw new Error(
-          String(res.data?.error || res.error || "Preflight failed")
-        )
+      const data = res.data as
+        | { success?: boolean; data?: Record<string, unknown>; error?: string }
+        | undefined
+      if (res.error || !data?.success || !data?.data) {
+        throw new Error(String(data?.error || res.error || "Preflight failed"))
       }
-      setPreflight(res.data.data as Record<string, unknown>)
+      setPreflight(data.data)
     } catch (error) {
       setPreflightError(
         error instanceof Error ? error.message : "Preflight failed"
