@@ -23,6 +23,9 @@ mock.module("@ai-sdk/openai", () => ({
 }))
 
 mock.module("@/lib/ai-config", () => ({
+  getAiEmbeddingConfig: () => ({
+    apiKey: "test-openai-key",
+  }),
   getAiProviderConfig: () => ({
     apiKey: "test-openai-key",
   }),

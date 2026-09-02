@@ -1,7 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai"
 import { embed } from "ai"
 
-import { getAiProviderConfig } from "@/lib/ai-config"
+import { getAiEmbeddingConfig } from "@/lib/ai-config"
 
 const EMBEDDING_DIMENSIONS = 1536
 
@@ -19,7 +19,7 @@ export async function generateEmbedding(
   const modelName =
     process.env.AI_EMBEDDING_MODEL?.trim() || "text-embedding-3-small"
 
-  const provider = createOpenAI(getAiProviderConfig())
+  const provider = createOpenAI(getAiEmbeddingConfig())
 
   const { embedding } = await embed({
     model: provider.textEmbeddingModel(modelName),
