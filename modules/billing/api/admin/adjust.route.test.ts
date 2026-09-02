@@ -14,10 +14,17 @@ import {
   testIsAdmin,
 } from "@/test/helpers/test-auth"
 
+const mockEmitBillingAudit = mock()
+mock.module("@/modules/billing/audit/audit.service", () => ({
+  emitBillingAudit: (...args: unknown[]) => mockEmitBillingAudit(...args),
+  logBillingAuditEvent: (...args: unknown[]) => mockEmitBillingAudit(...args),
+}))
+
 const mockFindUnique = mock()
 const mockUpdate = mock()
 const mockCreate = mock()
 const mockTransaction = mock()
+const mockAuditLogCreate = mock()
 
 const mockPrismaClient = {
   billingAccount: {
@@ -26,6 +33,9 @@ const mockPrismaClient = {
   },
   billingAdjustment: {
     create: mockCreate,
+  },
+  billingAuditLog: {
+    create: mockAuditLogCreate,
   },
   $transaction: mockTransaction,
 }
