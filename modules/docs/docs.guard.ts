@@ -254,7 +254,6 @@ export async function checkActiveBan(params: {
   if (targets.length === 0) {
     return { isBanned: false }
   }
-
   const now = new Date()
 
   const activeBans = await prisma.aiChatBan.findMany({
@@ -361,80 +360,108 @@ export async function recordStrikeAndEscalate(params: {
     },
   })
 
-  // 2. Count total flagged messages in org / user / IP over last 7 days
-  const filterConditions: Array<{
+  // 2. Count total strikes from sessions in org / user / IP over last 7 days
+  const sessionFilter: Array<{
     organizationId?: string
     userId?: string
     ipAddress?: string
   }> = []
   if (params.organizationId) {
-    filterConditions.push({ organizationId: params.organizationId })
+    sessionFilter.push({ organizationId: params.organizationId })
   }
   if (params.userId) {
-    filterConditions.push({ userId: params.userId })
+    sessionFilter.push({ userId: params.userId })
   }
   if (params.ipAddress) {
-    filterConditions.push({ ipAddress: params.ipAddress })
+    sessionFilter.push({ ipAddress: params.ipAddress })
   }
 
-  const strikeCountAggregate = await prisma.aiChatMessage.count({
+  const sessions = await prisma.aiChatSession.findMany({
     where: {
-      isFlagged: true,
-      createdAt: { gte: sevenDaysAgo },
-      session: {
-        OR: filterConditions,
-      },
+      updatedAt: { gte: sevenDaysAgo },
+      OR: sessionFilter.length > 0 ? sessionFilter : undefined,
     },
+    select: { strikeCount: true },
   })
 
-  const totalCumulativeStrikes = strikeCountAggregate
+  const totalCumulativeStrikes = sessions.reduce(
+    (sum, s) => sum + (s.strikeCount || 0),
+    0
+  )
   const escalation = getEscalationLevel(totalCumulativeStrikes)
 
   if (escalation.offenseLevel > 0) {
     const blockedUntil = escalation.isPermanent
       ? null
       : new Date(now.getTime() + escalation.durationMs)
+    const targetsToBan: Array<{
+      banType: string
+      targetValue: string
+    }> = []
 
-    const banType = params.organizationId
-      ? "ORGANIZATION"
-      : params.userId
-        ? "USER"
-        : params.ipAddress
-          ? "IP"
-          : "PHONE"
-    const targetValue =
-      params.organizationId ||
-      params.userId ||
-      params.ipAddress ||
-      params.customerPhone ||
-      "UNKNOWN"
+    if (params.userId) {
+      targetsToBan.push({ banType: "USER", targetValue: params.userId })
+    }
+    if (params.organizationId) {
+      targetsToBan.push({
+        banType: "ORGANIZATION",
+        targetValue: params.organizationId,
+      })
+    }
+    if (params.ipAddress) {
+      targetsToBan.push({ banType: "IP", targetValue: params.ipAddress })
+    }
+    if (params.customerPhone) {
+      targetsToBan.push({ banType: "PHONE", targetValue: params.customerPhone })
+    }
 
-    const ban = await prisma.aiChatBan.create({
-      data: {
-        banType,
-        targetValue,
-        organizationId: params.organizationId,
-        userId: params.userId,
-        ipAddress: params.ipAddress,
-        customerPhone: params.customerPhone,
+    let primaryBan: {
+      banType: string
+      offenseLevel: number
+      isPermanent: boolean
+      blockedUntil: Date | null
+      reason: string
+    } | null = null
+
+    for (const target of targetsToBan) {
+      const ban = await prisma.aiChatBan.create({
+        data: {
+          banType: target.banType,
+          targetValue: target.targetValue,
+          organizationId: params.organizationId,
+          userId: params.userId,
+          ipAddress: params.ipAddress,
+          customerPhone: params.customerPhone,
+          offenseLevel: escalation.offenseLevel,
+          isPermanent: escalation.isPermanent,
+          blockedUntil,
+          reason: `Cumulative strikes escalated: ${totalCumulativeStrikes} strikes (${params.reason})`,
+          strikeSnapshot: totalCumulativeStrikes,
+        },
+      })
+      if (!primaryBan) {
+        primaryBan = {
+          isBanned: true,
+          banType: ban.banType,
+          offenseLevel: ban.offenseLevel,
+          isPermanent: ban.isPermanent,
+          blockedUntil: ban.blockedUntil,
+          reason: ban.reason,
+        }
+      }
+    }
+
+    return (
+      primaryBan || {
+        isBanned: true,
+        banType: "USER",
         offenseLevel: escalation.offenseLevel,
         isPermanent: escalation.isPermanent,
         blockedUntil,
         reason: `Cumulative strikes escalated: ${totalCumulativeStrikes} strikes (${params.reason})`,
-        strikeSnapshot: totalCumulativeStrikes,
-      },
-    })
-
-    return {
-      isBanned: true,
-      banType: ban.banType,
-      offenseLevel: ban.offenseLevel,
-      isPermanent: ban.isPermanent,
-      blockedUntil: ban.blockedUntil,
-      reason: ban.reason,
-    }
+      }
+    )
   }
-
   return { isBanned: false }
 }
 

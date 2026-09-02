@@ -389,6 +389,7 @@ export const createKnowledgeRoutes = (
               routePath,
               promptTokens: 0,
               responseTokens: 0,
+              isFlagged: true,
             },
           })
 
@@ -405,7 +406,6 @@ export const createKnowledgeRoutes = (
             err
           )
         }
-
         set.status = 422
         return {
           ok: false as const,
@@ -477,15 +477,6 @@ export const createKnowledgeRoutes = (
                 : {}),
             },
           })
-
-          const refusal =
-            gateResult.refusalMessage ||
-            (gateResult.isPromptInjection
-              ? "Permintaan ditolak. Instruksi sistem tidak dapat diubah atau diabaikan."
-              : gateResult.isAbusiveOrToxic
-                ? "Permintaan ditolak. Mohon gunakan bahasa yang sopan dan profesional."
-                : "Maaf, saya adalah asisten resmi PFNApp. Saya hanya dapat membantu pertanyaan seputar layanan konsol, WhatsApp Business API, dan billing PFNApp.")
-
           await prisma.aiChatMessage.createMany({
             data: [
               {
@@ -496,6 +487,7 @@ export const createKnowledgeRoutes = (
                 promptTokens: Math.ceil(latestUserQuery.length / 4),
                 responseTokens: 0,
                 durationMs: 0,
+                isFlagged: isStrike,
               },
               {
                 sessionId,

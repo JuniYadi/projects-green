@@ -36,6 +36,7 @@ mock.module("@/lib/prisma", () => ({
     aiChatSession: {
       upsert: mockUpsertSession,
       updateMany: mockUpdateManySessions,
+      findMany: mock(async () => [{ strikeCount: 1 }]),
     },
     aiChatMessage: {
       create: mockCreateChatMessage,
