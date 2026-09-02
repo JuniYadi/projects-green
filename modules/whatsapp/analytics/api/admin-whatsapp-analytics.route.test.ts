@@ -35,7 +35,7 @@ mock.module("../admin-whatsapp-analytics.service", () => ({
 }))
 
 describe("adminWhatsappAnalyticsRoutes", () => {
-  let app: Elysia
+  let app: { handle: (req: Request) => Promise<Response> }
 
   beforeEach(async () => {
     mockGetFinancialSummary.mockClear()
