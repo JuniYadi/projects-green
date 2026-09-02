@@ -660,14 +660,33 @@ export function ThunderAiHelpDrawer() {
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
           message?: string
+          error?: string
+          banInfo?: {
+            isPermanent?: boolean
+            blockedUntil?: string
+            reason?: string
+          }
         } | null
 
-        setChatError(
-          payload?.message ??
-            (isId
-              ? "Tidak dapat mengirim pesan ke asisten AI."
-              : "Unable to send message to AI assistant.")
-        )
+        if (response.status === 403 && payload?.banInfo) {
+          const banMsg = payload.banInfo.isPermanent
+            ? isId
+              ? "Akses AI Anda telah diblokir permanen karena pelanggaran keamanan berulang."
+              : "Your access to AI services has been permanently banned due to security violations."
+            : isId
+              ? `Akses AI Anda ditangguhkan hingga ${payload.banInfo.blockedUntil ? new Date(payload.banInfo.blockedUntil).toLocaleTimeString() : "sementara"} karena pelanggaran berulang.`
+              : `Your access to AI services is suspended until ${payload.banInfo.blockedUntil ? new Date(payload.banInfo.blockedUntil).toLocaleTimeString() : "temporarily"} due to repeated violations.`
+
+          setChatError(payload.message || banMsg)
+        } else {
+          setChatError(
+            payload?.message ??
+              (isId
+                ? "Tidak dapat mengirim pesan ke asisten AI."
+                : "Unable to send message to AI assistant.")
+          )
+        }
+
         setMessages((current) =>
           current.filter((message) => message.id !== assistantMessageId)
         )
