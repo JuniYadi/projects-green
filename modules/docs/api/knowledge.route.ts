@@ -445,6 +445,14 @@ export const createKnowledgeRoutes = (
             ? "PROFANITY"
             : "OUT_OF_DOMAIN"
 
+        const refusal =
+          gateResult.refusalMessage ||
+          (gateResult.isPromptInjection
+            ? "Permintaan ditolak. Instruksi sistem tidak dapat diubah atau diabaikan."
+            : gateResult.isAbusiveOrToxic
+              ? "Permintaan ditolak. Mohon gunakan bahasa yang sopan dan profesional."
+              : "Maaf, saya adalah asisten resmi PFNApp. Saya hanya dapat membantu pertanyaan seputar layanan konsol, WhatsApp Business API, dan billing PFNApp.")
+
         // Record audit session, message, and strike
         try {
           await prisma.aiChatSession.upsert({
@@ -514,14 +522,6 @@ export const createKnowledgeRoutes = (
         } catch (auditErr) {
           console.error("[knowledge.route] Gate audit logging error:", auditErr)
         }
-
-        const refusal =
-          gateResult.refusalMessage ||
-          (gateResult.isPromptInjection
-            ? "Permintaan ditolak. Instruksi sistem tidak dapat diubah atau diabaikan."
-            : gateResult.isAbusiveOrToxic
-              ? "Permintaan ditolak. Mohon gunakan bahasa yang sopan dan profesional."
-              : "Maaf, saya adalah asisten resmi PFNApp. Saya hanya dapat membantu pertanyaan seputar layanan konsol, WhatsApp Business API, dan billing PFNApp.")
 
         return createImmediateNdjsonResponse([
           {
