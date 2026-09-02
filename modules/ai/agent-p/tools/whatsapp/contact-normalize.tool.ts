@@ -25,9 +25,17 @@ export const contactNormalizeTool: AgentPTool<
   execute(input) {
     const raw = input.phoneNumber.trim()
     const digits = raw.replace(/[^\d+]/g, "")
-    const normalized = digits.startsWith("+")
-      ? `+${digits.slice(1).replace(/\D/g, "")}`
-      : `+${input.defaultCountryCode}${digits.replace(/^0+/, "")}`
+    let normalized = digits
+    if (digits.startsWith("+")) {
+      normalized = `+${digits.slice(1).replace(/\D/g, "")}`
+    } else {
+      const stripped = digits.replace(/^0+/, "")
+      if (stripped.startsWith(input.defaultCountryCode)) {
+        normalized = `+${stripped}`
+      } else {
+        normalized = `+${input.defaultCountryCode}${stripped}`
+      }
+    }
     const isValid = /^\+[1-9]\d{6,14}$/.test(normalized)
     return { input: raw, normalized, isValid }
   },

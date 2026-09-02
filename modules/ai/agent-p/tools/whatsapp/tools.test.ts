@@ -42,6 +42,18 @@ describe("WhatsApp Agent P tools", () => {
       isValid: true,
     })
   })
+  it("normalizes a phone number already starting with country code without plus", () => {
+    expect(
+      contactNormalizeTool.execute(
+        { phoneNumber: "62812345678", defaultCountryCode: "62" },
+        context
+      )
+    ).toEqual({
+      input: "62812345678",
+      normalized: "+62812345678",
+      isValid: true,
+    })
+  })
 
   it("marks an excessively short contact as invalid", () => {
     expect(

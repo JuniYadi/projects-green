@@ -974,9 +974,9 @@ export function WhatsAppInbox({
   const agentPExecute = React.useMemo(() => {
     const executePost = eden?.api?.console?.ai?.["agent-p"]?.execute?.post
     if (typeof executePost === "function") {
-      return executePost as unknown as (input: {
+      return executePost as unknown as (payload: {
         toolName: string
-        args: unknown
+        input: unknown
       }) => Promise<{ data?: unknown }>
     }
     return undefined
@@ -1076,13 +1076,13 @@ export function WhatsAppInbox({
       enabled: Boolean(activeConversationId),
     })
   const handleSummarizeConversation = React.useCallback(async () => {
-    if (!activeConversation) return
+    if (!activeConversation || !agentPExecute) return
     setSummaryLoading(true)
     setSummaryError(null)
     try {
       const response = await agentPExecute({
         toolName: "whatsapp.inbox.summarize",
-        args: { conversationId: activeConversation.id },
+        input: { conversationId: activeConversation.id },
       })
       const body = response.data as
         | { success?: boolean; data?: { summary?: string }; error?: string }
@@ -1375,7 +1375,7 @@ export function WhatsAppInbox({
     let cancelled = false
     agentPExecute({
       toolName: "whatsapp.inbox.suggest_reply",
-      args: { conversationId: activeConversation.id },
+      input: { conversationId: activeConversation.id },
     })
       .then((response) => {
         if (cancelled) return
