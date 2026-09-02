@@ -414,25 +414,31 @@ export function ThunderAiHelpDrawer() {
     if (typeof window === "undefined") return []
     try {
       const saved = sessionStorage.getItem(chatStorageKey)
-      const legacy = saved ? null : sessionStorage.getItem("pfn_tanya_p_chat")
-      const parsed = JSON.parse(saved ?? legacy ?? "null")
-      if (Array.isArray(parsed)) {
-        if (!saved && legacy) sessionStorage.setItem(chatStorageKey, legacy)
-        return parsed
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) return parsed
+      }
+      const legacy = sessionStorage.getItem("pfn_tanya_p_chat")
+      if (legacy) {
+        const parsed = JSON.parse(legacy)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          sessionStorage.setItem(chatStorageKey, legacy)
+          return parsed
+        }
       }
     } catch {
-      // Ignore sessionStorage error
+      return []
     }
     return []
   })
   const [sessionId, setSessionId] = useState<string>(() => {
     if (typeof window === "undefined") return ""
     try {
-      const savedSessionId = sessionStorage.getItem(sessionStorageKey)
-      if (savedSessionId) return savedSessionId
-      const newId = `sess_${crypto.randomUUID()}`
-      sessionStorage.setItem(sessionStorageKey, newId)
-      return newId
+      const saved = sessionStorage.getItem("pfn_tanya_p_session_id")
+      if (saved) return saved
+      const nextId = `sess_${crypto.randomUUID()}`
+      sessionStorage.setItem("pfn_tanya_p_session_id", nextId)
+      return nextId
     } catch {
       return `sess_${Date.now()}`
     }
@@ -441,35 +447,40 @@ export function ThunderAiHelpDrawer() {
   const [isSending, setIsSending] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
   const [activeEntity, setActiveEntity] = useState<ActiveEntityContext>()
-
+  const [openCitations, setOpenCitations] = useState<Record<string, boolean>>(
+    {}
+  )
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const sendChatMessageRef = useRef<(text: string) => Promise<void>>(
     async () => {}
   )
-
   // URL state checking
   const isDocOpen = searchParams.get(DOC_QUERY_KEY) === ACTIVE_VALUE
   const isKbOpen = searchParams.get(KB_QUERY_KEY) === ACTIVE_VALUE
   const isOpen = isDocOpen || isKbOpen
-
   const activeTab = isDocOpen ? "docs" : "chat"
 
   // Persist chat on messages update
   useEffect(() => {
     try {
       if (messages.length > 0) {
-        sessionStorage.setItem(chatStorageKey, JSON.stringify(messages))
+        const entityKey = activeEntity?.entityId
+          ? `${chatStorageKey}:${activeEntity.entityId}`
+          : chatStorageKey
+        sessionStorage.setItem(entityKey, JSON.stringify(messages))
       }
     } catch {
       // Ignore sessionStorage error
     }
-  }, [messages, chatStorageKey])
-
+  }, [messages, chatStorageKey, activeEntity?.entityId])
   const clearChatHistory = () => {
     setMessages([])
     try {
-      sessionStorage.removeItem(chatStorageKey)
+      const entityKey = activeEntity?.entityId
+        ? `${chatStorageKey}:${activeEntity.entityId}`
+        : chatStorageKey
+      sessionStorage.removeItem(entityKey)
       sessionStorage.removeItem("pfn_tanya_p_chat")
       const nextSessionId = `sess_${crypto.randomUUID()}`
       sessionStorage.setItem(sessionStorageKey, nextSessionId)
@@ -614,17 +625,17 @@ export function ThunderAiHelpDrawer() {
     }
     const assistantMessageId = toMessageId()
 
-    const nextMessages = [
-      ...messages,
+    // Prepare assistant message ID & live streaming container
+    let liveAnswer = ""
+    setMessages((current) => [
+      ...current,
       userMessage,
       {
         id: assistantMessageId,
         role: "assistant" as const,
         content: "",
       },
-    ]
-
-    setMessages(nextMessages)
+    ])
 
     try {
       const response = await fetch("/api/knowledge/chat", {
@@ -692,10 +703,11 @@ export function ThunderAiHelpDrawer() {
           try {
             const frame = JSON.parse(line) as KnowledgeChatStreamFrame
             if (frame.type === "delta") {
+              liveAnswer += frame.text
               setMessages((current) =>
                 current.map((message) =>
                   message.id === assistantMessageId
-                    ? { ...message, content: `${message.content}${frame.text}` }
+                    ? { ...message, content: liveAnswer }
                     : message
                 )
               )
@@ -719,28 +731,32 @@ export function ThunderAiHelpDrawer() {
         }
       }
 
-      if (
-        finalAnswer ||
-        finalCitations.length > 0 ||
-        finalActionCards.length > 0
-      ) {
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantMessageId
-              ? {
-                  ...message,
-                  content: finalAnswer ?? message.content,
-                  citations: finalCitations.length
-                    ? finalCitations
-                    : message.citations,
-                  actionCards: finalActionCards.length
-                    ? finalActionCards
-                    : message.actionCards,
-                }
-              : message
-          )
+      // Finalize and commit final message state at the end
+      setMessages((current) => {
+        const updated = current.map((message) =>
+          message.id === assistantMessageId
+            ? {
+                ...message,
+                content: finalAnswer ?? liveAnswer,
+                citations: finalCitations.length
+                  ? finalCitations
+                  : message.citations,
+                actionCards: finalActionCards.length
+                  ? finalActionCards
+                  : message.actionCards,
+              }
+            : message
         )
-      }
+        try {
+          const entityKey = activeEntity?.entityId
+            ? `${chatStorageKey}:${activeEntity.entityId}`
+            : chatStorageKey
+          sessionStorage.setItem(entityKey, JSON.stringify(updated))
+        } catch {
+          // Ignore storage error
+        }
+        return updated
+      })
     } catch {
       setChatError(
         isId
@@ -772,15 +788,32 @@ export function ThunderAiHelpDrawer() {
       ).detail
       const prompt = (detail?.query ?? detail?.prompt)?.trim()
       const contextPayload = detail?.contextPayload ?? detail?.context
-      if (contextPayload) setActiveEntity(contextPayload as ActiveEntityContext)
+
+      // If triggered with a new entity context or autoSend, clear previous chat immediately
+      if (contextPayload) {
+        setActiveEntity(contextPayload as ActiveEntityContext)
+        if (detail?.autoSend) {
+          setMessages([])
+          setChatError(null)
+          try {
+            const targetId = (contextPayload as ActiveEntityContext).entityId
+            const key = targetId
+              ? `${chatStorageKey}:${targetId}`
+              : chatStorageKey
+            sessionStorage.removeItem(key)
+          } catch {
+            // Ignore
+          }
+        }
+      }
 
       const next = new URLSearchParams(searchParams.toString())
       next.set(KB_QUERY_KEY, ACTIVE_VALUE)
       next.delete(DOC_QUERY_KEY)
       router.replace(`${pathname}?${next.toString()}`, { scroll: false })
-
       if (prompt) {
         if (detail?.autoSend) {
+          // Immediate dispatch after state update
           setTimeout(() => void sendChatMessageRef.current(prompt), 100)
         } else {
           setInput(prompt)
@@ -794,7 +827,7 @@ export function ThunderAiHelpDrawer() {
       window.removeEventListener("agent_p_trigger", handleTrigger)
       window.removeEventListener("ask_p_query", handleTrigger)
     }
-  }, [pathname, router, searchParams])
+  }, [pathname, router, searchParams, chatStorageKey])
 
   const handleActionCard = (card: AgentPActionCard) => {
     if (card.actionType) {
@@ -1181,9 +1214,17 @@ export function ThunderAiHelpDrawer() {
                             activeLocale={activeLocale}
                           />
                         ) : (
-                          <p className="leading-relaxed text-zinc-400 italic">
-                            {isId ? "Sedang mencari jawaban..." : "Thinking..."}
-                          </p>
+                          <div className="flex items-center gap-2 py-1 text-zinc-400">
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                            </span>
+                            <span className="text-xs italic">
+                              {isId
+                                ? "Sedang menganalisis data & menyusun rangkuman..."
+                                : "Analyzing data & generating response..."}
+                            </span>
+                          </div>
                         )}
                         {message.role === "assistant" &&
                         (message.actionCard || message.actionCards?.length) ? (
@@ -1222,41 +1263,56 @@ export function ThunderAiHelpDrawer() {
                         {message.role === "assistant" &&
                         message.citations?.length ? (
                           <div className="flex flex-col gap-1.5 border-t border-white/[0.05] pt-2">
-                            <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase">
-                              {isId
-                                ? "Referensi Sumber Terkait"
-                                : "Citations & Sources"}
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {message.citations.map((citation) => {
-                                const normalizedPath = citation.path.startsWith(
-                                  "/"
-                                )
-                                  ? citation.path
-                                  : `/${citation.path}`
-                                const citationUrl = normalizedPath.startsWith(
-                                  "/docs"
-                                )
-                                  ? `/${activeLocale}${normalizedPath}`
-                                  : `/${activeLocale}/docs${normalizedPath}`
-                                return (
-                                  <Link
-                                    key={citation.id}
-                                    href={citationUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group inline-flex items-center gap-1 rounded-md border border-white/10 bg-neutral-900 px-2 py-1 text-[10px] font-medium text-amber-300 transition-all hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200"
-                                    title={`Buka ${citation.title} • Path: ${citation.path}`}
-                                  >
-                                    <span>{citation.title}</span>
-                                    <ArrowSquareOut
-                                      size={10}
-                                      className="opacity-70 group-hover:opacity-100"
-                                    />
-                                  </Link>
-                                )
-                              })}
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOpenCitations((prev) => ({
+                                  ...prev,
+                                  [message.id]: !prev[message.id],
+                                }))
+                              }
+                              className="inline-flex w-fit items-center gap-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <span>
+                                {isId
+                                  ? `Lihat Sumber & Rujukan (${message.citations.length})`
+                                  : `View Sources (${message.citations.length})`}
+                              </span>
+                              <span className="text-[9px] opacity-70">
+                                {openCitations[message.id] ? "▲" : "▼"}
+                              </span>
+                            </button>
+                            {openCitations[message.id] ? (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {message.citations.map((citation) => {
+                                  const normalizedPath =
+                                    citation.path.startsWith("/")
+                                      ? citation.path
+                                      : `/${citation.path}`
+                                  const citationUrl = normalizedPath.startsWith(
+                                    "/docs"
+                                  )
+                                    ? `/${activeLocale}${normalizedPath}`
+                                    : `/${activeLocale}/docs${normalizedPath}`
+                                  return (
+                                    <Link
+                                      key={citation.id}
+                                      href={citationUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="group inline-flex items-center gap-1 rounded-md border border-white/10 bg-neutral-900 px-2 py-1 text-[10px] font-medium text-amber-300 transition-all hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200"
+                                      title={`Buka ${citation.title} • Path: ${citation.path}`}
+                                    >
+                                      <span>{citation.title}</span>
+                                      <ArrowSquareOut
+                                        size={10}
+                                        className="opacity-70 group-hover:opacity-100"
+                                      />
+                                    </Link>
+                                  )
+                                })}
+                              </div>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>

@@ -37,21 +37,22 @@ export const USER_RATE_LIMIT_WINDOW_MS = 30_000 // 30s
 
 // Profanity regex patterns (Indonesian & English toxic/vulgar terms)
 const PROFANITY_PATTERNS = [
-  // Indonesian profanities & slurs
-  /\b(anjing|babi|bangsat|kontol|memek|pantek|itil|jembut|ngentot|perek|lonte|pepek|bajingan|kampret|peler|tetek|toket|bego|tolol|idiot|bodoh|goblok|setan|iblis|silit|pukimak)\b/i,
+  // Indonesian profanities, slurs & regional toxic terms (Jawa, Sunda, Batak, slang)
+  /\b(asu|anjing|babi|bangsat|kontol|memek|pantek|itil|jembut|ngentot|perek|lonte|pepek|bajingan|kampret|peler|tetek|toket|bego|tolol|idiot|bodoh|goblok|setan|iblis|silit|pukimak|jancok|jancuk|dancok|cok|matamu|ndasmu|taek|telek|tempik|puki|kimak|pantat|tai)\b/i,
   // English profanities & slurs
   /\b(fuck|fucking|shit|bitch|asshole|cunt|dick|pussy|nigger|faggot|whore|slut|motherfucker|bastard|cock|blowjob)\b/i,
 ]
 
-// Injection patterns: Script injection, XSS, and dangerous SQL manipulation
+// Injection & Jailbreak patterns: Script injection, XSS, dangerous SQL manipulation, and LLM Prompt Injections / Jailbreaks
 const INJECTION_PATTERNS = [
   /<\s*script\b[^>]*>/i,
   /javascript\s*:/i,
   /on(error|load|click|mouseover|submit)\s*=/i,
   /\b(union\s+select|select\s+.*\s+from|drop\s+table|insert\s+into|delete\s+from|update\s+.*\s+set)\b/i,
   /(\/\*|\*\/)/,
+  // Prompt injection & jailbreak keywords
+  /\b(ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts|rules)|disregard\s+(all\s+)?(previous|prior|above)\s+(instructions|prompts|rules)|you\s+are\s+now\s+in\s+dan\s+mode|override\s+system\s+prompt|reveal\s+system\s+prompt|show\s+(me\s+)?(your\s+)?system\s+prompt|bypass\s+(all\s+)?security|abaikan\s+(semua\s+)?(instruksi|perintah|aturan)\s+(sebelumnya|di\s+atas))\b/i,
 ]
-
 // In-memory sliding window rate limiter stores
 type RateLimitEntry = {
   timestamps: number[]

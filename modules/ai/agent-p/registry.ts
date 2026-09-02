@@ -48,14 +48,17 @@ export class AgentPToolRegistry {
     execute: AgentPToolExecutor
   ): Record<string, Tool> {
     return Object.fromEntries(
-      this.list().map((toolDefinition) => [
-        toolDefinition.name,
-        tool({
-          description: toolDefinition.description,
-          inputSchema: toolDefinition.inputSchema,
-          execute: (input) => execute(toolDefinition, input, context),
-        }),
-      ])
+      this.list().map((toolDefinition) => {
+        const sanitizedName = toolDefinition.name.replace(/\./g, "_")
+        return [
+          sanitizedName,
+          tool({
+            description: toolDefinition.description,
+            inputSchema: toolDefinition.inputSchema,
+            execute: (input) => execute(toolDefinition, input, context),
+          }),
+        ]
+      })
     )
   }
 }

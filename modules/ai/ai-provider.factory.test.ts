@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
+mock.module("@ai-sdk/openai", () => ({
+  createOpenAI: mock(() => ({
+    chat: (model: string) => ({ modelId: model }),
+  })),
+}))
+
 import {
   resolveAiProviderConfig,
   createAiLanguageModel,
   type ResolvedAiProvider,
   type ConfigFinder,
 } from "./ai-provider.factory"
-
 describe("aiProviderFactory", () => {
   const mockGetApiKey = mock(async () => "sk-vault-test-key")
 

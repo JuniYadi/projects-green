@@ -88,6 +88,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.64",
+    "@ai-sdk/openai-compatible": "^3.0.43",
     "@elysia/eden": "^1.4.10",
     "@elysia/openapi": "^1.4.15",
     "@elysia/server-timing": "^1.4.1",

@@ -779,29 +779,6 @@ function MessageBubble({
 
 // ─── Agent P in-situ components ─────────────────────────────────────────────
 
-export function ConversationSummaryPill({ summary }: { summary: string }) {
-  const [open, setOpen] = React.useState(true)
-
-  return (
-    <div className="mb-3 rounded-lg border border-border bg-card">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span>Conversation summary</span>
-        <span aria-hidden="true">{open ? "−" : "+"}</span>
-      </button>
-      {open && (
-        <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-          {summary}
-        </p>
-      )}
-    </div>
-  )
-}
-
 export function SmartComposerBar({
   suggestions,
   onSelect,
@@ -964,13 +941,7 @@ export function WhatsAppInbox({
     null
   )
   const replyAttachmentInputRef = React.useRef<HTMLInputElement>(null)
-  const [conversationSummary, setConversationSummary] = React.useState<
-    string | null
-  >(null)
-  const [summaryLoading, setSummaryLoading] = React.useState(false)
-  const [summaryError, setSummaryError] = React.useState<string | null>(null)
   const [aiSuggestions, setAiSuggestions] = React.useState<string[]>([])
-
   const agentPExecute = React.useMemo(() => {
     const executePost = eden?.api?.console?.ai?.["agent-p"]?.execute?.post
     if (typeof executePost === "function") {
@@ -1075,33 +1046,24 @@ export function WhatsAppInbox({
       },
       enabled: Boolean(activeConversationId),
     })
-  const handleSummarizeConversation = React.useCallback(async () => {
-    if (!activeConversation || !agentPExecute) return
-    setSummaryLoading(true)
-    setSummaryError(null)
-    try {
-      const response = await agentPExecute({
-        toolName: "whatsapp.inbox.summarize",
-        input: { conversationId: activeConversation.id },
+  const handleSummarizeConversation = React.useCallback(() => {
+    if (!activeConversation) return
+    const phone = activeConversation.phoneNumber ?? activeConversation.id
+    const prompt = `Tolong rangkum percakapan dengan ${phone}. Jelaskan kebutuhan utama pelanggan, status pesan, dan rekomendasi tindakan berikutnya secara ringkas.`
+    window.dispatchEvent(
+      new CustomEvent("agent_p_trigger", {
+        detail: {
+          prompt,
+          autoSend: true,
+          context: {
+            entityType: "whatsapp_conversation",
+            entityId: activeConversation.id,
+            entityName: phone,
+          },
+        },
       })
-      const body = response.data as
-        | { success?: boolean; data?: { summary?: string }; error?: string }
-        | undefined
-      if (!body?.success || !body.data?.summary) {
-        throw new Error(body?.error || "Unable to summarize conversation")
-      }
-      setConversationSummary(body.data.summary)
-    } catch (error) {
-      setSummaryError(
-        error instanceof Error
-          ? error.message
-          : "Unable to summarize conversation"
-      )
-    } finally {
-      setSummaryLoading(false)
-    }
-  }, [activeConversation, agentPExecute])
-
+    )
+  }, [activeConversation])
   // Reset agent P state when switching conversation (keyed by activeConversationId state transition)
   const prevActiveIdRef = React.useRef<string | null>(null)
   if (prevActiveIdRef.current !== activeConversationId) {
@@ -2693,23 +2655,14 @@ export function WhatsAppInbox({
                 variant="outline"
                 size="sm"
                 onClick={handleSummarizeConversation}
-                disabled={summaryLoading}
               >
-                {summaryLoading ? "Rangkum..." : "✨ Rangkum Percakapan"}
+                ✨ Rangkum Percakapan
               </Button>
             )}
           </div>
 
           {/* Messages Area */}
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#efeae2]/30 dark:bg-[#0b141a]/40">
-            {conversationSummary && (
-              <ConversationSummaryPill summary={conversationSummary} />
-            )}
-            {summaryError && (
-              <p className="mb-2 rounded-md border border-border bg-card px-3 py-2 text-xs text-destructive">
-                {summaryError}
-              </p>
-            )}
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pr-2">
               {activeLoading && (
                 <div className="flex flex-1 flex-col justify-end gap-3">

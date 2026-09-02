@@ -76,6 +76,7 @@ export class AgentPService {
         system: options.system,
         messages: options.messages,
         tools,
+        maxSteps: 25,
       })
     }
     return streamText({
@@ -83,6 +84,7 @@ export class AgentPService {
       system: options.system,
       prompt: options.prompt ?? "",
       tools,
+      maxSteps: 25,
     })
   }
 
@@ -99,6 +101,7 @@ export class AgentPService {
         system: options.system,
         messages: options.messages,
         tools,
+        maxSteps: 25,
       })
     }
     return generateObject({
@@ -107,6 +110,7 @@ export class AgentPService {
       system: options.system,
       prompt: options.prompt ?? "",
       tools,
+      maxSteps: 25,
     })
   }
 }

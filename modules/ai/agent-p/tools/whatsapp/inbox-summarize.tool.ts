@@ -12,12 +12,12 @@ const outputSchema = z.object({
     z.object({
       direction: z.string(),
       body: z.string().nullable(),
+      status: z.string().nullable(),
       createdAt: z.string(),
     })
   ),
   summary: z.string(),
 })
-
 export const inboxSummarizeTool: AgentPTool<
   z.infer<typeof inputSchema>,
   z.infer<typeof outputSchema>
@@ -36,22 +36,55 @@ export const inboxSummarizeTool: AgentPTool<
       take: input.limit,
       orderBy: { lastMessageAt: "desc" },
       include: {
-        whatsappMessages: { orderBy: { createdAt: "desc" }, take: input.limit },
+        whatsappMessages: {
+          orderBy: { createdAt: "desc" },
+          take: input.limit,
+          include: {
+            statusHistory: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
+          },
+        },
       },
     })
     const messages = conversations.flatMap((conversation) =>
       conversation.whatsappMessages.map((message) => ({
         direction: message.direction,
         body: message.body,
+        status: message.statusHistory?.[0]?.status ?? null,
         createdAt: message.createdAt.toISOString(),
       }))
     )
+    const latestInbound = messages
+      .find((m) => m.direction === "INBOUND" || m.direction === "inbound")
+      ?.body?.trim()
+    const latestOutbound = messages
+      .find((m) => m.direction === "OUTBOUND" || m.direction === "outbound")
+      ?.body?.trim()
+
+    let summary = "Tidak ada riwayat pesan percakapan."
+    if (messages.length > 0) {
+      const parts: string[] = [
+        `Percakapan memiliki ${messages.length} riwayat pesan.`,
+      ]
+      if (latestInbound) {
+        parts.push(
+          `Pesan masuk terakhir pelanggan: "${latestInbound.slice(0, 100)}${latestInbound.length > 100 ? "..." : ""}"`
+        )
+      }
+      if (latestOutbound) {
+        parts.push(
+          `Pesan keluar terakhir: "${latestOutbound.slice(0, 100)}${latestOutbound.length > 100 ? "..." : ""}"`
+        )
+      }
+      summary = parts.join(" ")
+    }
+
     return {
       conversationId: input.conversationId,
       messages,
-      summary: messages.length
-        ? `Recent inbox contains ${messages.length} messages.`
-        : "No recent inbox messages.",
+      summary,
     }
   },
 }
