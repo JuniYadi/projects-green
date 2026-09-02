@@ -415,13 +415,7 @@ export async function recordStrikeAndEscalate(params: {
       targetsToBan.push({ banType: "PHONE", targetValue: params.customerPhone })
     }
 
-    let primaryBan: {
-      banType: string
-      offenseLevel: number
-      isPermanent: boolean
-      blockedUntil: Date | null
-      reason: string
-    } | null = null
+    let primaryBan: ActiveBanInfo | null = null
 
     for (const target of targetsToBan) {
       const ban = await prisma.aiChatBan.create({
