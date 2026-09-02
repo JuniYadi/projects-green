@@ -1064,15 +1064,6 @@ export function WhatsAppInbox({
       })
     )
   }, [activeConversation])
-  // Reset agent P state when switching conversation (keyed by activeConversationId state transition)
-  const prevActiveIdRef = React.useRef<string | null>(null)
-  if (prevActiveIdRef.current !== activeConversationId) {
-    prevActiveIdRef.current = activeConversationId
-    if (conversationSummary !== null) setConversationSummary(null)
-    if (summaryError !== null) setSummaryError(null)
-    if (aiSuggestions.length > 0) setAiSuggestions([])
-  }
-
   const { data: consoleDevices = [] } = useQuery({
     queryKey: ["whatsapp", "devices"],
     queryFn: async () => {
