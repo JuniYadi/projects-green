@@ -2,9 +2,6 @@
  * Meta WhatsApp & Business Invoicing Test Script
  *
  * Usage:
- *   ACCESS_TOKEN="your_token_here" bun scripts/test-meta-invoicing.ts
- *
- * Or with custom business / WABA ID:
  *   ACCESS_TOKEN="..." BUSINESS_ID="..." WABA_ID="..." bun scripts/test-meta-invoicing.ts
  */
 
@@ -16,15 +13,12 @@ async function main() {
   console.log("  META BUSINESS & WHATSAPP BILLING/INVOICE INSPECTOR")
   console.log("========================================================\n")
 
-  // 1. Resolve Access Token
+  // 1. Resolve Access Token, WABA ID, and Business ID
   let token = process.env.ACCESS_TOKEN
   let defaultWabaId = process.env.WABA_ID
   const defaultBusinessId = process.env.BUSINESS_ID
 
   if (!token) {
-    console.log(
-      "ℹ️  No ACCESS_TOKEN passed in env. Reading active device from database..."
-    )
     const device = await prisma.whatsappDevice.findFirst({
       where: {
         tokenEncrypted: { not: null },
@@ -43,9 +37,12 @@ async function main() {
   }
 
   if (!token) {
-    console.error(
-      "❌ ERROR: No ACCESS_TOKEN found. Provide ACCESS_TOKEN in environment."
-    )
+    console.error("❌ ERROR: Missing ACCESS_TOKEN environment variable.")
+    process.exit(1)
+  }
+
+  if (!defaultWabaId) {
+    console.error("❌ ERROR: Missing WABA_ID environment variable.")
     process.exit(1)
   }
 
@@ -54,7 +51,16 @@ async function main() {
   const resDebug = await fetch(
     `https://graph.facebook.com/v20.0/debug_token?input_token=${token}&access_token=${token}`
   )
-  const debugData = await resDebug.json()
+  const debugData = (await resDebug.json()) as {
+    error?: { message: string }
+    data?: {
+      application?: string
+      app_id?: string
+      type?: string
+      is_valid?: boolean
+      scopes?: string[]
+    }
+  }
 
   if (debugData.error) {
     console.error("❌ Token validation failed:", debugData.error)
@@ -67,7 +73,7 @@ async function main() {
 
   // 3. Inspect WABA and identify Business ID
   console.log("\n--- 2. WhatsApp Business Account (WABA) Info ---")
-  const wabaId = defaultWabaId ?? "101824669214076"
+  const wabaId = defaultWabaId
   let businessId = defaultBusinessId
 
   const resWaba = await fetch(
@@ -76,7 +82,14 @@ async function main() {
       headers: { Authorization: `Bearer ${token}` },
     }
   )
-  const wabaJson = await resWaba.json()
+  const wabaJson = (await resWaba.json()) as {
+    error?: { message: string }
+    id?: string
+    name?: string
+    currency?: string
+    account_review_status?: string
+    owner_business_info?: { name: string; id: string }
+  }
 
   if (wabaJson.error) {
     console.log(`⚠️ WABA ${wabaId} lookup:`, wabaJson.error.message)
@@ -92,8 +105,10 @@ async function main() {
     }
   }
 
-  // Fallback to discovered Business ID
-  businessId = businessId ?? "304226647846623"
+  if (!businessId) {
+    console.error("❌ ERROR: Missing BUSINESS_ID environment variable.")
+    process.exit(1)
+  }
 
   // 4. Test Meta Business Invoices
   console.log(
@@ -105,7 +120,10 @@ async function main() {
       headers: { Authorization: `Bearer ${token}` },
     }
   )
-  const invoicesJson = await resInvoices.json()
+  const invoicesJson = (await resInvoices.json()) as {
+    error?: { message: string }
+    data?: unknown[]
+  }
   if (invoicesJson.error) {
     console.log(`⚠️ Invoices Error:`, invoicesJson.error.message)
   } else {
@@ -121,7 +139,10 @@ async function main() {
       headers: { Authorization: `Bearer ${token}` },
     }
   )
-  const creditsJson = await resCredits.json()
+  const creditsJson = (await resCredits.json()) as {
+    error?: { message: string }
+    data?: Array<{ id: string }>
+  }
   if (creditsJson.error) {
     console.log(`⚠️ Extended Credits Error:`, creditsJson.error.message)
   } else {
@@ -139,7 +160,7 @@ async function main() {
             headers: { Authorization: `Bearer ${token}` },
           }
         )
-        const creditInvoicesJson = await resCreditInvoices.json()
+        const creditInvoicesJson = (await resCreditInvoices.json()) as unknown
         console.log(
           "Extended Credit Invoices:",
           JSON.stringify(creditInvoicesJson, null, 2)
@@ -158,7 +179,7 @@ async function main() {
       headers: { Authorization: `Bearer ${token}` },
     }
   )
-  const pricingJson = await resPricing.json()
+  const pricingJson = (await resPricing.json()) as unknown
   console.log("Pricing Analytics:", JSON.stringify(pricingJson, null, 2))
 
   console.log("\n========================================================")

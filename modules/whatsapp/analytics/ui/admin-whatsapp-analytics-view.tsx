@@ -70,7 +70,6 @@ interface OrgProfitabilityItem {
 }
 
 export function AdminWhatsappAnalyticsView() {
-  const [_loading, setLoading] = React.useState(true)
   const [syncing, setSyncing] = React.useState(false)
   const [summary, setSummary] = React.useState<FinancialSummary | null>(null)
   const [orgs, setOrgs] = React.useState<OrgProfitabilityItem[]>([])
@@ -100,8 +99,6 @@ export function AdminWhatsappAnalyticsView() {
         }
       } catch (err) {
         console.error("Failed to load admin WhatsApp analytics:", err)
-      } finally {
-        if (!ignore) setLoading(false)
       }
     }
     run()
@@ -118,7 +115,7 @@ export function AdminWhatsappAnalyticsView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ days: Number(days) }),
       })
-      const json = await res.json()
+      const json = (await res.json()) as { ok?: boolean }
       if (json.ok) {
         setRefreshToken((prev) => prev + 1)
       }

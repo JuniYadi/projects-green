@@ -154,6 +154,18 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     smokeProjects: ["smoke-portal"],
   },
   {
+    name: "whatsapp-analytics",
+    sourcePrefixes: [
+      "app/[lang]/portal/whatsapp/analytics/",
+      "modules/whatsapp/analytics/",
+    ],
+    testPrefixes: [
+      "app/[lang]/portal/whatsapp/analytics/",
+      "modules/whatsapp/analytics/",
+    ],
+    smokeProjects: ["smoke-portal"],
+  },
+  {
     name: "whatsapp-pricing",
     sourcePrefixes: [
       "app/[lang]/portal/whatsapp/pricing/",

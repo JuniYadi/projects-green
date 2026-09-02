@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/prisma"
-import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { decryptWithAppKey } from "@/lib/whatsapp/crypto"
 import { WhatsappBillingCategory, Prisma } from "@prisma/client"
-import { MessageCostService } from "@/modules/billing/message-cost.service"
 
 export const META_VAT_RATE = new Prisma.Decimal("0.11") // 11% PPN
 
@@ -72,12 +70,6 @@ export interface OrgProfitabilityItemDTO {
 }
 
 export class AdminWhatsappAnalyticsService {
-  private messageCostService: MessageCostService
-
-  constructor() {
-    this.messageCostService = new MessageCostService(prisma)
-  }
-
   /**
    * Sync Real Meta Pricing Analytics using dimensions: ["PHONE", "PRICING_CATEGORY"]
    * and store into WhatsappDailyCostReconciliation.
@@ -124,7 +116,6 @@ export class AdminWhatsappAnalyticsService {
     const phoneToDeviceMap = new Map<string, (typeof devices)[0]>()
     for (const d of devices) {
       if (d.phoneNumber) {
-        // Clean + or non-digit
         const cleanPhone = d.phoneNumber.replace(/\D/g, "")
         phoneToDeviceMap.set(cleanPhone, d)
       }
@@ -211,7 +202,6 @@ export class AdminWhatsappAnalyticsService {
           const vatCostIdr = baseCostIdr.mul(META_VAT_RATE)
           const totalCostIdr = baseCostIdr.add(vatCostIdr)
 
-          // Estimate revenue/allowance value from our system base prices for that category
           // Unit base price for customer
           let unitPriceIdr = new Prisma.Decimal(587)
           if (category === "UTILITY" || category === "AUTHENTICATION") {
@@ -295,13 +285,15 @@ export class AdminWhatsappAnalyticsService {
    * Get KPI Summary and Category Breakdown for a date range.
    */
   async getFinancialSummary(opts: {
+    days?: number
     startDate?: string
     endDate?: string
     organizationId?: string
   }): Promise<FinancialSummaryDTO> {
+    const days = opts.days ?? 30
     const start = opts.startDate
       ? new Date(opts.startDate)
-      : new Date(Date.now() - 30 * 24 * 3600 * 1000)
+      : new Date(Date.now() - days * 24 * 3600 * 1000)
     start.setUTCHours(0, 0, 0, 0)
 
     const end = opts.endDate ? new Date(opts.endDate) : new Date()
@@ -409,7 +401,7 @@ export class AdminWhatsappAnalyticsService {
         totalMetaVatCostIdr: totalVatCost.toFixed(2),
         totalMetaNetCostIdr: totalNetCost.toFixed(2),
         grossProfitIdr: grossProfit.toFixed(2),
-        marginPct: marginPct.toFixed(2),
+        grossMarginPct: marginPct.toFixed(2),
         status,
       },
       categoryBreakdown,
@@ -420,6 +412,7 @@ export class AdminWhatsappAnalyticsService {
    * Get timeseries trends for charting.
    */
   async getTimeseriesTrends(opts: {
+    days?: number
     startDate?: string
     endDate?: string
     organizationId?: string
@@ -435,9 +428,10 @@ export class AdminWhatsappAnalyticsService {
       marginPct: number
     }>
   > {
+    const days = opts.days ?? 30
     const start = opts.startDate
       ? new Date(opts.startDate)
-      : new Date(Date.now() - 30 * 24 * 3600 * 1000)
+      : new Date(Date.now() - days * 24 * 3600 * 1000)
     start.setUTCHours(0, 0, 0, 0)
 
     const end = opts.endDate ? new Date(opts.endDate) : new Date()
@@ -502,12 +496,14 @@ export class AdminWhatsappAnalyticsService {
    * Get Organization Profitability Ranking / Leaderboard.
    */
   async getOrganizationProfitability(opts: {
+    days?: number
     startDate?: string
     endDate?: string
   }): Promise<OrgProfitabilityItemDTO[]> {
+    const days = opts.days ?? 30
     const start = opts.startDate
       ? new Date(opts.startDate)
-      : new Date(Date.now() - 30 * 24 * 3600 * 1000)
+      : new Date(Date.now() - days * 24 * 3600 * 1000)
     start.setUTCHours(0, 0, 0, 0)
 
     const end = opts.endDate ? new Date(opts.endDate) : new Date()
@@ -589,11 +585,12 @@ export class AdminWhatsappAnalyticsService {
    */
   async getOrganizationDeviceBreakdown(
     organizationId: string,
-    opts: { startDate?: string; endDate?: string } = {}
+    opts: { days?: number; startDate?: string; endDate?: string } = {}
   ) {
+    const days = opts.days ?? 30
     const start = opts.startDate
       ? new Date(opts.startDate)
-      : new Date(Date.now() - 30 * 24 * 3600 * 1000)
+      : new Date(Date.now() - days * 24 * 3600 * 1000)
     start.setUTCHours(0, 0, 0, 0)
 
     const end = opts.endDate ? new Date(opts.endDate) : new Date()

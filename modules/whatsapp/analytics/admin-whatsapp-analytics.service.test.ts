@@ -60,6 +60,7 @@ describe("AdminWhatsappAnalyticsService", () => {
     ])
 
     const summary = await service.getFinancialSummary({
+      days: 30,
       startDate: "2026-08-01",
       endDate: "2026-08-31",
     })
@@ -68,6 +69,7 @@ describe("AdminWhatsappAnalyticsService", () => {
     expect(summary.kpi.totalRevenueIdr).toBe("15500.00")
     expect(summary.kpi.totalMetaNetCostIdr).toBe("8487.67")
     expect(summary.kpi.grossProfitIdr).toBe("7012.33")
+    expect(summary.kpi.grossMarginPct).toBe("45.24")
     expect(summary.kpi.status).toBe("HEALTHY")
     expect(summary.categoryBreakdown.length).toBe(4)
   })
@@ -85,6 +87,7 @@ describe("AdminWhatsappAnalyticsService", () => {
     ])
 
     const trends = await service.getTimeseriesTrends({
+      days: 30,
       startDate: "2026-08-01",
       endDate: "2026-08-31",
     })
@@ -112,6 +115,7 @@ describe("AdminWhatsappAnalyticsService", () => {
     ])
 
     const orgs = await service.getOrganizationProfitability({
+      days: 30,
       startDate: "2026-08-01",
       endDate: "2026-08-31",
     })

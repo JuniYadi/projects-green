@@ -13,6 +13,7 @@ export const adminWhatsappAnalyticsRoutes = new Elysia({
 
       const service = new AdminWhatsappAnalyticsService()
       const summary = await service.getFinancialSummary({
+        days: query.days ? Number(query.days) : undefined,
         startDate: query.startDate,
         endDate: query.endDate,
         organizationId: query.organizationId,
@@ -25,6 +26,7 @@ export const adminWhatsappAnalyticsRoutes = new Elysia({
     },
     {
       query: t.Object({
+        days: t.Optional(t.Union([t.String(), t.Number()])),
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
         organizationId: t.Optional(t.String()),
@@ -39,6 +41,7 @@ export const adminWhatsappAnalyticsRoutes = new Elysia({
 
       const service = new AdminWhatsappAnalyticsService()
       const trends = await service.getTimeseriesTrends({
+        days: query.days ? Number(query.days) : undefined,
         startDate: query.startDate,
         endDate: query.endDate,
         organizationId: query.organizationId,
@@ -51,6 +54,7 @@ export const adminWhatsappAnalyticsRoutes = new Elysia({
     },
     {
       query: t.Object({
+        days: t.Optional(t.Union([t.String(), t.Number()])),
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
         organizationId: t.Optional(t.String()),
@@ -65,6 +69,7 @@ export const adminWhatsappAnalyticsRoutes = new Elysia({
 
       const service = new AdminWhatsappAnalyticsService()
       const organizations = await service.getOrganizationProfitability({
+        days: query.days ? Number(query.days) : undefined,
         startDate: query.startDate,
         endDate: query.endDate,
       })
@@ -76,6 +81,7 @@ export const adminWhatsappAnalyticsRoutes = new Elysia({
     },
     {
       query: t.Object({
+        days: t.Optional(t.Union([t.String(), t.Number()])),
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
       }),
@@ -90,11 +96,13 @@ export const adminWhatsappAnalyticsRoutes = new Elysia({
       const service = new AdminWhatsappAnalyticsService()
       const [summary, devices] = await Promise.all([
         service.getFinancialSummary({
+          days: query.days ? Number(query.days) : undefined,
           startDate: query.startDate,
           endDate: query.endDate,
           organizationId: params.organizationId,
         }),
         service.getOrganizationDeviceBreakdown(params.organizationId, {
+          days: query.days ? Number(query.days) : undefined,
           startDate: query.startDate,
           endDate: query.endDate,
         }),
@@ -113,6 +121,7 @@ export const adminWhatsappAnalyticsRoutes = new Elysia({
         organizationId: t.String(),
       }),
       query: t.Object({
+        days: t.Optional(t.Union([t.String(), t.Number()])),
         startDate: t.Optional(t.String()),
         endDate: t.Optional(t.String()),
       }),

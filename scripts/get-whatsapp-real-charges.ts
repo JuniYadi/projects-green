@@ -4,9 +4,7 @@
  * Fetches REAL usage charges directly from Meta Pricing Analytics API.
  *
  * Usage:
- *   ACCESS_TOKEN="..." bun scripts/get-whatsapp-real-charges.ts
- *   or:
- *   bun scripts/get-whatsapp-real-charges.ts
+ *   ACCESS_TOKEN="..." WABA_ID="..." bun scripts/get-whatsapp-real-charges.ts
  */
 
 import { prisma } from "../lib/prisma"
@@ -17,11 +15,11 @@ async function main() {
   console.log("  META WHATSAPP REAL CHARGES & USAGE EXTRACTOR")
   console.log("========================================================\n")
 
-  // 1. Resolve Access Token
+  // 1. Resolve Access Token and WABA ID
   let token = process.env.ACCESS_TOKEN
   let wabaId = process.env.WABA_ID
 
-  if (!token) {
+  if (!token || !wabaId) {
     const device = await prisma.whatsappDevice.findFirst({
       where: {
         tokenEncrypted: { not: null },
@@ -29,18 +27,21 @@ async function main() {
       },
     })
     if (device?.tokenEncrypted) {
-      token = await decryptWithAppKey(device.tokenEncrypted)
+      token = token ?? (await decryptWithAppKey(device.tokenEncrypted))
       wabaId = wabaId ?? device.whatsappBusinessAccountId ?? undefined
       console.log(`📱 Loaded device: ${device.phoneNumber ?? device.id}`)
     }
   }
 
   if (!token) {
-    console.error("❌ ERROR: No ACCESS_TOKEN provided.")
+    console.error("❌ ERROR: Missing ACCESS_TOKEN environment variable.")
     process.exit(1)
   }
 
-  wabaId = wabaId ?? "101824669214076"
+  if (!wabaId) {
+    console.error("❌ ERROR: Missing WABA_ID environment variable.")
+    process.exit(1)
+  }
 
   // 2. Fetch WABA Basic Information
   const resWaba = await fetch(
@@ -49,9 +50,13 @@ async function main() {
       headers: { Authorization: `Bearer ${token}` },
     }
   )
-  const wabaInfo = await resWaba.json()
-  console.log(`Account Name : ${wabaInfo.name}`)
-  console.log(`WABA ID      : ${wabaInfo.id}`)
+  const wabaInfo = (await resWaba.json()) as {
+    id?: string
+    name?: string
+    currency?: string
+  }
+  console.log(`Account Name : ${wabaInfo.name ?? "N/A"}`)
+  console.log(`WABA ID      : ${wabaInfo.id ?? wabaId}`)
   console.log(`Currency     : ${wabaInfo.currency ?? "IDR"}\n`)
 
   // 3. Define time window (Last 90 Days)
@@ -66,7 +71,19 @@ async function main() {
     { headers: { Authorization: `Bearer ${token}` } }
   )
 
-  const pricingData = await resPricing.json()
+  const pricingData = (await resPricing.json()) as {
+    error?: { message: string }
+    pricing_analytics?: {
+      data?: Array<{
+        data_points?: Array<{
+          start: number
+          end: number
+          volume?: number
+          cost?: number
+        }>
+      }>
+    }
+  }
 
   if (pricingData.error) {
     console.error("❌ Meta API Error:", pricingData.error)
@@ -81,7 +98,7 @@ async function main() {
   }
 
   // Sort newest first
-  dataPoints.sort((a: any, b: any) => b.start - a.start)
+  dataPoints.sort((a, b) => b.start - a.start)
 
   console.log(
     "----------------------------------------------------------------------------------------"
