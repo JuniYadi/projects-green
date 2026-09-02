@@ -245,6 +245,20 @@ describe("resolveSidebarMenu", () => {
       navMain.find((item) => item.title === "Webhook Logs")?.isActive
     ).toBe(true)
   })
+  it("includes Analytics link in portal whatsapp context and marks it active", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/whatsapp/analytics",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(navMain.map((item) => item.title)).toContain("Analytics")
+
+    const analytics = navMain.find((item) => item.title === "Analytics")!
+    expect(analytics.url).toBe("/en/portal/whatsapp/analytics")
+    expect(analytics.isActive).toBe(true)
+  })
 
   it("returns portal-only navigation and projects for portal surface", () => {
     const { navMain, projects } = resolveSidebarMenu({
@@ -540,6 +554,7 @@ describe("resolveSidebarMenu", () => {
       "Messages",
       "Broadcasts",
       "Usage",
+      "Analytics",
       "Ledger",
       "Pricing",
       "Contacts",
