@@ -78,7 +78,6 @@ describe("Canvas simulator integration", () => {
   it("renders localized canvas labels", () => {
     const html = renderToString(<WhatsappWorkflowCanvasPage />)
 
-    expect(html).toContain("Visual graph")
     expect(html).toContain("Add a step")
     expect(html).toContain("Simulate test")
     expect(html).toContain("Save and deploy")

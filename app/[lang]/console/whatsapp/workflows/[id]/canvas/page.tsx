@@ -915,22 +915,16 @@ export default function WhatsappWorkflowCanvasPage() {
             </Link>
           </Button>
 
-          <div>
+          <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <Input
                 value={workflowMeta.name}
                 onChange={(e) =>
                   setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="h-8 w-64 text-base font-bold tracking-tight md:w-80"
+                className="h-8 w-56 text-sm font-semibold tracking-tight md:w-72"
                 placeholder={t.canvas.namePlaceholder}
               />
-              <Badge
-                variant="outline"
-                className="border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-              >
-                {t.canvas.badgeVisualGraph}
-              </Badge>
 
               {/* Trigger Settings Pill */}
               <button
@@ -949,10 +943,11 @@ export default function WhatsappWorkflowCanvasPage() {
                   )
                   setIsTriggerDialogOpen(true)
                 }}
-                className="inline-flex h-6 items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-500/20"
+                className="inline-flex h-7 items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-500/20"
+                title="Configure activation trigger"
               >
-                <Lightning className="h-3 w-3" weight="fill" />
-                <span>
+                <Lightning className="h-3.5 w-3.5 shrink-0" weight="fill" />
+                <span className="max-w-[140px] truncate">
                   {workflowMeta.trigger.type === "whatsapp_inbound" ||
                   workflowMeta.isDefault
                     ? t.canvas.triggerSettings.pillAllInbound
@@ -963,14 +958,11 @@ export default function WhatsappWorkflowCanvasPage() {
                 </span>
               </button>
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t.canvas.dragHint}
-            </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Device Selector */}
-          <div className="w-44 sm:w-52">
+          <div className="w-40 sm:w-48">
             <Select
               value={selectedDeviceId}
               onValueChange={setSelectedDeviceId}
@@ -981,9 +973,9 @@ export default function WhatsappWorkflowCanvasPage() {
               <SelectContent>
                 {devices.map((d) => (
                   <SelectItem key={d.id} value={d.id} className="text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <WhatsappLogo className="h-3.5 w-3.5 text-emerald-500" />
-                      <span>{d.name}</span>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <WhatsappLogo className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                      <span className="truncate">{d.name}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -991,24 +983,7 @@ export default function WhatsappWorkflowCanvasPage() {
             </Select>
           </div>
 
-          {/* AI Copilot Toggle Button */}
-          <Button
-            variant={showCopilot ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setShowCopilot((prev) => !prev)}
-            className={`h-8 gap-1.5 text-xs font-medium ${showCopilot ? "border-primary/40 bg-primary/10 text-primary" : ""}`}
-            title={t.canvas.generateAi}
-          >
-            <Sparkle
-              className="h-3.5 w-3.5"
-              weight={showCopilot ? "fill" : "regular"}
-            />
-            <span className="hidden md:inline">AI Copilot</span>
-          </Button>
-
-          <div className="mx-0.5 h-4 w-px bg-border/60" />
-
-          {/* Primary Action 1: Test Simulator */}
+          {/* Test Simulator Action */}
           <Button
             variant="outline"
             size="sm"
@@ -1016,10 +991,10 @@ export default function WhatsappWorkflowCanvasPage() {
             className="h-8 gap-1.5 text-xs font-medium"
           >
             <Play className="h-3.5 w-3.5 text-primary" weight="fill" />
-            <span className="hidden sm:inline">{t.canvas.simulateTest}</span>
+            <span>{t.canvas.simulateTest}</span>
           </Button>
 
-          {/* Primary Action 2: Save & Deploy */}
+          {/* Save & Deploy Primary CTA */}
           <Button
             onClick={handleSave}
             disabled={saving}
@@ -1030,14 +1005,30 @@ export default function WhatsappWorkflowCanvasPage() {
             <span>{saving ? t.canvas.saving : t.canvas.saveAndDeploy}</span>
           </Button>
 
-          {/* Secondary Actions in Compact Menu */}
+          {/* Secondary Actions & Tools Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                aria-label="More options"
+              >
                 <DotsThreeVertical className="h-4 w-4" weight="bold" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem
+                onClick={() => setShowCopilot((prev) => !prev)}
+                className="cursor-pointer gap-2 text-xs"
+              >
+                <Sparkle
+                  className={`h-3.5 w-3.5 ${showCopilot ? "text-primary" : "text-muted-foreground"}`}
+                  weight={showCopilot ? "fill" : "regular"}
+                />
+                <span>AI Prompt Generator</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <div className="flex items-center justify-between px-2 py-1.5 text-xs font-medium">
                 <div className="flex items-center gap-1.5">
                   <Star
@@ -1059,14 +1050,14 @@ export default function WhatsappWorkflowCanvasPage() {
                 onClick={() => setShowMiniMap((prev) => !prev)}
                 className="cursor-pointer gap-2 text-xs"
               >
-                <MapTrifold className="h-3.5 w-3.5" />
+                <MapTrifold className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>{showMiniMap ? "Hide MiniMap" : "Show MiniMap"}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleExportJson}
                 className="cursor-pointer gap-2 text-xs"
               >
-                <DownloadSimple className="h-3.5 w-3.5" />
+                <DownloadSimple className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>{t.canvas.exportJson}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -1074,7 +1065,7 @@ export default function WhatsappWorkflowCanvasPage() {
                 className="cursor-pointer gap-2 text-xs"
               >
                 <label className="flex w-full cursor-pointer items-center gap-2">
-                  <UploadSimple className="h-3.5 w-3.5" />
+                  <UploadSimple className="h-3.5 w-3.5 text-muted-foreground" />
                   <span>{t.canvas.importJson}</span>
                   <input
                     type="file"
