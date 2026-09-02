@@ -915,69 +915,103 @@ export default function WhatsappWorkflowCanvasPage() {
     WorkflowNode | undefined
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-1 flex-col gap-4 p-6 pt-0">
+    <div className="flex h-[calc(100vh-4rem)] flex-1 flex-col gap-3 p-6 pt-0">
       {/* Top Bar Header */}
-      <div className="flex flex-col gap-4 border-b border-border/60 pb-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+      <header className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/60 p-3 shadow-xs backdrop-blur-sm md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+          >
             <Link href={`/${lang}/console/whatsapp/workflows`}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
 
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <div className="relative flex max-w-sm flex-1 items-center sm:max-w-md">
               <Input
                 value={workflowMeta.name}
                 onChange={(e) =>
                   setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="h-8 w-56 text-sm font-semibold tracking-tight md:w-72"
+                className="h-8 w-full border-border/50 bg-background/80 px-2.5 text-sm font-semibold tracking-tight transition-all focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20"
                 placeholder={t.canvas.namePlaceholder}
+                aria-label={t.canvas.namePlaceholder}
               />
-
-              {/* Trigger Settings Pill */}
-              <button
-                type="button"
-                onClick={() => {
-                  const currentType =
-                    workflowMeta.trigger.type === "whatsapp_inbound" ||
-                    workflowMeta.isDefault
-                      ? "whatsapp_inbound"
-                      : "keyword_match"
-                  setTriggerDraftType(currentType)
-                  setTriggerKeywordsInput(
-                    Array.isArray(workflowMeta.trigger.keywords)
-                      ? workflowMeta.trigger.keywords.join(", ")
-                      : ""
-                  )
-                  setIsTriggerDialogOpen(true)
-                }}
-                className="inline-flex h-7 items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-500/20"
-                title="Configure activation trigger"
-              >
-                <Lightning className="h-3.5 w-3.5 shrink-0" weight="fill" />
-                <span className="max-w-[140px] truncate">
-                  {workflowMeta.trigger.type === "whatsapp_inbound" ||
-                  workflowMeta.isDefault
-                    ? t.canvas.triggerSettings.pillAllInbound
-                    : t.canvas.triggerSettings.pillKeywords.replace(
-                        "{count}",
-                        String(workflowMeta.trigger.keywords?.length || 0)
-                      )}
-                </span>
-              </button>
             </div>
+
+            {/* Visual graph Badge */}
+            <Badge
+              variant="secondary"
+              className="hidden h-6 items-center gap-1 border-border/60 bg-muted/60 px-2 text-[11px] font-normal text-muted-foreground sm:inline-flex"
+            >
+              <MapTrifold className="h-3 w-3 text-muted-foreground" />
+              <span>{t.canvas.badgeVisualGraph}</span>
+            </Badge>
+
+            {/* Trigger Settings Pill */}
+            <button
+              type="button"
+              onClick={() => {
+                const currentType =
+                  workflowMeta.trigger.type === "whatsapp_inbound" ||
+                  workflowMeta.isDefault
+                    ? "whatsapp_inbound"
+                    : "keyword_match"
+                setTriggerDraftType(currentType)
+                setTriggerKeywordsInput(
+                  Array.isArray(workflowMeta.trigger.keywords)
+                    ? workflowMeta.trigger.keywords.join(", ")
+                    : ""
+                )
+                setIsTriggerDialogOpen(true)
+              }}
+              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-500/20"
+              title="Configure activation trigger"
+            >
+              <Lightning className="h-3.5 w-3.5 shrink-0" weight="fill" />
+              <span className="max-w-[150px] truncate">
+                {workflowMeta.trigger.type === "whatsapp_inbound" ||
+                workflowMeta.isDefault
+                  ? t.canvas.triggerSettings.pillAllInbound
+                  : t.canvas.triggerSettings.pillKeywords.replace(
+                      "{count}",
+                      String(workflowMeta.trigger.keywords?.length || 0)
+                    )}
+              </span>
+            </button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {/* AI Copilot Quick Assist CTA */}
+          <Button
+            variant={showCopilot ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowCopilot((prev) => !prev)}
+            className={`h-8 gap-1.5 text-xs font-medium ${
+              showCopilot
+                ? "bg-primary text-primary-foreground"
+                : "border-primary/30 text-primary hover:bg-primary/10"
+            }`}
+            aria-label="AI Copilot"
+          >
+            <Sparkle
+              className="h-3.5 w-3.5"
+              weight={showCopilot ? "fill" : "regular"}
+            />
+            <span>AI Copilot</span>
+          </Button>
+
           {/* Device Selector */}
-          <div className="w-40 sm:w-48">
+          <div className="w-36 sm:w-44">
             <Select
               value={selectedDeviceId}
               onValueChange={setSelectedDeviceId}
             >
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-8 border-border/70 text-xs">
                 <SelectValue placeholder={t.canvas.selectDevicePlaceholder} />
               </SelectTrigger>
               <SelectContent>
@@ -1028,17 +1062,6 @@ export default function WhatsappWorkflowCanvasPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem
-                onClick={() => setShowCopilot((prev) => !prev)}
-                className="cursor-pointer gap-2 text-xs"
-              >
-                <Sparkle
-                  className={`h-3.5 w-3.5 ${showCopilot ? "text-primary" : "text-muted-foreground"}`}
-                  weight={showCopilot ? "fill" : "regular"}
-                />
-                <span>AI Prompt Generator</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <div className="flex items-center justify-between px-2 py-1.5 text-xs font-medium">
                 <div className="flex items-center gap-1.5">
                   <Star
@@ -1088,7 +1111,7 @@ export default function WhatsappWorkflowCanvasPage() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
+      </header>
 
       {/* Canvas Area with Floating Toolbars */}
       <div className="relative flex flex-1 overflow-hidden rounded-xl border border-border bg-background shadow-inner">
