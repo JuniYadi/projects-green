@@ -1048,7 +1048,10 @@ export function WhatsAppInbox({
     })
   const handleSummarizeConversation = React.useCallback(() => {
     if (!activeConversation) return
-    const phone = activeConversation.phoneNumber ?? activeConversation.id
+    const phone =
+      activeConversation.contactPhone ??
+      activeConversation.whatsappDevice?.phoneNumber ??
+      activeConversation.id
     const prompt = `Tolong rangkum percakapan dengan ${phone}. Jelaskan kebutuhan utama pelanggan, status pesan, dan rekomendasi tindakan berikutnya secara ringkas.`
     window.dispatchEvent(
       new CustomEvent("agent_p_trigger", {

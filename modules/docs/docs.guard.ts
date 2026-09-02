@@ -446,7 +446,7 @@ export async function recordStrikeAndEscalate(params: {
           offenseLevel: ban.offenseLevel,
           isPermanent: ban.isPermanent,
           blockedUntil: ban.blockedUntil,
-          reason: ban.reason,
+          reason: ban.reason ?? "",
         }
       }
     }

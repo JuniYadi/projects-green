@@ -57,10 +57,20 @@ export const inboxSummarizeTool: AgentPTool<
       }))
     )
     const latestInbound = messages
-      .find((m) => m.direction === "INBOUND" || m.direction === "inbound")
+      .find(
+        (m) =>
+          (m.direction as string) === "INBOX" ||
+          (m.direction as string) === "INBOUND" ||
+          (m.direction as string) === "inbound"
+      )
       ?.body?.trim()
     const latestOutbound = messages
-      .find((m) => m.direction === "OUTBOUND" || m.direction === "outbound")
+      .find(
+        (m) =>
+          (m.direction as string) === "OUTBOX" ||
+          (m.direction as string) === "OUTBOUND" ||
+          (m.direction as string) === "outbound"
+      )
       ?.body?.trim()
 
     let summary = "Tidak ada riwayat pesan percakapan."

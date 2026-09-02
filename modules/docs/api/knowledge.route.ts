@@ -20,6 +20,10 @@ import { createAiLanguageModel } from "@/modules/ai/ai-provider.factory"
 import { executeAgentPTool } from "@/modules/ai/agent-p/executor"
 import { agentPRegistry } from "@/modules/ai/agent-p/registry"
 import { verifyUserIntentAndSafety } from "@/modules/ai/agent-p/intent-gate"
+import type {
+  KnowledgeChatRequest,
+  KnowledgeCitation,
+} from "@/modules/docs/docs.types"
 
 const knowledgeChatBodySchema = z.object({
   sessionId: z.string().optional(),
@@ -218,12 +222,13 @@ const streamKnowledgeAnswerDefault = async function* (input: {
   ].join("\n")
 
   const conversationMessages = input.messages
-    .filter((msg) => Boolean(msg.content && msg.content.trim().length > 0))
-    .map((msg) => ({
+    .filter((msg: KnowledgeChatRequest["messages"][number]) =>
+      Boolean(msg.content && msg.content.trim().length > 0)
+    )
+    .map((msg: KnowledgeChatRequest["messages"][number]) => ({
       role: msg.role as "user" | "assistant",
       content: msg.content.trim(),
     }))
-
   // Step 1: Initial call with tools
   const firstStep = streamText({
     model,

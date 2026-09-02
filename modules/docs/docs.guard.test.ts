@@ -229,12 +229,9 @@ describe("docs.guard - checkActiveBan & recordStrikeAndEscalate", () => {
   it("does not escalate before the third committed strike", async () => {
     mockUpdateMany.mockResolvedValueOnce({ count: 1 })
     mockFindManySessions.mockResolvedValueOnce([{ strikeCount: 2 }])
-    mockCreate.mockImplementationOnce(
-      async (args: { data: Record<string, unknown> }) => ({
-        id: "ban_early",
-        ...args.data,
-      })
-    )
+    mockCreate.mockImplementationOnce((async () => ({
+      id: "ban_early",
+    })) as never)
 
     const result = await recordStrikeAndEscalate({
       sessionId: "sess_1",
@@ -249,13 +246,22 @@ describe("docs.guard - checkActiveBan & recordStrikeAndEscalate", () => {
   it("creates a permanent ban when 15 committed strikes are reached", async () => {
     mockUpdateMany.mockResolvedValueOnce({ count: 1 })
     mockFindManySessions.mockResolvedValueOnce([{ strikeCount: 15 }])
-    mockCreate.mockImplementationOnce(
-      async (args: { data: Record<string, unknown> }) => ({
-        id: "ban_perm",
-        ...args.data,
-      })
-    )
-
+    mockCreate.mockImplementationOnce((async (args: {
+      data?: {
+        banType?: string
+        offenseLevel?: number
+        isPermanent?: boolean
+        blockedUntil?: Date | null
+        reason?: string
+      }
+    }) => ({
+      id: "ban_perm",
+      banType: args?.data?.banType ?? "ORGANIZATION",
+      offenseLevel: args?.data?.offenseLevel ?? 5,
+      isPermanent: args?.data?.isPermanent ?? true,
+      blockedUntil: args?.data?.blockedUntil ?? null,
+      reason: args?.data?.reason ?? "banned",
+    })) as never)
     const result = await recordStrikeAndEscalate({
       sessionId: "sess_1",
       organizationId: "org_1",

@@ -8,6 +8,8 @@ export const intentGateSchema = z.object({
   refusalMessage: z.string().nullable().default(null),
 })
 
+export type IntentGateResult = z.infer<typeof intentGateSchema>
+
 /**
  * Validates EVERY user message with a fast structured LLM Gate.
  * Zero-trust: Never passes prompt to main model/tools if flagged.
