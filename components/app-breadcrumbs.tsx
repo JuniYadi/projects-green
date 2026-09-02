@@ -26,8 +26,8 @@ type BuildAppBreadcrumbItemsOptions = {
 type AppBreadcrumbsProps = {
   rootSegment: AppRootSegment
 }
-
 const SEGMENT_LABELS: Record<string, string> = {
+  analytics: "Analytics",
   agents: "AI Agents",
   ai: "AI Studio",
   knowledge: "Knowledge Base",

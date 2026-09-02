@@ -19,6 +19,7 @@ import {
   BookOpenIcon,
   BuildingsIcon,
   CaretLeftIcon,
+  ChartBar as ChartBarIcon,
   ChartLine as ChartLineIcon,
   Clock as ClockIcon,
   CrosshairIcon,
@@ -549,6 +550,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <ChartLineIcon />,
         isActive: startsWithRoute(path, "/portal/whatsapp/usage"),
+      },
+      {
+        title: "Analytics",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/analytics",
+          locale,
+        }),
+        icon: <ChartBarIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/analytics"),
       },
       {
         title: "Ledger",
