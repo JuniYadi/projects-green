@@ -38,6 +38,7 @@ import {
 // ── GitHub Events ──────────────────────────────────────────────────────────
 import { GithubEventJob } from "@/modules/github/jobs/github-event.job"
 
+import { AdminWhatsappAnalyticsService } from "@/modules/whatsapp/analytics/admin-whatsapp-analytics.service"
 // ── Billing Cron ───────────────────────────────────────────────────────────
 import {
   BILLING_DAILY_RESET_QUEUE,
