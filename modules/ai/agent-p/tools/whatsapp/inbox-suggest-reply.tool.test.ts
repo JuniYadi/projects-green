@@ -43,7 +43,7 @@ describe("inboxSuggestReplyTool", () => {
     })
 
     const result = await inboxSuggestReplyTool.execute(
-      { conversationId: "conv-empty" },
+      { conversationId: "conv-empty", tone: "friendly" },
       context
     )
     expect(result.suggestedReply).toBe(
@@ -54,7 +54,10 @@ describe("inboxSuggestReplyTool", () => {
   it("throws when conversation not found", async () => {
     mockPrisma.whatsappConversation.findFirst.mockResolvedValueOnce(null)
     await expect(
-      inboxSuggestReplyTool.execute({ conversationId: "conv-none" }, context)
+      inboxSuggestReplyTool.execute(
+        { conversationId: "conv-none", tone: "friendly" },
+        context
+      )
     ).rejects.toThrow("CONVERSATION_NOT_FOUND")
   })
 })

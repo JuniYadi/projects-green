@@ -52,7 +52,7 @@ describe("inboxSummarizeTool", () => {
 
   it("handles empty inbox gracefully", async () => {
     mockPrisma.whatsappConversation.findMany.mockResolvedValueOnce([])
-    const result = await inboxSummarizeTool.execute({}, context)
+    const result = await inboxSummarizeTool.execute({ limit: 20 }, context)
     expect(result.messages).toEqual([])
     expect(result.summary).toBe("No recent inbox messages.")
   })
