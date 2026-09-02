@@ -43,7 +43,10 @@ describe("AgentPService", () => {
       providerId: undefined,
       modelOverride: undefined,
     })
-    expect(createModel.mock.calls[0]?.[0].providerType).toBe("MANAGED")
+    expect(createModel).toHaveBeenCalled()
+    const firstCall = createModel.mock.calls[0] as unknown as
+      [ResolvedAiProvider] | undefined
+    expect(firstCall?.[0].providerType).toBe("MANAGED")
     expect(streamTextMock).toHaveBeenCalled()
   })
 
@@ -66,9 +69,10 @@ describe("AgentPService", () => {
     })
 
     expect(result.object.answer).toBe("ok")
-    expect(createModel.mock.calls[0]?.[0].providerType).toBe(
-      "OPENAI_COMPATIBLE"
-    )
+    expect(createModel).toHaveBeenCalled()
+    const firstCall = createModel.mock.calls[0] as unknown as
+      [ResolvedAiProvider] | undefined
+    expect(firstCall?.[0].providerType).toBe("OPENAI_COMPATIBLE")
     expect(generateObjectMock).toHaveBeenCalled()
   })
 })

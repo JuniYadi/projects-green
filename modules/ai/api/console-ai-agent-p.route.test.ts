@@ -20,7 +20,10 @@ describe("Console AI Agent P route", () => {
   )
 
   it("rejects unauthenticated execution", async () => {
-    mockAuth.mockResolvedValueOnce({ user: null, organizationId: null })
+    mockAuth.mockResolvedValueOnce({
+      user: null as never,
+      organizationId: null as never,
+    })
     const response = await createConsoleAiAgentPRoutes().handle(
       new Request("http://localhost/console/ai/agent-p/execute", {
         method: "POST",

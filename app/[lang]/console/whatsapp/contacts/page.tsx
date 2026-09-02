@@ -18,6 +18,7 @@ import {
   Upload,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import {
   Card,

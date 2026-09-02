@@ -32,8 +32,7 @@ export const deviceDiagnoseTool: AgentPTool<
       },
     })
     if (!device) throw new Error("DEVICE_NOT_FOUND")
-    const connected =
-      device.status === "CONNECTED" || device.status === "ACTIVE"
+    const connected = device.status === "ACTIVE"
     return {
       deviceId: device.id,
       status: device.status,

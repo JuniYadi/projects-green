@@ -139,7 +139,7 @@ describe("WhatsApp Agent P tools", () => {
   it("diagnoses a connected device without exposing credentials", async () => {
     prismaMock.whatsappDevice.findFirst.mockResolvedValueOnce({
       id: "device-1",
-      status: "CONNECTED",
+      status: "ACTIVE",
       phoneNumber: "+62812345678",
       lastHeartbeatAt: new Date("2026-01-01T00:00:00Z"),
     })
@@ -148,7 +148,7 @@ describe("WhatsApp Agent P tools", () => {
       deviceDiagnoseTool.execute({ deviceId: "device-1" }, context)
     ).resolves.toEqual({
       deviceId: "device-1",
-      status: "CONNECTED",
+      status: "ACTIVE",
       phoneNumber: "+62812345678",
       connected: true,
       lastHeartbeatAt: "2026-01-01T00:00:00.000Z",

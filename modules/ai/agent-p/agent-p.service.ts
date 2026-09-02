@@ -69,12 +69,20 @@ export class AgentPService {
   async stream(options: AgentPGenerationOptions) {
     const context = this.contextFor(options)
     const model = await this.modelFor(options)
+    const tools = this.registry.toAiTools(context, executeAgentPTool)
+    if (options.messages && options.messages.length > 0) {
+      return streamText({
+        model,
+        system: options.system,
+        messages: options.messages,
+        tools,
+      })
+    }
     return streamText({
       model,
       system: options.system,
-      prompt: options.prompt,
-      messages: options.messages,
-      tools: this.registry.toAiTools(context, executeAgentPTool),
+      prompt: options.prompt ?? "",
+      tools,
     })
   }
 
@@ -83,13 +91,22 @@ export class AgentPService {
   ) {
     const context = this.contextFor(options)
     const model = await this.modelFor(options)
+    const tools = this.registry.toAiTools(context, executeAgentPTool)
+    if (options.messages && options.messages.length > 0) {
+      return generateObject({
+        model,
+        schema: options.schema,
+        system: options.system,
+        messages: options.messages,
+        tools,
+      })
+    }
     return generateObject({
       model,
       schema: options.schema,
       system: options.system,
-      prompt: options.prompt,
-      messages: options.messages,
-      tools: this.registry.toAiTools(context, executeAgentPTool),
+      prompt: options.prompt ?? "",
+      tools,
     })
   }
 }
