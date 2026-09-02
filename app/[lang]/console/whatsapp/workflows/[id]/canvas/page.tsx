@@ -37,7 +37,6 @@ import {
   DownloadSimple,
   UploadSimple,
   Star,
-  DotsThreeVertical,
   X,
   MapTrifold,
   Lightning,
@@ -916,123 +915,61 @@ export default function WhatsappWorkflowCanvasPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-1 flex-col gap-3 p-6 pt-0">
-      {/* Top Bar Header */}
-      <header className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card/60 p-3 shadow-xs backdrop-blur-sm md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      {/* Ultra-Clean Minimal Canvas Header */}
+      <header className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-card/40 px-3 py-2 shadow-xs backdrop-blur-md">
+        {/* Left Section: Back, Title, Status & Quick Trigger */}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <Button
             asChild
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
           >
             <Link href={`/${lang}/console/whatsapp/workflows`}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
 
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <div className="relative flex max-w-sm flex-1 items-center sm:max-w-md">
-              <Input
-                value={workflowMeta.name}
-                onChange={(e) =>
-                  setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
-                }
-                className="h-8 w-full border-border/50 bg-background/80 px-2.5 text-sm font-semibold tracking-tight transition-all focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20"
-                placeholder={t.canvas.namePlaceholder}
-                aria-label={t.canvas.namePlaceholder}
-              />
-            </div>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Input
+              value={workflowMeta.name}
+              onChange={(e) =>
+                setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
+              }
+              className="h-8 max-w-sm border-transparent bg-transparent px-2 text-sm font-semibold tracking-tight hover:border-border/60 focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20 md:max-w-md"
+              placeholder={t.canvas.namePlaceholder}
+              aria-label={t.canvas.namePlaceholder}
+            />
 
-            {/* Visual graph Badge */}
+            {/* Lightweight Status Badge */}
             <Badge
-              variant="secondary"
-              className="hidden h-6 items-center gap-1 border-border/60 bg-muted/60 px-2 text-[11px] font-normal text-muted-foreground sm:inline-flex"
+              variant="outline"
+              className={`hidden h-5.5 items-center gap-1.5 px-2 text-[11px] font-normal sm:inline-flex ${
+                workflowMeta.isActive
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "border-border/60 bg-muted/40 text-muted-foreground"
+              }`}
             >
-              <MapTrifold className="h-3 w-3 text-muted-foreground" />
-              <span>{t.canvas.badgeVisualGraph}</span>
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  workflowMeta.isActive
+                    ? "animate-pulse bg-emerald-500"
+                    : "bg-muted-foreground"
+                }`}
+              />
+              <span>{workflowMeta.isActive ? "Live" : "Draft"}</span>
             </Badge>
-
-            {/* Trigger Settings Pill */}
-            <button
-              type="button"
-              onClick={() => {
-                const currentType =
-                  workflowMeta.trigger.type === "whatsapp_inbound" ||
-                  workflowMeta.isDefault
-                    ? "whatsapp_inbound"
-                    : "keyword_match"
-                setTriggerDraftType(currentType)
-                setTriggerKeywordsInput(
-                  Array.isArray(workflowMeta.trigger.keywords)
-                    ? workflowMeta.trigger.keywords.join(", ")
-                    : ""
-                )
-                setIsTriggerDialogOpen(true)
-              }}
-              className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-500/20"
-              title="Configure activation trigger"
-            >
-              <Lightning className="h-3.5 w-3.5 shrink-0" weight="fill" />
-              <span className="max-w-[150px] truncate">
-                {workflowMeta.trigger.type === "whatsapp_inbound" ||
-                workflowMeta.isDefault
-                  ? t.canvas.triggerSettings.pillAllInbound
-                  : t.canvas.triggerSettings.pillKeywords.replace(
-                      "{count}",
-                      String(workflowMeta.trigger.keywords?.length || 0)
-                    )}
-              </span>
-            </button>
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {/* AI Copilot Quick Assist CTA */}
-          <Button
-            variant={showCopilot ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowCopilot((prev) => !prev)}
-            className={`h-8 gap-1.5 text-xs font-medium ${
-              showCopilot
-                ? "bg-primary text-primary-foreground"
-                : "border-primary/30 text-primary hover:bg-primary/10"
-            }`}
-            aria-label="AI Copilot"
-          >
-            <Sparkle
-              className="h-3.5 w-3.5"
-              weight={showCopilot ? "fill" : "regular"}
-            />
-            <span>AI Copilot</span>
-          </Button>
 
-          {/* Device Selector */}
-          <div className="w-36 sm:w-44">
-            <Select
-              value={selectedDeviceId}
-              onValueChange={setSelectedDeviceId}
-            >
-              <SelectTrigger className="h-8 border-border/70 text-xs">
-                <SelectValue placeholder={t.canvas.selectDevicePlaceholder} />
-              </SelectTrigger>
-              <SelectContent>
-                {devices.map((d) => (
-                  <SelectItem key={d.id} value={d.id} className="text-xs">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <WhatsappLogo className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                      <span className="truncate">{d.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Test Simulator Action */}
+        {/* Right Section: Test, Save & More */}
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Test Simulator */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleStartSim}
-            className="h-8 gap-1.5 text-xs font-medium"
+            className="h-8 gap-1.5 border-border/70 text-xs font-medium text-foreground hover:bg-muted/80"
           >
             <Play className="h-3.5 w-3.5 text-primary" weight="fill" />
             <span>{t.canvas.simulateTest}</span>
@@ -1043,25 +980,107 @@ export default function WhatsappWorkflowCanvasPage() {
             onClick={handleSave}
             disabled={saving}
             size="sm"
-            className="h-8 gap-1.5 bg-emerald-600 text-xs font-medium text-white hover:bg-emerald-700"
+            className="h-8 gap-1.5 bg-emerald-600 px-3 text-xs font-medium text-white shadow-xs hover:bg-emerald-700"
           >
             <FloppyDisk className="h-3.5 w-3.5" />
             <span>{saving ? t.canvas.saving : t.canvas.saveAndDeploy}</span>
           </Button>
 
-          {/* Secondary Actions & Tools Dropdown */}
+          {/* Options / Settings Dropdown Button with explicit label for accessibility & discovery */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 border-border/70 px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 aria-label="More options"
               >
-                <DotsThreeVertical className="h-4 w-4" weight="bold" />
+                <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">Settings</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-64 p-1.5">
+              {/* AI Copilot Toggle in Menu */}
+              <DropdownMenuItem
+                onClick={() => setShowCopilot((prev) => !prev)}
+                className="cursor-pointer gap-2 py-2 text-xs font-medium"
+              >
+                <Sparkle
+                  className={`h-4 w-4 ${showCopilot ? "fill-primary text-primary" : "text-primary"}`}
+                  weight={showCopilot ? "fill" : "regular"}
+                />
+                <div className="flex flex-col">
+                  <span>AI Assistant / Copilot</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    Generate or improve steps
+                  </span>
+                </div>
+              </DropdownMenuItem>
+
+              {/* Trigger Settings Trigger */}
+              <DropdownMenuItem
+                onClick={() => {
+                  const currentType =
+                    workflowMeta.trigger.type === "whatsapp_inbound" ||
+                    workflowMeta.isDefault
+                      ? "whatsapp_inbound"
+                      : "keyword_match"
+                  setTriggerDraftType(currentType)
+                  setTriggerKeywordsInput(
+                    Array.isArray(workflowMeta.trigger.keywords)
+                      ? workflowMeta.trigger.keywords.join(", ")
+                      : ""
+                  )
+                  setIsTriggerDialogOpen(true)
+                }}
+                className="cursor-pointer gap-2 py-2 text-xs font-medium"
+              >
+                <Lightning className="h-4 w-4 text-amber-500" weight="fill" />
+                <div className="flex flex-col truncate">
+                  <span>Trigger Settings</span>
+                  <span className="truncate text-[10px] font-normal text-muted-foreground">
+                    {workflowMeta.trigger.type === "whatsapp_inbound" ||
+                    workflowMeta.isDefault
+                      ? t.canvas.triggerSettings.allInbound
+                      : `${workflowMeta.trigger.keywords?.length || 0} keywords active`}
+                  </span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              {/* Device Selector in Menu */}
+              <div className="px-2 py-1.5">
+                <Label className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  WhatsApp Device
+                </Label>
+                <div className="mt-1.5">
+                  <Select
+                    value={selectedDeviceId}
+                    onValueChange={setSelectedDeviceId}
+                  >
+                    <SelectTrigger className="h-7 border-border/60 text-xs">
+                      <SelectValue
+                        placeholder={t.canvas.selectDevicePlaceholder}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {devices.map((d) => (
+                        <SelectItem key={d.id} value={d.id} className="text-xs">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <WhatsappLogo className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                            <span className="truncate">{d.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              {/* Default Workflow Switch */}
               <div className="flex items-center justify-between px-2 py-1.5 text-xs font-medium">
                 <div className="flex items-center gap-1.5">
                   <Star
@@ -1078,7 +1097,9 @@ export default function WhatsappWorkflowCanvasPage() {
                   className="scale-75 data-[state=checked]:bg-amber-500"
                 />
               </div>
+
               <DropdownMenuSeparator />
+
               <DropdownMenuItem
                 onClick={() => setShowMiniMap((prev) => !prev)}
                 className="cursor-pointer gap-2 text-xs"
@@ -1158,10 +1179,24 @@ export default function WhatsappWorkflowCanvasPage() {
 
         {/* Node Palette Bar (Floating Left) */}
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 rounded-xl border border-border/80 bg-card/90 p-1.5 shadow-lg backdrop-blur">
-          <div className="px-2 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-            {t.canvas.addNodeHeader}
+          <div className="flex items-center justify-between px-2 py-1">
+            <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+              {t.canvas.addNodeHeader}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowCopilot((prev) => !prev)}
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                showCopilot
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
+              }`}
+              title="Generate with AI Copilot"
+            >
+              <Sparkle className="h-3 w-3" weight="fill" />
+              <span>AI Assist</span>
+            </button>
           </div>
-
           <Button
             variant="outline"
             size="sm"

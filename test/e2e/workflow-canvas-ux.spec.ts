@@ -13,22 +13,38 @@ test.describe("@e2e/whatsapp/user/canvas-header-ux", () => {
     ).toBeVisible()
     await expect(
       page.getByRole("textbox", { name: "Workflow name" })
-    ).toHaveValue(/\\S+/)
-    await expect(page.getByText("Visual graph", { exact: true })).toBeVisible()
-    await expect(page.getByRole("button", { name: /Trigger:/ })).toBeVisible()
+    ).toHaveValue(/\S+/)
     await expect(
       page.getByRole("button", { name: "Save and deploy" })
     ).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: "Simulate test" })
+    ).toBeVisible()
+
+    const overflowMenuButton = page
+      .locator('button[aria-haspopup="menu"]')
+      .last()
+    await overflowMenuButton.click()
+    await expect(page.getByRole("menu")).toBeVisible()
+    await expect(page.getByRole("menu")).toContainText(
+      "Set as default workflow"
+    )
+    await expect(page.getByRole("menu")).toContainText("Trigger Settings")
+    await expect(
+      page.getByRole("menuitem", { name: "Show MiniMap" })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("menuitem", { name: "Export JSON" })
+    ).toBeVisible()
+    await expect(
+      page.getByRole("menuitem", { name: "Import JSON" })
+    ).toBeVisible()
 
     const phoneSelector = page.getByRole("combobox")
-    await expect(phoneSelector).toContainText(/\\+\\d+/)
-    await phoneSelector.click()
-    await expect(page.getByRole("listbox")).toBeVisible()
-    await expect(page.getByRole("option")).toHaveCount(2)
-    await expect(page.getByRole("option").first()).toContainText(/\\+\\d+/)
+    await expect(phoneSelector).toContainText(/\+\d+/)
     await page.keyboard.press("Escape")
 
-    await page.getByRole("button", { name: "AI Copilot" }).click()
+    await page.getByRole("button", { name: "AI Assist" }).click()
     const copilotPrompt = page.getByRole("textbox", {
       name: "Describe the workflow you want to build...",
     })
@@ -42,26 +58,6 @@ test.describe("@e2e/whatsapp/user/canvas-header-ux", () => {
       page.getByRole("region", { name: /Notifications/ })
     ).toContainText("Describe the workflow you want to build...")
     await page.getByRole("button", { name: "Close" }).click()
-
-    const overflowMenuButton = page
-      .locator('button[aria-haspopup="menu"]')
-      .last()
-    await overflowMenuButton.click()
-    await expect(page.getByRole("menu")).toBeVisible()
-    await expect(page.getByRole("menu")).toContainText(
-      "Set as default workflow"
-    )
-    await expect(
-      page.getByRole("menuitem", { name: "Show MiniMap" })
-    ).toBeVisible()
-    await expect(
-      page.getByRole("menuitem", { name: "Export JSON" })
-    ).toBeVisible()
-    await expect(
-      page.getByRole("menuitem", { name: "Import JSON" })
-    ).toBeVisible()
-    await page.keyboard.press("Escape")
-
     await page.getByRole("button", { name: "Ask P", exact: true }).click()
     const assistant = page.getByRole("dialog", { name: "Ask P" })
     await expect(assistant).toBeVisible()

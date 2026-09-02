@@ -9,9 +9,8 @@ test.describe("@e2e/whatsapp/user/workflow-canvas", () => {
     await expect(page).toHaveURL(
       /\/en\/console\/whatsapp\/workflows\/wf_new\/canvas$/
     )
-    await expect(page.getByText("Visual graph")).toBeVisible()
     await expect(
-      page.getByText("Drag to pan, scroll to zoom, and click a node to edit.")
+      page.getByRole("button", { name: "Simulate test" })
     ).toBeVisible()
 
     await expect(page.getByRole("application")).toBeVisible()

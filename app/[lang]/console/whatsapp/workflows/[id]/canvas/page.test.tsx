@@ -84,7 +84,7 @@ describe("Canvas simulator integration", () => {
     expect(html).toContain("Add a step")
     expect(html).toContain("Simulate test")
     expect(html).toContain("Save and deploy")
-    expect(html).toContain("Trigger:")
+    expect(html).toContain("AI Assist")
   })
   it("renders canvas with step palette and supports quick deletion callback", async () => {
     const view = render(<WhatsappWorkflowCanvasPage />)
@@ -95,11 +95,14 @@ describe("Canvas simulator integration", () => {
       expect(view.getByRole("button", { name: "Ask for input" })).toBeDefined()
     })
   })
-  it("renders trigger settings pill and allows opening trigger dialog", async () => {
+  it("renders header actions and allows simulation trigger", async () => {
     const view = render(<WhatsappWorkflowCanvasPage />)
 
     await waitFor(() => {
-      expect(view.getByText(/Trigger:/)).toBeDefined()
+      expect(view.getByRole("button", { name: "Simulate test" })).toBeDefined()
+      expect(
+        view.getByRole("button", { name: "Save and deploy" })
+      ).toBeDefined()
     })
   })
 })
