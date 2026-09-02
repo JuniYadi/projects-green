@@ -228,6 +228,21 @@ export default function WhatsAppDevicesPage() {
       setIsLoading(false)
     }
   }
+  const diagnoseDevice = React.useCallback((device: DeviceListItem) => {
+    window.dispatchEvent(
+      new CustomEvent("agent_p_trigger", {
+        detail: {
+          toolName: "whatsapp.device.diagnose",
+          input: { deviceId: device.id },
+          context: {
+            deviceId: device.id,
+            phoneNumber: device.phoneNumber,
+            status: device.status,
+          },
+        },
+      })
+    )
+  }, [])
 
   React.useEffect(() => {
     ;(async () => {
@@ -372,6 +387,17 @@ export default function WhatsAppDevicesPage() {
       enableHiding: false,
       cell: ({ row }) => {
         const device = row.original
+        if (device.status === "DISCONNECTED") {
+          return (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => diagnoseDevice(device)}
+            >
+              [ 🔍 Diagnosa Masalah ]
+            </Button>
+          )
+        }
         if (device.status === "ACTIVE") {
           return (
             <Button asChild variant="outline" size="sm">

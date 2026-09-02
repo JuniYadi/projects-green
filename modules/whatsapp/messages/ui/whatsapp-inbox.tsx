@@ -777,6 +777,56 @@ function MessageBubble({
   )
 }
 
+// ─── Agent P in-situ components ─────────────────────────────────────────────
+
+export function ConversationSummaryPill({ summary }: { summary: string }) {
+  const [open, setOpen] = React.useState(true)
+
+  return (
+    <div className="mb-3 rounded-lg border border-border bg-card">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span>Conversation summary</span>
+        <span aria-hidden="true">{open ? "−" : "+"}</span>
+      </button>
+      {open && (
+        <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+          {summary}
+        </p>
+      )}
+    </div>
+  )
+}
+
+export function SmartComposerBar({
+  suggestions,
+  onSelect,
+}: {
+  suggestions: string[]
+  onSelect: (suggestion: string) => void
+}) {
+  if (suggestions.length === 0) return null
+
+  return (
+    <div className="mb-2 flex flex-wrap gap-2" aria-label="Suggested replies">
+      {suggestions.slice(0, 3).map((suggestion) => (
+        <button
+          key={suggestion}
+          type="button"
+          className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          onClick={() => onSelect(suggestion)}
+        >
+          {suggestion}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function WhatsAppInbox({
@@ -914,6 +964,23 @@ export function WhatsAppInbox({
     null
   )
   const replyAttachmentInputRef = React.useRef<HTMLInputElement>(null)
+  const [conversationSummary, setConversationSummary] = React.useState<
+    string | null
+  >(null)
+  const [summaryLoading, setSummaryLoading] = React.useState(false)
+  const [summaryError, setSummaryError] = React.useState<string | null>(null)
+  const [aiSuggestions, setAiSuggestions] = React.useState<string[]>([])
+
+  const agentPExecute = React.useMemo(() => {
+    const executePost = eden?.api?.console?.ai?.["agent-p"]?.execute?.post
+    if (typeof executePost === "function") {
+      return executePost as unknown as (input: {
+        toolName: string
+        args: unknown
+      }) => Promise<{ data?: unknown }>
+    }
+    return undefined
+  }, [])
   const [currentTime, setCurrentTime] = React.useState(() => Date.now())
 
   React.useEffect(() => {
@@ -1008,6 +1075,41 @@ export function WhatsAppInbox({
       },
       enabled: Boolean(activeConversationId),
     })
+  const handleSummarizeConversation = React.useCallback(async () => {
+    if (!activeConversation) return
+    setSummaryLoading(true)
+    setSummaryError(null)
+    try {
+      const response = await agentPExecute({
+        toolName: "whatsapp.inbox.summarize",
+        args: { conversationId: activeConversation.id },
+      })
+      const body = response.data as
+        | { success?: boolean; data?: { summary?: string }; error?: string }
+        | undefined
+      if (!body?.success || !body.data?.summary) {
+        throw new Error(body?.error || "Unable to summarize conversation")
+      }
+      setConversationSummary(body.data.summary)
+    } catch (error) {
+      setSummaryError(
+        error instanceof Error
+          ? error.message
+          : "Unable to summarize conversation"
+      )
+    } finally {
+      setSummaryLoading(false)
+    }
+  }, [activeConversation, agentPExecute])
+
+  // Reset agent P state when switching conversation (keyed by activeConversationId state transition)
+  const prevActiveIdRef = React.useRef<string | null>(null)
+  if (prevActiveIdRef.current !== activeConversationId) {
+    prevActiveIdRef.current = activeConversationId
+    if (conversationSummary !== null) setConversationSummary(null)
+    if (summaryError !== null) setSummaryError(null)
+    if (aiSuggestions.length > 0) setAiSuggestions([])
+  }
 
   const { data: consoleDevices = [] } = useQuery({
     queryKey: ["whatsapp", "devices"],
@@ -1258,6 +1360,39 @@ export function WhatsAppInbox({
     () => (activeConversation?.whatsappMessages ?? []).slice().reverse(),
     [activeConversation?.whatsappMessages]
   )
+  const fallbackSuggestions = React.useMemo(() => {
+    const latest = orderedMessages.at(-1)?.body?.trim()
+    return latest
+      ? ["Terima kasih atas informasinya.", "Kami akan segera menindaklanjuti."]
+      : ["Terima kasih telah menghubungi kami.", "Ada yang bisa kami bantu?"]
+  }, [orderedMessages])
+
+  const replySuggestions =
+    aiSuggestions.length > 0 ? aiSuggestions : fallbackSuggestions
+
+  React.useEffect(() => {
+    if (!activeConversation || !agentPExecute) return
+    let cancelled = false
+    agentPExecute({
+      toolName: "whatsapp.inbox.suggest_reply",
+      args: { conversationId: activeConversation.id },
+    })
+      .then((response) => {
+        if (cancelled) return
+        const body = response?.data as
+          { success?: boolean; data?: { suggestedReply?: string } } | undefined
+        const suggestion = body?.success
+          ? body.data?.suggestedReply?.trim()
+          : undefined
+        if (suggestion) {
+          setAiSuggestions([suggestion, ...fallbackSuggestions].slice(0, 3))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [activeConversation, agentPExecute, fallbackSuggestions])
 
   React.useEffect(() => {
     if (orderedMessages.length > 0) {
@@ -2552,10 +2687,29 @@ export function WhatsAppInbox({
                 <WhatsAppText id="s157" />
               </h3>
             )}
+            {activeConversation && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSummarizeConversation}
+                disabled={summaryLoading}
+              >
+                {summaryLoading ? "Rangkum..." : "✨ Rangkum Percakapan"}
+              </Button>
+            )}
           </div>
 
           {/* Messages Area */}
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#efeae2]/30 dark:bg-[#0b141a]/40">
+            {conversationSummary && (
+              <ConversationSummaryPill summary={conversationSummary} />
+            )}
+            {summaryError && (
+              <p className="mb-2 rounded-md border border-border bg-card px-3 py-2 text-xs text-destructive">
+                {summaryError}
+              </p>
+            )}
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pr-2">
               {activeLoading && (
                 <div className="flex flex-1 flex-col justify-end gap-3">
@@ -2649,6 +2803,10 @@ export function WhatsAppInbox({
                         </span>
                       </Button>
                     </div>
+                    <SmartComposerBar
+                      suggestions={replySuggestions}
+                      onSelect={setReplyText}
+                    />
                     <form
                       onSubmit={(e) => {
                         e.preventDefault()

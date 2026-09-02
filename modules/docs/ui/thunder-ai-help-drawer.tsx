@@ -44,6 +44,26 @@ type DocRequestState =
 type ChatMessage = KnowledgeChatMessage & {
   id: string
   citations?: KnowledgeCitation[]
+  actionCards?: AgentPActionCard[]
+  actionCard?: AgentPActionCard
+}
+type AgentPActionCard = {
+  id?: string
+  title: string
+  description?: string
+  actionLabel?: string
+  actionType?: string
+  payload?: Record<string, unknown>
+  ctaLabel?: string
+  eventName?: string
+  eventDetail?: Record<string, unknown>
+  href?: string
+}
+
+type ActiveEntityContext = {
+  entityType?: string
+  entityId?: string
+  entityName?: string
 }
 
 type RelatedDoc = {
@@ -68,6 +88,39 @@ type RouteContextConfig = {
 const DOC_QUERY_KEY = "doc"
 const KB_QUERY_KEY = "kb"
 const ACTIVE_VALUE = "1"
+
+const DOMAIN_SCOPES = ["whatsapp", "billing", "app", "support"] as const
+type DomainScope = (typeof DOMAIN_SCOPES)[number] | "general"
+
+const getDomainScope = (routePath: string): DomainScope => {
+  const segments = routePath.toLowerCase().split("/").filter(Boolean)
+  const domain = segments.find((segment) =>
+    DOMAIN_SCOPES.includes(segment as (typeof DOMAIN_SCOPES)[number])
+  )
+  return (domain as DomainScope | undefined) ?? "general"
+}
+
+const getChatStorageKey = (domainScope: DomainScope) =>
+  `pfn_tanya_p_chat:${domainScope}`
+const getSessionStorageKey = (domainScope: DomainScope) =>
+  `pfn_tanya_p_session_id:${domainScope}`
+
+const getRouteBreadcrumb = (
+  routePath: string,
+  routeContext: RouteContextConfig,
+  _isId: boolean,
+  entity?: ActiveEntityContext
+) => {
+  if (entity?.entityType && entity.entityId) {
+    const entityLabel = entity.entityName ?? entity.entityType
+    return `📍 Sedang melihat: ${entityLabel} #${entity.entityId}`
+  }
+  const broadcastId = routePath.match(/\/broadcasts\/([^/]+)/)?.[1]
+  if (broadcastId) {
+    return `📍 Sedang melihat: Halaman Broadcast #${broadcastId}`
+  }
+  return `📍 Sedang melihat: ${routeContext.titleId}`
+}
 
 const toMessageId = () =>
   `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`
@@ -347,15 +400,25 @@ export function ThunderAiHelpDrawer() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
+  const activeLocale = locale === "id" ? "id" : "en"
+  const isId = activeLocale === "id"
+  const routePath = pathnameWithoutLocale || "/console"
+  const domainScope = getDomainScope(routePath)
+  const chatStorageKey = getChatStorageKey(domainScope)
+  const sessionStorageKey = getSessionStorageKey(domainScope)
 
+  const routeContext = useMemo(() => getRouteContext(routePath), [routePath])
   const [docState, setDocState] = useState<DocRequestState>({ status: "idle" })
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window === "undefined") return []
     try {
-      const saved = sessionStorage.getItem("pfn_tanya_p_chat")
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed)) return parsed
+      const saved = sessionStorage.getItem(chatStorageKey)
+      const legacy = saved ? null : sessionStorage.getItem("pfn_tanya_p_chat")
+      const parsed = JSON.parse(saved ?? legacy ?? "null")
+      if (Array.isArray(parsed)) {
+        if (!saved && legacy) sessionStorage.setItem(chatStorageKey, legacy)
+        return parsed
       }
     } catch {
       // Ignore sessionStorage error
@@ -365,10 +428,10 @@ export function ThunderAiHelpDrawer() {
   const [sessionId, setSessionId] = useState<string>(() => {
     if (typeof window === "undefined") return ""
     try {
-      const savedSessionId = sessionStorage.getItem("pfn_tanya_p_session_id")
+      const savedSessionId = sessionStorage.getItem(sessionStorageKey)
       if (savedSessionId) return savedSessionId
       const newId = `sess_${crypto.randomUUID()}`
-      sessionStorage.setItem("pfn_tanya_p_session_id", newId)
+      sessionStorage.setItem(sessionStorageKey, newId)
       return newId
     } catch {
       return `sess_${Date.now()}`
@@ -377,17 +440,13 @@ export function ThunderAiHelpDrawer() {
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
+  const [activeEntity, setActiveEntity] = useState<ActiveEntityContext>()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const sendChatMessageRef = useRef<(text: string) => Promise<void>>(
     async () => {}
   )
-  const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
-  const activeLocale = locale === "id" ? "id" : "en"
-  const isId = activeLocale === "id"
-  const routePath = pathnameWithoutLocale || "/console"
-  const routeContext = getRouteContext(routePath)
 
   // URL state checking
   const isDocOpen = searchParams.get(DOC_QUERY_KEY) === ACTIVE_VALUE
@@ -400,19 +459,20 @@ export function ThunderAiHelpDrawer() {
   useEffect(() => {
     try {
       if (messages.length > 0) {
-        sessionStorage.setItem("pfn_tanya_p_chat", JSON.stringify(messages))
+        sessionStorage.setItem(chatStorageKey, JSON.stringify(messages))
       }
     } catch {
       // Ignore sessionStorage error
     }
-  }, [messages])
+  }, [messages, chatStorageKey])
 
   const clearChatHistory = () => {
     setMessages([])
     try {
+      sessionStorage.removeItem(chatStorageKey)
       sessionStorage.removeItem("pfn_tanya_p_chat")
       const nextSessionId = `sess_${crypto.randomUUID()}`
-      sessionStorage.setItem("pfn_tanya_p_session_id", nextSessionId)
+      sessionStorage.setItem(sessionStorageKey, nextSessionId)
       setSessionId(nextSessionId)
     } catch {
       // Ignore
@@ -618,26 +678,19 @@ export function ThunderAiHelpDrawer() {
       let buffer = ""
       let finalAnswer: string | null = null
       let finalCitations: KnowledgeCitation[] = []
+      let finalActionCards: AgentPActionCard[] = []
 
       while (true) {
         const { done, value } = await reader.read()
-
-        if (done) {
-          break
-        }
-
+        if (done) break
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split("\n")
         buffer = lines.pop() ?? ""
 
         for (const line of lines) {
-          if (!line.trim()) {
-            continue
-          }
-
+          if (!line.trim()) continue
           try {
             const frame = JSON.parse(line) as KnowledgeChatStreamFrame
-
             if (frame.type === "delta") {
               setMessages((current) =>
                 current.map((message) =>
@@ -648,23 +701,29 @@ export function ThunderAiHelpDrawer() {
               )
               continue
             }
-
             if (frame.type === "done") {
               finalAnswer = frame.answer
               finalCitations = frame.citations
+              finalActionCards =
+                (
+                  frame as typeof frame & {
+                    actionCards?: AgentPActionCard[]
+                  }
+                ).actionCards ?? []
               continue
             }
-
-            if (frame.type === "error") {
-              setChatError(frame.message)
-            }
+            if (frame.type === "error") setChatError(frame.message)
           } catch {
             // Ignore partial NDJSON split across chunk boundaries
           }
         }
       }
 
-      if (finalAnswer || finalCitations.length > 0) {
+      if (
+        finalAnswer ||
+        finalCitations.length > 0 ||
+        finalActionCards.length > 0
+      ) {
         setMessages((current) =>
           current.map((message) =>
             message.id === assistantMessageId
@@ -674,6 +733,9 @@ export function ThunderAiHelpDrawer() {
                   citations: finalCitations.length
                     ? finalCitations
                     : message.citations,
+                  actionCards: finalActionCards.length
+                    ? finalActionCards
+                    : message.actionCards,
                 }
               : message
           )
@@ -696,15 +758,21 @@ export function ThunderAiHelpDrawer() {
     sendChatMessageRef.current = sendChatMessage
   })
 
-  // Support window-level event to open Ask P with custom prompt (e.g. from WhatsApp Template Audit)
   useEffect(() => {
-    const handleAskPEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{
-        prompt?: string
-        autoSend?: boolean
-      }>
-      const prompt = customEvent.detail?.prompt?.trim()
-      const autoSend = customEvent.detail?.autoSend ?? false
+    const handleTrigger = (e: Event) => {
+      const detail = (
+        e as CustomEvent<{
+          query?: string
+          prompt?: string
+          autoSend?: boolean
+          contextPayload?: Record<string, unknown>
+          context?: ActiveEntityContext
+          domain?: string
+        }>
+      ).detail
+      const prompt = (detail?.query ?? detail?.prompt)?.trim()
+      const contextPayload = detail?.contextPayload ?? detail?.context
+      if (contextPayload) setActiveEntity(contextPayload as ActiveEntityContext)
 
       const next = new URLSearchParams(searchParams.toString())
       next.set(KB_QUERY_KEY, ACTIVE_VALUE)
@@ -712,28 +780,36 @@ export function ThunderAiHelpDrawer() {
       router.replace(`${pathname}?${next.toString()}`, { scroll: false })
 
       if (prompt) {
-        if (autoSend) {
-          // Send immediately after drawer opens
-          setTimeout(() => {
-            void sendChatMessageRef.current(prompt)
-          }, 100)
+        if (detail?.autoSend) {
+          setTimeout(() => void sendChatMessageRef.current(prompt), 100)
         } else {
           setInput(prompt)
         }
       }
     }
 
-    window.addEventListener("ask_p_query", handleAskPEvent)
+    window.addEventListener("agent_p_trigger", handleTrigger)
+    window.addEventListener("ask_p_query", handleTrigger)
     return () => {
-      window.removeEventListener("ask_p_query", handleAskPEvent)
+      window.removeEventListener("agent_p_trigger", handleTrigger)
+      window.removeEventListener("ask_p_query", handleTrigger)
     }
   }, [pathname, router, searchParams])
 
-  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    sendChatMessage(input)
+  const handleActionCard = (card: AgentPActionCard) => {
+    if (card.actionType) {
+      window.dispatchEvent(
+        new CustomEvent("agent_p_action", {
+          detail: { actionType: card.actionType, payload: card.payload },
+        })
+      )
+    } else if (card.eventName) {
+      window.dispatchEvent(
+        new CustomEvent(card.eventName, { detail: card.eventDetail })
+      )
+    }
+    if (card.href) router.push(card.href)
   }
-
   const starterPrompts = isId
     ? routeContext.starterPromptsId
     : routeContext.starterPromptsEn
@@ -742,6 +818,11 @@ export function ThunderAiHelpDrawer() {
   const pageDescription = isId
     ? routeContext.descriptionId
     : routeContext.descriptionEn
+
+  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void sendChatMessage(input)
+  }
 
   return (
     <>
@@ -794,6 +875,9 @@ export function ThunderAiHelpDrawer() {
               <span className="font-mono text-zinc-400">{routePath}</span>
             </SheetDescription>
           </SheetHeader>
+          <p className="border-b border-border bg-card px-6 py-2 text-xs text-muted-foreground">
+            {getRouteBreadcrumb(routePath, routeContext, isId, activeEntity)}
+          </p>
 
           <div className="flex items-center justify-between border-b border-white/[0.06] bg-neutral-900/20 px-6 py-3">
             <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/[0.05] bg-neutral-900/60 p-1 text-muted-foreground">
@@ -1101,6 +1185,39 @@ export function ThunderAiHelpDrawer() {
                             {isId ? "Sedang mencari jawaban..." : "Thinking..."}
                           </p>
                         )}
+                        {message.role === "assistant" &&
+                        (message.actionCard || message.actionCards?.length) ? (
+                          <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+                            {(message.actionCard
+                              ? [message.actionCard]
+                              : (message.actionCards ?? [])
+                            ).map((card, index) => (
+                              <div
+                                key={card.id ?? `${message.id}-action-${index}`}
+                                className="space-y-2"
+                              >
+                                <p className="font-semibold text-foreground">
+                                  {card.title}
+                                </p>
+                                {card.description ? (
+                                  <p className="text-muted-foreground">
+                                    {card.description}
+                                  </p>
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleActionCard(card)}
+                                  className="bg-green-600 text-white hover:bg-green-700"
+                                >
+                                  {card.actionLabel ??
+                                    card.ctaLabel ??
+                                    (isId ? "Lanjutkan" : "Continue")}
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
 
                         {message.role === "assistant" &&
                         message.citations?.length ? (

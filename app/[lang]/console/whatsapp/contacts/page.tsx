@@ -152,7 +152,14 @@ export default function WhatsAppContactsPage() {
   // ── CSV Import state ─────────────────────────────────────────────────────
   const [importDialogOpen, setImportDialogOpen] = React.useState(false)
   const [parsedContacts, setParsedContacts] = React.useState<
-    Array<{ phone: string; name: string; email: string; group: string }>
+    Array<{
+      phone: string
+      name: string
+      email: string
+      group: string
+      normalized?: string
+      isValid?: boolean
+    }>
   >([])
   const [importProgress, setImportProgress] = React.useState({
     current: 0,
@@ -207,6 +214,20 @@ export default function WhatsAppContactsPage() {
   }, [contacts, searchQuery])
 
   // ── Mutations ───────────────────────────────────────────────────────────
+  const normalizePhone = React.useCallback(async (phoneNumber: string) => {
+    const res = await eden.api.console.ai["agent-p"].execute.post({
+      toolName: "whatsapp.contact.normalize",
+      input: { phoneNumber, defaultCountryCode: "62" },
+    })
+    if (res.error || !res.data?.success || !res.data?.data) {
+      throw new Error(
+        String(
+          res.data?.error || res.error || "Unable to normalize phone number"
+        )
+      )
+    }
+    return res.data.data as { normalized: string; isValid: boolean }
+  }, [])
 
   const handleAdd = async () => {
     if (!formData.phoneNumber.trim()) {
@@ -216,8 +237,10 @@ export default function WhatsAppContactsPage() {
 
     setIsSubmitting(true)
     try {
+      const normalized = await normalizePhone(formData.phoneNumber)
+      if (!normalized.isValid) throw new Error("Phone number is invalid")
       await whatsappClient.createContact({
-        phoneNumber: formData.phoneNumber,
+        phoneNumber: normalized.normalized,
         name: formData.name,
         email: formData.email,
         contactGroupId: formData.contactGroupId || undefined,
@@ -343,7 +366,15 @@ export default function WhatsAppContactsPage() {
         toast.error("No valid contacts found. Ensure CSV has a 'phone' column.")
         return
       }
-      setParsedContacts(parsed)
+      void Promise.all(
+        parsed.map(async (row) => {
+          try {
+            return { ...row, ...(await normalizePhone(row.phone)) }
+          } catch {
+            return { ...row, isValid: false }
+          }
+        })
+      ).then(setParsedContacts)
     }
     reader.readAsText(file)
     e.target.value = ""
@@ -368,7 +399,8 @@ export default function WhatsAppContactsPage() {
       }
       try {
         await whatsappClient.createContact({
-          phoneNumber: row.phone,
+          phoneNumber:
+            row.normalized && row.isValid ? row.normalized : row.phone,
           name: row.name,
           email: row.email,
           contactGroupId,
@@ -993,7 +1025,14 @@ export default function WhatsAppContactsPage() {
                     <tbody>
                       {parsedContacts.map((row, i) => (
                         <tr key={i} className="border-t">
-                          <td className="px-2 py-1.5">{row.phone}</td>
+                          <td className="px-2 py-1.5">
+                            {row.phone}
+                            {row.normalized && row.normalized !== row.phone && (
+                              <span className="ml-1 text-muted-foreground">
+                                → {row.normalized}
+                              </span>
+                            )}
+                          </td>
                           <td className="px-2 py-1.5">{row.name || "—"}</td>
                           <td className="px-2 py-1.5">{row.email || "—"}</td>
                           <td className="px-2 py-1.5">{row.group || "—"}</td>

@@ -251,4 +251,104 @@ describe("ThunderAiHelpDrawer", () => {
       )
     })
   })
+  describe("context, scoped history, and action cards", () => {
+    it("renders an active context breadcrumb for the current route", async () => {
+      const view = await renderDrawer(
+        "doc=1",
+        "/en/console/whatsapp/broadcasts/102"
+      )
+
+      expect(
+        view.getByText("📍 Sedang melihat: Halaman Broadcast #102")
+      ).toBeTruthy()
+    })
+
+    it("partitions chat history by route domain and migrates legacy history", async () => {
+      sessionStorage.setItem(
+        "pfn_tanya_p_chat",
+        JSON.stringify([{ id: "legacy", role: "user", content: "Legacy" }])
+      )
+
+      const view = await renderDrawer("kb=1", "/en/console/whatsapp")
+
+      expect(view.getByText("Legacy")).toBeTruthy()
+      expect(sessionStorage.getItem("pfn_tanya_p_chat:whatsapp")).toContain(
+        "Legacy"
+      )
+    })
+
+    it("renders action card with neutral surface and emits agent action", async () => {
+      sessionStorage.setItem(
+        "pfn_tanya_p_chat:billing",
+        JSON.stringify([
+          {
+            id: "assistant-1",
+            role: "assistant",
+            content: "Choose an action",
+            actionCard: {
+              title: "Top up balance",
+              description: "Add funds to your organization.",
+              actionLabel: "Open top up",
+              actionType: "open_topup",
+              payload: { source: "tanya_p" },
+            },
+          },
+        ])
+      )
+      const actionEvent = mock()
+      window.addEventListener("agent_p_action", actionEvent)
+
+      const view = await renderDrawer("kb=1", "/en/console/billing")
+      expect(view.getByText("Top up balance")).toBeTruthy()
+      expect(view.getByText("Add funds to your organization.")).toBeTruthy()
+      expect(view.getByRole("button", { name: "Open top up" })).toBeTruthy()
+      expect(
+        view.getByText("Top up balance").parentElement?.parentElement?.className
+      ).toContain("bg-card")
+
+      await act(async () => {
+        view.getByRole("button", { name: "Open top up" }).click()
+      })
+
+      expect(actionEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "agent_p_action",
+          detail: { actionType: "open_topup", payload: { source: "tanya_p" } },
+        })
+      )
+      window.removeEventListener("agent_p_action", actionEvent)
+    })
+
+    it("opens from agent_p_trigger query and context payload", async () => {
+      const view = await renderDrawer("kb=1", "/en/console/whatsapp")
+
+      await act(async () => {
+        window.dispatchEvent(
+          new CustomEvent("agent_p_trigger", {
+            detail: {
+              query: "Inspect this broadcast",
+              autoSend: false,
+              contextPayload: { entityType: "Broadcast", entityId: "102" },
+              domain: "whatsapp",
+            },
+          })
+        )
+      })
+
+      expect(mockReplace).toHaveBeenCalledWith(
+        expect.stringContaining("kb=1"),
+        expect.any(Object)
+      )
+      expect(view.getByDisplayValue("Inspect this broadcast")).toBeTruthy()
+
+      await act(async () => {
+        window.dispatchEvent(
+          new CustomEvent("ask_p_query", {
+            detail: { prompt: "Legacy prompt" },
+          })
+        )
+      })
+      expect(view.getByDisplayValue("Legacy prompt")).toBeTruthy()
+    })
+  })
 })
