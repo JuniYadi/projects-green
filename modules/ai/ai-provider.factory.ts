@@ -1,10 +1,8 @@
 import { createOpenAI } from "@ai-sdk/openai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import type { LanguageModel } from "ai"
-
 import { prisma } from "@/lib/prisma"
 import { getProviderApiKey } from "./ai-vault.service"
-
 export type ProviderType = "OPENAI_COMPATIBLE" | "ANTHROPIC" | "MANAGED"
 
 export type ResolvedAiProvider = {
@@ -133,9 +131,8 @@ export function createAiLanguageModel(
       apiKey: provider.apiKey,
       baseURL: provider.baseUrl || "https://api.openai.com/v1",
     })
-    return openai(provider.defaultModel)
+    return openai.chat(provider.defaultModel)
   }
-
   // OpenRouter (Managed or Anthropic/Claude direct routing)
   const openrouter = createOpenRouter({
     apiKey: provider.apiKey,

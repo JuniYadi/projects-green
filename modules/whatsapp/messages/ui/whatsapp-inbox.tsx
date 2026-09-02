@@ -777,6 +777,33 @@ function MessageBubble({
   )
 }
 
+// ─── Agent P in-situ components ─────────────────────────────────────────────
+
+export function SmartComposerBar({
+  suggestions,
+  onSelect,
+}: {
+  suggestions: string[]
+  onSelect: (suggestion: string) => void
+}) {
+  if (suggestions.length === 0) return null
+
+  return (
+    <div className="mb-2 flex flex-wrap gap-2" aria-label="Suggested replies">
+      {suggestions.slice(0, 3).map((suggestion) => (
+        <button
+          key={suggestion}
+          type="button"
+          className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          onClick={() => onSelect(suggestion)}
+        >
+          {suggestion}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function WhatsAppInbox({
@@ -914,6 +941,17 @@ export function WhatsAppInbox({
     null
   )
   const replyAttachmentInputRef = React.useRef<HTMLInputElement>(null)
+  const [aiSuggestions, setAiSuggestions] = React.useState<string[]>([])
+  const agentPExecute = React.useMemo(() => {
+    const executePost = eden?.api?.console?.ai?.["agent-p"]?.execute?.post
+    if (typeof executePost === "function") {
+      return executePost as unknown as (payload: {
+        toolName: string
+        input: unknown
+      }) => Promise<{ data?: unknown }>
+    }
+    return undefined
+  }, [])
   const [currentTime, setCurrentTime] = React.useState(() => Date.now())
 
   React.useEffect(() => {
@@ -1008,7 +1046,27 @@ export function WhatsAppInbox({
       },
       enabled: Boolean(activeConversationId),
     })
-
+  const handleSummarizeConversation = React.useCallback(() => {
+    if (!activeConversation) return
+    const phone =
+      activeConversation.contactPhone ??
+      activeConversation.whatsappDevice?.phoneNumber ??
+      activeConversation.id
+    const prompt = `Tolong rangkum percakapan dengan ${phone}. Jelaskan kebutuhan utama pelanggan, status pesan, dan rekomendasi tindakan berikutnya secara ringkas.`
+    window.dispatchEvent(
+      new CustomEvent("agent_p_trigger", {
+        detail: {
+          prompt,
+          autoSend: true,
+          context: {
+            entityType: "whatsapp_conversation",
+            entityId: activeConversation.id,
+            entityName: phone,
+          },
+        },
+      })
+    )
+  }, [activeConversation])
   const { data: consoleDevices = [] } = useQuery({
     queryKey: ["whatsapp", "devices"],
     queryFn: async () => {
@@ -1258,6 +1316,39 @@ export function WhatsAppInbox({
     () => (activeConversation?.whatsappMessages ?? []).slice().reverse(),
     [activeConversation?.whatsappMessages]
   )
+  const fallbackSuggestions = React.useMemo(() => {
+    const latest = orderedMessages.at(-1)?.body?.trim()
+    return latest
+      ? ["Terima kasih atas informasinya.", "Kami akan segera menindaklanjuti."]
+      : ["Terima kasih telah menghubungi kami.", "Ada yang bisa kami bantu?"]
+  }, [orderedMessages])
+
+  const replySuggestions =
+    aiSuggestions.length > 0 ? aiSuggestions : fallbackSuggestions
+
+  React.useEffect(() => {
+    if (!activeConversation || !agentPExecute) return
+    let cancelled = false
+    agentPExecute({
+      toolName: "whatsapp.inbox.suggest_reply",
+      input: { conversationId: activeConversation.id },
+    })
+      .then((response) => {
+        if (cancelled) return
+        const body = response?.data as
+          { success?: boolean; data?: { suggestedReply?: string } } | undefined
+        const suggestion = body?.success
+          ? body.data?.suggestedReply?.trim()
+          : undefined
+        if (suggestion) {
+          setAiSuggestions([suggestion, ...fallbackSuggestions].slice(0, 3))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [activeConversation, agentPExecute, fallbackSuggestions])
 
   React.useEffect(() => {
     if (orderedMessages.length > 0) {
@@ -2552,6 +2643,16 @@ export function WhatsAppInbox({
                 <WhatsAppText id="s157" />
               </h3>
             )}
+            {activeConversation && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSummarizeConversation}
+              >
+                ✨ Rangkum Percakapan
+              </Button>
+            )}
           </div>
 
           {/* Messages Area */}
@@ -2649,6 +2750,10 @@ export function WhatsAppInbox({
                         </span>
                       </Button>
                     </div>
+                    <SmartComposerBar
+                      suggestions={replySuggestions}
+                      onSelect={setReplyText}
+                    />
                     <form
                       onSubmit={(e) => {
                         e.preventDefault()

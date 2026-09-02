@@ -38,7 +38,12 @@ const mockVault = {
 }
 mock.module("@/modules/ai/ai-vault.service", () => mockVault)
 
-// Mock generateText
+// Mock generateText & providers
+mock.module("@ai-sdk/openai", () => ({
+  createOpenAI: mock(() => ({
+    chat: (model: string) => ({ modelId: model }),
+  })),
+}))
 mock.module("ai", () => ({
   generateText: mock(() =>
     Promise.resolve({
@@ -46,7 +51,6 @@ mock.module("ai", () => ({
     })
   ),
 }))
-
 import { createConsoleAiProvidersRoutes } from "./console-ai-providers.route"
 
 describe("Console AI Providers Route", () => {

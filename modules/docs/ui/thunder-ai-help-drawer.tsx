@@ -44,6 +44,26 @@ type DocRequestState =
 type ChatMessage = KnowledgeChatMessage & {
   id: string
   citations?: KnowledgeCitation[]
+  actionCards?: AgentPActionCard[]
+  actionCard?: AgentPActionCard
+}
+type AgentPActionCard = {
+  id?: string
+  title: string
+  description?: string
+  actionLabel?: string
+  actionType?: string
+  payload?: Record<string, unknown>
+  ctaLabel?: string
+  eventName?: string
+  eventDetail?: Record<string, unknown>
+  href?: string
+}
+
+type ActiveEntityContext = {
+  entityType?: string
+  entityId?: string
+  entityName?: string
 }
 
 type RelatedDoc = {
@@ -68,6 +88,39 @@ type RouteContextConfig = {
 const DOC_QUERY_KEY = "doc"
 const KB_QUERY_KEY = "kb"
 const ACTIVE_VALUE = "1"
+
+const DOMAIN_SCOPES = ["whatsapp", "billing", "app", "support"] as const
+type DomainScope = (typeof DOMAIN_SCOPES)[number] | "general"
+
+const getDomainScope = (routePath: string): DomainScope => {
+  const segments = routePath.toLowerCase().split("/").filter(Boolean)
+  const domain = segments.find((segment) =>
+    DOMAIN_SCOPES.includes(segment as (typeof DOMAIN_SCOPES)[number])
+  )
+  return (domain as DomainScope | undefined) ?? "general"
+}
+
+const getChatStorageKey = (domainScope: DomainScope) =>
+  `pfn_tanya_p_chat:${domainScope}`
+const getSessionStorageKey = (domainScope: DomainScope) =>
+  `pfn_tanya_p_session_id:${domainScope}`
+
+const getRouteBreadcrumb = (
+  routePath: string,
+  routeContext: RouteContextConfig,
+  _isId: boolean,
+  entity?: ActiveEntityContext
+) => {
+  if (entity?.entityType && entity.entityId) {
+    const entityLabel = entity.entityName ?? entity.entityType
+    return `📍 Sedang melihat: ${entityLabel} #${entity.entityId}`
+  }
+  const broadcastId = routePath.match(/\/broadcasts\/([^/]+)/)?.[1]
+  if (broadcastId) {
+    return `📍 Sedang melihat: Halaman Broadcast #${broadcastId}`
+  }
+  return `📍 Sedang melihat: ${routeContext.titleId}`
+}
 
 const toMessageId = () =>
   `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`
@@ -347,29 +400,45 @@ export function ThunderAiHelpDrawer() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
+  const activeLocale = locale === "id" ? "id" : "en"
+  const isId = activeLocale === "id"
+  const routePath = pathnameWithoutLocale || "/console"
+  const domainScope = getDomainScope(routePath)
+  const chatStorageKey = getChatStorageKey(domainScope)
+  const sessionStorageKey = getSessionStorageKey(domainScope)
 
+  const routeContext = useMemo(() => getRouteContext(routePath), [routePath])
   const [docState, setDocState] = useState<DocRequestState>({ status: "idle" })
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window === "undefined") return []
     try {
-      const saved = sessionStorage.getItem("pfn_tanya_p_chat")
+      const saved = sessionStorage.getItem(chatStorageKey)
       if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed)) return parsed
       }
+      const legacy = sessionStorage.getItem("pfn_tanya_p_chat")
+      if (legacy) {
+        const parsed = JSON.parse(legacy)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          sessionStorage.setItem(chatStorageKey, legacy)
+          return parsed
+        }
+      }
     } catch {
-      // Ignore sessionStorage error
+      return []
     }
     return []
   })
   const [sessionId, setSessionId] = useState<string>(() => {
     if (typeof window === "undefined") return ""
     try {
-      const savedSessionId = sessionStorage.getItem("pfn_tanya_p_session_id")
-      if (savedSessionId) return savedSessionId
-      const newId = `sess_${crypto.randomUUID()}`
-      sessionStorage.setItem("pfn_tanya_p_session_id", newId)
-      return newId
+      const saved = sessionStorage.getItem("pfn_tanya_p_session_id")
+      if (saved) return saved
+      const nextId = `sess_${crypto.randomUUID()}`
+      sessionStorage.setItem("pfn_tanya_p_session_id", nextId)
+      return nextId
     } catch {
       return `sess_${Date.now()}`
     }
@@ -377,42 +446,47 @@ export function ThunderAiHelpDrawer() {
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
-
+  const [activeEntity, setActiveEntity] = useState<ActiveEntityContext>()
+  const [openCitations, setOpenCitations] = useState<Record<string, boolean>>(
+    {}
+  )
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const sendChatMessageRef = useRef<(text: string) => Promise<void>>(
     async () => {}
   )
-  const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
-  const activeLocale = locale === "id" ? "id" : "en"
-  const isId = activeLocale === "id"
-  const routePath = pathnameWithoutLocale || "/console"
-  const routeContext = getRouteContext(routePath)
-
-  // URL state checking
+  // URL & open state checking
+  const [drawerOpenOverride, setDrawerOpenOverride] = useState<boolean | null>(
+    null
+  )
   const isDocOpen = searchParams.get(DOC_QUERY_KEY) === ACTIVE_VALUE
   const isKbOpen = searchParams.get(KB_QUERY_KEY) === ACTIVE_VALUE
-  const isOpen = isDocOpen || isKbOpen
-
+  const isOpen =
+    drawerOpenOverride !== null ? drawerOpenOverride : isDocOpen || isKbOpen
   const activeTab = isDocOpen ? "docs" : "chat"
-
   // Persist chat on messages update
   useEffect(() => {
     try {
       if (messages.length > 0) {
-        sessionStorage.setItem("pfn_tanya_p_chat", JSON.stringify(messages))
+        const entityKey = activeEntity?.entityId
+          ? `${chatStorageKey}:${activeEntity.entityId}`
+          : chatStorageKey
+        sessionStorage.setItem(entityKey, JSON.stringify(messages))
       }
     } catch {
       // Ignore sessionStorage error
     }
-  }, [messages])
-
+  }, [messages, chatStorageKey, activeEntity?.entityId])
   const clearChatHistory = () => {
     setMessages([])
     try {
+      const entityKey = activeEntity?.entityId
+        ? `${chatStorageKey}:${activeEntity.entityId}`
+        : chatStorageKey
+      sessionStorage.removeItem(entityKey)
       sessionStorage.removeItem("pfn_tanya_p_chat")
       const nextSessionId = `sess_${crypto.randomUUID()}`
-      sessionStorage.setItem("pfn_tanya_p_session_id", nextSessionId)
+      sessionStorage.setItem(sessionStorageKey, nextSessionId)
       setSessionId(nextSessionId)
     } catch {
       // Ignore
@@ -504,7 +578,7 @@ export function ThunderAiHelpDrawer() {
       next.set(DOC_QUERY_KEY, ACTIVE_VALUE)
       next.delete(KB_QUERY_KEY)
     }
-
+    setDrawerOpenOverride(true)
     router.replace(`${pathname}?${next.toString()}`, { scroll: false })
   }
 
@@ -512,6 +586,7 @@ export function ThunderAiHelpDrawer() {
     const next = new URLSearchParams(searchParams.toString())
     next.delete(DOC_QUERY_KEY)
     next.delete(KB_QUERY_KEY)
+    setDrawerOpenOverride(false)
 
     const query = next.toString()
     const destination = query ? `${pathname}?${query}` : pathname
@@ -554,17 +629,17 @@ export function ThunderAiHelpDrawer() {
     }
     const assistantMessageId = toMessageId()
 
-    const nextMessages = [
-      ...messages,
+    // Prepare assistant message ID & live streaming container
+    let liveAnswer = ""
+    setMessages((current) => [
+      ...current,
       userMessage,
       {
         id: assistantMessageId,
         role: "assistant" as const,
         content: "",
       },
-    ]
-
-    setMessages(nextMessages)
+    ])
 
     try {
       const response = await fetch("/api/knowledge/chat", {
@@ -585,14 +660,42 @@ export function ThunderAiHelpDrawer() {
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
           message?: string
+          error?: string
+          banInfo?: {
+            isPermanent?: boolean
+            blockedUntil?: string
+            reason?: string
+          }
         } | null
 
-        setChatError(
-          payload?.message ??
-            (isId
-              ? "Tidak dapat mengirim pesan ke asisten AI."
-              : "Unable to send message to AI assistant.")
-        )
+        if (response.status === 403 && payload?.banInfo) {
+          const formattedDate = payload.banInfo.blockedUntil
+            ? new Intl.DateTimeFormat(isId ? "id-ID" : "en-US", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }).format(new Date(payload.banInfo.blockedUntil))
+            : isId
+              ? "sementara"
+              : "temporarily"
+
+          const banMsg = payload.banInfo.isPermanent
+            ? isId
+              ? "Akses AI Anda telah diblokir permanen karena pelanggaran keamanan berulang."
+              : "Your access to AI services has been permanently banned due to security violations."
+            : isId
+              ? `Akses AI Anda ditangguhkan hingga ${formattedDate} karena pelanggaran berulang.`
+              : `Your access to AI services is suspended until ${formattedDate} due to repeated violations.`
+
+          setChatError(banMsg)
+        } else {
+          setChatError(
+            payload?.message ??
+              (isId
+                ? "Tidak dapat mengirim pesan ke asisten AI."
+                : "Unable to send message to AI assistant.")
+          )
+        }
+
         setMessages((current) =>
           current.filter((message) => message.id !== assistantMessageId)
         )
@@ -618,67 +721,74 @@ export function ThunderAiHelpDrawer() {
       let buffer = ""
       let finalAnswer: string | null = null
       let finalCitations: KnowledgeCitation[] = []
+      let finalActionCards: AgentPActionCard[] = []
 
       while (true) {
         const { done, value } = await reader.read()
-
-        if (done) {
-          break
-        }
-
+        if (done) break
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split("\n")
         buffer = lines.pop() ?? ""
 
         for (const line of lines) {
-          if (!line.trim()) {
-            continue
-          }
-
+          if (!line.trim()) continue
           try {
             const frame = JSON.parse(line) as KnowledgeChatStreamFrame
-
             if (frame.type === "delta") {
+              liveAnswer += frame.text
               setMessages((current) =>
                 current.map((message) =>
                   message.id === assistantMessageId
-                    ? { ...message, content: `${message.content}${frame.text}` }
+                    ? { ...message, content: liveAnswer }
                     : message
                 )
               )
               continue
             }
-
             if (frame.type === "done") {
               finalAnswer = frame.answer
               finalCitations = frame.citations
+              finalActionCards =
+                (
+                  frame as typeof frame & {
+                    actionCards?: AgentPActionCard[]
+                  }
+                ).actionCards ?? []
               continue
             }
-
-            if (frame.type === "error") {
-              setChatError(frame.message)
-            }
+            if (frame.type === "error") setChatError(frame.message)
           } catch {
             // Ignore partial NDJSON split across chunk boundaries
           }
         }
       }
 
-      if (finalAnswer || finalCitations.length > 0) {
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantMessageId
-              ? {
-                  ...message,
-                  content: finalAnswer ?? message.content,
-                  citations: finalCitations.length
-                    ? finalCitations
-                    : message.citations,
-                }
-              : message
-          )
+      // Finalize and commit final message state at the end
+      setMessages((current) => {
+        const updated = current.map((message) =>
+          message.id === assistantMessageId
+            ? {
+                ...message,
+                content: finalAnswer ?? liveAnswer,
+                citations: finalCitations.length
+                  ? finalCitations
+                  : message.citations,
+                actionCards: finalActionCards.length
+                  ? finalActionCards
+                  : message.actionCards,
+              }
+            : message
         )
-      }
+        try {
+          const entityKey = activeEntity?.entityId
+            ? `${chatStorageKey}:${activeEntity.entityId}`
+            : chatStorageKey
+          sessionStorage.setItem(entityKey, JSON.stringify(updated))
+        } catch {
+          // Ignore storage error
+        }
+        return updated
+      })
     } catch {
       setChatError(
         isId
@@ -696,44 +806,76 @@ export function ThunderAiHelpDrawer() {
     sendChatMessageRef.current = sendChatMessage
   })
 
-  // Support window-level event to open Ask P with custom prompt (e.g. from WhatsApp Template Audit)
   useEffect(() => {
-    const handleAskPEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{
-        prompt?: string
-        autoSend?: boolean
-      }>
-      const prompt = customEvent.detail?.prompt?.trim()
-      const autoSend = customEvent.detail?.autoSend ?? false
+    const handleTrigger = (e: Event) => {
+      const detail = (
+        e as CustomEvent<{
+          query?: string
+          prompt?: string
+          autoSend?: boolean
+          contextPayload?: Record<string, unknown>
+          context?: ActiveEntityContext
+          domain?: string
+        }>
+      ).detail
+      const prompt = (detail?.query ?? detail?.prompt)?.trim()
+      const contextPayload = detail?.contextPayload ?? detail?.context
 
-      const next = new URLSearchParams(searchParams.toString())
-      next.set(KB_QUERY_KEY, ACTIVE_VALUE)
-      next.delete(DOC_QUERY_KEY)
-      router.replace(`${pathname}?${next.toString()}`, { scroll: false })
+      // If triggered with a new entity context or autoSend, clear previous chat immediately
+      if (contextPayload) {
+        setActiveEntity(contextPayload as ActiveEntityContext)
+        if (detail?.autoSend) {
+          setMessages([])
+          setChatError(null)
+          try {
+            const targetId = (contextPayload as ActiveEntityContext).entityId
+            const key = targetId
+              ? `${chatStorageKey}:${targetId}`
+              : chatStorageKey
+            sessionStorage.removeItem(key)
+          } catch {
+            // Ignore
+          }
+        }
+      }
+
+      const nextParams = new URLSearchParams(searchParams?.toString() ?? "")
+      nextParams.set(KB_QUERY_KEY, ACTIVE_VALUE)
+      nextParams.delete(DOC_QUERY_KEY)
+      setDrawerOpenOverride(true)
+      router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false })
 
       if (prompt) {
-        if (autoSend) {
-          // Send immediately after drawer opens
-          setTimeout(() => {
-            void sendChatMessageRef.current(prompt)
-          }, 100)
+        if (detail?.autoSend) {
+          // Immediate dispatch after state update
+          setTimeout(() => void sendChatMessageRef.current(prompt), 100)
         } else {
           setInput(prompt)
         }
       }
     }
-
-    window.addEventListener("ask_p_query", handleAskPEvent)
+    window.addEventListener("agent_p_trigger", handleTrigger)
+    window.addEventListener("ask_p_query", handleTrigger)
     return () => {
-      window.removeEventListener("ask_p_query", handleAskPEvent)
+      window.removeEventListener("agent_p_trigger", handleTrigger)
+      window.removeEventListener("ask_p_query", handleTrigger)
     }
-  }, [pathname, router, searchParams])
+  }, [pathname, router, searchParams, chatStorageKey])
 
-  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    sendChatMessage(input)
+  const handleActionCard = (card: AgentPActionCard) => {
+    if (card.actionType) {
+      window.dispatchEvent(
+        new CustomEvent("agent_p_action", {
+          detail: { actionType: card.actionType, payload: card.payload },
+        })
+      )
+    } else if (card.eventName) {
+      window.dispatchEvent(
+        new CustomEvent(card.eventName, { detail: card.eventDetail })
+      )
+    }
+    if (card.href) router.push(card.href)
   }
-
   const starterPrompts = isId
     ? routeContext.starterPromptsId
     : routeContext.starterPromptsEn
@@ -742,6 +884,11 @@ export function ThunderAiHelpDrawer() {
   const pageDescription = isId
     ? routeContext.descriptionId
     : routeContext.descriptionEn
+
+  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void sendChatMessage(input)
+  }
 
   return (
     <>
@@ -794,6 +941,9 @@ export function ThunderAiHelpDrawer() {
               <span className="font-mono text-zinc-400">{routePath}</span>
             </SheetDescription>
           </SheetHeader>
+          <p className="border-b border-border bg-card px-6 py-2 text-xs text-muted-foreground">
+            {getRouteBreadcrumb(routePath, routeContext, isId, activeEntity)}
+          </p>
 
           <div className="flex items-center justify-between border-b border-white/[0.06] bg-neutral-900/20 px-6 py-3">
             <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/[0.05] bg-neutral-900/60 p-1 text-muted-foreground">
@@ -1097,49 +1247,105 @@ export function ThunderAiHelpDrawer() {
                             activeLocale={activeLocale}
                           />
                         ) : (
-                          <p className="leading-relaxed text-zinc-400 italic">
-                            {isId ? "Sedang mencari jawaban..." : "Thinking..."}
-                          </p>
+                          <div className="flex items-center gap-2 py-1 text-zinc-400">
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                            </span>
+                            <span className="text-xs italic">
+                              {isId
+                                ? "Sedang menganalisis data & menyusun rangkuman..."
+                                : "Analyzing data & generating response..."}
+                            </span>
+                          </div>
                         )}
+                        {message.role === "assistant" &&
+                        (message.actionCard || message.actionCards?.length) ? (
+                          <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+                            {(message.actionCard
+                              ? [message.actionCard]
+                              : (message.actionCards ?? [])
+                            ).map((card, index) => (
+                              <div
+                                key={card.id ?? `${message.id}-action-${index}`}
+                                className="space-y-2"
+                              >
+                                <p className="font-semibold text-foreground">
+                                  {card.title}
+                                </p>
+                                {card.description ? (
+                                  <p className="text-muted-foreground">
+                                    {card.description}
+                                  </p>
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleActionCard(card)}
+                                  className="bg-green-600 text-white hover:bg-green-700"
+                                >
+                                  {card.actionLabel ??
+                                    card.ctaLabel ??
+                                    (isId ? "Lanjutkan" : "Continue")}
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
 
                         {message.role === "assistant" &&
                         message.citations?.length ? (
                           <div className="flex flex-col gap-1.5 border-t border-white/[0.05] pt-2">
-                            <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase">
-                              {isId
-                                ? "Referensi Sumber Terkait"
-                                : "Citations & Sources"}
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {message.citations.map((citation) => {
-                                const normalizedPath = citation.path.startsWith(
-                                  "/"
-                                )
-                                  ? citation.path
-                                  : `/${citation.path}`
-                                const citationUrl = normalizedPath.startsWith(
-                                  "/docs"
-                                )
-                                  ? `/${activeLocale}${normalizedPath}`
-                                  : `/${activeLocale}/docs${normalizedPath}`
-                                return (
-                                  <Link
-                                    key={citation.id}
-                                    href={citationUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group inline-flex items-center gap-1 rounded-md border border-white/10 bg-neutral-900 px-2 py-1 text-[10px] font-medium text-amber-300 transition-all hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200"
-                                    title={`Buka ${citation.title} • Path: ${citation.path}`}
-                                  >
-                                    <span>{citation.title}</span>
-                                    <ArrowSquareOut
-                                      size={10}
-                                      className="opacity-70 group-hover:opacity-100"
-                                    />
-                                  </Link>
-                                )
-                              })}
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOpenCitations((prev) => ({
+                                  ...prev,
+                                  [message.id]: !prev[message.id],
+                                }))
+                              }
+                              className="inline-flex w-fit items-center gap-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <span>
+                                {isId
+                                  ? `Lihat Sumber & Rujukan (${message.citations.length})`
+                                  : `View Sources (${message.citations.length})`}
+                              </span>
+                              <span className="text-[9px] opacity-70">
+                                {openCitations[message.id] ? "▲" : "▼"}
+                              </span>
+                            </button>
+                            {openCitations[message.id] ? (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {message.citations.map((citation) => {
+                                  const normalizedPath =
+                                    citation.path.startsWith("/")
+                                      ? citation.path
+                                      : `/${citation.path}`
+                                  const citationUrl = normalizedPath.startsWith(
+                                    "/docs"
+                                  )
+                                    ? `/${activeLocale}${normalizedPath}`
+                                    : `/${activeLocale}/docs${normalizedPath}`
+                                  return (
+                                    <Link
+                                      key={citation.id}
+                                      href={citationUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="group inline-flex items-center gap-1 rounded-md border border-white/10 bg-neutral-900 px-2 py-1 text-[10px] font-medium text-amber-300 transition-all hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200"
+                                      title={`Buka ${citation.title} • Path: ${citation.path}`}
+                                    >
+                                      <span>{citation.title}</span>
+                                      <ArrowSquareOut
+                                        size={10}
+                                        className="opacity-70 group-hover:opacity-100"
+                                      />
+                                    </Link>
+                                  )
+                                })}
+                              </div>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>

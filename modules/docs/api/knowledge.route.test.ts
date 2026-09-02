@@ -36,6 +36,7 @@ mock.module("@/lib/prisma", () => ({
     aiChatSession: {
       upsert: mockUpsertSession,
       updateMany: mockUpdateManySessions,
+      findMany: mock(async () => [{ strikeCount: 1 }]),
     },
     aiChatMessage: {
       create: mockCreateChatMessage,
@@ -50,15 +51,13 @@ const { createKnowledgeRoutes } =
 type KnowledgeAuthContext =
   import("@/modules/docs/api/knowledge.route").KnowledgeAuthContext
 
-const mockAuthenticate = mock(
-  async (): Promise<KnowledgeAuthContext> => ({
-    organizationId: "org_1",
-    user: {
-      id: "user_1",
-      email: "user1@example.com",
-    },
-  })
-)
+const mockAuthenticate = mock(async (): Promise<KnowledgeAuthContext> => ({
+  organizationId: "org_1",
+  user: {
+    id: "user_1",
+    email: "user1@example.com",
+  },
+}))
 const mockSearchKnowledgeDocs = mock(async () => [] as KnowledgeDocMatch[])
 const defaultStreamAnswer = async function* (_input: {
   messages: KnowledgeChatRequest["messages"]
@@ -194,10 +193,17 @@ describe("knowledgeRoutes - Authentication & Streaming", () => {
     expect(mockCreateManyChatMessages).toHaveBeenCalledTimes(1)
   })
 
-  it("returns strict fallback when no relevant knowledge context", async () => {
+  it("returns strict fallback when no relevant knowledge context and unauthenticated", async () => {
     mockSearchKnowledgeDocs.mockResolvedValueOnce([] as KnowledgeDocMatch[])
+    const unauthApp = new Elysia().use(
+      createKnowledgeRoutes({
+        authenticate: mock(async () => ({ user: { id: "user-anon" } })),
+        searchKnowledgeDocs: mockSearchKnowledgeDocs,
+        streamKnowledgeAnswer: mockStreamKnowledgeAnswer,
+      })
+    )
 
-    const response = await createApp().handle(
+    const response = await unauthApp.handle(
       new Request("http://localhost/knowledge/chat", {
         method: "POST",
         headers: {
@@ -209,7 +215,6 @@ describe("knowledgeRoutes - Authentication & Streaming", () => {
         }),
       })
     )
-
     const bodyText = await response.text()
     const frames = bodyText
       .trim()
@@ -262,9 +267,8 @@ describe("knowledgeRoutes - Guardrails, Bans & Rate Limiting", () => {
     expect(body.message).toContain("suspended")
   })
 
-  it("rejects oversized prompts (> 800 chars) with 422 and 0 tokens spent", async () => {
-    const longPrompt = "a".repeat(801)
-
+  it("rejects oversized prompts (> 5000 chars) with 422 and 0 tokens spent", async () => {
+    const longPrompt = "a".repeat(5001)
     const response = await createApp().handle(
       new Request("http://localhost/knowledge/chat", {
         method: "POST",

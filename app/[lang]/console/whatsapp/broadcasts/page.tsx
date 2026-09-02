@@ -3,8 +3,17 @@
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Plus, Trash, PaperPlaneTilt, Eye } from "@phosphor-icons/react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { toast } from "sonner"
 
+import { eden } from "@/lib/eden"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -54,6 +63,17 @@ export default function WhatsAppBroadcastsPage() {
   const [broadcasts, setBroadcasts] = React.useState<Broadcast[]>([])
   const [loading, setLoading] = React.useState(true)
   const onboarding = useWhatsAppOnboarding({ locale })
+  const [sendCandidate, setSendCandidate] = React.useState<Broadcast | null>(
+    null
+  )
+  const [preflight, setPreflight] = React.useState<Record<
+    string,
+    unknown
+  > | null>(null)
+  const [preflightLoading, setPreflightLoading] = React.useState(false)
+  const [preflightError, setPreflightError] = React.useState<string | null>(
+    null
+  )
   const loadBroadcasts = React.useCallback(async () => {
     setLoading(true)
     try {
@@ -71,18 +91,49 @@ export default function WhatsAppBroadcastsPage() {
     })()
   }, [loadBroadcasts])
 
-  const handleSend = React.useCallback(
-    async (broadcast: Broadcast) => {
-      try {
-        const message = await whatsappClient.sendBroadcast(broadcast.id)
-        toast.success(message)
-        await loadBroadcasts()
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t.list.sendError)
+  const runPreflight = React.useCallback(async (broadcast: Broadcast) => {
+    setSendCandidate(broadcast)
+    setPreflight(null)
+    setPreflightError(null)
+    setPreflightLoading(true)
+    try {
+      const res = await eden.api.console.ai["agent-p"].execute.post({
+        toolName: "whatsapp.broadcast.preflight",
+        input: { broadcastId: broadcast.id },
+      })
+      const data = res.data as
+        | { success?: boolean; data?: Record<string, unknown>; error?: string }
+        | undefined
+      if (res.error || !data?.success || !data?.data) {
+        throw new Error(String(data?.error || res.error || "Preflight failed"))
       }
-    },
-    [loadBroadcasts, t.list.sendError]
+      setPreflight(data.data)
+    } catch (error) {
+      setPreflightError(
+        error instanceof Error ? error.message : "Preflight failed"
+      )
+    } finally {
+      setPreflightLoading(false)
+    }
+  }, [])
+
+  const handleSendClick = React.useCallback(
+    (broadcast: Broadcast) => void runPreflight(broadcast),
+    [runPreflight]
   )
+
+  const confirmSend = React.useCallback(async () => {
+    if (!sendCandidate) return
+    const candidate = sendCandidate
+    setSendCandidate(null)
+    try {
+      const message = await whatsappClient.sendBroadcast(candidate.id)
+      toast.success(message)
+      await loadBroadcasts()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t.list.sendError)
+    }
+  }, [loadBroadcasts, sendCandidate, t.list.sendError])
 
   const handleDelete = React.useCallback(
     async (broadcast: Broadcast) => {
@@ -189,7 +240,7 @@ export default function WhatsAppBroadcastsPage() {
                 size="sm"
                 variant={isDraft ? "default" : "outline"}
                 disabled={row.original.status !== "QUEUED"}
-                onClick={() => void handleSend(row.original)}
+                onClick={() => handleSendClick(row.original)}
               >
                 <PaperPlaneTilt className="mr-1 size-4" />
                 {t.list.send}
@@ -208,7 +259,7 @@ export default function WhatsAppBroadcastsPage() {
         enableHiding: false,
       },
     ]
-  }, [basePath, handleSend, handleDelete, router, t])
+  }, [basePath, handleDelete, handleSendClick, router, t])
 
   if (onboarding.isFeatureLocked("broadcasts")) {
     return (
@@ -257,14 +308,62 @@ export default function WhatsAppBroadcastsPage() {
               data={broadcasts}
               searchableColumns={["templateName"]}
               searchPlaceholder={t.searchPlaceholder}
-              defaultColumnVisibility={{
-                createdAt: false,
-              }}
+              defaultColumnVisibility={{ createdAt: false }}
               emptyMessage={t.emptyTitle}
             />
           )}
         </CardContent>
       </Card>
+      <Dialog
+        open={sendCandidate !== null}
+        onOpenChange={(open) => !open && setSendCandidate(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Broadcast preflight</DialogTitle>
+            <DialogDescription>
+              Review recipients, estimated cost versus balance, and template
+              variables.
+            </DialogDescription>
+          </DialogHeader>
+          {preflightLoading && (
+            <p className="text-sm text-muted-foreground">Checking broadcast…</p>
+          )}
+          {preflightError && (
+            <p className="text-sm text-destructive">{preflightError}</p>
+          )}
+          {preflight && (
+            <div className="space-y-2 text-sm">
+              <p>Recipients: {String(preflight.recipientCount ?? 0)}</p>
+              <p>Estimated cost vs balance: verified before dispatch.</p>
+              <p>
+                Template variables:{" "}
+                {preflight.valid === true ? "Complete" : "Incomplete"}
+              </p>
+              {Array.isArray(preflight.issues) && (
+                <ul className="list-disc pl-5">
+                  {preflight.issues.map((issue) => (
+                    <li key={String(issue)}>{String(issue)}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendCandidate(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void confirmSend()}
+              disabled={
+                preflightLoading || !preflight || preflight.valid !== true
+              }
+            >
+              Send broadcast
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
