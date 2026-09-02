@@ -111,50 +111,60 @@ export default function WhatsappWorkflowCanvasPage() {
   const initialNodesSample = useMemo<WorkflowNode[]>(
     () => [
       {
-        id: "node_start",
-        type: "send_message",
-        name: t.canvas.nodes.sendMessage,
-        position: { x: 250, y: 50 },
-        config: { text: t.inspector.messageTextPlaceholder },
-      },
-      {
-        id: "node_ask_name",
+        id: "node_ask_need",
         type: "prompt_input",
-        name: t.canvas.nodes.promptInput,
-        position: { x: 250, y: 220 },
+        name: "1. Tanya Kebutuhan Bisnis",
+        position: { x: 250, y: 50 },
         config: {
-          question: t.inspector.questionPlaceholder,
-          captureVariable: "customer_name",
+          question:
+            "Halo! Selamat datang di Konsultan AI PFNApp.\n\nBoleh tahu produk, paket, atau kendala apa yang sedang Anda cari?",
+          captureVariable: "customer_need",
           validation: { type: "text" },
         },
       },
       {
-        id: "node_ai_agent",
-        type: "ai_generate",
-        name: t.canvas.nodes.aiGenerate,
-        position: { x: 250, y: 400 },
+        id: "node_http_catalog",
+        type: "http_request",
+        name: "2. Tarik Data Live (HTTP API)",
+        position: { x: 250, y: 240 },
         config: {
-          prompt: t.inspector.aiPromptPlaceholder,
-          captureVariable: "ai_recommendation",
+          url: "https://pfnapp.my.id/api/demo/whatsapp/pricing",
+          method: "GET",
+          forwardContext: true,
+          timeoutMs: 5000,
+        },
+      },
+      {
+        id: "node_ai_sales",
+        type: "ai_generate",
+        name: "3. AI Sales Decision & Reply",
+        position: { x: 250, y: 440 },
+        config: {
+          prompt:
+            "Pertanyaan/Kebutuhan Customer: {{variables.customer_need}}\n\nData Katalog Resmi dari API:\n{{steps.node_http_catalog.body}}\n\nTugas Anda:\n1. Analisis kebutuhan customer.\n2. Putuskan paket yang paling tepat dari data katalog di atas.\n3. Berikan jawaban rekomendasi ramah, cantumkan harga paket, dan ajak untuk mencoba.",
+          systemPrompt:
+            "Anda adalah AI Sales & Solutions Consultant cerdas dan ramah dari PFNApp.",
+          captureVariable: "ai_sales_closing",
+          sendReply: true,
         },
       },
     ],
-    [t]
+    []
   )
 
   const initialEdgesSample = useMemo<WorkflowEdge[]>(
     () => [
       {
-        id: "edge_1",
-        sourceNodeId: "node_start",
+        id: "edge_1_to_2",
+        sourceNodeId: "node_ask_need",
         sourcePort: "default",
-        targetNodeId: "node_ask_name",
+        targetNodeId: "node_http_catalog",
       },
       {
-        id: "edge_2",
-        sourceNodeId: "node_ask_name",
-        sourcePort: "default",
-        targetNodeId: "node_ai_agent",
+        id: "edge_2_to_3",
+        sourceNodeId: "node_http_catalog",
+        sourcePort: "success",
+        targetNodeId: "node_ai_sales",
       },
     ],
     []
@@ -1577,9 +1587,12 @@ export default function WhatsappWorkflowCanvasPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="GET">GET</SelectItem>
-                          <SelectItem value="POST">POST</SelectItem>
-                          <SelectItem value="PUT">PUT</SelectItem>
+                          <SelectItem value="GET">
+                            GET (Fetch Live Data)
+                          </SelectItem>
+                          <SelectItem value="POST">
+                            POST (Send & Process Context)
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

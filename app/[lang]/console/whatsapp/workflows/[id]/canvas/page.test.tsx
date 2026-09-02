@@ -64,7 +64,10 @@ describe("Canvas simulator integration", () => {
   })
 
   it("hydrates the selected starter template from the URL", async () => {
-    searchParams.set("template", WORKFLOW_TEMPLATES[1].id)
+    const orderTemplate = WORKFLOW_TEMPLATES.find(
+      (t) => t.id === "template_order_tracking"
+    )!
+    searchParams.set("template", orderTemplate.id)
     const view = render(<WhatsappWorkflowCanvasPage />)
 
     await waitFor(() => {
