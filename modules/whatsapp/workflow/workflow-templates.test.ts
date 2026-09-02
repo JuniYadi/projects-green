@@ -3,10 +3,11 @@ import { WORKFLOW_TEMPLATES } from "./workflow-templates"
 import { WorkflowDefinitionSchema } from "./workflow.schema"
 
 describe("workflow-templates", () => {
-  it("exports the three starter templates", () => {
-    expect(WORKFLOW_TEMPLATES).toHaveLength(3)
+  it("exports the starter templates", () => {
+    expect(WORKFLOW_TEMPLATES).toHaveLength(4)
     expect(WORKFLOW_TEMPLATES.map((template) => template.id)).toEqual([
       "template_customer_support",
+      "template_ai_sales_catalog",
       "template_order_tracking",
       "template_lead_qualification",
     ])
