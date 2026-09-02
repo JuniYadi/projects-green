@@ -38,6 +38,7 @@ import {
 // ── GitHub Events ──────────────────────────────────────────────────────────
 import { GithubEventJob } from "@/modules/github/jobs/github-event.job"
 
+import { AdminWhatsappAnalyticsService } from "@/modules/whatsapp/analytics/admin-whatsapp-analytics.service"
 // ── Billing Cron ───────────────────────────────────────────────────────────
 import {
   BILLING_DAILY_RESET_QUEUE,
@@ -785,6 +786,28 @@ if (!isConsumerMode) {
     }
   }, 3_600_000) // 1 hour
   intervals.push(whatsappAnalyticsInterval)
+
+  // ── WhatsApp Meta Pricing Sync (every 6 hours) ──────────────────────────────
+  const whatsappPricingSyncInterval = setInterval(async () => {
+    try {
+      const service = new AdminWhatsappAnalyticsService()
+      const result = await service.syncMetaPricingAnalytics({ days: 7 })
+      logger.info(
+        {
+          event: "whatsapp.pricing_analytics.sync_completed",
+          syncedCount: result.syncedCount,
+          totalCostIdr: result.totalCostIdr.toFixed(2),
+        },
+        "WhatsApp Meta pricing analytics sync cycle completed"
+      )
+    } catch (error) {
+      logger.error(
+        { err: error, event: "whatsapp.pricing_analytics.cycle_failed" },
+        "WhatsApp Meta pricing analytics sync cycle failed"
+      )
+    }
+  }, 6 * 3_600_000) // 6 hours
+  intervals.push(whatsappPricingSyncInterval)
 
   // ── VPN Renewal (every hour) ────────────────────────────────────────────────
   const vpnRenewalInterval = setInterval(async () => {
