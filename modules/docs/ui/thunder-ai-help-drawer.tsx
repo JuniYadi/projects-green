@@ -669,15 +669,24 @@ export function ThunderAiHelpDrawer() {
         } | null
 
         if (response.status === 403 && payload?.banInfo) {
+          const formattedDate = payload.banInfo.blockedUntil
+            ? new Intl.DateTimeFormat(isId ? "id-ID" : "en-US", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }).format(new Date(payload.banInfo.blockedUntil))
+            : isId
+              ? "sementara"
+              : "temporarily"
+
           const banMsg = payload.banInfo.isPermanent
             ? isId
               ? "Akses AI Anda telah diblokir permanen karena pelanggaran keamanan berulang."
               : "Your access to AI services has been permanently banned due to security violations."
             : isId
-              ? `Akses AI Anda ditangguhkan hingga ${payload.banInfo.blockedUntil ? new Date(payload.banInfo.blockedUntil).toLocaleTimeString() : "sementara"} karena pelanggaran berulang.`
-              : `Your access to AI services is suspended until ${payload.banInfo.blockedUntil ? new Date(payload.banInfo.blockedUntil).toLocaleTimeString() : "temporarily"} due to repeated violations.`
+              ? `Akses AI Anda ditangguhkan hingga ${formattedDate} karena pelanggaran berulang.`
+              : `Your access to AI services is suspended until ${formattedDate} due to repeated violations.`
 
-          setChatError(payload.message || banMsg)
+          setChatError(banMsg)
         } else {
           setChatError(
             payload?.message ??
