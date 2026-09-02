@@ -101,17 +101,26 @@ describe("executeWorkflowNode", () => {
       async () => new Response(JSON.stringify({ ok: true }), { status: 200 })
     ) as never
     const ok = await executeWorkflowNode(
-      base({
-        type: "http_request",
-        id: "x",
-        name: "x",
-        config: {
-          url: "https://example.com",
-          method: "POST",
-          bodyJson: { value: "x" },
-          headers: { Authorization: "Bearer x" },
+      base(
+        {
+          type: "http_request",
+          id: "x",
+          name: "x",
+          config: {
+            url: "https://example.com",
+            method: "POST",
+            forwardContext: true,
+            headers: { Authorization: "Bearer x" },
+          },
         },
-      })
+        {
+          templateContext: {
+            variables: { customer_name: "Budi" },
+            steps: { step_1: { done: true } },
+            session: { phone_number: "+62811" },
+          },
+        }
+      )
     )
     expect(ok.outputPort).toBe("success")
     globalThis.fetch = mock(

@@ -115,3 +115,53 @@ export async function GET(
     { status: 404 }
   )
 }
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ endpoint: string }> }
+) {
+  const { endpoint } = await params
+  let payload: Record<string, unknown> = {}
+
+  try {
+    payload = await request.json()
+  } catch {
+    payload = {}
+  }
+
+  if (endpoint === "process-lead" || endpoint === "leads") {
+    const variables = (payload.variables as Record<string, unknown>) || {}
+    const session = (payload.session as Record<string, unknown>) || {}
+
+    return NextResponse.json({
+      status: "success",
+      message: "Lead processed and saved to CRM successfully",
+      leadId: `lead_${Date.now()}`,
+      receivedData: {
+        customerPhone: session.phone_number || "unknown",
+        capturedVariables: variables,
+      },
+      recommendedTier: "pro",
+      processedAt: new Date().toISOString(),
+    })
+  }
+
+  if (endpoint === "orders" || endpoint === "create-order") {
+    const variables = (payload.variables as Record<string, unknown>) || {}
+    return NextResponse.json({
+      status: "success",
+      orderId: `ORD-${Date.now().toString().slice(-6)}`,
+      totalAmount: 499000,
+      paymentStatus: "PENDING_PAYMENT",
+      paymentLink: "https://pfnapp.my.id/pay/demo-12345",
+      capturedVariables: variables,
+    })
+  }
+
+  return NextResponse.json(
+    {
+      status: "error",
+      message: `Unknown demo POST endpoint '${endpoint}'. Available: 'process-lead', 'orders'`,
+    },
+    { status: 404 }
+  )
+}

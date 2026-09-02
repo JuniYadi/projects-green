@@ -304,11 +304,20 @@ export async function executeWorkflowNode(
       }
 
       let renderedBody: string | undefined
-      if (config.bodyJson && ["POST", "PUT", "PATCH"].includes(config.method)) {
-        const bodyStr = JSON.stringify(config.bodyJson)
-        renderedBody = evaluateMustacheTemplate(bodyStr, templateContext)
+      if (config.method === "POST") {
+        if (config.bodyJson) {
+          const bodyStr = JSON.stringify(config.bodyJson)
+          renderedBody = evaluateMustacheTemplate(bodyStr, templateContext)
+        } else if (config.forwardContext) {
+          // Auto-forward entire prior graph context (variables, previous step outputs, phone session)
+          renderedBody = JSON.stringify({
+            variables: templateContext.variables,
+            steps: templateContext.steps,
+            session: templateContext.session,
+            nodeId: node.id,
+          })
+        }
       }
-
       try {
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), config.timeoutMs)
