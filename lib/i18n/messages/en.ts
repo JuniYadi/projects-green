@@ -2229,6 +2229,25 @@ export const enMessages: AppMessages = {
           aiGenerate: "AI response",
           httpRequest: "HTTP request",
         },
+        triggerSettings: {
+          title: "Workflow Trigger Settings",
+          subtitle:
+            "Choose when this workflow should be activated by customer messages.",
+          typeLabel: "Trigger Type",
+          allInbound: "All Inbound Messages",
+          allInboundDesc:
+            "Runs on any message sent by customer to this WhatsApp device.",
+          keywordMatch: "Keyword Match",
+          keywordMatchDesc:
+            "Runs only when customer message contains specific keywords.",
+          keywordsLabel: "Keywords",
+          keywordsPlaceholder: "e.g. halo, bantuan, harga, menu",
+          keywordsHint:
+            "Separate multiple keywords with commas or presses Enter.",
+          saveTrigger: "Save Trigger",
+          pillAllInbound: "Trigger: All Messages",
+          pillKeywords: "Trigger: {count} keywords",
+        },
       },
       inspector: {
         drawerTitle: "Step settings",

@@ -40,6 +40,7 @@ import {
   DotsThreeVertical,
   X,
   MapTrifold,
+  Lightning,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -68,6 +69,14 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
 import type {
   WorkflowDefinition,
@@ -170,13 +179,18 @@ export default function WhatsappWorkflowCanvasPage() {
       keywords: ["help", "info", "menu"],
     },
   }))
+  // Trigger Dialog State
+  const [isTriggerDialogOpen, setIsTriggerDialogOpen] = useState(false)
+  const [triggerDraftType, setTriggerDraftType] = useState<
+    "whatsapp_inbound" | "keyword_match"
+  >("keyword_match")
+  const [triggerKeywordsInput, setTriggerKeywordsInput] = useState("")
 
   // AI Copilot State
   const [copilotPrompt, setCopilotPrompt] = useState("")
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [showCopilot, setShowCopilot] = useState(false)
   const [showMiniMap, setShowMiniMap] = useState(false)
-  // Simulator
   // React Flow state
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -917,6 +931,37 @@ export default function WhatsappWorkflowCanvasPage() {
               >
                 {t.canvas.badgeVisualGraph}
               </Badge>
+
+              {/* Trigger Settings Pill */}
+              <button
+                type="button"
+                onClick={() => {
+                  const currentType =
+                    workflowMeta.trigger.type === "whatsapp_inbound" ||
+                    workflowMeta.isDefault
+                      ? "whatsapp_inbound"
+                      : "keyword_match"
+                  setTriggerDraftType(currentType)
+                  setTriggerKeywordsInput(
+                    Array.isArray(workflowMeta.trigger.keywords)
+                      ? workflowMeta.trigger.keywords.join(", ")
+                      : ""
+                  )
+                  setIsTriggerDialogOpen(true)
+                }}
+                className="inline-flex h-6 items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-500/20"
+              >
+                <Lightning className="h-3 w-3" weight="fill" />
+                <span>
+                  {workflowMeta.trigger.type === "whatsapp_inbound" ||
+                  workflowMeta.isDefault
+                    ? t.canvas.triggerSettings.pillAllInbound
+                    : t.canvas.triggerSettings.pillKeywords.replace(
+                        "{count}",
+                        String(workflowMeta.trigger.keywords?.length || 0)
+                      )}
+                </span>
+              </button>
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {t.canvas.dragHint}
@@ -1707,6 +1752,138 @@ export default function WhatsappWorkflowCanvasPage() {
           </div>
         </SheetContent>
       </Sheet>
+      {/* Trigger Settings Dialog Modal */}
+      <Dialog open={isTriggerDialogOpen} onOpenChange={setIsTriggerDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Lightning className="h-4 w-4 text-amber-500" weight="fill" />
+              {t.canvas.triggerSettings.title}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {t.canvas.triggerSettings.subtitle}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">
+                {t.canvas.triggerSettings.typeLabel}
+              </Label>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTriggerDraftType("whatsapp_inbound")}
+                  className={`flex flex-col items-start rounded-lg border p-3 text-left transition-all ${
+                    triggerDraftType === "whatsapp_inbound"
+                      ? "border-emerald-500/60 bg-emerald-500/10 text-foreground"
+                      : "border-border bg-card/50 text-muted-foreground hover:bg-card"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        triggerDraftType === "whatsapp_inbound"
+                          ? "bg-emerald-500"
+                          : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    {t.canvas.triggerSettings.allInbound}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                    {t.canvas.triggerSettings.allInboundDesc}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTriggerDraftType("keyword_match")}
+                  className={`flex flex-col items-start rounded-lg border p-3 text-left transition-all ${
+                    triggerDraftType === "keyword_match"
+                      ? "border-amber-500/60 bg-amber-500/10 text-foreground"
+                      : "border-border bg-card/50 text-muted-foreground hover:bg-card"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        triggerDraftType === "keyword_match"
+                          ? "bg-amber-500"
+                          : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    {t.canvas.triggerSettings.keywordMatch}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                    {t.canvas.triggerSettings.keywordMatchDesc}
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {triggerDraftType === "keyword_match" && (
+              <div className="animate-in space-y-1.5 duration-200 fade-in">
+                <Label
+                  htmlFor="trigger-keywords-input"
+                  className="text-xs font-semibold"
+                >
+                  {t.canvas.triggerSettings.keywordsLabel}
+                </Label>
+                <Input
+                  id="trigger-keywords-input"
+                  value={triggerKeywordsInput}
+                  onChange={(e) => setTriggerKeywordsInput(e.target.value)}
+                  placeholder={t.canvas.triggerSettings.keywordsPlaceholder}
+                  className="h-8 text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {t.canvas.triggerSettings.keywordsHint}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTriggerDialogOpen(false)}
+              className="h-8 text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                const parsedKeywords = triggerKeywordsInput
+                  .split(",")
+                  .map((k) => k.trim())
+                  .filter(Boolean)
+
+                setWorkflowMeta((prev) => ({
+                  ...prev,
+                  isDefault: triggerDraftType === "whatsapp_inbound",
+                  trigger: {
+                    ...prev.trigger,
+                    type: triggerDraftType,
+                    keywords:
+                      triggerDraftType === "keyword_match"
+                        ? parsedKeywords
+                        : [],
+                  },
+                }))
+                setIsTriggerDialogOpen(false)
+                toast.success(t.canvas.triggerSettings.saveTrigger)
+              }}
+              className="h-8 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
+            >
+              {t.canvas.triggerSettings.saveTrigger}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
