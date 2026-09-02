@@ -2192,6 +2192,7 @@ model WhatsappDevice {
   webhooks              WhatsappWebhook[]
   whatsappWebhookEvents WhatsappWebhookEvent[]
   catalogs              WhatsappCatalog[]
+  dailyCostReconciliations WhatsappDailyCostReconciliation[]
 
   @@unique([whatsappMetaAppId, whatsappPhoneId])
   @@index([organizationId])
@@ -2600,6 +2601,39 @@ model WhatsappApiCall {
   @@index([createdAt(sort: Desc)])
   @@index([phoneNumberId, status, createdAt(sort: Desc)])
   @@map("WhatsappApiCall")
+}
+
+model WhatsappDailyCostReconciliation {
+  id                  String                  @id @default(cuid())
+  organizationId      String
+  whatsappDeviceId    String
+  phoneNumber         String?                 @db.VarChar(32)
+  category            WhatsappBillingCategory @default(MARKETING)
+  date                DateTime                @db.Date
+  
+  // Meta side (from Graph API Pricing Analytics)
+  metaDeliveredCount  Int                     @default(0)
+  metaBaseCostIdr     Decimal                 @default(0) @db.Decimal(12, 2)
+  metaVatCostIdr      Decimal                 @default(0) @db.Decimal(12, 2) // 11% PPN
+  metaTotalCostIdr    Decimal                 @default(0) @db.Decimal(12, 2)
+  
+  // Internal side (from local ledger / allowances)
+  localDeliveredCount Int                     @default(0)
+  quotaCreditsUsed    Decimal                 @default(0) @db.Decimal(12, 2)
+  internalRevenueIdr  Decimal                 @default(0) @db.Decimal(12, 2)
+  
+  // Computed Profit Metrics
+  grossProfitIdr      Decimal                 @default(0) @db.Decimal(12, 2)
+  grossMarginPct      Decimal                 @default(0) @db.Decimal(5, 2)
+  
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  
+  whatsappDevice      WhatsappDevice          @relation(fields: [whatsappDeviceId], references: [id], onDelete: Cascade)
+
+  @@unique([whatsappDeviceId, category, date])
+  @@index([organizationId, date])
+  @@index([date])
 }
 
 model WhatsappAttachment {

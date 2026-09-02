@@ -52,6 +52,7 @@ import { credentialsRoutes } from "@/modules/credentials/api/credentials.route"
 import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook-dead-letter.route"
 import { vaultSecretsRoutes } from "@/modules/secrets/api"
 import { adminWhatsappPricingRoutes } from "@/modules/whatsapp/messages/api/admin-pricing.route"
+import { adminWhatsappAnalyticsRoutes } from "@/modules/whatsapp/analytics/api/admin-whatsapp-analytics.route"
 import { wireguardRoutes } from "@/modules/wireguard/api/wireguard.route"
 import { storageS3Routes } from "@/modules/storage/api/storage-s3.route"
 import { portalStorageRoutes } from "@/modules/storage/api/portal-storage.route"
@@ -329,6 +330,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(metaWebhookRoutes)
   .use(webhookDeadLetterRoutes)
   .use(adminWhatsappPricingRoutes)
+  .use(adminWhatsappAnalyticsRoutes)
   .use(whatsappRoutes)
   .use(wireguardRoutes)
 
