@@ -81,6 +81,14 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     buildJobId: (d) => `wa-billing-${d.toISOString().slice(0, 13)}`,
   },
   {
+    name: "whatsapp-pricing-sync",
+    queueName: "whatsapp-analytics",
+    jobName: "sync-meta-pricing",
+    expression: "0 */6 * * *",
+    buildJobId: (d) => `wa-pricing-${d.toISOString().slice(0, 13)}`,
+    payload: { days: 7 },
+  },
+  {
     name: "whatsapp-analytics-sync",
     queueName: "whatsapp-analytics",
     jobName: "sync-analytics",

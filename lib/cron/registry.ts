@@ -71,6 +71,16 @@ export const CRON_JOB_DEFINITIONS: CronDefinitionConfig[] = [
     gracePeriodMins: 15,
   },
   {
+    code: "whatsapp-pricing-sync",
+    name: "WhatsApp Meta Pricing Sync",
+    description:
+      "Syncs real Meta Cloud pricing analytics (charges & 11% PPN) every 6 hours",
+    category: "whatsapp",
+    cronExpression: "0 */6 * * *",
+    timeoutSeconds: 300,
+    gracePeriodMins: 30,
+  },
+  {
     code: "whatsapp-analytics-sync",
     name: "WhatsApp Analytics Aggregator",
     description: "Rolls up hourly conversation and delivery metric snapshots",
