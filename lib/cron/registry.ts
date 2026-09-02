@@ -100,6 +100,16 @@ export const CRON_JOB_DEFINITIONS: CronDefinitionConfig[] = [
     gracePeriodMins: 15,
   },
   {
+    code: "whatsapp-daily-device-digest",
+    name: "WhatsApp Daily Device Digest",
+    description:
+      "Sends daily health and status digest email for all registered WhatsApp devices to platform admins",
+    category: "whatsapp",
+    cronExpression: "0 0 * * *",
+    timeoutSeconds: 3600,
+    gracePeriodMins: 15,
+  },
+  {
     code: "daily-count-cleanup",
     name: "Daily Usage Ledger Reset",
     description:

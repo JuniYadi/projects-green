@@ -21,6 +21,7 @@ mock.module("@/lib/queue/queue-config", () => ({
   getQueue: mockGetQueue,
 }))
 
+import { CRON_JOB_DEFINITIONS } from "@/lib/cron/registry"
 import { scheduledJobsRegistry, dispatchScheduledJobs } from "./schedule-runner"
 describe("schedule-runner", () => {
   test("scheduledJobsRegistry contains all required scheduled operations", () => {
@@ -31,6 +32,16 @@ describe("schedule-runner", () => {
     expect(names).toContain("whatsapp-hourly-billing")
     expect(names).toContain("daily-count-cleanup")
     expect(names).toContain("monthly-billing-finalization")
+  })
+
+  test("every scheduled job has a cron definition", () => {
+    const definedCodes = new Set(
+      CRON_JOB_DEFINITIONS.map((definition) => definition.code)
+    )
+
+    for (const job of scheduledJobsRegistry) {
+      expect(definedCodes).toContain(job.name)
+    }
   })
 
   test("dispatchScheduledJobs enqueues jobs matching the minute", async () => {
