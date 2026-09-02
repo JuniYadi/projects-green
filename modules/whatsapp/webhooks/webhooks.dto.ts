@@ -158,7 +158,7 @@ export function toWebhookEventDTO(
     phoneNumber: extracted.phoneNumber,
     deliveryStatus: extracted.deliveryStatus ?? event.processingStatus,
     messageBody: extracted.messageBody ?? null,
-    deviceLabel: deviceName,
+    deviceLabel: devicePhone ?? event.whatsappDeviceId,
     deviceName,
     devicePhone,
     errorMessage: event.errorMessage ?? null,

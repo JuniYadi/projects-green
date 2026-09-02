@@ -34,8 +34,8 @@ import { toast } from "sonner"
 import type { WebhookEventRecord } from "@/app/[lang]/console/whatsapp/logs/webhook-logs-tab-content"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
+import { formatIndonesianPhone } from "@/modules/whatsapp/messages/phone-number"
 import { useParams } from "next/navigation"
-
 interface WebhookEventDetailSheetProps {
   event: WebhookEventRecord | null
   open: boolean
@@ -291,17 +291,13 @@ export function WebhookEventDetailSheet({
                             "—"}
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs">
-                        <p className="font-semibold">{t.deviceTooltip}</p>
-                        <p className="font-mono text-muted-foreground">
-                          {event.devicePhone
-                            ? event.devicePhone.replace(
-                                /(\+?\d{2})(\d{3})(\d{4})(\d+)/,
-                                "$1 $2-$3-$4"
-                              )
-                            : event.deviceId || "—"}
-                        </p>
-                      </TooltipContent>
+                      {event.devicePhone && (
+                        <TooltipContent>
+                          <p className="font-mono text-muted-foreground">
+                            {formatIndonesianPhone(event.devicePhone)}
+                          </p>
+                        </TooltipContent>
+                      )}
                     </Tooltip>
                   </TooltipProvider>
 

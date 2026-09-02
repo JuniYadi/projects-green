@@ -20,22 +20,31 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ArrowsClockwise, DeviceMobile, User } from "@phosphor-icons/react"
-import type { AppMessages } from "@/lib/i18n/messages/types"
+import {
+  ArrowsClockwise,
+  ArrowUpRight,
+  ArrowDownLeft,
+  DeviceMobile,
+} from "@phosphor-icons/react"
 import { WebhookEventDetailSheet } from "@/modules/whatsapp/webhooks/ui/webhook-event-sheet"
-export type WebhookEventRecord = {
+import { formatIndonesianPhone } from "@/modules/whatsapp/messages/phone-number"
+import type { AppMessages } from "@/lib/i18n/messages/types"
+
+export interface WebhookEventRecord {
   id: string
-  deviceId?: string | null
+  eventType: string
+  processingStatus: string
+  waMessageId?: string | null
+  phoneNumber?: string | null
+  deliveryStatus?: string | null
+  messageBody?: string | null
   deviceLabel?: string | null
   deviceName?: string | null
   devicePhone?: string | null
-  phoneNumber?: string | null
-  waMessageId?: string | null
-  eventType: string
-  processingStatus: string
-  deliveryStatus?: string | null
-  messageBody?: string | null
+  deviceId?: string | null
+  whatsappDeviceId?: string | null
   createdAt: string | Date
+  errorMessage?: string | null
   metaPayload?: Record<string, unknown> | null
 }
 const DEFAULT_COLUMNS: Record<string, boolean> = {
@@ -101,17 +110,6 @@ function getDeliveryStatusBadge(
   return <Badge variant="secondary">{status || "PENDING"}</Badge>
 }
 
-function formatPhoneIndonesian(phone: string | null | undefined): string {
-  if (!phone) return "—"
-  const clean = phone.replace(/\D/g, "")
-  if (clean.startsWith("62") && clean.length >= 10) {
-    return `+62 ${clean.slice(2, 5)}-${clean.slice(5, 9)}-${clean.slice(9)}`
-  }
-  if (clean.startsWith("08") && clean.length >= 10) {
-    return `${clean.slice(0, 4)}-${clean.slice(4, 8)}-${clean.slice(8)}`
-  }
-  return phone
-}
 export function WebhookLogsTabContent({
   messages,
 }: {
@@ -199,47 +197,53 @@ export function WebhookLogsTabContent({
               <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/50 text-muted-foreground">
                 <DeviceMobile className="size-4" />
               </div>
-              <TooltipProvider>
+              <div className="flex flex-col gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="max-w-[160px] cursor-help truncate font-mono text-xs font-semibold text-foreground underline decoration-dotted underline-offset-4">
                       {deviceName}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    <p className="font-semibold">{t.drawer.deviceTooltip}</p>
+                  <TooltipContent>
                     <p className="font-mono text-muted-foreground">
-                      {formatPhoneIndonesian(devicePhone)}
+                      {formatIndonesianPhone(devicePhone)}
                     </p>
                   </TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
+                <span className="text-[11px] text-muted-foreground">
+                  ID: {row.original.whatsappDeviceId?.slice(0, 8) || "—"}
+                </span>
+              </div>
             </div>
           )
         },
       },
       {
         id: "contact",
-        accessorFn: (row) => `${row.phoneNumber || ""}`,
+        accessorFn: (row) => row.phoneNumber || "",
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={t.colRecipientContact}
+            title={t.colRecipientContact || "Recipient / Contact"}
           />
         ),
         cell: ({ row }) => {
           const contactPhone = row.original.phoneNumber
-          if (!contactPhone)
-            return <span className="text-xs text-muted-foreground">—</span>
-
+          const isOutbound =
+            row.original.eventType === "status_update" ||
+            row.original.eventType === "message_sent"
           return (
             <div className="flex items-center gap-2 py-0.5">
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
-                <User className="size-3.5" />
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-full border bg-muted/50 text-muted-foreground">
+                {isOutbound ? (
+                  <ArrowUpRight className="size-3.5 text-muted-foreground" />
+                ) : (
+                  <ArrowDownLeft className="size-3.5 text-muted-foreground" />
+                )}
               </div>
               <div className="flex flex-col">
                 <span className="font-mono text-xs font-medium text-foreground">
-                  {formatPhoneIndonesian(contactPhone)}
+                  {formatIndonesianPhone(contactPhone)}
                 </span>
               </div>
             </div>
@@ -338,53 +342,55 @@ export function WebhookLogsTabContent({
   )
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.cardMessagesTitle}</CardTitle>
-          <CardDescription>{t.cardMessagesDesc}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {errorMessage ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-sm text-destructive">{errorMessage}</p>
-              <Button
-                variant="outline"
-                className="mt-3"
-                onClick={() => void loadEvents()}
-              >
-                <ArrowsClockwise className="mr-2 size-4" />
-                {t.retry}
-              </Button>
-            </div>
-          ) : (
-            <DataTable
-              tableId="console-whatsapp-message-logs"
-              columns={columns}
-              data={events}
-              pageSize={10}
-              searchableColumns={[
-                "phoneNumber",
-                "eventType",
-                "deliveryStatus",
-                "processingStatus",
-                "waMessageId",
-              ]}
-              searchPlaceholder={t.searchMessagesPlaceholder}
-              defaultColumnVisibility={DEFAULT_COLUMNS}
-              emptyMessage={isLoading ? t.loadingMessages : t.emptyMessages}
-            />
-          )}
-        </CardContent>
-      </Card>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.cardMessagesTitle}</CardTitle>
+            <CardDescription>{t.cardMessagesDesc}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {errorMessage ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-sm text-destructive">{errorMessage}</p>
+                <Button
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => void loadEvents()}
+                >
+                  <ArrowsClockwise className="mr-2 size-4" />
+                  {t.retry}
+                </Button>
+              </div>
+            ) : (
+              <DataTable
+                tableId="console-whatsapp-message-logs"
+                columns={columns}
+                data={events}
+                pageSize={10}
+                searchableColumns={[
+                  "phoneNumber",
+                  "eventType",
+                  "deliveryStatus",
+                  "processingStatus",
+                  "waMessageId",
+                ]}
+                searchPlaceholder={t.searchMessagesPlaceholder}
+                defaultColumnVisibility={DEFAULT_COLUMNS}
+                emptyMessage={isLoading ? t.loadingMessages : t.emptyMessages}
+              />
+            )}
+          </CardContent>
+        </Card>
 
-      <WebhookEventDetailSheet
-        event={selectedEvent}
-        open={Boolean(selectedEvent)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedEvent(null)
-        }}
-      />
-    </div>
+        <WebhookEventDetailSheet
+          event={selectedEvent}
+          open={Boolean(selectedEvent)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedEvent(null)
+          }}
+        />
+      </div>
+    </TooltipProvider>
   )
 }

@@ -2249,6 +2249,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
             : null,
           billing: billingLedger
             ? {
+                category: billingLedger.category,
                 quotaKey: billingLedger.quotaKey,
                 status: billingLedger.status,
                 createdAt: billingLedger.createdAt.toISOString(),
