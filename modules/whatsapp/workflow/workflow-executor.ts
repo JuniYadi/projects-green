@@ -437,6 +437,17 @@ export async function executeWorkflowNode(
         })
 
         const generatedText = result.text.trim()
+
+        // Auto-reply to customer if sendReply is enabled (default true)
+        if (config.sendReply && generatedText) {
+          await messageService.sendMessage({
+            organizationId,
+            phoneNumber,
+            deviceId,
+            message: generatedText,
+          })
+        }
+
         return {
           status: "COMPLETED",
           outputPort: "default",
@@ -444,7 +455,7 @@ export async function executeWorkflowNode(
             name: config.captureVariable,
             value: generatedText,
           },
-          stepOutput: { generatedText },
+          stepOutput: { generatedText, sentReply: config.sendReply },
         }
       } catch (error) {
         return {

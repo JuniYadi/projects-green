@@ -99,20 +99,32 @@ export async function resolveAiProviderConfig(
     }
   }
 
-  // 3. Fallback to Managed PFNApp OpenRouter key
+  // 3. Fallback to Platform AI key (OpenAI-compatible or Managed OpenRouter)
   const fallbackKey =
     process.env.AI_API_KEY?.trim() ||
     process.env.OPENROUTER_API_KEY?.trim() ||
+    process.env.OPENAI_API_KEY?.trim() ||
     ""
   const fallbackBaseUrl =
-    process.env.AI_BASE_URL?.trim() || "https://openrouter.ai/api/v1"
+    process.env.AI_BASE_URL?.trim() ||
+    (process.env.OPENAI_API_KEY
+      ? "https://api.openai.com/v1"
+      : "https://openrouter.ai/api/v1")
   const fallbackModel =
     options.modelOverride ||
     process.env.AI_CHAT_MODEL?.trim() ||
-    "anthropic/claude-sonnet-4-5-20251120"
+    process.env.OPENAI_CHAT_MODEL?.trim() ||
+    (process.env.OPENAI_API_KEY
+      ? "gpt-4o-mini"
+      : "anthropic/claude-sonnet-4-5-20251120")
+  const providerType: ProviderType =
+    process.env.AI_PROVIDER === "OPENAI_COMPATIBLE" ||
+    process.env.OPENAI_API_KEY
+      ? "OPENAI_COMPATIBLE"
+      : "MANAGED"
 
   return {
-    providerType: "MANAGED",
+    providerType,
     baseUrl: fallbackBaseUrl,
     defaultModel: fallbackModel,
     apiKey: fallbackKey,

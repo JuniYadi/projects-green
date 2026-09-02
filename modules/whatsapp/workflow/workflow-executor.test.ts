@@ -128,7 +128,7 @@ describe("executeWorkflowNode", () => {
     expect(fail.outputPort).toBe("error")
     globalThis.fetch = original
   })
-  test("generates AI output and reports provider errors", async () => {
+  test("generates AI output, sends message reply by default, and respects sendReply: false", async () => {
     const result = await executeWorkflowNode(
       base({
         type: "ai_generate",
@@ -141,6 +141,29 @@ describe("executeWorkflowNode", () => {
       name: "answer",
       value: "generated answer",
     })
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phoneNumber: "+1",
+        message: "generated answer",
+      })
+    )
+
+    sendMessage.mockClear()
+    const noReplyResult = await executeWorkflowNode(
+      base({
+        type: "ai_generate",
+        id: "x",
+        name: "x",
+        config: {
+          prompt: "Say hi",
+          captureVariable: "answer",
+          sendReply: false,
+        },
+      })
+    )
+    expect(noReplyResult.status).toBe("COMPLETED")
+    expect(sendMessage).not.toHaveBeenCalled()
+
     resolveAiProviderConfig.mockRejectedValueOnce(
       new Error("provider unavailable")
     )
