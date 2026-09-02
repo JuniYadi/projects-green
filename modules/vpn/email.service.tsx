@@ -1,6 +1,4 @@
-import { render } from "@react-email/components"
-
-import LRUCache from "lru-cache"
+import { render } from "react-email"
 
 import { createEmailLog } from "@/lib/email-log"
 import { sendEmail } from "@/lib/queue/email"
@@ -22,9 +20,7 @@ import { SubscriptionCancelledEmail } from "./emails/subscription-cancelled"
  */
 
 export class VpnEmailService {
-  private readonly orgEmailCache = new LRUCache<string, string[] | null>({
-    max: 1000,
-  })
+  private readonly orgEmailCache = new Map<string, string[] | null>()
   async sendSubscriptionCreated(organizationId: string, packageName?: string) {
     const recipients = await this.resolveRecipients(organizationId)
     if (!recipients.length) return
@@ -263,7 +259,7 @@ export class VpnEmailService {
   ): Promise<Array<{ email: string; orgName?: string }>> {
     const cached = this.orgEmailCache.get(organizationId)
     if (cached !== undefined) {
-      return cached ? cached.map((email) => ({ email })) : []
+      return cached ? cached.map((email: string) => ({ email })) : []
     }
 
     try {

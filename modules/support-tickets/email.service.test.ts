@@ -10,13 +10,28 @@ mock.module("@/lib/queue/email", () => ({
   sendEmail: mockSendEmail,
 }))
 
-// Mock React Email render
+// Mock React Email render and components
 const mockRender = mock(async () => "<html><body>Test Email</body></html>")
-mock.module("@react-email/components", () => ({
+const passthrough = ({ children }: { children?: unknown }) => children
+mock.module("react-email", () => ({
   render: mockRender,
+  Body: passthrough,
+  Button: passthrough,
+  Column: passthrough,
+  Container: passthrough,
+  Head: passthrough,
+  Heading: passthrough,
+  Hr: passthrough,
+  Html: passthrough,
+  Img: passthrough,
+  Link: passthrough,
+  Preview: passthrough,
+  Row: passthrough,
+  Section: passthrough,
+  Text: passthrough,
 }))
 
-// Mock the email templates - they use @react-email/components internally
+// Mock the email templates - they use react-email internally
 mock.module("./emails/ticket-created", () => ({
   TicketCreatedEmail: () => "<div>Ticket Created</div>",
 }))

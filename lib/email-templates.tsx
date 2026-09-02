@@ -1,4 +1,4 @@
-import { render } from "@react-email/components"
+import { render } from "react-email"
 
 import { InvoiceCancelledEmail } from "@/modules/invoices/emails/invoice-cancelled"
 import { InvoiceCreatedEmail } from "@/modules/invoices/emails/invoice-created"

@@ -18,15 +18,20 @@ mock.module("@/lib/queue/email", () => ({
 
 const mockRender = mock(async () => "<html><body>Test Email</body></html>")
 const passthrough = ({ children }: { children?: unknown }) => children
-mock.module("@react-email/components", () => ({
+mock.module("react-email", () => ({
   render: mockRender,
   Body: passthrough,
+  Button: passthrough,
+  Column: passthrough,
   Container: passthrough,
   Head: passthrough,
   Heading: passthrough,
   Hr: passthrough,
   Html: passthrough,
+  Img: passthrough,
+  Link: passthrough,
   Preview: passthrough,
+  Row: passthrough,
   Section: passthrough,
   Text: passthrough,
 }))

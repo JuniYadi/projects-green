@@ -9,7 +9,7 @@ import {
   Preview,
   Section,
   Text,
-} from "@react-email/components"
+} from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
 import type { InvoicePaidEmailProps } from "./types"
 import {
