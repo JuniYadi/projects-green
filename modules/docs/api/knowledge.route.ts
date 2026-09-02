@@ -417,8 +417,20 @@ export const createKnowledgeRoutes = (
         }
       }
 
+      // Build conversation history summary to provide context for follow-up questions
+      const historySummary =
+        parsed.data.messages.length > 1
+          ? parsed.data.messages
+              .slice(-4, -1)
+              .map((m) => `${m.role}: ${m.content.slice(0, 300)}`)
+              .join("\n")
+          : undefined
+
       // ── 4. TIER 2: STRUCTURED LLM INTENT & ZERO-TRUST GATE ─────────────────
-      const gateResult = await verifyUserIntentAndSafety(latestUserQuery)
+      const gateResult = await verifyUserIntentAndSafety(
+        latestUserQuery,
+        historySummary
+      )
 
       if (
         gateResult.isPromptInjection ||
