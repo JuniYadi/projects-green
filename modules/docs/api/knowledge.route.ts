@@ -437,6 +437,92 @@ export const createKnowledgeRoutes = (
         gateResult.isAbusiveOrToxic ||
         !gateResult.isPfnDomainRelated
       ) {
+        const isStrike =
+          gateResult.isPromptInjection || gateResult.isAbusiveOrToxic
+        const rejectionReason = gateResult.isPromptInjection
+          ? "PROMPT_INJECTION"
+          : gateResult.isAbusiveOrToxic
+            ? "PROFANITY"
+            : "OUT_OF_DOMAIN"
+
+        // Record audit session, message, and strike
+        try {
+          await prisma.aiChatSession.upsert({
+            where: { sessionId },
+            create: {
+              sessionId,
+              organizationId,
+              userId,
+              userEmail: auth.user?.email ?? null,
+              ipAddress,
+              userAgent,
+              channel: "CONSOLE",
+              totalMessages: 2,
+              totalTokens: Math.ceil(latestUserQuery.length / 4),
+              isBlocked: isStrike,
+              blockReason: rejectionReason,
+              strikeCount: isStrike ? 1 : 0,
+            },
+            update: {
+              totalMessages: { increment: 2 },
+              totalTokens: {
+                increment: Math.ceil(latestUserQuery.length / 4),
+              },
+              ...(isStrike
+                ? {
+                    isBlocked: true,
+                    blockReason: rejectionReason,
+                    strikeCount: { increment: 1 },
+                  }
+                : {}),
+            },
+          })
+
+          const refusal =
+            gateResult.refusalMessage ||
+            (gateResult.isPromptInjection
+              ? "Permintaan ditolak. Instruksi sistem tidak dapat diubah atau diabaikan."
+              : gateResult.isAbusiveOrToxic
+                ? "Permintaan ditolak. Mohon gunakan bahasa yang sopan dan profesional."
+                : "Maaf, saya adalah asisten resmi PFNApp. Saya hanya dapat membantu pertanyaan seputar layanan konsol, WhatsApp Business API, dan billing PFNApp.")
+
+          await prisma.aiChatMessage.createMany({
+            data: [
+              {
+                sessionId,
+                role: "user",
+                content: latestUserQuery,
+                routePath,
+                promptTokens: Math.ceil(latestUserQuery.length / 4),
+                responseTokens: 0,
+                durationMs: 0,
+              },
+              {
+                sessionId,
+                role: "assistant",
+                content: refusal,
+                routePath,
+                promptTokens: 0,
+                responseTokens: Math.ceil(refusal.length / 4),
+                durationMs: 0,
+                citations: [],
+              },
+            ],
+          })
+
+          if (isStrike) {
+            await recordStrikeAndEscalate({
+              sessionId,
+              organizationId,
+              userId,
+              ipAddress,
+              reason: rejectionReason,
+            })
+          }
+        } catch (auditErr) {
+          console.error("[knowledge.route] Gate audit logging error:", auditErr)
+        }
+
         const refusal =
           gateResult.refusalMessage ||
           (gateResult.isPromptInjection
