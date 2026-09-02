@@ -325,3 +325,21 @@ export function normalizeIndonesianPhoneNumber(input: string): string | null {
 
   return e164PhoneRegex.test(candidate) ? candidate : null
 }
+
+/**
+ * Format phone number cleanly for Indonesian display: `+62 812-3456-7890`
+ */
+export function formatIndonesianPhone(
+  phone: string | null | undefined
+): string {
+  if (!phone) return "—"
+  const clean = phone.replace(/\D/g, "")
+  if (clean.startsWith("62") && clean.length >= 10) {
+    return `+62 ${clean.slice(2, 5)}-${clean.slice(5, 9)}-${clean.slice(9)}`
+  }
+  if (clean.startsWith("08") && clean.length >= 10) {
+    return `+62 ${clean.slice(1, 4)}-${clean.slice(4, 8)}-${clean.slice(8)}`
+  }
+  if (phone.startsWith("+")) return phone
+  return `+${clean}`
+}

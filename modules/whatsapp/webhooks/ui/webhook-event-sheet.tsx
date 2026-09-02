@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
   Sheet,
   SheetContent,
@@ -9,6 +10,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   DeviceMobile,
   ChatCircleText,
@@ -19,13 +27,15 @@ import {
   Check,
   CheckCircle,
   ArrowDownLeft,
+  ArrowSquareOut,
+  Path,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import type { WebhookEventRecord } from "@/app/[lang]/console/whatsapp/logs/webhook-logs-tab-content"
 import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
+import { formatIndonesianPhone } from "@/modules/whatsapp/messages/phone-number"
 import { useParams } from "next/navigation"
-
 interface WebhookEventDetailSheetProps {
   event: WebhookEventRecord | null
   open: boolean
@@ -45,12 +55,18 @@ export function WebhookEventDetailSheet({
 
   if (!event) return null
 
-  const isFailed = event.processingStatus?.toUpperCase() === "FAILED"
-  const isSuccess =
-    event.processingStatus?.toUpperCase() === "SUCCESS" ||
-    event.processingStatus?.toUpperCase() === "DELIVERED" ||
-    event.processingStatus?.toUpperCase() === "READ"
-  const isReceived = event.processingStatus?.toUpperCase() === "RECEIVED"
+  const deliveryStatus = (
+    event.deliveryStatus ||
+    event.processingStatus ||
+    ""
+  ).toUpperCase()
+
+  const isFailed = deliveryStatus === "FAILED"
+  const isRead = deliveryStatus === "READ"
+  const isDelivered = deliveryStatus === "DELIVERED"
+  const isSent = deliveryStatus === "SENT"
+  const isReceived =
+    deliveryStatus === "RECEIVED" || event.eventType === "inbound_message"
 
   const handleCopyId = async (text: string) => {
     try {
@@ -115,17 +131,29 @@ export function WebhookEventDetailSheet({
             </SheetTitle>
             <Badge
               variant={
-                isSuccess ? "default" : isFailed ? "destructive" : "secondary"
+                isRead || isDelivered
+                  ? "default"
+                  : isSent
+                    ? "secondary"
+                    : isReceived
+                      ? "outline"
+                      : isFailed
+                        ? "destructive"
+                        : "secondary"
               }
               className="px-2.5 py-0.5 text-xs font-semibold tracking-wide uppercase"
             >
-              {isSuccess
-                ? t.statusSuccess
-                : isFailed
-                  ? t.statusFailed
-                  : isReceived
-                    ? t.statusReceived
-                    : event.processingStatus}
+              {isRead
+                ? t.statusRead
+                : isDelivered
+                  ? t.statusDelivered
+                  : isSent
+                    ? t.statusSent
+                    : isReceived
+                      ? t.statusReceived
+                      : isFailed
+                        ? t.statusFailed
+                        : deliveryStatus || event.processingStatus}
             </Badge>
           </div>
           <SheetDescription className="pt-1 font-mono text-xs text-muted-foreground">
@@ -139,42 +167,103 @@ export function WebhookEventDetailSheet({
             className={`flex items-start gap-3 rounded-xl border p-4 ${
               isFailed
                 ? "border-destructive/30 bg-destructive/5 text-destructive"
-                : isSuccess
+                : isRead || isDelivered
                   ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
-                  : "border-blue-500/30 bg-blue-500/5 text-blue-700 dark:text-blue-400"
+                  : isReceived
+                    ? "border-sky-500/30 bg-sky-500/5 text-sky-700 dark:text-sky-400"
+                    : "border-purple-500/30 bg-purple-500/5 text-purple-700 dark:text-purple-400"
             }`}
           >
             {isFailed ? (
               <WarningCircle className="mt-0.5 size-5 shrink-0" />
-            ) : isSuccess ? (
+            ) : isRead || isDelivered ? (
               <CheckCircle className="mt-0.5 size-5 shrink-0" />
-            ) : (
+            ) : isReceived ? (
               <ArrowDownLeft className="mt-0.5 size-5 shrink-0" />
+            ) : (
+              <Check className="mt-0.5 size-5 shrink-0" />
             )}
             <div className="flex-1 space-y-1">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold">
-                  {isSuccess
-                    ? t.statusSuccess
-                    : isFailed
-                      ? t.statusFailed
-                      : isReceived
-                        ? t.statusReceived
-                        : t.statusPending}
+                  {isRead
+                    ? t.statusRead
+                    : isDelivered
+                      ? t.statusDelivered
+                      : isSent
+                        ? t.statusSent
+                        : isReceived
+                          ? t.statusReceived
+                          : isFailed
+                            ? t.statusFailed
+                            : t.statusPending}
                 </span>
                 <span className="font-mono text-xs opacity-80">
                   {new Date(event.createdAt).toLocaleTimeString(locale)}
                 </span>
               </div>
               <p className="text-xs leading-relaxed opacity-90">
-                {isSuccess
-                  ? t.statusDescSuccessWebhook
-                  : isFailed
-                    ? t.statusDescFailedWebhook
-                    : t.statusDescReceivedWebhook}
+                {isRead
+                  ? t.statusDescReadWebhook
+                  : isDelivered
+                    ? t.statusDescDeliveredWebhook
+                    : isSent
+                      ? t.statusDescSentWebhook
+                      : isReceived
+                        ? t.statusDescReceivedWebhook
+                        : isFailed
+                          ? t.statusDescFailedWebhook
+                          : t.statusDescSuccessWebhook}
               </p>
             </div>
           </div>
+          {(waMessageId || recipientPhone || event.deviceId) && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                {t.sectionActions}
+              </h4>
+              <div className="flex flex-col gap-2 rounded-xl border bg-card p-3 shadow-xs">
+                {waMessageId && (
+                  <Button
+                    asChild
+                    variant="default"
+                    size="sm"
+                    className="w-full justify-start gap-2 bg-emerald-600 font-medium text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                  >
+                    <Link
+                      href={localizePathname({
+                        pathname: `/console/whatsapp/messages/${encodeURIComponent(waMessageId)}`,
+                        locale,
+                      })}
+                    >
+                      <Path className="size-4 shrink-0" />
+                      <span>{t.actionViewJourney}</span>
+                      <ArrowSquareOut className="ml-auto size-3.5 opacity-70" />
+                    </Link>
+                  </Button>
+                )}
+
+                {recipientPhone && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start gap-2 text-xs"
+                  >
+                    <Link
+                      href={localizePathname({
+                        pathname: `/console/whatsapp/messages?phone=${encodeURIComponent(recipientPhone.replace(/\D/g, ""))}`,
+                        locale,
+                      })}
+                    >
+                      <ChatCircleText className="size-4 shrink-0 text-emerald-600" />
+                      <span>{t.actionViewInbox}</span>
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Section 1: Pengiriman & Kontak */}
           <div className="space-y-3">
@@ -185,22 +274,73 @@ export function WebhookEventDetailSheet({
               <div className="space-y-1 pb-3">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <DeviceMobile className="size-4" />
-                  <span>{t.device}</span>
+                  <span>
+                    {isReceived
+                      ? t.directionTo + " (" + t.device + ")"
+                      : t.directionFrom + " (" + t.device + ")"}
+                  </span>
                 </div>
-                <p className="font-mono text-sm font-semibold text-foreground">
-                  {event.deviceLabel || event.deviceId || "—"}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help font-mono text-sm font-semibold text-foreground underline decoration-dotted underline-offset-4">
+                          {event.deviceName ||
+                            event.deviceLabel ||
+                            event.deviceId ||
+                            "—"}
+                        </span>
+                      </TooltipTrigger>
+                      {event.devicePhone && (
+                        <TooltipContent>
+                          <p className="font-mono text-muted-foreground">
+                            {formatIndonesianPhone(event.devicePhone)}
+                          </p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  {event.deviceId && (
+                    <Link
+                      href={localizePathname({
+                        pathname: `/console/whatsapp/devices/${event.deviceId}`,
+                        locale,
+                      })}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <span>{t.actionViewDevice}</span>
+                      <ArrowSquareOut className="size-3" />
+                    </Link>
+                  )}
+                </div>
               </div>
 
               {recipientPhone && (
                 <div className="space-y-1 pt-3">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <ChatCircleText className="size-4" />
-                    <span>{t.recipientPhone}</span>
+                    <span>
+                      {isReceived
+                        ? t.directionFrom + " (" + t.recipientPhone + ")"
+                        : t.directionTo + " (" + t.recipientPhone + ")"}
+                    </span>
                   </div>
-                  <p className="font-mono text-sm font-semibold text-foreground">
-                    {recipientPhone}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-sm font-semibold text-foreground">
+                      {recipientPhone}
+                    </p>
+                    <Link
+                      href={localizePathname({
+                        pathname: `/console/whatsapp/messages?phone=${encodeURIComponent(recipientPhone.replace(/\D/g, ""))}`,
+                        locale,
+                      })}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                    >
+                      <span>{t.actionViewInbox}</span>
+                      <ArrowSquareOut className="size-3" />
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
@@ -235,8 +375,6 @@ export function WebhookEventDetailSheet({
               </div>
             </div>
           </div>
-
-          {/* Section 3: WhatsApp Message ID */}
           {waMessageId && (
             <div className="space-y-3">
               <h4 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">

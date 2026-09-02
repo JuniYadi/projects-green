@@ -1,17 +1,17 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import {
   e164PhoneRegex,
-  normalizeIndonesianPhoneNumber,
   detectCountryFromPhone,
+  normalizeIndonesianPhoneNumber,
+  formatIndonesianPhone,
 } from "./phone-number"
 
 describe("e164PhoneRegex", () => {
-  it("accepts valid E.164", () => {
+  it("matches valid E.164 phone numbers", () => {
     expect(e164PhoneRegex.test("+6285708296482")).toBe(true)
-    expect(e164PhoneRegex.test("+14155550100")).toBe(true)
-    expect(e164PhoneRegex.test("+1")).toBe(false) // too short (only country code)
+    expect(e164PhoneRegex.test("+14155552671")).toBe(true)
+    expect(e164PhoneRegex.test("+442071838750")).toBe(true)
   })
-
   it("rejects non-E.164", () => {
     expect(e164PhoneRegex.test("085708296482")).toBe(false)
     expect(e164PhoneRegex.test("6285708296482")).toBe(false)
@@ -118,5 +118,19 @@ describe("detectCountryFromPhone", () => {
 
   it("returns null for unknown prefix", () => {
     expect(detectCountryFromPhone("+999123456")).toBeNull()
+  })
+})
+
+describe("formatIndonesianPhone", () => {
+  it("formats standard Indonesian number with spacing and dashes", () => {
+    expect(formatIndonesianPhone("6285708296482")).toBe("+62 857-0829-6482")
+    expect(formatIndonesianPhone("085708296482")).toBe("+62 857-0829-6482")
+    expect(formatIndonesianPhone("+6285708296482")).toBe("+62 857-0829-6482")
+  })
+
+  it("handles null or undefined cleanly", () => {
+    expect(formatIndonesianPhone(null)).toBe("—")
+    expect(formatIndonesianPhone(undefined)).toBe("—")
+    expect(formatIndonesianPhone("")).toBe("—")
   })
 })

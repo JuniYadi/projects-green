@@ -16,12 +16,12 @@ import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 import { InsufficientQuotaError } from "../quota.service"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
+import { extractEventMetadata } from "@/modules/whatsapp/webhooks/webhooks.dto"
 import {
   InsufficientBalanceError,
   QuotaExceededError,
   DailyLimitExceededError,
 } from "@/modules/billing/types"
-
 function getDailyResetAt(): string {
   const now = new Date()
   const reset = new Date(
@@ -2028,6 +2028,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           waMessageId: decodedWamid,
           ...orgFilter,
         },
+        include: {
+          whatsappDevice: true,
+        },
         orderBy: { createdAt: "asc" },
       })
       if (
@@ -2050,12 +2053,12 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         description?: string
       }> = []
 
-      // The message record is the initiation event. Billing may be reserved
-      // before it, so sorting below can intentionally place billing first.
+      // The message record is the initiation event.
       const createdAt =
         message?.createdAt ??
         auditLog?.createdAt ??
         billingLedger?.createdAt ??
+        webhookEvents[0]?.createdAt ??
         new Date()
       timeline.push({
         id: "step-initiation",
@@ -2082,9 +2085,11 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         })
       }
 
-      // Status History Steps
+      // Status History Steps from internal message tracking
+      const recordedStatuses = new Set<string>()
       if (message?.statusHistory && message.statusHistory.length > 0) {
         for (const st of message.statusHistory) {
+          recordedStatuses.add(st.status.toUpperCase())
           timeline.push({
             id: st.id,
             status: st.status,
@@ -2096,20 +2101,49 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         }
       }
 
-      // Webhook Dispatch Steps
+      // Webhook Dispatch Steps: only add if not already tracked or if message has no statusHistory
       for (const we of webhookEvents) {
-        timeline.push({
-          id: `step-webhook-${we.id}`,
-          status: we.processingStatus,
-          timestamp: we.createdAt.toISOString(),
-          error: we.errorMessage ?? null,
-          label: `Webhook Received (${we.eventType})`,
-          description: `Processing: ${we.processingStatus}`,
-        })
+        const meta = extractEventMetadata(we.metaPayload, we.eventType)
+        const deliverySt = meta.deliveryStatus?.toUpperCase()
+        if (deliverySt && !recordedStatuses.has(deliverySt)) {
+          recordedStatuses.add(deliverySt)
+          timeline.push({
+            id: `step-webhook-${we.id}`,
+            status: deliverySt,
+            timestamp: we.createdAt.toISOString(),
+            error: we.errorMessage ?? null,
+            label: `Delivery Status: ${deliverySt}`,
+            description: we.errorMessage
+              ? `Error: ${we.errorMessage}`
+              : undefined,
+          })
+        } else if (
+          !deliverySt &&
+          (!message ||
+            !message.statusHistory ||
+            message.statusHistory.length === 0)
+        ) {
+          timeline.push({
+            id: `step-webhook-${we.id}`,
+            status: we.processingStatus,
+            timestamp: we.createdAt.toISOString(),
+            error: we.errorMessage ?? null,
+            label: `Webhook Received (${we.eventType})`,
+            description: `Processing: ${we.processingStatus}`,
+          })
+        }
       }
       timeline.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
+      // Resolve fallback webhook metadata if available
+      const firstWebhook = webhookEvents[0]
+      const webhookMetadata = firstWebhook
+        ? extractEventMetadata(firstWebhook.metaPayload, firstWebhook.eventType)
+        : null
 
-      const device = message?.conversation.whatsappDevice
+      const device =
+        message?.conversation.whatsappDevice ??
+        firstWebhook?.whatsappDevice ??
+        null
       const auditDetails =
         auditLog?.details && typeof auditLog.details === "object"
           ? (auditLog.details as Record<string, unknown>)
@@ -2119,8 +2153,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         billingLedger?.phoneNumber ??
         (typeof auditDetails?.phoneNumber === "string"
           ? auditDetails.phoneNumber
-          : "")
-
+          : null) ??
+        webhookMetadata?.phoneNumber ??
+        ""
       let origin = "Direct API"
       if (auditLog) {
         if (
@@ -2139,10 +2174,39 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         device?.whatsappProfile && typeof device.whatsappProfile === "object"
           ? (device.whatsappProfile as Record<string, unknown>)
           : null
+      const deviceName =
+        (deviceProfile &&
+        typeof deviceProfile.name === "string" &&
+        deviceProfile.name.trim().length > 0
+          ? deviceProfile.name.trim()
+          : null) ||
+        (deviceProfile &&
+        typeof deviceProfile.verified_name === "string" &&
+        deviceProfile.verified_name.trim().length > 0
+          ? deviceProfile.verified_name.trim()
+          : null) ||
+        device?.phoneNumber ||
+        null
 
       const auditActor = auditLog?.adminId
         ? await getCachedUser(auditLog.adminId)
         : null
+
+      // Extract fallback body if message record doesn't exist
+      let fallbackBody = auditLog?.message ?? null
+      if (!fallbackBody) {
+        for (const we of webhookEvents) {
+          const meta = extractEventMetadata(we.metaPayload, we.eventType)
+          if (meta.messageBody) {
+            fallbackBody = meta.messageBody
+            break
+          }
+        }
+      }
+      if (!fallbackBody) {
+        fallbackBody = "Template message sent via WhatsApp Cloud API"
+      }
+
       return {
         ok: true,
         data: {
@@ -2163,7 +2227,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
                 conversationId: "",
                 direction: "OUTBOX",
                 messageType: "template",
-                body: auditLog?.message ?? "Message",
+                body: fallbackBody,
                 mediaUrl: null,
                 waMessageId: decodedWamid,
                 metadata: auditDetails,
@@ -2173,10 +2237,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
             ? {
                 id: device.id,
                 phoneNumber: device.phoneNumber,
-                name:
-                  typeof deviceProfile?.name === "string"
-                    ? deviceProfile.name
-                    : null,
+                name: deviceName,
                 environment: null,
               }
             : null,

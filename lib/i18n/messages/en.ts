@@ -1528,10 +1528,17 @@ export const enMessages: AppMessages = {
           "Search phone number, status, or message ID...",
         searchActivityPlaceholder:
           "Search activity, status, actor, or phone number...",
-        colDeviceContact: "Device / Contact",
+        colDeviceContact: "Device ➔ Contact",
+        colDevice: "Sender Device",
+        colRecipientContact: "Recipient / Contact",
         colEventType: "Event Type",
-        colStatus: "Status",
+        colStatus: "Delivery Status",
+        colProcessingStatus: "Processing",
         colActor: "Actor",
+        directionTo: "To",
+        directionFrom: "From",
+        senderDevice: "Device (Sender)",
+        recipientContact: "Contact (Customer)",
         colTime: "Timestamp",
         colDetails: "Details",
         colWaMessageId: "Message ID (WA ID)",
@@ -1559,6 +1566,8 @@ export const enMessages: AppMessages = {
           sectionTech: "Technical & Operational Info",
           device: "Device",
           recipientPhone: "Recipient Phone Number",
+          directionTo: "To",
+          directionFrom: "From",
           eventType: "Event Type",
           time: "Timestamp",
           receivedAt: "Received Time",
@@ -1572,12 +1581,21 @@ export const enMessages: AppMessages = {
           statusReceived: "Received",
           statusFailed: "Failed",
           statusPending: "Pending",
+          statusSent: "Sent",
+          statusDelivered: "Delivered",
+          statusRead: "Read",
           statusDescSuccessWebhook:
             "Message / callback successfully delivered and processed by Meta API.",
           statusDescFailedWebhook:
             "Webhook delivery or event processing failed for this event.",
           statusDescReceivedWebhook:
-            "Inbound webhook message event received from Meta API.",
+            "Inbound customer message received from WhatsApp.",
+          statusDescSentWebhook:
+            "Message has been accepted and dispatched by WhatsApp server.",
+          statusDescDeliveredWebhook:
+            "Message successfully delivered to customer's device.",
+          statusDescReadWebhook:
+            "Customer has opened and read the WhatsApp message.",
           statusDescSuccessAudit:
             "Organization activity successfully executed.",
           statusDescFailedAudit:
@@ -1588,6 +1606,12 @@ export const enMessages: AppMessages = {
           copiedButton: "Copied",
           templateLabel: "Template",
           correlationIdLabel: "Correlation ID",
+          actionViewJourney: "View Message Journey",
+          actionViewInbox: "Open in Inbox",
+          actionOpenWhatsApp: "Chat on WhatsApp",
+          actionViewDevice: "View Device Settings",
+          sectionActions: "Quick Actions & Investigation",
+          deviceTooltip: "WhatsApp Business Account Number",
           close: "Close",
         },
       },
