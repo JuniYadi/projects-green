@@ -40,7 +40,7 @@ export class AgentPToolRegistry {
   }
 
   list(): AgentPTool<unknown, unknown>[] {
-    return [...this.tools.values()]
+    return Array.from(this.tools.values())
   }
 
   toAiTools(
