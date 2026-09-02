@@ -19,6 +19,8 @@ import {
 import { createAiLanguageModel } from "@/modules/ai/ai-provider.factory"
 import { executeAgentPTool } from "@/modules/ai/agent-p/executor"
 import { agentPRegistry } from "@/modules/ai/agent-p/registry"
+import { verifyUserIntentAndSafety } from "@/modules/ai/agent-p/intent-gate"
+
 const knowledgeChatBodySchema = z.object({
   sessionId: z.string().optional(),
   messages: z
@@ -353,11 +355,10 @@ export const createKnowledgeRoutes = (
 
       const latestUserQuery = extractLatestUserQuery(parsed.data.messages)
 
-      // ── 3. PROMPT SAFETY & GUARDRAIL INSPECTION ───────────────────────────
+      // ── 3. TIER 1: REGEX & CRITICAL INJECTION GUARD ───────────────────────
       const safetyCheck = inspectPromptSafety(latestUserQuery)
 
       if (!safetyCheck.ok) {
-        // Record flagged audit message & escalate strike
         try {
           await prisma.aiChatSession.upsert({
             where: { sessionId },
@@ -386,8 +387,6 @@ export const createKnowledgeRoutes = (
               role: "user",
               content: latestUserQuery,
               routePath,
-              isFlagged: true,
-              flagReason: safetyCheck.reason,
               promptTokens: 0,
               responseTokens: 0,
             },
@@ -416,6 +415,35 @@ export const createKnowledgeRoutes = (
             safetyCheck.message || "Prompt rejected by AI security guardrails.",
           tokensSpent: 0,
         }
+      }
+
+      // ── 4. TIER 2: STRUCTURED LLM INTENT & ZERO-TRUST GATE ─────────────────
+      const gateResult = await verifyUserIntentAndSafety(latestUserQuery)
+
+      if (
+        gateResult.isPromptInjection ||
+        gateResult.isAbusiveOrToxic ||
+        !gateResult.isPfnDomainRelated
+      ) {
+        const refusal =
+          gateResult.refusalMessage ||
+          (gateResult.isPromptInjection
+            ? "Permintaan ditolak. Instruksi sistem tidak dapat diubah atau diabaikan."
+            : gateResult.isAbusiveOrToxic
+              ? "Permintaan ditolak. Mohon gunakan bahasa yang sopan dan profesional."
+              : "Maaf, saya adalah asisten resmi PFNApp. Saya hanya dapat membantu pertanyaan seputar layanan konsol, WhatsApp Business API, dan billing PFNApp.")
+
+        return createImmediateNdjsonResponse([
+          {
+            type: "delta",
+            text: refusal,
+          },
+          {
+            type: "done",
+            answer: refusal,
+            citations: [],
+          },
+        ])
       }
 
       const docs = await dependencies.searchKnowledgeDocs({
