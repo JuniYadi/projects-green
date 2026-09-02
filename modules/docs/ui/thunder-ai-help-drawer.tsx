@@ -455,12 +455,15 @@ export function ThunderAiHelpDrawer() {
   const sendChatMessageRef = useRef<(text: string) => Promise<void>>(
     async () => {}
   )
-  // URL state checking
+  // URL & open state checking
+  const [drawerOpenOverride, setDrawerOpenOverride] = useState<boolean | null>(
+    null
+  )
   const isDocOpen = searchParams.get(DOC_QUERY_KEY) === ACTIVE_VALUE
   const isKbOpen = searchParams.get(KB_QUERY_KEY) === ACTIVE_VALUE
-  const isOpen = isDocOpen || isKbOpen
+  const isOpen =
+    drawerOpenOverride !== null ? drawerOpenOverride : isDocOpen || isKbOpen
   const activeTab = isDocOpen ? "docs" : "chat"
-
   // Persist chat on messages update
   useEffect(() => {
     try {
@@ -575,7 +578,7 @@ export function ThunderAiHelpDrawer() {
       next.set(DOC_QUERY_KEY, ACTIVE_VALUE)
       next.delete(KB_QUERY_KEY)
     }
-
+    setDrawerOpenOverride(true)
     router.replace(`${pathname}?${next.toString()}`, { scroll: false })
   }
 
@@ -583,6 +586,7 @@ export function ThunderAiHelpDrawer() {
     const next = new URLSearchParams(searchParams.toString())
     next.delete(DOC_QUERY_KEY)
     next.delete(KB_QUERY_KEY)
+    setDrawerOpenOverride(false)
 
     const query = next.toString()
     const destination = query ? `${pathname}?${query}` : pathname
@@ -807,10 +811,12 @@ export function ThunderAiHelpDrawer() {
         }
       }
 
-      const next = new URLSearchParams(searchParams.toString())
-      next.set(KB_QUERY_KEY, ACTIVE_VALUE)
-      next.delete(DOC_QUERY_KEY)
-      router.replace(`${pathname}?${next.toString()}`, { scroll: false })
+      const nextParams = new URLSearchParams(searchParams?.toString() ?? "")
+      nextParams.set(KB_QUERY_KEY, ACTIVE_VALUE)
+      nextParams.delete(DOC_QUERY_KEY)
+      setDrawerOpenOverride(true)
+      router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false })
+
       if (prompt) {
         if (detail?.autoSend) {
           // Immediate dispatch after state update
@@ -820,7 +826,6 @@ export function ThunderAiHelpDrawer() {
         }
       }
     }
-
     window.addEventListener("agent_p_trigger", handleTrigger)
     window.addEventListener("ask_p_query", handleTrigger)
     return () => {
