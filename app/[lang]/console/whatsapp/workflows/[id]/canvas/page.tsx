@@ -917,7 +917,7 @@ export default function WhatsappWorkflowCanvasPage() {
     <div className="flex h-[calc(100vh-4rem)] flex-1 flex-col gap-3 p-6 pt-0">
       {/* Ultra-Clean Minimal Canvas Header */}
       <header className="flex items-center justify-between gap-4 rounded-xl border border-border/80 bg-card/70 px-3.5 py-2 shadow-sm backdrop-blur-md dark:border-border/60 dark:bg-card/50">
-        {/* Left Section: Back & Seamless Flexible Title with Integrated Status */}
+        {/* Left Section: Back & Seamless Flexible Title */}
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <Button
             asChild
@@ -930,40 +930,40 @@ export default function WhatsappWorkflowCanvasPage() {
             </Link>
           </Button>
 
-          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+          <div className="flex min-w-0 flex-1 items-center">
             <Input
               value={workflowMeta.name}
               onChange={(e) =>
                 setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
               }
-              className="h-8 w-auto max-w-xl min-w-[200px] flex-1 border-transparent bg-transparent px-2 text-sm font-semibold tracking-tight hover:border-border/60 focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20"
+              className="h-8 w-full max-w-2xl border-transparent bg-transparent px-2 text-sm font-semibold tracking-tight transition-all hover:border-border/70 focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20"
               placeholder={t.canvas.namePlaceholder}
               aria-label={t.canvas.namePlaceholder}
             />
-
-            {/* Lightweight Status Badge tightly anchored to title */}
-            <Badge
-              variant="outline"
-              className={`h-5.5 shrink-0 items-center gap-1.5 px-2 text-[11px] font-medium transition-colors ${
-                workflowMeta.isActive
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:border-emerald-500/50 dark:bg-emerald-500/20 dark:text-emerald-300"
-                  : "border-border/70 bg-muted/50 text-muted-foreground dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400"
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  workflowMeta.isActive
-                    ? "animate-pulse bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] dark:bg-emerald-400"
-                    : "bg-muted-foreground dark:bg-zinc-500"
-                }`}
-              />
-              <span>{workflowMeta.isActive ? "Live" : "Draft"}</span>
-            </Badge>
           </div>
         </div>
 
-        {/* Right Section: Test, Save & More */}
+        {/* Right Section: Status Badge, Test, Save & Settings */}
         <div className="flex shrink-0 items-center gap-2">
+          {/* Status Badge Anchored in Right Action Toolbar */}
+          <Badge
+            variant="outline"
+            className={`h-7 shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium transition-colors ${
+              workflowMeta.isActive
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:border-emerald-500/60 dark:bg-emerald-500/20 dark:text-emerald-300"
+                : "border-border/70 bg-muted/50 text-muted-foreground dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300"
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                workflowMeta.isActive
+                  ? "animate-pulse bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)] dark:bg-emerald-400"
+                  : "bg-muted-foreground dark:bg-zinc-400"
+              }`}
+            />
+            <span>{workflowMeta.isActive ? "Live" : "Draft"}</span>
+          </Badge>
+
           {/* Test Simulator */}
           <Button
             variant="outline"
@@ -1276,14 +1276,14 @@ export default function WhatsappWorkflowCanvasPage() {
           multiSelectionKeyCode={["Meta", "Ctrl"]}
           fitView
           fitViewOptions={{ padding: 0.35, maxZoom: 0.85 }}
-          className="bg-background dark:bg-[#090a0b]"
+          className="bg-zinc-50 transition-colors dark:bg-[#08090a]"
         >
           <Background
             variant={BackgroundVariant.Dots}
-            gap={22}
-            size={1.2}
-            color="currentColor"
-            className="text-border/80 dark:text-zinc-700/60"
+            gap={20}
+            size={1.8}
+            color="#71717a"
+            className="opacity-60 dark:opacity-100 dark:[--xy-background-pattern-color:#a1a1aa]"
           />
           <Controls className="!border-border/80 !bg-card/90 !fill-foreground shadow-md backdrop-blur" />
           {showMiniMap && (
