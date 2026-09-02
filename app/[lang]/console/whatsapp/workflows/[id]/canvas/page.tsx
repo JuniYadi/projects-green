@@ -916,9 +916,9 @@ export default function WhatsappWorkflowCanvasPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-1 flex-col gap-3 p-6 pt-0">
       {/* Ultra-Clean Minimal Canvas Header */}
-      <header className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-card/40 px-3 py-2 shadow-xs backdrop-blur-md">
-        {/* Left Section: Back, Title, Status & Quick Trigger */}
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      <header className="flex items-center justify-between gap-4 rounded-xl border border-border/80 bg-card/70 px-3.5 py-2 shadow-sm backdrop-blur-md dark:border-border/60 dark:bg-card/50">
+        {/* Left Section: Back & Seamless Flexible Title with Integrated Status */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <Button
             asChild
             variant="ghost"
@@ -930,31 +930,31 @@ export default function WhatsappWorkflowCanvasPage() {
             </Link>
           </Button>
 
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <Input
               value={workflowMeta.name}
               onChange={(e) =>
                 setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
               }
-              className="h-8 max-w-sm border-transparent bg-transparent px-2 text-sm font-semibold tracking-tight hover:border-border/60 focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20 md:max-w-md"
+              className="h-8 w-auto max-w-xl min-w-[200px] flex-1 border-transparent bg-transparent px-2 text-sm font-semibold tracking-tight hover:border-border/60 focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20"
               placeholder={t.canvas.namePlaceholder}
               aria-label={t.canvas.namePlaceholder}
             />
 
-            {/* Lightweight Status Badge */}
+            {/* Lightweight Status Badge tightly anchored to title */}
             <Badge
               variant="outline"
-              className={`hidden h-5.5 items-center gap-1.5 px-2 text-[11px] font-normal sm:inline-flex ${
+              className={`h-5.5 shrink-0 items-center gap-1.5 px-2 text-[11px] font-medium transition-colors ${
                 workflowMeta.isActive
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "border-border/60 bg-muted/40 text-muted-foreground"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:border-emerald-500/50 dark:bg-emerald-500/20 dark:text-emerald-300"
+                  : "border-border/70 bg-muted/50 text-muted-foreground dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-400"
               }`}
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
                   workflowMeta.isActive
-                    ? "animate-pulse bg-emerald-500"
-                    : "bg-muted-foreground"
+                    ? "animate-pulse bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] dark:bg-emerald-400"
+                    : "bg-muted-foreground dark:bg-zinc-500"
                 }`}
               />
               <span>{workflowMeta.isActive ? "Live" : "Draft"}</span>
@@ -1276,17 +1276,16 @@ export default function WhatsappWorkflowCanvasPage() {
           multiSelectionKeyCode={["Meta", "Ctrl"]}
           fitView
           fitViewOptions={{ padding: 0.35, maxZoom: 0.85 }}
-          minZoom={0.2}
-          maxZoom={1.5}
-          className="bg-zinc-950"
+          className="bg-background dark:bg-[#090a0b]"
         >
           <Background
             variant={BackgroundVariant.Dots}
-            gap={20}
-            size={1}
-            color="#3f3f46"
+            gap={22}
+            size={1.2}
+            color="currentColor"
+            className="text-border/80 dark:text-zinc-700/60"
           />
-          <Controls className="!border-border !bg-card !fill-foreground" />
+          <Controls className="!border-border/80 !bg-card/90 !fill-foreground shadow-md backdrop-blur" />
           {showMiniMap && (
             <MiniMap
               nodeColor="#10b981"

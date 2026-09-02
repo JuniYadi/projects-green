@@ -107,13 +107,12 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
 
   return (
     <div
-      className={`group relative max-w-[230px] min-w-[200px] rounded-xl border bg-card/95 p-2.5 text-card-foreground shadow-md backdrop-blur transition-all ${
+      className={`group relative max-w-[240px] min-w-[210px] rounded-xl border bg-card p-3 text-card-foreground shadow-md transition-all dark:bg-card/95 dark:shadow-xl ${
         selected
-          ? "border-primary ring-2 shadow-primary/10 ring-primary/40"
-          : "border-border/80 hover:border-border hover:shadow-sm"
+          ? "border-primary ring-2 shadow-primary/20 ring-primary/50"
+          : "border-border/90 hover:border-border hover:shadow-lg dark:border-border/70 dark:hover:border-zinc-500"
       }`}
     >
-      {/* Multi-Directional Target Handles (Top + Left) */}
       <Handle
         type="target"
         position={Position.Top}
