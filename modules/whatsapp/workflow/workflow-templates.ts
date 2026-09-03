@@ -82,6 +82,80 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplateItem[] = [
     },
   },
   {
+    id: "template_ai_sales_catalog",
+    titleKey: "leadGenTitle",
+    descKey: "leadGenDesc",
+    category: "sales",
+    workflow: {
+      id: "wf_tpl_sales_catalog",
+      organizationId: "",
+      name: "AI Sales & Pricing Consultant (Live API)",
+      description:
+        "Fetch live catalog via HTTP API, analyze customer inquiry, and auto-recommend packages",
+      isActive: true,
+      isDefault: true,
+      trigger: {
+        id: "trig_sales",
+        type: "whatsapp_inbound",
+        keywords: [],
+      },
+      nodes: [
+        {
+          id: "node_greet",
+          name: "Salam & Tanya Kebutuhan",
+          type: "prompt_input",
+          config: {
+            question:
+              "Halo! Selamat datang di Layanan Konsultasi PFNApp.\n\nBoleh tahu produk atau paket apa yang sedang Anda cari untuk bisnis Anda?",
+            captureVariable: "customer_inquiry",
+            validation: { type: "text" },
+          },
+          position: { x: 250, y: 50 },
+        },
+        {
+          id: "node_fetch_pricing",
+          name: "Ambil Katalog Harga (HTTP API)",
+          type: "http_request",
+          config: {
+            url: "https://pfnapp.my.id/api/demo/whatsapp/pricing",
+            method: "GET",
+            timeoutMs: 5000,
+          },
+          position: { x: 250, y: 240 },
+        },
+        {
+          id: "node_ai_sales_recommend",
+          name: "AI Sales Recommendation",
+          type: "ai_generate",
+          config: {
+            prompt:
+              "Customer inquiry: {{variables.customer_inquiry}}.\n\nKatalog Harga Resmi:\n{{steps.node_fetch_pricing.body}}\n\nTugas Anda: Berikan rekomendasi paket yang paling cocok berdasarkan kebutuhan customer di atas secara ringkas, profesional, dan cantumkan harganya.",
+            systemPrompt:
+              "Anda adalah Konsultan Sales AI ramah dan persuasif dari PFNApp.",
+            captureVariable: "ai_sales_recommendation",
+            sendReply: true,
+          },
+          position: { x: 250, y: 440 },
+        },
+      ],
+      edges: [
+        {
+          id: "e_greet_to_pricing",
+          sourceNodeId: "node_greet",
+          targetNodeId: "node_fetch_pricing",
+          sourcePort: "default",
+        },
+        {
+          id: "e_pricing_to_ai",
+          sourceNodeId: "node_fetch_pricing",
+          targetNodeId: "node_ai_sales_recommend",
+          sourcePort: "success",
+        },
+      ],
+      version: 1,
+    },
+  },
+  {
     id: "template_order_tracking",
     titleKey: "orderTrackingTitle",
     descKey: "orderTrackingDesc",

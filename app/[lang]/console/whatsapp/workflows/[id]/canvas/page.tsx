@@ -37,9 +37,9 @@ import {
   DownloadSimple,
   UploadSimple,
   Star,
-  DotsThreeVertical,
   X,
   MapTrifold,
+  Lightning,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -68,6 +68,14 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
 import type {
   WorkflowDefinition,
@@ -102,50 +110,60 @@ export default function WhatsappWorkflowCanvasPage() {
   const initialNodesSample = useMemo<WorkflowNode[]>(
     () => [
       {
-        id: "node_start",
-        type: "send_message",
-        name: t.canvas.nodes.sendMessage,
-        position: { x: 250, y: 50 },
-        config: { text: t.inspector.messageTextPlaceholder },
-      },
-      {
-        id: "node_ask_name",
+        id: "node_ask_need",
         type: "prompt_input",
-        name: t.canvas.nodes.promptInput,
-        position: { x: 250, y: 220 },
+        name: "1. Tanya Kebutuhan Bisnis",
+        position: { x: 250, y: 50 },
         config: {
-          question: t.inspector.questionPlaceholder,
-          captureVariable: "customer_name",
+          question:
+            "Halo! Selamat datang di Konsultan AI PFNApp.\n\nBoleh tahu produk, paket, atau kendala apa yang sedang Anda cari?",
+          captureVariable: "customer_need",
           validation: { type: "text" },
         },
       },
       {
-        id: "node_ai_agent",
-        type: "ai_generate",
-        name: t.canvas.nodes.aiGenerate,
-        position: { x: 250, y: 400 },
+        id: "node_http_catalog",
+        type: "http_request",
+        name: "2. Tarik Data Live (HTTP API)",
+        position: { x: 250, y: 240 },
         config: {
-          prompt: t.inspector.aiPromptPlaceholder,
-          captureVariable: "ai_recommendation",
+          url: "https://pfnapp.my.id/api/demo/whatsapp/pricing",
+          method: "GET",
+          forwardContext: true,
+          timeoutMs: 5000,
+        },
+      },
+      {
+        id: "node_ai_sales",
+        type: "ai_generate",
+        name: "3. AI Sales Decision & Reply",
+        position: { x: 250, y: 440 },
+        config: {
+          prompt:
+            "Pertanyaan/Kebutuhan Customer: {{variables.customer_need}}\n\nData Katalog Resmi dari API:\n{{steps.node_http_catalog.body}}\n\nTugas Anda:\n1. Analisis kebutuhan customer.\n2. Putuskan paket yang paling tepat dari data katalog di atas.\n3. Berikan jawaban rekomendasi ramah, cantumkan harga paket, dan ajak untuk mencoba.",
+          systemPrompt:
+            "Anda adalah AI Sales & Solutions Consultant cerdas dan ramah dari PFNApp.",
+          captureVariable: "ai_sales_closing",
+          sendReply: true,
         },
       },
     ],
-    [t]
+    []
   )
 
   const initialEdgesSample = useMemo<WorkflowEdge[]>(
     () => [
       {
-        id: "edge_1",
-        sourceNodeId: "node_start",
+        id: "edge_1_to_2",
+        sourceNodeId: "node_ask_need",
         sourcePort: "default",
-        targetNodeId: "node_ask_name",
+        targetNodeId: "node_http_catalog",
       },
       {
-        id: "edge_2",
-        sourceNodeId: "node_ask_name",
-        sourcePort: "default",
-        targetNodeId: "node_ai_agent",
+        id: "edge_2_to_3",
+        sourceNodeId: "node_http_catalog",
+        sourcePort: "success",
+        targetNodeId: "node_ai_sales",
       },
     ],
     []
@@ -170,13 +188,18 @@ export default function WhatsappWorkflowCanvasPage() {
       keywords: ["help", "info", "menu"],
     },
   }))
+  // Trigger Dialog State
+  const [isTriggerDialogOpen, setIsTriggerDialogOpen] = useState(false)
+  const [triggerDraftType, setTriggerDraftType] = useState<
+    "whatsapp_inbound" | "keyword_match"
+  >("keyword_match")
+  const [triggerKeywordsInput, setTriggerKeywordsInput] = useState("")
 
   // AI Copilot State
   const [copilotPrompt, setCopilotPrompt] = useState("")
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
   const [showCopilot, setShowCopilot] = useState(false)
   const [showMiniMap, setShowMiniMap] = useState(false)
-  // Simulator
   // React Flow state
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -891,108 +914,173 @@ export default function WhatsappWorkflowCanvasPage() {
     WorkflowNode | undefined
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-1 flex-col gap-4 p-6 pt-0">
-      {/* Top Bar Header */}
-      <div className="flex flex-col gap-4 border-b border-border/60 pb-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon" className="h-9 w-9">
+    <div className="flex h-[calc(100vh-4rem)] flex-1 flex-col gap-3 p-6 pt-0">
+      {/* Ultra-Clean Minimal Canvas Header */}
+      <header className="flex items-center justify-between gap-4 rounded-xl border border-border/80 bg-card/70 px-3.5 py-2 shadow-sm backdrop-blur-md dark:border-border/60 dark:bg-card/50">
+        {/* Left Section: Back & Seamless Flexible Title */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+          >
             <Link href={`/${lang}/console/whatsapp/workflows`}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={workflowMeta.name}
-                onChange={(e) =>
-                  setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
-                }
-                className="h-8 w-64 text-base font-bold tracking-tight md:w-80"
-                placeholder={t.canvas.namePlaceholder}
-              />
-              <Badge
-                variant="outline"
-                className="border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-              >
-                {t.canvas.badgeVisualGraph}
-              </Badge>
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t.canvas.dragHint}
-            </p>
+          <div className="flex min-w-0 flex-1 items-center">
+            <Input
+              value={workflowMeta.name}
+              onChange={(e) =>
+                setWorkflowMeta((prev) => ({ ...prev, name: e.target.value }))
+              }
+              className="h-8 w-full max-w-2xl border-transparent bg-transparent px-2 text-sm font-semibold tracking-tight transition-all hover:border-border/70 focus:border-primary focus:bg-background focus:ring-1 focus:ring-primary/20"
+              placeholder={t.canvas.namePlaceholder}
+              aria-label={t.canvas.namePlaceholder}
+            />
           </div>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Device Selector */}
-          <div className="w-44 sm:w-52">
-            <Select
-              value={selectedDeviceId}
-              onValueChange={setSelectedDeviceId}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder={t.canvas.selectDevicePlaceholder} />
-              </SelectTrigger>
-              <SelectContent>
-                {devices.map((d) => (
-                  <SelectItem key={d.id} value={d.id} className="text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <WhatsappLogo className="h-3.5 w-3.5 text-emerald-500" />
-                      <span>{d.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          {/* AI Copilot Toggle Button */}
-          <Button
-            variant={showCopilot ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setShowCopilot((prev) => !prev)}
-            className={`h-8 gap-1.5 text-xs font-medium ${showCopilot ? "border-primary/40 bg-primary/10 text-primary" : ""}`}
-            title={t.canvas.generateAi}
+        {/* Right Section: Status Badge, Test, Save & Settings */}
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Status Badge Anchored in Right Action Toolbar */}
+          <Badge
+            variant="outline"
+            className={`h-7 shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium transition-colors ${
+              workflowMeta.isActive
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:border-emerald-500/60 dark:bg-emerald-500/20 dark:text-emerald-300"
+                : "border-border/70 bg-muted/50 text-muted-foreground dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300"
+            }`}
           >
-            <Sparkle
-              className="h-3.5 w-3.5"
-              weight={showCopilot ? "fill" : "regular"}
+            <span
+              className={`h-2 w-2 rounded-full ${
+                workflowMeta.isActive
+                  ? "animate-pulse bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)] dark:bg-emerald-400"
+                  : "bg-muted-foreground dark:bg-zinc-400"
+              }`}
             />
-            <span className="hidden md:inline">AI Copilot</span>
-          </Button>
+            <span>{workflowMeta.isActive ? "Live" : "Draft"}</span>
+          </Badge>
 
-          <div className="mx-0.5 h-4 w-px bg-border/60" />
-
-          {/* Primary Action 1: Test Simulator */}
+          {/* Test Simulator */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleStartSim}
-            className="h-8 gap-1.5 text-xs font-medium"
+            className="h-8 gap-1.5 border-border/70 text-xs font-medium text-foreground hover:bg-muted/80"
           >
             <Play className="h-3.5 w-3.5 text-primary" weight="fill" />
-            <span className="hidden sm:inline">{t.canvas.simulateTest}</span>
+            <span>{t.canvas.simulateTest}</span>
           </Button>
 
-          {/* Primary Action 2: Save & Deploy */}
+          {/* Save & Deploy Primary CTA */}
           <Button
             onClick={handleSave}
             disabled={saving}
             size="sm"
-            className="h-8 gap-1.5 bg-emerald-600 text-xs font-medium text-white hover:bg-emerald-700"
+            className="h-8 gap-1.5 bg-emerald-600 px-3 text-xs font-medium text-white shadow-xs hover:bg-emerald-700"
           >
             <FloppyDisk className="h-3.5 w-3.5" />
             <span>{saving ? t.canvas.saving : t.canvas.saveAndDeploy}</span>
           </Button>
 
-          {/* Secondary Actions in Compact Menu */}
+          {/* Options / Settings Dropdown Button with explicit label for accessibility & discovery */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <DotsThreeVertical className="h-4 w-4" weight="bold" />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 border-border/70 px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                aria-label="More options"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">Settings</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="w-64 p-1.5">
+              {/* AI Copilot Toggle in Menu */}
+              <DropdownMenuItem
+                onClick={() => setShowCopilot((prev) => !prev)}
+                className="cursor-pointer gap-2 py-2 text-xs font-medium"
+              >
+                <Sparkle
+                  className={`h-4 w-4 ${showCopilot ? "fill-primary text-primary" : "text-primary"}`}
+                  weight={showCopilot ? "fill" : "regular"}
+                />
+                <div className="flex flex-col">
+                  <span>AI Assistant / Copilot</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    Generate or improve steps
+                  </span>
+                </div>
+              </DropdownMenuItem>
+
+              {/* Trigger Settings Trigger */}
+              <DropdownMenuItem
+                onClick={() => {
+                  const currentType =
+                    workflowMeta.trigger.type === "whatsapp_inbound" ||
+                    workflowMeta.isDefault
+                      ? "whatsapp_inbound"
+                      : "keyword_match"
+                  setTriggerDraftType(currentType)
+                  setTriggerKeywordsInput(
+                    Array.isArray(workflowMeta.trigger.keywords)
+                      ? workflowMeta.trigger.keywords.join(", ")
+                      : ""
+                  )
+                  setIsTriggerDialogOpen(true)
+                }}
+                className="cursor-pointer gap-2 py-2 text-xs font-medium"
+              >
+                <Lightning className="h-4 w-4 text-amber-500" weight="fill" />
+                <div className="flex flex-col truncate">
+                  <span>Trigger Settings</span>
+                  <span className="truncate text-[10px] font-normal text-muted-foreground">
+                    {workflowMeta.trigger.type === "whatsapp_inbound" ||
+                    workflowMeta.isDefault
+                      ? t.canvas.triggerSettings.allInbound
+                      : `${workflowMeta.trigger.keywords?.length || 0} keywords active`}
+                  </span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              {/* Device Selector in Menu */}
+              <div className="px-2 py-1.5">
+                <Label className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  WhatsApp Device
+                </Label>
+                <div className="mt-1.5">
+                  <Select
+                    value={selectedDeviceId}
+                    onValueChange={setSelectedDeviceId}
+                  >
+                    <SelectTrigger className="h-7 border-border/60 text-xs">
+                      <SelectValue
+                        placeholder={t.canvas.selectDevicePlaceholder}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {devices.map((d) => (
+                        <SelectItem key={d.id} value={d.id} className="text-xs">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <WhatsappLogo className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                            <span className="truncate">{d.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              {/* Default Workflow Switch */}
               <div className="flex items-center justify-between px-2 py-1.5 text-xs font-medium">
                 <div className="flex items-center gap-1.5">
                   <Star
@@ -1009,19 +1097,21 @@ export default function WhatsappWorkflowCanvasPage() {
                   className="scale-75 data-[state=checked]:bg-amber-500"
                 />
               </div>
+
               <DropdownMenuSeparator />
+
               <DropdownMenuItem
                 onClick={() => setShowMiniMap((prev) => !prev)}
                 className="cursor-pointer gap-2 text-xs"
               >
-                <MapTrifold className="h-3.5 w-3.5" />
+                <MapTrifold className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>{showMiniMap ? "Hide MiniMap" : "Show MiniMap"}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleExportJson}
                 className="cursor-pointer gap-2 text-xs"
               >
-                <DownloadSimple className="h-3.5 w-3.5" />
+                <DownloadSimple className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>{t.canvas.exportJson}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -1029,7 +1119,7 @@ export default function WhatsappWorkflowCanvasPage() {
                 className="cursor-pointer gap-2 text-xs"
               >
                 <label className="flex w-full cursor-pointer items-center gap-2">
-                  <UploadSimple className="h-3.5 w-3.5" />
+                  <UploadSimple className="h-3.5 w-3.5 text-muted-foreground" />
                   <span>{t.canvas.importJson}</span>
                   <input
                     type="file"
@@ -1042,7 +1132,7 @@ export default function WhatsappWorkflowCanvasPage() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
+      </header>
 
       {/* Canvas Area with Floating Toolbars */}
       <div className="relative flex flex-1 overflow-hidden rounded-xl border border-border bg-background shadow-inner">
@@ -1089,10 +1179,24 @@ export default function WhatsappWorkflowCanvasPage() {
 
         {/* Node Palette Bar (Floating Left) */}
         <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 rounded-xl border border-border/80 bg-card/90 p-1.5 shadow-lg backdrop-blur">
-          <div className="px-2 py-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-            {t.canvas.addNodeHeader}
+          <div className="flex items-center justify-between px-2 py-1">
+            <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+              {t.canvas.addNodeHeader}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowCopilot((prev) => !prev)}
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                showCopilot
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
+              }`}
+              title="Generate with AI Copilot"
+            >
+              <Sparkle className="h-3 w-3" weight="fill" />
+              <span>AI Assist</span>
+            </button>
           </div>
-
           <Button
             variant="outline"
             size="sm"
@@ -1172,17 +1276,16 @@ export default function WhatsappWorkflowCanvasPage() {
           multiSelectionKeyCode={["Meta", "Ctrl"]}
           fitView
           fitViewOptions={{ padding: 0.35, maxZoom: 0.85 }}
-          minZoom={0.2}
-          maxZoom={1.5}
-          className="bg-zinc-950"
+          className="bg-zinc-50 transition-colors dark:bg-[#08090a]"
         >
           <Background
             variant={BackgroundVariant.Dots}
             gap={20}
-            size={1}
-            color="#3f3f46"
+            size={1.8}
+            color="#71717a"
+            className="opacity-60 dark:opacity-100 dark:[--xy-background-pattern-color:#a1a1aa]"
           />
-          <Controls className="!border-border !bg-card !fill-foreground" />
+          <Controls className="!border-border/80 !bg-card/90 !fill-foreground shadow-md backdrop-blur" />
           {showMiniMap && (
             <MiniMap
               nodeColor="#10b981"
@@ -1541,9 +1644,12 @@ export default function WhatsappWorkflowCanvasPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="GET">GET</SelectItem>
-                          <SelectItem value="POST">POST</SelectItem>
-                          <SelectItem value="PUT">PUT</SelectItem>
+                          <SelectItem value="GET">
+                            GET (Fetch Live Data)
+                          </SelectItem>
+                          <SelectItem value="POST">
+                            POST (Send & Process Context)
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1707,6 +1813,138 @@ export default function WhatsappWorkflowCanvasPage() {
           </div>
         </SheetContent>
       </Sheet>
+      {/* Trigger Settings Dialog Modal */}
+      <Dialog open={isTriggerDialogOpen} onOpenChange={setIsTriggerDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Lightning className="h-4 w-4 text-amber-500" weight="fill" />
+              {t.canvas.triggerSettings.title}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {t.canvas.triggerSettings.subtitle}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">
+                {t.canvas.triggerSettings.typeLabel}
+              </Label>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTriggerDraftType("whatsapp_inbound")}
+                  className={`flex flex-col items-start rounded-lg border p-3 text-left transition-all ${
+                    triggerDraftType === "whatsapp_inbound"
+                      ? "border-emerald-500/60 bg-emerald-500/10 text-foreground"
+                      : "border-border bg-card/50 text-muted-foreground hover:bg-card"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        triggerDraftType === "whatsapp_inbound"
+                          ? "bg-emerald-500"
+                          : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    {t.canvas.triggerSettings.allInbound}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                    {t.canvas.triggerSettings.allInboundDesc}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTriggerDraftType("keyword_match")}
+                  className={`flex flex-col items-start rounded-lg border p-3 text-left transition-all ${
+                    triggerDraftType === "keyword_match"
+                      ? "border-amber-500/60 bg-amber-500/10 text-foreground"
+                      : "border-border bg-card/50 text-muted-foreground hover:bg-card"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        triggerDraftType === "keyword_match"
+                          ? "bg-amber-500"
+                          : "bg-muted-foreground/40"
+                      }`}
+                    />
+                    {t.canvas.triggerSettings.keywordMatch}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                    {t.canvas.triggerSettings.keywordMatchDesc}
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {triggerDraftType === "keyword_match" && (
+              <div className="animate-in space-y-1.5 duration-200 fade-in">
+                <Label
+                  htmlFor="trigger-keywords-input"
+                  className="text-xs font-semibold"
+                >
+                  {t.canvas.triggerSettings.keywordsLabel}
+                </Label>
+                <Input
+                  id="trigger-keywords-input"
+                  value={triggerKeywordsInput}
+                  onChange={(e) => setTriggerKeywordsInput(e.target.value)}
+                  placeholder={t.canvas.triggerSettings.keywordsPlaceholder}
+                  className="h-8 text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {t.canvas.triggerSettings.keywordsHint}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTriggerDialogOpen(false)}
+              className="h-8 text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                const parsedKeywords = triggerKeywordsInput
+                  .split(",")
+                  .map((k) => k.trim())
+                  .filter(Boolean)
+
+                setWorkflowMeta((prev) => ({
+                  ...prev,
+                  isDefault: triggerDraftType === "whatsapp_inbound",
+                  trigger: {
+                    ...prev.trigger,
+                    type: triggerDraftType,
+                    keywords:
+                      triggerDraftType === "keyword_match"
+                        ? parsedKeywords
+                        : [],
+                  },
+                }))
+                setIsTriggerDialogOpen(false)
+                toast.success(t.canvas.triggerSettings.saveTrigger)
+              }}
+              className="h-8 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
+            >
+              {t.canvas.triggerSettings.saveTrigger}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

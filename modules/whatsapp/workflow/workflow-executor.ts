@@ -304,11 +304,20 @@ export async function executeWorkflowNode(
       }
 
       let renderedBody: string | undefined
-      if (config.bodyJson && ["POST", "PUT", "PATCH"].includes(config.method)) {
-        const bodyStr = JSON.stringify(config.bodyJson)
-        renderedBody = evaluateMustacheTemplate(bodyStr, templateContext)
+      if (config.method === "POST" || config.method === "PUT") {
+        if (config.bodyJson) {
+          const bodyStr = JSON.stringify(config.bodyJson)
+          renderedBody = evaluateMustacheTemplate(bodyStr, templateContext)
+        } else if (config.forwardContext) {
+          // Auto-forward entire prior graph context (variables, previous step outputs, phone session)
+          renderedBody = JSON.stringify({
+            variables: templateContext.variables,
+            steps: templateContext.steps,
+            session: templateContext.session,
+            nodeId: node.id,
+          })
+        }
       }
-
       try {
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), config.timeoutMs)
@@ -437,6 +446,17 @@ export async function executeWorkflowNode(
         })
 
         const generatedText = result.text.trim()
+
+        // Auto-reply to customer if sendReply is enabled
+        if (config.sendReply && generatedText) {
+          await messageService.sendMessage({
+            organizationId,
+            phoneNumber,
+            deviceId,
+            message: generatedText,
+          })
+        }
+
         return {
           status: "COMPLETED",
           outputPort: "default",
@@ -444,7 +464,7 @@ export async function executeWorkflowNode(
             name: config.captureVariable,
             value: generatedText,
           },
-          stepOutput: { generatedText },
+          stepOutput: { generatedText, sentReply: config.sendReply },
         }
       } catch (error) {
         return {

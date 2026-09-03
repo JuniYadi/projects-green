@@ -101,17 +101,26 @@ describe("executeWorkflowNode", () => {
       async () => new Response(JSON.stringify({ ok: true }), { status: 200 })
     ) as never
     const ok = await executeWorkflowNode(
-      base({
-        type: "http_request",
-        id: "x",
-        name: "x",
-        config: {
-          url: "https://example.com",
-          method: "POST",
-          bodyJson: { value: "x" },
-          headers: { Authorization: "Bearer x" },
+      base(
+        {
+          type: "http_request",
+          id: "x",
+          name: "x",
+          config: {
+            url: "https://example.com",
+            method: "POST",
+            forwardContext: true,
+            headers: { Authorization: "Bearer x" },
+          },
         },
-      })
+        {
+          templateContext: {
+            variables: { customer_name: "Budi" },
+            steps: { step_1: { done: true } },
+            session: { phone_number: "+62811" },
+          },
+        }
+      )
     )
     expect(ok.outputPort).toBe("success")
     globalThis.fetch = mock(
@@ -126,9 +135,36 @@ describe("executeWorkflowNode", () => {
       })
     )
     expect(fail.outputPort).toBe("error")
+    globalThis.fetch = mock(async (url, init) => {
+      expect(init?.method).toBe("PUT")
+      expect(JSON.parse(init?.body as string)).toEqual({ updatedName: "Budi" })
+      return new Response(JSON.stringify({ updated: true }), { status: 200 })
+    }) as never
+    const putResult = await executeWorkflowNode(
+      base(
+        {
+          type: "http_request",
+          id: "node_put",
+          name: "PUT update",
+          config: {
+            url: "https://example.com/update",
+            method: "PUT",
+            bodyJson: { updatedName: "{{variables.customer_name}}" },
+          },
+        },
+        {
+          templateContext: {
+            variables: { customer_name: "Budi" },
+            steps: {},
+            session: {},
+          },
+        }
+      )
+    )
+    expect(putResult.outputPort).toBe("success")
     globalThis.fetch = original
   })
-  test("generates AI output and reports provider errors", async () => {
+  test("generates AI output, does not send reply by default, and respects sendReply: true", async () => {
     const result = await executeWorkflowNode(
       base({
         type: "ai_generate",
@@ -141,6 +177,28 @@ describe("executeWorkflowNode", () => {
       name: "answer",
       value: "generated answer",
     })
+    expect(sendMessage).not.toHaveBeenCalled()
+
+    sendMessage.mockClear()
+    const replyResult = await executeWorkflowNode(
+      base({
+        type: "ai_generate",
+        id: "x",
+        name: "x",
+        config: {
+          prompt: "Say hi",
+          captureVariable: "answer",
+          sendReply: true,
+        },
+      })
+    )
+    expect(replyResult.status).toBe("COMPLETED")
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phoneNumber: "+1",
+        message: "generated answer",
+      })
+    )
     resolveAiProviderConfig.mockRejectedValueOnce(
       new Error("provider unavailable")
     )

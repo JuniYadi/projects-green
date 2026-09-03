@@ -2021,6 +2021,21 @@ export type AppMessages = {
           aiGenerate: string
           httpRequest: string
         }
+        triggerSettings: {
+          title: string
+          subtitle: string
+          typeLabel: string
+          allInbound: string
+          allInboundDesc: string
+          keywordMatch: string
+          keywordMatchDesc: string
+          keywordsLabel: string
+          keywordsPlaceholder: string
+          keywordsHint: string
+          saveTrigger: string
+          pillAllInbound: string
+          pillKeywords: string
+        }
       }
       inspector: {
         drawerTitle: string

@@ -81,6 +81,7 @@ export const HttpRequestNodeConfigSchema = z.object({
   method: z.enum(["GET", "POST", "PUT", "DELETE"]).default("GET"),
   headers: z.record(z.string(), z.string()).optional(),
   bodyJson: z.record(z.string(), z.unknown()).optional(),
+  forwardContext: z.boolean().default(false),
   timeoutMs: z.number().int().positive().default(5000),
 })
 export type HttpRequestNodeConfig = z.infer<typeof HttpRequestNodeConfigSchema>
@@ -91,6 +92,7 @@ export const AiGenerateNodeConfigSchema = z.object({
   captureVariable: z.string(),
   providerId: z.string().optional(),
   model: z.string().optional(),
+  sendReply: z.boolean().default(false),
 })
 export type AiGenerateNodeConfig = z.infer<typeof AiGenerateNodeConfigSchema>
 

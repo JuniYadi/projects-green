@@ -64,7 +64,10 @@ describe("Canvas simulator integration", () => {
   })
 
   it("hydrates the selected starter template from the URL", async () => {
-    searchParams.set("template", WORKFLOW_TEMPLATES[1].id)
+    const orderTemplate = WORKFLOW_TEMPLATES.find(
+      (t) => t.id === "template_order_tracking"
+    )!
+    searchParams.set("template", orderTemplate.id)
     const view = render(<WhatsappWorkflowCanvasPage />)
 
     await waitFor(() => {
@@ -78,10 +81,10 @@ describe("Canvas simulator integration", () => {
   it("renders localized canvas labels", () => {
     const html = renderToString(<WhatsappWorkflowCanvasPage />)
 
-    expect(html).toContain("Visual graph")
     expect(html).toContain("Add a step")
     expect(html).toContain("Simulate test")
     expect(html).toContain("Save and deploy")
+    expect(html).toContain("AI Assist")
   })
   it("renders canvas with step palette and supports quick deletion callback", async () => {
     const view = render(<WhatsappWorkflowCanvasPage />)
@@ -90,6 +93,16 @@ describe("Canvas simulator integration", () => {
       expect(view.getByText("Add a step")).toBeDefined()
       expect(view.getByRole("button", { name: "Send message" })).toBeDefined()
       expect(view.getByRole("button", { name: "Ask for input" })).toBeDefined()
+    })
+  })
+  it("renders header actions and allows simulation trigger", async () => {
+    const view = render(<WhatsappWorkflowCanvasPage />)
+
+    await waitFor(() => {
+      expect(view.getByRole("button", { name: "Simulate test" })).toBeDefined()
+      expect(
+        view.getByRole("button", { name: "Save and deploy" })
+      ).toBeDefined()
     })
   })
 })

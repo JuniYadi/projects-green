@@ -2247,6 +2247,25 @@ export const idMessages: AppMessages = {
           aiGenerate: "Respons AI",
           httpRequest: "Permintaan HTTP",
         },
+        triggerSettings: {
+          title: "Pengaturan Pemicu Alur",
+          subtitle:
+            "Pilih kapan alur ini harus aktif saat pesan pelanggan masuk.",
+          typeLabel: "Tipe Pemicu",
+          allInbound: "Semua Pesan Masuk",
+          allInboundDesc:
+            "Aktif untuk setiap pesan yang dikirim pelanggan ke nomor WhatsApp ini.",
+          keywordMatch: "Pencocokan Kata Kunci",
+          keywordMatchDesc:
+            "Hanya aktif jika pesan pelanggan mengandung kata kunci tertentu.",
+          keywordsLabel: "Kata Kunci",
+          keywordsPlaceholder: "contoh: halo, bantuan, harga, menu",
+          keywordsHint:
+            "Pisahkan beberapa kata kunci dengan tanda koma atau enter.",
+          saveTrigger: "Simpan Pemicu",
+          pillAllInbound: "Pemicu: Semua Pesan",
+          pillKeywords: "Pemicu: {count} kata kunci",
+        },
       },
       inspector: {
         drawerTitle: "Pengaturan langkah",

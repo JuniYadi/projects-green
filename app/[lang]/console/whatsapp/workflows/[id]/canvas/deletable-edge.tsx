@@ -48,6 +48,7 @@ export const DeletableEdge = memo(function DeletableEdge({
         style={{
           ...style,
           strokeWidth: selected ? 3 : 2,
+          stroke: selected ? "var(--primary)" : "var(--muted-foreground)",
         }}
         markerEnd={markerEnd}
       />
