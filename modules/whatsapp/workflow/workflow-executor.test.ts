@@ -135,6 +135,33 @@ describe("executeWorkflowNode", () => {
       })
     )
     expect(fail.outputPort).toBe("error")
+    globalThis.fetch = mock(async (url, init) => {
+      expect(init?.method).toBe("PUT")
+      expect(JSON.parse(init?.body as string)).toEqual({ updatedName: "Budi" })
+      return new Response(JSON.stringify({ updated: true }), { status: 200 })
+    }) as never
+    const putResult = await executeWorkflowNode(
+      base(
+        {
+          type: "http_request",
+          id: "node_put",
+          name: "PUT update",
+          config: {
+            url: "https://example.com/update",
+            method: "PUT",
+            bodyJson: { updatedName: "{{variables.customer_name}}" },
+          },
+        },
+        {
+          templateContext: {
+            variables: { customer_name: "Budi" },
+            steps: {},
+            session: {},
+          },
+        }
+      )
+    )
+    expect(putResult.outputPort).toBe("success")
     globalThis.fetch = original
   })
   test("generates AI output, does not send reply by default, and respects sendReply: true", async () => {

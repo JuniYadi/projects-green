@@ -304,7 +304,7 @@ export async function executeWorkflowNode(
       }
 
       let renderedBody: string | undefined
-      if (config.method === "POST") {
+      if (config.method === "POST" || config.method === "PUT") {
         if (config.bodyJson) {
           const bodyStr = JSON.stringify(config.bodyJson)
           renderedBody = evaluateMustacheTemplate(bodyStr, templateContext)
@@ -447,7 +447,7 @@ export async function executeWorkflowNode(
 
         const generatedText = result.text.trim()
 
-        // Auto-reply to customer if sendReply is enabled (default true)
+        // Auto-reply to customer if sendReply is enabled
         if (config.sendReply && generatedText) {
           await messageService.sendMessage({
             organizationId,
