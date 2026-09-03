@@ -18,10 +18,13 @@ describe("aiProviderFactory", () => {
   beforeEach(() => {
     mockGetApiKey.mockClear()
     mockGetApiKey.mockResolvedValue("sk-vault-test-key")
+    delete process.env.OPENAI_API_KEY
+    delete process.env.OPENROUTER_API_KEY
+    delete process.env.AI_API_KEY
+    delete process.env.AI_PROVIDER
     process.env.AI_BASE_URL = "https://openrouter.ai/api/v1"
     process.env.AI_CHAT_MODEL = "anthropic/claude-sonnet-4-5-20251120"
   })
-
   it("resolves specific BYOK provider config and fetches key from Vault", async () => {
     const mockFinder: ConfigFinder = mock(async () => ({
       id: "prov_openai_1",
@@ -71,6 +74,79 @@ describe("aiProviderFactory", () => {
     expect(provider.providerType).toBe("MANAGED")
     expect(provider.baseUrl).toBe("https://openrouter.ai/api/v1")
     expect(provider.defaultModel).toBe("anthropic/claude-sonnet-4-5-20251120")
+  })
+  it("resolves default organization BYOK provider when providerId is not passed", async () => {
+    const mockFinder: ConfigFinder = mock(async () => ({
+      id: "prov_default_1",
+      organizationId: "org_default",
+      name: "Default OpenAI",
+      providerType: "OPENAI_COMPATIBLE",
+      baseUrl: "https://api.openai.com/v1",
+      defaultModel: "gpt-4o",
+      vaultKey: "API_KEY",
+      isDefault: true,
+    }))
+
+    const provider = await resolveAiProviderConfig(
+      {
+        organizationId: "org_default",
+        modelOverride: "gpt-4o-custom",
+      },
+      mockGetApiKey,
+      mockFinder
+    )
+
+    expect(provider.providerType).toBe("OPENAI_COMPATIBLE")
+    expect(provider.defaultModel).toBe("gpt-4o-custom")
+    expect(provider.apiKey).toBe("sk-vault-test-key")
+    expect(mockGetApiKey).toHaveBeenCalledWith({
+      organizationId: "org_default",
+      providerId: "prov_default_1",
+      vaultKey: "API_KEY",
+    })
+  })
+
+  it("handles fallback configuration with custom env variables", async () => {
+    delete process.env.AI_BASE_URL
+    delete process.env.AI_CHAT_MODEL
+    process.env.OPENAI_API_KEY = "sk-openai-direct"
+    process.env.AI_PROVIDER = "OPENAI_COMPATIBLE"
+    const mockFinder: ConfigFinder = mock(async () => null)
+
+    const provider = await resolveAiProviderConfig(
+      {
+        organizationId: null,
+      },
+      mockGetApiKey,
+      mockFinder
+    )
+
+    expect(provider.providerType).toBe("OPENAI_COMPATIBLE")
+    expect(provider.apiKey).toBe("sk-openai-direct")
+    expect(provider.baseUrl).toBe("https://api.openai.com/v1")
+    expect(provider.defaultModel).toBe("gpt-4o-mini")
+  })
+
+  it("handles fallback when BYOK provider returns no API key", async () => {
+    const mockFinder: ConfigFinder = mock(async () => ({
+      id: "prov_empty",
+      organizationId: "org_empty",
+      providerType: "OPENAI_COMPATIBLE",
+      defaultModel: "gpt-4o",
+      vaultKey: "API_KEY",
+    }))
+    const emptyApiKeyResolver = mock(async () => null)
+
+    const provider = await resolveAiProviderConfig(
+      {
+        organizationId: "org_empty",
+        providerId: "prov_empty",
+      },
+      emptyApiKeyResolver,
+      mockFinder
+    )
+
+    expect(provider.providerType).toBe("MANAGED")
   })
 
   it("creates universal LanguageModel instances for OpenAI and Managed providers", () => {

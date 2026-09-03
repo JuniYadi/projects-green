@@ -18,18 +18,23 @@ test.describe("@e2e/whatsapp/user/workflow-canvas", () => {
       page.locator('[role="group"][aria-roledescription="edge"]')
     ).toHaveCount(2)
     await expect(
-      page.getByRole("heading", { name: "Pesan Pembuka", exact: true })
+      page.getByRole("heading", {
+        name: "1. Tanya Kebutuhan Bisnis",
+        exact: true,
+      })
     ).toBeVisible()
     await expect(
-      page.getByRole("heading", { name: "Tanya Nama Pelanggan", exact: true })
+      page.getByRole("heading", {
+        name: "2. Tarik Data Live (HTTP API)",
+        exact: true,
+      })
     ).toBeVisible()
     await expect(
-      page.getByRole("heading", { name: "AI Asisten Solusi", exact: true })
+      page.getByRole("heading", {
+        name: "3. AI Sales Decision & Reply",
+        exact: true,
+      })
     ).toBeVisible()
-    await expect(
-      page.getByRole("heading", { name: /Percabangan \/ If-Else/ })
-    ).toBeVisible()
-
     await page.getByRole("button", { name: "Simulate test" }).click()
     const simulator = page.getByRole("dialog", {
       name: "WhatsApp Bot Simulator",
@@ -37,7 +42,7 @@ test.describe("@e2e/whatsapp/user/workflow-canvas", () => {
     await expect(simulator).toBeVisible()
     await expect(simulator.getByText(/Halo!/)).toBeVisible()
     await expect(
-      simulator.getByText(/Boleh kami tahu nama lengkap/)
+      simulator.getByText(/Boleh tahu produk, paket, atau kendala/)
     ).toBeVisible()
 
     const messageInput = simulator.getByPlaceholder(
@@ -48,7 +53,7 @@ test.describe("@e2e/whatsapp/user/workflow-canvas", () => {
 
     await expect(simulator.getByText("Budi", { exact: true })).toBeVisible()
     await expect(
-      simulator.getByText(/Variable captured: customer_name/)
+      simulator.getByText(/Variable captured: customer_need/)
     ).toBeVisible()
     await expect(simulator.getByText(/\[AI Response\]/)).toBeVisible()
     await expect(
@@ -58,15 +63,15 @@ test.describe("@e2e/whatsapp/user/workflow-canvas", () => {
     await simulator.getByRole("button", { name: "Close" }).click()
     await expect(simulator).toBeHidden()
 
-    const customerNameNode = page
+    const customerNeedNode = page
       .locator('[role="group"][aria-roledescription="node"]')
       .filter({
         has: page.getByRole("heading", {
-          name: "Tanya Nama Pelanggan",
+          name: "1. Tanya Kebutuhan Bisnis",
           exact: true,
         }),
       })
-    await customerNameNode.click()
+    await customerNeedNode.click()
 
     const inspector = page.getByRole("dialog", { name: "Step settings" })
     await expect(inspector).toBeVisible()
