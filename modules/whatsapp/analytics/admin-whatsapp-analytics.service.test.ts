@@ -22,6 +22,16 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganizations: mock().mockImplementation(async (ids: string[]) => {
+    const map = new Map()
+    for (const id of ids) {
+      map.set(id, { id, name: `Org ${id}`, slug: id })
+    }
+    return map
+  }),
+}))
+
 mock.module("@/lib/whatsapp/crypto", () => ({
   decryptWithAppKey: mock().mockResolvedValue("test-token"),
 }))
