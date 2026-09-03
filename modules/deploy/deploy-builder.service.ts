@@ -496,17 +496,45 @@ async function resolveTemplateImageReference(stack: {
   id: string
   slug: string
   metadataJson: Prisma.JsonValue | null
+  template?: { blueprintJson: Prisma.JsonValue } | null
 }): Promise<{ imageRepository: string; imageTag: string }> {
   const storedImageRepository = getStackImageRepository(stack.metadataJson)
   if (storedImageRepository) {
     return parseTemplateImageReference(storedImageRepository)
   }
 
-  const registryConfig = await resolveClusterIntegration(stack.id, "REGISTRY")
-  const imageRepository = registryConfig.namespace
-    ? `${registryConfig.host}/${registryConfig.namespace}/${stack.slug}`
-    : `${registryConfig.host}/${stack.slug}`
-  return { imageRepository, imageTag: "latest" }
+  let templateBlueprint =
+    (stack.template?.blueprintJson as Record<string, unknown> | null) ?? null
+  if (!templateBlueprint) {
+    const templateSlug =
+      (stack.metadataJson as Record<string, unknown> | null)?.templateId ??
+      stack.slug.split("-")[0]
+    if (typeof templateSlug === "string") {
+      const appTemplate = await prisma.appTemplate.findFirst({
+        where: { OR: [{ slug: templateSlug }, { id: templateSlug }] },
+        select: { blueprintJson: true },
+      })
+      if (appTemplate?.blueprintJson) {
+        templateBlueprint = appTemplate.blueprintJson as Record<string, unknown>
+      }
+    }
+  }
+
+  const runtimeImage =
+    templateBlueprint &&
+    typeof templateBlueprint.runtime === "object" &&
+    templateBlueprint.runtime !== null &&
+    typeof (templateBlueprint.runtime as Record<string, unknown>).image ===
+      "string"
+      ? ((templateBlueprint.runtime as Record<string, unknown>).image as string)
+      : null
+
+  if (runtimeImage) {
+    return parseTemplateImageReference(runtimeImage)
+  }
+
+  // For template deploys without an explicit image, default to public library / stack slug without requiring private registry
+  return { imageRepository: stack.slug, imageTag: "latest" }
 }
 
 /**
