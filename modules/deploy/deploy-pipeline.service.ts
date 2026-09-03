@@ -195,8 +195,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       resourcePlanId: input.resourcePlanId ?? null,
       templateId: input.templateId ?? existing?.templateId ?? null,
       clusterId:
-        input.sourceType === "TEMPLATE" ||
-        input.sourceType === "MANAGED_TEMPLATE"
+        input.sourceType === "TEMPLATE"
           ? (defaultClusterId ?? existing?.clusterId ?? null)
           : (existing?.clusterId ?? defaultClusterId),
       billingMode: input.billingMode ?? "PAYG",
