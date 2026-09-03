@@ -499,8 +499,7 @@ describe("processQueuedDeployment", () => {
             repo: "org/repo",
             branch: "main",
             basePath: "apps/hermes-demo",
-            token: "ghp_mock",
-            vaultPath: "admin/clusters/c1/integrations/GITOPS",
+            pat: "ghp_mock",
             authorName: "GitOps Bot",
             authorEmail: "bot@example.com",
           }
