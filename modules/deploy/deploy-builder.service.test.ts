@@ -102,42 +102,42 @@ mock.module("@/modules/gitops/gitops.service", () => ({
   },
 }))
 
-const mockResolveClusterIntegration = mock(
-  async (_id: string, type: string) => {
-    if (type === "JENKINS") {
-      return {
-        baseUrl: "https://jenkins.example.com",
-        username: "user",
-        apiToken: "token",
-        webhookToken: "whk-token",
-        dslOwner: "pfnapp",
-        dslRepo: "Jenkins",
-        gitCredentialId: "github-token",
-        sharedLibraryName: null,
-        sharedLibraryBranch: null,
-      }
+const mockResolveClusterIntegration = mock<
+  (id: string, type: string) => Promise<any>
+>(async (_id: string, type: string) => {
+  if (type === "JENKINS") {
+    return {
+      baseUrl: "https://jenkins.example.com",
+      username: "user",
+      apiToken: "token",
+      webhookToken: "whk-token",
+      dslOwner: "pfnapp",
+      dslRepo: "Jenkins",
+      gitCredentialId: "github-token",
+      sharedLibraryName: null,
+      sharedLibraryBranch: null,
     }
-    if (type === "REGISTRY") {
-      return {
-        host: "registry-apac.pfnapp.com",
-        namespace: null,
-        pushCredentialId: null,
-        pullSecretName: null,
-      }
-    }
-    if (type === "GITOPS") {
-      return {
-        repo: "pfnapp/sgp-argocd-prod",
-        branch: "main",
-        basePath: "",
-        pat: "gitops-pat",
-        authorName: null,
-        authorEmail: null,
-      }
-    }
-    throw new Error("missing " + type)
   }
-)
+  if (type === "REGISTRY") {
+    return {
+      host: "registry-apac.pfnapp.com",
+      namespace: null,
+      pushCredentialId: null,
+      pullSecretName: null,
+    }
+  }
+  if (type === "GITOPS") {
+    return {
+      repo: "pfnapp/sgp-argocd-prod",
+      branch: "main",
+      basePath: "",
+      pat: "gitops-pat",
+      authorName: null,
+      authorEmail: null,
+    }
+  }
+  throw new Error("missing " + type)
+})
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
   ...RealClusterIntegrationService,
   resolveClusterIntegration: mockResolveClusterIntegration,
