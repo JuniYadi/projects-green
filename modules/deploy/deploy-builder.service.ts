@@ -507,8 +507,7 @@ async function resolveTemplateImageReference(stack: {
     (stack.template?.blueprintJson as Record<string, unknown> | null) ?? null
   if (!templateBlueprint) {
     const templateSlug =
-      (stack.metadataJson as Record<string, unknown> | null)?.templateId ??
-      stack.slug.split("-")[0]
+      (stack.metadataJson as Record<string, unknown> | null)?.templateId ?? null
     if (typeof templateSlug === "string") {
       const appTemplate = await prisma.appTemplate.findFirst({
         where: { OR: [{ slug: templateSlug }, { id: templateSlug }] },
@@ -519,7 +518,6 @@ async function resolveTemplateImageReference(stack: {
       }
     }
   }
-
   const runtimeImage =
     templateBlueprint &&
     typeof templateBlueprint.runtime === "object" &&
@@ -533,8 +531,9 @@ async function resolveTemplateImageReference(stack: {
     return parseTemplateImageReference(runtimeImage)
   }
 
-  // For template deploys without an explicit image, default to public library / stack slug without requiring private registry
-  return { imageRepository: stack.slug, imageTag: "latest" }
+  throw new Error(
+    `Template deployment ${stack.id} has no image: no blueprint image, no stored imageRepository, and no REGISTRY integration`
+  )
 }
 
 /**

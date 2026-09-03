@@ -194,7 +194,11 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       dockerfileDetected: input.dockerfileDetected,
       resourcePlanId: input.resourcePlanId ?? null,
       templateId: input.templateId ?? existing?.templateId ?? null,
-      clusterId: defaultClusterId ?? existing?.clusterId ?? null,
+      clusterId:
+        input.sourceType === "TEMPLATE" ||
+        input.sourceType === "MANAGED_TEMPLATE"
+          ? (defaultClusterId ?? existing?.clusterId ?? null)
+          : (existing?.clusterId ?? defaultClusterId),
       billingMode: input.billingMode ?? "PAYG",
       hourlyCost,
       cpu: input.cpu ?? null,
