@@ -43,6 +43,7 @@ export type StackUpsertInput = {
   imageRepository?: string | null
   deploymentType?: "deployment" | "statefulset" | null
   additionalPorts?: Array<{ port: number; name: string }> | null
+  templateId?: string | null
 }
 
 const IN_PROGRESS_STATUSES = ["QUEUED", "BUILDING", "DEPLOYING"] as const
@@ -168,6 +169,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       buildMetadata.deploymentType = input.deploymentType
     if (input.additionalPorts != null)
       buildMetadata.additionalPorts = input.additionalPorts
+    if (input.templateId != null) buildMetadata.templateId = input.templateId
 
     // Merge with existing metadataJson on update
     const existingJson =
@@ -191,7 +193,11 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       buildCommand: input.buildCommand ?? null,
       dockerfileDetected: input.dockerfileDetected,
       resourcePlanId: input.resourcePlanId ?? null,
-      clusterId: existing?.clusterId ?? defaultClusterId,
+      templateId: input.templateId ?? existing?.templateId ?? null,
+      clusterId:
+        input.sourceType === "TEMPLATE"
+          ? (defaultClusterId ?? existing?.clusterId ?? null)
+          : (existing?.clusterId ?? defaultClusterId),
       billingMode: input.billingMode ?? "PAYG",
       hourlyCost,
       cpu: input.cpu ?? null,

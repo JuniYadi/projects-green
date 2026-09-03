@@ -25,25 +25,45 @@ const mockPrisma = {
   },
   applicationStack: {
     update: mock(async (..._args: unknown[]) => ({})),
+    findUnique: mock(async () => ({ clusterId: "cluster-1" })),
+  },
+  applicationDeploymentLog: {
+    create: mock(async (..._args: unknown[]) => ({})),
   },
   applicationDeployEvent: {
     create: txCreate,
     upsert: txCreate,
   },
-  applicationDeploymentLog: {
-    create: mock(async (..._args: unknown[]) => ({})),
-  },
   githubRepositoryConnection: {
     findUnique: mock(async (..._args: unknown[]) => ({
-      id: "conn-1",
-      ownerLogin: "pfnapp",
+      ownerLogin: "owner",
       repoName: "console-next-app",
       installation: { githubInstallationId: BigInt(1) },
     })),
   },
   appHostingCluster: {
-    findMany: mock(async (..._args: unknown[]) => []),
-    findUnique: mock(async (..._args: unknown[]) => null),
+    findMany: mock(async (..._args: unknown[]) => [
+      {
+        id: "cluster-1",
+        code: "sgp",
+        name: "Singapore Production",
+        region: "Singapore",
+        storageClass: "openebs-lvmpv",
+        managedBaseDomain: "pfnapp.dev",
+        status: "ACTIVE",
+        isDefault: true,
+      },
+    ]),
+    findUnique: mock(async (..._args: unknown[]) => ({
+      id: "cluster-1",
+      code: "sgp",
+      name: "Singapore Production",
+      region: "Singapore",
+      storageClass: "openebs-lvmpv",
+      managedBaseDomain: "pfnapp.dev",
+      status: "ACTIVE",
+      isDefault: true,
+    })),
   },
 }
 
@@ -81,51 +101,46 @@ mock.module("@/modules/gitops/gitops.service", () => ({
     commitFiles = commitFilesMock
   },
 }))
+
+const mockResolveClusterIntegration = mock<
+  (id: string, type: string) => Promise<any>
+>(async (_id: string, type: string) => {
+  if (type === "JENKINS") {
+    return {
+      baseUrl: "https://jenkins.example.com",
+      username: "user",
+      apiToken: "token",
+      webhookToken: "whk-token",
+      dslOwner: "pfnapp",
+      dslRepo: "Jenkins",
+      gitCredentialId: "github-token",
+      sharedLibraryName: null,
+      sharedLibraryBranch: null,
+    }
+  }
+  if (type === "REGISTRY") {
+    return {
+      host: "registry-apac.pfnapp.com",
+      namespace: null,
+      pushCredentialId: null,
+      pullSecretName: null,
+    }
+  }
+  if (type === "GITOPS") {
+    return {
+      repo: "pfnapp/sgp-argocd-prod",
+      branch: "main",
+      basePath: "",
+      pat: "gitops-pat",
+      authorName: null,
+      authorEmail: null,
+    }
+  }
+  throw new Error("missing " + type)
+})
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
   ...RealClusterIntegrationService,
-  resolveAppHostingClusterForStack: mock(async (_stackId: string) => ({
-    id: "cluster-1",
-    code: "sgp",
-    name: "Singapore Production",
-    region: "Singapore",
-    storageClass: "openebs-lvmpv",
-    managedBaseDomain: "pfnapp.dev",
-  })),
-  resolveClusterIntegration: mock(async (_id: string, type: string) => {
-    if (type === "JENKINS") {
-      return {
-        baseUrl: "https://jenkins.example.com",
-        username: "user",
-        apiToken: "token",
-        webhookToken: "whk-token",
-        dslOwner: "pfnapp",
-        dslRepo: "Jenkins",
-        gitCredentialId: "github-token",
-        sharedLibraryName: null,
-        sharedLibraryBranch: null,
-      }
-    }
-    if (type === "REGISTRY") {
-      return {
-        host: "registry-apac.pfnapp.com",
-        namespace: null,
-        pushCredentialId: null,
-        pullSecretName: null,
-      }
-    }
-    if (type === "GITOPS") {
-      return {
-        repo: "pfnapp/sgp-argocd-prod",
-        branch: "main",
-        basePath: "",
-        pat: "gitops-pat",
-        authorName: null,
-        authorEmail: null,
-      }
-    }
-    throw new Error("missing " + type)
-  }),
-  resolveDefaultAppHostingClusterId: mock(async () => "cluster-sgp"),
+  resolveClusterIntegration: mockResolveClusterIntegration,
 }))
 
 const { processQueuedDeployment } = await import("./deploy-builder.service")
@@ -448,5 +463,63 @@ describe("processQueuedDeployment", () => {
     expect(filesArg[0]?.content).toContain("deploymentType: statefulset")
     expect(filesArg[0]?.content).toContain("containerPort: 9119")
     expect(filesArg[0]?.content).toContain("name: dashboard")
+  })
+
+  it("resolves template image from template blueprint without requiring REGISTRY integration", async () => {
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      id: "deploy-template-1",
+      status: "QUEUED",
+      attempt: 1,
+      stack: {
+        id: "stack-tpl-1",
+        slug: "hermes-demo",
+        name: "hermes-demo",
+        sourceType: "TEMPLATE",
+        templateId: "tpl-hermes",
+        clusterId: "cluster-1",
+        customDomain: null,
+        envVarsJson: [],
+        metadataJson: {},
+        template: {
+          blueprintJson: {
+            runtime: {
+              image: "nousresearch/hermes-agent:v2026.8.18",
+              defaultPort: 8642,
+              deploymentType: "deployment",
+            },
+          },
+        },
+      },
+    } as never)
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "GITOPS") {
+          return {
+            repo: "org/repo",
+            branch: "main",
+            basePath: "apps/hermes-demo",
+            pat: "ghp_mock",
+            authorName: "GitOps Bot",
+            authorEmail: "bot@example.com",
+          }
+        }
+        if (type === "REGISTRY") {
+          throw new Error("Missing REGISTRY integration")
+        }
+        throw new Error("missing " + type)
+      }
+    )
+
+    const result = await processQueuedDeployment("deploy-template-1")
+    expect(result.processed).toBe(true)
+    expect(result.status).toBe("DEPLOYING")
+    const [, , filesArg] = commitFilesMock.mock.calls[
+      commitFilesMock.mock.calls.length - 1
+    ] as [string, string, Array<{ path: string; content: string }>]
+    expect(filesArg[0]?.content).toContain(
+      "repository: nousresearch/hermes-agent"
+    )
+    expect(filesArg[0]?.content).toContain("tag: v2026.8.18")
   })
 })

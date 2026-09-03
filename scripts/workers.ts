@@ -514,6 +514,21 @@ const aiIngestionWorker = new Worker<AiDocumentIngestionJobData>(
   }
 )
 allWorkers.push(aiIngestionWorker)
+// ── Deploy Monitor Worker (processes cron/manual queue triggers) ────────────
+const deployMonitorQueueWorker = new Worker(
+  "deploy-monitor",
+  async () => {
+    const results = await monitorActiveDeployments()
+    return { checked: results.length }
+  },
+  {
+    connection: redisConnection,
+    prefix,
+    concurrency: 1,
+  }
+)
+allWorkers.push(deployMonitorQueueWorker)
+
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {
   if (worker === whatsappHealthWorker) continue

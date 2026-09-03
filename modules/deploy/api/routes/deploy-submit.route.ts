@@ -325,6 +325,10 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           managedTemplate?.imageRepository ?? dbTemplateImageRepository ?? null,
         deploymentType: dbTemplateDeploymentType,
         additionalPorts: dbTemplateAdditionalPorts,
+        templateId:
+          sourceType === "TEMPLATE" || sourceType === "MANAGED_TEMPLATE"
+            ? body.templateId
+            : null,
       })
     } catch (error) {
       if (claimedStock) {
@@ -362,6 +366,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         })
         .catch(() => {})
     }
+
     try {
       await assertDeployExecutionGates({
         organizationId: auth.organizationId,
@@ -424,6 +429,15 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         }
       }
       throw error
+    }
+
+    if (managedTemplate && claimedStock) {
+      await prisma.appManagedStock
+        .update({
+          where: { id: claimedStock.id },
+          data: { allocatedStackId: stack.id },
+        })
+        .catch(() => {})
     }
     await ensureManagedDomainForStack(stack.id)
 
