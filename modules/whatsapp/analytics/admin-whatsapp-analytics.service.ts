@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { decryptWithAppKey } from "@/lib/whatsapp/crypto"
+import { getCachedOrganizations } from "@/lib/workos-directory"
+import { calculateTieredMessageCost } from "@/modules/billing/message-cost.service"
 import { WhatsappBillingCategory, Prisma } from "@prisma/client"
-
 export const META_VAT_RATE = new Prisma.Decimal("0.11") // 11% PPN
 
 export interface SyncPricingAnalyticsInput {
@@ -103,6 +104,7 @@ export class AdminWhatsappAnalyticsService {
         whatsappPhoneId: true,
         whatsappBusinessAccountId: true,
         tokenEncrypted: true,
+        rates: true,
       },
     })
 
@@ -202,19 +204,25 @@ export class AdminWhatsappAnalyticsService {
           const vatCostIdr = baseCostIdr.mul(META_VAT_RATE)
           const totalCostIdr = baseCostIdr.add(vatCostIdr)
 
-          // Unit base price for customer
-          let unitPriceIdr = new Prisma.Decimal(587)
+          // Unit base price for customer: (Base Meta + PPN 11%) + Margin Fee
+          let basePrice = 587
           if (category === "UTILITY" || category === "AUTHENTICATION") {
-            unitPriceIdr = new Prisma.Decimal(357)
+            basePrice = 357
           } else if (category === "SERVICE") {
-            unitPriceIdr = new Prisma.Decimal(300)
+            basePrice = 300
           }
+          const rateTier = matchedDevice?.rates ?? "BASE"
+          const costCalculation = calculateTieredMessageCost(
+            basePrice,
+            rateTier
+          )
+          const unitPriceIdr = costCalculation.totalCharged
+
           const internalRevenueIdr = unitPriceIdr.mul(volume)
           const grossProfitIdr = internalRevenueIdr.sub(totalCostIdr)
           const grossMarginPct = internalRevenueIdr.isZero()
             ? new Prisma.Decimal(0)
             : grossProfitIdr.div(internalRevenueIdr).mul(100)
-
           await prisma.whatsappDailyCostReconciliation.upsert({
             where: {
               whatsappDeviceId_category_date: {
@@ -547,7 +555,12 @@ export class AdminWhatsappAnalyticsService {
 
     const results: OrgProfitabilityItemDTO[] = []
 
+    const uniqueOrgIds = Array.from(orgMap.keys())
+    const orgNamesMap = await getCachedOrganizations(uniqueOrgIds)
+
     for (const [orgId, val] of orgMap.entries()) {
+      const orgObj = orgNamesMap.get(orgId)
+      const orgName = orgObj?.name || orgId
       const profit = val.revenue.sub(val.totalCost)
       const margin = val.revenue.isZero()
         ? new Prisma.Decimal(0)
@@ -562,6 +575,7 @@ export class AdminWhatsappAnalyticsService {
 
       results.push({
         organizationId: orgId,
+        organizationName: orgName,
         deviceCount: val.devices.size,
         totalDelivered: val.delivered,
         metaBaseCostIdr: val.baseCost.toFixed(2),
@@ -579,7 +593,6 @@ export class AdminWhatsappAnalyticsService {
       (a, b) => Number(b.metaTotalCostIdr) - Number(a.metaTotalCostIdr)
     )
   }
-
   /**
    * Get Device Breakdown for a specific organization.
    */

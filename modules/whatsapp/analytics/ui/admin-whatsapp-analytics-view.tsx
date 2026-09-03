@@ -179,9 +179,7 @@ export function AdminWhatsappAnalyticsView() {
         {/* Total Revenue */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Internal Revenue
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Omzet</CardTitle>
             <DollarSign className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -194,11 +192,11 @@ export function AdminWhatsappAnalyticsView() {
           </CardContent>
         </Card>
 
-        {/* Total Meta Expense (Base + PPN 11%) */}
+        {/* Total Meta Expense (COGS inc. PPN 11%) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Meta Real Expense (COGS)
+              Modal Meta (COGS)
             </CardTitle>
             <Receipt className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -207,8 +205,7 @@ export function AdminWhatsappAnalyticsView() {
               {formatIdr(summary?.kpi.totalMetaNetCostIdr)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Dasar: {formatIdr(summary?.kpi.totalMetaBaseCostIdr)} + PPN 11%:{" "}
-              {formatIdr(summary?.kpi.totalMetaVatCostIdr)}
+              Inc. PPN 11%: {formatIdr(summary?.kpi.totalMetaVatCostIdr)}
             </p>
           </CardContent>
         </Card>
@@ -216,15 +213,25 @@ export function AdminWhatsappAnalyticsView() {
         {/* Realized Gross Profit */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Gross Profit</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Laba / Rugi Kotor
+            </CardTitle>
             <TrendingUp className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">
+            <div
+              className={`text-2xl font-bold ${
+                parseFloat(summary?.kpi.grossProfitIdr ?? "0") < 0
+                  ? "text-destructive"
+                  : "text-primary"
+              }`}
+            >
               {formatIdr(summary?.kpi.grossProfitIdr)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Laba bersih sebelum biaya server & operasional
+              {parseFloat(summary?.kpi.grossProfitIdr ?? "0") < 0
+                ? "Rugi operasional biaya pesan"
+                : "Laba kotor sebelum biaya server"}
             </p>
           </CardContent>
         </Card>
@@ -233,13 +240,19 @@ export function AdminWhatsappAnalyticsView() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Platform Gross Margin
+              Kesehatan Margin
             </CardTitle>
             <Percent className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold">
+              <span
+                className={`text-2xl font-bold ${
+                  parseFloat(summary?.kpi.grossMarginPct ?? "0") < 0
+                    ? "text-destructive"
+                    : ""
+                }`}
+              >
                 {summary?.kpi.grossMarginPct ?? "0"}%
               </span>
               {summary?.kpi.status === "HEALTHY" ? (
@@ -268,9 +281,9 @@ export function AdminWhatsappAnalyticsView() {
       {/* Category Breakdown Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Breakdown Biaya per Kategori Pesan</CardTitle>
+          <CardTitle>Ringkasan per Kategori Pesan</CardTitle>
           <CardDescription>
-            Rincian volume pesan, biaya dasar Meta, PPN 11%, dan margin per
+            Perbandingan omzet tagihan vs modal riil Meta (termasuk PPN 11%) per
             kategori.
           </CardDescription>
         </CardHeader>
@@ -279,46 +292,52 @@ export function AdminWhatsappAnalyticsView() {
             <TableHeader>
               <TableRow>
                 <TableHead>Kategori</TableHead>
-                <TableHead className="text-right">Volume</TableHead>
-                <TableHead className="text-right">Meta Base (IDR)</TableHead>
-                <TableHead className="text-right">PPN 11% (IDR)</TableHead>
+                <TableHead className="text-right">Volume Pesan</TableHead>
+                <TableHead className="text-right">Omzet Tagihan</TableHead>
                 <TableHead className="text-right">
-                  Total Meta COGS (IDR)
+                  Modal Meta (Inc. PPN)
                 </TableHead>
-                <TableHead className="text-right">Revenue (IDR)</TableHead>
-                <TableHead className="text-right">Profit (IDR)</TableHead>
+                <TableHead className="text-right">Laba / Rugi (Net)</TableHead>
                 <TableHead className="text-right">Margin (%)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {summary?.categoryBreakdown?.map((item) => (
-                <TableRow key={item.category}>
-                  <TableCell className="font-medium">
-                    <Badge variant="secondary">{item.category}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {item.volume.toLocaleString("id-ID")}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {formatIdr(item.metaBaseCostIdr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-muted-foreground">
-                    {formatIdr(item.metaVatCostIdr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-medium text-destructive">
-                    {formatIdr(item.metaTotalCostIdr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {formatIdr(item.revenueIdr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-medium text-primary">
-                    {formatIdr(item.grossProfitIdr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {item.marginPct}%
-                  </TableCell>
-                </TableRow>
-              ))}
+              {summary?.categoryBreakdown?.map((item) => {
+                const isNegative = parseFloat(item.grossProfitIdr) < 0
+                return (
+                  <TableRow key={item.category}>
+                    <TableCell className="font-medium">
+                      <Badge variant="secondary">{item.category}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {item.volume.toLocaleString("id-ID")}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatIdr(item.revenueIdr)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">
+                      <div>{formatIdr(item.metaTotalCostIdr)}</div>
+                      <div className="text-[10px] text-muted-foreground/70">
+                        PPN: {formatIdr(item.metaVatCostIdr)}
+                      </div>
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-mono font-medium ${
+                        isNegative ? "text-destructive" : "text-primary"
+                      }`}
+                    >
+                      {formatIdr(item.grossProfitIdr)}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-mono font-medium ${
+                        isNegative ? "text-destructive" : ""
+                      }`}
+                    >
+                      {item.marginPct}%
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -327,7 +346,7 @@ export function AdminWhatsappAnalyticsView() {
       {/* Organization Leaderboard Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Profitabilitas per Organisasi / Tenant</CardTitle>
+          <CardTitle>Kesehatan Margin per Tenant / Perusahaan</CardTitle>
           <CardDescription>
             Evaluasi unit ekonomi per organisasi untuk memantau tenant yang
             ber-margin tinggi vs margin berisiko.
@@ -343,61 +362,80 @@ export function AdminWhatsappAnalyticsView() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Organization ID</TableHead>
+                  <TableHead>Nama Tenant / Organisasi</TableHead>
                   <TableHead className="text-right">Devices</TableHead>
-                  <TableHead className="text-right">Delivered</TableHead>
+                  <TableHead className="text-right">Volume Pesan</TableHead>
+                  <TableHead className="text-right">Total Tagihan</TableHead>
                   <TableHead className="text-right">
-                    Meta Net Cost (+PPN)
+                    Modal Meta (+PPN)
                   </TableHead>
-                  <TableHead className="text-right">Revenue (IDR)</TableHead>
-                  <TableHead className="text-right">Profit (IDR)</TableHead>
+                  <TableHead className="text-right">Laba / Rugi</TableHead>
                   <TableHead className="text-right">Margin (%)</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orgs.map((org) => (
-                  <TableRow key={org.organizationId}>
-                    <TableCell className="font-mono text-xs">
-                      {org.organizationId}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {org.deviceCount}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {org.totalDelivered.toLocaleString("id-ID")}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-destructive">
-                      {formatIdr(org.metaTotalCostIdr)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatIdr(org.revenueIdr)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-medium text-primary">
-                      {formatIdr(org.grossProfitIdr)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {org.marginPct}%
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {org.marginStatus === "HEALTHY" ? (
-                        <Badge
-                          variant="outline"
-                          className="border-primary text-primary"
-                        >
-                          Healthy
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="border-destructive text-destructive"
-                        >
-                          Risk
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {orgs.map((org) => {
+                  const isNegative = parseFloat(org.grossProfitIdr) < 0
+                  return (
+                    <TableRow key={org.organizationId}>
+                      <TableCell>
+                        <div className="font-medium text-foreground">
+                          {org.organizationName || org.organizationId}
+                        </div>
+                        {org.organizationName &&
+                          org.organizationName !== org.organizationId && (
+                            <div className="font-mono text-[10px] text-muted-foreground">
+                              {org.organizationId}
+                            </div>
+                          )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {org.deviceCount}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {org.totalDelivered.toLocaleString("id-ID")}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatIdr(org.revenueIdr)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {formatIdr(org.metaTotalCostIdr)}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-mono font-medium ${
+                          isNegative ? "text-destructive" : "text-primary"
+                        }`}
+                      >
+                        {formatIdr(org.grossProfitIdr)}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-mono font-medium ${
+                          isNegative ? "text-destructive" : ""
+                        }`}
+                      >
+                        {org.marginPct}%
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {org.marginStatus === "HEALTHY" ? (
+                          <Badge
+                            variant="outline"
+                            className="border-primary text-primary"
+                          >
+                            Healthy
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-destructive text-destructive"
+                          >
+                            Risk
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
