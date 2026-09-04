@@ -4,7 +4,11 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { Database, Storefront } from "@/components/ui/phosphor-icons"
+import {
+  Database,
+  Storefront,
+  RocketLaunchIcon,
+} from "@/components/ui/phosphor-icons"
 export default function PortalApplicationsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
@@ -58,6 +62,28 @@ export default function PortalApplicationsPage() {
               >
                 <Storefront size={14} className="mr-1" />
                 Manage Templates
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-muted/20 p-4 md:col-span-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold">Deployments Monitor</h2>
+              <p className="text-xs text-muted-foreground">
+                Monitor active rollouts, inspect build logs, and filter
+                deployments per-organization.
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link
+                href={localizePathname({
+                  pathname: "/portal/app/deployments",
+                  locale,
+                })}
+              >
+                <RocketLaunchIcon size={14} className="mr-1" />
+                View Deployments
               </Link>
             </Button>
           </div>

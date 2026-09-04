@@ -78,4 +78,10 @@ describe("PortalApplicationsPage", () => {
     expect(getByText("Marketplace Templates")).toBeInTheDocument()
     expect(getByText("Manage Templates")).toBeInTheDocument()
   })
+
+  it("renders deployments monitor card with link to /portal/app/deployments", () => {
+    const { getByText } = render(<PortalApplicationsPage />)
+    expect(getByText("Deployments Monitor")).toBeInTheDocument()
+    expect(getByText("View Deployments")).toBeInTheDocument()
+  })
 })
