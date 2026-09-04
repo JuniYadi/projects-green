@@ -1,23 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-declare module "react-email" {
-  export const render: (component: any) => Promise<string>
-  export const Body: any
-  export const Button: any
-  export const Container: any
-  export const Head: any
-  export const Heading: any
-  export const Hr: any
-  export const Html: any
-  export const Preview: any
-  export const Section: any
-  export const Text: any
-  export const Column: any
-  export const Row: any
-  export const Link: any
-  export const Img: any
-  export const Font: any
-  export const Tailwind: any
-}
 
 declare module "recharts" {
   export const ResponsiveContainer: any
