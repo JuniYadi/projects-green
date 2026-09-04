@@ -125,14 +125,51 @@ function isAddonForm(value: unknown): value is AddonForm {
   })
 }
 
+function encodeAddonDraft(addon: AddonForm): string {
+  const json = JSON.stringify(addon)
+  if (typeof window !== "undefined" && typeof window.btoa === "function") {
+    return window.btoa(
+      encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+        String.fromCharCode(parseInt(p1, 16))
+      )
+    )
+  }
+  return Buffer.from(json, "utf8").toString("base64")
+}
+
+export function decodeAddonDraft(raw: string): AddonForm | null {
+  try {
+    const decoded =
+      typeof window !== "undefined" && typeof window.atob === "function"
+        ? decodeURIComponent(
+            Array.prototype.map
+              .call(
+                window.atob(raw),
+                (c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)
+              )
+              .join("")
+          )
+        : Buffer.from(raw, "base64").toString("utf8")
+    const parsed: unknown = JSON.parse(decoded)
+    if (isAddonForm(parsed)) return parsed
+  } catch {
+    // Fallback for backward compatibility if stored as plain JSON
+  }
+  try {
+    const fallbackParsed: unknown = JSON.parse(raw)
+    return isAddonForm(fallbackParsed) ? fallbackParsed : null
+  } catch {
+    return null
+  }
+}
+
 function readAddonDraft(addonCode?: string): AddonForm | null {
   if (!addonCode || typeof window === "undefined") return null
 
   try {
     const saved = window.localStorage.getItem(`addon-draft-${addonCode}`)
     if (!saved) return null
-    const parsed: unknown = JSON.parse(saved)
-    return isAddonForm(parsed) ? parsed : null
+    return decodeAddonDraft(saved)
   } catch {
     return null
   }
@@ -413,7 +450,7 @@ export default function AddonEditorPage() {
     setSaving(true)
     try {
       const draftKey = `addon-draft-${addon.code || addon.id}`
-      localStorage.setItem(draftKey, JSON.stringify(addon))
+      localStorage.setItem(draftKey, encodeAddonDraft(addon))
       toast.success("Draft saved")
       setModified(false)
     } catch {
@@ -428,7 +465,7 @@ export default function AddonEditorPage() {
     const archivedAddon: AddonForm = { ...addon, isActive: false }
     try {
       const draftKey = `addon-draft-${archivedAddon.code || archivedAddon.id}`
-      localStorage.setItem(draftKey, JSON.stringify(archivedAddon))
+      localStorage.setItem(draftKey, encodeAddonDraft(archivedAddon))
       setDraft(archivedAddon)
       toast.success("Add-on archived")
       setModified(false)

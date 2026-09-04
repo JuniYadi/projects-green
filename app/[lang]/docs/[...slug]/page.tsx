@@ -80,16 +80,27 @@ function extractToc(markdown: string): TocItem[] {
   return headings
 }
 
+// Strip HTML tags iteratively to prevent incomplete multi-character sanitization bypasses
+function stripHtmlTags(str: string): string {
+  let previous: string
+  let result = str
+  do {
+    previous = result
+    result = result.replace(/<[^>]*>/g, "")
+  } while (result !== previous)
+  return result
+}
+
 // Inject id attributes to <h2> and <h3> tags in rendered HTML so anchor links jump correctly
 function injectHeadingIds(html: string): string {
   let result = html.replace(/<h2(.*?)>(.*?)<\/h2>/gi, (_match, attrs, text) => {
-    const rawText = text.replace(/<[^>]*>/g, "")
+    const rawText = stripHtmlTags(text)
     const id = slugifyHeading(rawText)
     return `<h2${attrs} id="${id}">${text}</h2>`
   })
 
   result = result.replace(/<h3(.*?)>(.*?)<\/h3>/gi, (_match, attrs, text) => {
-    const rawText = text.replace(/<[^>]*>/g, "")
+    const rawText = stripHtmlTags(text)
     const id = slugifyHeading(rawText)
     return `<h3${attrs} id="${id}">${text}</h3>`
   })

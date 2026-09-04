@@ -47,7 +47,7 @@ mock.module("sonner", () => ({
   toast: { success: mock(), error: mock() },
 }))
 
-const { default: AddonEditorPage } = await import("./page")
+const { default: AddonEditorPage, decodeAddonDraft } = await import("./page")
 
 describe.serial("AddonEditorPage local draft behavior", () => {
   beforeEach(() => {
@@ -77,10 +77,9 @@ describe.serial("AddonEditorPage local draft behavior", () => {
       fireEvent.click(archiveActions.at(-1)!)
 
       await waitFor(() => {
-        expect(
-          JSON.parse(localStorage.getItem("addon-draft-EXTRA_STORAGE")!)
-            .isActive
-        ).toBe(false)
+        const rawDraft = localStorage.getItem("addon-draft-EXTRA_STORAGE")
+        expect(rawDraft).toBeTruthy()
+        expect(decodeAddonDraft(rawDraft!)?.isActive).toBe(false)
       })
       firstView.unmount()
 
@@ -135,9 +134,9 @@ describe.serial("AddonEditorPage local draft behavior", () => {
       fireEvent.click(view.getByRole("button", { name: "Save draft" }))
 
       await waitFor(() => {
-        expect(
-          JSON.parse(localStorage.getItem("addon-draft-EXTRA_STORAGE")!).name
-        ).toBe("Updated storage")
+        const rawDraft = localStorage.getItem("addon-draft-EXTRA_STORAGE")
+        expect(rawDraft).toBeTruthy()
+        expect(decodeAddonDraft(rawDraft!)?.name).toBe("Updated storage")
       })
     }
   )
