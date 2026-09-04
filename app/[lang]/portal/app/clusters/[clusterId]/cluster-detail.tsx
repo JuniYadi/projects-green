@@ -47,6 +47,7 @@ import {
   opensearchSecretsPatchSchema,
   prometheusSecretsPatchSchema,
   integrationFieldLabels,
+  integrationFieldDescriptions,
   formStateToPayload,
   type ClusterMetadataInput,
   clusterIntegrationsImportSchema,
@@ -676,10 +677,13 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         await eden.api.admin["app-hosting"].clusters[
           clusterId
         ].integrations.export.get()
-      if (!payload || !payload.ok || !payload.data) {
-        throw new Error(payload?.message ?? "Unable to export integrations.")
+      if (!payload || !payload.ok || !("data" in payload) || !payload.data) {
+        const errMsg =
+          payload && !payload.ok && "message" in payload
+            ? String(payload.message)
+            : "Unable to export integrations."
+        throw new Error(errMsg)
       }
-
       const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
         JSON.stringify(payload.data, null, 2)
       )}`
@@ -729,12 +733,12 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         clusterId
       ].integrations.import.post(validation.data)
       if (!payload || !payload.ok) {
-        throw new Error(payload?.message ?? "Unable to import integrations.")
+        const errMsg =
+          payload && !payload.ok && "message" in payload
+            ? String(payload.message)
+            : "Unable to import integrations."
+        throw new Error(errMsg)
       }
-
-      // Refresh cluster data
-      setRetry((r) => r + 1)
-      setIsImportModalOpen(false)
       setImportJsonText("")
     } catch (cause) {
       console.error("Failed to import integrations:", cause)
