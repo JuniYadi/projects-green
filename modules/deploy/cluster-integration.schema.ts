@@ -217,6 +217,56 @@ export const integrationSecretPatchSchemas = {
   PROMETHEUS: prometheusSecretsPatchSchema,
 } as const
 
+// ── Bulk JSON Import & Export Schemas ─────────────────────
+
+export const clusterIntegrationItemImportSchema = z.strictObject({
+  type: z.enum(INTEGRATION_TYPES),
+  isActive: z.boolean().default(true).optional(),
+  metadata: z.record(z.string(), z.unknown()),
+  secrets: z.record(z.string(), z.unknown()).optional(),
+  secretsRef: z
+    .string()
+    .trim()
+    .regex(
+      /^vault:[a-zA-Z0-9_\-\/]+$/,
+      "secretsRef must start with 'vault:' followed by a valid path"
+    )
+    .optional(),
+})
+
+export const clusterIntegrationsImportSchema = z.strictObject({
+  version: z.string().trim().default("1.0").optional(),
+  clusterCode: z.string().trim().optional(),
+  integrations: z
+    .array(clusterIntegrationItemImportSchema)
+    .min(1, "At least one integration is required for import."),
+})
+
+export type ClusterIntegrationItemImport = z.infer<
+  typeof clusterIntegrationItemImportSchema
+>
+export type ClusterIntegrationsImportInput = z.infer<
+  typeof clusterIntegrationsImportSchema
+>
+
+export const clusterIntegrationItemExportSchema = z.strictObject({
+  type: z.enum(INTEGRATION_TYPES),
+  isActive: z.boolean(),
+  metadata: z.record(z.string(), z.unknown()),
+  secretsRef: z.string(),
+})
+
+export const clusterIntegrationsExportSchema = z.strictObject({
+  version: z.string().default("1.0"),
+  clusterCode: z.string(),
+  exportedAt: z.string(),
+  integrations: z.array(clusterIntegrationItemExportSchema),
+})
+
+export type ClusterIntegrationsExportDTO = z.infer<
+  typeof clusterIntegrationsExportSchema
+>
+
 // ── Field Labels & Descriptions ────────────────────────
 
 export const integrationFieldLabels: Record<string, Record<string, string>> = {

@@ -30,53 +30,47 @@ const mockGetClusterById = mock(
   async (): Promise<ClusterAdminDTO | null> => null
 )
 
-const mockCreateCluster = mock(
-  async (): Promise<ClusterAdminDTO> => ({
-    id: "cl_1",
-    code: "us-east-1",
-    name: "US East",
-    region: "us-east-1",
-    regionId: "reg-us-east-1",
-    status: "ACTIVE",
-    isDefault: false,
-    metadataJson: null,
-    integrations: [],
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  })
-)
+const mockCreateCluster = mock(async (): Promise<ClusterAdminDTO> => ({
+  id: "cl_1",
+  code: "us-east-1",
+  name: "US East",
+  region: "us-east-1",
+  regionId: "reg-us-east-1",
+  status: "ACTIVE",
+  isDefault: false,
+  metadataJson: null,
+  integrations: [],
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+}))
 
-const mockUpdateCluster = mock(
-  async (): Promise<ClusterAdminDTO> => ({
-    id: "cl_1",
-    code: "us-east-1",
-    name: "Updated",
-    region: "us-east-1",
-    regionId: "reg-us-east-1",
-    status: "ACTIVE",
-    isDefault: false,
-    metadataJson: null,
-    integrations: [],
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  })
-)
+const mockUpdateCluster = mock(async (): Promise<ClusterAdminDTO> => ({
+  id: "cl_1",
+  code: "us-east-1",
+  name: "Updated",
+  region: "us-east-1",
+  regionId: "reg-us-east-1",
+  status: "ACTIVE",
+  isDefault: false,
+  metadataJson: null,
+  integrations: [],
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+}))
 
-const mockUpdateClusterStatus = mock(
-  async (): Promise<ClusterAdminDTO> => ({
-    id: "cl_1",
-    code: "us-east-1",
-    name: "US East",
-    region: "us-east-1",
-    regionId: "reg-us-east-1",
-    status: "ACTIVE",
-    isDefault: false,
-    metadataJson: null,
-    integrations: [],
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  })
-)
+const mockUpdateClusterStatus = mock(async (): Promise<ClusterAdminDTO> => ({
+  id: "cl_1",
+  code: "us-east-1",
+  name: "US East",
+  region: "us-east-1",
+  regionId: "reg-us-east-1",
+  status: "ACTIVE",
+  isDefault: false,
+  metadataJson: null,
+  integrations: [],
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+}))
 
 const mockUpsertClusterIntegration = mock(
   async (): Promise<ClusterIntegrationAdminDTO> => ({
@@ -107,6 +101,43 @@ const mockDeleteClusterIntegration = mock(async () => ({
   clusterId: "cl_1",
   type: "JENKINS",
   deleted: true,
+}))
+
+const mockExportClusterIntegrations = mock(async () => ({
+  version: "1.0",
+  clusterCode: "us-east-1",
+  exportedAt: "2026-01-01T00:00:00.000Z",
+  integrations: [
+    {
+      type: "ARGOCD" as const,
+      isActive: true,
+      metadata: {
+        apiUrl: "https://argo.example.com",
+        project: "default",
+        appNamespace: "argocd",
+      },
+      secretsRef: "vault:admin/clusters/cl_1/integrations/ARGOCD",
+    },
+  ],
+}))
+
+const mockImportClusterIntegrations = mock(async () => ({
+  importedCount: 1,
+  integrations: [
+    {
+      id: "int_1",
+      type: "ARGOCD",
+      metaJson: {
+        apiUrl: "https://argo.example.com",
+        project: "default",
+        appNamespace: "argocd",
+      },
+      secretPreview: "t…k",
+      isActive: true,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    },
+  ],
 }))
 
 const mockGetClusterEndpoint = mock(
@@ -148,6 +179,8 @@ mock.module("@/modules/deploy/cluster-management.service", () => ({
   upsertClusterIntegration: mockUpsertClusterIntegration,
   updateClusterIntegrationStatus: mockUpdateClusterIntegrationStatus,
   deleteClusterIntegration: mockDeleteClusterIntegration,
+  exportClusterIntegrations: mockExportClusterIntegrations,
+  importClusterIntegrations: mockImportClusterIntegrations,
   ClusterIntegrationValidationError: MockClusterIntegrationValidationError,
 }))
 mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
@@ -798,6 +831,74 @@ describe("Admin App Hosting Clusters Routes", () => {
     })
   })
   // ── GET/PUT /admin/app-hosting/clusters/:id/endpoint
+
+  // ── GET /admin/app-hosting/clusters/:id/integrations/export & POST import ──
+
+  describe("cluster integrations JSON import/export", () => {
+    it("exports integrations as vault-safe JSON", async () => {
+      const app = new Elysia().use(
+        createAdminAppHostingClusterRoutes({
+          requireSuperAdmin: async () => ({
+            ok: true as const,
+            userId: "u1",
+            platformRole: "super_admin",
+          }),
+        })
+      )
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/integrations/export`)
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.clusterCode).toBe("us-east-1")
+      expect(body.data.integrations[0].secretsRef).toContain("vault:")
+      expect(mockExportClusterIntegrations).toHaveBeenCalledWith("cl_1")
+    })
+
+    it("imports integrations via JSON payload", async () => {
+      const app = new Elysia().use(
+        createAdminAppHostingClusterRoutes({
+          requireSuperAdmin: async () => ({
+            ok: true as const,
+            userId: "u1",
+            platformRole: "super_admin",
+          }),
+        })
+      )
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/integrations/import`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            version: "1.0",
+            integrations: [
+              {
+                type: "ARGOCD",
+                metadata: {
+                  apiUrl: "https://argo.example.com",
+                  project: "default",
+                  appNamespace: "argocd",
+                },
+                secrets: {
+                  token: "my-token",
+                },
+              },
+            ],
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.importedCount).toBe(1)
+      expect(mockImportClusterIntegrations).toHaveBeenCalled()
+    })
+  })
 
   describe("cluster edge endpoint", () => {
     it("returns 401 when endpoint access is unauthenticated", async () => {

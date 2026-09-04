@@ -114,6 +114,18 @@ export const updateIntegrationStatusBodySchema = z.object({
   isActive: z.boolean(),
 })
 
+export {
+  clusterIntegrationItemImportSchema,
+  clusterIntegrationsImportSchema,
+  clusterIntegrationItemExportSchema,
+  clusterIntegrationsExportSchema,
+} from "@/modules/deploy/cluster-integration.schema"
+export type {
+  ClusterIntegrationItemImport,
+  ClusterIntegrationsImportInput,
+  ClusterIntegrationsExportDTO,
+} from "@/modules/deploy/cluster-integration.schema"
+
 export type ListClustersQuery = z.infer<typeof listClustersQuerySchema>
 export type CreateClusterBody = z.infer<typeof createClusterBodySchema>
 export type UpdateClusterBody = z.infer<typeof updateClusterBodySchema>
