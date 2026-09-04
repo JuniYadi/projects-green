@@ -141,7 +141,20 @@ export async function testIntegrationConnection(
         }
 
         // If GitHub repo, probe github api or raw ping
-        if (repo.includes("github.com")) {
+        let isGitHubRepo = false
+        try {
+          const normalizedRepo = repo.startsWith("git@")
+            ? `ssh://${repo.replace(":", "/")}`
+            : repo
+          const parsedRepo = new URL(normalizedRepo)
+          isGitHubRepo =
+            parsedRepo.hostname === "github.com" ||
+            parsedRepo.hostname === "www.github.com"
+        } catch {
+          isGitHubRepo = false
+        }
+
+        if (isGitHubRepo) {
           const match = repo.match(
             /github\.com[/:]([\w.-]+)\/([\w.-]+?)(\.git)?$/
           )
