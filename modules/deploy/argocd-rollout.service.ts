@@ -49,6 +49,8 @@ export async function getArgoCdApplicationStatus(
   }
 }
 
+const ARGOCD_ROLLOUT_TIMEOUT_MS = 15 * 60 * 1000 // 15 minutes max timeout
+
 export async function pollDeploymentRollout(deploymentId: string): Promise<{
   completed: boolean
   status: ArgoCdApplicationStatus | null
@@ -60,6 +62,46 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
 
   if (!deployment) {
     return { completed: false, status: null }
+  }
+
+  // Check if deployment rollout has exceeded maximum timeout
+  const startTime = deployment.startedAt ?? deployment.createdAt
+  const isTimedOut =
+    Date.now() - new Date(startTime).getTime() > ARGOCD_ROLLOUT_TIMEOUT_MS
+
+  if (isTimedOut && deployment.status === "DEPLOYING") {
+    await prisma.$transaction(async (tx) => {
+      await tx.applicationDeployment.update({
+        where: { id: deployment.id },
+        data: {
+          status: "FAILED",
+          failureReason:
+            "ArgoCD rollout timed out after 15 minutes. Check cluster sync and pod status.",
+          completedAt: new Date(),
+        },
+      })
+      await tx.applicationStack.update({
+        where: { id: deployment.stackId },
+        data: { lastDeployStatus: "FAILED" },
+      })
+      await recordDeployEventOnce(
+        {
+          deploymentId: deployment.id,
+          type: "DEPLOY_FAILED",
+          message: `ArgoCD rollout timed out for ${deployment.stack.slug}`,
+          metadata: { reason: "TIMEOUT" },
+        },
+        tx
+      )
+      await recordDeployLog({
+        deploymentId: deployment.id,
+        scope: "deploy",
+        status: "FAILED",
+        message:
+          "ArgoCD rollout timed out after 15 minutes. Check cluster sync and pod status.",
+      })
+    })
+    return { completed: true, status: null }
   }
 
   let argocdConfig: ArgoCdClusterConfig

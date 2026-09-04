@@ -102,6 +102,8 @@ describe("argocd-rollout.service", () => {
       status: "DEPLOYING",
       argocdSynced: false,
       completedAt: null,
+      startedAt: new Date(),
+      createdAt: new Date(),
       stack: { id: "stack-1", slug: "app-test" },
     })
     mockPrisma.applicationDeployment.update.mockReset()

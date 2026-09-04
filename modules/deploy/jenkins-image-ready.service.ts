@@ -226,33 +226,32 @@ export async function handleJenkinsImageReady(
 
   const deployment = await findActiveDeployment(stack.id, input)
   if (!deployment) return empty
-  const cluster = await resolveAppHostingClusterForStack(stack.id)
-  const gitopsConfig = await resolveClusterIntegration(
-    deployment.stackId,
-    "GITOPS"
-  )
-  const registryConfig = await resolveClusterIntegration(
-    deployment.stackId,
-    "REGISTRY"
-  )
-
-  const imageRepository = registryConfig.namespace
-    ? `${registryConfig.host}/${registryConfig.namespace}/${stack.slug}`
-    : `${registryConfig.host}/${stack.slug}`
-
-  const { envVars, externalSecretVaultPath } = resolveHelmEnvInputs(
-    stack.envVarsJson
-  )
-
-  const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
-  const resolvedDomain =
-    stack.customDomain ??
-    (cluster.managedBaseDomain
-      ? `${stack.slug}.${cluster.managedBaseDomain}`
-      : null)
 
   let values: Record<string, unknown>
+  let gitopsConfig: GitOpsClusterConfig
   try {
+    const cluster = await resolveAppHostingClusterForStack(stack.id)
+    gitopsConfig = await resolveClusterIntegration(deployment.stackId, "GITOPS")
+    const registryConfig = await resolveClusterIntegration(
+      deployment.stackId,
+      "REGISTRY"
+    )
+
+    const imageRepository = registryConfig.namespace
+      ? `${registryConfig.host}/${registryConfig.namespace}/${stack.slug}`
+      : `${registryConfig.host}/${stack.slug}`
+
+    const { envVars, externalSecretVaultPath } = resolveHelmEnvInputs(
+      stack.envVarsJson
+    )
+
+    const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
+    const resolvedDomain =
+      stack.customDomain ??
+      (cluster.managedBaseDomain
+        ? `${stack.slug}.${cluster.managedBaseDomain}`
+        : null)
+
     values = buildHelmValues({
       slug: stack.slug,
       imageRepository,
@@ -284,7 +283,7 @@ export async function handleJenkinsImageReady(
     })
     await recordDeployEventOnce({
       deploymentId: deployment.id,
-      type: "DEPLOY_FAILED" as any,
+      type: "DEPLOY_FAILED",
       message: `Deployment failed: ${reason}`,
     })
     await recordDeployLog({
