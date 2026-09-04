@@ -413,6 +413,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/portal/app",
       },
       {
+        title: "Deployments",
+        url: localizePathname({
+          pathname: "/portal/app/deployments",
+          locale,
+        }),
+        icon: <RocketLaunchIcon />,
+        isActive: startsWithRoute(path, "/portal/app/deployments"),
+      },
+      {
         title: "Clusters",
         url: localizePathname({
           pathname: "/portal/app/clusters",

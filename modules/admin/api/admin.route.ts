@@ -16,6 +16,7 @@ import { createAdminAiRoutes } from "@/modules/docs/api/admin-ai.route"
 import { createAdminCronRoutes } from "@/modules/admin/api/routes/admin-cron.route"
 import { createManagedStockRoutes } from "@/modules/deploy/api/routes/app-managed-stock.route"
 import { createAdminRegionsRoutes } from "@/modules/billing/api/admin/regions.route"
+import { createAdminDeploymentsRoutes } from "@/modules/admin/api/routes/admin-deployments.route"
 
 export const adminRoutes = new Elysia()
   .use(createAdminOrganizationsRoutes())
@@ -32,3 +33,4 @@ export const adminRoutes = new Elysia()
   .use(createAdminCronRoutes())
   .use(createManagedStockRoutes())
   .use(createAdminRegionsRoutes())
+  .use(createAdminDeploymentsRoutes())

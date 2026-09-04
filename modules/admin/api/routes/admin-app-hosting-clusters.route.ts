@@ -24,6 +24,7 @@ import {
   EdgeNotFoundError,
   EdgeValidationError,
 } from "@/modules/deploy/app-hosting-edge.service"
+import { testIntegrationConnection } from "@/modules/deploy/cluster-integration-tester.service"
 import {
   listClusters,
   getClusterById,
@@ -316,6 +317,36 @@ export const createAdminAppHostingClusterRoutes = (
           } catch (error) {
             return clusterError(set, error)
           }
+        },
+        { body: upsertIntegrationBodySchema }
+      )
+      // ── POST integration test connection ────────
+      .post(
+        "/admin/app-hosting/clusters/:id/integrations/:type/test",
+        async ({ params, body, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
+
+          if (!isIntegrationType(params.type)) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "UNPROCESSABLE",
+              message: `Invalid integration type: ${params.type}`,
+            }
+          }
+
+          const meta = (body?.metaJson ?? {}) as Record<string, unknown>
+          const secrets = (body?.secrets ?? {}) as Record<string, unknown>
+
+          const result = await testIntegrationConnection(
+            params.type,
+            meta,
+            secrets
+          )
+          return { ok: true as const, data: result }
         },
         { body: upsertIntegrationBodySchema }
       )
