@@ -93,13 +93,16 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
         },
         tx
       )
-      await recordDeployLog({
-        deploymentId: deployment.id,
-        scope: "deploy",
-        status: "FAILED",
-        message:
-          "ArgoCD rollout timed out after 15 minutes. Check cluster sync and pod status.",
-      })
+      await recordDeployLog(
+        {
+          deploymentId: deployment.id,
+          scope: "deploy",
+          status: "FAILED",
+          message:
+            "ArgoCD rollout timed out after 15 minutes. Check cluster sync and pod status.",
+        },
+        tx
+      )
     })
     return { completed: true, status: null }
   }
@@ -134,7 +137,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
       await recordDeployEventOnce(
         {
           deploymentId: deployment.id,
-          type: "ARGOCD_SYNCED" as any,
+          type: "ARGOCD_SYNCED",
           message: `ArgoCD synced ${deployment.stack.slug}`,
           metadata: { syncStatus: status.syncStatus },
         },
@@ -219,7 +222,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
       await recordDeployEventOnce(
         {
           deploymentId: deployment.id,
-          type: "DEPLOY_FAILED" as any,
+          type: "DEPLOY_FAILED",
           message: `ArgoCD application degraded for ${deployment.stack.slug}`,
           metadata: { healthStatus: status.healthStatus },
         },
