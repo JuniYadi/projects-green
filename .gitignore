@@ -26,6 +26,7 @@ prisma/seeds/*.sql
 
 # misc
 .DS_Store
+*.tsbuildinfo
 *.pem
 
 # git worktrees
