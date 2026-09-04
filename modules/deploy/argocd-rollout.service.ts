@@ -3,7 +3,7 @@ import {
   resolveClusterIntegration,
   type ArgoCdClusterConfig,
 } from "./cluster-integration.service"
-import { recordDeployEventOnce } from "./deploy-event.service"
+import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 import { checkIngressReadiness } from "./ingress-readiness.service"
 
 export type ArgoCdApplicationStatus = {
