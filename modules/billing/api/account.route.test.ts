@@ -1,7 +1,30 @@
-import { describe, it, expect, beforeEach, vi } from "bun:test"
+import { describe, it, expect, beforeEach, vi, mock } from "bun:test"
 import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 import type { Organization } from "@workos-inc/node"
 import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
+
+const mockBillingAdjustmentFindMany = vi.fn(async () => [])
+const mockBillingAdjustmentCount = vi.fn(async () => 0)
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    billingAdjustment: {
+      findMany: mockBillingAdjustmentFindMany,
+      count: mockBillingAdjustmentCount,
+    },
+  },
+}))
+
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  withAuth: async () => ({
+    user: null,
+    organizationId: null,
+  }),
+  getWorkOS: () => ({
+    organizations: {
+      getOrganization: async () => null,
+    },
+  }),
+}))
 
 import { createBillingAccountRoutes } from "./account.route"
 import {
@@ -32,6 +55,8 @@ describe("GET /account - JIT upsert", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockBillingAdjustmentFindMany.mockResolvedValue([])
+    mockBillingAdjustmentCount.mockResolvedValue(0)
     mockGetWarnThresholdForCurrency.mockResolvedValue(
       new Decimal(MINIMUM_BALANCE_WARN_IDR)
     )

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { _resetWorkOSClientForTesting } from "@/lib/workos-directory"
 
 // ---------------------------------------------------------------------------
 // Mocks — must be before mock.module() calls
@@ -70,6 +71,17 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: () => ({
+    userManagement: {
+      getUser: mockWorkosGetUser,
+    },
+    organizations: {
+      getOrganization: mockWorkosGetOrg,
+    },
+  }),
+}))
+
 mock.module("@workos-inc/authkit-nextjs", () => ({
   getWorkOS: () => ({
     userManagement: {
@@ -101,6 +113,7 @@ function clearRedis() {
 
 beforeEach(() => {
   clearRedis()
+  _resetWorkOSClientForTesting()
   mockRedisGet.mockReset()
   mockRedisSet.mockReset()
   mockRedisDel.mockReset()

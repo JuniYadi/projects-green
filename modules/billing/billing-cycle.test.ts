@@ -13,6 +13,15 @@ import { UsageLedgerService } from "./usage-ledger.service"
 const mockListOrgMemberships = mock()
 const mockGetUser = mock()
 
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: () => ({
+    userManagement: {
+      listOrganizationMemberships: mockListOrgMemberships,
+      getUser: mockGetUser,
+    },
+  }),
+}))
+
 mock.module("@workos-inc/authkit-nextjs", () => ({
   getWorkOS: () => ({
     userManagement: {
@@ -27,6 +36,16 @@ const { BillingCycleService } = await import("./billing-cycle.service")
 
 // ─── Mock Prisma ────────────────────────────────────────────────────────────
 
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    billingAuditLog: {
+      create: mock(async (data: any) => ({
+        id: "audit-1",
+        ...data.data,
+      })),
+    },
+  },
+}))
 function createMockPrisma() {
   return {
     billingRun: {
@@ -63,6 +82,12 @@ function createMockPrisma() {
     billingAdjustment: {
       create: mock(async (data: any) => ({
         id: "adj-1",
+        ...data.data,
+      })),
+    },
+    billingAuditLog: {
+      create: mock(async (data: any) => ({
+        id: "audit-1",
         ...data.data,
       })),
     },

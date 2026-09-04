@@ -77,6 +77,7 @@ describe("VpnSubscriptionService.purchase", () => {
       organizationId: "org-1",
       packageId: "package-1",
       pricingId: "pricing-1",
+      now: new Date("2026-08-01T00:00:00.000Z"),
     })
 
     expect(orders.createOrder).toHaveBeenCalledWith(
