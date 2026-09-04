@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import type { User } from "@workos-inc/node"
-
+import { _resetWorkOSClientForTesting } from "@/lib/workos-directory"
 // Use the same mock names as workos-cache.service.test.ts to avoid conflicts
 const mockWorkosGetUser = mock(async (userId: string) => ({
   id: userId,
@@ -32,6 +32,16 @@ mock.module("@/lib/redis", () => ({
   },
 }))
 
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: () => ({
+    userManagement: {
+      getUser: mockWorkosGetUser,
+    },
+    organizations: {
+      getOrganization: mockWorkosGetOrg,
+    },
+  }),
+}))
 mock.module("@workos-inc/authkit-nextjs", () => {
   return {
     withAuth: async () => ({
@@ -65,6 +75,8 @@ const makeUser = (overrides: Partial<User> = {}): User => {
 
 describe("sidebar session helpers", () => {
   beforeEach(() => {
+    redisStore.clear()
+    _resetWorkOSClientForTesting()
     mockWorkosGetUser.mockClear()
     mockWorkosGetOrg.mockClear()
 

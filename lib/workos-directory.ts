@@ -37,6 +37,10 @@ const getWorkOSClient = () => {
   return _workos
 }
 
+export const _resetWorkOSClientForTesting = () => {
+  _workos = null
+}
+
 export type WorkOSDirectoryUser = {
   id: string
   name: string
