@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
 declare module "recharts" {
   export const ResponsiveContainer: any
   export const Tooltip: any
