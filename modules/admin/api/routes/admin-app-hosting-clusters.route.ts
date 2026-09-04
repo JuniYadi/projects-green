@@ -9,6 +9,7 @@ import {
   upsertIntegrationBodySchema,
   updateIntegrationStatusBodySchema,
   upsertClusterEndpointBodySchema,
+  clusterIntegrationsImportSchema,
   INTEGRATION_TYPES,
   integrationMetaJsonSchemas,
   integrationSecretPatchSchemas,
@@ -32,6 +33,8 @@ import {
   upsertClusterIntegration,
   updateClusterIntegrationStatus,
   deleteClusterIntegration,
+  exportClusterIntegrations,
+  importClusterIntegrations,
   ClusterIntegrationValidationError,
 } from "@/modules/deploy/cluster-management.service"
 
@@ -377,6 +380,58 @@ export const createAdminAppHostingClusterRoutes = (
             return clusterError(set, error)
           }
         }
+      )
+
+      // ── GET export cluster integrations (JSON) ──
+      .get(
+        "/admin/app-hosting/clusters/:id/integrations/export",
+        async ({ params, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
+
+          try {
+            const exportData = await exportClusterIntegrations(params.id)
+            return { ok: true as const, data: exportData }
+          } catch (error) {
+            return clusterError(set, error)
+          }
+        }
+      )
+
+      // ── POST import cluster integrations (JSON) ──
+      .post(
+        "/admin/app-hosting/clusters/:id/integrations/import",
+        async ({ params, body, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
+
+          const parsed = clusterIntegrationsImportSchema.safeParse(body)
+          if (!parsed.success) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "VALIDATION_ERROR",
+              message:
+                "Invalid import format. Please fix the errors and try again.",
+              fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+            }
+          }
+
+          try {
+            const result = await importClusterIntegrations(
+              params.id,
+              parsed.data
+            )
+            return { ok: true as const, data: result }
+          } catch (error) {
+            return clusterError(set, error)
+          }
+        },
+        { body: clusterIntegrationsImportSchema }
       )
   )
 }

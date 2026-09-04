@@ -14,6 +14,8 @@ import {
   integrationMetaJsonSchemas,
   integrationSecretPatchSchemas,
   integrationSecretSchemas,
+  type ClusterIntegrationsExportDTO,
+  type ClusterIntegrationsImportInput,
 } from "@/modules/deploy/cluster-integration.schema"
 import { toClusterDTO } from "@/modules/deploy/cluster-management.dto"
 import type { ClusterAdminDTO } from "@/modules/deploy/cluster-management.dto"
@@ -339,6 +341,7 @@ export async function updateClusterStatus(
 }
 
 const getVaultClient = (): Pick<VaultClient, "writeKV"> => new VaultClient()
+const getFullVaultClient = (): VaultClient => new VaultClient()
 
 export async function upsertClusterIntegration(
   clusterId: string,
@@ -423,6 +426,101 @@ export async function upsertClusterIntegration(
     isActive: row.isActive,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  }
+}
+
+export async function exportClusterIntegrations(
+  clusterId: string
+): Promise<ClusterIntegrationsExportDTO> {
+  const cluster = throwIfNotFound(
+    await prisma.appHostingCluster.findUnique({
+      where: { id: clusterId },
+      include: { integrations: true },
+    }),
+    "Cluster"
+  )
+
+  const integrations = cluster.integrations.map((item) => {
+    const meta =
+      item.metaJson &&
+      typeof item.metaJson === "object" &&
+      !Array.isArray(item.metaJson)
+        ? (item.metaJson as Record<string, unknown>)
+        : {}
+
+    // Omit internal tracking fields from exported metadata
+    const { vaultPath: _v, vaultVersion: _vv, ...cleanMetadata } = meta
+
+    return {
+      type: item.type as AppHostingClusterIntegrationType,
+      isActive: item.isActive,
+      metadata: cleanMetadata,
+      secretsRef: `vault:admin/clusters/${cluster.id}/integrations/${item.type}`,
+    }
+  })
+
+  return {
+    version: "1.0",
+    clusterCode: cluster.code,
+    exportedAt: new Date().toISOString(),
+    integrations,
+  }
+}
+
+export async function importClusterIntegrations(
+  clusterId: string,
+  input: ClusterIntegrationsImportInput,
+  vaultClient?: Pick<VaultClient, "readKV" | "writeKV">
+) {
+  const cluster = throwIfNotFound(
+    await prisma.appHostingCluster.findUnique({ where: { id: clusterId } }),
+    "Cluster"
+  )
+  const client = vaultClient ?? getFullVaultClient()
+
+  const results = []
+  for (const item of input.integrations) {
+    let resolvedSecrets: Record<string, unknown> = item.secrets ?? {}
+
+    if (item.secretsRef) {
+      const rawPath = item.secretsRef.replace(/^vault:/, "")
+      try {
+        const vaultData = await client.readKV(rawPath)
+        resolvedSecrets = { ...vaultData, ...resolvedSecrets }
+      } catch (err) {
+        throw new Error(
+          `Failed to read Vault secrets from ref '${item.secretsRef}' for ${item.type}: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        )
+      }
+    }
+
+    const upserted = await upsertClusterIntegration(
+      cluster.id,
+      item.type as AppHostingClusterIntegrationType,
+      {
+        metaJson: item.metadata,
+        secrets: resolvedSecrets,
+      },
+      client
+    )
+
+    if (item.isActive !== undefined && item.isActive !== upserted.isActive) {
+      await updateClusterIntegrationStatus(
+        cluster.id,
+        item.type as AppHostingClusterIntegrationType,
+        item.isActive
+      )
+      upserted.isActive = item.isActive
+    }
+
+    results.push(upserted)
+  }
+
+  return {
+    importedCount: results.length,
+    integrations: results,
   }
 }
 

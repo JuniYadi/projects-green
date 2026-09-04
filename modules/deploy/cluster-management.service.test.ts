@@ -20,10 +20,11 @@ const mockPrismaAppHostingCluster = {
 }
 
 const mockPrismaAppHostingClusterIntegration = {
-  upsert: mock(),
-  update: mock(),
+  findMany: mock(),
   findFirst: mock(),
   findUnique: mock(),
+  upsert: mock(),
+  update: mock(),
   delete: mock(),
 }
 const mockPrismaTransaction = mock(async (fn: (tx: unknown) => unknown) => {
@@ -70,6 +71,8 @@ const {
   listClusters,
   getClusterById,
   createCluster,
+  exportClusterIntegrations,
+  importClusterIntegrations,
   updateCluster,
   updateClusterStatus,
   upsertClusterIntegration,
@@ -417,6 +420,111 @@ describe("ClusterManagementService", () => {
       await expect(
         upsertClusterIntegration("nonexistent", "JENKINS", {})
       ).rejects.toThrow("NOT_FOUND")
+    })
+  })
+
+  // ── exportClusterIntegrations & importClusterIntegrations ──
+
+  describe("exportClusterIntegrations", () => {
+    it("exports integrations with vault references and clean metadata", async () => {
+      mockPrismaAppHostingCluster.findUnique.mockResolvedValue({
+        ...fakeCluster(),
+        integrations: [
+          fakeIntegration({
+            type: "ARGOCD",
+            isActive: true,
+            metaJson: {
+              apiUrl: "https://argo.example.com",
+              project: "default",
+              appNamespace: "argocd",
+              vaultPath: "admin/clusters/cl_1/integrations/ARGOCD",
+              vaultVersion: 1,
+            },
+          }),
+        ],
+      })
+
+      const exported = await exportClusterIntegrations("cl_1")
+      expect(exported.version).toBe("1.0")
+      expect(exported.clusterCode).toBe("us-east-1")
+      expect(exported.integrations).toHaveLength(1)
+      expect(exported.integrations[0].type).toBe("ARGOCD")
+      expect(exported.integrations[0].secretsRef).toBe(
+        "vault:admin/clusters/cl_1/integrations/ARGOCD"
+      )
+      // Internal tracking fields must be stripped from exported metadata
+      expect(exported.integrations[0].metadata).not.toHaveProperty("vaultPath")
+      expect(exported.integrations[0].metadata).not.toHaveProperty(
+        "vaultVersion"
+      )
+      expect(exported.integrations[0].metadata.apiUrl).toBe(
+        "https://argo.example.com"
+      )
+    })
+  })
+
+  describe("importClusterIntegrations", () => {
+    it("imports integration with plain secrets", async () => {
+      mockPrismaAppHostingCluster.findUnique.mockResolvedValue(fakeCluster())
+      mockPrismaAppHostingClusterIntegration.upsert.mockResolvedValue(
+        fakeIntegration({ type: "ARGOCD" })
+      )
+
+      const result = await importClusterIntegrations("cl_1", {
+        version: "1.0",
+        integrations: [
+          {
+            type: "ARGOCD",
+            metadata: {
+              apiUrl: "https://argo.example.com",
+              project: "default",
+              appNamespace: "argocd",
+            },
+            secrets: {
+              token: "my-token",
+            },
+          },
+        ],
+      })
+
+      expect(result.importedCount).toBe(1)
+      expect(mockPrismaAppHostingClusterIntegration.upsert).toHaveBeenCalled()
+    })
+
+    it("imports integration with vault secretsRef", async () => {
+      mockPrismaAppHostingCluster.findUnique.mockResolvedValue(fakeCluster())
+      mockPrismaAppHostingClusterIntegration.upsert.mockResolvedValue(
+        fakeIntegration({ type: "ARGOCD" })
+      )
+
+      const mockVault = {
+        readKV: mock(async () => ({ token: "vault-token" })),
+        writeKV: mock(async () => ({ version: 1 })),
+      }
+
+      const result = await importClusterIntegrations(
+        "cl_1",
+        {
+          version: "1.0",
+          integrations: [
+            {
+              type: "ARGOCD",
+              metadata: {
+                apiUrl: "https://argo.example.com",
+                project: "default",
+                appNamespace: "argocd",
+              },
+              secretsRef: "vault:admin/clusters/template/integrations/ARGOCD",
+            },
+          ],
+        },
+        mockVault as never
+      )
+
+      expect(mockVault.readKV).toHaveBeenCalledWith(
+        "admin/clusters/template/integrations/ARGOCD"
+      )
+      expect(result.importedCount).toBe(1)
     })
   })
 

@@ -21,9 +21,11 @@ import {
   ArrowLeft,
   Check,
   Copy,
+  DownloadSimple,
   Pencil,
   Power,
   Trash,
+  UploadSimple,
 } from "@phosphor-icons/react"
 
 import {
@@ -48,8 +50,8 @@ import {
   integrationFieldDescriptions,
   formStateToPayload,
   type ClusterMetadataInput,
+  clusterIntegrationsImportSchema,
 } from "@/modules/deploy/cluster-integration.schema"
-
 type ClusterIntegration = {
   id: string
   type: string
@@ -222,6 +224,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const [newIntegrationType, setNewIntegrationType] = useState<
     (typeof INTEGRATION_TYPES)[number]
   >(INTEGRATION_TYPES[0])
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [importJsonText, setImportJsonText] = useState("")
+  const [importError, setImportError] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const copyToClipboard = (text: string, fieldKey: string) => {
     if (!text) return
     void navigator.clipboard.writeText(text)
@@ -237,8 +244,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           await eden.api.admin.regions.get()
         if (resError || !payload || !payload.ok) {
           const errPayload = (resError?.value || payload) as
-            | { message?: string }
-            | undefined
+            { message?: string } | undefined
           throw new Error(errPayload?.message || "Failed to load regions")
         }
         if (cancelled) return
@@ -662,6 +668,99 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         cause instanceof Error ? cause.message : "Unable to delete integration."
       )
     }
+  }
+
+  const handleExportJson = async () => {
+    setExporting(true)
+    try {
+      const { data: payload } =
+        await eden.api.admin["app-hosting"].clusters[
+          clusterId
+        ].integrations.export.get()
+      if (!payload || !payload.ok || !("data" in payload) || !payload.data) {
+        const errMsg =
+          payload && !payload.ok && "message" in payload
+            ? String(payload.message)
+            : "Unable to export integrations."
+        throw new Error(errMsg)
+      }
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+        JSON.stringify(payload.data, null, 2)
+      )}`
+      const downloadAnchor = document.createElement("a")
+      downloadAnchor.setAttribute("href", jsonString)
+      downloadAnchor.setAttribute(
+        "download",
+        `cluster-${cluster?.code ?? clusterId}-integrations.json`
+      )
+      document.body.appendChild(downloadAnchor)
+      downloadAnchor.click()
+      downloadAnchor.remove()
+    } catch (cause) {
+      console.error("Failed to export integrations:", cause)
+      alert(
+        cause instanceof Error
+          ? cause.message
+          : "Unable to export integrations."
+      )
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleImportJson = async () => {
+    setImportError(null)
+    let parsedJson: unknown
+    try {
+      parsedJson = JSON.parse(importJsonText)
+    } catch {
+      setImportError("Invalid JSON syntax. Please check the JSON format.")
+      return
+    }
+
+    const validation = clusterIntegrationsImportSchema.safeParse(parsedJson)
+    if (!validation.success) {
+      const issueMsg = validation.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join(", ")
+      setImportError(`Validation error: ${issueMsg}`)
+      return
+    }
+
+    setImporting(true)
+    try {
+      const { data: payload } = await eden.api.admin["app-hosting"].clusters[
+        clusterId
+      ].integrations.import.post(validation.data)
+      if (!payload || !payload.ok) {
+        const errMsg =
+          payload && !payload.ok && "message" in payload
+            ? String(payload.message)
+            : "Unable to import integrations."
+        throw new Error(errMsg)
+      }
+      setImportJsonText("")
+    } catch (cause) {
+      console.error("Failed to import integrations:", cause)
+      setImportError(
+        cause instanceof Error
+          ? cause.message
+          : "Failed to import integrations."
+      )
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const content = event.target?.result as string
+      if (content) setImportJsonText(content)
+    }
+    reader.readAsText(file)
   }
 
   if (loading) {
@@ -1410,29 +1509,59 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Integrations</CardTitle>
-          {availableIntegrationTypes.length > 0 && (
-            <div className="flex items-center gap-2">
-              <select
-                aria-label="Integration type"
-                value={newIntegrationType}
-                onChange={(event) =>
-                  setNewIntegrationType(
-                    event.target.value as (typeof INTEGRATION_TYPES)[number]
-                  )
-                }
-                className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-              >
-                {availableIntegrationTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {INTEGRATION_TYPE_LABELS[type] ?? type}
-                  </option>
-                ))}
-              </select>
-              <Button type="button" size="sm" onClick={handleIntegrationCreate}>
-                Add integration
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportJson}
+              disabled={exporting || cluster.integrations.length === 0}
+              title="Export all configured integrations as JSON with Vault references"
+            >
+              <DownloadSimple size={14} className="mr-1" />
+              {exporting ? "Exporting..." : "Export Config"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setImportError(null)
+                setIsImportModalOpen(true)
+              }}
+              title="Bulk import integrations via JSON"
+            >
+              <UploadSimple size={14} className="mr-1" />
+              Import Config
+            </Button>
+            {availableIntegrationTypes.length > 0 && (
+              <>
+                <select
+                  aria-label="Integration type"
+                  value={newIntegrationType}
+                  onChange={(event) =>
+                    setNewIntegrationType(
+                      event.target.value as (typeof INTEGRATION_TYPES)[number]
+                    )
+                  }
+                  className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  {availableIntegrationTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {INTEGRATION_TYPE_LABELS[type] ?? type}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleIntegrationCreate}
+                >
+                  Add integration
+                </Button>
+              </>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {cluster.integrations.length === 0 ? (
@@ -1519,6 +1648,76 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           onSave={handleIntegrationSave}
           onCancel={() => setEditingIntegration(null)}
         />
+      )}
+
+      {isImportModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-2xl space-y-4 rounded-xl border border-border bg-background p-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                Import Integrations (JSON)
+              </h3>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsImportModalOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Paste a valid JSON configuration or upload a JSON file. Supports
+              either plaintext <code>secrets</code> or pre-provisioned{" "}
+              <code>secretsRef</code> (e.g.{" "}
+              <code>vault:admin/clusters/...</code>).
+            </p>
+            {importError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                {importError}
+              </div>
+            )}
+            <div>
+              <input
+                type="file"
+                accept=".json,application/json"
+                onChange={handleFileUpload}
+                className="text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs file:font-medium hover:file:bg-muted"
+              />
+            </div>
+            <div>
+              <textarea
+                value={importJsonText}
+                onChange={(e) => setImportJsonText(e.target.value)}
+                placeholder={`{\n  "version": "1.0",\n  "integrations": [\n    {\n      "type": "ARGOCD",\n      "isActive": true,\n      "metadata": { ... },\n      "secrets": { ... }\n    }\n  ]\n}`}
+                rows={12}
+                className="w-full rounded-md border border-input bg-muted/20 p-3 font-mono text-xs focus:ring-1 focus:ring-ring focus:outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsImportModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleImportJson}
+                disabled={importing || !importJsonText.trim()}
+              >
+                {importing ? "Importing..." : "Apply Import"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
