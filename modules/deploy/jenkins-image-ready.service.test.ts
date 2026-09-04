@@ -132,25 +132,29 @@ mock.module("@/modules/deploy/cluster-integration.service", () => ({
     managedBaseDomain: "pfnapp.dev",
   })),
   resolveClusterIntegration: mock(async (_stackId: string, type: string) => {
-    if (type === "GITOPS") {
-      return {
-        repo: "pfnapp/sgp-argocd-prod",
-        branch: "main",
-        basePath: "services-yaml/{slug}",
-        pat: "ghp_testtoken",
-      }
-    }
-    if (type === "REGISTRY") {
-      return {
-        host: "registry-apac.pfnapp.com",
-        namespace: null,
-        pushCredentialId: null,
-        pullSecretName: null,
-      }
-    }
-    throw new Error("unexpected type " + type)
+    return resolveClusterIntegrationImpl(_stackId, type)
   }),
 }))
+
+let resolveClusterIntegrationImpl = async (_stackId: string, type: string) => {
+  if (type === "GITOPS") {
+    return {
+      repo: "pfnapp/sgp-argocd-prod",
+      branch: "main",
+      basePath: "services-yaml/{slug}",
+      pat: "ghp_testtoken",
+    }
+  }
+  if (type === "REGISTRY") {
+    return {
+      host: "registry-apac.pfnapp.com",
+      namespace: null,
+      pushCredentialId: null,
+      pullSecretName: null,
+    }
+  }
+  throw new Error("unexpected type " + type)
+}
 
 const { handleJenkinsImageReady } =
   await import("./jenkins-image-ready.service")
@@ -373,5 +377,46 @@ describe("handleJenkinsImageReady", () => {
     const logArgs = mockPrisma.applicationDeploymentLog.create.mock
       .calls[0]?.[0] as any
     expect(logArgs.data.status).toBe("FAILED")
+  })
+
+  it("marks deployment as FAILED when cluster registry integration resolution fails", async () => {
+    resolveClusterIntegrationImpl = async (_stackId: string, type: string) => {
+      if (type === "REGISTRY") {
+        throw new Error(
+          "Missing REGISTRY integration for App Hosting cluster sgp"
+        )
+      }
+      return {
+        repo: "pfnapp/sgp-argocd-prod",
+        branch: "main",
+        basePath: "services-yaml/{slug}",
+        pat: "ghp_testtoken",
+      }
+    }
+
+    const result = await handleJenkinsImageReady({
+      slug: "app-metacard-prod",
+      imageTag: "v1.0.0",
+    })
+
+    expect(result.ok).toBe(true)
+    expect(mockPrisma.applicationDeployment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "deploy-1" },
+        data: expect.objectContaining({
+          status: "FAILED",
+          failureReason:
+            "Missing REGISTRY integration for App Hosting cluster sgp",
+        }),
+      })
+    )
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack-1" },
+        data: expect.objectContaining({
+          lastDeployStatus: "FAILED",
+        }),
+      })
+    )
   })
 })

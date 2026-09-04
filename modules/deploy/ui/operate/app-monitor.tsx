@@ -3,6 +3,7 @@
 import { ArrowClockwise } from "@phosphor-icons/react"
 import Link from "next/link"
 
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -137,10 +138,46 @@ export function AppMonitor({
             </div>
           </dl>
 
-          {deployment?.status === "failed" && deployment.failureReason ? (
-            <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3 text-xs text-rose-300">
-              <p className="font-semibold">Last deployment failed</p>
-              <p>{deployment.failureReason}</p>
+          {deployment?.status === "failed" ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="flex items-center gap-1.5 font-semibold text-destructive">
+                    <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
+                    Deployment Failed
+                  </p>
+                  <p className="text-foreground">
+                    {deployment.failureReason ||
+                      "The deployment encountered an unexpected error during build or cluster synchronization."}
+                  </p>
+                  {deployment.failureReason?.includes("REGISTRY") ? (
+                    <p className="pt-1 text-muted-foreground">
+                      💡 <strong>Action Required:</strong> The target cluster is
+                      missing an active Container Registry integration. Please
+                      configure or activate the cluster registry in admin
+                      settings.
+                    </p>
+                  ) : deployment.failureReason?.includes("timed out") ? (
+                    <p className="pt-1 text-muted-foreground">
+                      💡 <strong>Action Required:</strong> The container cluster
+                      took too long to pull the image or start the pods. Check
+                      cluster health and pod events in logs.
+                    </p>
+                  ) : null}
+                </div>
+                {onRetry ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onRetry}
+                    className="shrink-0"
+                  >
+                    <ArrowClockwise className="mr-1.5 h-3.5 w-3.5" />
+                    Retry Deploy
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </CardContent>

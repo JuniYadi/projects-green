@@ -106,7 +106,7 @@ export const deployJenkinsWebhookRoutes = new Elysia({
     const deployment = await prisma.applicationDeployment.findFirst({
       where: {
         stackId: stack.id,
-        status: { in: ["QUEUED", "BUILDING"] },
+        status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
         ...(commitSha ? { commitSha } : {}),
       },
       orderBy: { createdAt: "desc" },
@@ -116,8 +116,8 @@ export const deployJenkinsWebhookRoutes = new Elysia({
       return { ok: true, message: "No active deployment to update" }
     }
 
-    // Idempotency check — skip if already processed
-    if (deployment.status === "RUNNING" || deployment.status === "DEPLOYING") {
+    // Idempotency check — skip if already completed successfully
+    if (deployment.status === "RUNNING") {
       return { ok: true, message: "Deployment already completed" }
     }
 

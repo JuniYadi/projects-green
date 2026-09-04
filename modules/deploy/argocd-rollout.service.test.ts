@@ -9,6 +9,8 @@ const mockPrisma = {
       status: "DEPLOYING",
       argocdSynced: false,
       completedAt: null,
+      startedAt: new Date(),
+      createdAt: new Date(),
       stack: { id: "stack-1", slug: "app-test" },
     })),
     update: mock(async () => ({})),
@@ -43,21 +45,24 @@ mock.module("./deploy-event.service", () => ({
   recordDeployEventOnce: recordEvent,
   recordDeployLog: mock(async () => undefined),
 }))
-mock.module("@/modules/deploy/cluster-integration.service", () => ({
-  resolveClusterIntegration: mock(async (_id: string, type: string) => {
-    if (type === "ARGOCD") {
-      return {
-        apiUrl: "https://argocd.example.com",
-        token: "argo-token",
-        project: "default",
-        appNamespace: "argocd",
-        webhookSecret: null,
-        chartRepo: null,
-        chartVersion: null,
-      }
+let resolveClusterIntegrationMock = async (_id: string, type: string) => {
+  if (type === "ARGOCD") {
+    return {
+      apiUrl: "https://argocd.example.com",
+      token: "argo-token",
+      project: "default",
+      appNamespace: "argocd",
+      webhookSecret: null,
+      chartRepo: null,
+      chartVersion: null,
     }
-    throw new Error("missing " + type)
-  }),
+  }
+  throw new Error("missing " + type)
+}
+mock.module("@/modules/deploy/cluster-integration.service", () => ({
+  resolveClusterIntegration: mock((id: string, type: string) =>
+    resolveClusterIntegrationMock(id, type)
+  ),
 }))
 
 let ingressReadinessImpl: (
@@ -102,6 +107,8 @@ describe("argocd-rollout.service", () => {
       status: "DEPLOYING",
       argocdSynced: false,
       completedAt: null,
+      startedAt: new Date(),
+      createdAt: new Date(),
       stack: { id: "stack-1", slug: "app-test" },
     })
     mockPrisma.applicationDeployment.update.mockReset()
@@ -271,6 +278,86 @@ describe("argocd-rollout.service", () => {
     )
     expect(status.syncStatus).toBe("Synced")
     expect(status.healthStatus).toBe("Healthy")
+    restoreFetch()
+  })
+
+  it("getArgoCdApplicationStatus throws when API response is not ok", async () => {
+    setupFetch({
+      ok: false,
+      status: 500,
+      body: { message: "Internal server error" },
+    })
+
+    await expect(
+      getArgoCdApplicationStatus(
+        {
+          apiUrl: "https://argocd.example.com",
+          token: "argo-token",
+          project: "default",
+          appNamespace: "argocd",
+          webhookSecret: null,
+          chartRepo: null,
+          chartVersion: null,
+        },
+        "app-test"
+      )
+    ).rejects.toThrow("ArgoCD API error 500")
+    restoreFetch()
+  })
+  it("returns no completion when resolveClusterIntegration throws", async () => {
+    resolveClusterIntegrationMock = async () => {
+      throw new Error("Cluster integration not found")
+    }
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValue({
+      id: "deploy-1",
+      stackId: "stack-missing-cluster",
+      status: "DEPLOYING",
+      argocdSynced: false,
+      completedAt: null,
+      startedAt: new Date(),
+      createdAt: new Date(),
+      stack: { id: "stack-1", slug: "app-test" },
+    })
+
+    const result = await pollDeploymentRollout("deploy-1")
+    expect(result.completed).toBe(false)
+    expect(result.status).toBeNull()
+  })
+  it("marks deployment as FAILED when rollout exceeds 15-minute timeout", async () => {
+    setupFetch({ ok: true, body: {} })
+    const fifteenMinutesAgo = new Date(Date.now() - 16 * 60 * 1000)
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValue({
+      id: "deploy-1",
+      stackId: "stack-1",
+      status: "DEPLOYING",
+      argocdSynced: false,
+      completedAt: null,
+      startedAt: fifteenMinutesAgo,
+      createdAt: fifteenMinutesAgo,
+      stack: { id: "stack-1", slug: "app-test" },
+    })
+
+    const result = await pollDeploymentRollout("deploy-1")
+    expect(result.completed).toBe(true)
+    expect(result.status).toBeNull()
+    expect(mockTx.applicationDeployment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "deploy-1" },
+        data: expect.objectContaining({
+          status: "FAILED",
+          failureReason:
+            "ArgoCD rollout timed out after 15 minutes. Check cluster sync and pod status.",
+        }),
+      })
+    )
+    expect(mockTx.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack-1" },
+        data: expect.objectContaining({
+          lastDeployStatus: "FAILED",
+        }),
+      })
+    )
     restoreFetch()
   })
 })
