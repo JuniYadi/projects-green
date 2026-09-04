@@ -1735,6 +1735,7 @@ function IntegrationEditModal({
   onSecretsChange,
   onSave,
   onCancel,
+  clusterId,
 }: {
   integration: ClusterIntegration
   meta: Record<string, unknown>
@@ -1780,7 +1781,10 @@ function IntegrationEditModal({
     setTesting(true)
     setTestResult(null)
     try {
-      const payload = formStateToPayload(type, meta, secrets)
+      const payload = {
+        metaJson: meta,
+        secrets,
+      }
       const { data: body } =
         await eden.api.admin["app-hosting"].clusters[clusterId].integrations[
           type
