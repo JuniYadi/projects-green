@@ -1647,6 +1647,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           onSecretsChange={setIntegrationSecrets}
           onSave={handleIntegrationSave}
           onCancel={() => setEditingIntegration(null)}
+          clusterId={clusterId}
         />
       )}
 
@@ -1745,8 +1746,15 @@ function IntegrationEditModal({
   onSecretsChange: (value: Record<string, unknown>) => void
   onSave: () => void
   onCancel: () => void
+  clusterId: string
 }) {
   const type = integration.type
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{
+    ok: boolean
+    message: string
+  } | null>(null)
+
   const metaSchema = getMetadataSchema(type)
   const secretsSchema = getSecretsSchema(type)
   const labels = integrationFieldLabels[type] ?? {}
@@ -1768,6 +1776,31 @@ function IntegrationEditModal({
     onSecretsChange({ ...secrets, [key]: value || undefined })
   }
 
+  const handleTestConnection = async () => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const payload = formStateToPayload(type, meta, secrets)
+      const { data: body } =
+        await eden.api.admin["app-hosting"].clusters[clusterId].integrations[
+          type
+        ].test.post(payload)
+
+      if (body && body.ok && body.data) {
+        setTestResult(body.data as { ok: boolean; message: string })
+      } else {
+        setTestResult({ ok: false, message: "Failed to run connection probe" })
+      }
+    } catch (err) {
+      setTestResult({
+        ok: false,
+        message:
+          err instanceof Error ? err.message : "Connection failed or timed out",
+      })
+    } finally {
+      setTesting(false)
+    }
+  }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
@@ -1894,13 +1927,43 @@ function IntegrationEditModal({
           })}
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+        {testResult && (
+          <div
+            className={`mt-4 rounded-lg border p-3 text-xs ${
+              testResult.ok
+                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400"
+            }`}
+          >
+            <span className="font-semibold">
+              {testResult.ok
+                ? "✓ Connection Successful"
+                : "✗ Connection Failed"}
+              :
+            </span>{" "}
+            {testResult.message}
+          </div>
+        )}
+
+        <div className="mt-6 flex items-center justify-between">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleTestConnection}
+            disabled={testing || saving}
+            data-testid="test-connection-btn"
+          >
+            {testing ? "Testing..." : "Test Connection"}
           </Button>
-          <Button type="button" onClick={onSave} disabled={saving}>
-            {saving ? "Saving..." : "Save Integration"}
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={onSave} disabled={saving}>
+              {saving ? "Saving..." : "Save Integration"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

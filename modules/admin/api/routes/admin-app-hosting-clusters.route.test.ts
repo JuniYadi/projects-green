@@ -1133,4 +1133,32 @@ describe("Admin App Hosting Clusters Routes", () => {
       })
     })
   })
+
+  describe("POST /integrations/:type/test", () => {
+    it("tests integration connection successfully", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/integrations/JENKINS/test`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            metaJson: { baseUrl: "https://jenkins.example.com" },
+            secrets: { username: "admin", apiToken: "secret" },
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data).toHaveProperty("ok")
+      expect(body.data).toHaveProperty("message")
+    })
+  })
 })
