@@ -99,7 +99,16 @@ export function AdminWhatsappAnalyticsView() {
     []
   )
   const [refreshToken, setRefreshToken] = React.useState(0)
-
+  const [lastMonthOrgs, setLastMonthOrgs] = React.useState<
+    OrgProfitabilityItem[]
+  >([])
+  const [curMonthOrgs, setCurMonthOrgs] = React.useState<
+    OrgProfitabilityItem[]
+  >([])
+  const [monthLabels, setMonthLabels] = React.useState({
+    current: "",
+    last: "",
+  })
   const getPeriodParams = React.useCallback(() => {
     if (periodPreset === "custom") {
       const p = new URLSearchParams()
@@ -137,12 +146,45 @@ export function AdminWhatsappAnalyticsView() {
     let ignore = false
     const run = async () => {
       try {
-        const queryStr = getPeriodParams()
-        const [sumRes, orgsRes, trendsRes] = await Promise.all([
-          fetch(`/api/admin/whatsapp/analytics/summary?${queryStr}`),
-          fetch(`/api/admin/whatsapp/analytics/organizations?${queryStr}`),
-          fetch("/api/admin/whatsapp/analytics/monthly-trends?months=12"),
-        ])
+        const now = new Date()
+        const curStart = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+        )
+        const curEnd = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59)
+        )
+        const lastStart = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
+        )
+        const lastEnd = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59)
+        )
+
+        const curMonthParams = `startDate=${curStart.toISOString().split("T")[0]}&endDate=${curEnd.toISOString().split("T")[0]}`
+        const lastMonthParams = `startDate=${lastStart.toISOString().split("T")[0]}&endDate=${lastEnd.toISOString().split("T")[0]}`
+
+        setMonthLabels({
+          current: curStart.toLocaleDateString("id-ID", {
+            month: "long",
+            year: "numeric",
+          }),
+          last: lastStart.toLocaleDateString("id-ID", {
+            month: "long",
+            year: "numeric",
+          }),
+        })
+        const [sumRes, orgsRes, trendsRes, curMonthRes, lastMonthRes] =
+          await Promise.all([
+            fetch(`/api/admin/whatsapp/analytics/summary?${queryStr}`),
+            fetch(`/api/admin/whatsapp/analytics/organizations?${queryStr}`),
+            fetch("/api/admin/whatsapp/analytics/monthly-trends?months=12"),
+            fetch(
+              `/api/admin/whatsapp/analytics/organizations?${curMonthParams}`
+            ),
+            fetch(
+              `/api/admin/whatsapp/analytics/organizations?${lastMonthParams}`
+            ),
+          ])
         const sumJson = (await sumRes.json()) as {
           ok?: boolean
           data?: FinancialSummary
@@ -155,12 +197,24 @@ export function AdminWhatsappAnalyticsView() {
           ok?: boolean
           data?: MonthlyTrendItem[]
         }
+        const curMonthJson = (await curMonthRes.json()) as {
+          ok?: boolean
+          data?: OrgProfitabilityItem[]
+        }
+        const lastMonthJson = (await lastMonthRes.json()) as {
+          ok?: boolean
+          data?: OrgProfitabilityItem[]
+        }
         if (!ignore) {
           if (sumJson.ok && sumJson.data) setSummary(sumJson.data)
           if (orgsJson.ok && Array.isArray(orgsJson.data))
             setOrgs(orgsJson.data)
           if (trendsJson.ok && Array.isArray(trendsJson.data))
             setMonthlyTrends(trendsJson.data)
+          if (curMonthJson.ok && Array.isArray(curMonthJson.data))
+            setCurMonthOrgs(curMonthJson.data)
+          if (lastMonthJson.ok && Array.isArray(lastMonthJson.data))
+            setLastMonthOrgs(lastMonthJson.data)
         }
       } catch (err) {
         console.error("Failed to load admin WhatsApp analytics:", err)
@@ -586,6 +640,190 @@ export function AdminWhatsappAnalyticsView() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Side-by-Side Top Organizations: Last Month vs Current Month (Option B: Clean Metric Cards) */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Last Month Card */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">
+                  🥇 Top Organisasi: Bulan Lalu
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Performa tutup buku bulan sebelumnya berdasarkan total omzet
+                  tagihan
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {monthLabels.last || "Bulan Lalu"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {lastMonthOrgs.length === 0 ? (
+              <p className="py-6 text-center text-xs text-muted-foreground">
+                Belum ada data rekonsiliasi bulan lalu.
+              </p>
+            ) : (
+              (() => {
+                const sorted = [...lastMonthOrgs].sort(
+                  (a, b) => parseFloat(b.revenueIdr) - parseFloat(a.revenueIdr)
+                )
+                const maxRev = Math.max(
+                  ...sorted.map((o) => parseFloat(o.revenueIdr)),
+                  1
+                )
+                return sorted.slice(0, 5).map((org, idx) => {
+                  const rev = parseFloat(org.revenueIdr)
+                  const profit = parseFloat(org.grossProfitIdr)
+                  const isDeficit = profit < 0
+                  const pct = Math.min(Math.round((rev / maxRev) * 100), 100)
+                  const orgLabel =
+                    org.organizationName &&
+                    org.organizationName !== org.organizationId
+                      ? org.organizationName
+                      : `Tenant (${org.organizationId.slice(0, 12)}...)`
+
+                  return (
+                    <div
+                      key={org.organizationId}
+                      className="space-y-1.5 rounded-lg border border-border/50 bg-card/40 p-2.5 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
+                            #{idx + 1}
+                          </span>
+                          <span className="truncate font-medium text-foreground">
+                            {orgLabel}
+                          </span>
+                        </div>
+                        <div className="shrink-0 text-right font-mono font-semibold">
+                          {formatIdr(org.revenueIdr)}
+                        </div>
+                      </div>
+
+                      {/* Mini Bar */}
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={`h-full rounded-full ${isDeficit ? "bg-destructive" : "bg-primary"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between pt-0.5 text-[11px] text-muted-foreground">
+                        <span>
+                          {org.totalDelivered.toLocaleString("id-ID")} pesan
+                        </span>
+                        <span
+                          className={`font-mono font-medium ${isDeficit ? "text-destructive" : "text-primary"}`}
+                        >
+                          {isDeficit ? "Defisit: " : "Laba: "}
+                          {formatIdr(org.grossProfitIdr)} ({org.marginPct}%)
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })
+              })()
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Current Month Card */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">
+                  ⚡ Top Organisasi: Bulan Berjalan
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Aktivitas dan kesehatan margin tenant pada bulan ini
+                  (real-time/M-t-D)
+                </CardDescription>
+              </div>
+              <Badge
+                variant="outline"
+                className="border-primary/40 text-xs text-primary"
+              >
+                {monthLabels.current || "Bulan Ini"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {curMonthOrgs.length === 0 ? (
+              <p className="py-6 text-center text-xs text-muted-foreground">
+                Belum ada aktivitas pesan terkirim di bulan ini.
+              </p>
+            ) : (
+              (() => {
+                const sorted = [...curMonthOrgs].sort(
+                  (a, b) => parseFloat(b.revenueIdr) - parseFloat(a.revenueIdr)
+                )
+                const maxRev = Math.max(
+                  ...sorted.map((o) => parseFloat(o.revenueIdr)),
+                  1
+                )
+                return sorted.slice(0, 5).map((org, idx) => {
+                  const rev = parseFloat(org.revenueIdr)
+                  const profit = parseFloat(org.grossProfitIdr)
+                  const isDeficit = profit < 0
+                  const pct = Math.min(Math.round((rev / maxRev) * 100), 100)
+                  const orgLabel =
+                    org.organizationName &&
+                    org.organizationName !== org.organizationId
+                      ? org.organizationName
+                      : `Tenant (${org.organizationId.slice(0, 12)}...)`
+
+                  return (
+                    <div
+                      key={org.organizationId}
+                      className="space-y-1.5 rounded-lg border border-border/50 bg-card/40 p-2.5 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
+                            #{idx + 1}
+                          </span>
+                          <span className="truncate font-medium text-foreground">
+                            {orgLabel}
+                          </span>
+                        </div>
+                        <div className="shrink-0 text-right font-mono font-semibold">
+                          {formatIdr(org.revenueIdr)}
+                        </div>
+                      </div>
+
+                      {/* Mini Bar */}
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={`h-full rounded-full ${isDeficit ? "bg-destructive" : "bg-primary"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between pt-0.5 text-[11px] text-muted-foreground">
+                        <span>
+                          {org.totalDelivered.toLocaleString("id-ID")} pesan
+                        </span>
+                        <span
+                          className={`font-mono font-medium ${isDeficit ? "text-destructive" : "text-primary"}`}
+                        >
+                          {isDeficit ? "Defisit: " : "Laba: "}
+                          {formatIdr(org.grossProfitIdr)} ({org.marginPct}%)
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })
+              })()
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Organization Leaderboard Table */}
       <Card>
