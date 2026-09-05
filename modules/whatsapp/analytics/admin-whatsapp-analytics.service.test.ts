@@ -236,6 +236,71 @@ describe("AdminWhatsappAnalyticsService", () => {
     expect(devices[0].categories.UTILITY).toBe(2)
   })
 
+  it("computes 12-month monthly aggregated trends correctly", async () => {
+    mockFindMany.mockResolvedValueOnce([
+      {
+        id: "r1",
+        organizationId: "org-1",
+        date: new Date("2026-08-15T00:00:00Z"),
+        metaDeliveredCount: 100,
+        metaTotalCostIdr: new Prisma.Decimal(50000),
+        internalRevenueIdr: new Prisma.Decimal(70000),
+      },
+      {
+        id: "r2",
+        organizationId: "org-2",
+        date: new Date("2026-08-20T00:00:00Z"),
+        metaDeliveredCount: 50,
+        metaTotalCostIdr: new Prisma.Decimal(25000),
+        internalRevenueIdr: new Prisma.Decimal(35000),
+      },
+      {
+        id: "r3",
+        organizationId: "org-1",
+        date: new Date("2026-09-02T00:00:00Z"),
+        metaDeliveredCount: 80,
+        metaTotalCostIdr: new Prisma.Decimal(40000),
+        internalRevenueIdr: new Prisma.Decimal(40000),
+      },
+    ])
+
+    const result = await service.getMonthlyTrends({
+      months: 6,
+      organizationId: "org-1",
+    })
+
+    expect(result).toHaveLength(2)
+    expect(result[0].month).toBe("2026-08")
+    expect(result[0].deliveredMessages).toBe(150)
+    expect(result[0].metaTotalCostIdr).toBe(75000)
+    expect(result[0].revenueIdr).toBe(105000)
+    expect(result[0].grossProfitIdr).toBe(30000)
+    expect(result[0].marginPct).toBe(28.57)
+
+    expect(result[1].month).toBe("2026-09")
+    expect(result[1].deliveredMessages).toBe(80)
+    expect(result[1].grossProfitIdr).toBe(0)
+    expect(result[1].marginPct).toBe(0)
+  })
+
+  it("computes monthly trends with zero revenue safely", async () => {
+    mockFindMany.mockResolvedValueOnce([
+      {
+        id: "r1",
+        organizationId: "org-1",
+        date: new Date("2026-09-01T00:00:00Z"),
+        metaDeliveredCount: 10,
+        metaTotalCostIdr: new Prisma.Decimal(5000),
+        internalRevenueIdr: new Prisma.Decimal(0),
+      },
+    ])
+
+    const result = await service.getMonthlyTrends()
+    expect(result).toHaveLength(1)
+    expect(result[0].marginPct).toBe(0)
+    expect(result[0].grossProfitIdr).toBe(-5000)
+  })
+
   it("syncMetaPricingAnalytics fetches and upserts Meta pricing data points", async () => {
     mockDeviceFindMany.mockResolvedValueOnce([
       {

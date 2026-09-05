@@ -3,6 +3,7 @@ import { Elysia } from "elysia"
 
 const mockGetFinancialSummary = mock()
 const mockGetTimeseriesTrends = mock()
+const mockGetMonthlyTrends = mock()
 const mockGetOrganizationProfitability = mock()
 const mockGetOrganizationDeviceBreakdown = mock()
 const mockSyncMetaPricingAnalytics = mock()
@@ -28,6 +29,7 @@ mock.module("../admin-whatsapp-analytics.service", () => ({
   AdminWhatsappAnalyticsService: class {
     getFinancialSummary = mockGetFinancialSummary
     getTimeseriesTrends = mockGetTimeseriesTrends
+    getMonthlyTrends = mockGetMonthlyTrends
     getOrganizationProfitability = mockGetOrganizationProfitability
     getOrganizationDeviceBreakdown = mockGetOrganizationDeviceBreakdown
     syncMetaPricingAnalytics = mockSyncMetaPricingAnalytics
@@ -40,6 +42,7 @@ describe("adminWhatsappAnalyticsRoutes", () => {
   beforeEach(async () => {
     mockGetFinancialSummary.mockClear()
     mockGetTimeseriesTrends.mockClear()
+    mockGetMonthlyTrends.mockClear()
     mockGetOrganizationProfitability.mockClear()
     mockGetOrganizationDeviceBreakdown.mockClear()
     mockSyncMetaPricingAnalytics.mockClear()
@@ -112,6 +115,37 @@ describe("adminWhatsappAnalyticsRoutes", () => {
     expect(json.ok).toBe(true)
     expect(json.data.length).toBe(1)
     expect(json.data[0].date).toBe("2026-08-15")
+  })
+
+  it("GET /admin/whatsapp/analytics/monthly-trends returns monthly trends", async () => {
+    const dummyMonthly = [
+      {
+        month: "2026-08",
+        deliveredMessages: 100,
+        metaTotalCostIdr: 50000,
+        revenueIdr: 70000,
+        grossProfitIdr: 20000,
+        marginPct: 28.57,
+      },
+    ]
+    mockGetMonthlyTrends.mockResolvedValueOnce(dummyMonthly)
+
+    const res = await app.handle(
+      new Request(
+        "http://localhost/admin/whatsapp/analytics/monthly-trends?months=12&organizationId=org_1"
+      )
+    )
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as {
+      ok: boolean
+      data: typeof dummyMonthly
+    }
+    expect(json.ok).toBe(true)
+    expect(json.data).toEqual(dummyMonthly)
+    expect(mockGetMonthlyTrends).toHaveBeenCalledWith({
+      months: 12,
+      organizationId: "org_1",
+    })
   })
 
   it("GET /admin/whatsapp/analytics/organizations returns org leaderboard", async () => {
