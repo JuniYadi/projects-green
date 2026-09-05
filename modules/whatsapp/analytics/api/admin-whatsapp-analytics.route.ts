@@ -62,6 +62,30 @@ export const adminWhatsappAnalyticsRoutes = new Elysia({
     }
   )
   .get(
+    "/monthly-trends",
+    async ({ set, query }) => {
+      const auth = await requireSuperAdmin(set)
+      if ("ok" in auth && !auth.ok) return auth
+
+      const service = new AdminWhatsappAnalyticsService()
+      const trends = await service.getMonthlyTrends({
+        months: query.months ? Number(query.months) : undefined,
+        organizationId: query.organizationId,
+      })
+
+      return {
+        ok: true,
+        data: trends,
+      }
+    },
+    {
+      query: t.Object({
+        months: t.Optional(t.Union([t.String(), t.Number()])),
+        organizationId: t.Optional(t.String()),
+      }),
+    }
+  )
+  .get(
     "/organizations",
     async ({ set, query }) => {
       const auth = await requireSuperAdmin(set)

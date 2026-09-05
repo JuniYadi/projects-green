@@ -501,6 +501,77 @@ export class AdminWhatsappAnalyticsService {
   }
 
   /**
+   * Get monthly aggregated profitability trends (e.g. past 12 months).
+   */
+  async getMonthlyTrends(
+    opts: {
+      months?: number
+      organizationId?: string
+    } = {}
+  ): Promise<
+    Array<{
+      month: string
+      deliveredMessages: number
+      metaTotalCostIdr: number
+      revenueIdr: number
+      grossProfitIdr: number
+      marginPct: number
+    }>
+  > {
+    const monthsCount = opts.months ?? 12
+    const now = new Date()
+    const start = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (monthsCount - 1), 1)
+    )
+
+    const rows = await prisma.whatsappDailyCostReconciliation.findMany({
+      where: {
+        date: { gte: start },
+        ...(opts.organizationId ? { organizationId: opts.organizationId } : {}),
+      },
+      orderBy: { date: "asc" },
+    })
+
+    const monthMap = new Map<
+      string,
+      {
+        volume: number
+        totalCost: Prisma.Decimal
+        revenue: Prisma.Decimal
+      }
+    >()
+
+    for (const r of rows) {
+      const ym = r.date.toISOString().slice(0, 7) // "YYYY-MM"
+      const curr = monthMap.get(ym) ?? {
+        volume: 0,
+        totalCost: new Prisma.Decimal(0),
+        revenue: new Prisma.Decimal(0),
+      }
+      curr.volume += r.metaDeliveredCount
+      curr.totalCost = curr.totalCost.add(r.metaTotalCostIdr)
+      curr.revenue = curr.revenue.add(r.internalRevenueIdr)
+      monthMap.set(ym, curr)
+    }
+
+    return Array.from(monthMap.entries()).map(([month, val]) => {
+      const profit = val.revenue.sub(val.totalCost)
+      const margin = val.revenue.isZero()
+        ? 0
+        : profit.div(val.revenue).mul(100).toNumber()
+
+      return {
+        month,
+        deliveredMessages: val.volume,
+        metaTotalCostIdr: val.totalCost.toNumber(),
+        revenueIdr: val.revenue.toNumber(),
+        grossProfitIdr: profit.toNumber(),
+        marginPct: Number(margin.toFixed(2)),
+      }
+    })
+  }
+
+  /**
    * Get Organization Profitability Ranking / Leaderboard.
    */
   async getOrganizationProfitability(opts: {

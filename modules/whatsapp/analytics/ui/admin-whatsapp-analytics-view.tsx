@@ -27,7 +27,25 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
 
+interface MonthlyTrendItem {
+  month: string
+  deliveredMessages: number
+  metaTotalCostIdr: number
+  revenueIdr: number
+  grossProfitIdr: number
+  marginPct: number
+}
 interface FinancialSummary {
   period: {
     startDate: string
@@ -77,6 +95,9 @@ export function AdminWhatsappAnalyticsView() {
   const [customStart, setCustomStart] = React.useState("")
   const [customEnd, setCustomEnd] = React.useState("")
   const [lastSyncedAt, setLastSyncedAt] = React.useState<string | null>(null)
+  const [monthlyTrends, setMonthlyTrends] = React.useState<MonthlyTrendItem[]>(
+    []
+  )
   const [refreshToken, setRefreshToken] = React.useState(0)
 
   const getPeriodParams = React.useCallback(() => {
@@ -117,9 +138,10 @@ export function AdminWhatsappAnalyticsView() {
     const run = async () => {
       try {
         const queryStr = getPeriodParams()
-        const [sumRes, orgsRes] = await Promise.all([
+        const [sumRes, orgsRes, trendsRes] = await Promise.all([
           fetch(`/api/admin/whatsapp/analytics/summary?${queryStr}`),
           fetch(`/api/admin/whatsapp/analytics/organizations?${queryStr}`),
+          fetch("/api/admin/whatsapp/analytics/monthly-trends?months=12"),
         ])
         const sumJson = (await sumRes.json()) as {
           ok?: boolean
@@ -129,10 +151,16 @@ export function AdminWhatsappAnalyticsView() {
           ok?: boolean
           data?: OrgProfitabilityItem[]
         }
+        const trendsJson = (await trendsRes.json()) as {
+          ok?: boolean
+          data?: MonthlyTrendItem[]
+        }
         if (!ignore) {
           if (sumJson.ok && sumJson.data) setSummary(sumJson.data)
           if (orgsJson.ok && Array.isArray(orgsJson.data))
             setOrgs(orgsJson.data)
+          if (trendsJson.ok && Array.isArray(trendsJson.data))
+            setMonthlyTrends(trendsJson.data)
         }
       } catch (err) {
         console.error("Failed to load admin WhatsApp analytics:", err)
@@ -379,6 +407,120 @@ export function AdminWhatsappAnalyticsView() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 1-Year Monthly Profitability & Revenue Chart */}
+      <Card>
+        <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Tren Keuntungan & Biaya 12 Bulan Terakhir</CardTitle>
+            <CardDescription>
+              Perbandingan Omzet Tagihan, Modal Riil Meta (+PPN), dan Laba
+              Bersih per bulan kalender untuk evaluasi performa bisnis tahunan.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {monthlyTrends.length === 0 ? (
+            <div className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
+              Belum ada data rekonsiliasi bulanan untuk 12 bulan terakhir.
+            </div>
+          ) : (
+            <div className="h-[300px] w-full pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={monthlyTrends}
+                  margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-border/40"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    className="text-[11px]"
+                    tickFormatter={(val: string) => {
+                      const [y, m] = val.split("-")
+                      const date = new Date(Number(y), Number(m) - 1, 1)
+                      return date.toLocaleDateString("id-ID", {
+                        month: "short",
+                        year: "2-digit",
+                      })
+                    }}
+                  />
+                  <YAxis
+                    className="text-[11px]"
+                    tickFormatter={(val: number) => {
+                      if (val >= 1_000_000)
+                        return `${(val / 1_000_000).toFixed(1)}jt`
+                      if (val >= 1_000) return `${(val / 1_000).toFixed(0)}rb`
+                      return String(val)
+                    }}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null
+                      const [y, m] = (label as string).split("-")
+                      const date = new Date(Number(y), Number(m) - 1, 1)
+                      const monthLabel = date.toLocaleDateString("id-ID", {
+                        month: "long",
+                        year: "numeric",
+                      })
+                      return (
+                        <div className="space-y-1 rounded-lg border bg-background p-3 text-xs shadow-md">
+                          <p className="font-semibold text-foreground">
+                            {monthLabel}
+                          </p>
+                          {payload.map((entry) => (
+                            <div
+                              key={entry.name}
+                              className="flex items-center justify-between gap-4"
+                            >
+                              <span
+                                className="flex items-center gap-1.5"
+                                style={{ color: entry.color }}
+                              >
+                                <span
+                                  className="size-2 rounded-full"
+                                  style={{ backgroundColor: entry.color }}
+                                />
+                                {entry.name}:
+                              </span>
+                              <span className="font-mono font-medium text-foreground">
+                                {formatIdr(entry.value as number)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    }}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: "12px", paddingTop: "12px" }}
+                  />
+                  <Bar
+                    dataKey="revenueIdr"
+                    name="Omzet Tagihan"
+                    fill="#3b82f6"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="metaTotalCostIdr"
+                    name="Modal Meta (+PPN)"
+                    fill="#ef4444"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="grossProfitIdr"
+                    name="Laba Kotor"
+                    fill="#10b981"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Category Breakdown Table */}
       <Card>
