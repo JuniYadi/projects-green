@@ -73,16 +73,53 @@ export function AdminWhatsappAnalyticsView() {
   const [syncing, setSyncing] = React.useState(false)
   const [summary, setSummary] = React.useState<FinancialSummary | null>(null)
   const [orgs, setOrgs] = React.useState<OrgProfitabilityItem[]>([])
-  const [days, setDays] = React.useState("30")
+  const [periodPreset, setPeriodPreset] = React.useState("30d")
+  const [customStart, setCustomStart] = React.useState("")
+  const [customEnd, setCustomEnd] = React.useState("")
+  const [lastSyncedAt, setLastSyncedAt] = React.useState<string | null>(null)
   const [refreshToken, setRefreshToken] = React.useState(0)
+
+  const getPeriodParams = React.useCallback(() => {
+    if (periodPreset === "custom") {
+      const p = new URLSearchParams()
+      if (customStart) p.set("startDate", customStart)
+      if (customEnd) p.set("endDate", customEnd)
+      return p.toString()
+    }
+
+    if (periodPreset.startsWith("month_")) {
+      const ym = periodPreset.replace("month_", "")
+      const [yearStr, monthStr] = ym.split("-")
+      const y = Number(yearStr)
+      const m = Number(monthStr)
+      const start = new Date(Date.UTC(y, m - 1, 1))
+      const end = new Date(Date.UTC(y, m, 0, 23, 59, 59))
+      const p = new URLSearchParams({
+        startDate: start.toISOString().split("T")[0],
+        endDate: end.toISOString().split("T")[0],
+      })
+      return p.toString()
+    }
+
+    const daysMap: Record<string, string> = {
+      "7d": "7",
+      "30d": "30",
+      "60d": "60",
+      "90d": "90",
+    }
+    return new URLSearchParams({
+      days: daysMap[periodPreset] || "30",
+    }).toString()
+  }, [periodPreset, customStart, customEnd])
 
   React.useEffect(() => {
     let ignore = false
     const run = async () => {
       try {
+        const queryStr = getPeriodParams()
         const [sumRes, orgsRes] = await Promise.all([
-          fetch(`/api/admin/whatsapp/analytics/summary?days=${days}`),
-          fetch(`/api/admin/whatsapp/analytics/organizations?days=${days}`),
+          fetch(`/api/admin/whatsapp/analytics/summary?${queryStr}`),
+          fetch(`/api/admin/whatsapp/analytics/organizations?${queryStr}`),
         ])
         const sumJson = (await sumRes.json()) as {
           ok?: boolean
@@ -105,18 +142,31 @@ export function AdminWhatsappAnalyticsView() {
     return () => {
       ignore = true
     }
-  }, [days, refreshToken])
+  }, [getPeriodParams, refreshToken])
 
   const handleSyncMeta = async () => {
     setSyncing(true)
     try {
+      const daysMap: Record<string, number> = {
+        "7d": 7,
+        "30d": 30,
+        "60d": 60,
+        "90d": 90,
+      }
+      const syncDays = daysMap[periodPreset] ?? 30
       const res = await fetch("/api/admin/whatsapp/analytics/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ days: Number(days) }),
+        body: JSON.stringify({ days: syncDays }),
       })
       const json = (await res.json()) as { ok?: boolean }
       if (json.ok) {
+        setLastSyncedAt(
+          new Date().toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        )
         setRefreshToken((prev) => prev + 1)
       }
     } catch (err) {
@@ -149,30 +199,82 @@ export function AdminWhatsappAnalyticsView() {
             margin keuntungan platform.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            value={days}
-            onChange={(e) => setDays(e.target.value)}
+            value={periodPreset}
+            onChange={(e) => setPeriodPreset(e.target.value)}
           >
-            <option value="7">7 Hari Terakhir</option>
-            <option value="30">30 Hari Terakhir</option>
-            <option value="60">60 Hari Terakhir</option>
-            <option value="90">90 Hari Terakhir</option>
+            <optgroup label="Bulan Kalender (Snapshot)">
+              <option value="month_2026-09">September 2026</option>
+              <option value="month_2026-08">Agustus 2026</option>
+              <option value="month_2026-07">Juli 2026</option>
+            </optgroup>
+            <optgroup label="Hari Terakhir">
+              <option value="7d">7 Hari Terakhir</option>
+              <option value="30d">30 Hari Terakhir</option>
+              <option value="60d">60 Hari Terakhir</option>
+              <option value="90d">90 Hari Terakhir</option>
+            </optgroup>
+            <optgroup label="Kustom">
+              <option value="custom">Pilih Rentang Tanggal...</option>
+            </optgroup>
           </select>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleSyncMeta}
-            disabled={syncing}
-          >
-            <RefreshCw
-              className={`mr-2 size-4 ${syncing ? "animate-spin" : ""}`}
-            />
-            {syncing ? "Menyinkronkan..." : "Sync Meta Pricing"}
-          </Button>
+
+          {periodPreset === "custom" && (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+              />
+              <span className="text-xs text-muted-foreground">-</span>
+              <input
+                type="date"
+                className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="flex flex-col items-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSyncMeta}
+              disabled={syncing}
+            >
+              <RefreshCw
+                className={`mr-2 size-4 ${syncing ? "animate-spin" : ""}`}
+              />
+              {syncing ? "Menyinkronkan..." : "Sync Meta Pricing"}
+            </Button>
+            {lastSyncedAt && (
+              <span className="text-[10px] text-muted-foreground">
+                Terakhir sinkron: {lastSyncedAt}
+              </span>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Risk Alert Banner */}
+      {orgs.some((org) => parseFloat(org.grossProfitIdr) < 0) && (
+        <div className="flex items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-destructive">
+          <AlertTriangle className="size-5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">
+              Peringatan Defisit Margin: Ditemukan tenant dengan margin negatif
+            </p>
+            <p className="text-xs text-destructive/80">
+              Terdapat organisasi dengan modal biaya Meta lebih besar daripada
+              omzet tagihan yang dibayarkan. Cek tabel di bawah.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -381,14 +483,14 @@ export function AdminWhatsappAnalyticsView() {
                     <TableRow key={org.organizationId}>
                       <TableCell>
                         <div className="font-medium text-foreground">
-                          {org.organizationName || org.organizationId}
+                          {org.organizationName &&
+                          org.organizationName !== org.organizationId
+                            ? org.organizationName
+                            : `Tenant (${org.organizationId.slice(0, 12)}...)`}
                         </div>
-                        {org.organizationName &&
-                          org.organizationName !== org.organizationId && (
-                            <div className="font-mono text-[10px] text-muted-foreground">
-                              {org.organizationId}
-                            </div>
-                          )}
+                        <div className="font-mono text-[10px] text-muted-foreground">
+                          {org.organizationId}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         {org.deviceCount}
