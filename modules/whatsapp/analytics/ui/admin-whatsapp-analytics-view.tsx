@@ -27,16 +27,27 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from "recharts"
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
+const monthlyChartConfig = {
+  revenueIdr: {
+    label: "Omzet Tagihan",
+    color: "#3b82f6",
+  },
+  metaTotalCostIdr: {
+    label: "Modal Meta (+PPN)",
+    color: "#ef4444",
+  },
+  grossProfitIdr: {
+    label: "Laba Kotor",
+    color: "#10b981",
+  },
+} satisfies ChartConfig
 
 interface MonthlyTrendItem {
   month: string
@@ -46,6 +57,7 @@ interface MonthlyTrendItem {
   grossProfitIdr: number
   marginPct: number
 }
+
 interface FinancialSummary {
   period: {
     startDate: string
@@ -146,6 +158,7 @@ export function AdminWhatsappAnalyticsView() {
     let ignore = false
     const run = async () => {
       try {
+        const queryStr = getPeriodParams()
         const now = new Date()
         const curStart = new Date(
           Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
@@ -479,8 +492,11 @@ export function AdminWhatsappAnalyticsView() {
               Belum ada data rekonsiliasi bulanan untuk 12 bulan terakhir.
             </div>
           ) : (
-            <div className="h-[300px] w-full pt-4">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[320px] w-full pt-4">
+              <ChartContainer
+                config={monthlyChartConfig}
+                className="h-full w-full"
+              >
                 <BarChart
                   data={monthlyTrends}
                   margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
@@ -510,43 +526,27 @@ export function AdminWhatsappAnalyticsView() {
                       return String(val)
                     }}
                   />
-                  <Tooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null
-                      const [y, m] = (label as string).split("-")
-                      const date = new Date(Number(y), Number(m) - 1, 1)
-                      const monthLabel = date.toLocaleDateString("id-ID", {
-                        month: "long",
-                        year: "numeric",
-                      })
-                      return (
-                        <div className="space-y-1 rounded-lg border bg-background p-3 text-xs shadow-md">
-                          <p className="font-semibold text-foreground">
-                            {monthLabel}
-                          </p>
-                          {payload.map((entry) => (
-                            <div
-                              key={entry.name}
-                              className="flex items-center justify-between gap-4"
-                            >
-                              <span
-                                className="flex items-center gap-1.5"
-                                style={{ color: entry.color }}
-                              >
-                                <span
-                                  className="size-2 rounded-full"
-                                  style={{ backgroundColor: entry.color }}
-                                />
-                                {entry.name}:
-                              </span>
-                              <span className="font-mono font-medium text-foreground">
-                                {formatIdr(entry.value as number)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    }}
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(label: React.ReactNode) => {
+                          const [y, m] = String(label).split("-")
+                          const date = new Date(Number(y), Number(m) - 1, 1)
+                          return date.toLocaleDateString("id-ID", {
+                            month: "long",
+                            year: "numeric",
+                          })
+                        }}
+                        formatter={(value: unknown, name: unknown) => [
+                          formatIdr(typeof value === "number" ? value : 0),
+                          typeof name === "string" && name in monthlyChartConfig
+                            ? monthlyChartConfig[
+                                name as keyof typeof monthlyChartConfig
+                              ].label
+                            : String(name),
+                        ]}
+                      />
+                    }
                   />
                   <Legend
                     wrapperStyle={{ fontSize: "12px", paddingTop: "12px" }}
@@ -570,7 +570,7 @@ export function AdminWhatsappAnalyticsView() {
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
-              </ResponsiveContainer>
+              </ChartContainer>
             </div>
           )}
         </CardContent>
