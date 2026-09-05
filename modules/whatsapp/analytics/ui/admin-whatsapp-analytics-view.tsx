@@ -488,7 +488,7 @@ export function AdminWhatsappAnalyticsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatIdr(summary?.kpi.totalRevenueIdr)}
+              {formatIdr(summary?.kpi?.totalRevenueIdr)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               Dari alokasi kuota & overage pelanggan
@@ -506,10 +506,10 @@ export function AdminWhatsappAnalyticsView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">
-              {formatIdr(summary?.kpi.totalMetaNetCostIdr)}
+              {formatIdr(summary?.kpi?.totalMetaNetCostIdr)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Inc. PPN 11%: {formatIdr(summary?.kpi.totalMetaVatCostIdr)}
+              Inc. PPN 11%: {formatIdr(summary?.kpi?.totalMetaVatCostIdr)}
             </p>
           </CardContent>
         </Card>
@@ -525,15 +525,15 @@ export function AdminWhatsappAnalyticsView() {
           <CardContent>
             <div
               className={`text-2xl font-bold ${
-                parseFloat(summary?.kpi.grossProfitIdr ?? "0") < 0
+                parseFloat(summary?.kpi?.grossProfitIdr ?? "0") < 0
                   ? "text-destructive"
                   : "text-primary"
               }`}
             >
-              {formatIdr(summary?.kpi.grossProfitIdr)}
+              {formatIdr(summary?.kpi?.grossProfitIdr)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {parseFloat(summary?.kpi.grossProfitIdr ?? "0") < 0
+              {parseFloat(summary?.kpi?.grossProfitIdr ?? "0") < 0
                 ? "Rugi operasional biaya pesan"
                 : "Laba kotor sebelum biaya server"}
             </p>
@@ -552,14 +552,14 @@ export function AdminWhatsappAnalyticsView() {
             <div className="flex items-center gap-2">
               <span
                 className={`text-2xl font-bold ${
-                  parseFloat(summary?.kpi.grossMarginPct ?? "0") < 0
+                  parseFloat(summary?.kpi?.grossMarginPct ?? "0") < 0
                     ? "text-destructive"
                     : ""
                 }`}
               >
-                {summary?.kpi.grossMarginPct ?? "0"}%
+                {summary?.kpi?.grossMarginPct ?? "0"}%
               </span>
-              {summary?.kpi.status === "HEALTHY" ? (
+              {summary?.kpi?.status === "HEALTHY" ? (
                 <Badge
                   variant="outline"
                   className="border-primary text-xs text-primary"
@@ -576,7 +576,7 @@ export function AdminWhatsappAnalyticsView() {
               )}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {summary?.kpi.totalDeliveredMessages ?? 0} total pesan terkirim
+              {summary?.kpi?.totalDeliveredMessages ?? 0} total pesan terkirim
             </p>
           </CardContent>
         </Card>
