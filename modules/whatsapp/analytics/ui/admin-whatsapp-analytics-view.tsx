@@ -99,11 +99,107 @@ interface OrgProfitabilityItem {
   marginStatus: "HEALTHY" | "MODERATE" | "RISK"
 }
 
+function TopOrgCardList({
+  orgs,
+  emptyMessage,
+  formatIdr,
+}: {
+  orgs: OrgProfitabilityItem[]
+  emptyMessage: string
+  formatIdr: (val?: string | number) => string
+}) {
+  if (orgs.length === 0) {
+    return (
+      <p className="py-6 text-center text-xs text-muted-foreground">
+        {emptyMessage}
+      </p>
+    )
+  }
+
+  const sorted = [...orgs].sort(
+    (a, b) => parseFloat(b.revenueIdr) - parseFloat(a.revenueIdr)
+  )
+  const maxRev = Math.max(...sorted.map((o) => parseFloat(o.revenueIdr)), 1)
+
+  return (
+    <>
+      {sorted.slice(0, 5).map((org, idx) => {
+        const rev = parseFloat(org.revenueIdr)
+        const profit = parseFloat(org.grossProfitIdr)
+        const isDeficit = profit < 0
+        const pct = Math.min(Math.round((rev / maxRev) * 100), 100)
+        const orgLabel =
+          org.organizationName && org.organizationName !== org.organizationId
+            ? org.organizationName
+            : `Tenant (${org.organizationId.slice(0, 12)}...)`
+
+        return (
+          <div
+            key={org.organizationId}
+            className="space-y-1.5 rounded-lg border border-border/50 bg-card/40 p-2.5 text-xs"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
+                  #{idx + 1}
+                </span>
+                <span className="truncate font-medium text-foreground">
+                  {orgLabel}
+                </span>
+              </div>
+              <div className="shrink-0 text-right font-mono font-semibold">
+                {formatIdr(org.revenueIdr)}
+              </div>
+            </div>
+
+            {/* Mini Bar */}
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full rounded-full ${isDeficit ? "bg-destructive" : "bg-primary"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-0.5 text-[11px] text-muted-foreground">
+              <span>{org.totalDelivered.toLocaleString("id-ID")} pesan</span>
+              <span
+                className={`font-mono font-medium ${isDeficit ? "text-destructive" : "text-primary"}`}
+              >
+                {isDeficit ? "Defisit: " : "Laba: "}
+                {formatIdr(org.grossProfitIdr)} ({org.marginPct}%)
+              </span>
+            </div>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 export function AdminWhatsappAnalyticsView() {
   const [syncing, setSyncing] = React.useState(false)
   const [summary, setSummary] = React.useState<FinancialSummary | null>(null)
   const [orgs, setOrgs] = React.useState<OrgProfitabilityItem[]>([])
   const [periodPreset, setPeriodPreset] = React.useState("30d")
+
+  const monthOptions = React.useMemo(() => {
+    const now = new Date()
+    const options: Array<{ value: string; label: string }> = []
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)
+      )
+      const year = d.getUTCFullYear()
+      const monthNum = String(d.getUTCMonth() + 1).padStart(2, "0")
+      const value = `month_${year}-${monthNum}`
+      const label = d.toLocaleDateString("id-ID", {
+        month: "long",
+        year: "numeric",
+      })
+      options.push({ value, label })
+    }
+    return options
+  }, [])
   const [customStart, setCustomStart] = React.useState(() => {
     const d = new Date(Date.now() - 30 * 24 * 3600 * 1000)
     return d.toISOString().split("T")[0]
@@ -310,9 +406,11 @@ export function AdminWhatsappAnalyticsView() {
             onChange={(e) => setPeriodPreset(e.target.value)}
           >
             <optgroup label="Bulan Kalender (Snapshot)">
-              <option value="month_2026-09">September 2026</option>
-              <option value="month_2026-08">Agustus 2026</option>
-              <option value="month_2026-07">Juli 2026</option>
+              {monthOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </optgroup>
             <optgroup label="Hari Terakhir">
               <option value="7d">7 Hari Terakhir</option>
@@ -671,73 +769,11 @@ export function AdminWhatsappAnalyticsView() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {lastMonthOrgs.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">
-                Belum ada data rekonsiliasi bulan lalu.
-              </p>
-            ) : (
-              (() => {
-                const sorted = [...lastMonthOrgs].sort(
-                  (a, b) => parseFloat(b.revenueIdr) - parseFloat(a.revenueIdr)
-                )
-                const maxRev = Math.max(
-                  ...sorted.map((o) => parseFloat(o.revenueIdr)),
-                  1
-                )
-                return sorted.slice(0, 5).map((org, idx) => {
-                  const rev = parseFloat(org.revenueIdr)
-                  const profit = parseFloat(org.grossProfitIdr)
-                  const isDeficit = profit < 0
-                  const pct = Math.min(Math.round((rev / maxRev) * 100), 100)
-                  const orgLabel =
-                    org.organizationName &&
-                    org.organizationName !== org.organizationId
-                      ? org.organizationName
-                      : `Tenant (${org.organizationId.slice(0, 12)}...)`
-
-                  return (
-                    <div
-                      key={org.organizationId}
-                      className="space-y-1.5 rounded-lg border border-border/50 bg-card/40 p-2.5 text-xs"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
-                            #{idx + 1}
-                          </span>
-                          <span className="truncate font-medium text-foreground">
-                            {orgLabel}
-                          </span>
-                        </div>
-                        <div className="shrink-0 text-right font-mono font-semibold">
-                          {formatIdr(org.revenueIdr)}
-                        </div>
-                      </div>
-
-                      {/* Mini Bar */}
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={`h-full rounded-full ${isDeficit ? "bg-destructive" : "bg-primary"}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between pt-0.5 text-[11px] text-muted-foreground">
-                        <span>
-                          {org.totalDelivered.toLocaleString("id-ID")} pesan
-                        </span>
-                        <span
-                          className={`font-mono font-medium ${isDeficit ? "text-destructive" : "text-primary"}`}
-                        >
-                          {isDeficit ? "Defisit: " : "Laba: "}
-                          {formatIdr(org.grossProfitIdr)} ({org.marginPct}%)
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })
-              })()
-            )}
+            <TopOrgCardList
+              orgs={lastMonthOrgs}
+              emptyMessage="Belum ada data rekonsiliasi bulan lalu."
+              formatIdr={formatIdr}
+            />
           </CardContent>
         </Card>
 
@@ -763,73 +799,11 @@ export function AdminWhatsappAnalyticsView() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {curMonthOrgs.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">
-                Belum ada aktivitas pesan terkirim di bulan ini.
-              </p>
-            ) : (
-              (() => {
-                const sorted = [...curMonthOrgs].sort(
-                  (a, b) => parseFloat(b.revenueIdr) - parseFloat(a.revenueIdr)
-                )
-                const maxRev = Math.max(
-                  ...sorted.map((o) => parseFloat(o.revenueIdr)),
-                  1
-                )
-                return sorted.slice(0, 5).map((org, idx) => {
-                  const rev = parseFloat(org.revenueIdr)
-                  const profit = parseFloat(org.grossProfitIdr)
-                  const isDeficit = profit < 0
-                  const pct = Math.min(Math.round((rev / maxRev) * 100), 100)
-                  const orgLabel =
-                    org.organizationName &&
-                    org.organizationName !== org.organizationId
-                      ? org.organizationName
-                      : `Tenant (${org.organizationId.slice(0, 12)}...)`
-
-                  return (
-                    <div
-                      key={org.organizationId}
-                      className="space-y-1.5 rounded-lg border border-border/50 bg-card/40 p-2.5 text-xs"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
-                            #{idx + 1}
-                          </span>
-                          <span className="truncate font-medium text-foreground">
-                            {orgLabel}
-                          </span>
-                        </div>
-                        <div className="shrink-0 text-right font-mono font-semibold">
-                          {formatIdr(org.revenueIdr)}
-                        </div>
-                      </div>
-
-                      {/* Mini Bar */}
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={`h-full rounded-full ${isDeficit ? "bg-destructive" : "bg-primary"}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between pt-0.5 text-[11px] text-muted-foreground">
-                        <span>
-                          {org.totalDelivered.toLocaleString("id-ID")} pesan
-                        </span>
-                        <span
-                          className={`font-mono font-medium ${isDeficit ? "text-destructive" : "text-primary"}`}
-                        >
-                          {isDeficit ? "Defisit: " : "Laba: "}
-                          {formatIdr(org.grossProfitIdr)} ({org.marginPct}%)
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })
-              })()
-            )}
+            <TopOrgCardList
+              orgs={curMonthOrgs}
+              emptyMessage="Belum ada aktivitas pesan terkirim di bulan ini."
+              formatIdr={formatIdr}
+            />
           </CardContent>
         </Card>
       </div>
