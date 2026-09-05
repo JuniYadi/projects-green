@@ -104,8 +104,13 @@ export function AdminWhatsappAnalyticsView() {
   const [summary, setSummary] = React.useState<FinancialSummary | null>(null)
   const [orgs, setOrgs] = React.useState<OrgProfitabilityItem[]>([])
   const [periodPreset, setPeriodPreset] = React.useState("30d")
-  const [customStart, setCustomStart] = React.useState("")
-  const [customEnd, setCustomEnd] = React.useState("")
+  const [customStart, setCustomStart] = React.useState(() => {
+    const d = new Date(Date.now() - 30 * 24 * 3600 * 1000)
+    return d.toISOString().split("T")[0]
+  })
+  const [customEnd, setCustomEnd] = React.useState(() => {
+    return new Date().toISOString().split("T")[0]
+  })
   const [lastSyncedAt, setLastSyncedAt] = React.useState<string | null>(null)
   const [monthlyTrends, setMonthlyTrends] = React.useState<MonthlyTrendItem[]>(
     []
@@ -124,9 +129,13 @@ export function AdminWhatsappAnalyticsView() {
   const getPeriodParams = React.useCallback(() => {
     if (periodPreset === "custom") {
       const p = new URLSearchParams()
-      if (customStart) p.set("startDate", customStart)
-      if (customEnd) p.set("endDate", customEnd)
-      return p.toString()
+      if (customStart && customEnd) {
+        p.set("startDate", customStart)
+        p.set("endDate", customEnd)
+        return p.toString()
+      }
+      // Fallback to 30 days if custom range is not fully selected yet
+      return new URLSearchParams({ days: "30" }).toString()
     }
 
     if (periodPreset.startsWith("month_")) {
@@ -312,22 +321,22 @@ export function AdminWhatsappAnalyticsView() {
               <option value="90d">90 Hari Terakhir</option>
             </optgroup>
             <optgroup label="Kustom">
-              <option value="custom">Pilih Rentang Tanggal...</option>
+              <option value="custom">Rentang Tanggal Kustom</option>
             </optgroup>
           </select>
 
           {periodPreset === "custom" && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 rounded-md border border-input bg-background/50 px-2 py-1">
               <input
                 type="date"
-                className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                className="h-7 rounded border border-input bg-background px-2 font-mono text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
               />
-              <span className="text-xs text-muted-foreground">-</span>
+              <span className="text-xs text-muted-foreground">s/d</span>
               <input
                 type="date"
-                className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                className="h-7 rounded border border-input bg-background px-2 font-mono text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
               />
