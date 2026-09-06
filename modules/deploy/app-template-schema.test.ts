@@ -90,9 +90,8 @@ describe("AppTemplate Prisma Schema & Seed", () => {
     const apiKeyEnv = hermes?.blueprint.envSchema?.find(
       (e) => e.key === "ANTHROPIC_API_KEY"
     )
-    expect(apiKeyEnv?.required).toBe(true)
+    expect(apiKeyEnv?.required).toBe(false)
     expect(apiKeyEnv?.isSecret).toBe(true)
-
     for (const key of [
       "HERMES_UID",
       "HERMES_GID",

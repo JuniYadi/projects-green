@@ -96,12 +96,12 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
   },
   {
     slug: "hermes",
-    name: "Hermes",
-    tagline: "AI Agent workspace and interactive canvas",
+    name: "Hermes Agent",
+    tagline: "Autonomous AI agent gateway by Nous Research",
     description:
-      "Hermes provides an autonomous multi-agent workspace with conversational memory, dynamic workflows, and unified LLM orchestration.",
+      "Hermes Agent is Nous Research's autonomous AI agent gateway with persistent memory, tool orchestration, and optional API and web dashboard.",
     readmeMarkdown:
-      "# Hermes\n\nHigh-performance AI agent canvas built for multi-model orchestrations.",
+      "# Hermes Agent\n\nManaged deployment of Nous Research's autonomous AI agent gateway with persistent storage at `/opt/data` and supervised gateway runtime.",
     iconUrl: "https://assets.pfnapp.com/templates/hermes.svg",
     category: "AI",
     visibility: "PUBLIC",
@@ -115,6 +115,7 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
       version: "1.0.0",
       runtime: {
         image: "nousresearch/hermes-agent:v2026.8.18",
+        command: ["gateway", "run"],
         defaultPort: 8642,
         additionalPorts: [{ port: 9119, name: "dashboard" }],
         deploymentType: "statefulset",
@@ -137,8 +138,9 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
         {
           key: "ANTHROPIC_API_KEY",
           label: "Anthropic API Key",
-          description: "Provider API key used by Hermes to reach the LLM",
-          required: true,
+          description:
+            "Provider API key used by Hermes to reach the LLM. Can be provided now or configured later.",
+          required: false,
           isSecret: true,
           dataType: "string",
         },
