@@ -182,9 +182,9 @@ export function AppMonitor({
                     </p>
                   ) : deployment.failureReason?.includes("timed out") ? (
                     <p className="pt-1 text-muted-foreground">
-                      💡 <strong>Action Required:</strong> The container cluster
-                      took too long to pull the image or start the pods. Check
-                      cluster health and pod events in logs.
+                      💡 <strong>Action Required:</strong> The application took
+                      longer than expected to start up. Check the logs below or
+                      click Retry Deploy.
                     </p>
                   ) : null}
                 </div>

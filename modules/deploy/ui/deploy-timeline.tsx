@@ -244,7 +244,7 @@ export function DeployStepTimeline({
       {
         step: {
           id: "base-image-ready",
-          label: "Base Image Ready",
+          label: "Template ready",
           status: "completed" as const,
         },
         originalIndex: -1,
@@ -452,7 +452,7 @@ export function DeployStepTimeline({
                     {lagging && (
                       <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-400">
                         {step.id === "argocd-sync-started"
-                          ? "Pulling image"
+                          ? "Deploying"
                           : "Lagging"}
                       </span>
                     )}
@@ -483,7 +483,7 @@ export function DeployStepTimeline({
                   )}
                   {isDegraded && originalIndex >= 9 && originalIndex <= 11 && (
                     <p className="text-xs text-amber-600">
-                      ArgoCD health not tracked
+                      Health verification in progress
                     </p>
                   )}
                   {logsError && (

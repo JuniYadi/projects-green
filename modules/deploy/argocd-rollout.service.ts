@@ -76,7 +76,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
         data: {
           status: "FAILED",
           failureReason:
-            "ArgoCD rollout timed out after 15 minutes. Check cluster sync and pod status.",
+            "Deployment timed out after 15 minutes. Check application logs or retry.",
           completedAt: new Date(),
         },
       })
@@ -88,7 +88,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
         {
           deploymentId: deployment.id,
           type: "DEPLOY_FAILED",
-          message: `ArgoCD rollout timed out for ${deployment.stack.slug}`,
+          message: `Deployment timed out for ${deployment.stack.slug}`,
           metadata: { reason: "TIMEOUT" },
         },
         tx
@@ -99,7 +99,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
           scope: "deploy",
           status: "FAILED",
           message:
-            "ArgoCD rollout timed out after 15 minutes. Check cluster sync and pod status.",
+            "Deployment timed out after 15 minutes. Check application logs or retry.",
         },
         tx
       )
@@ -138,7 +138,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
         {
           deploymentId: deployment.id,
           type: "ARGOCD_SYNCED",
-          message: `ArgoCD synced ${deployment.stack.slug}`,
+          message: `Deployment synced for ${deployment.stack.slug}`,
           metadata: { syncStatus: status.syncStatus },
         },
         tx
@@ -211,7 +211,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
         where: { id: deployment.id },
         data: {
           status: "FAILED",
-          failureReason: "ArgoCD application degraded",
+          failureReason: "Application health check failed",
           ...(deployment.completedAt ? {} : { completedAt: new Date() }),
         },
       })
@@ -223,7 +223,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
         {
           deploymentId: deployment.id,
           type: "DEPLOY_FAILED",
-          message: `ArgoCD application degraded for ${deployment.stack.slug}`,
+          message: `Application health check failed for ${deployment.stack.slug}`,
           metadata: { healthStatus: status.healthStatus },
         },
         tx

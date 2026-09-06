@@ -479,7 +479,7 @@ export async function commitHelmValuesAndAdvanceToDeploying(params: {
     {
       deploymentId: deployment.id,
       type: "GITOPS_COMMIT_CREATED" as any,
-      message: `Helm values committed for ${stack.slug}`,
+      message: `Configuration applied for ${stack.slug}`,
       metadata: {
         gitopsCommitSha: result.sha,
         imageTag,
@@ -492,7 +492,7 @@ export async function commitHelmValuesAndAdvanceToDeploying(params: {
     {
       deploymentId: deployment.id,
       type: "MANIFEST_PUSHED" as any,
-      message: `Manifest pushed for ${stack.slug}`,
+      message: `Deployment manifests ready for ${stack.slug}`,
       metadata: {
         imageTag,
         gitopsCommitSha: result.sha,
@@ -505,7 +505,7 @@ export async function commitHelmValuesAndAdvanceToDeploying(params: {
     {
       deploymentId: deployment.id,
       type: "ARGOCD_SYNC_STARTED" as any,
-      message: `ArgoCD sync started for ${stack.slug}`,
+      message: `Deploying ${stack.slug} to cloud`,
       metadata: { imageTag },
     },
     tx

@@ -346,7 +346,7 @@ describe("argocd-rollout.service", () => {
         data: expect.objectContaining({
           status: "FAILED",
           failureReason:
-            "ArgoCD rollout timed out after 15 minutes. Check cluster sync and pod status.",
+            "Deployment timed out after 15 minutes. Check application logs or retry.",
         }),
       })
     )

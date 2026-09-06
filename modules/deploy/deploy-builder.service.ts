@@ -326,7 +326,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           {
             deploymentId: deployment.id,
             type: "ARGOCD_SYNC_STARTED",
-            message: `ArgoCD sync started for ${stack.name}`,
+            message: `Deploying ${stack.name} to cloud`,
           },
           tx
         )
@@ -335,7 +335,7 @@ export async function processQueuedDeployment(deploymentId: string) {
             deploymentId: deployment.id,
             scope: "argocd",
             status: "ARGOCD_SYNC_STARTED",
-            message: "Waiting for ArgoCD to sync manifests.",
+            message: "Applying configuration to cloud cluster.",
           },
           tx
         )
@@ -352,7 +352,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           {
             deploymentId: deployment.id,
             type: "ARGOCD_SYNCED",
-            message: `ArgoCD synced for ${stack.name}`,
+            message: `Deployment verified for ${stack.name}`,
           },
           tx
         )
@@ -404,8 +404,7 @@ export async function processQueuedDeployment(deploymentId: string) {
             deploymentId: deployment.id,
             scope: "deploy",
             status: "AWAITING_IMAGE",
-            message:
-              "Jenkins job triggered. Waiting for image-ready webhook to commit Helm values.",
+            message: "Build triggered. Packaging application.",
           },
           tx
         )
