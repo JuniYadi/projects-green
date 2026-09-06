@@ -73,4 +73,52 @@ describe("listAdminDeployments", () => {
       })
     )
   })
+
+  it("ignores 'undefined', 'null', and 'ALL' values without adding invalid Prisma filters", async () => {
+    await listAdminDeployments({
+      organizationId: "undefined",
+      query: "undefined",
+      status: "undefined",
+    })
+
+    expect(mockPrisma.applicationDeployment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
+      })
+    )
+
+    mockPrisma.applicationDeployment.findMany.mockClear()
+
+    await listAdminDeployments({
+      organizationId: "null",
+      query: "null",
+      status: "ALL",
+    })
+
+    expect(mockPrisma.applicationDeployment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
+      })
+    )
+  })
+
+  it("filters by valid StackStatus and ignores unknown status strings", async () => {
+    await listAdminDeployments({ status: "RUNNING" })
+    expect(mockPrisma.applicationDeployment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "RUNNING",
+        }),
+      })
+    )
+
+    mockPrisma.applicationDeployment.findMany.mockClear()
+
+    await listAdminDeployments({ status: "NOT_A_REAL_STATUS" })
+    expect(mockPrisma.applicationDeployment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
+      })
+    )
+  })
 })

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import type { Prisma } from "@prisma/client"
+import { StackStatus, type Prisma } from "@prisma/client"
 
 export type AdminDeploymentDTO = {
   id: string
@@ -39,26 +39,38 @@ export async function listAdminDeployments(
 
   const where: Prisma.ApplicationDeploymentWhereInput = {}
 
-  if (params.organizationId && params.organizationId.trim()) {
+  const organizationId = params.organizationId?.trim()
+  if (
+    organizationId &&
+    organizationId !== "undefined" &&
+    organizationId !== "null"
+  ) {
     where.organizationId = {
-      contains: params.organizationId.trim(),
+      contains: organizationId,
       mode: "insensitive",
     }
   }
 
-  if (params.status && params.status !== "ALL") {
-    where.status = params.status as Prisma.EnumStackStatusFilter["equals"]
+  const status = params.status?.trim()
+  if (
+    status &&
+    status !== "ALL" &&
+    status !== "undefined" &&
+    status !== "null" &&
+    (Object.values(StackStatus) as string[]).includes(status)
+  ) {
+    where.status = status as StackStatus
   }
 
-  if (params.query && params.query.trim()) {
-    const q = params.query.trim()
+  const query = params.query?.trim()
+  if (query && query !== "undefined" && query !== "null") {
     where.OR = [
-      { id: { contains: q, mode: "insensitive" } },
-      { commitSha: { contains: q, mode: "insensitive" } },
-      { commitMessage: { contains: q, mode: "insensitive" } },
-      { branchName: { contains: q, mode: "insensitive" } },
-      { stack: { slug: { contains: q, mode: "insensitive" } } },
-      { stack: { name: { contains: q, mode: "insensitive" } } },
+      { id: { contains: query, mode: "insensitive" } },
+      { commitSha: { contains: query, mode: "insensitive" } },
+      { commitMessage: { contains: query, mode: "insensitive" } },
+      { branchName: { contains: query, mode: "insensitive" } },
+      { stack: { slug: { contains: query, mode: "insensitive" } } },
+      { stack: { name: { contains: query, mode: "insensitive" } } },
     ]
   }
 
@@ -105,7 +117,7 @@ export async function listAdminDeployments(
       commitMessage: d.commitMessage,
       commitAuthor: d.commitAuthor,
       branchName: d.branchName,
-      startedAt: d.startedAt.toISOString(),
+      startedAt: (d.startedAt ?? d.createdAt).toISOString(),
       completedAt: d.completedAt ? d.completedAt.toISOString() : null,
       durationMs,
       failureReason: d.failureReason,
