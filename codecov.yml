@@ -8,29 +8,28 @@ coverage:
 
   status:
     project:
-      logic:
+      full:
         target: 85%
         threshold: 0%
         flags:
-          - logic
+          - full
         informational: true
     patch:
-      logic:
+      changed:
         target: 85%
         threshold: 0%
         flags:
-          - logic
+          - changed
         informational: false
 flags:
-  logic:
-    carryforward: true
-    carryforward_behavior: subset
-  changed:
-    carryforward: true
-    carryforward_behavior: subset
   full:
     carryforward: true
-    carryforward_behavior: subset
+    carryforward_behavior: classic
+  logic:
+    carryforward: true
+    carryforward_behavior: classic
+  changed:
+    carryforward: false
   unit:
     carryforward: true
     carryforward_behavior: subset

@@ -142,7 +142,10 @@ describe("selectChangedTests", () => {
       selectChangedTests(["modules/example/example.test.tsx"], availableTests, {
         coverage: true,
       })
-    ).toEqual({ testFiles: [], unmappedProductionPaths: [] })
+    ).toEqual({
+      testFiles: ["modules/example/example.test.tsx"],
+      unmappedProductionPaths: [],
+    })
 
     expect(
       selectChangedTests(["modules/deploy/new-service.ts"], availableTests, {
