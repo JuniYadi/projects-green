@@ -271,6 +271,12 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     smokeProjects: [],
   },
   {
+    name: "opensearch",
+    sourcePrefixes: ["modules/opensearch/"],
+    testPrefixes: ["modules/opensearch/"],
+    smokeProjects: [],
+  },
+  {
     name: "i18n",
     sourcePrefixes: ["lib/i18n/"],
     testPrefixes: ["lib/i18n/messages.test.ts"],

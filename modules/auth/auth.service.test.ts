@@ -1,11 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+mock.module("server-only", () => ({}))
 
-import {
-  AuthEmailAlreadyExistsError,
-  AuthValidationError,
-  InvalidAuthCredentialsError,
-  MissingAuthConfigurationError,
-} from "@/modules/auth/auth.service"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 
 const MANAGED_ENV_KEYS = [
   "WORKOS_CLIENT_ID",
@@ -44,9 +39,14 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
   }),
 }))
 
-// Import auth service after mocks
-const { authService } = await import("@/modules/auth/auth.service")
-
+// Dynamic import required so mock.module takes effect before module evaluation in Bun
+const {
+  authService,
+  AuthEmailAlreadyExistsError,
+  AuthValidationError,
+  InvalidAuthCredentialsError,
+  MissingAuthConfigurationError,
+} = await import("@/modules/auth/auth.service")
 describe("authService", () => {
   let savedEnv: Partial<Record<ManagedEnvKey, string | undefined>> = {}
 

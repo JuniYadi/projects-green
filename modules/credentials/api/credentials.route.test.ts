@@ -1,3 +1,5 @@
+mock.module("server-only", () => ({}))
+
 import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
@@ -18,8 +20,8 @@ mock.module("@/modules/credentials/app-credential.service", () => ({
   deleteCredential: mock(async () => {}),
   revokeCredential: mock(async () => {}),
 }))
-
-import { credentialsRoutes } from "./credentials.route"
+// Dynamic import required so mock.module takes effect before module evaluation in Bun
+const { credentialsRoutes } = await import("./credentials.route")
 
 describe("credentialsRoutes", () => {
   describe("GET /app/credentials", () => {

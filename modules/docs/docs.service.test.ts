@@ -48,6 +48,7 @@ mock.module("@/lib/prisma", () => ({
 
 mock.module("@/modules/docs/docs-embedding.service", () => ({
   embedDocument: mockEmbedDocument,
+  generateEmbedding: mock(() => Promise.resolve({ embedding: [] })),
   EMBEDDING_DIMENSIONS: 1536,
 }))
 

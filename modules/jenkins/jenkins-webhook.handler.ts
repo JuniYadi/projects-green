@@ -15,9 +15,10 @@ export interface ApplicationStack {
 }
 
 export class JenkinsWebhookHandler {
+  constructor(private readonly triggerJob = triggerJenkinsJob) {}
+
   private static readonly DEFAULT_REGISTRY =
     process.env.JENKINS_DEFAULT_REGISTRY || "registry-apac.pfnapp.com"
-
   /**
    * Verify X-Jenkins-Token header
    */
@@ -68,7 +69,7 @@ export class JenkinsWebhookHandler {
   async syncVersion(stack: ApplicationStack, version: string) {
     const jobName = this.getJenkinsJobName(stack)
 
-    await triggerJenkinsJob(jobName, {
+    await this.triggerJob(jobName, {
       VERSION: version,
       APP_NAME: stack.repoName || "unknown",
       DOCKER_REGISTRY: JenkinsWebhookHandler.DEFAULT_REGISTRY,

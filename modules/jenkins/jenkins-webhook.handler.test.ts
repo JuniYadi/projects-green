@@ -13,9 +13,6 @@ const mockTriggerJenkinsJob = mock()
 
 // 2. register module mocks
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
-mock.module("./jenkins.service", () => ({
-  triggerJenkinsJob: mockTriggerJenkinsJob,
-}))
 
 // 3. only then import the thing under test
 const { JenkinsWebhookHandler: Handler } =
@@ -26,8 +23,7 @@ describe("JenkinsWebhookHandler", () => {
   let handler: JenkinsWebhookHandler
 
   beforeEach(() => {
-    handler = new Handler()
-    mockPrisma.githubRepositoryConnection.findFirst.mockClear()
+    handler = new Handler(mockTriggerJenkinsJob)
     mockPrisma.githubRepositoryConnection.update.mockClear()
     mockTriggerJenkinsJob.mockClear()
     process.env.JENKINS_WEBHOOK_TOKEN = "secret-token"

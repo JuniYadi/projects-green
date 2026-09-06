@@ -42,11 +42,23 @@ const jobDslSchema = z.object({
   environmentVariables: z.record(z.string(), z.string()).optional(),
 })
 
-export const createJenkinsRoutes = () => {
+export interface JenkinsRouteDeps {
+  getJobStatus?: typeof getJenkinsJobStatus
+  triggerJob?: typeof triggerJenkinsJob
+  listJobs?: typeof listJenkinsJobs
+  generateDsl?: typeof generateJenkinsDsl
+}
+
+export const createJenkinsRoutes = (deps: JenkinsRouteDeps = {}) => {
+  const getJobStatus = deps.getJobStatus ?? getJenkinsJobStatus
+  const triggerJob = deps.triggerJob ?? triggerJenkinsJob
+  const listJobs = deps.listJobs ?? listJenkinsJobs
+  const generateDsl = deps.generateDsl ?? generateJenkinsDsl
+
   const apiRoutes = new Elysia({ prefix: "/integrations/jenkins" })
     .get("/status", async () => {
       try {
-        const jobs = await listJenkinsJobs()
+        const jobs = await listJobs()
         return {
           ok: true as const,
           connected: true,
@@ -64,7 +76,7 @@ export const createJenkinsRoutes = () => {
     .get("/jobs", async ({ query, set }) => {
       const limit = query.limit ? Math.min(Number(query.limit), 100) : undefined
       try {
-        const jobs = await listJenkinsJobs()
+        const jobs = await listJobs()
         return {
           ok: true as const,
           items: limit ? jobs.slice(0, limit) : jobs,
@@ -81,7 +93,7 @@ export const createJenkinsRoutes = () => {
     })
     .get("/jobs/:jobName/status", async ({ params, set }) => {
       try {
-        const status = await getJenkinsJobStatus(params.jobName)
+        const status = await getJobStatus(params.jobName)
         if (!status) {
           set.status = 404
           return {
@@ -123,10 +135,7 @@ export const createJenkinsRoutes = () => {
         }
       }
       try {
-        await triggerJenkinsJob(
-          parsed.data.jobName,
-          parsed.data.parameters ?? {}
-        )
+        await triggerJob(parsed.data.jobName, parsed.data.parameters ?? {})
         return {
           ok: true as const,
           message: `Build triggered for job '${parsed.data.jobName}'`,
@@ -178,7 +187,7 @@ export const createJenkinsRoutes = () => {
           branch: parsed.data.branch,
           credentialId: parsed.data.credentialId,
         }
-        const dsl = generateJenkinsDsl(config, {
+        const dsl = generateDsl(config, {
           phpVersion: parsed.data.phpVersion,
           nodeVersion: parsed.data.nodeVersion,
           runNodeBuild: parsed.data.runNodeBuild,
