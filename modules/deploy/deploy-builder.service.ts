@@ -589,10 +589,39 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
           }
         : null
 
+    const blueprintRuntime =
+      templateBlueprint && typeof templateBlueprint.runtime === "object"
+        ? (templateBlueprint.runtime as Record<string, unknown>)
+        : null
+
+    const stackMeta =
+      stack.metadataJson && typeof stack.metadataJson === "object"
+        ? (stack.metadataJson as Record<string, unknown>)
+        : null
+    const runtimePort =
+      (typeof stackMeta?.defaultPort === "number"
+        ? (stackMeta.defaultPort as number)
+        : null) ??
+      (typeof blueprintRuntime?.defaultPort === "number"
+        ? blueprintRuntime.defaultPort
+        : 80)
+
+    const healthCheckPath =
+      typeof blueprintRuntime?.healthCheckPath === "string"
+        ? blueprintRuntime.healthCheckPath
+        : null
+
+    const command = Array.isArray(blueprintRuntime?.command)
+      ? (blueprintRuntime.command as string[])
+      : undefined
+
     const values = buildHelmValues({
       slug: stack.slug,
       imageRepository,
       imageTag,
+      command,
+      containerPort: runtimePort,
+      servicePort: runtimePort,
       env: envVars,
       replicas: 1,
       cpu: stack.cpu,
@@ -605,11 +634,19 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
       tolerations: cluster.tolerations,
       deploymentType: getStackDeploymentType(stack.metadataJson),
       additionalContainerPorts: getStackAdditionalPorts(stack.metadataJson),
+      reloader: true,
+      runAsNonRoot: true,
+      livenessProbe: healthCheckPath
+        ? {
+            path: healthCheckPath,
+            port: runtimePort,
+          }
+        : null,
     })
     const { gitopsCommitSha } = await prisma.$transaction((tx) =>
       commitHelmValuesAndAdvanceToDeploying({
         deployment: { id: deployment.id, commitSha: deployment.commitSha },
-        stack: { slug: stack.slug },
+        stack: { slug: stack.slug, organizationId: stack.organizationId },
         values,
         gitopsConfig,
         imageTag,

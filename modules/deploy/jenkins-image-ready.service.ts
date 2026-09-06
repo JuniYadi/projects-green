@@ -9,6 +9,11 @@ import {
 import { buildHelmValues } from "./helm-values.builder"
 import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
 import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
+import {
+  buildArgoCdProjectManifest,
+  buildHelmApplicationManifest,
+  resolveGitOpsManifestPaths,
+} from "./gitops-manifest.builder"
 
 export type PrismaTransactionClient = Prisma.TransactionClient
 
@@ -361,7 +366,7 @@ export async function handleJenkinsImageReady(
 
     const { gitopsCommitSha } = await commitHelmValuesAndAdvanceToDeploying({
       deployment: { id: deployment.id, commitSha: input.commitSha ?? null },
-      stack: { slug: stack.slug },
+      stack: { slug: stack.slug, organizationId: stack.organizationId },
       values,
       gitopsConfig,
       imageTag: input.imageTag,
@@ -380,7 +385,7 @@ export async function handleJenkinsImageReady(
 
 export async function commitHelmValuesAndAdvanceToDeploying(params: {
   deployment: { id: string; commitSha?: string | null }
-  stack: { slug: string }
+  stack: { slug: string; organizationId?: string | null }
   values: Record<string, unknown>
   gitopsConfig: GitOpsClusterConfig
   imageTag: string
@@ -396,10 +401,40 @@ export async function commitHelmValuesAndAdvanceToDeploying(params: {
     noRefs: true,
   })
 
-  const basePath = gitopsConfig.basePath
-    .replace("{slug}", stack.slug)
-    .replace(/\/$/, "")
-  const filePath = `${basePath}/value.yml`
+  const {
+    appSlug,
+    namespace,
+    appServicesDir,
+    helmPath,
+    valuePath,
+    argocdProjectPath,
+  } = resolveGitOpsManifestPaths({
+    slug: stack.slug,
+    organizationId: stack.organizationId,
+    basePath: gitopsConfig.basePath,
+  })
+
+  const repo = gitopsConfig.repo.replace(/\.git$/, "")
+  const gitopsRepoUrl =
+    repo.startsWith("http://") || repo.startsWith("https://")
+      ? `${repo}.git`
+      : `https://github.com/${repo}.git`
+
+  const argocdProjectYaml = buildArgoCdProjectManifest({
+    appSlug,
+    repoUrl: gitopsRepoUrl,
+    branch: gitopsConfig.branch,
+    servicesPath: appServicesDir,
+    namespace,
+  })
+
+  const helmYaml = buildHelmApplicationManifest({
+    appName: stack.slug,
+    gitopsRepoUrl,
+    branch: gitopsConfig.branch,
+    valueFilePath: valuePath,
+    namespace,
+  })
 
   const gitops = new GitOpsRepositoryService({
     pat: gitopsConfig.pat,
@@ -409,7 +444,11 @@ export async function commitHelmValuesAndAdvanceToDeploying(params: {
   const result = await gitops.commitFiles(
     gitopsConfig.repo,
     `Deploy ${stack.slug} image ${imageTag}`,
-    [{ path: filePath, content: valuesYaml }]
+    [
+      { path: valuePath, content: valuesYaml },
+      { path: helmPath, content: helmYaml },
+      { path: argocdProjectPath, content: argocdProjectYaml },
+    ]
   )
 
   await tx.applicationDeployment.update({

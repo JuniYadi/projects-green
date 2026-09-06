@@ -235,9 +235,17 @@ describe("handleJenkinsImageReady", () => {
     const [repo, message, files] = callArgs
     expect(repo).toBe("pfnapp/sgp-argocd-prod")
     expect(message).toContain("image 187")
-    expect(files[0]?.path).toBe("services-yaml/app-metacard-prod/value.yml")
+    expect(files[0]?.path).toBe(
+      "services-yaml/app-metacard-prod/app-metacard-prod/value.yml"
+    )
     expect(files[0]?.content).toContain("tag: '187'")
     expect(files[0]?.content).toContain("replicaCount: 1")
+    expect(files[1]?.path).toBe(
+      "services-yaml/app-metacard-prod/app-metacard-prod/helm.yml"
+    )
+    expect(files[1]?.content).toContain("kind: Application")
+    expect(files[2]?.path).toBe("argocd-projects/app-metacard-prod.yml")
+    expect(files[2]?.content).toContain("kind: Application")
   })
   it("uses an external secret and removes Vault refs from Helm env", async () => {
     mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({

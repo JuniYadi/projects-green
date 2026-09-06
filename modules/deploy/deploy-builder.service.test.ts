@@ -484,7 +484,9 @@ describe("processQueuedDeployment", () => {
           blueprintJson: {
             runtime: {
               image: "nousresearch/hermes-agent:v2026.8.18",
+              command: ["gateway", "run"],
               defaultPort: 8642,
+              healthCheckPath: "/healthz",
               deploymentType: "deployment",
             },
           },
@@ -521,5 +523,11 @@ describe("processQueuedDeployment", () => {
       "repository: nousresearch/hermes-agent"
     )
     expect(filesArg[0]?.content).toContain("tag: v2026.8.18")
+    expect(filesArg[0]?.content).toContain("port: 8642")
+    expect(filesArg[0]?.content).toContain("path: /healthz")
+    expect(filesArg[0]?.content).toContain("runAsNonRoot: true")
+    expect(filesArg[0]?.content).toContain("reloader:\n  enabled: true")
+    expect(filesArg[1]?.path).toContain("helm.yml")
+    expect(filesArg[2]?.path).toBe("argocd-projects/app-hermes-demo.yml")
   })
 })

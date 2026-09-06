@@ -312,6 +312,7 @@ describe("deploySubmitRoutes /submit", () => {
           templateId: "tpl-hermes",
           metadataJson: expect.objectContaining({
             templateId: "hermes",
+            defaultPort: 8642,
             imageRepository: "nousresearch/hermes-agent:v2026.8.18",
             deploymentType: "statefulset",
             additionalPorts: [{ port: 9119, name: "dashboard" }],
