@@ -114,4 +114,13 @@ describe("AdminDeploymentsPage", () => {
       expect.stringContaining("organizationId=org_custom")
     )
   })
+
+  it("calls API without undefined or null keys when query params are default", async () => {
+    render(<AdminDeploymentsPage />)
+    await waitFor(() => {
+      expect(mockGetDeployments).toHaveBeenCalledWith({
+        $query: {},
+      })
+    })
+  })
 })

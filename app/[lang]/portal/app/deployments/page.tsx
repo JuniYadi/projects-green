@@ -61,9 +61,18 @@ export default function AdminDeploymentsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const orgParam = searchParams.get("organizationId") ?? ""
-  const queryParam = searchParams.get("query") ?? ""
-  const statusParam = searchParams.get("status") ?? "ALL"
+  const rawOrg = searchParams.get("organizationId") ?? ""
+  const rawQuery = searchParams.get("query") ?? ""
+  const rawStatus = searchParams.get("status") ?? "ALL"
+
+  const orgParam =
+    rawOrg === "undefined" || rawOrg === "null" ? "" : rawOrg.trim()
+  const queryParam =
+    rawQuery === "undefined" || rawQuery === "null" ? "" : rawQuery.trim()
+  const statusParam =
+    !rawStatus || rawStatus === "undefined" || rawStatus === "null"
+      ? "ALL"
+      : rawStatus.trim()
 
   const [orgInput, setOrgInput] = useState(orgParam)
   const [queryInput, setQueryInput] = useState(queryParam)
@@ -82,12 +91,17 @@ export default function AdminDeploymentsPage() {
       setLoading(true)
       setError(null)
       try {
+        const query: {
+          organizationId?: string
+          query?: string
+          status?: string
+        } = {}
+        if (orgParam) query.organizationId = orgParam
+        if (queryParam) query.query = queryParam
+        if (statusParam !== "ALL") query.status = statusParam
+
         const { data: res } = await eden.api.admin.deployments.get({
-          $query: {
-            organizationId: orgParam || undefined,
-            query: queryParam || undefined,
-            status: statusParam === "ALL" ? undefined : statusParam,
-          },
+          $query: query,
         })
 
         if (cancelled) return
@@ -124,9 +138,22 @@ export default function AdminDeploymentsPage() {
     newStatus: string
   ) => {
     const sp = new URLSearchParams()
-    if (newOrg.trim()) sp.set("organizationId", newOrg.trim())
-    if (newQuery.trim()) sp.set("query", newQuery.trim())
-    if (newStatus && newStatus !== "ALL") sp.set("status", newStatus)
+    const org = newOrg.trim()
+    const q = newQuery.trim()
+    if (org && org !== "undefined" && org !== "null") {
+      sp.set("organizationId", org)
+    }
+    if (q && q !== "undefined" && q !== "null") {
+      sp.set("query", q)
+    }
+    if (
+      newStatus &&
+      newStatus !== "ALL" &&
+      newStatus !== "undefined" &&
+      newStatus !== "null"
+    ) {
+      sp.set("status", newStatus.trim())
+    }
 
     const base = localizePathname({
       pathname: "/portal/app/deployments",
