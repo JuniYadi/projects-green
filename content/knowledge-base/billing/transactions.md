@@ -1,43 +1,58 @@
 ---
 path: /billing/transactions
 locale: en
-title: Transactions & Balance Ledger
+title: Transactions & Balance Statement Ledger
 category: Billing
-purpose: Review the complete audit ledger of credit deposits, service deductions, and financial transactions.
+purpose: Review the complete audit ledger of wallet top-up deposits, service debit deductions, ending balance tracking, and linked invoice receipts.
 howTo:
   - "Navigate to Console > Billing > Transactions (/console/billing/transactions)."
-  - "Filter records by transaction type (Top-up, Service Debit, Refund, Admin Adjustment)."
-  - "Inspect reference IDs, execution timestamps, and post-transaction running balance."
-  - "Export transaction data for financial accounting reconciliation."
+  - "Monitor Current Balance, Total Top-Up Inflow (+), and Total Usage Outflow (−)."
+  - "Inspect the Balance Statement (Debit/Credit) table for running balance calculations."
+  - "Click on linked invoice numbers (TOP-* or INV-*) to review detailed line items."
+  - "Filter records by date or search specific activity descriptions."
 notes:
-  - All balance movements are recorded in an immutable financial ledger.
-  - Automatic deductions include structured metadata referencing the underlying service subscription.
+  - "All balance movements are recorded in an immutable financial audit ledger."
+  - "Subscription debits reference their corresponding order ID and tax invoice."
+  - "Ending Balance reflects the exact reconciled account balance immediately after each transaction."
 ---
 
-This guide explains how to track organization balance movements, verify top-up transactions, and inspect financial audit records.
+# Transactions & Balance Statement Ledger
 
----
+The **Transactions** console (`/console/billing/transactions`) provides a real-time banking-style balance statement detailing all cash inflows, subscription debit charges, promotional voucher redemptions, and post-transaction ending balances.
 
-## 1. Understanding the Organization Ledger
-
-The **Transactions** page (`/console/billing/transactions`) provides a comprehensive statement of all debit and credit movements.
-
-![Transaction History & Balance Ledger](/kb-assets/billing/08-billing-transactions.png)
-
-### Transaction Types:
-
-- **CREDIT (Top-ups & Deposits)**: Funds added via top-up invoices, promotional grants, or adjustment credits.
-- **DEBIT (Service Deductions)**: Automated charges for recurring subscription terms or on-demand resource usage.
-- **REFUND**: Balance credited back following service adjustments.
-- **ADJUSTMENT**: Administrative ledger reconciliations.
+![Transaction History & Balance Statement](/kb-assets/billing/08-billing-transactions.png)
 
 ---
 
-## 2. Audit Trail & Accounting Reconciliation
+## 1. Balance Summary Metrics
 
-Each ledger record contains:
+The top cards present immediate financial liquidity indicators:
 
-1. **Transaction ID**: Unique identifier for tracking and support requests.
-2. **Timestamp**: Precision execution time.
-3. **Description**: Clear line-item context (e.g. _Renewal App Hosting Starter_, _Deposit via QRIS_).
-4. **Running Balance**: Exact account balance after the transaction settled.
+- **Current Balance**: Total liquid prepaid deposit available across your organization (e.g. `IDR 14,312,580.66`).
+- **Total Top-Up / Inflow (+)**: Cumulative deposit credits added via bank transfer, virtual accounts, QRIS, or voucher claims (e.g. `+IDR 14,950,000`).
+- **Total Usage / Outflow (−)**: Cumulative debit charges deducted for active subscriptions and Pay-As-You-Go service consumption (e.g. `−IDR 637,419`).
+- **Top-Up Balance CTA**: Quick shortcut to initiate a new deposit invoice.
+- **Invoices Cross-Link**: Direct access to view full official tax invoices and download accounting receipts.
+
+---
+
+## 2. Balance Statement (Debit/Credit) Ledger
+
+The statement table functions as an immutable corporate bank ledger:
+
+| Column | Description | Real Example |
+| :--- | :--- | :--- |
+| **Balance Activity** | Clear context describing the credit inflow or service order debit | `Subscription order cmtdt6q...` or `Manual mark paid: TOP-4FE02F19` |
+| **Invoice Reference** | Direct link to the official billing document | [`INV-20260829-OLTM`](/console/billing/invoices/cmtdt6qgl0004yk4cjwr05jtr) or [`TOP-4FE02F19`](/console/billing/invoices/cmtgyomlr0047017cipvzb2cg) |
+| **Status (Type)** | `Credit (+)` for deposits/refunds; `Debit (−)` for subscription fees | `Credit (+)` or `Debit (−)` |
+| **Amount** | Net financial delta applied to your wallet | `+ IDR 4,500,000` or `− IDR 21,935` |
+| **Ending Balance** | Reconciled running balance immediately following the transaction | `IDR 14,312,581` |
+| **Date & Time** | Timestamp with minute-level precision | `Aug 31, 2026, 03:13 PM` |
+
+---
+
+## 3. Financial Reconciliation & Auditing
+
+1. **Voucher Redemptions**: Promotional credits applied to your account are recorded with a `Credit (+)` tag and reference code (e.g. `Voucher redemption: J2PZBO29`).
+2. **Subscription Charges**: Automated subscription renewals deduct from the available balance and link directly to the finalized tax invoice.
+3. **Traceability**: Every entry provides end-to-end traceability between your organization's bank transfer deposit and individual product resource usage.
