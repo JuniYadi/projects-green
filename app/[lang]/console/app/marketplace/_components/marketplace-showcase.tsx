@@ -63,7 +63,7 @@ export function MarketplaceShowcase({
     let isCancelled = false
     async function fetchTemplates() {
       try {
-        const res = await eden.api.templates.get()
+        const res = await eden.api.templates.get({ $query: {} })
         if (
           !isCancelled &&
           res.data &&
