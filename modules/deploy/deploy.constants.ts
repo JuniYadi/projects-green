@@ -137,6 +137,15 @@ export const DEPLOY_STATUS_LABELS: Record<DeployStatus, string> = {
   failed: "Failed",
 }
 
+export const DEPLOY_STATUS_TONE: Record<string, string> = {
+  running: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
+  failed: "border-rose-500/20 bg-rose-500/5 text-rose-400",
+  building: "border-sky-500/20 bg-sky-500/5 text-sky-400",
+  deploying: "border-sky-500/20 bg-sky-500/5 text-sky-400",
+  queued: "border-amber-500/20 bg-amber-500/5 text-amber-400",
+  idle: "border-border bg-muted/30 text-muted-foreground",
+}
+
 // Wizard status polling stops when monitor is inactive or leaves monitor step.
 export const MONITOR_POLL_INTERVAL_MS = 900
 

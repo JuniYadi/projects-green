@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MagnifyingGlass, Plus } from "@/components/ui/phosphor-icons"
 import { TemplateCard, type MarketplaceTemplateItem } from "./template-card"
 import { OFFICIAL_APP_TEMPLATES } from "@/modules/deploy/app-template.seed"
+import { eden } from "@/lib/eden"
 
 export const MARKETPLACE_CATEGORIES = [
   "ALL",
@@ -38,7 +39,7 @@ export function MarketplaceShowcase({
     "marketplace"
   )
 
-  const officialTemplates: MarketplaceTemplateItem[] = useMemo(() => {
+  const initialOfficialTemplates: MarketplaceTemplateItem[] = useMemo(() => {
     return OFFICIAL_APP_TEMPLATES.map((tmpl) => ({
       id: tmpl.slug,
       slug: tmpl.slug,
@@ -54,8 +55,49 @@ export function MarketplaceShowcase({
     }))
   }, [])
 
+  const [templates, setTemplates] = useState<MarketplaceTemplateItem[]>(
+    initialOfficialTemplates
+  )
+
+  useEffect(() => {
+    let isCancelled = false
+    async function fetchTemplates() {
+      try {
+        const res = await eden.api.templates.get({ $query: {} })
+        if (
+          !isCancelled &&
+          res.data &&
+          Array.isArray(res.data) &&
+          res.data.length > 0
+        ) {
+          const mapped: MarketplaceTemplateItem[] = res.data.map((tmpl) => ({
+            id: tmpl.slug || tmpl.id,
+            slug: tmpl.slug,
+            name: tmpl.name,
+            tagline: tmpl.tagline,
+            description: tmpl.description,
+            iconUrl: tmpl.iconUrl,
+            category: tmpl.category,
+            isOfficial: tmpl.isOfficial,
+            isFeatured: tmpl.isFeatured,
+            installCount: tmpl.installCount,
+            blueprint:
+              tmpl.blueprintJson as unknown as MarketplaceTemplateItem["blueprint"],
+          }))
+          setTemplates(mapped)
+        }
+      } catch {
+        // Fallback to static official templates if network/API fails
+      }
+    }
+    void fetchTemplates()
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
   const filteredTemplates = useMemo(() => {
-    return officialTemplates.filter((tmpl) => {
+    return templates.filter((tmpl) => {
       const matchesCategory =
         selectedCategory === "ALL" || tmpl.category === selectedCategory
 
@@ -69,7 +111,7 @@ export function MarketplaceShowcase({
 
       return matchesCategory && matchesSearch
     })
-  }, [officialTemplates, selectedCategory, searchQuery])
+  }, [templates, selectedCategory, searchQuery])
 
   const handleDeploy = (template: MarketplaceTemplateItem) => {
     if (onDeploy) {

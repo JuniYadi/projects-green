@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowClockwise } from "@phosphor-icons/react"
+import { ArrowClockwise, ArrowSquareOut } from "@phosphor-icons/react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { DEPLOY_STATUS_LABELS } from "@/modules/deploy/deploy.constants"
+import {
+  DEPLOY_STATUS_LABELS,
+  DEPLOY_STATUS_TONE as STATUS_TONE,
+} from "@/modules/deploy/deploy.constants"
 import type {
   DeploymentStatusDTO,
   StackBillingState,
@@ -28,15 +31,6 @@ type AppMonitorProps = {
   onLogScopeChange: (scope: DeployLogScope) => void
   onRetry?: () => void
   liveDomain?: string
-}
-
-const STATUS_TONE: Record<string, string> = {
-  running: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
-  failed: "border-rose-500/20 bg-rose-500/5 text-rose-400",
-  building: "border-sky-500/20 bg-sky-500/5 text-sky-400",
-  deploying: "border-sky-500/20 bg-sky-500/5 text-sky-400",
-  queued: "border-amber-500/20 bg-amber-500/5 text-amber-400",
-  idle: "border-border bg-muted/30 text-muted-foreground",
 }
 
 const BILLING_NOTE: Record<StackBillingState, string | null> = {
@@ -76,7 +70,12 @@ export function AppMonitor({
                 </span>
               </CardTitle>
               <CardDescription>
-                {stack.framework ?? "Unknown framework"} &bull; branch{" "}
+                {stack.framework ??
+                  (stack.sourceType === "TEMPLATE" || stack.templateId
+                    ? stack.templateId && stack.templateId.length < 20
+                      ? `${stack.templateId.charAt(0).toUpperCase() + stack.templateId.slice(1)} (Template)`
+                      : "Template"
+                    : "Custom Workload")}{" "}
                 <span className="font-medium text-foreground">
                   {stack.branchName}
                 </span>
@@ -91,6 +90,18 @@ export function AppMonitor({
                 ) : null}
               </CardDescription>
             </div>
+            {targetDomain ? (
+              <Button asChild size="sm" className="h-8 gap-1.5 px-3 text-xs">
+                <a
+                  href={`https://${targetDomain}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span>Open App</span>
+                  <ArrowSquareOut className="size-3.5" />
+                </a>
+              </Button>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -115,7 +126,19 @@ export function AppMonitor({
                 Domain
               </dt>
               <dd className="font-medium text-foreground">
-                {targetDomain ?? "Not configured"}
+                {targetDomain ? (
+                  <a
+                    href={`https://${targetDomain}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+                  >
+                    <span>{targetDomain}</span>
+                    <ArrowSquareOut className="size-3" />
+                  </a>
+                ) : (
+                  "Not configured"
+                )}
               </dd>
             </div>
             <div className="space-y-1">
@@ -198,6 +221,7 @@ export function AppMonitor({
                 deployId={deployId}
                 status={status}
                 liveDomain={targetDomain ?? undefined}
+                skipBuildSteps={stack.sourceType === "TEMPLATE"}
                 onRetry={status === "failed" ? onRetry : undefined}
               />
             </section>

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, render } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
 import ConsoleMarketplacePage from "./page"
@@ -10,6 +10,37 @@ import { OFFICIAL_APP_TEMPLATES } from "@/modules/deploy/app-template.seed"
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mock(() => {}) }),
+}))
+
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      templates: {
+        get: mock(async () => ({
+          data: OFFICIAL_APP_TEMPLATES.map((tmpl) => ({
+            id: tmpl.slug,
+            slug: tmpl.slug,
+            name: tmpl.name,
+            tagline: tmpl.tagline,
+            description: tmpl.description,
+            iconUrl: tmpl.iconUrl,
+            category: tmpl.category,
+            isOfficial: tmpl.isOfficial,
+            isFeatured: tmpl.isFeatured,
+            installCount: tmpl.installCount,
+            blueprintJson: tmpl.blueprint,
+          })),
+        })),
+      },
+      deploy: {
+        submit: {
+          post: mock(async () => ({
+            data: { ok: true },
+          })),
+        },
+      },
+    },
+  },
 }))
 
 mock.module("@/lib/billing-client", () => ({
@@ -114,139 +145,135 @@ describe("Console Marketplace Hub & Template Cards", () => {
     expect(onDeploy).toHaveBeenCalledWith(
       expect.objectContaining({
         slug: "hermes",
-        name: "Hermes",
+        name: template.name,
       })
     )
   })
 
   it("renders MarketplaceShowcase with hero banner featuring official templates and navigation tabs", () => {
-    render(<MarketplaceShowcase />)
+    const { getByText } = render(<MarketplaceShowcase />)
 
     // Header title & description
-    expect(screen.getByText("App Marketplace")).toBeInTheDocument()
+    expect(getByText("App Marketplace")).toBeInTheDocument()
     expect(
-      screen.getByText(/1-Click deploy open-source apps, AI agents/i)
+      getByText(/1-Click deploy open-source apps, AI agents/i)
     ).toBeInTheDocument()
 
     // Navigation Tabs
-    expect(screen.getByText("Marketplace Hub")).toBeInTheDocument()
-    expect(screen.getByText("My Workspace Templates")).toBeInTheDocument()
-    expect(screen.getByText("Create Custom Template")).toBeInTheDocument()
+    expect(getByText("Marketplace Hub")).toBeInTheDocument()
+    expect(getByText("My Workspace Templates")).toBeInTheDocument()
+    expect(getByText("Create Custom Template")).toBeInTheDocument()
   })
   it("filters templates by category chips", async () => {
     const user = userEvent.setup()
-    render(<MarketplaceShowcase />)
+    const { getByText, getByRole, queryByText } = render(
+      <MarketplaceShowcase />
+    )
 
     // Initially all templates are shown in the grid
     expect(
-      screen.getByText("Fair-code workflow automation platform")
+      getByText("Fair-code workflow automation platform")
     ).toBeInTheDocument()
     expect(
-      screen.getByText("AI Agent workspace and interactive canvas")
+      getByText("Autonomous AI agent gateway by Nous Research")
     ).toBeInTheDocument()
     expect(
-      screen.getByText(
-        "World's most popular open-source content management system"
-      )
+      getByText("World's most popular open-source content management system")
     ).toBeInTheDocument()
     expect(
-      screen.getByText("Privacy-focused, lightweight open-source web analytics")
+      getByText("Privacy-focused, lightweight open-source web analytics")
     ).toBeInTheDocument()
 
     // Click 'AI' category
-    const aiCategoryBtn = screen.getByRole("button", { name: /^AI$/i })
+    const aiCategoryBtn = getByRole("button", { name: /^AI$/i })
     await user.click(aiCategoryBtn)
 
     // AI templates should be visible
     expect(
-      screen.getByText("AI Agent workspace and interactive canvas")
+      getByText("Autonomous AI agent gateway by Nous Research")
     ).toBeInTheDocument()
     expect(
-      screen.getByText("High-throughput LLM gateway and router")
+      getByText("High-throughput LLM gateway and router")
     ).toBeInTheDocument()
 
     // Non-AI templates should not be in the template grid
     expect(
-      screen.queryByText("Fair-code workflow automation platform")
+      queryByText("Fair-code workflow automation platform")
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByText(
-        "World's most popular open-source content management system"
-      )
+      queryByText("World's most popular open-source content management system")
     ).not.toBeInTheDocument()
 
     // Click 'CMS' category
-    const cmsCategoryBtn = screen.getByRole("button", { name: /^CMS$/i })
+    const cmsCategoryBtn = getByRole("button", { name: /^CMS$/i })
     await user.click(cmsCategoryBtn)
 
     expect(
-      screen.getByText(
-        "World's most popular open-source content management system"
-      )
+      getByText("World's most popular open-source content management system")
     ).toBeInTheDocument()
     expect(
-      screen.queryByText("AI Agent workspace and interactive canvas")
+      queryByText("Autonomous AI agent gateway by Nous Research")
     ).not.toBeInTheDocument()
   })
 
   it("filters templates by real-time search input", async () => {
     const user = userEvent.setup()
-    render(<MarketplaceShowcase />)
-
-    const searchInput = screen.getByPlaceholderText(
-      /search apps by name or stack/i
+    const { getByText, getByPlaceholderText, queryByText } = render(
+      <MarketplaceShowcase />
     )
+
+    const searchInput = getByPlaceholderText(/search apps by name or stack/i)
 
     // Search for "analytics"
     await user.type(searchInput, "analytics")
 
     // Umami (privacy analytics) should match
     expect(
-      screen.getByText("Privacy-focused, lightweight open-source web analytics")
+      getByText("Privacy-focused, lightweight open-source web analytics")
     ).toBeInTheDocument()
     expect(
-      screen.queryByText("Fair-code workflow automation platform")
+      queryByText("Fair-code workflow automation platform")
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByText("AI Agent workspace and interactive canvas")
+      queryByText("Autonomous AI agent gateway by Nous Research")
     ).not.toBeInTheDocument()
 
     // Clear search
     await user.clear(searchInput)
     expect(
-      screen.getByText("Fair-code workflow automation platform")
+      getByText("Fair-code workflow automation platform")
     ).toBeInTheDocument()
     expect(
-      screen.getByText("AI Agent workspace and interactive canvas")
+      getByText("Autonomous AI agent gateway by Nous Research")
     ).toBeInTheDocument()
   })
 
   it("shows empty state when search matches no templates and allows clearing filters", async () => {
     const user = userEvent.setup()
-    render(<MarketplaceShowcase />)
-
-    const searchInput = screen.getByPlaceholderText(
-      /search apps by name or stack/i
+    const { getByText, getByPlaceholderText, getByRole } = render(
+      <MarketplaceShowcase />
     )
+
+    const searchInput = getByPlaceholderText(/search apps by name or stack/i)
 
     await user.type(searchInput, "nonexistenttemplatequery123")
 
-    expect(screen.getByText("No templates found")).toBeInTheDocument()
+    expect(getByText("No templates found")).toBeInTheDocument()
 
-    const clearBtn = screen.getByRole("button", { name: /clear filters/i })
+    const clearBtn = getByRole("button", { name: /clear filters/i })
     await user.click(clearBtn)
     expect(
-      screen.getByText("Fair-code workflow automation platform")
+      getByText("Fair-code workflow automation platform")
     ).toBeInTheDocument()
   })
 
   it("renders full ConsoleMarketplacePage container with correct spacing and classes", () => {
-    const { container } = render(<ConsoleMarketplacePage />)
+    const { container, getByText } = render(<ConsoleMarketplacePage />)
 
     const mainDiv = container.querySelector(
       ".flex.flex-1.flex-col.gap-6.p-6.pt-0"
     )
     expect(mainDiv).not.toBeNull()
-    expect(screen.getByText("App Marketplace")).toBeInTheDocument()
+    expect(getByText("App Marketplace")).toBeInTheDocument()
   })
 })

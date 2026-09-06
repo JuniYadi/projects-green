@@ -44,6 +44,7 @@ export type StackUpsertInput = {
   deploymentType?: "deployment" | "statefulset" | null
   additionalPorts?: Array<{ port: number; name: string }> | null
   templateId?: string | null
+  templateSlug?: string | null
 }
 
 const IN_PROGRESS_STATUSES = ["QUEUED", "BUILDING", "DEPLOYING"] as const
@@ -169,8 +170,10 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       buildMetadata.deploymentType = input.deploymentType
     if (input.additionalPorts != null)
       buildMetadata.additionalPorts = input.additionalPorts
-    if (input.templateId != null) buildMetadata.templateId = input.templateId
-
+    const templateIdentifier = input.templateSlug ?? input.templateId
+    if (templateIdentifier != null) {
+      buildMetadata.templateId = templateIdentifier
+    }
     // Merge with existing metadataJson on update
     const existingJson =
       (existing?.metadataJson as Record<string, unknown> | null) ?? {}
