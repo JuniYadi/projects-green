@@ -18,10 +18,10 @@ export class DeployPipelineJob extends BaseJob {
     )
   }
 
-  static async handle(job: { data: DeployPipelineJobData }): Promise<unknown> {
+  static async handle(job: { data: DeployPipelineJobData }): Promise<void> {
     const { processQueuedDeployment } =
       await import("@/modules/deploy/deploy-builder.service")
-    return processQueuedDeployment(job.data.deploymentId)
+    await processQueuedDeployment(job.data.deploymentId)
   }
 }
 

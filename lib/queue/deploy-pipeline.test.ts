@@ -22,12 +22,11 @@ describe("DeployPipelineJob", () => {
   })
 
   it("processes deployment in handle", async () => {
-    const result = await DeployPipelineJob.handle({
+    await DeployPipelineJob.handle({
       data: { deploymentId: "deploy-123" },
     })
 
     expect(mockProcessQueuedDeployment).toHaveBeenCalledWith("deploy-123")
-    expect(result).toEqual({ processed: true, status: "BUILDING" })
   })
 
   it("dispatches job safely with enqueueDeployment helper", async () => {
