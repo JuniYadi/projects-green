@@ -148,6 +148,42 @@ describe("deploy-monitor.service", () => {
     expect(mockRecordDeployLog).toHaveBeenCalledTimes(2)
   })
 
+  it("auto-fails stuck BUILDING deployment exceeding timeout", async () => {
+    const thirtyOneMinutesAgo = new Date(Date.now() - 31 * 60 * 1000)
+    mockFindMany.mockResolvedValueOnce([
+      {
+        id: "dep-stuck-build",
+        stackId: "stack-1",
+        status: "BUILDING",
+        manifestPushed: false,
+        argocdSynced: false,
+        attempt: 1,
+        stack: { name: "my-app" },
+        createdAt: thirtyOneMinutesAgo,
+      },
+    ] as unknown as never)
+
+    const results = await monitorActiveDeployments()
+
+    expect(results).toHaveLength(1)
+    expect(results[0].status).toBe("FAILED")
+    expect(mockUpdateDeployment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "dep-stuck-build" },
+        data: expect.objectContaining({
+          status: "FAILED",
+          failureReason: "Build timed out after 30 minutes",
+        }),
+      })
+    )
+    expect(mockRecordDeployEventOnce).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deploymentId: "dep-stuck-build",
+        type: "DEPLOY_FAILED",
+      })
+    )
+  })
+
   it("handles failure during checkDeploymentStatus and updates deployment and stack", async () => {
     mockFindMany.mockResolvedValueOnce([
       {

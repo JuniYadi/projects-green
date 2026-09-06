@@ -1,6 +1,6 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, render, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type { AdminTemplateRecord } from "./_components/template-inspector-drawer"
 
@@ -160,40 +160,40 @@ describe("PortalMarketplaceModerationPage", () => {
   })
 
   it("renders tabs and pending templates list by default", async () => {
-    render(<PortalMarketplaceModerationPage />)
+    const utils = render(<PortalMarketplaceModerationPage />)
 
     expect(
-      screen.getByText("Marketplace Moderation & Governance")
+      utils.getByText("Marketplace Moderation & Governance")
     ).toBeInTheDocument()
-    expect(screen.getByText("Pending Review")).toBeInTheDocument()
-    expect(screen.getByText("New Template")).toBeInTheDocument()
+    expect(utils.getByText("Pending Review")).toBeInTheDocument()
+    expect(utils.getByText("New Template")).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByText("Custom Ghost")).toBeInTheDocument()
+      expect(utils.getByText("Custom Ghost")).toBeInTheDocument()
     })
   })
 
   it("navigates to dedicated editor page when inspecting", async () => {
     const user = userEvent.setup()
-    render(<PortalMarketplaceModerationPage />)
+    const utils = render(<PortalMarketplaceModerationPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Custom Ghost")).toBeInTheDocument()
+      expect(utils.getByText("Custom Ghost")).toBeInTheDocument()
     })
 
-    const inspectBtn = screen.getByRole("button", { name: /inspect/i })
+    const inspectBtn = utils.getByRole("button", { name: /inspect/i })
     await user.click(inspectBtn)
   })
 
   it("allows approving a pending template directly", async () => {
     const user = userEvent.setup()
-    render(<PortalMarketplaceModerationPage />)
+    const utils = render(<PortalMarketplaceModerationPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Custom Ghost")).toBeInTheDocument()
+      expect(utils.getByText("Custom Ghost")).toBeInTheDocument()
     })
 
-    const approveBtn = screen.getByRole("button", { name: /approve/i })
+    const approveBtn = utils.getByRole("button", { name: /approve/i })
     await user.click(approveBtn)
 
     await waitFor(() => {

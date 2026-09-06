@@ -18,6 +18,7 @@ const BATCH_SIZE = 10
 // Bounds how long a RUNNING deployment stays in the ingress recheck set —
 // beyond this window we stop retrying and leave ingressVerified as-is.
 const INGRESS_RECHECK_WINDOW_MS = 30 * 60 * 1000
+const BUILDING_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes max build time
 
 async function chunkArray<T>(array: T[], size: number): Promise<T[][]> {
   const chunks: T[][] = []
@@ -103,6 +104,7 @@ async function checkDeploymentStatus(deployment: {
   argocdSynced: boolean
   attempt: number
   stack: { name: string }
+  createdAt?: Date | string
 }) {
   // Process QUEUED deployments through the builder pipeline
   if (deployment.status === "QUEUED") {
@@ -117,6 +119,36 @@ async function checkDeploymentStatus(deployment: {
     }
   }
 
+  // Watchdog: auto-fail BUILDING deployments that exceed timeout
+  if (deployment.status === "BUILDING" && deployment.createdAt) {
+    const ageMs = Date.now() - new Date(deployment.createdAt).getTime()
+    if (ageMs > BUILDING_TIMEOUT_MS) {
+      const reason = "Build timed out after 30 minutes"
+      await prisma.applicationDeployment.update({
+        where: { id: deployment.id },
+        data: {
+          status: "FAILED",
+          failureReason: reason,
+          completedAt: new Date(),
+        },
+      })
+      await recordDeployEventOnce({
+        deploymentId: deployment.id,
+        type: "DEPLOY_FAILED",
+        message: `Watchdog detected failure: ${reason}`,
+      })
+      await prisma.applicationStack.update({
+        where: { id: deployment.stackId },
+        data: { lastDeployStatus: "FAILED" },
+      })
+      return {
+        deploymentId: deployment.id,
+        status: "FAILED",
+        manifestPushed: deployment.manifestPushed,
+        argocdSynced: deployment.argocdSynced,
+      }
+    }
+  }
   // Wire ArgoCD polling for DEPLOYING deployments
   if (deployment.status === "DEPLOYING") {
     const rollout = await pollDeploymentRollout(deployment.id)

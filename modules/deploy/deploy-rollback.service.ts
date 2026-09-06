@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { enqueueDeployment } from "@/lib/queue/deploy-pipeline"
 
 export async function rollbackDeployment(params: {
   stackId: string
@@ -70,6 +71,8 @@ export async function rollbackDeployment(params: {
 
     return rollback
   })
+
+  await enqueueDeployment(rollbackDeployment.id)
 
   return { deploymentId: rollbackDeployment.id, status: "QUEUED" as const }
 }

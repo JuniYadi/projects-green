@@ -1,7 +1,7 @@
 import { logger } from "@/lib/logger"
 import { monitorActiveDeployments } from "@/modules/deploy/deploy-monitor.service"
 
-const POLL_INTERVAL_MS = 60_000 // 1 minute
+const POLL_INTERVAL_MS = 300_000 // 5 minutes (watchdog)
 
 let shuttingDown = false
 

@@ -39,6 +39,7 @@ import {
 import { GithubEventJob } from "@/modules/github/jobs/github-event.job"
 
 import { AdminWhatsappAnalyticsService } from "@/modules/whatsapp/analytics/admin-whatsapp-analytics.service"
+import { DeployPipelineJob } from "@/lib/queue/deploy-pipeline"
 // ── Billing Cron ───────────────────────────────────────────────────────────
 import {
   BILLING_DAILY_RESET_QUEUE,
@@ -529,6 +530,10 @@ const deployMonitorQueueWorker = new Worker(
 )
 allWorkers.push(deployMonitorQueueWorker)
 
+// ── Deploy Pipeline Worker (processes event-driven queue triggers) ───────────
+const deployPipelineWorker = DeployPipelineJob.createWorker()
+allWorkers.push(deployPipelineWorker)
+
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {
   if (worker === whatsappHealthWorker) continue
@@ -593,27 +598,6 @@ const isConsumerMode = process.env.WORKER_MODE === "consumer"
 const intervals: ReturnType<typeof setInterval>[] = []
 
 if (!isConsumerMode) {
-  // ── Deploy Monitor (every 60s) ──────────────────────────────────────────────
-  const deployMonitorInterval = setInterval(async () => {
-    try {
-      const results = await monitorActiveDeployments()
-      if (results.length > 0) {
-        logger.info(
-          {
-            event: "deploy.monitor.checked",
-            checkedCount: results.length,
-          },
-          "Checked active deployments"
-        )
-      }
-    } catch (error) {
-      logger.error(
-        { err: error, event: "deploy.monitor.failed" },
-        "Deploy monitor cycle failed"
-      )
-    }
-  }, 60_000)
-  intervals.push(deployMonitorInterval)
   // ── App Hosting Billing (every hour) ────────────────────────────────────────
   const appHostingBillingInterval = setInterval(async () => {
     try {

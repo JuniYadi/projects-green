@@ -17,11 +17,11 @@ export const CRON_JOB_DEFINITIONS: CronDefinitionConfig[] = [
     code: "deploy-monitor",
     name: "Deploy Status Monitor",
     description:
-      "Monitors app hosting deployment health and timeouts every minute",
+      "Monitors app hosting deployment health and timeouts every 5 minutes",
     category: "system",
-    cronExpression: "* * * * *",
+    cronExpression: "*/5 * * * *",
     timeoutSeconds: 120,
-    gracePeriodMins: 2,
+    gracePeriodMins: 5,
   },
   {
     code: "vpn-reconciliation",
