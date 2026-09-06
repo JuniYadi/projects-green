@@ -343,6 +343,8 @@ export type StackSummaryDTO = {
   resourcePlanId: string | null
   billingMode: string | null
   billingState: StackBillingState
+  sourceType?: string | null
+  templateId?: string | null
   lastDeployedAt: string | null
   latestDeploymentId: string | null
   currentStepLabel: string | null
@@ -371,6 +373,8 @@ export const toStackSummaryDTO = (stack: {
   resourcePlanId: string | null
   billingMode: string | null
   metadataJson: unknown
+  sourceType?: string | null
+  templateId?: string | null
   lastDeployedAt: Date | null
   deployments?: Array<{ id: string }>
   events?: Array<Pick<ApplicationDeployEvent, "type" | "createdAt">>
@@ -387,6 +391,12 @@ export const toStackSummaryDTO = (stack: {
     resourcePlanId: stack.resourcePlanId ?? null,
     billingMode: stack.billingMode ?? null,
     billingState: resolveStackBillingState(stack.metadataJson),
+    sourceType: stack.sourceType ?? null,
+    templateId:
+      ((stack.metadataJson as Record<string, unknown> | null)?.templateId as
+        string | undefined) ??
+      stack.templateId ??
+      null,
     lastDeployedAt: stack.lastDeployedAt
       ? stack.lastDeployedAt.toISOString()
       : null,
