@@ -75,15 +75,13 @@ describe("OpenSearchClient", () => {
       const client = new OpenSearchClient(
         makeConfig({
           host: "http://localhost:9200",
-          apiKey: "secret-api-key-123",
+          apiKey: "test-api-key",
         })
       )
 
       const res = await client.testConnection()
       expect(res.success).toBe(true)
-      expect(capturedHeaders?.["Authorization"]).toBe(
-        "ApiKey secret-api-key-123"
-      )
+      expect(capturedHeaders?.["Authorization"]).toBe("ApiKey test-api-key")
     })
 
     it("uses Basic Auth when username and password are provided", async () => {
