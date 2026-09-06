@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import {
   Collapsible,
@@ -232,6 +232,31 @@ export function DeployStepTimeline({
     effectiveStatus === "running" &&
     Boolean(liveDomain?.trim()) &&
     events.some((event) => event.type === "DEPLOY_COMPLETED")
+  const visibleSteps = useMemo(() => {
+    if (!skipBuildSteps) {
+      return steps.map((step, originalIndex) => ({
+        step,
+        originalIndex,
+        isSynthetic: false,
+      }))
+    }
+    return [
+      {
+        step: {
+          id: "base-image-ready",
+          label: "Base Image Ready",
+          status: "completed" as const,
+        },
+        originalIndex: -1,
+        isSynthetic: true,
+      },
+      ...steps.slice(8).map((step, sliceIndex) => ({
+        step,
+        originalIndex: sliceIndex + 8,
+        isSynthetic: false,
+      })),
+    ]
+  }, [skipBuildSteps, steps])
 
   const pollActive =
     deployId &&
@@ -360,16 +385,18 @@ export function DeployStepTimeline({
         aria-label="Deployment step timeline"
         aria-live="polite"
       >
-        {steps.map((step, idx) => {
-          const uiState = stepUiState(
-            idx,
-            activeIndex,
-            effectiveStatus,
-            effectiveStatus === "failed" ? failedIndex : null,
-            resolvedSkipBuild,
-            isDegraded
-          )
-          const ev = eventForStep(idx)
+        {visibleSteps.map(({ step, originalIndex, isSynthetic }) => {
+          const uiState = isSynthetic
+            ? "completed"
+            : stepUiState(
+                originalIndex,
+                activeIndex,
+                effectiveStatus,
+                effectiveStatus === "failed" ? failedIndex : null,
+                resolvedSkipBuild,
+                isDegraded
+              )
+          const ev = isSynthetic ? null : eventForStep(originalIndex)
           const stepStartedAt = ev ? Date.parse(ev.createdAt) : null
           const nextEv = recognizedEvents
             .filter(
@@ -379,8 +406,9 @@ export function DeployStepTimeline({
               (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)
             )[0]
           const stepEndedAt = nextEv ? Date.parse(nextEv.createdAt) : null
-          const duration =
-            stepStartedAt !== null && stepEndedAt !== null
+          const duration = isSynthetic
+            ? null
+            : stepStartedAt !== null && stepEndedAt !== null
               ? stepEndedAt - stepStartedAt
               : uiState === "active" && stepStartedAt !== null
                 ? renderTick - stepStartedAt
@@ -388,6 +416,7 @@ export function DeployStepTimeline({
                   ? renderTick - Date.parse(fetchedStatus.startedAt)
                   : null
           const lagging =
+            !isSynthetic &&
             duration !== null &&
             duration > LAG_THRESHOLD_MS &&
             (uiState === "completed" || uiState === "active")
@@ -421,8 +450,10 @@ export function DeployStepTimeline({
                   </div>
                   <div className="flex items-center gap-2">
                     {lagging && (
-                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700">
-                        Lagging
+                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-400">
+                        {step.id === "argocd-sync-started"
+                          ? "Pulling image"
+                          : "Lagging"}
                       </span>
                     )}
                     {duration !== null && (
@@ -450,7 +481,7 @@ export function DeployStepTimeline({
                       )}
                     </div>
                   )}
-                  {isDegraded && idx >= 9 && idx <= 11 && (
+                  {isDegraded && originalIndex >= 9 && originalIndex <= 11 && (
                     <p className="text-xs text-amber-600">
                       ArgoCD health not tracked
                     </p>

@@ -488,4 +488,23 @@ describe("DeployStepTimeline", () => {
     // Only the initial one-shot fetch should occur; no interval polling
     expect(statusCalls.length).toBe(1)
   })
+
+  it("collapses build steps into Base Image Ready when skipBuildSteps is true", () => {
+    globalThis.fetch = mockFetch()
+
+    const view = render(
+      <DeployStepTimeline
+        deployId="deploy-1"
+        status="deploying"
+        skipBuildSteps={true}
+      />
+    )
+
+    expect(view.getByText("Base Image Ready")).toBeInTheDocument()
+    expect(view.getByText("Helm values committed")).toBeInTheDocument()
+    expect(view.queryByText("Jenkins building")).not.toBeInTheDocument()
+    expect(view.queryByText("Waiting for monitor")).not.toBeInTheDocument()
+    // 1 synthetic Base Image Ready + 5 post-build steps = 6 items
+    expect(view.getAllByRole("listitem").length).toBe(6)
+  })
 })

@@ -27,7 +27,10 @@ import {
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { DEPLOY_STATUS_LABELS } from "@/modules/deploy/deploy.constants"
+import {
+  DEPLOY_STATUS_LABELS,
+  DEPLOY_STATUS_TONE as STATUS_TONE,
+} from "@/modules/deploy/deploy.constants"
 import type {
   DeploymentHistoryDTO,
   DeploymentStatusDTO,
@@ -39,15 +42,6 @@ import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
 
 const APP_QUERY_KEY = "app"
 const PAGE_SIZE = 20
-
-const STATUS_TONE: Record<string, string> = {
-  running: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
-  failed: "border-rose-500/20 bg-rose-500/5 text-rose-400",
-  building: "border-sky-500/20 bg-sky-500/5 text-sky-400",
-  deploying: "border-sky-500/20 bg-sky-500/5 text-sky-400",
-  queued: "border-amber-500/20 bg-amber-500/5 text-amber-400",
-  idle: "border-border bg-muted/30 text-muted-foreground",
-}
 
 type HistoryMeta = {
   page: number
@@ -397,20 +391,6 @@ export default function DeploymentsPage() {
               </div>
             ) : overview ? (
               <>
-                <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/10 px-5 py-3 text-sm">
-                  <span className="font-semibold">{overview.stack.name}</span>
-                  <span
-                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_TONE[overview.stack.status] ?? STATUS_TONE.idle}`}
-                  >
-                    {DEPLOY_STATUS_LABELS[overview.stack.status] ??
-                      overview.stack.status}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {overview.stack.framework ?? "Unknown"} &bull;{" "}
-                    {overview.stack.branchName}
-                  </span>
-                </div>
-
                 <Card>
                   <CardHeader>
                     <CardTitle>Deployment history</CardTitle>

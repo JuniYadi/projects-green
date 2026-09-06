@@ -12,17 +12,11 @@ import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { DEPLOY_STATUS_LABELS } from "@/modules/deploy/deploy.constants"
+import {
+  DEPLOY_STATUS_LABELS,
+  DEPLOY_STATUS_TONE as STATUS_TONE,
+} from "@/modules/deploy/deploy.constants"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
-
-const STATUS_TONE: Record<string, string> = {
-  running: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
-  failed: "border-rose-500/20 bg-rose-500/5 text-rose-400",
-  building: "border-sky-500/20 bg-sky-500/5 text-sky-400",
-  deploying: "border-sky-500/20 bg-sky-500/5 text-sky-400",
-  queued: "border-amber-500/20 bg-amber-500/5 text-amber-400",
-  idle: "border-border bg-muted/30 text-muted-foreground",
-}
 const formatRelativeTime = (timestamp: string, locale: string) => {
   const elapsedMs = new Date(timestamp).getTime() - Date.now()
   const absoluteMs = Math.abs(elapsedMs)
