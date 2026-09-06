@@ -1950,6 +1950,71 @@ export type AppMessages = {
         heading: string
         description: string
       }
+      deployments: {
+        heading: string
+        description: string
+        historyTitle: string
+        historyDescription: string
+        loadingHistory: string
+        noAttempts: string
+        table: {
+          status: string
+          attempt: string
+          duration: string
+          commit: string
+          failure: string
+          started: string
+          completed: string
+        }
+      }
+      timeline: {
+        steps: {
+          queued: string
+          monitorWait: string
+          monitorPickedUp: string
+          jenkinsTriggered: string
+          jenkinsQueued: string
+          jenkinsRunning: string
+          imagePushed: string
+          imageTagReceived: string
+          gitopsCommitted: string
+          argocdSyncStarted: string
+          argocdSynced: string
+          podsReady: string
+          live: string
+          templateReady: string
+        }
+        states: {
+          completed: string
+          active: string
+          pending: string
+          skipped: string
+          failed: string
+        }
+        badges: {
+          deploying: string
+          lagging: string
+          healthVerification: string
+        }
+        labels: {
+          notStarted: string
+          failedAtStep: string
+          retryDeploy: string
+          viewLiveApp: string
+          deploymentDetails: string
+          noLogs: string
+          failedToLoadLogs: string
+        }
+        monitor: {
+          statusTitle: string
+          statusDescription: string
+          timelineTitle: string
+          logsTitle: string
+          noDeployments: string
+          timeoutHint: string
+          registryHint: string
+        }
+      }
       settings: {
         heading: string
         description: string
@@ -2172,3 +2237,5 @@ export type AppMessages = {
 }
 
 export type DeployWizardMessages = AppMessages["console"]["app"]["deployWizard"]
+export type TimelineMessages = AppMessages["console"]["app"]["timeline"]
+export type DeploymentsMessages = AppMessages["console"]["app"]["deployments"]

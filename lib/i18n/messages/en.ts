@@ -2151,6 +2151,76 @@ export const enMessages: AppMessages = {
         description:
           "Track deployment history and rollout events for your application.",
       },
+      deployments: {
+        heading: "Deployments",
+        description:
+          "View deployment history and live rollout status for your applications.",
+        historyTitle: "Deployment history",
+        historyDescription: "Previous deployment attempts",
+        loadingHistory: "Loading deployment history…",
+        noAttempts: "No deployment attempts yet.",
+        table: {
+          status: "Status",
+          attempt: "Attempt",
+          duration: "Duration",
+          commit: "Commit",
+          failure: "Failure",
+          started: "Started",
+          completed: "Completed",
+        },
+      },
+      timeline: {
+        steps: {
+          queued: "Queued",
+          monitorWait: "Waiting in queue",
+          monitorPickedUp: "Preparing build",
+          jenkinsTriggered: "Build initialized",
+          jenkinsQueued: "Build queued",
+          jenkinsRunning: "Building application",
+          imagePushed: "Application packaged",
+          imageTagReceived: "Release ready",
+          gitopsCommitted: "Configuration applied",
+          argocdSyncStarted: "Deploying to cloud",
+          argocdSynced: "Deployment verified",
+          podsReady: "Application healthy",
+          live: "Live",
+          templateReady: "Template ready",
+        },
+        states: {
+          completed: "Completed",
+          active: "In progress",
+          pending: "Pending",
+          skipped: "Skipped",
+          failed: "Failed",
+        },
+        badges: {
+          deploying: "Deploying",
+          lagging: "Lagging",
+          healthVerification: "Health verification in progress",
+        },
+        labels: {
+          notStarted: "Deployment has not started.",
+          failedAtStep: "Deployment failed at this step.",
+          retryDeploy: "Retry deploy",
+          viewLiveApp: "Open live deployment",
+          deploymentDetails: "Deployment details",
+          noLogs: "No log output available for this step.",
+          failedToLoadLogs: "Failed to load logs",
+        },
+        monitor: {
+          statusTitle: "Deployment status",
+          statusDescription:
+            "Live status, events, and logs sourced from the deployment system.",
+          timelineTitle: "Status timeline",
+          logsTitle: "Build and runtime logs",
+          noDeployments:
+            "No deployments yet for this app. Start a deploy to see live status, events, and logs here.",
+          timeoutHint:
+            "The application took longer than expected to start up. Check application logs below or click Retry Deploy.",
+          registryHint:
+            "The target cluster is missing an active Container Registry integration. Please configure or activate the cluster registry in admin settings.",
+        },
+      },
       settings: {
         heading: "Application Settings",
         description: "Configure domains, environment, scaling, and more.",

@@ -8,6 +8,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { CheckIcon, Spinner, WarningCircle, XIcon } from "@phosphor-icons/react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { TimelineMessages } from "@/lib/i18n/messages/types"
 import {
   DEPLOY_EVENT_STEP_INDEX,
   buildDeployTimelineItems,
@@ -33,6 +37,7 @@ type DeployStepTimelineProps = {
   currentStep?: DeployStep
   /** Max unlocked wizard step — used for gating live URL and retry behavior. */
   maxUnlockedStep?: DeployStep
+  locale?: string
 }
 
 // Timeline and LogsPanel own 3s polling; stop at running, failed, or idle.
@@ -92,18 +97,18 @@ function stepUiState(
   return "pending"
 }
 
-function statusText(state: StepUiState): string {
+function statusText(state: StepUiState, t: TimelineMessages): string {
   switch (state) {
     case "completed":
-      return "Completed"
+      return t.states.completed
     case "active":
-      return "In progress"
+      return t.states.active
     case "pending":
-      return "Pending"
+      return t.states.pending
     case "skipped":
-      return "Skipped"
+      return t.states.skipped
     case "failed":
-      return "Failed"
+      return t.states.failed
   }
 }
 
@@ -163,9 +168,51 @@ export function DeployStepTimeline({
   liveDomain,
   skipBuildSteps,
   onRetry,
+  locale: localeProp,
 }: DeployStepTimelineProps) {
   const [steps] = useState<DeployTimelineItem[]>(() =>
     buildDeployTimelineItems()
+  )
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const t = getMessages(locale).console.app.timeline
+
+  const getStepLabel = useCallback(
+    (step: DeployTimelineItem): string => {
+      switch (step.id) {
+        case "queued":
+          return t.steps.queued
+        case "monitor-wait":
+          return t.steps.monitorWait
+        case "monitor-picked-up":
+          return t.steps.monitorPickedUp
+        case "jenkins-triggered":
+          return t.steps.jenkinsTriggered
+        case "jenkins-queued":
+          return t.steps.jenkinsQueued
+        case "jenkins-running":
+          return t.steps.jenkinsRunning
+        case "image-pushed":
+          return t.steps.imagePushed
+        case "image-tag-received":
+          return t.steps.imageTagReceived
+        case "gitops-committed":
+          return t.steps.gitopsCommitted
+        case "argocd-sync-started":
+          return t.steps.argocdSyncStarted
+        case "argocd-synced":
+          return t.steps.argocdSynced
+        case "pods-ready":
+          return t.steps.podsReady
+        case "live":
+          return t.steps.live
+        case "base-image-ready":
+          return t.steps.templateReady
+        default:
+          return step.label
+      }
+    },
+    [t]
   )
   const [fetchedStatus, setFetchedStatus] = useState<FetchedStatus | null>(null)
   const [events, setEvents] = useState<FetchedEvent[]>([])
@@ -372,9 +419,7 @@ export function DeployStepTimeline({
 
   if (effectiveStatus === "idle") {
     return (
-      <p className="text-sm text-muted-foreground">
-        Deployment has not started.
-      </p>
+      <p className="text-sm text-muted-foreground">{t.labels.notStarted}</p>
     )
   }
 
@@ -443,17 +488,19 @@ export function DeployStepTimeline({
                 <CollapsibleTrigger className="flex w-full items-center gap-3 text-left">
                   <StepIcon state={uiState} />
                   <div className="flex flex-1 flex-col">
-                    <span className="text-sm font-medium">{step.label}</span>
+                    <span className="text-sm font-medium">
+                      {getStepLabel(step)}
+                    </span>
                     <span className="text-xs text-muted-foreground">
-                      {statusText(uiState)}
+                      {statusText(uiState, t)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {lagging && (
                       <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-400">
                         {step.id === "argocd-sync-started"
-                          ? "Deploying"
-                          : "Lagging"}
+                          ? t.badges.deploying
+                          : t.badges.lagging}
                       </span>
                     )}
                     {duration !== null && (
@@ -467,8 +514,7 @@ export function DeployStepTimeline({
                   {uiState === "failed" && (
                     <div className="space-y-2">
                       <p className="text-xs text-destructive">
-                        {fetchedStatus?.failureReason ??
-                          "Deployment failed at this step."}
+                        {fetchedStatus?.failureReason ?? t.labels.failedAtStep}
                       </p>
                       {onRetry && (
                         <button
@@ -476,14 +522,14 @@ export function DeployStepTimeline({
                           onClick={onRetry}
                           className="rounded border border-border px-2 py-1 text-xs hover:bg-muted"
                         >
-                          Retry deploy
+                          {t.labels.retryDeploy}
                         </button>
                       )}
                     </div>
                   )}
                   {isDegraded && originalIndex >= 9 && originalIndex <= 11 && (
                     <p className="text-xs text-amber-600">
-                      Health verification in progress
+                      {t.badges.healthVerification}
                     </p>
                   )}
                   {logsError && (
@@ -502,7 +548,7 @@ export function DeployStepTimeline({
                     </ul>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      No logs for this step.
+                      {t.labels.noLogs}
                     </p>
                   )}
                 </CollapsibleContent>
@@ -519,7 +565,7 @@ export function DeployStepTimeline({
           rel="noopener noreferrer"
           className="inline-block text-sm text-blue-600 underline"
         >
-          Open live deployment →
+          {t.labels.viewLiveApp} →
         </a>
       )}
     </div>
