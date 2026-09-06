@@ -52,7 +52,6 @@ Buka menu **Console** > **WhatsApp** > **Devices** (`/id/console/whatsapp/device
 
 Pelajari dokumentasi lengkap untuk setiap modul yang telah ditingkatkan:
 
-- [**Analitik WhatsApp & Rekonsiliasi Biaya**](/docs/whatsapp/analytics): Bandingkan log pengiriman internal dengan kategori penagihan Meta Graph API dan lakukan rekonsiliasi keuangan otomatis.
 - [**Visual Canvas & Workflow Bot AI**](/docs/whatsapp/workflows): Rancang alur chatbot multi-langkah dengan prompt input, integrasi API katalog langsung, jawaban generatif LLM, dan simulator chat interaktif.
 - [**Template Pesan & Asisten "Ask P" AI Copilot**](/docs/whatsapp/templates): Buat template pesan WhatsApp terverifikasi dan gunakan asisten Ask P untuk mencegah penolakan kategori dari Meta.
 - [**Log WhatsApp, Webhook & Riwayat Pesan (Message Journey)**](/docs/whatsapp/webhooks-and-audits): Investigasi bukti pengiriman dengan tombol salin cepat WhatsApp Message ID (wamid) dan visualisasi linimasa riwayat pesan end-to-end.
