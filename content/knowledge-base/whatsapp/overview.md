@@ -52,7 +52,6 @@ Navigate to **Console** > **WhatsApp** > **Devices** (`/console/whatsapp/devices
 
 Explore our dedicated documentation guides for each upgraded capability:
 
-- [**WhatsApp Analytics & Cost Reconciliation**](/docs/whatsapp/analytics): Compare internal delivery logs against official Meta Graph API billing categories and perform automated financial reconciliations.
 - [**Visual Canvas & AI Bot Builder**](/docs/whatsapp/workflows): Build multi-step chatbot workflows with input prompts, live catalog HTTP requests, LLM generative replies, and an interactive chat simulator.
 - [**Message Templates & "Ask P" AI Copilot**](/docs/whatsapp/templates): Design pre-approved WhatsApp templates with dynamic formatting and pre-screen text using the Ask P AI compliance auditor.
 - [**Logs, Webhooks & Message Journey**](/docs/whatsapp/webhooks-and-audits): Investigate delivery receipts with one-click WA Message ID copying and full end-to-end message lifecycle journey visualization.
