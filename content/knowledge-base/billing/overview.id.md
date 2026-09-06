@@ -1,94 +1,86 @@
 ---
 path: /billing
 locale: id
-title: Penagihan & Saldo Console
+title: Penagihan & Manajemen Saldo Console
 category: Billing
-purpose: Kelola saldo organisasi, lihat estimasi biaya, pantau invoice, dan kelola langganan layanan di Console Penagihan.
+purpose: Kelola saldo deposit organisasi, pantau langganan layanan cloud berulang, periksa faktur tagihan terkini, dan akses modul keuangan.
 howTo:
-  - "Buka Console > Penagihan (/console/billing)."
-  - "Pantau ringkasan Saldo Organisasi, Invoice Berikutnya, dan Estimasi Bulanan."
-  - "Gunakan tombol Isi Saldo untuk menambah dana deposit organisasi."
-  - "Tinjau riwayat transaksi, invoice terbaru, dan unduh berkas PDF invoice."
+  - "Buka menu Console > Billing (/id/console/billing)."
+  - "Tinjau Saldo Organisasi, Tanggal Tagihan Berikutnya, dan Estimasi Biaya Bulanan."
+  - "Klik Top Up Saldo untuk mengisi dana deposit organisasi."
+  - "Periksa langganan layanan aktif, riwayat faktur tagihan, dan unduh faktur PDF resmi."
+  - "Akses modul keuangan khusus: Langganan, Faktur, Transaksi, Penggunaan, Peringatan, Voucher, Kontak, dan Pengaturan."
 notes:
-  - Saldo organisasi digunakan untuk pemotongan biaya layanan otomatis dan pay-as-you-go.
-  - Invoice berstatus DRAFT atau UNPAID dapat dibayar menggunakan saldo atau kanal pembayaran gateway yang tersedia.
-  - Riwayat invoice menyediakan dokumen PDF resmi yang dapat diunduh langsung untuk kebutuhan pelaporan keuangan.
+  - "Saldo deposit organisasi digunakan untuk autodebet perpanjangan paket dan biaya layanan pay-as-you-go."
+  - "Faktur dengan status Open dapat dilunasi menggunakan saldo deposit atau payment gateway."
+  - "Faktur PDF resmi diterbitkan di bawah badan hukum PT. Premium Fast Network."
 ---
 
-Panduan ini menjelaskan cara memantau status penagihan, mengelola saldo organisasi, melihat estimasi biaya bulanan, serta mengelola invoice dan langganan aktif melalui Console Penagihan.
+# Penagihan & Manajemen Saldo Console
 
----
-
-## 1. Ikhtisar Dasbor Penagihan
-
-Dasbor Penagihan memberikan visibilitas penuh terhadap kondisi finansial akun organisasi Anda dalam satu tampilan terpadu.
+Menu **Penagihan (Billing)** menyediakan visibilitas terpadu terhadap likuiditas finansial organisasi, paket langganan berulang, riwayat faktur, dan pengeluaran sumber daya cloud.
 
 Akses menu ini melalui **Console** > **Billing** (`/id/console/billing` atau `/en/console/billing`).
 
 ![Dasbor Penagihan Console](/kb-assets/billing/01-billing-overview-id.png)
 
-### Metrik Utama Dasbor:
+---
 
-1. **Saldo (Balance)**: Total dana deposit aktif yang tersedia untuk membayar penggunaan layanan, kuota, atau pembaruan langganan otomatis.
-2. **Invoice Berikutnya (Next Billing Date)**: Tanggal jatuh tempo perpanjangan siklus langganan aktif terdekat.
-3. **Estimasi Bulanan (Estimated Monthly Cost)**: Proyeksi pengeluaran bulanan rata-rata berdasarkan riwayat penagihan dan beban layanan aktif.
-4. **Biaya & Penggunaan Khusus (misal: WhatsApp)**: Akses cepat ke halaman analitik pengeluaran dan kuota per produk spesifik.
+## 1. Metrik Utama Dasbor Penagihan
+
+1. **Saldo Organisasi (Organization Balance)**: Total saldo deposit cair yang siap digunakan untuk autodebet perpanjangan otomatis dan biaya Pay-As-You-Go (contoh: `IDR 14.312.580,66`). Klik **Lihat Mutasi →** untuk melihat rekening koran saldo real-time.
+2. **Tanggal Faktur Berikutnya (Next Invoice Date)**: Jadwal tanggal perpanjangan paket aktif terdekat.
+3. **Estimasi Biaya Bulanan (Estimated Monthly Cost)**: Proyeksi rata-rata pengeluaran bulanan berdasarkan faktur sebelumnya dan paket aktif.
+4. **Biaya & Penggunaan WhatsApp**: Tautan cepat ke analitik konsumsi kuota per perangkat.
 
 ---
 
-## 2. Mengisi Saldo Organisasi (Top-Up)
+## 2. Pengisian Saldo Deposit (Top-Up)
 
-Untuk memastikan kelancaran layanan dan mencegah pemutusan akses akibat kekurangan dana, Anda dapat melakukan pengisian saldo sewaktu-waktu.
+Untuk memastikan kelancaran operasional dan mencegah penghentian layanan karena saldo tidak mencukupi, Anda dapat melakukan top up saldo kapan saja.
 
-### Langkah-Langkah Top-Up Saldo:
+1. Pada dasbor penagihan, klik tombol **"Isi Saldo" / "Top Up Balance"** (atau buka `/id/console/billing/topup`).
+2. Pilih nominal saldo preset (contoh: `Rp 180.000`, `Rp 450.000`, `Rp 4.500.000`) atau masukkan nominal kustom (minimal `Rp 50.000`).
+3. Pilih metode pembayaran yang diinginkan (Transfer Bank Manual, Virtual Account, atau QRIS).
+4. Selesaikan pembayaran sebelum batas waktu kedaluwarsa. Saldo deposit akan langsung masuk seketika setelah pembayaran terverifikasi.
 
-1. Dari dasbor penagihan, klik tombol **"Isi Saldo"** (atau buka menu `/console/billing/topup`).
-2. Pilih nominal saldo yang diinginkan atau masukkan nominal kustom (minimum pembayaran berlaku sesuai mata uang IDR/USD).
-3. Pilih metode pembayaran yang diinginkan (Transfer Bank / Virtual Account / QRIS / Kartu Kredit).
-4. Selesaikan pembayaran sebelum batas waktu berakhir. Saldo organisasi akan terupdate secara instan begitu pembayaran terkonfirmasi.
-
-![Halaman Pengisian Saldo](/kb-assets/billing/02-billing-topup.png)
+![Halaman Top Up Saldo](/kb-assets/billing/02-billing-topup.png)
 
 ---
 
-## 3. Manajemen Invoice & Pembayaran
+## 3. Langganan Layanan Aktif (Subscriptions)
 
-Seluruh tagihan layanan yang diterbitkan sistem dicatat secara transparan di tabel **Invoice Terbaru**.
+Bagian Langganan menampilkan seluruh layanan cloud berulang (seperti WhatsApp Business Cloud, App Hosting, VPN, dll.) yang terhubung ke organisasi Anda.
 
-![Daftar Riwayat Invoice](/kb-assets/billing/03-billing-invoices-list.png)
+![Daftar Langganan Layanan](/kb-assets/billing/subscriptions/01-subscriptions-list.png)
 
-### Status Invoice:
-
-- **PAID**: Tagihan telah berhasil diselesaikan dan dicatat lunas.
-- **UNPAID / PENDING**: Menunggu pembayaran dari pengguna sebelum tanggal jatuh tempo.
-- **DRAFT**: Tagihan dalam tahap persiapan siklus penagihan sebelum finalisasi.
-- **VOID / CANCELLED**: Tagihan yang dibatalkan atau disesuaikan.
-
-### Mengunduh Berkas PDF Invoice:
-
-Pada kolom tindakan di setiap baris invoice, klik tombol **"Download PDF"** untuk mengunduh bukti tanda terima atau faktur tagihan resmi yang sah untuk keperluan pembukuan akuntansi organisasi Anda.
+- **Paket & Tier Aktif**: Konfigurasi spesifikasi dan jatah kuota layanan yang sedang berjalan.
+- **Siklus Perpanjangan**: Jadwal tanggal perpanjangan dan status autodebet otomatis.
+- **Panduan Lengkap**: Pelajari panduan khusus kami di [**Panduan Layanan Langganan**](/docs/billing/subscriptions) untuk melihat data pesanan pendaftaran dan pembatalan perpanjangan otomatis.
 
 ---
 
-## 4. Manajemen Langganan Layanan (Subscriptions)
+## 4. Manajemen Faktur & Bukti Pajak (Invoices)
 
-Menu Langganan menampilkan seluruh layanan aktif (seperti App Hosting, WhatsApp Cloud Services, VPN, dsb.) yang terhubung ke organisasi Anda.
+Seluruh faktur layanan dan bukti isi saldo dicatat secara transparan pada tabel **Invoice Terbaru**:
 
-![Manajemen Langganan](/kb-assets/billing/04-billing-subscriptions.png)
+![Daftar Riwayat Faktur](/kb-assets/billing/invoices/01-invoices-management.png)
 
-- **Tier & Paket Aktif**: Informasi detail paket komputasi atau kuota yang sedang berjalan.
-- **Siklus Pembaruan**: Tanggal perpanjangan otomatis (_renewal date_) dan status auto-debit dari saldo organisasi.
-- **Upgrade / Downgrade**: Penyesuaian paket layanan dapat dilakukan langsung dengan perhitungan prorata otomatis.
+- **Nomor Faktur**: Kode resmi dokumen (`INV-*` untuk langganan layanan, `TOP-*` untuk isi saldo).
+- **Status Pembayaran**: `Paid` (Lunas), `Open` (Menunggu Pembayaran), atau `Void` (Batal).
+- **Unduh PDF**: Ekspor instan dokumen faktur resmi yang diterbitkan oleh **PT. Premium Fast Network**.
+- **Panduan Lengkap**: Pelajari panduan khusus kami di [**Panduan Faktur & Riwayat Tagihan**](/docs/billing/invoices) untuk melihat rincian item layanan (line items) dan faktur pajak korporasi.
 
 ---
 
-## 5. Navigasi Cepat Menu Penagihan
+## 5. Menu Navigasi Modul Penagihan
 
-Gunakan bilah menu di bagian atas dasbor untuk berpindah ke fitur penagihan lainnya:
-
-- **Penggunaan (Usage)**: Lacak rincian konsumsi sumber daya dan breakdown biaya per layanan.
-- **Peringatan (Alerts)**: Atur ambang batas peringatan (_threshold alerts_) saat saldo menipis agar notifikasi dikirimkan otomatis.
-- **Transaksi (Transactions)**: Riwayat debit/kredit saldo yang mendetail dari setiap aktivitas layanan.
-- **Vouchers**: Klaim dan terapkan kode promo atau diskon komersial untuk potongan tagihan.
-- **Contacts**: Kelola daftar penerima email untuk notifikasi faktur dan invoice organisasi.
-- **Settings**: Konfigurasi mata uang default, informasi legal perusahaan, dan data NPWP/pajak penagihan.
+Akses menu keuangan lengkap melalui bilah tab atas:
+- [**Langganan (Subscriptions)**](/docs/billing/subscriptions): Kelola paket layanan berulang, jadwal perpanjangan, dan status langganan.
+- [**Faktur (Invoices)**](/docs/billing/invoices): Cari arsip riwayat tagihan dan unduh berkas PDF resmi.
+- [**Transaksi (Transactions)**](/docs/billing/transactions): Laporan rekening koran mutasi saldo yang melacak seluruh dana masuk dan keluar.
+- [**Penggunaan (Usage)**](/docs/billing/usage): Rincian konsumsi sumber daya dan grafik per layanan.
+- [**Peringatan (Alerts)**](/docs/billing/alerts): Konfigurasi batas saldo minimum untuk notifikasi peringatan otomatis.
+- [**Voucher**](/docs/billing/vouchers): Klaim dan gunakan kupon promo serta diskon komersial.
+- [**Kontak (Contacts)**](/docs/billing/contacts): Daftarkan alamat email penerima notifikasi penagihan.
+- [**Pengaturan (Settings)**](/docs/billing/settings): Atur mata uang akun, identitas legal perusahaan, dan NPWP.

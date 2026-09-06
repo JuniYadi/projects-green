@@ -33,7 +33,7 @@ Mengaktifkan **Peringatan Saldo (Billing Alerts)** menjamin tim finansial dan te
 
 Buka **Console** > **Billing** > **Alerts** (`/console/billing/alerts`).
 
-![Konfigurasi Billing Alerts](/kb-assets/billing/07-billing-alerts.png?v=3)
+![Konfigurasi Billing Alerts](/kb-assets/billing/07-billing-alerts.png)
 
 ### Langkah Konfigurasi:
 

@@ -1,60 +1,81 @@
 ---
 path: /whatsapp/workflows
 locale: en
-title: "Visual Canvas & WhatsApp AI Bot Workflow Guide"
+title: "Visual Canvas & WhatsApp AI Bot Workflows"
 category: WhatsApp
-purpose: Comprehensive guide for designing, testing, and publishing automated chatbot workflows, AI Copilot fallbacks, and conversation webhook routing on WhatsApp.
+purpose: Comprehensive guide for visually designing, testing with live simulation, and deploying automated WhatsApp chatbots and AI agent workflows.
 howTo:
-  - "Create and manage visual bot flows using the Visual Canvas & AI Bot Builder."
-  - "Connect Trigger Nodes, Prompt Inputs, Logic Branching, HTTP Requests, and AI Generative Nodes."
-  - "Bind active WhatsApp phone numbers to AI Agent profiles or automated flows."
-  - "Configure human agent escalation and fallback routing."
+  - "Navigate to Console > WhatsApp > AI & Bot Builder (/console/whatsapp/workflows)."
+  - "Create a new workflow or click 'Open canvas' on an existing automation."
+  - "Drag, drop, and connect steps: Ask for Input, HTTP API Webhooks, AI Generative Decisions, and Conditional Logic."
+  - "Click 'Simulate test' to verify chatbot conversation logic directly in the interactive simulator."
+  - "Deploy your workflow to live customer numbers with 'Save and deploy'."
 notes:
-  - "Automated bot flows operate within customer-initiated 24-hour conversation session windows."
-  - "HTTP Request Nodes support Bearer auth, custom API Keys, and dynamic JSON variable extraction."
-  - "AI Generative Nodes utilize enterprise LLMs with guardrails and forensic security auditing."
+  - "Visual canvas supports dynamic variable passing using mustache syntax (e.g. {{variables.user_input}})."
+  - "HTTP Request nodes can query live catalogs and pass API response payloads directly to AI prompt steps."
+  - "Edges between nodes can be individually selected and deleted with visual confirmation."
 ---
 
-# Visual Canvas & WhatsApp AI Bot Workflow Guide
+# Visual Canvas & WhatsApp AI Bot Workflows
 
-The **AI & Bot Builder** (`/console/whatsapp/workflows`) empowers businesses to visually design conversational chatbots, auto-triage ticketing, interactive FAQ menus, and intelligent routing without authoring complex backend infrastructure.
+The **AI & Bot Builder** (`/console/whatsapp/workflows`) empowers organizations to visually build multi-step conversational bots, automated customer support triage, dynamic catalog lookups, and AI-driven sales agents without managing backend server logic.
 
----
-
-## 1. Quickstart: Open the Visual Canvas
-
-1. Navigate to **Console** > **WhatsApp** > **AI & Bot Builder** (`/console/whatsapp/workflows`).
-2. Click **"+ Create New Canvas Flow"** or **"✦ Open Visual Canvas & AI Copilot"**.
-3. Provide a clear flow name (e.g. `Customer Support Triage` or `Lead Qualification Bot`).
+![Workflows Dashboard](/kb-assets/whatsapp/workflows/01-workflows-list.png)
 
 ---
 
-## 2. Available Flow Nodes
+## 1. Workflows Overview & Management
 
-The Visual Canvas provides 6 modular node types:
-
-| Node Type | Purpose | Common Example |
-| :--- | :--- | :--- |
-| **Trigger Node** | Entry point activated on incoming message | Keyword match (e.g. `menu`, `help`, `support`, `order`) |
-| **Send Message Node** | Dispatches text, rich media, or interactive buttons | Presenting interactive menu buttons or greetings |
-| **Prompt Input Node** | Pauses and captures user text response | Asking for invoice number, email address, or feedback |
-| **Condition Node** | Evaluates variables for branching logic | If `input === "1"` route to Sales, if `"2"` route to Support |
-| **HTTP Request Node** | Invokes external REST APIs in real-time | Tracking order shipment numbers or creating CRM tickets |
-| **AI Generate Node** | Generates dynamic answers using AI Copilot | Answering product inquiries from company knowledge documents |
+In the **AI & Bot Workflows** overview:
+- **Active Flows**: Monitor all deployed automations, node counts, and assigned phone numbers.
+- **Trigger Indicators**: View trigger conditions (e.g. `whatsapp_inbound` on `+6283138855774`).
+- **Create Workflow**: Start a clean workflow canvas from scratch or clone an existing template.
+- **Open Canvas**: Enter the interactive drag-and-drop flow builder.
 
 ---
 
-## 3. Binding a WhatsApp Number to an AI Agent
+## 2. Interactive Visual Canvas Builder
 
-To enable automated AI Copilot responses on your active phone number:
-1. Go to **Console** > **WhatsApp** > **Devices** (`/console/whatsapp/devices`).
-2. Select your target WhatsApp device and open the **AI Agent Binding** tab.
-3. Choose the desired AI Agent Profile created in AI Studio.
-4. Save bindings. Incoming customer queries will now seamlessly utilize your AI knowledge base.
+Click **"Open canvas"** (`/console/whatsapp/workflows/[id]/canvas`) to access the full-screen visual workspace.
+
+![Visual Workflow Canvas](/kb-assets/whatsapp/workflows/02-workflow-visual-canvas.png)
+
+### Canvas Controls & Toolbar:
+- **Workflow Name & Status**: Edit automation name and inspect deployment state (**Live** / **Draft**).
+- **ADD A STEP Toolbar**:
+  - **AI Assist**: Generate nodes and logic automatically with AI Copilot.
+  - **Send message**: Dispatch formatted text or media bubbles to the customer.
+  - **Ask for input**: Prompt customer for text or numbers and store the answer in a custom variable (e.g. `customer_need`).
+  - **Condition**: Branch execution based on variable evaluation.
+  - **Interactive buttons**: Provide quick-reply buttons or list messages.
+  - **AI response**: Run an LLM prompt using conversation context and external API results.
+  - **HTTP request**: Perform real-time GET/POST requests against external endpoints or internal catalog APIs.
+- **Deletable Edges**: Connect any output port to an input port. Hover or click an edge to reveal the **Delete edge** action.
+- **Viewport Navigation**: Pan, zoom in/out, and click **Fit View** for complete flow overview.
+
+### Dynamic Variable Interpolation:
+Nodes pass data down the chain using clean template tags:
+- `{{variables.<variable_name>}}`: Values captured from **Ask for input** steps.
+- `{{steps.<node_id>.body}}`: JSON response bodies returned by **HTTP request** nodes.
 
 ---
 
-## 4. Testing & Publishing
+## 3. Interactive Bot Simulator
 
-- Use the **Test Simulator** drawer in the canvas top bar to simulate user conversations in real-time.
-- Click **Publish Version** to roll out the flow to live customer conversations.
+Before deploying changes to live production devices, test your logic end-to-end using the built-in simulator.
+
+Click **"Simulate test"** in the canvas header to open the simulator dialog:
+
+![WhatsApp Bot Simulator](/kb-assets/whatsapp/workflows/03-workflow-simulator-dialog.png)
+
+- **Realistic Conversation Preview**: See bot responses exactly as they will render on customer mobile devices.
+- **Interactive Chat Input**: Type simulated customer queries to verify AI prompt reasoning and HTTP API integrations.
+- **Reset Session**: Wipe the simulator memory to test fresh onboarding flows from step 1.
+
+---
+
+## 4. Deploying to Live Production
+
+Once validated in the simulator:
+1. Click **"Save and deploy"** in the top navigation.
+2. The workflow will compile and activate immediately for all inbound messages on the assigned WhatsApp device.

@@ -1,38 +1,37 @@
 ---
 path: /billing
 locale: en
-title: Billing Console & Balance
+title: Billing Console & Balance Management
 category: Billing
-purpose: Manage organization balance, view estimated costs, track invoices, and manage service subscriptions in the Billing Console.
+purpose: Manage organization prepaid balance, monitor recurring service subscriptions, inspect recent invoices, and access billing modules.
 howTo:
   - "Navigate to Console > Billing (/console/billing)."
   - "Review Organization Balance, Next Billing Date, and Estimated Monthly Cost."
   - "Click Top Up Balance to add funds to your organization account."
-  - "Inspect transaction history, recent invoices, and download official PDF invoices."
+  - "Inspect active service subscriptions, recent invoices, and download official PDF tax invoices."
+  - "Navigate to specialized billing modules: Subscriptions, Invoices, Transactions, Usage, Alerts, Vouchers, Contacts, and Settings."
 notes:
-  - Organization balance is used for automated subscription renewals and pay-as-you-go service fees.
-  - Invoices in DRAFT or UNPAID status can be settled via balance or integrated payment gateways.
-  - Official PDF invoices are available for download on all issued billing records for accounting audits.
+  - "Organization balance is used for automated subscription renewals and pay-as-you-go service fees."
+  - "Invoices in Open status can be settled via organization balance or integrated payment gateways."
+  - "Official PDF invoices are issued under legal entity PT. Premium Fast Network."
 ---
 
-This guide explains how to monitor billing status, manage organization balance, view monthly cost projections, and manage invoices and active subscriptions through the Billing Console.
+# Billing Console & Balance Management
 
----
+The **Billing Console** provides unified visibility into your organization's financial liquidity, recurring subscriptions, invoice history, and cloud resource expenditures.
 
-## 1. Billing Dashboard Overview
-
-The Billing Dashboard provides unified visibility into your organization's financial status and cloud resource expenditures.
-
-Access this section via **Console** > **Billing** (`/id/console/billing` or `/en/console/billing`).
+Access this section via **Console** > **Billing** (`/en/console/billing` or `/id/console/billing`).
 
 ![Billing Console Dashboard](/kb-assets/billing/01-billing-overview-id.png)
 
-### Key Dashboard Metrics:
+---
 
-1. **Balance**: Total active deposit available for automated recurring renewals and on-demand usage charges.
-2. **Next Billing Date**: Scheduled upcoming renewal date for active service subscriptions.
+## 1. Key Dashboard Metrics
+
+1. **Organization Balance**: Total active liquid deposit available for automated subscription renewals and on-demand Pay-As-You-Go charges (e.g. `IDR 14,312,580.66`). Click **View Statement →** to inspect the real-time banking statement.
+2. **Next Invoice Date**: Scheduled upcoming renewal date for active service subscriptions based on running terms.
 3. **Estimated Monthly Cost**: Projected average monthly spend based on historical invoices and active service tiers.
-4. **Product Usage & Costs (e.g. WhatsApp)**: Direct link to granular per-service consumption analytics.
+4. **WhatsApp Usage & Costs**: Direct link to granular per-device conversation consumption analytics.
 
 ---
 
@@ -40,55 +39,48 @@ Access this section via **Console** > **Billing** (`/id/console/billing` or `/en
 
 To ensure continuous uptime and prevent service interruptions due to insufficient funds, you can top up your balance at any time.
 
-### Top-Up Steps:
-
-1. From the billing dashboard, click **"Isi Saldo" / "Top Up"** (or go to `/console/billing/topup`).
-2. Select a preset balance amount or enter a custom amount (observing minimum transaction limits in IDR/USD).
-3. Choose your preferred payment method (Bank Transfer / Virtual Account / QRIS / Credit Card).
-4. Complete the payment before the expiration window. Your balance will be credited instantly once confirmed.
+1. From the billing dashboard, click **"Top Up Balance"** (or go to `/console/billing/topup`).
+2. Select a preset balance amount (e.g. `Rp 180.000`, `Rp 450.000`, `Rp 4.500.000`) or enter a custom amount (minimum `Rp 50.000`).
+3. Choose your preferred payment method (Bank Transfer, Virtual Account, or QRIS).
+4. Complete payment before the expiration window. Your balance will be credited instantly once confirmed.
 
 ![Balance Top Up Page](/kb-assets/billing/02-billing-topup.png)
 
 ---
 
-## 3. Invoice Management & Payments
+## 3. Active Service Subscriptions
 
-All issued service invoices are listed in the **Invoice Terbaru / Recent Invoices** table.
+The Subscriptions card displays all active recurring cloud services (such as WhatsApp Business Cloud, App Hosting, VPN, etc.) linked to your organization.
 
-![Recent Invoices List](/kb-assets/billing/03-billing-invoices-list.png)
-
-### Invoice Status Lifecycle:
-
-- **PAID**: The invoice has been successfully paid and recorded.
-- **UNPAID / PENDING**: Awaiting payment before the stated due date.
-- **DRAFT**: Billing cycle preparation in progress prior to finalization.
-- **VOID / CANCELLED**: An invoice that was cancelled or adjusted.
-
-### Downloading PDF Invoices:
-
-Click **"Download PDF"** in the action column of any invoice row to download official tax-compliant invoices for your accounting records.
-
----
-
-## 4. Service Subscription Management
-
-The Subscriptions tab displays all active recurring services (such as App Hosting, WhatsApp Cloud Services, VPN, etc.) linked to your organization.
-
-![Service Subscriptions](/kb-assets/billing/04-billing-subscriptions.png)
+![Service Subscriptions](/kb-assets/billing/subscriptions/01-subscriptions-list.png)
 
 - **Active Tiers & Plans**: Detailed configuration and quota allocations of your running services.
 - **Renewal Cycles**: Scheduled renewal dates and auto-charge statuses.
-- **Upgrades / Downgrades**: Seamless plan modifications with automated proration calculations.
+- **Detailed Management**: Explore our dedicated [**Service Subscriptions Guide**](/docs/billing/subscriptions) for order details, signup metadata, and renewal cancellation policies.
+
+---
+
+## 4. Invoice Management & Tax Receipts
+
+All issued service invoices and top-up receipts are listed in the **Recent Invoices** table:
+
+![Recent Invoices List](/kb-assets/billing/invoices/01-invoices-management.png)
+
+- **Invoice Numbers**: Official tracking codes (`INV-*` for subscription orders, `TOP-*` for top-up invoices).
+- **Payment Statuses**: `Paid`, `Open`, or `Void`.
+- **Download PDF**: Instant export of official tax invoices issued by **PT. Premium Fast Network**.
+- **Detailed Accounting**: Explore our dedicated [**Invoices & Billing History Guide**](/docs/billing/invoices) for itemized line item breakdowns and corporate tax receipts.
 
 ---
 
 ## 5. Billing Navigation Menu
 
-Use the navigation bar at the top of the Billing page to access related modules:
-
-- **Usage**: Detailed resource consumption breakdowns and service line-item charts.
-- **Alerts**: Configure low-balance threshold triggers for automated email/webhook notifications.
-- **Transactions**: Itemized audit log of credit deposits and service debit deductions.
-- **Vouchers**: Claim and apply promo vouchers or enterprise commercial discounts.
-- **Contacts**: Maintain billing notification recipient email addresses.
-- **Settings**: Manage billing currency, company legal information, and tax IDs.
+Access specialized modules from the top navigation bar:
+- [**Subscriptions**](/docs/billing/subscriptions): Manage recurring service plans, renewal dates, and terms.
+- [**Invoices**](/docs/billing/invoices): Search billing history and download official accounting PDFs.
+- [**Transactions**](/docs/billing/transactions): Banking-style balance statement ledger tracking all debit and credit movements.
+- [**Usage**](/docs/billing/usage): Detailed resource consumption breakdowns and service charts.
+- [**Alerts**](/docs/billing/alerts): Configure low-balance threshold triggers for automated notifications.
+- [**Vouchers**](/docs/billing/vouchers): Claim and apply promotional vouchers and enterprise discounts.
+- [**Contacts**](/docs/billing/contacts): Maintain billing notification recipient email addresses.
+- [**Settings**](/docs/billing/settings): Manage billing currency, company legal information, and tax IDs.

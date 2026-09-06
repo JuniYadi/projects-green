@@ -33,7 +33,7 @@ Configuring **Billing Alerts** (`/console/billing/alerts`) ensures your finance 
 
 Navigate to **Console** > **Billing** > **Alerts**.
 
-![Billing Alerts Configuration](/kb-assets/billing/07-billing-alerts.png?v=3)
+![Billing Alerts Configuration](/kb-assets/billing/07-billing-alerts.png)
 
 ### Setup Steps:
 

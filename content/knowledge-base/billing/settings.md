@@ -24,7 +24,7 @@ This guide explains how to configure corporate identity details, tax IDs, and bi
 
 The **Billing Settings** page (`/console/billing/settings`) allows customization of corporate legal details rendered on official tax invoices and payment vouchers.
 
-![Billing & Tax Settings](/kb-assets/billing/11-billing-settings.md)
+![Billing & Tax Settings](/kb-assets/billing/11-billing-settings.png)
 
 ### Configuration Sections:
 

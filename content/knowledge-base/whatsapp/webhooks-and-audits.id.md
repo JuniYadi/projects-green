@@ -1,55 +1,76 @@
 ---
 path: /whatsapp/webhooks-and-audits
 locale: id
-title: Webhook WhatsApp & Jejak Audit
+title: Log WhatsApp, Webhook & Riwayat Pesan
 category: WhatsApp
-purpose: Pantau riwayat event webhook masuk dan keluar, tanda terima pengiriman payload, percobaan ulang error, dan log audit kepatuhan.
+purpose: Pantau bukti pengiriman pesan masuk dan keluar, payload webhook interaktif, penanganan error, serta siklus hidup pesan end-to-end (Message Journey).
 howTo:
-  - "Buka Console > WhatsApp > Webhook Logs (/console/whatsapp/webhook-logs)."
-  - "Filter event webhook berdasarkan status (DELIVERED, FAILED, RETRYING) atau jenis event."
-  - "Periksa rincian payload JSON mentah, kode status respons HTTP, dan latensi eksekusi."
-  - "Buka Console > WhatsApp > Audit Logs (/console/whatsapp/audit-logs) untuk meninjau aktivitas pengguna."
+  - "Buka menu Console > WhatsApp > Logs (/id/console/whatsapp/logs)."
+  - "Saring log pengiriman berdasarkan status (SENT, DELIVERED, READ, RECEIVED) atau nomor tujuan."
+  - "Klik 'Details →' pada baris log untuk membuka drawer investigasi cepat."
+  - "Klik 'View Message Journey' untuk melihat linimasa lengkap pesan dari inisiasi hingga tagihan."
+  - "Buka tab Activity Logs untuk mengaudit aksi pengguna, rotasi API key, dan perubahan perangkat."
 notes:
-  - "Webhook keluar yang gagal dikirim akan dicoba ulang secara otomatis dengan jeda eksponensial (exponential backoff)."
-  - "Log audit bersifat permanen (immutable) untuk kepatuhan keamanan dan rekonsiliasi penagihan."
+  - "Log interaktif menyediakan tombol salin cepat WhatsApp Message ID (wamid)."
+  - "Visualizer Message Journey menampilkan pratinjau balon chat realistis dan linimasa pengiriman bertingkat."
+  - "Pesan yang gagal dikirimkan dilengkapi kode error transparan serta pelacakan pengembalian kuota otomatis."
 ---
 
-# Log Webhook WhatsApp & Jejak Audit Keamanan
+# Log WhatsApp, Webhook & Riwayat Pesan
 
-Panduan ini menjelaskan cara memantau pengiriman pesan dan kepatuhan sistem melalui **Webhook Logs** dan **Audit Logs**.
+Konsol **Logs & Activity Trail** (`/console/whatsapp/logs`) memberikan visibilitas real-time bagi tim teknis dan operasional untuk melacak status pengiriman pesan, payload event webhook, serta audit riwayat perjalanan tiap pesan.
 
----
-
-## 1. Webhook Logs (`/console/whatsapp/webhook-logs`)
-
-Webhook Logs mencatat seluruh event mentah yang diterima dari Meta Cloud API (pesan masuk pelanggan, pembaruan status pesan) serta pengiriman webhook keluar ke server backend Anda.
-
-![Log Webhook](/kb-assets/whatsapp/guides/05-journey1-webhook-logs.png)
-
-### Jenis Event Utama:
-
-- `message.received`: Pesan masuk (teks, media, tombol) yang dikirim oleh pelanggan.
-- `message.sent`: Konfirmasi pengiriman pesan dari Meta.
-- `message.delivered`: Konfirmasi bahwa pesan telah sampai di perangkat penerima.
-- `message.read`: Stempel waktu pesan telah dibuka/dibaca oleh pelanggan.
-- `message.failed`: Informasi kegagalan pengiriman beserta kode error dari Meta.
-
-### Memeriksa Rincian Payload Webhook:
-
-Klik baris log webhook untuk melihat payload JSON request dan response secara lengkap, kode status HTTP, latensi jaringan dalam milidetik, dan riwayat percobaan ulang (_retry_).
+![Log Pesan & Webhook Interaktif](/kb-assets/whatsapp/logs/01-interactive-webhook-logs.png)
 
 ---
 
-## 2. Audit Logs (`/console/whatsapp/audit-logs`)
+## 1. Log Pesan & Status Pengiriman
 
-Menu Audit Logs menyediakan catatan audit permanen atas tindakan administratif dan operasional yang terjadi di organisasi Anda.
+Buka menu **Console** > **WhatsApp** > **Logs** (`/id/console/whatsapp/logs`).
 
-![Log Audit](/kb-assets/whatsapp/guides/06-journey1-audit-logs.png)
+Tab **Message Logs** mencatat setiap perubahan status yang dilaporkan oleh Meta dan perangkat pelanggan:
 
-### Aktivitas yang Dicatat:
+- **Perangkat Pengirim (Sender Device)**: Menampilkan nomor WhatsApp bisnis yang memproses percakapan.
+- **Kontak Penerima (Recipient Contact)**: Nomor telepon tujuan dalam format standar internasional E.164 (contoh: `+62 851-6143-2124`).
+- **Status Pengiriman**:
+  - `SENT`: Pesan berhasil diserahkan ke server Meta Cloud API.
+  - `DELIVERED`: Pesan berhasil diterima di perangkat ponsel pelanggan.
+  - `READ`: Centang dua biru yang menandakan pelanggan telah membuka dan membaca pesan.
+  - `RECEIVED`: Pesan balasan dari pelanggan diterima dan diteruskan ke webhook atau inbox konsol.
 
-- Pembuatan, rotasi, dan pencabutan akses API Key.
-- Pembuatan, perubahan, dan sinkronisasi template pesan.
-- Pendaftaran perangkat WhatsApp baru, pembaruan token, atau pemutusan koneksi.
-- Pemicuan pengiriman pesan massal (_broadcast_).
-- Pemotongan kuota saldo dan pengembalian dana (_refund_).
+---
+
+## 2. Drawer Investigasi Cepat (Details Drawer)
+
+Klik tombol **"Details →"** pada baris log untuk membuka drawer investigasi:
+
+- **Aksi Cepat (Quick Actions)**:
+  - **View Message Journey**: Membuka linimasa lengkap siklus hidup pesan tersebut.
+  - **Open in Inbox**: Langsung menuju ke obrolan aktif pada menu percakapan.
+- **Informasi Perangkat & Pengiriman**: Nomor pengirim, nomor penerima, dan ID log unik.
+- **WhatsApp Message ID**: Tombol satu-klik **Copy ID** untuk menyalin string Meta `wamid` lengkap (contoh: `wamid.HBgNNjI4N...`) untuk kebutuhan audit di Meta Business Manager atau eskalasi teknis.
+
+---
+
+## 3. Linimasa Perjalanan Pesan (Unified Message Journey)
+
+Klik **"View Message Journey"** (dapat diakses pada `/console/whatsapp/messages/[wamid]`) untuk melihat linimasa audit forensik lengkap dari sebuah pesan:
+
+![Linimasa Riwayat Pesan WhatsApp](/kb-assets/whatsapp/logs/02-unified-message-journey.png)
+
+### Tahapan Perjalanan Pesan:
+1. **Pencatatan Kuota & Tagihan**: Menampilkan reservasi kredit awal dan klasifikasi kategori (contoh: `AUTHENTICATION · Status: CONFIRMED`).
+2. **Inisiasi Pesan (Message Initiated)**: Mencatat timestamp pengiriman dan sumber pemicu (seperti *API Key Request* atau *Visual Bot Workflow*).
+3. **Progresi Status Pengiriman**: Konfirmasi bertahap status `SENT` dan `DELIVERED` dengan presisi milidetik.
+4. **Pratinjau Pesan (Message Preview)**: Balon chat WhatsApp realistis yang menampilkan teks lengkap, variabel yang terisi, dan teks footer yang diterima pelanggan.
+5. **Rincian Teknis**: Arah pesan (`OUTBOX`/`INBOX`), tipe pesan (`template`/`text`), perangkat pengirim, operator inisiasi, dan status konfirmasi ledger tagihan.
+
+---
+
+## 4. Log Aktivitas (Activity Logs) & Audit Keamanan
+
+Beralih ke tab **Activity Logs** untuk meninjau rekaman aksi administratif:
+- Pembuatan, rotasi, dan pencabutan API key.
+- Pembuatan template baru, pengeditan, dan sinkronisasi dengan Meta Graph API.
+- Pemasangan perangkat baru, pembaruan token koneksi, dan pelepasan nomor.
+- Penyesuaian saldo kuota dan pengembalian kredit pesan otomatis (refund).

@@ -1,161 +1,90 @@
 ---
 path: /whatsapp/templates
+locale: en
 title: Message Templates & Meta Approval Guide
 category: WhatsApp
-purpose: Beginner-friendly guide for designing, submitting, and managing pre-approved WhatsApp message templates, understanding categories, and avoiding Meta rejections.
+purpose: Beginner-friendly guide for designing, submitting, and managing pre-approved WhatsApp message templates, understanding categories, and using Ask P AI Copilot to avoid Meta rejections.
 howTo:
-  - "Quickly create and submit a WhatsApp template in 3 simple steps."
-  - "Understand template categories (Utility, Authentication, Marketing) with visual previews."
-  - "Review quota multipliers and dynamic per-country message pricing."
-  - "Avoid common Meta review rejections and classification pitfalls."
+  - "Quickly create and submit a WhatsApp template using the interactive template builder."
+  - "Understand template categories (Utility, Authentication, Marketing) with live preview bubbles."
+  - "Use 'Ask P' AI Copilot for automated template policy compliance audits before submission."
+  - "Sync approved templates directly from Meta Graph API into your local database."
 notes:
   - "All WhatsApp outbound business notifications require pre-approved templates."
   - "Utility templates must strictly deliver transactional updates without promotional keywords or upsell links."
   - "Marketing templates incur higher per-message fees compared to utility or authentication messages."
+  - "Ask P AI Copilot provides in-situ guidance and answers questions regarding Meta template classification changes."
 ---
 
 # Message Templates & Meta Approval Guide
 
 WhatsApp Message Templates allow businesses to send proactive notifications, order updates, OTP verification codes, and marketing broadcasts to customers. Because WhatsApp protects user inboxes, **all templates must be pre-approved by Meta** before you can send them.
 
----
-
-## 1. Quickstart: Create Your First Template in 3 Steps
-
-You can design, submit, and track all templates directly from the **Console**:
-
-1. **Open the Builder**: Navigate to **Console** > **WhatsApp** > **Templates** (`/console/whatsapp/templates`) and click **"Create Template"**.
-2. **Configure Your Content**:
-   - Choose a unique **Name** (e.g. `order_delivery_update`), **Category** (`UTILITY`), and **Language**.
-   - Type your message body using `{{1}}`, `{{2}}` placeholders for dynamic customer data.
-   - Fill in realistic **Sample Values** (e.g. `Budi`, `INV-12345`) so Meta's automated reviewer understands your message.
-   - Add optional **Quick Reply** or **Call-to-Action** buttons (like _"Track Order"_ or _"Copy Code"_).
-3. **Submit & Sync**: Click **Submit**. Meta usually reviews templates within seconds to a few minutes. Once approved, click **"Sync Templates"** to refresh the status in your dashboard.
-
-![Create Template Dialog](/kb-assets/whatsapp/guides/03-journey1-create-template-dialog.png)
+![Message Templates Dashboard](/kb-assets/whatsapp/templates/01-templates-list.png)
 
 ---
 
-## 2. Template Categories & Visual Examples
+## 1. Templates Management Dashboard
 
-Meta categorizes every message template into one of three categories. Pick the category that matches your message's primary intent:
+Navigate to **Console** > **WhatsApp** > **Templates** (`/console/whatsapp/templates`).
 
-| Category             | Best For                                                  | Multiplier | Key Rule                                              |
-| :------------------- | :-------------------------------------------------------- | :--------- | :---------------------------------------------------- |
-| **`UTILITY`**        | Order receipts, tracking, invoices, appointment reminders | **1.0x**   | Zero promo, upsell, or discount words allowed.        |
-| **`AUTHENTICATION`** | One-time passwords (OTP) & login verification             | **1.5x**   | Strict security code only. No greetings or marketing. |
-| **`MARKETING`**      | Promotions, discounts, welcome messages, cart recovery    | **2.0x**   | Rich headers, emojis, promotional links allowed.      |
-
-> 💡 **Dynamic Pricing & Country Rates:**
-> Real-time per-message rates across different destination countries and currencies are managed dynamically. Inspect live rates at any time in the [**WhatsApp Pricing Table**](/console/whatsapp/pricing).
+The Templates Dashboard provides complete visibility into your template catalog:
+- **Meta Sync Status Card**: Displays the sync percentage (e.g. `20 / 20 100% Synced to Meta`).
+- **Category Counts**: Instant count of active templates across **⚡ Utility** (1.0x), **🔑 Authentication** (1.5x), and **📢 Marketing** (2.0x).
+- **Search & Filters**: Search by template name or filter by approval status (**Approved**, **Pending**, **Rejected**) and category.
+- **Sync from Meta**: Pulls the latest approval statuses and registered languages directly from Meta Graph API.
+- **Create Template**: Opens the interactive template designer.
 
 ---
 
-### A. Utility Template (Transactional Updates)
+## 2. Interactive Template Builder
 
-_Use for:_ Informing a customer about an ongoing transaction or account action they specifically requested.
+Click **"Create Template"** (`/console/whatsapp/templates/new`) to design a new template.
 
-> 📦 **Order Shipped Update**
->
-> Hello **{{1}}**, your order **#{{2}}** has been dispatched via **{{3}}**.  
-> **Tracking Number:** {{4}}  
-> **Estimated Delivery:** {{5}}.  
-> Thank you for ordering with us.
->
-> _PFNApp Logistics_  
-> `[🔘 Quick Reply: Track Delivery]`
+![Create WhatsApp Template Builder](/kb-assets/whatsapp/templates/02-create-template-builder.png)
 
----
-
-### B. Authentication Template (Predefined Meta OTP Format)
-
-_Use for:_ Secure identity verification via one-time passcodes (OTP).
-
-> ⚠️ **Meta Predefined Constraint:**  
-> Under official Meta WhatsApp Business API rules, **Authentication template body text cannot be customized or edited with custom sentences**. Meta mandates strict, standardized fixed wording (`<CODE> is your verification code.`) and only permits specific button types:
->
-> 1. **Copy Code Button**: Adds a 1-tap clipboard copy button (`[📋 Copy Code]`).
-> 2. **One-Tap / Zero-Tap Autofill (Android)**: Handshake directly with your Android app (`[⚡ Autofill App]`).
-
-> 🔐 **Standard Authentication Message**
->
-> **{{1}}** is your verification code.  
-> For your security, do not share this code.  
-> Valid for **{{2}}** minutes.
->
-> _Security Warning: Do not share._  
-> `[📋 Copy Code]` &nbsp; `[⚡ One-Tap Autofill (App)]`
-
-### C. Marketing Template (Promotional Broadcast)
-
-_Use for:_ Driving sales, product announcements, discount offers, or newsletters.
-
-> 🎉 **End-of-Month Tech Sale**
->
-> 🎉 Hi **{{1}}**, our End-of-Month Tech Sale is live!  
-> Enjoy up to **{{2}}% OFF** on all cloud hosting plans and WhatsApp API add-ons with code **{{3}}**.  
-> Offer valid until **{{4}}**. Don't miss out!
->
-> _Terms & conditions apply._  
-> `[🔗 Claim Discount]` &nbsp; `[🔘 Stop Promotions]`
+### Key Configuration Sections:
+1. **General Configuration**:
+   - **WhatsApp Device**: Select the target sender business number.
+   - **Template Name & Slug**: Human-readable name and snake_case identifier (e.g. `order_delivery_update`).
+   - **Category**: Select `Utility`, `Authentication`, or `Marketing`.
+   - **Language**: Choose destination language (e.g. `Indonesian (id)`, `English (en-US)`).
+2. **Header (Optional)**:
+   - Choose header format: **None**, **TEXT**, **IMAGE**, **VIDEO**, or **DOCUMENT**.
+3. **Body & Dynamic Placeholders**:
+   - Rich formatting toolbar: **Bold** (`*text*`), **Italic** (`_text_`), **Strikethrough** (`~text~`), and **Monospace** (`` `code` ``).
+   - **Variable Insertion**: Click **Variable** to insert sequential placeholders (`{{1}}`, `{{2}}`).
+   - Real-time character counter (max 1024 characters).
+4. **Footer (Optional)**:
+   - Subtle disclaimer text (max 60 characters).
+5. **Interactive Buttons (Max 3)**:
+   - Add **Quick Reply** buttons, **URL CTA** links, or **Phone Call** actions.
+6. **Live Preview Panel**:
+   - Switch between realistic mobile **Bubble** view and raw **Config JSON** view.
 
 ---
 
-## 3. Meta Pre-Review Rules & Automated Classification Assistant
+## 3. "Ask P" AI Copilot: Pre-Submission Audit
 
-To avoid sudden Meta rejections, the **Console Template Builder** includes an automatic pre-validation rule engine that analyzes your text in real time:
+PFNApp includes an in-situ AI assistant named **Ask P** to help avoid Meta rejections and resolve category classification disputes.
 
-| Trigger Pattern | Detected Intent | Automated Guidance & Category Recommendation |
-| :--- | :--- | :--- |
-| **`otp`, `verification code`, `kode verifikasi`, `security code`** | Authentication | **Warning:** Meta strictly mandates the **`AUTHENTICATION`** category with predefined formats. Using Utility/Marketing will trigger `INCORRECT_CATEGORY`. |
-| **`promo`, `diskon`, `voucher`, `sale`, `ayo`, `segera`, `buruan`, `dapatkan`, `order now`, `shop now`** | Marketing / Call to Action | **Warning:** Submitting promotional or call-to-action/urgency words under the **`UTILITY`** category will cause Meta rejection or re-classification to **`MARKETING`**. |
-| **`{{1}}` at the end of text** | Boundary Violation | **Warning:** WhatsApp restricts unanchored variables at the end of messages. Add punctuation or closing text after the placeholder. |
-| **Consecutive `{{1}}{{2}}`** | Variable Stacking | **Error:** Meta rejects adjacent variables without separating spaces or words. |
+Click the **"Ask P"** button in the header toolbar at any time to open the intelligent guidance drawer:
 
-## 4. Why Templates Get Rejected (and How to Fix Them)
+![Ask P AI Template Copilot](/kb-assets/whatsapp/templates/03-ask-p-template-copilot.png)
 
-Meta evaluates templates with AI classifiers and manual audits. If your template gets rejected or reclassified, check these common triggers:
-
-```mermaid
-graph TD
-    A[Template Submission] --> B{Meta Review}
-    B -->|Complies with Category Rules| C[APPROVED & SYNCED]
-    B -->|Promotional words in Utility| D[Reclassified to MARKETING]
-    B -->|OTP in Utility/Marketing| G[REJECTED: INCORRECT_CATEGORY]
-    B -->|Missing Sample Values| E[REJECTED: Invalid Format]
-    B -->|Prohibited Goods / Phishing| F[REJECTED: Policy Violation]
-```
-
-### 1. Promotional Words in a Utility Template
-
-- **The Issue**: Submitting a template as `UTILITY` that contains words like _"discount"_, _"free trial"_, _"recommended for you"_, _"cashback"_, _"coupon"_, or promo links.
-- **Meta Action**: Immediate rejection or forced reclassification into `MARKETING`.
-- **The Fix**: Keep utility messages strictly factual, or submit directly as `MARKETING`.
-
-### 2. OTP / Verification Sent in Utility Category
-
-- **The Issue**: Submitting custom one-time password messages as `UTILITY` instead of `AUTHENTICATION`.
-- **Meta Action**: Automatic rejection with error code `INCORRECT_CATEGORY`.
-- **The Fix**: Switch category to `AUTHENTICATION` and utilize Meta's standardized OTP configuration with 1-tap Copy Code buttons.
-
-### 3. Missing Sample Variable Values
-
-- **The Issue**: Using variables like `{{1}}`, `{{2}}` without providing sample preview text in the form.
-- **Meta Action**: Rejection because the automated reviewer cannot infer the sentence context.
-- **The Fix**: Always provide clear sample values (e.g. `Budi`, `ID-9923`) in the template form.
-
-### 4. Floating or Unanchored Variables
-
-- **The Issue**: Putting multiple variables together without context (e.g., `Your code is {{1}} {{2}} {{3}}`).
-- **The Fix**: Anchor each parameter clearly: `Your activation code is {{1}}. Expiring in {{2}} minutes.`
+### What Ask P Can Do:
+- **Template Policy Pre-Audit**: Analyzes your draft body text for hidden promotional keywords (e.g. *"diskon"*, *"promo"*, *"limited time"*) that could cause Meta to reject a Utility template or force a reclassification to Marketing.
+- **Suggested Q&A**: One-click answers to frequent questions like *"Why did Meta change my template category from Utility to Marketing?"* and *"How do I design approval-safe authentication OTP templates?"*.
+- **Direct Docs Pin-Pointing**: Links directly to relevant documentation sections without leaving your active editing session.
 
 ---
 
-## 5. What Makes a Template "Marketing"?
+## 4. Template Categories & Rules Summary
 
-Meta treats a template as **`MARKETING`** if **any** promotional trigger is present:
+| Category | Typical Multiplier | Common Use Cases | Non-Negotiable Rule |
+| :--- | :--- | :--- | :--- |
+| **`UTILITY`** | **1.0x** | Order receipts, tracking links, booking confirmations, account alerts | Zero promotional words, discount offers, or upsells allowed. |
+| **`AUTHENTICATION`** | **1.5x** | One-time passwords (OTP) & 2FA security codes | Code only. Must include copy code CTA or security disclaimer. |
+| **`MARKETING`** | **2.0x** | Product announcements, promotional vouchers, cart recovery | Full rich media, emojis, and promotional links permitted. |
 
-1. **Discounts & Upsells**: Any mention of sales, vouchers, coupons, or cross-selling (_"Would you also like to try our Pro tier?"_).
-2. **Promotional Greetings**: Proactive welcome messages pointing to a product catalog.
-3. **Surveys & Reviews**: Post-purchase requests for star ratings or Google reviews (_"How was your purchase? Rate us here!"_).
-4. **Mixed Content Rule**: If a message is **90% order confirmation** and **10% promotional discount**, Meta **always classifies the entire message as MARKETING**.
+> ⚠️ **Mixed Content Rule**: If a message contains 90% transactional confirmation and only 10% promotional text, Meta classifies the **entire message as MARKETING**.

@@ -1,20 +1,23 @@
 ---
 path: /whatsapp
-title: WhatsApp Overview & Dashboard
+locale: en
+title: WhatsApp Overview & Connected Device Management
 category: WhatsApp
-purpose: Overview of WhatsApp Business Platform capabilities, metrics dashboard, device health, and live conversation monitoring.
+purpose: Overview of WhatsApp Business Platform capabilities, metrics dashboard, device health, official Meta profile management, and conversation monitoring.
 howTo:
   - "Navigate to Console > WhatsApp > Dashboard (/console/whatsapp/dashboard)."
   - "Monitor active device connections, conversation volumes, message delivery metrics, and real-time chat feeds."
-  - "Access quick shortcuts to manage devices, subscribe to WhatsApp plans, or compose messages."
+  - "Manage verified WhatsApp devices, official business profiles, and daily message limits (/console/whatsapp/devices)."
+  - "Explore upgraded modules: Analytics, Visual Bot Workflows, Templates & Ask P Copilot, Interactive Logs, and Pricing Calculator."
 notes:
   - "Dashboard statistics reflect real-time active devices and message processing across your organization."
   - "Multi-device support allows connecting multiple phone numbers under one organization."
+  - "Official business profiles sync verified display names, logos, websites, and business categories directly from Meta."
 ---
 
-# WhatsApp Business Platform Overview & Dashboard
+# WhatsApp Business Platform Overview & Connected Devices
 
-The **WhatsApp Dashboard** (`/console/whatsapp/dashboard`) serves as the central control plane for monitoring WhatsApp messaging operations, connected devices, and conversation metrics across your organization.
+The **WhatsApp Console** serves as the unified control plane for WhatsApp messaging operations, connected devices, AI automation workflows, and conversation analytics across your organization.
 
 ![WhatsApp Dashboard](/kb-assets/whatsapp/guides/01-whatsapp-dashboard.png)
 
@@ -27,18 +30,30 @@ The dashboard presents immediate high-level health indicators:
 - **Active Devices (Perangkat Aktif)**: Total connected WhatsApp numbers ready for sending and receiving messages.
 - **Total Conversations (Total Percakapan)**: Aggregate number of distinct customer threads handled.
 - **Messages Sent (Pesan Terkirim)**: Number of outbound messages successfully dispatched during the current billing period.
-- **Device Health (Kesehatan Perangkat)**: Real-time socket connection stability and failure rate over the last hour.
+- **Device Health (Kesehatan Perangkat)**: Real-time socket connection stability and heartbeat monitoring.
 
 ---
 
-## 2. Quick Actions & Navigation
+## 2. Connected Device Management & Meta Profile Preview
 
-- **Subscribe Plan**: Direct access to WhatsApp quota subscriptions and tier management.
-- **View Devices (Lihat Perangkat)**: Jump to device list for QR code pairing and connection status.
-- **Send Message**: Open the interactive composer to draft and dispatch messages directly.
+Navigate to **Console** > **WhatsApp** > **Devices** (`/console/whatsapp/devices`) and click on any active device to access the detailed management workspace:
+
+![WhatsApp Connected Device Details](/kb-assets/whatsapp/guides/10-menu-devices-detail.png)
+
+### Key Device Parameters:
+1. **Official Meta WhatsApp Profile**: View live synchronized preview of your Meta-verified business profile including avatar photo, display name status (**Approved**), business category, email, and verified websites.
+2. **Quota Consumption Gauge**: Real-time counter showing exact message quota utilized vs assigned base quota (e.g. `10.5 / 1,000` with remaining message alerts).
+3. **Daily Limit Monitoring**: Current tier sending velocity limit (e.g. `1,000 msgs / day` up to unlimited tier).
+4. **Lifecycle & Sync**: Track registration dates and trigger manual profile syncs from Meta Graph API.
 
 ---
 
-## 3. Recent Conversations Feed
+## 3. Upgraded Feature Modules
 
-The **Recent Conversations** list displays active chats across all paired devices with timestamps, unread indicators, and link-outs to full conversation threads.
+Explore our dedicated documentation guides for each upgraded capability:
+
+- [**WhatsApp Analytics & Cost Reconciliation**](/docs/whatsapp/analytics): Compare internal delivery logs against official Meta Graph API billing categories and perform automated financial reconciliations.
+- [**Visual Canvas & AI Bot Builder**](/docs/whatsapp/workflows): Build multi-step chatbot workflows with input prompts, live catalog HTTP requests, LLM generative replies, and an interactive chat simulator.
+- [**Message Templates & "Ask P" AI Copilot**](/docs/whatsapp/templates): Design pre-approved WhatsApp templates with dynamic formatting and pre-screen text using the Ask P AI compliance auditor.
+- [**Logs, Webhooks & Message Journey**](/docs/whatsapp/webhooks-and-audits): Investigate delivery receipts with one-click WA Message ID copying and full end-to-end message lifecycle journey visualization.
+- [**Pricing, Rates & Transaction Ledger**](/docs/whatsapp/pricing): Simulate monthly expenses with the interactive cost estimator and audit per-message credit deductions in real-time.
