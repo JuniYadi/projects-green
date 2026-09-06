@@ -309,7 +309,9 @@ describe("deploySubmitRoutes /submit", () => {
     expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          templateId: "tpl-hermes",
           metadataJson: expect.objectContaining({
+            templateId: "hermes",
             imageRepository: "nousresearch/hermes-agent:v2026.8.18",
             deploymentType: "statefulset",
             additionalPorts: [{ port: 9119, name: "dashboard" }],

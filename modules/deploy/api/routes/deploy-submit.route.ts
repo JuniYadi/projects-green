@@ -132,7 +132,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       port: number
       name: string
     }> | null = null
-
+    let resolvedDbTemplateId: string | null = null
     if (sourceType === "MANAGED_TEMPLATE") {
       managedTemplate = MANAGED_APP_TEMPLATES.find(
         (template) => template.id === body.templateId
@@ -153,13 +153,14 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         (item) => item.id === body.templateId
       )
 
-      if (!template && body.templateId) {
+      if (body.templateId) {
         const dbTemplate = await prisma.appTemplate.findFirst({
           where: {
             OR: [{ id: body.templateId }, { slug: body.templateId }],
           },
         })
         if (dbTemplate) {
+          resolvedDbTemplateId = dbTemplate.id
           const blueprint =
             (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig) ??
             null
@@ -167,29 +168,30 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           dbTemplateDeploymentType = blueprint?.runtime?.deploymentType ?? null
           dbTemplateAdditionalPorts =
             blueprint?.runtime?.additionalPorts ?? null
-          template = {
-            id: dbTemplate.id as (typeof DEPLOY_TEMPLATES)[number]["id"],
-            name: dbTemplate.name,
-            description: dbTemplate.description || "",
-            category: "Developer Tools",
-            defaultCpu: blueprint?.resources?.defaultCpu ?? 500,
-            defaultMemory: blueprint?.resources?.defaultMemory ?? 512,
-            build: {
-              language: "Docker",
-              framework: "Docker",
-              frameworkVersion: "",
-              buildCommand: "",
-              useDockerfile: true,
-              primaryEngine: "docker",
-              primaryEngineVersion: "",
-              secondaryEngine: "",
-              secondaryEngineVersion: "",
-              defaultPort: blueprint?.runtime?.defaultPort ?? 8080,
-            },
+          if (!template) {
+            template = {
+              id: dbTemplate.id as (typeof DEPLOY_TEMPLATES)[number]["id"],
+              name: dbTemplate.name,
+              description: dbTemplate.description || "",
+              category: "Developer Tools",
+              defaultCpu: blueprint?.resources?.defaultCpu ?? 500,
+              defaultMemory: blueprint?.resources?.defaultMemory ?? 512,
+              build: {
+                language: "Docker",
+                framework: "Docker",
+                frameworkVersion: "",
+                buildCommand: "",
+                useDockerfile: true,
+                primaryEngine: "docker",
+                primaryEngineVersion: "",
+                secondaryEngine: "",
+                secondaryEngineVersion: "",
+                defaultPort: blueprint?.runtime?.defaultPort ?? 8080,
+              },
+            }
           }
         }
       }
-
       if (!template) {
         set.status = 422
         return {
@@ -326,6 +328,11 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         deploymentType: dbTemplateDeploymentType,
         additionalPorts: dbTemplateAdditionalPorts,
         templateId:
+          sourceType === "TEMPLATE" || sourceType === "MANAGED_TEMPLATE"
+            ? (resolvedDbTemplateId ??
+              (body.templateId?.startsWith("c") ? body.templateId : null))
+            : null,
+        templateSlug:
           sourceType === "TEMPLATE" || sourceType === "MANAGED_TEMPLATE"
             ? body.templateId
             : null,
