@@ -33,8 +33,6 @@ const isProductionPath = (path: string) =>
   !path.startsWith("test/") &&
   !path.startsWith("e2e/") &&
   !path.startsWith("scripts/")
-const sourcePathForTest = (path: string) =>
-  path.replace(/\.test\.(ts|tsx)$/, ".$1")
 
 const testPathForSource = (path: string) => {
   if (path.endsWith(".tsx")) {
@@ -49,9 +47,8 @@ const testPathForSource = (path: string) => {
 export const selectChangedTests = (
   changedPaths: readonly string[],
   availableTestFiles: readonly string[],
-  options: ChangedTestOptions = {}
+  _options: ChangedTestOptions = {}
 ): ChangedTestSelection => {
-  const coverage = options.coverage ?? false
   const changed = new Set(changedPaths.map(normalizePath))
   const available = new Set(availableTestFiles.map(normalizePath))
   const tests = new Set<string>()
@@ -59,10 +56,8 @@ export const selectChangedTests = (
 
   for (const path of changed) {
     if (isTestFile(path)) {
-      if (!coverage || changed.has(sourcePathForTest(path))) {
-        if (available.has(path)) {
-          tests.add(path)
-        }
+      if (available.has(path)) {
+        tests.add(path)
       }
       continue
     }
