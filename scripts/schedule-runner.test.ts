@@ -57,6 +57,17 @@ describe("schedule-runner", () => {
     expect(mockAdd).toHaveBeenCalled()
   })
 
+  test("deploy-monitor dispatches on 5-minute boundary but skips intermediate minutes", async () => {
+    mockAdd.mockClear()
+    const minute1 = new Date("2026-09-01T00:01:00Z")
+    const res1 = await dispatchScheduledJobs(minute1)
+    expect(res1.dispatched).not.toContain("deploy-monitor")
+
+    const minute5 = new Date("2026-09-01T00:05:00Z")
+    const res5 = await dispatchScheduledJobs(minute5)
+    expect(res5.dispatched).toContain("deploy-monitor")
+  })
+
   test("deterministic jobIds prevent collisions across different scheduled times", () => {
     const job = scheduledJobsRegistry.find((j) => j.name === "deploy-monitor")!
     const d1 = new Date("2026-08-23T07:15:00Z")

@@ -65,6 +65,11 @@ const mockPrisma = {
   ),
 }
 
+const mockEnqueueDeployment = mock(async () => true)
+mock.module("@/lib/queue/deploy-pipeline", () => ({
+  enqueueDeployment: mockEnqueueDeployment,
+}))
+
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
@@ -103,6 +108,7 @@ describe("deploy-pipeline.service", () => {
     mockPrisma.applicationDeploymentLog.create.mockClear()
     mockPrisma.applicationDeployment.count.mockClear()
     mockPrisma.$transaction.mockClear()
+    mockEnqueueDeployment.mockClear()
     releaseManagedStock.mockClear()
     releaseManagedStock.mockResolvedValue(undefined)
     mockPrisma.applicationStack.findUnique.mockResolvedValue(mockStack)
@@ -130,6 +136,7 @@ describe("deploy-pipeline.service", () => {
     expect(mockPrisma.applicationDeployment.create).toHaveBeenCalled()
     expect(mockPrisma.applicationDeployEvent.create).toHaveBeenCalled()
     expect(mockPrisma.applicationDeploymentLog.create).toHaveBeenCalled()
+    expect(mockEnqueueDeployment).toHaveBeenCalledWith("dep-1")
   })
 
   it("triggerDeploy blocks when a deployment is already in progress", async () => {

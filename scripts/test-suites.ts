@@ -36,6 +36,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
   {
     name: "deploy",
     sourcePrefixes: [
+      "lib/queue/deploy-pipeline",
       "modules/deploy/",
       "modules/framework-detection/",
       "modules/admin/api/admin.schema.ts",
@@ -49,6 +50,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "scripts/seed-app-hosting-policy.ts",
     ],
     testPrefixes: [
+      "lib/queue/deploy-pipeline",
       "modules/deploy/",
       "modules/framework-detection/",
       "modules/admin/api/routes/admin-app-hosting-clusters.route.test.ts",

@@ -4,6 +4,7 @@ import { releaseManagedStock } from "@/modules/deploy/app-managed-stock.service"
 import { resolveDefaultAppHostingClusterId } from "@/modules/deploy/cluster-integration.service"
 import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
 import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
+import { enqueueDeployment } from "@/lib/queue/deploy-pipeline"
 /**
  * PGREEN-070 — Deployment Orchestration
  *
@@ -369,6 +370,8 @@ export async function triggerDeploy(params: {
 
     return newDeployment
   })
+
+  await enqueueDeployment(deployment.id)
 
   return { deploymentId: deployment.id, status: "QUEUED" as const }
 }

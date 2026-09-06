@@ -28,16 +28,15 @@ export interface ScheduledJobDefinition {
 
 // ── Registry of All Scheduled Operations ───────────────────────────────────
 export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
-  // 1. Every Minute Tasks
+  // 1. Every 5 Minutes Tasks
   {
     name: "deploy-monitor",
     queueName: "deploy-monitor",
     jobName: "check-deploy-status",
-    expression: "* * * * *",
+    expression: "*/5 * * * *",
     buildJobId: (d) =>
       `deploy-monitor-${d.toISOString().slice(0, 16).replaceAll(":", "-")}`,
   },
-  // 2. Every 5 Minutes Tasks
   {
     name: "vpn-reconciliation",
     queueName: "vpn-reconciliation",

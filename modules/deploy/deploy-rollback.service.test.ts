@@ -45,6 +45,11 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
+const mockEnqueueDeployment = mock(async () => true)
+mock.module("@/lib/queue/deploy-pipeline", () => ({
+  enqueueDeployment: mockEnqueueDeployment,
+}))
+
 const { rollbackDeployment, getRollbackOptions } =
   await import("./deploy-rollback.service")
 
@@ -53,6 +58,7 @@ describe("deploy-rollback.service", () => {
     mockPrisma.applicationDeployment.create.mockClear()
     mockPrisma.applicationDeployEvent.create.mockClear()
     mockPrisma.$transaction.mockClear()
+    mockEnqueueDeployment.mockClear()
   })
 
   it("rollbackDeployment creates rollback deployment", async () => {
@@ -66,6 +72,7 @@ describe("deploy-rollback.service", () => {
     expect(mockPrisma.$transaction).toHaveBeenCalled()
     expect(mockPrisma.applicationDeployment.create).toHaveBeenCalled()
     expect(mockPrisma.applicationDeployEvent.create).toHaveBeenCalled()
+    expect(mockEnqueueDeployment).toHaveBeenCalledWith("dep-rollback")
   })
 
   it("rollbackDeployment fails for non-running target", async () => {

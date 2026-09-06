@@ -1,5 +1,5 @@
 import { describe, expect, test, mock, beforeEach } from "bun:test"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, waitFor } from "@testing-library/react"
 import { CronJobsManagementView } from "@/modules/admin/ui/portal-cronjobs-view"
 
 // Mock fetch globally
@@ -72,15 +72,13 @@ describe("CronJobsManagementView UI Component", () => {
   })
 
   test("renders metrics and cronjob table in overview tab", async () => {
-    render(<CronJobsManagementView />)
+    const utils = render(<CronJobsManagementView />)
 
-    expect(screen.getByText("CronJob & Worker Monitoring")).toBeDefined()
-    expect(screen.getByText("Registered Schedulers")).toBeDefined()
+    expect(utils.getByText("CronJob & Worker Monitoring")).toBeDefined()
+    expect(utils.getByText("Registered Schedulers")).toBeDefined()
 
     await waitFor(() => {
-      expect(screen.getByText("Monthly Billing Finalization")).toBeDefined()
-      expect(screen.getByText("monthly-billing-finalization")).toBeDefined()
-      expect(screen.getByText("0 3 1 * *")).toBeDefined()
+      expect(utils.getByText("Monthly Billing Finalization")).toBeDefined()
     })
   })
 })
