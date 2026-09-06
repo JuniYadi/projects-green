@@ -40,13 +40,8 @@ mock.module("../wireguard-ssh-adapter", () => ({
 
 const { wireguardRoutes } = await import("./wireguard.route")
 
-function createTestApp() {
-  return new Elysia().use(wireguardRoutes)
-}
-
 describe("wireguard.route", () => {
-  let app: ReturnType<typeof createTestApp>
-
+  let app: { handle: (request: Request) => Promise<Response> }
   beforeEach(() => {
     mockAuthContext.current = {
       user: { id: "user-1" },
@@ -59,18 +54,37 @@ describe("wireguard.route", () => {
     mockRemovePeer.mockClear()
     mockGetConfig.mockClear()
     mockGetQr.mockClear()
-    app = createTestApp()
+    app = new Elysia().use(wireguardRoutes)
   })
 
   describe("GET /portal/vpn/wireguard/peers", () => {
     it("returns 401 when unauthenticated", async () => {
       mockAuthContext.current = {}
-
       const res = await app.handle(
         new Request("http://localhost/portal/vpn/wireguard/peers")
       )
-
       expect(res.status).toBe(401)
+    })
+
+    it("returns 403 when organization is missing", async () => {
+      mockAuthContext.current = { user: { id: "user-1" }, organizationId: null }
+      const res = await app.handle(
+        new Request("http://localhost/portal/vpn/wireguard/peers")
+      )
+      expect(res.status).toBe(403)
+    })
+
+    it("returns 403 when user is not admin", async () => {
+      mockAuthContext.current = {
+        user: { id: "user-1" },
+        organizationId: "org-1",
+        role: "member",
+        roles: ["member"],
+      }
+      const res = await app.handle(
+        new Request("http://localhost/portal/vpn/wireguard/peers")
+      )
+      expect(res.status).toBe(403)
     })
 
     it("lists peers for authorized admin", async () => {
@@ -87,6 +101,16 @@ describe("wireguard.route", () => {
       expect(data).toEqual({
         peers: [{ id: "peer-1", username: "alice", ip: "10.0.0.2" }],
       })
+    })
+
+    it("returns 503 when listPeers fails", async () => {
+      mockListPeers.mockRejectedValueOnce(new Error("Server offline"))
+      const res = await app.handle(
+        new Request("http://localhost/portal/vpn/wireguard/peers")
+      )
+      expect(res.status).toBe(503)
+      const data = await res.json()
+      expect(data.error).toBe("SSH_CONNECTION_FAILED")
     })
   })
 
@@ -111,6 +135,20 @@ describe("wireguard.route", () => {
       expect(data.id).toBe("peer-2")
       expect(mockCreatePeer).toHaveBeenCalledWith("bob", "org-1")
     })
+
+    it("returns 503 when createPeer throws", async () => {
+      mockCreatePeer.mockRejectedValueOnce(new Error("Creation failed"))
+      const res = await app.handle(
+        new Request("http://localhost/portal/vpn/wireguard/peers", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ username: "charlie" }),
+        })
+      )
+      expect(res.status).toBe(503)
+      const data = await res.json()
+      expect(data.error).toBe("SSH_CONNECTION_FAILED")
+    })
   })
 
   describe("DELETE /portal/vpn/wireguard/peers/:username", () => {
@@ -126,6 +164,18 @@ describe("wireguard.route", () => {
       expect(data).toEqual({ ok: true })
       expect(mockRemovePeer).toHaveBeenCalledWith("bob")
     })
+
+    it("returns 503 when removePeer throws", async () => {
+      mockRemovePeer.mockRejectedValueOnce(new Error("Removal failed"))
+      const res = await app.handle(
+        new Request("http://localhost/portal/vpn/wireguard/peers/bob", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(503)
+      const data = await res.json()
+      expect(data.error).toBe("SSH_CONNECTION_FAILED")
+    })
   })
 
   describe("GET /portal/vpn/wireguard/peers/:username/config", () => {
@@ -138,6 +188,16 @@ describe("wireguard.route", () => {
       const text = await res.text()
       expect(text).toContain("[Interface]")
     })
+
+    it("returns 503 when getConfig throws", async () => {
+      mockGetConfig.mockRejectedValueOnce(new Error("Read failed"))
+      const res = await app.handle(
+        new Request("http://localhost/portal/vpn/wireguard/peers/alice/config")
+      )
+      expect(res.status).toBe(503)
+      const data = await res.json()
+      expect(data.error).toBe("CONFIG_FETCH_FAILED")
+    })
   })
 
   describe("GET /portal/vpn/wireguard/peers/:username/qr", () => {
@@ -148,6 +208,26 @@ describe("wireguard.route", () => {
 
       expect(res.status).toBe(200)
       expect(res.headers.get("content-type")).toBe("image/png")
+    })
+
+    it("returns 500 when QR data URL format is invalid", async () => {
+      mockGetQr.mockResolvedValueOnce("invalid-data-url-no-comma")
+      const res = await app.handle(
+        new Request("http://localhost/portal/vpn/wireguard/peers/alice/qr")
+      )
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toBe("QR_GENERATION_FAILED")
+    })
+
+    it("returns 503 when getQr throws", async () => {
+      mockGetQr.mockRejectedValueOnce(new Error("QR generation failed"))
+      const res = await app.handle(
+        new Request("http://localhost/portal/vpn/wireguard/peers/alice/qr")
+      )
+      expect(res.status).toBe(503)
+      const data = await res.json()
+      expect(data.error).toBe("QR_GENERATION_FAILED")
     })
   })
 })

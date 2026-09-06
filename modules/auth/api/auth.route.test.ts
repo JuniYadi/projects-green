@@ -1,14 +1,17 @@
-import { describe, expect, it } from "bun:test"
-import { Elysia } from "elysia"
+mock.module("server-only", () => ({}))
 
-import { createAuthRoutes } from "@/modules/auth/api/auth.route"
-import {
+import { describe, expect, it, mock } from "bun:test"
+import { Elysia } from "elysia"
+import type { AuthService } from "@/modules/auth/auth.service"
+
+// Dynamic import required so mock.module takes effect before module evaluation in Bun
+const { createAuthRoutes } = await import("@/modules/auth/api/auth.route")
+const {
   AuthEmailAlreadyExistsError,
   AuthValidationError,
   InvalidAuthCredentialsError,
   MissingAuthConfigurationError,
-} from "@/modules/auth/auth.service"
-import type { AuthService } from "@/modules/auth/auth.service"
+} = await import("@/modules/auth/auth.service")
 
 const makeMockAuthService = (
   overrides: Partial<AuthService> = {}

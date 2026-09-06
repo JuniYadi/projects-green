@@ -1,3 +1,5 @@
+mock.module("server-only", () => ({}))
+
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 

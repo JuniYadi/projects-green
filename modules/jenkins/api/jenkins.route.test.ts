@@ -3,17 +3,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 const mockGetJenkinsJobStatus = mock(() => Promise.resolve(null))
 const mockTriggerJenkinsJob = mock(() => Promise.resolve())
 const mockListJenkinsJobs = mock(() => Promise.resolve([]))
-
-mock.module("../jenkins.service", () => ({
-  getJenkinsJobStatus: mockGetJenkinsJobStatus,
-  triggerJenkinsJob: mockTriggerJenkinsJob,
-  listJenkinsJobs: mockListJenkinsJobs,
-}))
-
 const mockGenerateJenkinsDsl = mock(() => "// generated dsl")
-mock.module("../jenkins-dsl", () => ({
-  generateJenkinsDsl: mockGenerateJenkinsDsl,
-}))
 
 import { createJenkinsRoutes } from "./jenkins.route"
 
@@ -25,7 +15,12 @@ describe("jenkins.route", () => {
     mockTriggerJenkinsJob.mockClear()
     mockListJenkinsJobs.mockClear()
     mockGenerateJenkinsDsl.mockClear()
-    app = createJenkinsRoutes() as unknown as {
+    app = createJenkinsRoutes({
+      getJobStatus: mockGetJenkinsJobStatus,
+      triggerJob: mockTriggerJenkinsJob,
+      listJobs: mockListJenkinsJobs,
+      generateDsl: mockGenerateJenkinsDsl,
+    }) as unknown as {
       handle: (req: Request) => Promise<Response>
     }
   })

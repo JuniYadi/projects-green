@@ -1,7 +1,7 @@
+mock.module("server-only", () => ({}))
+
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
-
-import { createDocsRoutes } from "@/modules/docs/api/docs.route"
 
 const mockAuthenticate = mock(
   async (): Promise<
@@ -36,6 +36,8 @@ const mockUpsertDocByPath = mock(async () => ({
   notes: ["Initial note"],
   updatedAt: "2026-05-22",
 }))
+// Dynamic import required so mock.module takes effect before module evaluation in Bun
+const { createDocsRoutes } = await import("@/modules/docs/api/docs.route")
 const mockListDocs = mock(
   async () => [] as import("@/modules/docs/docs.service").KnowledgeDocMatch[]
 )

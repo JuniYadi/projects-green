@@ -1,3 +1,5 @@
+mock.module("server-only", () => ({}))
+
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 import { Prisma } from "@prisma/client"
@@ -36,6 +38,8 @@ mock.module("@/lib/encryption", () => ({
   decrypt: mock(() => "test openvpn config"),
   parseEncryptedField: mock((v: string) => JSON.parse(v)),
   serializeEncryptedField: mock((v: unknown) => JSON.stringify(v)),
+  getEncryptionKey: mock(() => Buffer.alloc(32)),
+  deriveEncryptionKey: mock(() => Buffer.alloc(32)),
 }))
 
 const { createVpnSubscriptionRoutes } =
