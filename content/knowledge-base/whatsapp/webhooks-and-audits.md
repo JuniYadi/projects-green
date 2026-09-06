@@ -1,54 +1,76 @@
 ---
 path: /whatsapp/webhooks-and-audits
-title: WhatsApp Webhooks & Security Audits
+locale: en
+title: WhatsApp Logs, Webhooks & Message Journey
 category: WhatsApp
-purpose: Inspect inbound and outbound webhook event logs, payload delivery receipts, error retries, and immutable audit logs.
+purpose: Inspect inbound and outbound message delivery receipts, interactive webhook event payloads, error retries, and end-to-end message lifecycle journeys.
 howTo:
-  - "Navigate to Console > WhatsApp > Webhook Logs (/console/whatsapp/webhook-logs)."
-  - "Filter webhook events by status (DELIVERED, FAILED, RETRYING) or event type."
-  - "Inspect raw JSON payloads, response status codes, and execution latency."
-  - "Navigate to Console > WhatsApp > Audit Logs (/console/whatsapp/audit-logs) to review user activities."
+  - "Navigate to Console > WhatsApp > Logs (/console/whatsapp/logs)."
+  - "Filter delivery logs by status (SENT, DELIVERED, READ, RECEIVED) or phone number."
+  - "Click 'Details →' on any log row to open the interactive investigation drawer."
+  - "Click 'View Message Journey' to inspect the end-to-end timeline from initiation to confirmed billing."
+  - "Navigate to Activity Logs tab to audit user actions, API key rotations, and device state changes."
 notes:
-  - "Failed outbound webhooks are automatically retried with exponential backoff."
-  - "Audit logs are immutable records created for security compliance and billing reconciliation."
+  - "Interactive logs provide immediate copyable WhatsApp Message IDs (wamid)."
+  - "The Message Journey visualizer displays exact chat previews and timestamped delivery milestones."
+  - "Failed message dispatches provide transparent error codes and automatic quota refund tracking."
 ---
 
-# WhatsApp Webhook Logs & Security Audit Trail
+# WhatsApp Logs, Webhooks & Message Journey
 
-This guide covers real-time message delivery monitoring and compliance tracking via **Webhook Logs** and **Audit Logs**.
+The **Logs & Activity Trail** console (`/console/whatsapp/logs`) gives engineering and support teams real-time visibility into message delivery states, webhook payloads, and individual message lifecycles.
 
----
-
-## 1. Webhook Logs (`/console/whatsapp/webhook-logs`)
-
-Webhook Logs capture all raw events received from Meta Cloud API (inbound messages, status updates) and outgoing webhook dispatches to your registered webhook endpoints.
-
-![Webhook Logs](/kb-assets/whatsapp/guides/05-journey1-webhook-logs.png)
-
-### Key Event Types:
-
-- `message.received`: Inbound text, media, or button response sent by a customer.
-- `message.sent`: Dispatch confirmation from Meta.
-- `message.delivered`: Delivery receipt confirmation.
-- `message.read`: Read receipt timestamp.
-- `message.failed`: Delivery failure callback with Meta error codes.
-
-### Inspecting Webhook Payloads:
-
-Click on any webhook log entry to expand the full JSON request and response payloads, HTTP status codes, latency in milliseconds, and retry attempt counters.
+![Interactive Webhook & Message Logs](/kb-assets/whatsapp/logs/01-interactive-webhook-logs.png)
 
 ---
 
-## 2. Audit Logs (`/console/whatsapp/audit-logs`)
+## 1. Message Logs & Delivery Status
 
-The Audit Logs console provides an immutable security ledger recording administrative and operational actions across your organization.
+Navigate to **Console** > **WhatsApp** > **Logs** (`/console/whatsapp/logs`).
 
-![Audit Logs](/kb-assets/whatsapp/guides/06-journey1-audit-logs.png)
+The **Message Logs** tab records every state change reported by Meta and client devices:
 
-### Tracked Actions:
+- **Sender Device**: Identifies the connected business number that handled the conversation.
+- **Recipient Contact**: Target phone number formatted in E.164 (e.g. `+62 851-6143-2124`).
+- **Delivery Statuses**:
+  - `SENT`: Message successfully handed off to Meta Cloud API servers.
+  - `DELIVERED`: Message successfully received by the customer's mobile device.
+  - `READ`: Blue checkmark acknowledgment confirming the customer opened the chat.
+  - `RECEIVED`: Inbound customer reply received and forwarded to webhooks/inbox.
 
-- API Key generation, rotation, and revocation.
-- Template creation, modifications, and sync operations.
+---
+
+## 2. Interactive Investigation Drawer
+
+Click **"Details →"** on any message log row to open the quick investigation drawer:
+
+- **Quick Actions**:
+  - **View Message Journey**: Opens the complete lifecycle history for that specific message.
+  - **Open in Inbox**: Jumps directly to the active chat thread in the live conversation view.
+- **Delivery & Device Info**: Sender device alias, recipient number, and internal organization identifier.
+- **WhatsApp Message ID**: One-click **Copy ID** button to copy the full Meta `wamid` string (e.g. `wamid.HBgNNjI4N...`) for Meta Business Manager audits or technical escalations.
+
+---
+
+## 3. Unified WhatsApp Message Journey
+
+Click **"View Message Journey"** (accessible at `/console/whatsapp/messages/[wamid]`) to view the complete forensic timeline of a single message:
+
+![Unified WhatsApp Message Journey](/kb-assets/whatsapp/logs/02-unified-message-journey.png)
+
+### Journey Milestones:
+1. **Quota & Billing Recorded**: Shows initial credit reservation and category classification (e.g. `AUTHENTICATION · Status: CONFIRMED`).
+2. **Message Initiated**: Records dispatch timestamp and source trigger (e.g. *API Key Request* or *Visual Bot Workflow*).
+3. **Delivery Status Progression**: Step-by-step confirmation of `SENT` and `DELIVERED` events with millisecond precision.
+4. **Message Preview**: Realistic WhatsApp bubble rendering showing the exact text, variables, and footer delivered to the recipient.
+5. **Technical Details**: Direction (`OUTBOX`/`INBOX`), message type (`template`/`text`), sender device, initiated user, and confirmed ledger billing state.
+
+---
+
+## 4. Activity Logs & Security Audits
+
+Switch to the **Activity Logs** tab to review administrative actions:
+- API key generations, rotations, and revocations.
+- Template creations, edits, and Meta Graph API sync calls.
 - Device pairings, token updates, and disconnections.
-- Bulk broadcast dispatch triggers.
-- Financial quota debits and refund credits.
+- Quota balance adjustments and automated refund restorations.

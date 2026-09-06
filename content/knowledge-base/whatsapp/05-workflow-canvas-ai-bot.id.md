@@ -1,60 +1,81 @@
 ---
 path: /whatsapp/workflows
 locale: id
-title: "Panduan Visual Canvas & Alur AI Bot WhatsApp"
+title: "Visual Canvas & Workflow Bot AI WhatsApp"
 category: WhatsApp
-purpose: Panduan lengkap merancang, menguji, dan mempublikasikan alur chatbot otomatis, AI Copilot fallback, dan integrasi webhook percakapan WhatsApp.
+purpose: Panduan lengkap merancang visual bot, pengujian simulator interaktif, dan deployment alur percakapan otomatis WhatsApp berbasis AI.
 howTo:
-  - "Membuat dan mengelola alur bot visual di Visual Canvas & AI Bot Builder."
-  - "Menghubungkan Trigger Node, Prompt Input, Logic Branching, HTTP Request, dan AI Generative Node."
-  - "Mengikat nomor WhatsApp ke profil AI Agent atau alur otomatis."
-  - "Menangani fallback CS manual dan escalation handoff."
+  - "Buka menu Console > WhatsApp > AI & Bot Builder (/id/console/whatsapp/workflows)."
+  - "Buat workflow baru atau klik 'Open canvas' pada otomasi yang telah dibuat."
+  - "Tarik, hubungkan, dan atur langkah: Tanya Input, Tarik Data HTTP API, Keputusan AI Generate, dan Kondisi Percabangan."
+  - "Klik 'Simulate test' untuk menguji alur percakapan bot secara langsung pada simulator interaktif."
+  - "Aktifkan alur kerja ke nomor pelanggan live dengan klik 'Save and deploy'."
 notes:
-  - "Alur bot otomatis hanya merespons pesan masuk dalam jendela sesi 24 jam interaksi pelanggan."
-  - "Node HTTP Request mendukung autentikasi Bearer, API Key, dan mapping variabel dinamis."
-  - "AI Generative Node memanfaatkan model LLM dengan guardrails dan audit jejak keamanan."
+  - "Visual canvas mendukung variabel dinamis menggunakan sintaks template (contoh: {{variables.nama_variabel}})."
+  - "Node HTTP Request dapat mengambil data katalog live dari API dan meneruskan respons JSON langsung ke prompt AI."
+  - "Garis penghubung (edge) antar node dapat dipilih dan dihapus dengan konfirmasi visual."
 ---
 
-# Panduan Visual Canvas & Alur AI Bot WhatsApp
+# Visual Canvas & Workflow Bot AI WhatsApp
 
-Fitur **AI & Bot Builder** (`/console/whatsapp/workflows`) memungkinkan organisasi merancang chatbot cerdas, sistem ticketing otomatis, FAQ interaktif, dan router percakapan tanpa perlu menulis kode backend yang rumit.
+Fitur **AI & Bot Builder** (`/console/whatsapp/workflows`) memungkinkan organisasi merancang chatbot interaktif multi-langkah, triase bantuan pelanggan otomatis, pengecekan data katalog langsung, serta agen penjualan bertenaga AI tanpa perlu mengelola server backend yang rumit.
 
----
-
-## 1. Memulai: Membuka Visual Canvas
-
-1. Masuk ke **Console** > **WhatsApp** > **AI & Bot Builder** (`/console/whatsapp/workflows`).
-2. Klik tombol **"+ Buat Alur Canvas Baru"** atau **"✦ Buka Visual Canvas & AI Copilot"**.
-3. Beri nama alur Anda (misalnya `Customer Support Triage` atau `Lead Qualification Bot`).
+![Daftar Workflow WhatsApp](/kb-assets/whatsapp/workflows/01-workflows-list.png)
 
 ---
 
-## 2. Jenis Node yang Tersedia
+## 1. Ikhtisar & Manajemen Workflow
 
-Visual Canvas menyediakan 6 jenis node modular:
-
-| Tipe Node | Fungsi Utama | Contoh Penggunaan |
-| :--- | :--- | :--- |
-| **Trigger Node** | Titik awal alur saat pesan masuk diterima | Filter kata kunci pesan (e.g. `menu`, `bantuan`, `order`) |
-| **Send Message Node** | Mengirim balasan teks, media, atau pesan interaktif | Mengirim daftar menu tombol atau template notifikasi |
-| **Prompt Input Node** | Menunggu dan menangkap input teks pelanggan | Meminta nomor invoice, alamat email, atau keluhan |
-| **Condition Node** | Percabangan logika berdasarkan kondisi | Jika `input === "1"` arahkan ke CS, jika `"2"` ke FAQ |
-| **HTTP Request Node** | Memanggil API eksternal secara real-time | Cek resi pengiriman, cek saldo akun, buat order di CRM |
-| **AI Generate Node** | Menjawab pertanyaan pelanggan dengan AI Copilot | RAG pengetahuan dokumen perusahaan & respon ramah |
+Pada halaman utama **AI & Bot Workflows**:
+- **Daftar Otomasi Aktif**: Pantau seluruh bot yang terpasang, jumlah node, dan nomor WhatsApp yang ditugaskan.
+- **Indikator Pemicu (Trigger)**: Tinjau pemicu alur (contoh: `whatsapp_inbound` pada nomor `+6283138855774`).
+- **Buat Workflow Baru**: Mulai kanvas alur dari awal atau duplikasi template yang ada.
+- **Buka Kanvas (Open Canvas)**: Masuk ke visual drag-and-drop workflow editor.
 
 ---
 
-## 3. Menghubungkan Nomor WhatsApp ke AI Agent
+## 2. Visual Canvas Builder Interaktif
 
-Untuk mengaktifkan AI Copilot otomatis pada nomor WhatsApp:
-1. Buka **Console** > **WhatsApp** > **Devices** (`/console/whatsapp/devices`).
-2. Pilih perangkat WhatsApp Anda, lalu buka tab **AI Agent Binding**.
-3. Pilih profil AI Agent yang telah dikonfigurasi di AI Studio.
-4. Simpan perubahan. Seluruh pesan masuk yang tidak tertangani oleh alur statis akan dijawab secara cerdas oleh AI.
+Klik **"Open canvas"** (`/console/whatsapp/workflows/[id]/canvas`) untuk membuka ruang kerja visual layar penuh.
+
+![Visual Workflow Canvas](/kb-assets/whatsapp/workflows/02-workflow-visual-canvas.png)
+
+### Kontrol & Toolbar Kanvas:
+- **Nama & Status Workflow**: Ubah nama alur dan periksa status deployment (**Live** / **Draft**).
+- **Toolbar "ADD A STEP"**:
+  - **AI Assist**: Generate langkah alur secara otomatis menggunakan AI Copilot.
+  - **Send message**: Kirim pesan teks atau media WhatsApp langsung ke pelanggan.
+  - **Ask for input**: Tanya teks/angka ke pelanggan dan simpan hasilnya dalam variabel khusus (contoh: `customer_need`).
+  - **Condition**: Buat percabangan alur berdasarkan nilai variabel.
+  - **Interactive buttons**: Tampilkan tombol pilihan cepat (Quick Reply) atau menu list.
+  - **AI response**: Jalankan prompt LLM menggunakan konteks percakapan dan data eksternal.
+  - **HTTP request**: Lakukan panggilan API GET/POST real-time ke sistem backend atau API katalog harga.
+- **Deletable Edges (Penghubung Interaktif)**: Hubungkan port output ke port input node berikutnya. Klik garis penghubung untuk menampilkan tombol **Delete edge**.
+- **Navigasi Layar**: Zoom in/out, geser kanvas, dan klik **Fit View** untuk melihat keseluruhan alur dalam satu tampilan.
+
+### Penggunaan Variabel Dinamis:
+Data antar node dialirkan menggunakan tag template:
+- `{{variables.<nama_variabel>}}`: Nilai yang disimpan dari langkah **Ask for input**.
+- `{{steps.<node_id>.body}}`: Data JSON yang dikembalikan oleh langkah **HTTP request**.
 
 ---
 
-## 4. Pengujian & Publikasi
+## 3. Simulator Bot Interaktif
 
-- Gunakan drawer **Test Simulator** di pojok kanan atas canvas untuk melakukan simulasi percakapan langsung sebelum dipublikasikan.
-- Klik **Publikasikan Versi** untuk menerapkan alur ke nomor WhatsApp aktif secara live.
+Sebelum merilis perubahan ke nomor WhatsApp produksi, uji logika percakapan secara menyeluruh menggunakan simulator bawaan.
+
+Klik tombol **"Simulate test"** pada header kanvas untuk membuka dialog simulator:
+
+![Simulator Bot WhatsApp](/kb-assets/whatsapp/workflows/03-workflow-simulator-dialog.png)
+
+- **Pratinjau Percakapan Nyata**: Menampilkan balon percakapan bot persis seperti tampilan di aplikasi WhatsApp pengguna.
+- **Input Chat Interaktif**: Ketik pesan simulasi pelanggan untuk menguji respon AI dan pengambilan data dari HTTP API.
+- **Reset Session**: Bersihkan sesi chat untuk menguji ulang alur dari langkah pertama.
+
+---
+
+## 4. Rilis ke Produksi (Save and Deploy)
+
+Setelah alur bot terverifikasi di simulator:
+1. Klik tombol **"Save and deploy"** di bilah atas.
+2. Workflow akan segera dikompilasi dan aktif otomatis untuk setiap pesan masuk pada nomor WhatsApp terkait.
