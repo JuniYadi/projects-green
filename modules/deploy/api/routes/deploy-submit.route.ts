@@ -317,6 +317,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         secondaryEngine: body.secondaryEngine ?? null,
         secondaryEngineVersion: body.secondaryEngineVersion ?? null,
         defaultPort: body.defaultPort ?? resolvedTemplateDefaultPort ?? null,
+        resourcePlanId,
         billingMode,
         hourlyCost: hourlyCost.toString(),
         cpu: body.cpu ?? null,

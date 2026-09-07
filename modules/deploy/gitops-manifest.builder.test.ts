@@ -25,6 +25,7 @@ describe("gitops-manifest.builder", () => {
       it("falls back to slug when orgId is null", () => {
         expect(formatTenantFolder(null, "my-slug")).toBe("app-my-slug")
         expect(formatTenantFolder(null, "app-my-slug")).toBe("app-my-slug")
+        expect(formatTenantFolder(null, null)).toBe("app-default")
       })
     })
 
@@ -113,6 +114,14 @@ describe("gitops-manifest.builder", () => {
       expect(paths.serviceDir).toBe("services-yaml/app-my-app/my-app")
       expect(paths.helmPath).toBe("services-yaml/app-my-app/my-app/helm.yml")
       expect(paths.valuePath).toBe("services-yaml/app-my-app/my-app/value.yml")
+    })
+    it("falls back to services-yaml prefix when basePath is empty", () => {
+      const paths = resolveGitOpsManifestPaths({
+        slug: "my-app",
+        basePath: "",
+      })
+
+      expect(paths.appServicesDir).toBe("services-yaml/app-my-app")
     })
   })
 

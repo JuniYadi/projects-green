@@ -384,7 +384,7 @@ export default function DeploymentsPage() {
                     <CardTitle>{tDeployments.historyTitle}</CardTitle>
                     <CardDescription>
                       {historyMeta
-                        ? `${historyMeta.total} ${tDeployments.table.attempt.toLowerCase()}`
+                        ? `${historyMeta.total} ${tDeployments.table.attempt.toLowerCase()}${historyMeta.total === 1 || locale === "id" ? "" : "s"}`
                         : tDeployments.historyDescription}
                     </CardDescription>
                   </CardHeader>

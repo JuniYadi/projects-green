@@ -310,6 +310,7 @@ describe("deploySubmitRoutes /submit", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           templateId: "tpl-hermes",
+          resourcePlanId: "payg",
           metadataJson: expect.objectContaining({
             templateId: "hermes",
             defaultPort: 8642,
