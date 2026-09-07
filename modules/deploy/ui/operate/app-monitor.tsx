@@ -41,6 +41,7 @@ type AppMonitorProps = {
   onRetry?: () => void
   liveDomain?: string
   locale?: string
+  hideSummaryHeader?: boolean
 }
 
 const BILLING_NOTE: Record<StackBillingState, string | null> = {
@@ -59,6 +60,7 @@ export function AppMonitor({
   onRetry,
   liveDomain,
   locale: localeProp,
+  hideSummaryHeader = false,
 }: AppMonitorProps) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
@@ -72,193 +74,198 @@ export function AppMonitor({
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                {stack.name}
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${tone}`}
-                >
-                  {DEPLOY_STATUS_LABELS[status] ?? status}
-                </span>
-              </CardTitle>
-              <CardDescription>
-                {stack.framework ??
-                  (stack.sourceType === "TEMPLATE" || stack.templateId
-                    ? stack.templateId && stack.templateId.length < 20
-                      ? `${stack.templateId.charAt(0).toUpperCase() + stack.templateId.slice(1)} (Template)`
-                      : "Template"
-                    : "Custom Workload")}{" "}
-                <span className="font-medium text-foreground">
-                  {stack.branchName}
-                </span>
-                {stack.resourcePlanId ? (
-                  <>
-                    {" "}
-                    &bull; plan{" "}
-                    <span className="font-medium text-foreground">
-                      {stack.resourcePlanId}
-                    </span>
-                  </>
-                ) : null}
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 px-3 text-xs"
-              >
-                <Link
-                  href={`${localizePathname({ pathname: "/console/app/settings", locale })}?app=${stack.slug}&tab=env`}
-                >
-                  <GearSix className="size-3.5" />
-                  <span>Settings & Env</span>
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 px-3 text-xs"
-              >
-                <Link
-                  href={`${localizePathname({ pathname: "/console/app/logs", locale })}?app=${stack.slug}`}
-                >
-                  <ListMagnifyingGlass className="size-3.5" />
-                  <span>Logs</span>
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 px-3 text-xs"
-              >
-                <Link
-                  href={`${localizePathname({ pathname: "/console/app/metrics", locale })}?app=${stack.slug}`}
-                >
-                  <ChartLine className="size-3.5" />
-                  <span>Metrics</span>
-                </Link>
-              </Button>
-              {targetDomain ? (
-                <Button asChild size="sm" className="h-8 gap-1.5 px-3 text-xs">
-                  <a
-                    href={`https://${targetDomain}`}
-                    target="_blank"
-                    rel="noreferrer"
+      {!hideSummaryHeader && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-3 text-lg">
+                  {stack.name}
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${tone}`}
                   >
-                    <span>Open App</span>
-                    <ArrowSquareOut className="size-3.5" />
-                  </a>
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {billingNote ? (
-            <div
-              className="flex items-start justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-300"
-              role="alert"
-            >
-              <span>{billingNote}</span>
-              <Link
-                href="/console/billing/topup"
-                className="font-semibold underline underline-offset-4"
-              >
-                Top up
-              </Link>
-            </div>
-          ) : null}
-
-          <dl className="grid gap-3 text-xs sm:grid-cols-3">
-            <div className="space-y-1">
-              <dt className="tracking-wide text-muted-foreground uppercase">
-                Domain
-              </dt>
-              <dd className="font-medium text-foreground">
-                {targetDomain ? (
-                  <a
-                    href={`https://${targetDomain}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
-                  >
-                    <span>{targetDomain}</span>
-                    <ArrowSquareOut className="size-3" />
-                  </a>
-                ) : (
-                  "Not configured"
-                )}
-              </dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="tracking-wide text-muted-foreground uppercase">
-                Last deployed
-              </dt>
-              <dd className="font-medium text-foreground">
-                {stack.lastDeployedAt
-                  ? new Date(stack.lastDeployedAt).toLocaleString()
-                  : "Never"}
-              </dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="tracking-wide text-muted-foreground uppercase">
-                Attempt
-              </dt>
-              <dd className="font-medium text-foreground">
-                {deployment ? deployment.attempt : "—"}
-              </dd>
-            </div>
-          </dl>
-
-          {deployment?.status === "failed" ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="flex items-center gap-1.5 font-semibold text-destructive">
-                    <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
-                    Deployment Failed
-                  </p>
-                  <p className="text-foreground">
-                    {deployment.failureReason ||
-                      "The deployment encountered an unexpected error during build or cluster synchronization."}
-                  </p>
-                  {deployment.failureReason?.includes("REGISTRY") ? (
-                    <p className="pt-1 text-muted-foreground">
-                      💡 <strong>Action Required:</strong>{" "}
-                      {tMonitor.registryHint}
-                    </p>
-                  ) : deployment.failureReason?.includes("timed out") ? (
-                    <p className="pt-1 text-muted-foreground">
-                      💡 <strong>Action Required:</strong>{" "}
-                      {tMonitor.timeoutHint}
-                    </p>
+                    {DEPLOY_STATUS_LABELS[status] ?? status}
+                  </span>
+                </CardTitle>
+                <CardDescription>
+                  {stack.framework ??
+                    (stack.sourceType === "TEMPLATE" || stack.templateId
+                      ? stack.templateId && stack.templateId.length < 20
+                        ? `${stack.templateId.charAt(0).toUpperCase() + stack.templateId.slice(1)} (Template)`
+                        : "Template"
+                      : "Custom Workload")}{" "}
+                  <span className="font-medium text-foreground">
+                    {stack.branchName}
+                  </span>
+                  {stack.resourcePlanId ? (
+                    <>
+                      {" "}
+                      &bull; plan{" "}
+                      <span className="font-medium text-foreground">
+                        {stack.resourcePlanId}
+                      </span>
+                    </>
                   ) : null}
-                </div>
-                {onRetry ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={onRetry}
-                    className="shrink-0"
+                </CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-3 text-xs"
+                >
+                  <Link
+                    href={`${localizePathname({ pathname: "/console/app/settings", locale })}?app=${stack.slug}&tab=env`}
                   >
-                    <ArrowClockwise className="mr-1.5 h-3.5 w-3.5" />
-                    Retry Deploy
+                    <GearSix className="size-3.5" />
+                    <span>Settings & Env</span>
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-3 text-xs"
+                >
+                  <Link
+                    href={`${localizePathname({ pathname: "/console/app/logs", locale })}?app=${stack.slug}`}
+                  >
+                    <ListMagnifyingGlass className="size-3.5" />
+                    <span>Logs</span>
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-3 text-xs"
+                >
+                  <Link
+                    href={`${localizePathname({ pathname: "/console/app/metrics", locale })}?app=${stack.slug}`}
+                  >
+                    <ChartLine className="size-3.5" />
+                    <span>Metrics</span>
+                  </Link>
+                </Button>
+                {targetDomain ? (
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-8 gap-1.5 px-3 text-xs"
+                  >
+                    <a
+                      href={`https://${targetDomain}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <span>Open App</span>
+                      <ArrowSquareOut className="size-3.5" />
+                    </a>
                   </Button>
                 ) : null}
               </div>
             </div>
-          ) : null}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {billingNote ? (
+              <div
+                className="flex items-start justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-300"
+                role="alert"
+              >
+                <span>{billingNote}</span>
+                <Link
+                  href="/console/billing/topup"
+                  className="font-semibold underline underline-offset-4"
+                >
+                  Top up
+                </Link>
+              </div>
+            ) : null}
 
+            <dl className="grid gap-3 text-xs sm:grid-cols-3">
+              <div className="space-y-1">
+                <dt className="tracking-wide text-muted-foreground uppercase">
+                  Domain
+                </dt>
+                <dd className="font-medium text-foreground">
+                  {targetDomain ? (
+                    <a
+                      href={`https://${targetDomain}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+                    >
+                      <span>{targetDomain}</span>
+                      <ArrowSquareOut className="size-3" />
+                    </a>
+                  ) : (
+                    "Not configured"
+                  )}
+                </dd>
+              </div>
+              <div className="space-y-1">
+                <dt className="tracking-wide text-muted-foreground uppercase">
+                  Last deployed
+                </dt>
+                <dd className="font-medium text-foreground">
+                  {stack.lastDeployedAt
+                    ? new Date(stack.lastDeployedAt).toLocaleString()
+                    : "Never"}
+                </dd>
+              </div>
+              <div className="space-y-1">
+                <dt className="tracking-wide text-muted-foreground uppercase">
+                  Attempt
+                </dt>
+                <dd className="font-medium text-foreground">
+                  {deployment ? deployment.attempt : "—"}
+                </dd>
+              </div>
+            </dl>
+
+            {deployment?.status === "failed" ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-1.5 font-semibold text-destructive">
+                      <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
+                      Deployment Failed
+                    </p>
+                    <p className="text-foreground">
+                      {deployment.failureReason ||
+                        "The deployment encountered an unexpected error during build or cluster synchronization."}
+                    </p>
+                    {deployment.failureReason?.includes("REGISTRY") ? (
+                      <p className="pt-1 text-muted-foreground">
+                        💡 <strong>Action Required:</strong>{" "}
+                        {tMonitor.registryHint}
+                      </p>
+                    ) : deployment.failureReason?.includes("timed out") ? (
+                      <p className="pt-1 text-muted-foreground">
+                        💡 <strong>Action Required:</strong>{" "}
+                        {tMonitor.timeoutHint}
+                      </p>
+                    ) : null}
+                  </div>
+                  {onRetry ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onRetry}
+                      className="shrink-0"
+                    >
+                      <ArrowClockwise className="mr-1.5 h-3.5 w-3.5" />
+                      Retry Deploy
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
       {deployId ? (
         <Card>
           <CardHeader>

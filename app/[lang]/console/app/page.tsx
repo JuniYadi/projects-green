@@ -5,10 +5,9 @@ import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
   RocketLaunch,
-  ListMagnifyingGlass,
-  ChartLine,
-  GearSix,
   Storefront,
+  ArrowRight,
+  ArrowSquareOut,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
@@ -222,116 +221,97 @@ export default function ApplicationsPage() {
           </Button>
         </div>
       ) : (
-        <div className="rounded-xl border border-border">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30 text-left text-xs tracking-wide text-muted-foreground uppercase">
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Framework</th>
-                  <th className="px-4 py-3 font-medium">Branch</th>
-                  <th className="px-4 py-3 font-medium">Last Deployed</th>
-                  <th className="px-4 py-3 font-medium">Current deployment</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {apps.map((app) => {
-                  const overviewHref = `/${locale}/console/app/platform/${app.slug}?tab=overview`
-                  const logsHref = `/${locale}/console/app/platform/${app.slug}?tab=logs`
-                  const metricsHref = `/${locale}/console/app/platform/${app.slug}?tab=metrics`
-                  const deploymentsHref = `/${locale}/console/app/platform/${app.slug}?tab=deployments`
-                  const settingsHref = `/${locale}/console/app/platform/${app.slug}?tab=env`
-                  const deployHref = localizePathname({
-                    pathname: "/console/app/deploy",
-                    locale,
-                  })
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground">
+              Active Platforms ({apps.length})
+            </h2>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Link
+                href={localizePathname({
+                  pathname: "/console/app/platforms",
+                  locale,
+                })}
+              >
+                <span>View all platforms</span>
+                <ArrowRight size={14} />
+              </Link>
+            </Button>
+          </div>
 
-                  return (
-                    <tr
-                      key={app.id}
-                      className="border-b border-border transition-colors hover:bg-muted/20"
-                    >
-                      <td className="px-4 py-3 font-medium">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {apps.slice(0, 6).map((app) => {
+              const overviewHref = `/${locale}/console/app/platform/${app.slug}?tab=overview`
+              const deploymentsHref = `/${locale}/console/app/platform/${app.slug}?tab=deployments`
+              const settingsHref = `/${locale}/console/app/platform/${app.slug}?tab=env`
+              const liveDomain = app.customDomain || app.subdomain
+
+              return (
+                <div
+                  key={app.id}
+                  className="flex flex-col justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-border/80 hover:shadow-xs"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
                         <Link
                           href={overviewHref}
-                          className="text-foreground hover:underline"
+                          className="truncate font-semibold text-foreground hover:underline"
                         >
                           {app.name}
                         </Link>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                            STATUS_TONE[app.status] ?? STATUS_TONE.idle
-                          }`}
-                        >
-                          {DEPLOY_STATUS_LABELS[app.status] ?? app.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {app.framework ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                        {app.branchName}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {app.lastDeployedAt
-                          ? new Date(app.lastDeployedAt).toLocaleDateString()
-                          : "Never"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {app.currentStepLabel
-                          ? `${app.currentStepLabel} — ${
-                              app.currentStepStartedAt
-                                ? formatRelativeTime(
-                                    app.currentStepStartedAt,
-                                    locale
-                                  )
-                                : "—"
-                            }`
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <Button asChild variant="outline" size="xs">
-                            <Link href={logsHref}>
-                              <ListMagnifyingGlass size={14} className="mr-1" />
-                              Logs
-                            </Link>
-                          </Button>
-                          <Button asChild variant="outline" size="xs">
-                            <Link href={metricsHref}>
-                              <ChartLine size={14} className="mr-1" />
-                              Metrics
-                            </Link>
-                          </Button>
-                          <Button asChild variant="outline" size="xs">
-                            <Link href={deploymentsHref}>
-                              <ListMagnifyingGlass size={14} className="mr-1" />
-                              Deployments
-                            </Link>
-                          </Button>
-                          <Button asChild variant="outline" size="xs">
-                            <Link href={settingsHref}>
-                              <GearSix size={14} className="mr-1" />
-                              Settings
-                            </Link>
-                          </Button>
-                          <Button asChild variant="outline" size="xs">
-                            <Link href={deployHref}>
-                              <RocketLaunch size={14} className="mr-1" />
-                              Deploy
-                            </Link>
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {app.framework ??
+                            app.templateId ??
+                            "Custom Container"}{" "}
+                          &bull; branch {app.branchName}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                          STATUS_TONE[app.status] ?? STATUS_TONE.idle
+                        }`}
+                      >
+                        {DEPLOY_STATUS_LABELS[app.status] ?? app.status}
+                      </span>
+                    </div>
+
+                    {liveDomain && (
+                      <a
+                        href={`https://${liveDomain}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 truncate text-xs text-primary hover:underline"
+                      >
+                        <span>{liveDomain}</span>
+                        <ArrowSquareOut size={12} />
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3 text-xs">
+                    <span className="text-muted-foreground">
+                      {app.lastDeployedAt
+                        ? formatRelativeTime(app.lastDeployedAt, locale)
+                        : "Never deployed"}
+                    </span>
+                    <div className="flex gap-1.5">
+                      <Button asChild variant="outline" size="xs">
+                        <Link href={deploymentsHref}>Deployments</Link>
+                      </Button>
+                      <Button asChild variant="outline" size="xs">
+                        <Link href={settingsHref}>Env</Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

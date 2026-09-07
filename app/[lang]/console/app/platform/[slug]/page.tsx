@@ -458,6 +458,7 @@ export default function PlatformInstanceWorkspacePage() {
                   overview.stack.customDomain || overview.stack.subdomain || ""
                 }
                 locale={locale}
+                hideSummaryHeader={true}
               />
             </div>
           )}

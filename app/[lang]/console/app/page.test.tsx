@@ -40,6 +40,9 @@ mock.module("@phosphor-icons/react", () => ({
   ArrowLeft: (props: Record<string, unknown>) => (
     <span data-testid="icon-arrowleft" {...props} />
   ),
+  ArrowRight: (props: Record<string, unknown>) => (
+    <span data-testid="icon-arrowright" {...props} />
+  ),
   CheckCircle: (props: Record<string, unknown>) => (
     <span data-testid="icon-checkcircle" {...props} />
   ),
@@ -107,6 +110,9 @@ mock.module("@/lib/eden", () => ({
                     billingMode: null,
                     billingState: "ACTIVE",
                     latestDeploymentId: "deployment-1",
+                    lastDeployedAt: new Date(
+                      Date.now() - 5 * 60 * 1000
+                    ).toISOString(),
                     currentStepLabel: "Build started",
                     currentStepIndex: 2,
                     currentStepStartedAt: new Date(
@@ -165,46 +171,40 @@ describe("ApplicationsPage overview", () => {
     })
   })
 
-  it("renders framework and branch", async () => {
+  it("renders framework and branch in card", async () => {
     const { getByText } = render(<ApplicationsPage />)
 
     await waitFor(() => {
-      expect(getByText("Next.js")).toBeDefined()
-      expect(getByText("main")).toBeDefined()
+      expect(getByText(/Next\.js/i)).toBeDefined()
+      expect(getByText(/branch main/i)).toBeDefined()
     })
   })
 
-  it("renders current deployment relative time", async () => {
+  it("renders relative time in card footer", async () => {
     const { getByText } = render(<ApplicationsPage />)
 
     await waitFor(() => {
-      expect(getByText(/Build started — \d+ minutes ago/)).toBeDefined()
+      expect(getByText(/\d+ minutes ago|just now/i)).toBeDefined()
     })
   })
 
-  it("renders action links with correct hrefs", async () => {
+  it("renders platform card action links with correct hrefs", async () => {
     const { getByText } = render(<ApplicationsPage />)
 
     await waitFor(() => {
-      const logsLink = getByText("Logs").closest("a")
-      const metricsLink = getByText("Metrics").closest("a")
       const deploymentsLink = getByText("Deployments").closest("a")
-      const settingsLink = getByText("Settings").closest("a")
-      const deployLink = getByText("Deploy").closest("a")
+      const envLink = getByText("Env").closest("a")
+      const viewAllLink = getByText("View all platforms").closest("a")
 
-      expect(logsLink?.getAttribute("href")).toBe(
-        "/en/console/app/platform/test-app?tab=logs"
-      )
-      expect(metricsLink?.getAttribute("href")).toBe(
-        "/en/console/app/platform/test-app?tab=metrics"
-      )
       expect(deploymentsLink?.getAttribute("href")).toBe(
         "/en/console/app/platform/test-app?tab=deployments"
       )
-      expect(settingsLink?.getAttribute("href")).toBe(
+      expect(envLink?.getAttribute("href")).toBe(
         "/en/console/app/platform/test-app?tab=env"
       )
-      expect(deployLink?.getAttribute("href")).toBe("/en/console/app/deploy")
+      expect(viewAllLink?.getAttribute("href")).toBe(
+        "/en/console/app/platforms"
+      )
     })
   })
 
