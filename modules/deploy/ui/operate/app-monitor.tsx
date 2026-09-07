@@ -1,11 +1,17 @@
 "use client"
 
-import { ArrowClockwise, ArrowSquareOut } from "@phosphor-icons/react"
+import {
+  ArrowClockwise,
+  ArrowSquareOut,
+  GearSix,
+  ListMagnifyingGlass,
+  ChartLine,
+} from "@phosphor-icons/react"
 import Link from "next/link"
 
 import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -99,18 +105,59 @@ export function AppMonitor({
                 ) : null}
               </CardDescription>
             </div>
-            {targetDomain ? (
-              <Button asChild size="sm" className="h-8 gap-1.5 px-3 text-xs">
-                <a
-                  href={`https://${targetDomain}`}
-                  target="_blank"
-                  rel="noreferrer"
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 px-3 text-xs"
+              >
+                <Link
+                  href={`${localizePathname({ pathname: "/console/app/settings", locale })}?app=${stack.slug}&tab=env`}
                 >
-                  <span>Open App</span>
-                  <ArrowSquareOut className="size-3.5" />
-                </a>
+                  <GearSix className="size-3.5" />
+                  <span>Settings & Env</span>
+                </Link>
               </Button>
-            ) : null}
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 px-3 text-xs"
+              >
+                <Link
+                  href={`${localizePathname({ pathname: "/console/app/logs", locale })}?app=${stack.slug}`}
+                >
+                  <ListMagnifyingGlass className="size-3.5" />
+                  <span>Logs</span>
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 px-3 text-xs"
+              >
+                <Link
+                  href={`${localizePathname({ pathname: "/console/app/metrics", locale })}?app=${stack.slug}`}
+                >
+                  <ChartLine className="size-3.5" />
+                  <span>Metrics</span>
+                </Link>
+              </Button>
+              {targetDomain ? (
+                <Button asChild size="sm" className="h-8 gap-1.5 px-3 text-xs">
+                  <a
+                    href={`https://${targetDomain}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span>Open App</span>
+                    <ArrowSquareOut className="size-3.5" />
+                  </a>
+                </Button>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
