@@ -67,7 +67,7 @@ describe("AppTemplate Prisma Schema & Seed", () => {
     const runtime = hermes?.blueprint.runtime
     expect(runtime?.image).toBe("nousresearch/hermes-agent:v2026.8.18")
     expect(runtime?.defaultPort).toBe(8642)
-    expect(runtime?.healthCheckPath).toBe("/healthz")
+    expect(runtime?.healthCheckPath).toBeUndefined()
     expect(runtime?.deploymentType).toBe("statefulset")
     expect(runtime?.additionalPorts).toEqual([
       { port: 9119, name: "dashboard" },

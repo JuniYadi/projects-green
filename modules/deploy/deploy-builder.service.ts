@@ -610,10 +610,15 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
         ? blueprintRuntime.defaultPort
         : 80)
 
+    const userHealthCheck = stackMeta?.healthCheckPath
     const healthCheckPath =
-      typeof blueprintRuntime?.healthCheckPath === "string"
-        ? blueprintRuntime.healthCheckPath
-        : null
+      typeof userHealthCheck === "string"
+        ? userHealthCheck.trim() || null
+        : userHealthCheck === null
+          ? null
+          : typeof blueprintRuntime?.healthCheckPath === "string"
+            ? blueprintRuntime.healthCheckPath.trim() || null
+            : null
 
     const command = Array.isArray(blueprintRuntime?.command)
       ? (blueprintRuntime.command as string[])

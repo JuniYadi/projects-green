@@ -119,7 +119,6 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
         defaultPort: 8642,
         additionalPorts: [{ port: 9119, name: "dashboard" }],
         deploymentType: "statefulset",
-        healthCheckPath: "/healthz",
         runAsNonRoot: false,
       },
       resources: {
