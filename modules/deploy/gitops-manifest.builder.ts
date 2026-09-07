@@ -12,7 +12,7 @@ export interface GitOpsManifestPaths {
 
 export function formatTenantFolder(
   orgId?: string | null,
-  slug?: string
+  slug?: string | null
 ): string {
   if (!orgId) {
     return slug
