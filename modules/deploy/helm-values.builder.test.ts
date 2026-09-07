@@ -234,7 +234,7 @@ describe("buildHelmValues", () => {
     expect(out.containerPorts).toEqual([{ containerPort: 80, name: "http" }])
   })
 
-  it("omits env, externalSecret, and simpleIngress when not applicable", () => {
+  it("omits env, externalSecret, simpleIngress, and simpleStorage when not applicable", () => {
     const out = buildHelmValues({
       slug: "s",
       imageRepository: "r",
@@ -244,5 +244,71 @@ describe("buildHelmValues", () => {
     expect("env" in out).toBe(false)
     expect("externalSecret" in out).toBe(false)
     expect("simpleIngress" in out).toBe(false)
+    expect("simpleStorage" in out).toBe(false)
+  })
+
+  it("renders simpleStorage with path, size, and accessMode when storage is enabled", () => {
+    const out = buildHelmValues({
+      slug: "hermes-sparkling-pulsar",
+      imageRepository: "nousresearch/hermes-agent",
+      imageTag: "v2026.8.18",
+      env: [],
+      storage: {
+        enabled: true,
+        mountPath: "/opt/data",
+        size: "2Gi",
+        accessMode: "ReadWriteOnce",
+      },
+    })
+
+    expect(out.simpleStorage).toEqual([
+      {
+        name: "data",
+        path: "/opt/data",
+        size: "2Gi",
+        accessMode: "ReadWriteOnce",
+      },
+    ])
+  })
+
+  it("renders simpleStorage supporting explicit path, name, and storageClassName", () => {
+    const out = buildHelmValues({
+      slug: "app-custom",
+      imageRepository: "custom/app",
+      imageTag: "1.0",
+      env: [],
+      storage: {
+        enabled: true,
+        name: "custom-data",
+        path: "/var/custom",
+        size: "5Gi",
+        accessMode: "ReadWriteMany",
+        storageClass: "fast-storage",
+      },
+    })
+
+    expect(out.simpleStorage).toEqual([
+      {
+        name: "custom-data",
+        path: "/var/custom",
+        size: "5Gi",
+        accessMode: "ReadWriteMany",
+        storageClassName: "fast-storage",
+      },
+    ])
+  })
+
+  it("omits simpleStorage when storage.enabled is false", () => {
+    const out = buildHelmValues({
+      slug: "s",
+      imageRepository: "r",
+      imageTag: "1",
+      env: [],
+      storage: {
+        enabled: false,
+        mountPath: "/opt/data",
+      },
+    })
+    expect("simpleStorage" in out).toBe(false)
   })
 })

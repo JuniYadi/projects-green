@@ -26,7 +26,9 @@ export type HelmValuesProbe = {
 
 export type HelmValuesStorage = {
   enabled: boolean
-  mountPath: string
+  name?: string
+  mountPath?: string
+  path?: string
   size?: string
   storageClass?: string
   accessMode?: string
@@ -182,10 +184,11 @@ export function buildHelmValues(
   }
 
   if (input.storage && input.storage.enabled) {
+    const storagePath = input.storage.path ?? input.storage.mountPath
     values.simpleStorage = [
       {
-        name: "data",
-        mountPath: input.storage.mountPath,
+        name: input.storage.name ?? "data",
+        ...(storagePath ? { path: storagePath } : {}),
         size: input.storage.size ?? "10Gi",
         accessMode: input.storage.accessMode ?? "ReadWriteOnce",
         ...(input.storage.storageClass
