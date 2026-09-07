@@ -139,14 +139,21 @@ const parseEnvVarsJson = (raw: unknown): JenkinsEnvVar[] => {
   return parsed.flatMap((item) => {
     if (typeof item !== "object" || item === null) return []
     const row = item as Record<string, unknown>
-    if (typeof row.key !== "string" || typeof row.value !== "string") {
+    if (typeof row.key !== "string") {
+      return []
+    }
+    const isSecretRef =
+      row.type === "secret_ref" ||
+      row.type === "secret_shared_ref" ||
+      row.source === "vault"
+    if (!isSecretRef && typeof row.value !== "string") {
       return []
     }
 
     return [
       {
         key: row.key,
-        value: row.value,
+        value: typeof row.value === "string" ? row.value : "",
         ...(typeof row.type === "string" ? { type: row.type } : {}),
         ...(typeof row.scope === "string" ? { scope: row.scope } : {}),
         ...(typeof row.source === "string" ? { source: row.source } : {}),
