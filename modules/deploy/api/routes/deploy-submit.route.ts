@@ -133,6 +133,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       name: string
     }> | null = null
     let resolvedDbTemplateId: string | null = null
+    let resolvedTemplateDefaultPort: number | null = null
     if (sourceType === "MANAGED_TEMPLATE") {
       managedTemplate = MANAGED_APP_TEMPLATES.find(
         (template) => template.id === body.templateId
@@ -203,6 +204,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       repositoryConnectionId = null
       name = body.name?.trim() || template.name
       slug = slugify(name)
+      resolvedTemplateDefaultPort = template.build.defaultPort ?? null
     } else if (sourceType === "PUBLIC") {
       const parsed = parsePublicGitUrl(body.publicSourceUrl ?? "")
       if ("error" in parsed) {
@@ -314,7 +316,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         primaryEngineVersion: body.primaryEngineVersion ?? null,
         secondaryEngine: body.secondaryEngine ?? null,
         secondaryEngineVersion: body.secondaryEngineVersion ?? null,
-        defaultPort: body.defaultPort ?? null,
+        defaultPort: body.defaultPort ?? resolvedTemplateDefaultPort ?? null,
         resourcePlanId,
         billingMode,
         hourlyCost: hourlyCost.toString(),

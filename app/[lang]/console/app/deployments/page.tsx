@@ -50,11 +50,6 @@ type HistoryMeta = {
   totalPages: number
 }
 
-type DeploymentsCopy = {
-  heading: string
-  description: string
-}
-
 const findDefaultSlug = (
   apps: StackSummaryDTO[],
   preferred: string | null
@@ -95,14 +90,7 @@ export default function DeploymentsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
-  const pageCopy = (
-    messages.console.app as typeof messages.console.app & {
-      deployments?: DeploymentsCopy
-    }
-  ).deployments ?? {
-    heading: "Deployments",
-    description: "Review deployment attempts and monitor their progress.",
-  }
+  const tDeployments = messages.console.app.deployments
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -321,8 +309,8 @@ export default function DeploymentsPage() {
 
   return (
     <LifecyclePageShell
-      title={pageCopy.heading}
-      description={pageCopy.description}
+      title={tDeployments.heading}
+      description={tDeployments.description}
     >
       <div className="space-y-6">
         {appsLoading ? (
@@ -393,17 +381,17 @@ export default function DeploymentsPage() {
               <>
                 <Card>
                   <CardHeader>
-                    <CardTitle>Deployment history</CardTitle>
+                    <CardTitle>{tDeployments.historyTitle}</CardTitle>
                     <CardDescription>
                       {historyMeta
-                        ? `${historyMeta.total} deployment${historyMeta.total === 1 ? "" : "s"}`
-                        : "Previous deployment attempts"}
+                        ? `${historyMeta.total} ${tDeployments.table.attempt.toLowerCase()}${historyMeta.total === 1 || locale === "id" ? "" : "s"}`
+                        : tDeployments.historyDescription}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     {historyLoading ? (
                       <p className="text-sm text-muted-foreground">
-                        Loading deployment history…
+                        {tDeployments.loadingHistory}
                       </p>
                     ) : historyError ? (
                       <div
@@ -422,7 +410,7 @@ export default function DeploymentsPage() {
                       </div>
                     ) : history.length === 0 ? (
                       <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                        No deployment attempts yet.
+                        {tDeployments.noAttempts}
                       </p>
                     ) : (
                       <>
@@ -430,13 +418,27 @@ export default function DeploymentsPage() {
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Attempt</TableHead>
-                                <TableHead>Duration</TableHead>
-                                <TableHead>Commit</TableHead>
-                                <TableHead>Failure</TableHead>
-                                <TableHead>Started</TableHead>
-                                <TableHead>Completed</TableHead>
+                                <TableHead>
+                                  {tDeployments.table.status}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.attempt}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.duration}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.commit}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.failure}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.started}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.completed}
+                                </TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -556,6 +558,7 @@ export default function DeploymentsPage() {
                       ? handleRetry
                       : undefined
                   }
+                  locale={locale}
                 />
               </>
             ) : null}

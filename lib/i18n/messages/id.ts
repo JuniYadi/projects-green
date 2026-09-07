@@ -2169,6 +2169,76 @@ export const idMessages: AppMessages = {
         description:
           "Lacak riwayat deployment dan event rollout untuk aplikasi Anda.",
       },
+      deployments: {
+        heading: "Deployment",
+        description:
+          "Lihat riwayat deployment dan status peluncuran langsung untuk aplikasi Anda.",
+        historyTitle: "Riwayat deployment",
+        historyDescription: "Percobaan deployment sebelumnya",
+        loadingHistory: "Memuat riwayat deployment…",
+        noAttempts: "Belum ada percobaan deployment.",
+        table: {
+          status: "Status",
+          attempt: "Percobaan",
+          duration: "Durasi",
+          commit: "Commit",
+          failure: "Kegagalan",
+          started: "Dimulai",
+          completed: "Selesai",
+        },
+      },
+      timeline: {
+        steps: {
+          queued: "Dalam antrean",
+          monitorWait: "Menunggu di antrean",
+          monitorPickedUp: "Menyiapkan build",
+          jenkinsTriggered: "Build diinisialisasi",
+          jenkinsQueued: "Build dalam antrean",
+          jenkinsRunning: "Membangun aplikasi",
+          imagePushed: "Aplikasi dikemas",
+          imageTagReceived: "Rilis siap",
+          gitopsCommitted: "Konfigurasi diterapkan",
+          argocdSyncStarted: "Mendeploy ke cloud",
+          argocdSynced: "Deployment terverifikasi",
+          podsReady: "Aplikasi berjalan sehat",
+          live: "Aktif",
+          templateReady: "Template siap",
+        },
+        states: {
+          completed: "Selesai",
+          active: "Sedang berjalan",
+          pending: "Tertunda",
+          skipped: "Dilewati",
+          failed: "Gagal",
+        },
+        badges: {
+          deploying: "Mendeploy",
+          lagging: "Tertunda",
+          healthVerification: "Verifikasi kesehatan sedang berlangsung",
+        },
+        labels: {
+          notStarted: "Deployment belum dimulai.",
+          failedAtStep: "Deployment gagal pada tahap ini.",
+          retryDeploy: "Coba lagi deploy",
+          viewLiveApp: "Buka deployment aktif",
+          deploymentDetails: "Detail deployment",
+          noLogs: "Tidak ada log untuk tahap ini.",
+          failedToLoadLogs: "Gagal memuat log",
+        },
+        monitor: {
+          statusTitle: "Status deployment",
+          statusDescription:
+            "Status langsung, event, dan log dari sistem deployment.",
+          timelineTitle: "Linimasa status",
+          logsTitle: "Log build dan runtime",
+          noDeployments:
+            "Belum ada deployment untuk aplikasi ini. Mulai deploy untuk melihat status, event, dan log di sini.",
+          timeoutHint:
+            "Aplikasi membutuhkan waktu lebih lama dari biasanya untuk dimulai. Periksa log di bawah atau klik Coba Lagi Deploy.",
+          registryHint:
+            "Kluster tujuan tidak memiliki integrasi Registri Kontainer yang aktif. Harap konfigurasikan registri di pengaturan admin.",
+        },
+      },
       settings: {
         heading: "Pengaturan Aplikasi",
         description: "Konfigurasi domain, environment, scaling, dan lainnya.",

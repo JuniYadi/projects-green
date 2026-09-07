@@ -192,7 +192,9 @@ describe("DeployStepTimeline", () => {
       const trigger = view.getAllByRole("button")[index]
       fireEvent.click(trigger!)
       await waitFor(() => {
-        expect(view.getByText("ArgoCD health not tracked")).toBeInTheDocument()
+        expect(
+          view.getByText("Health verification in progress")
+        ).toBeInTheDocument()
       })
       fireEvent.click(trigger!)
     }
@@ -489,7 +491,7 @@ describe("DeployStepTimeline", () => {
     expect(statusCalls.length).toBe(1)
   })
 
-  it("collapses build steps into Base Image Ready when skipBuildSteps is true", () => {
+  it("collapses build steps into Template ready when skipBuildSteps is true", () => {
     globalThis.fetch = mockFetch()
 
     const view = render(
@@ -500,8 +502,8 @@ describe("DeployStepTimeline", () => {
       />
     )
 
-    expect(view.getByText("Base Image Ready")).toBeInTheDocument()
-    expect(view.getByText("Helm values committed")).toBeInTheDocument()
+    expect(view.getByText("Template ready")).toBeInTheDocument()
+    expect(view.getByText("Configuration applied")).toBeInTheDocument()
     expect(view.queryByText("Jenkins building")).not.toBeInTheDocument()
     expect(view.queryByText("Waiting for monitor")).not.toBeInTheDocument()
     // 1 synthetic Base Image Ready + 5 post-build steps = 6 items

@@ -88,7 +88,7 @@ describe("deploy-monitor.dto", () => {
         },
       ]
       expect(deriveCurrentDeployStep(events)).toEqual({
-        currentStepLabel: "Synced",
+        currentStepLabel: "Deployment verified",
         currentStepIndex: 10,
         currentStepStartedAt: "2026-06-05T10:05:00.000Z",
       })
@@ -238,7 +238,7 @@ describe("deploy-monitor.dto", () => {
       expect(events[0]?.label).toBe("Queued")
       expect(events[1]?.label).toBe("Deploy failed")
       expect(events[1]?.message).toBe("lockfile")
-      expect(events[2]?.label).toBe("Image tag received")
+      expect(events[2]?.label).toBe("Release ready")
       expect(events[2]?.metadataJson).toEqual({ imageTag: "187" })
       expect(events[3]?.label).toBe("CUSTOM")
       expect(events[0]?.createdAt).toBe(createdAt.toISOString())
@@ -298,13 +298,13 @@ describe("deploy-monitor.dto", () => {
         },
       ]).map((e) => e.label)
       expect(labels).toEqual([
-        "Jenkins job triggered",
-        "Jenkins build queued",
-        "Jenkins build running",
-        "Jenkins build completed",
-        "Image tag received",
-        "GitOps commit created",
-        "Pods ready",
+        "Build requested",
+        "Build queued",
+        "Building application",
+        "Build completed",
+        "Release ready",
+        "Configuration generated",
+        "Application healthy",
       ])
     })
   })
@@ -370,7 +370,7 @@ describe("deploy-monitor.dto", () => {
       expect(dto.billingState).toBe("PAYMENT_GRACE")
       expect(dto.latestDeploymentId).toBe("deploy-9")
       expect(dto.lastDeployedAt).toBe(lastDeployedAt.toISOString())
-      expect(dto.currentStepLabel).toBe("Synced")
+      expect(dto.currentStepLabel).toBe("Deployment verified")
       expect(dto.currentStepIndex).toBe(10)
       expect(dto.currentStepStartedAt).toBeNull()
     })
@@ -399,7 +399,7 @@ describe("deploy-monitor.dto", () => {
         ],
       })
 
-      expect(dto.currentStepLabel).toBe("Deploy completed")
+      expect(dto.currentStepLabel).toBe("Application live")
       expect(dto.currentStepIndex).toBe(12)
       expect(dto.currentStepStartedAt).toBe("2026-06-05T09:30:00.000Z")
     })

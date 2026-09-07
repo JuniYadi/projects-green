@@ -3,6 +3,9 @@
 import { ArrowClockwise, ArrowSquareOut } from "@phosphor-icons/react"
 import Link from "next/link"
 
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -31,6 +34,7 @@ type AppMonitorProps = {
   onLogScopeChange: (scope: DeployLogScope) => void
   onRetry?: () => void
   liveDomain?: string
+  locale?: string
 }
 
 const BILLING_NOTE: Record<StackBillingState, string | null> = {
@@ -48,7 +52,12 @@ export function AppMonitor({
   onLogScopeChange,
   onRetry,
   liveDomain,
+  locale: localeProp,
 }: AppMonitorProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const messages = getMessages(locale)
+  const tMonitor = messages.console.app.timeline.monitor
   const status = deployment?.status ?? stack.status
   const tone = STATUS_TONE[status] ?? STATUS_TONE.idle
   const billingNote = BILLING_NOTE[stack.billingState]
@@ -175,16 +184,13 @@ export function AppMonitor({
                   </p>
                   {deployment.failureReason?.includes("REGISTRY") ? (
                     <p className="pt-1 text-muted-foreground">
-                      💡 <strong>Action Required:</strong> The target cluster is
-                      missing an active Container Registry integration. Please
-                      configure or activate the cluster registry in admin
-                      settings.
+                      💡 <strong>Action Required:</strong>{" "}
+                      {tMonitor.registryHint}
                     </p>
                   ) : deployment.failureReason?.includes("timed out") ? (
                     <p className="pt-1 text-muted-foreground">
-                      💡 <strong>Action Required:</strong> The container cluster
-                      took too long to pull the image or start the pods. Check
-                      cluster health and pod events in logs.
+                      💡 <strong>Action Required:</strong>{" "}
+                      {tMonitor.timeoutHint}
                     </p>
                   ) : null}
                 </div>
@@ -209,25 +215,24 @@ export function AppMonitor({
       {deployId ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Deployment status</CardTitle>
-            <CardDescription>
-              Live status, events, and logs sourced from the deployment system.
-            </CardDescription>
+            <CardTitle className="text-base">{tMonitor.statusTitle}</CardTitle>
+            <CardDescription>{tMonitor.statusDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <section className="space-y-2">
-              <h3 className="text-sm font-medium">Status timeline</h3>
+              <h3 className="text-sm font-medium">{tMonitor.timelineTitle}</h3>
               <DeployStepTimeline
                 deployId={deployId}
                 status={status}
                 liveDomain={targetDomain ?? undefined}
                 skipBuildSteps={stack.sourceType === "TEMPLATE"}
                 onRetry={status === "failed" ? onRetry : undefined}
+                locale={locale}
               />
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-sm font-medium">Build and runtime logs</h3>
+              <h3 className="text-sm font-medium">{tMonitor.logsTitle}</h3>
               <LogsPanel
                 deployId={deployId}
                 status={status}
@@ -242,8 +247,7 @@ export function AppMonitor({
         <Card>
           <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
             <ArrowClockwise size={18} />
-            No deployments yet for this app. Start a deploy to see live status,
-            events, and logs here.
+            {tMonitor.noDeployments}
           </CardContent>
         </Card>
       )}

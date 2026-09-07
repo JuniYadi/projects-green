@@ -310,8 +310,10 @@ describe("deploySubmitRoutes /submit", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           templateId: "tpl-hermes",
+          resourcePlanId: "payg",
           metadataJson: expect.objectContaining({
             templateId: "hermes",
+            defaultPort: 8642,
             imageRepository: "nousresearch/hermes-agent:v2026.8.18",
             deploymentType: "statefulset",
             additionalPorts: [{ port: 9119, name: "dashboard" }],
