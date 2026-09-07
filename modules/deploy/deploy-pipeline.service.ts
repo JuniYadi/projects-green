@@ -309,6 +309,7 @@ export async function deleteStack(stackId: string) {
 export async function triggerDeploy(params: {
   stackId: string
   triggerType?: "MANUAL" | "GITHUB" | "TEMPLATE" | "PUBLIC"
+  force?: boolean
 }) {
   // Count previous non-rollback deployments to set attempt number
   const previousAttempts = await prisma.applicationDeployment.count({
@@ -316,7 +317,7 @@ export async function triggerDeploy(params: {
   })
 
   // Use transaction to prevent race condition between status check and create
-  const deployment = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const stack = await tx.applicationStack.findUniqueOrThrow({
       where: { id: params.stackId },
     })
@@ -326,9 +327,21 @@ export async function triggerDeploy(params: {
       stack.status === "BUILDING" ||
       stack.status === "DEPLOYING"
     ) {
-      throw new Error("A deployment is already in progress for this stack")
+      if (!params.force) {
+        throw new Error("A deployment is already in progress for this stack")
+      }
+      await tx.applicationDeployment.updateMany({
+        where: {
+          stackId: params.stackId,
+          status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
+        },
+        data: {
+          status: "FAILED",
+          completedAt: new Date(),
+          failureReason: "Superseded by new sync/redeploy trigger",
+        },
+      })
     }
-
     const newDeployment = await tx.applicationDeployment.create({
       data: {
         stackId: params.stackId,
@@ -368,10 +381,16 @@ export async function triggerDeploy(params: {
       data: { status: "QUEUED" },
     })
 
-    return newDeployment
+    return { deployment: newDeployment, sourceType: stack.sourceType }
   })
 
-  await enqueueDeployment(deployment.id)
+  const enqueued = await enqueueDeployment(result.deployment.id)
+  if (!enqueued && result.sourceType === "TEMPLATE") {
+    const { processQueuedDeployment } = await import("./deploy-builder.service")
+    processQueuedDeployment(result.deployment.id).catch((err) => {
+      console.error("[deploy-pipeline] Fallback sync failed:", err)
+    })
+  }
 
-  return { deploymentId: deployment.id, status: "QUEUED" as const }
+  return { deploymentId: result.deployment.id, status: "QUEUED" as const }
 }

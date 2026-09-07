@@ -7,7 +7,8 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation"
-
+import { ArrowsClockwise } from "@phosphor-icons/react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -120,6 +121,7 @@ export default function DeploymentsPage() {
   >(null)
   const [logScope, setLogScope] = useState<DeployLogScope>("all")
   const [retrying, setRetrying] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [retryError, setRetryError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -302,6 +304,47 @@ export default function DeploymentsPage() {
     }
   }
 
+  const handleSync = async (force = false) => {
+    if (!overview) return
+    setSyncing(true)
+    setRetryError(null)
+    try {
+      const { data: payload } = await eden.api.deploy.trigger[
+        overview.stack.id
+      ].post({ force })
+      if (!payload || !payload.ok) {
+        if (
+          !force &&
+          (payload?.error === "STACK_DEPLOY_IN_PROGRESS" ||
+            payload?.message?.includes("already in progress"))
+        ) {
+          const confirmForce = window.confirm(
+            "A deployment is currently in progress for this stack. Do you want to cancel it and force sync a new deployment?"
+          )
+          if (confirmForce) {
+            await handleSync(true)
+            return
+          }
+        }
+        throw new Error(payload?.message ?? "Unable to sync deployment.")
+      }
+      toast.success("Deployment configuration synced & triggered")
+      const deploymentId = payload.data?.deploymentId
+      if (typeof deploymentId === "string") {
+        setSelectedDeploymentId(deploymentId)
+      }
+      setOverviewRetry((value) => value + 1)
+      setHistoryRetry((value) => value + 1)
+    } catch (cause) {
+      const message =
+        cause instanceof Error ? cause.message : "Unable to sync deployment."
+      setRetryError(message)
+      toast.error(message)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const handleAppsRetry = () => setAppsRetry((value) => value + 1)
   const handleHistoryRetry = () => setHistoryRetry((value) => value + 1)
   const totalPages = historyMeta?.totalPages ?? 0
@@ -380,13 +423,28 @@ export default function DeploymentsPage() {
             ) : overview ? (
               <>
                 <Card>
-                  <CardHeader>
-                    <CardTitle>{tDeployments.historyTitle}</CardTitle>
-                    <CardDescription>
-                      {historyMeta
-                        ? `${historyMeta.total} ${tDeployments.table.attempt.toLowerCase()}${historyMeta.total === 1 || locale === "id" ? "" : "s"}`
-                        : tDeployments.historyDescription}
-                    </CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                    <div>
+                      <CardTitle>{tDeployments.historyTitle}</CardTitle>
+                      <CardDescription>
+                        {historyMeta
+                          ? `${historyMeta.total} ${tDeployments.table.attempt.toLowerCase()}${historyMeta.total === 1 || locale === "id" ? "" : "s"}`
+                          : tDeployments.historyDescription}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSync()}
+                      disabled={syncing}
+                      className="shrink-0 gap-1.5"
+                    >
+                      <ArrowsClockwise
+                        className={`size-3.5 ${syncing ? "animate-spin" : ""}`}
+                      />
+                      {syncing ? "Syncing..." : "Sync Config"}
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     {historyLoading ? (

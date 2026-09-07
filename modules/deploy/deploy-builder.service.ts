@@ -639,7 +639,7 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
       deploymentType: getStackDeploymentType(stack.metadataJson),
       additionalContainerPorts: getStackAdditionalPorts(stack.metadataJson),
       reloader: true,
-      runAsNonRoot: true,
+      runAsNonRoot: blueprintRuntime?.runAsNonRoot !== false,
       livenessProbe: healthCheckPath
         ? {
             path: healthCheckPath,
@@ -647,15 +647,17 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
           }
         : null,
     })
-    const { gitopsCommitSha } = await prisma.$transaction((tx) =>
-      commitHelmValuesAndAdvanceToDeploying({
-        deployment: { id: deployment.id, commitSha: deployment.commitSha },
-        stack: { slug: stack.slug, organizationId: stack.organizationId },
-        values,
-        gitopsConfig,
-        imageTag,
-        tx,
-      })
+    const { gitopsCommitSha } = await prisma.$transaction(
+      (tx) =>
+        commitHelmValuesAndAdvanceToDeploying({
+          deployment: { id: deployment.id, commitSha: deployment.commitSha },
+          stack: { slug: stack.slug, organizationId: stack.organizationId },
+          values,
+          gitopsConfig,
+          imageTag,
+          tx,
+        }),
+      { timeout: 30000 }
     )
 
     return { processed: true, status: "DEPLOYING", gitopsCommitSha }

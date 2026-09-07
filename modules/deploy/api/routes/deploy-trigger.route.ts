@@ -63,7 +63,7 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "NOT_FOUND", message: "Stack not found" }
       }
 
-      if (stack.organizationId !== auth.organizationId) {
+      if (!isSuperAdmin && stack.organizationId !== auth.organizationId) {
         set.status = 403
         return { ok: false, error: "FORBIDDEN", message: "Access denied" }
       }
@@ -102,7 +102,7 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
           await billingService.assertCanStartPayg({
             organizationId: auth.organizationId,
             hourlyCost: new Prisma.Decimal(String(hourlyCost)),
-            bufferHours: body.paygBufferHours,
+            bufferHours: body?.paygBufferHours,
           })
         } catch (error) {
           if (
@@ -126,7 +126,8 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
       try {
         result = await triggerDeploy({
           stackId: params.stackId,
-          triggerType: "MANUAL",
+          triggerType: stack.sourceType === "TEMPLATE" ? "TEMPLATE" : "MANUAL",
+          force: Boolean(body?.force),
         })
       } catch (error) {
         if (
@@ -149,9 +150,12 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
       params: t.Object({
         stackId: t.String(),
       }),
-      body: t.Object({
-        paygBufferHours: t.Optional(t.Number()),
-      }),
+      body: t.Optional(
+        t.Object({
+          paygBufferHours: t.Optional(t.Number()),
+          force: t.Optional(t.Boolean()),
+        })
+      ),
     }
   )
   .post(
