@@ -74,6 +74,7 @@ describe("AppTemplate Prisma Schema & Seed", () => {
     ])
 
     expect(hermes?.blueprint.storage?.mountPath).toBe("/opt/data")
+    expect(hermes?.blueprint.storage?.fsGroup).toBe(10000)
 
     expect(hermes?.blueprint.dependencies).toEqual([])
 

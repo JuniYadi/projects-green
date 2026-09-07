@@ -563,13 +563,30 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
         ? `${stack.slug}.${cluster.managedBaseDomain}`
         : null)
 
-    // Template Blueprint Storage
+    // Template Blueprint Storage and Runtime
     const templateBlueprint =
       (stack.template?.blueprintJson as Record<string, unknown> | null) ?? null
     const blueprintStorage =
       templateBlueprint && typeof templateBlueprint.storage === "object"
         ? (templateBlueprint.storage as Record<string, unknown>)
         : null
+    const blueprintRuntime =
+      templateBlueprint && typeof templateBlueprint.runtime === "object"
+        ? (templateBlueprint.runtime as Record<string, unknown>)
+        : null
+    const stackMeta =
+      stack.metadataJson && typeof stack.metadataJson === "object"
+        ? (stack.metadataJson as Record<string, unknown>)
+        : null
+
+    const resolvedFsGroup =
+      typeof stackMeta?.fsGroup === "number"
+        ? (stackMeta.fsGroup as number)
+        : typeof blueprintStorage?.fsGroup === "number"
+          ? (blueprintStorage.fsGroup as number)
+          : typeof blueprintRuntime?.fsGroup === "number"
+            ? (blueprintRuntime.fsGroup as number)
+            : undefined
 
     const storagePath =
       typeof blueprintStorage?.path === "string"
@@ -590,17 +607,8 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
                 : "5Gi",
             storageClass: cluster.storageClass,
             accessMode: "ReadWriteOnce",
+            fsGroup: resolvedFsGroup,
           }
-        : null
-
-    const blueprintRuntime =
-      templateBlueprint && typeof templateBlueprint.runtime === "object"
-        ? (templateBlueprint.runtime as Record<string, unknown>)
-        : null
-
-    const stackMeta =
-      stack.metadataJson && typeof stack.metadataJson === "object"
-        ? (stack.metadataJson as Record<string, unknown>)
         : null
     const runtimePort =
       (typeof stackMeta?.defaultPort === "number"
@@ -645,6 +653,7 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
       additionalContainerPorts: getStackAdditionalPorts(stack.metadataJson),
       reloader: true,
       runAsNonRoot: blueprintRuntime?.runAsNonRoot !== false,
+      fsGroup: resolvedFsGroup,
       livenessProbe: healthCheckPath
         ? {
             path: healthCheckPath,

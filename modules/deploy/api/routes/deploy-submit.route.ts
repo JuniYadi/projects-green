@@ -330,6 +330,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         deploymentType: dbTemplateDeploymentType,
         additionalPorts: dbTemplateAdditionalPorts,
         healthCheckPath: body.healthCheckPath,
+        fsGroup: body.fsGroup,
         templateId:
           sourceType === "TEMPLATE" || sourceType === "MANAGED_TEMPLATE"
             ? (resolvedDbTemplateId ??
@@ -509,6 +510,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       subdomain: t.Optional(t.String()),
       envVars: t.Optional(t.Array(envVarSchema)),
       healthCheckPath: t.Optional(t.Union([t.String(), t.Null()])),
+      fsGroup: t.Optional(t.Union([t.Number(), t.Null()])),
     }),
   }
 )

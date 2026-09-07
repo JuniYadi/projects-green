@@ -585,4 +585,66 @@ describe("processQueuedDeployment", () => {
     expect(filesArg[0]?.content).toContain("runAsNonRoot: true")
     expect(filesArg[0]?.content).toContain("reloader:\n  enabled: true")
   })
+
+  it("includes podSecurityContext.fsGroup when template storage defines fsGroup", async () => {
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      id: "deploy-template-fsgroup",
+      status: "QUEUED",
+      attempt: 1,
+      stack: {
+        id: "stack-tpl-3",
+        slug: "hermes-fsgroup",
+        name: "hermes-fsgroup",
+        sourceType: "TEMPLATE",
+        templateId: "tpl-hermes",
+        clusterId: "cluster-1",
+        customDomain: null,
+        envVarsJson: [],
+        metadataJson: {},
+        template: {
+          blueprintJson: {
+            runtime: {
+              image: "nousresearch/hermes-agent:v2026.8.18",
+              defaultPort: 8642,
+            },
+            storage: {
+              enabled: true,
+              mountPath: "/opt/data",
+              sizeGbDefault: 2,
+              fsGroup: 10000,
+            },
+          },
+        },
+      },
+    } as never)
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "GITOPS") {
+          return {
+            repo: "org/repo",
+            branch: "main",
+            basePath: "apps/hermes-fsgroup",
+            pat: "ghp_mock",
+            authorName: "GitOps Bot",
+            authorEmail: "bot@example.com",
+          }
+        }
+        if (type === "REGISTRY") {
+          throw new Error("Missing REGISTRY integration")
+        }
+        throw new Error("missing " + type)
+      }
+    )
+
+    const result = await processQueuedDeployment("deploy-template-fsgroup")
+    expect(result.processed).toBe(true)
+    expect(result.status).toBe("DEPLOYING")
+    const [, , filesArg] = commitFilesMock.mock.calls[
+      commitFilesMock.mock.calls.length - 1
+    ] as [string, string, Array<{ path: string; content: string }>]
+    expect(filesArg[0]?.content).toContain(
+      "podSecurityContext:\n  fsGroup: 10000"
+    )
+  })
 })

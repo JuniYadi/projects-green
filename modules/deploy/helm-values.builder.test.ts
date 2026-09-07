@@ -314,4 +314,28 @@ describe("buildHelmValues", () => {
     })
     expect("simpleStorage" in out).toBe(false)
   })
+
+  it("renders podSecurityContext with fsGroup when fsGroup is set directly or on storage", () => {
+    const direct = buildHelmValues({
+      slug: "app-fsgroup",
+      imageRepository: "custom/app",
+      imageTag: "1.0",
+      env: [],
+      fsGroup: 10000,
+    })
+    expect(direct.podSecurityContext).toEqual({ fsGroup: 10000 })
+
+    const fromStorage = buildHelmValues({
+      slug: "app-storage-fsgroup",
+      imageRepository: "custom/app",
+      imageTag: "1.0",
+      env: [],
+      storage: {
+        enabled: true,
+        mountPath: "/opt/data",
+        fsGroup: 20000,
+      },
+    })
+    expect(fromStorage.podSecurityContext).toEqual({ fsGroup: 20000 })
+  })
 })

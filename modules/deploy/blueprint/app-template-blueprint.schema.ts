@@ -20,6 +20,7 @@ export const appTemplateBlueprintRuntimeSchema = z.object({
       })
     )
     .default([]),
+  fsGroup: z.number().int().positive().optional(),
 })
 
 export const appTemplateBlueprintResourcesSchema = z.object({
@@ -33,6 +34,7 @@ export const appTemplateBlueprintStorageSchema = z.object({
   enabled: z.boolean(),
   mountPath: z.string().trim().min(1, "Mount path is required"),
   sizeGbDefault: z.number().min(1, "Default storage size must be at least 1GB"),
+  fsGroup: z.number().int().positive().optional(),
 })
 
 export const appTemplateBlueprintDependencySchema = z.object({
