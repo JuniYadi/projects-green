@@ -132,13 +132,26 @@ export default function AdminDeploymentsPage() {
     }
   }, [orgParam, queryParam, statusParam, reloadTick])
 
-  const handleSyncDeployment = async (d: AdminDeploymentDTO) => {
+  const handleSyncDeployment = async (d: AdminDeploymentDTO, force = false) => {
     setSyncingStackId(d.stackId)
     try {
       const { data: payload } = await eden.api.deploy.trigger[d.stackId].post({
-        force: true,
+        force,
       })
       if (!payload || !payload.ok) {
+        if (
+          !force &&
+          (payload?.error === "STACK_DEPLOY_IN_PROGRESS" ||
+            payload?.message?.includes("already in progress"))
+        ) {
+          const confirmForce = window.confirm(
+            `A deployment is currently in progress for ${d.stackSlug}. Do you want to cancel it and force sync a new deployment?`
+          )
+          if (confirmForce) {
+            await handleSyncDeployment(d, true)
+            return
+          }
+        }
         throw new Error(payload?.message ?? "Failed to sync deployment")
       }
       toast.success(`Deployment synced & triggered for ${d.stackSlug}`)
@@ -151,6 +164,7 @@ export default function AdminDeploymentsPage() {
       setSyncingStackId(null)
     }
   }
+
   const refresh = () => {
     router.refresh()
   }

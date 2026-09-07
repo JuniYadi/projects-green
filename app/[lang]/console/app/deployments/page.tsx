@@ -304,15 +304,28 @@ export default function DeploymentsPage() {
     }
   }
 
-  const handleSync = async () => {
+  const handleSync = async (force = false) => {
     if (!overview) return
     setSyncing(true)
     setRetryError(null)
     try {
       const { data: payload } = await eden.api.deploy.trigger[
         overview.stack.id
-      ].post({ force: true })
+      ].post({ force })
       if (!payload || !payload.ok) {
+        if (
+          !force &&
+          (payload?.error === "STACK_DEPLOY_IN_PROGRESS" ||
+            payload?.message?.includes("already in progress"))
+        ) {
+          const confirmForce = window.confirm(
+            "A deployment is currently in progress for this stack. Do you want to cancel it and force sync a new deployment?"
+          )
+          if (confirmForce) {
+            await handleSync(true)
+            return
+          }
+        }
         throw new Error(payload?.message ?? "Unable to sync deployment.")
       }
       toast.success("Deployment configuration synced & triggered")
@@ -331,6 +344,7 @@ export default function DeploymentsPage() {
       setSyncing(false)
     }
   }
+
   const handleAppsRetry = () => setAppsRetry((value) => value + 1)
   const handleHistoryRetry = () => setHistoryRetry((value) => value + 1)
   const totalPages = historyMeta?.totalPages ?? 0
@@ -422,7 +436,7 @@ export default function DeploymentsPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={handleSync}
+                      onClick={() => handleSync()}
                       disabled={syncing}
                       className="shrink-0 gap-1.5"
                     >
