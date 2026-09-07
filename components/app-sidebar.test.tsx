@@ -20,10 +20,7 @@ describe("resolveSidebarMenu", () => {
       "Overview",
       "Deploy",
       "Marketplace",
-      "Deployments",
-      "Logs",
-      "Metrics",
-      "Settings",
+      "Platforms",
       "Credentials",
     ])
     // After flattening Manage container, no single item is active for /console/app/manage
@@ -33,42 +30,28 @@ describe("resolveSidebarMenu", () => {
     expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
   })
 
-  it("marks settings active for its routes", () => {
-    const settingsMenu = resolveSidebarMenu({
+  it("marks Platforms active for platforms fleet and platform instance routes", () => {
+    const platformsFleetMenu = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/app/settings",
+      pathname: "/console/app/platforms",
       locale: "en",
     })
 
     expect(
-      settingsMenu.navMain.find((item) => item.title === "Settings")?.isActive
+      platformsFleetMenu.navMain.find((item) => item.title === "Platforms")
+        ?.isActive
     ).toBe(true)
-  })
-  it("marks Deployments active with localized URL", () => {
-    const deploymentsMenu = resolveSidebarMenu({
-      surface: "console",
-      pathname: "/console/app/deployments/stack-1",
-      locale: "en",
-    })
 
-    const deployments = deploymentsMenu.navMain.find(
-      (item) => item.title === "Deployments"
-    )
-    expect(deployments?.url).toBe("/en/console/app/deployments")
-    expect(deployments?.isActive).toBe(true)
-  })
-
-  it("marks Overview active for platform instance routes", () => {
     const platformMenu = resolveSidebarMenu({
       surface: "console",
       pathname: "/console/app/platform/hermes-vibrant-comet",
       locale: "en",
     })
 
-    const overview = platformMenu.navMain.find(
-      (item) => item.title === "Overview"
+    const platformsItem = platformMenu.navMain.find(
+      (item) => item.title === "Platforms"
     )
-    expect(overview?.isActive).toBe(true)
+    expect(platformsItem?.isActive).toBe(true)
   })
 
   it("marks items active for console utility routes in their context", () => {

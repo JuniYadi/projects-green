@@ -739,9 +739,7 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         title: "Overview",
         url: localizePathname({ pathname: "/console/app", locale }),
         icon: <GaugeIcon />,
-        isActive:
-          path === "/console/app" ||
-          startsWithRoute(path, "/console/app/platform"),
+        isActive: path === "/console/app",
       },
       {
         title: "Deploy",
@@ -756,28 +754,12 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/console/app/marketplace"),
       },
       {
-        title: "Deployments",
-        url: localizePathname({ pathname: "/console/app/deployments", locale }),
-        icon: <ListMagnifyingGlassIcon />,
-        isActive: startsWithRoute(path, "/console/app/deployments"),
-      },
-      {
-        title: "Logs",
-        url: localizePathname({ pathname: "/console/app/logs", locale }),
-        icon: <ListMagnifyingGlassIcon />,
-        isActive: startsWithRoute(path, "/console/app/logs"),
-      },
-      {
-        title: "Metrics",
-        url: localizePathname({ pathname: "/console/app/metrics", locale }),
-        icon: <ChartLineIcon />,
-        isActive: startsWithRoute(path, "/console/app/metrics"),
-      },
-      {
-        title: "Settings",
-        url: localizePathname({ pathname: "/console/app/settings", locale }),
-        icon: <GearSixIcon />,
-        isActive: startsWithRoute(path, "/console/app/settings"),
+        title: "Platforms",
+        url: localizePathname({ pathname: "/console/app/platforms", locale }),
+        icon: <PackageIcon />,
+        isActive:
+          startsWithRoute(path, "/console/app/platforms") ||
+          startsWithRoute(path, "/console/app/platform"),
       },
       {
         title: "Credentials",
