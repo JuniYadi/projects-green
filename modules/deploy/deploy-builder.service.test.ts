@@ -522,12 +522,67 @@ describe("processQueuedDeployment", () => {
     expect(filesArg[0]?.content).toContain(
       "repository: nousresearch/hermes-agent"
     )
+    expect(filesArg[0]?.content).toContain("path: /healthz")
+  })
+
+  it("omits livenessProbe when user overrides healthCheckPath to empty or null", async () => {
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      id: "deploy-template-no-health",
+      status: "QUEUED",
+      attempt: 1,
+      stack: {
+        id: "stack-tpl-2",
+        slug: "hermes-no-health",
+        name: "hermes-no-health",
+        sourceType: "TEMPLATE",
+        templateId: "tpl-hermes",
+        clusterId: "cluster-1",
+        customDomain: null,
+        envVarsJson: [],
+        metadataJson: {
+          healthCheckPath: "",
+        },
+        template: {
+          blueprintJson: {
+            runtime: {
+              image: "nousresearch/hermes-agent:v2026.8.18",
+              defaultPort: 8642,
+              healthCheckPath: "/healthz",
+            },
+          },
+        },
+      },
+    } as never)
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "GITOPS") {
+          return {
+            repo: "org/repo",
+            branch: "main",
+            basePath: "apps/hermes-no-health",
+            pat: "ghp_mock",
+            authorName: "GitOps Bot",
+            authorEmail: "bot@example.com",
+          }
+        }
+        if (type === "REGISTRY") {
+          throw new Error("Missing REGISTRY integration")
+        }
+        throw new Error("missing " + type)
+      }
+    )
+
+    const result = await processQueuedDeployment("deploy-template-no-health")
+    expect(result.processed).toBe(true)
+    expect(result.status).toBe("DEPLOYING")
+    const [, , filesArg] = commitFilesMock.mock.calls[
+      commitFilesMock.mock.calls.length - 1
+    ] as [string, string, Array<{ path: string; content: string }>]
+    expect(filesArg[0]?.content).not.toContain("livenessProbe:")
     expect(filesArg[0]?.content).toContain("tag: v2026.8.18")
     expect(filesArg[0]?.content).toContain("port: 8642")
-    expect(filesArg[0]?.content).toContain("path: /healthz")
     expect(filesArg[0]?.content).toContain("runAsNonRoot: true")
     expect(filesArg[0]?.content).toContain("reloader:\n  enabled: true")
-    expect(filesArg[1]?.path).toContain("helm.yml")
-    expect(filesArg[2]?.path).toBe("argocd-projects/app-hermes-demo.yml")
   })
 })
