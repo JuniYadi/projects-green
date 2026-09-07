@@ -571,14 +571,19 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
         ? (templateBlueprint.storage as Record<string, unknown>)
         : null
 
+    const storagePath =
+      typeof blueprintStorage?.path === "string"
+        ? (blueprintStorage.path as string)
+        : typeof blueprintStorage?.mountPath === "string"
+          ? (blueprintStorage.mountPath as string)
+          : "/data"
+
     const storageConfig =
       blueprintStorage && blueprintStorage.enabled === true
         ? {
             enabled: true,
-            mountPath:
-              typeof blueprintStorage.mountPath === "string"
-                ? blueprintStorage.mountPath
-                : "/data",
+            path: storagePath,
+            mountPath: storagePath,
             size:
               typeof blueprintStorage.sizeGbDefault === "number"
                 ? `${blueprintStorage.sizeGbDefault}Gi`
