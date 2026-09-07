@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
   RocketLaunch,
   ListMagnifyingGlass,
   ChartLine,
+  GearSix,
+  Storefront,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { ClusterTelemetryCards } from "@/modules/deploy/ui/cluster-telemetry-cards"
 import {
   DEPLOY_STATUS_LABELS,
   DEPLOY_STATUS_TONE as STATUS_TONE,
@@ -35,9 +38,11 @@ const formatRelativeTime = (timestamp: string, locale: string) => {
 }
 export default function ApplicationsPage() {
   const params = useParams<{ lang?: string }>()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
-
+  const selectedSlug = searchParams.get("app")
   const [apps, setApps] = useState<StackSummaryDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -79,16 +84,101 @@ export default function ApplicationsPage() {
 
   const handleRetry = () => setRetry((v) => v + 1)
 
+  useEffect(() => {
+    if (selectedSlug) {
+      router.replace(
+        `/${locale}/console/app/platform/${selectedSlug}?tab=overview`
+      )
+    }
+  }, [locale, router, selectedSlug])
+
   return (
-    <>
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">
-          {messages.console.app.overview.heading}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {messages.console.app.overview.description}
-        </p>
-      </header>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="space-y-1">
+          <h1 className="text-2xl font-semibold">
+            {messages.console.app.overview.heading}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {messages.console.app.overview.description}
+          </p>
+        </header>
+        <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+          >
+            <Link
+              href={localizePathname({
+                pathname: "/console/app/marketplace",
+                locale,
+              })}
+            >
+              <Storefront size={14} />
+              <span>Marketplace</span>
+            </Link>
+          </Button>
+          <Button asChild size="sm" className="h-8 gap-1.5 text-xs">
+            <Link
+              href={localizePathname({
+                pathname: "/console/app/deploy",
+                locale,
+              })}
+            >
+              <RocketLaunch size={14} />
+              <span>Deploy New App</span>
+            </Link>
+          </Button>
+        </div>
+      </div>
+      {/* 3 Primary Time-Series Telemetry Charts (CPU, Memory, Network I/O) */}
+      {!loading && !error && apps.length > 0 && <ClusterTelemetryCards />}
+
+      {!loading && !error && apps.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <span className="text-xs font-medium text-muted-foreground">
+              Total Platforms
+            </span>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
+              {apps.length}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <span className="text-xs font-medium text-muted-foreground">
+              Active & Live
+            </span>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-500">
+              {apps.filter((a) => a.status === "running").length}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <span className="text-xs font-medium text-muted-foreground">
+              Deploying / Queued
+            </span>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-sky-500">
+              {
+                apps.filter(
+                  (a) =>
+                    a.status === "building" ||
+                    a.status === "queued" ||
+                    a.status === "deploying"
+                ).length
+              }
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <span className="text-xs font-medium text-muted-foreground">
+              Needs Attention
+            </span>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-rose-500">
+              {apps.filter((a) => a.status === "failed").length}
+            </p>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
@@ -148,21 +238,11 @@ export default function ApplicationsPage() {
               </thead>
               <tbody>
                 {apps.map((app) => {
-                  const logsHref =
-                    localizePathname({
-                      pathname: "/console/app/logs",
-                      locale,
-                    }) + `?app=${app.slug}`
-                  const metricsHref =
-                    localizePathname({
-                      pathname: "/console/app/metrics",
-                      locale,
-                    }) + `?app=${app.slug}`
-                  const deploymentsHref =
-                    localizePathname({
-                      pathname: "/console/app/deployments",
-                      locale,
-                    }) + `?app=${app.slug}`
+                  const overviewHref = `/${locale}/console/app/platform/${app.slug}?tab=overview`
+                  const logsHref = `/${locale}/console/app/platform/${app.slug}?tab=logs`
+                  const metricsHref = `/${locale}/console/app/platform/${app.slug}?tab=metrics`
+                  const deploymentsHref = `/${locale}/console/app/platform/${app.slug}?tab=deployments`
+                  const settingsHref = `/${locale}/console/app/platform/${app.slug}?tab=env`
                   const deployHref = localizePathname({
                     pathname: "/console/app/deploy",
                     locale,
@@ -173,7 +253,14 @@ export default function ApplicationsPage() {
                       key={app.id}
                       className="border-b border-border transition-colors hover:bg-muted/20"
                     >
-                      <td className="px-4 py-3 font-medium">{app.name}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <Link
+                          href={overviewHref}
+                          className="text-foreground hover:underline"
+                        >
+                          {app.name}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
@@ -227,6 +314,12 @@ export default function ApplicationsPage() {
                             </Link>
                           </Button>
                           <Button asChild variant="outline" size="xs">
+                            <Link href={settingsHref}>
+                              <GearSix size={14} className="mr-1" />
+                              Settings
+                            </Link>
+                          </Button>
+                          <Button asChild variant="outline" size="xs">
                             <Link href={deployHref}>
                               <RocketLaunch size={14} className="mr-1" />
                               Deploy
@@ -242,6 +335,6 @@ export default function ApplicationsPage() {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }

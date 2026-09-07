@@ -31,29 +31,51 @@ mock.module("@phosphor-icons/react", () => ({
   ArrowSquareOut: (props: Record<string, unknown>) => (
     <span data-testid="icon-arrow" {...props} />
   ),
+  GearSix: (props: Record<string, unknown>) => (
+    <span data-testid="icon-gearsix" {...props} />
+  ),
+  Storefront: (props: Record<string, unknown>) => (
+    <span data-testid="icon-storefront" {...props} />
+  ),
+  ArrowLeft: (props: Record<string, unknown>) => (
+    <span data-testid="icon-arrowleft" {...props} />
+  ),
+  CheckCircle: (props: Record<string, unknown>) => (
+    <span data-testid="icon-checkcircle" {...props} />
+  ),
+  CaretUpDown: (props: Record<string, unknown>) => (
+    <span data-testid="icon-caretupdown" {...props} />
+  ),
+  Gauge: (props: Record<string, unknown>) => (
+    <span data-testid="icon-gauge" {...props} />
+  ),
+  ArrowsClockwise: (props: Record<string, unknown>) => (
+    <span data-testid="icon-arrowsclockwise" {...props} />
+  ),
+  Clock: (props: Record<string, unknown>) => (
+    <span data-testid="icon-clock" {...props} />
+  ),
+  ShieldCheck: (props: Record<string, unknown>) => (
+    <span data-testid="icon-shieldcheck" {...props} />
+  ),
+  Cpu: (props: Record<string, unknown>) => (
+    <span data-testid="icon-cpu" {...props} />
+  ),
+  HardDrive: (props: Record<string, unknown>) => (
+    <span data-testid="icon-harddrive" {...props} />
+  ),
+  ArrowsLeftRight: (props: Record<string, unknown>) => (
+    <span data-testid="icon-arrowsleftright" {...props} />
+  ),
+  Globe: (props: Record<string, unknown>) => (
+    <span data-testid="icon-globe" {...props} />
+  ),
 }))
 
 mock.module("next/navigation", () => ({
   useParams: mock(() => ({ lang: "en" })),
-}))
-
-mock.module("@/lib/i18n/messages", () => ({
-  getMessages: mock(() => ({
-    console: {
-      app: {
-        overview: {
-          heading: "App Platform",
-          description: "Deploy and manage your applications.",
-          deploy: "Deploy",
-        },
-        manage: {
-          loadingApps: "Loading...",
-          retry: "Retry",
-          noApps: "No applications yet",
-        },
-      },
-    },
-  })),
+  useSearchParams: mock(() => ({ get: () => null })),
+  useRouter: mock(() => ({ push: () => {} })),
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({
@@ -124,11 +146,14 @@ describe("ApplicationsPage overview", () => {
     })
   })
 
-  it("renders app name in the table after loading", async () => {
+  it("renders app name as a link to app workspace overview", async () => {
     const { getByText } = render(<ApplicationsPage />)
 
     await waitFor(() => {
-      expect(getByText("test-app")).toBeDefined()
+      const appLink = getByText("test-app").closest("a")
+      expect(appLink?.getAttribute("href")).toBe(
+        "/en/console/app/platform/test-app?tab=overview"
+      )
     })
   })
 
@@ -164,18 +189,39 @@ describe("ApplicationsPage overview", () => {
       const logsLink = getByText("Logs").closest("a")
       const metricsLink = getByText("Metrics").closest("a")
       const deploymentsLink = getByText("Deployments").closest("a")
+      const settingsLink = getByText("Settings").closest("a")
       const deployLink = getByText("Deploy").closest("a")
 
       expect(logsLink?.getAttribute("href")).toBe(
-        "/en/console/app/logs?app=test-app"
+        "/en/console/app/platform/test-app?tab=logs"
       )
       expect(metricsLink?.getAttribute("href")).toBe(
-        "/en/console/app/metrics?app=test-app"
+        "/en/console/app/platform/test-app?tab=metrics"
       )
       expect(deploymentsLink?.getAttribute("href")).toBe(
-        "/en/console/app/deployments?app=test-app"
+        "/en/console/app/platform/test-app?tab=deployments"
+      )
+      expect(settingsLink?.getAttribute("href")).toBe(
+        "/en/console/app/platform/test-app?tab=env"
       )
       expect(deployLink?.getAttribute("href")).toBe("/en/console/app/deploy")
+    })
+  })
+
+  it("renders dashboard overview KPI stats, telemetry charts, and quick action buttons", async () => {
+    const { getByText } = render(<ApplicationsPage />)
+
+    await waitFor(() => {
+      expect(getByText("Cluster Resource Telemetry")).toBeDefined()
+      expect(getByText("CPU Utilization")).toBeDefined()
+      expect(getByText("Memory Allocation")).toBeDefined()
+      expect(getByText("Network I/O Throughput")).toBeDefined()
+      expect(getByText("Total Platforms")).toBeDefined()
+      expect(getByText("Active & Live")).toBeDefined()
+      expect(getByText("Deploying / Queued")).toBeDefined()
+      expect(getByText("Needs Attention")).toBeDefined()
+      expect(getByText("Marketplace")).toBeDefined()
+      expect(getByText("Deploy New App")).toBeDefined()
     })
   })
 })
