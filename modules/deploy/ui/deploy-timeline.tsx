@@ -178,7 +178,7 @@ export function DeployStepTimeline({
   const t = getMessages(locale).console.app.timeline
 
   const getStepLabel = useCallback(
-    (step: DeployTimelineItem): string => {
+    (step: { id: string; label: string }): string => {
       switch (step.id) {
         case "queued":
           return t.steps.queued
