@@ -43,10 +43,9 @@ export class GitOpsRepositoryService {
     // Use PAT if available, otherwise we'd need an installation ID.
     // For now, we assume GITOPS_REPO_PAT is configured or logic uses installationToken.
     const token = await this.getAccessToken()
-
     // 1. Get current branch SHA
-    const baseRef = await this.getRef(repo, branch, token)
-    const baseSha = baseRef.object.sha
+    let baseRef = await this.getRef(repo, branch, token)
+    let baseSha = baseRef.object.sha
 
     // 2. Create blobs for new/updated files
     const treeItems: Array<{
@@ -76,24 +75,49 @@ export class GitOpsRepositoryService {
       })
     }
 
-    // 4. Create new tree
-    const tree = await this.createTree(repo, treeItems, baseSha, token)
+    // 4. Create tree, commit, and update ref (with retry on non-fast-forward conflict)
+    const maxRetries = 3
+    let lastError: unknown = null
 
-    // 5. Create commit
-    const commit = await this.createCommit(
-      repo,
-      message,
-      tree.sha,
-      [baseSha],
-      token
-    )
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          baseRef = await this.getRef(repo, branch, token)
+          baseSha = baseRef.object.sha
+        }
 
-    // 6. Update branch ref
-    await this.updateRef(repo, branch, commit.sha, token)
+        const tree = await this.createTree(repo, treeItems, baseSha, token)
+        const commit = await this.createCommit(
+          repo,
+          message,
+          tree.sha,
+          [baseSha],
+          token
+        )
 
-    return { sha: commit.sha }
+        await this.updateRef(repo, branch, commit.sha, token)
+        return { sha: commit.sha }
+      } catch (err) {
+        lastError = err
+        const isRefConflict =
+          err instanceof Error &&
+          (err.message.includes("Update is not a fast forward") ||
+            err.message.includes("Reference cannot be updated"))
+        if (isRefConflict && attempt < maxRetries) {
+          console.warn(
+            `[GitOps] Ref update conflict on ${branch} (attempt ${attempt}/${maxRetries}). Retrying with fresh ref...`
+          )
+          const { promise, resolve } = Promise.withResolvers<void>()
+          setTimeout(resolve, attempt * 500)
+          await promise
+          continue
+        }
+        throw err
+      }
+    }
+
+    throw lastError
   }
-
   /**
    * Wrapped fetch with GitHub API rate limit handling.
    * Detects 403 with X-RateLimit-Remaining: 0, waits for reset, retries once.

@@ -185,14 +185,19 @@ export function buildHelmValues(
 
   if (input.storage && input.storage.enabled) {
     const storagePath = input.storage.path ?? input.storage.mountPath
+    const accessMode = input.storage.accessMode ?? "ReadWriteOnce"
     values.simpleStorage = [
       {
         name: input.storage.name ?? "data",
         ...(storagePath ? { path: storagePath } : {}),
         size: input.storage.size ?? "10Gi",
-        accessMode: input.storage.accessMode ?? "ReadWriteOnce",
+        accessMode,
+        accessModes: [accessMode],
         ...(input.storage.storageClass
-          ? { storageClassName: input.storage.storageClass }
+          ? {
+              class: input.storage.storageClass,
+              storageClassName: input.storage.storageClass,
+            }
           : {}),
       },
     ]

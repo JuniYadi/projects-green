@@ -28,6 +28,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { AdminDeploymentDTO } from "@/modules/deploy/admin-deployments.service"
@@ -83,6 +84,8 @@ export default function AdminDeploymentsPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedDeployment, setSelectedDeployment] =
     useState<AdminDeploymentDTO | null>(null)
+  const [syncingStackId, setSyncingStackId] = useState<string | null>(null)
+  const [reloadTick, setReloadTick] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -127,8 +130,27 @@ export default function AdminDeploymentsPage() {
     return () => {
       cancelled = true
     }
-  }, [orgParam, queryParam, statusParam])
+  }, [orgParam, queryParam, statusParam, reloadTick])
 
+  const handleSyncDeployment = async (d: AdminDeploymentDTO) => {
+    setSyncingStackId(d.stackId)
+    try {
+      const { data: payload } = await eden.api.deploy.trigger[d.stackId].post({
+        force: true,
+      })
+      if (!payload || !payload.ok) {
+        throw new Error(payload?.message ?? "Failed to sync deployment")
+      }
+      toast.success(`Deployment synced & triggered for ${d.stackSlug}`)
+      setReloadTick((v) => v + 1)
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to sync deployment"
+      )
+    } finally {
+      setSyncingStackId(null)
+    }
+  }
   const refresh = () => {
     router.refresh()
   }
@@ -396,14 +418,28 @@ export default function AdminDeploymentsPage() {
                     })}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedDeployment(d)}
-                      className="h-7 px-2 text-xs"
-                    >
-                      Details
-                    </Button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={syncingStackId === d.stackId}
+                        onClick={() => handleSyncDeployment(d)}
+                        className="h-7 gap-1 px-2 text-xs"
+                      >
+                        <ArrowsClockwise
+                          className={`size-3.5 ${syncingStackId === d.stackId ? "animate-spin" : ""}`}
+                        />
+                        Sync
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedDeployment(d)}
+                        className="h-7 px-2 text-xs"
+                      >
+                        Details
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -493,6 +529,20 @@ export default function AdminDeploymentsPage() {
                     <ArrowSquareOut size={14} className="mr-1" />
                     Open in Console
                   </Link>
+                </Button>
+              </div>
+              <div className="border-t border-border pt-4">
+                <Button
+                  className="w-full gap-2"
+                  disabled={syncingStackId === selectedDeployment.stackId}
+                  onClick={() => handleSyncDeployment(selectedDeployment)}
+                >
+                  <ArrowsClockwise
+                    className={`size-4 ${syncingStackId === selectedDeployment.stackId ? "animate-spin" : ""}`}
+                  />
+                  {syncingStackId === selectedDeployment.stackId
+                    ? "Syncing Config..."
+                    : "Sync Config & Redeploy"}
                 </Button>
               </div>
             </div>

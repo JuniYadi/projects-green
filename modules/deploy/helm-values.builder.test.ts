@@ -267,6 +267,7 @@ describe("buildHelmValues", () => {
         path: "/opt/data",
         size: "2Gi",
         accessMode: "ReadWriteOnce",
+        accessModes: ["ReadWriteOnce"],
       },
     ])
   })
@@ -293,6 +294,8 @@ describe("buildHelmValues", () => {
         path: "/var/custom",
         size: "5Gi",
         accessMode: "ReadWriteMany",
+        accessModes: ["ReadWriteMany"],
+        class: "fast-storage",
         storageClassName: "fast-storage",
       },
     ])
