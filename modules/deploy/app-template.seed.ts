@@ -115,6 +115,7 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
       version: "1.0.0",
       runtime: {
         image: "nousresearch/hermes-agent:v2026.8.18",
+        command: ["hermes", "gateway", "run"],
         defaultPort: 8642,
         additionalPorts: [{ port: 9119, name: "dashboard" }],
         deploymentType: "statefulset",
