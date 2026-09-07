@@ -156,9 +156,42 @@ let resolveClusterIntegrationImpl = async (_stackId: string, type: string) => {
   throw new Error("unexpected type " + type)
 }
 
-const { handleJenkinsImageReady } =
+const { handleJenkinsImageReady, resolveHelmEnvInputs } =
   await import("./jenkins-image-ready.service")
 
+describe("resolveHelmEnvInputs", () => {
+  it("extracts canonical externalSecretVaultPath from secret_ref entries without plaintext value", () => {
+    const envVarsJson = [
+      {
+        key: "DATABASE_PASSWORD",
+        type: "secret_ref",
+        environment: "dev",
+        vaultPath: "tenants/org-123/stacks/stack-456/dev/app-env",
+        vaultKey: "DATABASE_PASSWORD",
+        version: 1,
+      },
+      {
+        key: "APP_NAME",
+        value: "My App",
+        type: "plain",
+      },
+    ]
+
+    const { envVars, externalSecretVaultPath } =
+      resolveHelmEnvInputs(envVarsJson)
+
+    expect(externalSecretVaultPath).toBe(
+      "tenants/org-123/stacks/stack-456/dev/app-env"
+    )
+    expect(envVars).toEqual([
+      {
+        key: "APP_NAME",
+        value: "My App",
+        type: "plain",
+      },
+    ])
+  })
+})
 describe("handleJenkinsImageReady", () => {
   beforeEach(() => {
     fakeCommit.mockClear()
