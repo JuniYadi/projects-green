@@ -131,6 +131,7 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
         enabled: true,
         mountPath: "/opt/data",
         sizeGbDefault: 2,
+        fsGroup: 10000,
       },
       dependencies: [],
       envSchema: [

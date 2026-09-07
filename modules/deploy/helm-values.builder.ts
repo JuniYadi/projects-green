@@ -32,6 +32,7 @@ export type HelmValuesStorage = {
   size?: string
   storageClass?: string
   accessMode?: string
+  fsGroup?: number | null
 }
 
 export type HelmValuesHAProxyConfig = {
@@ -96,6 +97,8 @@ export type HelmValuesInput = {
   }> | null
   reloader?: boolean
   runAsNonRoot?: boolean
+  fsGroup?: number | null
+  podSecurityContext?: Record<string, unknown> | null
 }
 const omitUndefined = <T extends Record<string, unknown>>(obj: T): T =>
   Object.fromEntries(
@@ -176,6 +179,14 @@ export function buildHelmValues(
   if (input.runAsNonRoot) {
     values.securityContext = {
       runAsNonRoot: true,
+    }
+  }
+
+  const resolvedFsGroup = input.fsGroup ?? input.storage?.fsGroup
+  if (resolvedFsGroup != null || input.podSecurityContext) {
+    values.podSecurityContext = {
+      ...(resolvedFsGroup != null ? { fsGroup: resolvedFsGroup } : {}),
+      ...(input.podSecurityContext ?? {}),
     }
   }
 
