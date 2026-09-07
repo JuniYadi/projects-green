@@ -736,6 +736,14 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
     ],
     getNavMain: (path, locale) => [
       {
+        title: "Overview",
+        url: localizePathname({ pathname: "/console/app", locale }),
+        icon: <GaugeIcon />,
+        isActive:
+          path === "/console/app" ||
+          startsWithRoute(path, "/console/app/platform"),
+      },
+      {
         title: "Deploy",
         url: localizePathname({ pathname: "/console/app/deploy", locale }),
         icon: <RocketLaunchIcon />,
@@ -752,12 +760,6 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         url: localizePathname({ pathname: "/console/app/deployments", locale }),
         icon: <ListMagnifyingGlassIcon />,
         isActive: startsWithRoute(path, "/console/app/deployments"),
-      },
-      {
-        title: "Overview",
-        url: localizePathname({ pathname: "/console/app", locale }),
-        icon: <GaugeIcon />,
-        isActive: path === "/console/app",
       },
       {
         title: "Logs",

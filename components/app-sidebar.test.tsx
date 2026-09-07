@@ -17,10 +17,10 @@ describe("resolveSidebarMenu", () => {
     expect(navMainLabel).toBe("App Hosting")
 
     expect(navMain.map((item) => item.title)).toEqual([
+      "Overview",
       "Deploy",
       "Marketplace",
       "Deployments",
-      "Overview",
       "Logs",
       "Metrics",
       "Settings",
@@ -56,6 +56,19 @@ describe("resolveSidebarMenu", () => {
     )
     expect(deployments?.url).toBe("/en/console/app/deployments")
     expect(deployments?.isActive).toBe(true)
+  })
+
+  it("marks Overview active for platform instance routes", () => {
+    const platformMenu = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/app/platform/hermes-vibrant-comet",
+      locale: "en",
+    })
+
+    const overview = platformMenu.navMain.find(
+      (item) => item.title === "Overview"
+    )
+    expect(overview?.isActive).toBe(true)
   })
 
   it("marks items active for console utility routes in their context", () => {

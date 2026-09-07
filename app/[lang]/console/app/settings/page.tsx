@@ -14,7 +14,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
-import { DEPLOY_STATUS_LABELS } from "@/modules/deploy/deploy.constants"
+import { AppWorkspaceHeader } from "@/modules/deploy/ui/app-workspace-header"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
 import { TabEnv } from "@/modules/deploy/ui/operate/tab-env"
 import { TabScaling } from "@/modules/deploy/ui/operate/tab-scaling"
@@ -38,13 +38,7 @@ const APP_QUERY_KEY = "app"
 const TAB_QUERY_KEY = "tab"
 
 type SettingsTab =
-  | "general"
-  | "domains"
-  | "env"
-  | "scaling"
-  | "mounts"
-  | "build"
-  | "danger"
+  "general" | "domains" | "env" | "scaling" | "mounts" | "build" | "danger"
 
 type DomainApiResponse<T = unknown> = {
   ok?: boolean
@@ -108,15 +102,6 @@ const TAB_LABELS: Record<SettingsTab, string> = {
   danger: "Danger Zone",
 }
 
-const STATUS_TONE: Record<string, string> = {
-  running: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
-  failed: "border-rose-500/20 bg-rose-500/5 text-rose-400",
-  building: "border-sky-500/20 bg-sky-500/5 text-sky-400",
-  deploying: "border-sky-500/20 bg-sky-500/5 text-sky-400",
-  queued: "border-amber-500/20 bg-amber-500/5 text-amber-400",
-  idle: "border-border bg-muted/30 text-muted-foreground",
-}
-
 const findDefaultSlug = (
   apps: StackSummaryDTO[],
   preferred: string | null
@@ -155,6 +140,16 @@ export default function SettingsPage() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(() =>
     searchParams.get(APP_QUERY_KEY)
   )
+
+  useEffect(() => {
+    if (selectedSlug) {
+      const tabParam = searchParams.get("tab") || "env"
+      router.replace(
+        `/${locale}/console/app/platform/${selectedSlug}?tab=${tabParam}`
+      )
+    }
+  }, [locale, router, searchParams, selectedSlug])
+
   const [appsRetry, setAppsRetry] = useState(0)
 
   const [overview, setOverview] = useState<{
@@ -489,23 +484,16 @@ export default function SettingsPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap gap-2 border-b border-border pb-3">
-              {apps.map((app) => {
-                const isActive = app.slug === selectedSlug
-                return (
-                  <Button
-                    key={app.id}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedSlug(app.slug)}
-                    aria-pressed={isActive}
-                  >
-                    {app.name}
-                  </Button>
-                )
-              })}
-            </div>
+            {overview?.stack || apps.find((a) => a.slug === selectedSlug) ? (
+              <AppWorkspaceHeader
+                apps={apps}
+                selectedApp={
+                  overview?.stack ?? apps.find((a) => a.slug === selectedSlug)!
+                }
+                activeTab="settings"
+                locale={locale}
+              />
+            ) : null}
 
             {overviewLoading ? (
               <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
@@ -528,22 +516,6 @@ export default function SettingsPage() {
               </div>
             ) : overview ? (
               <>
-                <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/10 px-5 py-3 text-sm">
-                  <span className="font-semibold">{overview.stack.name}</span>
-                  <span
-                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                      STATUS_TONE[overview.stack.status] ?? STATUS_TONE.idle
-                    }`}
-                  >
-                    {DEPLOY_STATUS_LABELS[overview.stack.status] ??
-                      overview.stack.status}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {overview.stack.framework ?? "Unknown"} &bull;{" "}
-                    {overview.stack.branchName}
-                  </span>
-                </div>
-
                 <div className="flex flex-wrap gap-1.5 border-b border-border pb-3">
                   {(Object.entries(TAB_LABELS) as [SettingsTab, string][]).map(
                     ([tab, label]) => (

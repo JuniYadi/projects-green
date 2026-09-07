@@ -14,6 +14,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
+import { AppWorkspaceHeader } from "@/modules/deploy/ui/app-workspace-header"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
 import { DEPLOY_STATUS_LABELS } from "@/modules/deploy/deploy.constants"
 import type {
@@ -55,6 +56,13 @@ export default function LogsPage() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(() =>
     searchParams.get(APP_QUERY_KEY)
   )
+
+  useEffect(() => {
+    if (selectedSlug) {
+      router.replace(`/${locale}/console/app/platform/${selectedSlug}?tab=logs`)
+    }
+  }, [locale, router, selectedSlug])
+
   const [appsRetry, setAppsRetry] = useState(0)
 
   const [overview, setOverview] = useState<{
@@ -200,23 +208,14 @@ export default function LogsPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap gap-2 border-b border-border pb-3">
-              {apps.map((app) => {
-                const isActive = app.slug === selectedSlug
-                return (
-                  <Button
-                    key={app.id}
-                    type="button"
-                    variant={isActive ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedSlug(app.slug)}
-                    aria-pressed={isActive}
-                  >
-                    {app.name}
-                  </Button>
-                )
-              })}
-            </div>
+            {selectedApp ? (
+              <AppWorkspaceHeader
+                apps={apps}
+                selectedApp={selectedApp}
+                activeTab="logs"
+                locale={locale}
+              />
+            ) : null}
 
             {overviewLoading ? (
               <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">

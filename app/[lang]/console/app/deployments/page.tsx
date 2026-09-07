@@ -40,6 +40,7 @@ import type {
 import type { DeployLogScope } from "@/modules/deploy/deploy.types"
 import { AppMonitor } from "@/modules/deploy/ui/operate/app-monitor"
 import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
+import { AppWorkspaceHeader } from "@/modules/deploy/ui/app-workspace-header"
 
 const APP_QUERY_KEY = "app"
 const PAGE_SIZE = 20
@@ -103,6 +104,15 @@ export default function DeploymentsPage() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(() =>
     searchParams.get(APP_QUERY_KEY)
   )
+
+  useEffect(() => {
+    if (selectedSlug) {
+      router.replace(
+        `/${locale}/console/app/platform/${selectedSlug}?tab=deployments`
+      )
+    }
+  }, [locale, router, selectedSlug])
+
   const [overview, setOverview] = useState<{
     stack: StackSummaryDTO
     latestDeployment: DeploymentStatusDTO | null
@@ -349,7 +359,11 @@ export default function DeploymentsPage() {
   const handleHistoryRetry = () => setHistoryRetry((value) => value + 1)
   const totalPages = historyMeta?.totalPages ?? 0
   const targetDomain = overview?.stack.customDomain || overview?.stack.subdomain
-
+  const currentApp =
+    overview?.stack ??
+    apps.find((app) => app.slug === selectedSlug) ??
+    apps[0] ??
+    null
   return (
     <LifecyclePageShell
       title={tDeployments.heading}
@@ -386,20 +400,16 @@ export default function DeploymentsPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap gap-2 border-b border-border pb-3">
-              {apps.map((app) => (
-                <Button
-                  key={app.id}
-                  type="button"
-                  variant={app.slug === selectedSlug ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedSlug(app.slug)}
-                  aria-pressed={app.slug === selectedSlug}
-                >
-                  {app.name}
-                </Button>
-              ))}
-            </div>
+            {currentApp ? (
+              <AppWorkspaceHeader
+                apps={apps}
+                selectedApp={currentApp}
+                activeTab="deployments"
+                locale={locale}
+                onSync={() => handleSync()}
+                isSyncing={syncing}
+              />
+            ) : null}
 
             {overviewLoading ? (
               <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
