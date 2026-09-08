@@ -410,8 +410,8 @@ export const toStackSummaryDTO = (stack: {
     code: string
     pricings?: Array<{
       periodPrice?: unknown
-      currency?: string
-      billingPeriod?: string
+      currency?: string | null
+      billingPeriod?: string | null
     }>
   } | null
   lastDeployedAt: Date | null
