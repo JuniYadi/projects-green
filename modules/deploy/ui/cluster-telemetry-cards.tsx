@@ -2,15 +2,8 @@
 
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import {
-  Cpu,
-  HardDrive,
-  ArrowsLeftRight,
-  Globe,
-  ArrowsClockwise,
-} from "@phosphor-icons/react"
+import { Cpu, HardDrive, ArrowsLeftRight, Globe } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -18,13 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { TimeRangeDropdown } from "@/components/telemetry/time-range-dropdown"
 import {
-  type TimeRangeSelection,
-  PRESET_SECONDS,
-  format24hTime,
-  formatTelemetryTick,
-} from "@/lib/time-range"
+  TimeRangeDropdown,
+  type AutoRefreshInterval,
+} from "@/components/telemetry/time-range-dropdown"
 import {
   generateClusterTelemetrySummary,
   formatBytes,
@@ -36,11 +26,14 @@ import {
   ClusterTelemetrySparkline,
   type SparklineDataPoint,
 } from "@/modules/deploy/ui/cluster-telemetry-sparkline"
+import { type TimeRangeSelection, format24hTime } from "@/lib/time-range"
 export function ClusterTelemetryCards() {
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
     type: "preset",
     preset: "1h",
   })
+  const [refreshInterval, setRefreshInterval] =
+    useState<AutoRefreshInterval>(10_000)
 
   const userTimeZone =
     typeof Intl !== "undefined"
@@ -74,7 +67,7 @@ export function ClusterTelemetryCards() {
     },
     placeholderData: (previousData) =>
       previousData ?? generateClusterTelemetrySummary("1h"),
-    refetchInterval: 10_000,
+    refetchInterval: refreshInterval,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   })
@@ -168,29 +161,14 @@ export function ClusterTelemetryCards() {
           <TimeRangeDropdown
             value={timeSelection}
             onChange={setTimeSelection}
+            onRefresh={() => void refetch()}
+            isFetching={isFetching}
+            refreshInterval={refreshInterval}
+            onRefreshIntervalChange={setRefreshInterval}
           />
 
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => void refetch()}
-            disabled={isFetching}
-            className="h-7 gap-1 px-2 text-[11px]"
-            title="Refresh cluster telemetry"
-          >
-            <ArrowsClockwise
-              size={12}
-              className={
-                isFetching
-                  ? "animate-spin text-primary"
-                  : "text-muted-foreground"
-              }
-            />
-            <span>Refresh</span>
-          </Button>
-
           {lastUpdated && (
-            <span className="hidden text-[11px] text-muted-foreground lg:inline">
+            <span className="hidden font-mono text-[11px] text-muted-foreground lg:inline">
               {lastUpdated}
             </span>
           )}

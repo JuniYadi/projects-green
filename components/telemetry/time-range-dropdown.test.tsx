@@ -5,7 +5,7 @@ import * as React from "react"
 import { TimeRangeDropdown } from "./time-range-dropdown"
 import { type TimeRangeSelection, format24hDateTime } from "@/lib/time-range"
 
-describe("TimeRangeDropdown", () => {
+describe("TimeRangeDropdown (Grafana Style)", () => {
   it("renders trigger with current preset label", () => {
     const value: TimeRangeSelection = { type: "preset", preset: "1h" }
     const onChange = mock(() => {})
@@ -41,24 +41,27 @@ describe("TimeRangeDropdown", () => {
     const onChange = mock(() => {})
 
     const { getByRole } = render(
-      <TimeRangeDropdown value={value} onChange={onChange} disabled />
+      <TimeRangeDropdown value={value} onChange={onChange} disabled={true} />
     )
 
-    const button = getByRole("button", { name: /Last 1 hour/i })
-    expect(button).toBeDisabled()
+    const trigger = getByRole("button", { name: /Last 1 hour/i })
+    expect(trigger).toBeDisabled()
   })
 
-  it("selecting a different preset calls onChange with { type: 'preset', preset: '5m' }", () => {
+  it("opens Grafana popover on click and selecting a preset calls onChange", () => {
     const value: TimeRangeSelection = { type: "preset", preset: "1h" }
     const onChange = mock(() => {})
 
-    const { getByText } = render(
+    const { getByText, getAllByText } = render(
       <TimeRangeDropdown value={value} onChange={onChange} />
     )
 
     const trigger = getByText("Last 1 hour")
-    fireEvent.pointerDown(trigger, { button: 0 })
-    const presetOption = getByText("Last 5 minutes")
+    fireEvent.click(trigger)
+
+    expect(getByText("Absolute time range")).toBeInTheDocument()
+
+    const presetOption = getAllByText("Last 5 minutes")[0]
     fireEvent.click(presetOption)
 
     expect(onChange).toHaveBeenCalledWith({
@@ -67,7 +70,7 @@ describe("TimeRangeDropdown", () => {
     })
   })
 
-  it("custom range selection opens dialog and applies { type: 'custom', from: ..., to: ... }", () => {
+  it("applies custom range from the popover inputs", () => {
     const value: TimeRangeSelection = { type: "preset", preset: "1h" }
     const onChange = mock(() => {})
 
@@ -76,12 +79,7 @@ describe("TimeRangeDropdown", () => {
     )
 
     const trigger = getByText("Last 1 hour")
-    fireEvent.pointerDown(trigger, { button: 0 })
-
-    const customOption = getByText("Custom range...")
-    fireEvent.click(customOption)
-
-    expect(getByText("Select Custom Time Range")).toBeInTheDocument()
+    fireEvent.click(trigger)
 
     const fromInput = getByLabelText("From") as HTMLInputElement
     const toInput = getByLabelText("To") as HTMLInputElement
@@ -89,8 +87,7 @@ describe("TimeRangeDropdown", () => {
     fireEvent.change(fromInput, { target: { value: "2026-09-08T10:00" } })
     fireEvent.change(toInput, { target: { value: "2026-09-08T12:00" } })
 
-    const applyButton = getByText("Apply")
-    expect(applyButton).not.toBeDisabled()
+    const applyButton = getByText("Apply time range")
     fireEvent.click(applyButton)
 
     const expectedFrom = Math.floor(
@@ -105,48 +102,42 @@ describe("TimeRangeDropdown", () => {
     })
   })
 
-  it("custom dialog disables Apply button when from > to", () => {
+  it("renders manual refresh button and calls onRefresh when clicked", () => {
     const value: TimeRangeSelection = { type: "preset", preset: "1h" }
     const onChange = mock(() => {})
+    const onRefresh = mock(() => {})
 
-    const { getByText, getByLabelText } = render(
-      <TimeRangeDropdown value={value} onChange={onChange} />
+    const { getByTestId } = render(
+      <TimeRangeDropdown
+        value={value}
+        onChange={onChange}
+        onRefresh={onRefresh}
+      />
     )
 
-    const trigger = getByText("Last 1 hour")
-    fireEvent.pointerDown(trigger, { button: 0 })
+    const refreshBtn = getByTestId("telemetry-refresh-button")
+    expect(refreshBtn).toBeInTheDocument()
 
-    const customOption = getByText("Custom range...")
-    fireEvent.click(customOption)
-
-    const fromInput = getByLabelText("From") as HTMLInputElement
-    const toInput = getByLabelText("To") as HTMLInputElement
-
-    fireEvent.change(fromInput, { target: { value: "2026-09-08T14:00" } })
-    fireEvent.change(toInput, { target: { value: "2026-09-08T10:00" } })
-
-    const applyButton = getByText("Apply")
-    expect(applyButton).toBeDisabled()
+    fireEvent.click(refreshBtn)
+    expect(onRefresh).toHaveBeenCalledTimes(1)
   })
 
-  it("custom dialog cancel button dismisses dialog without calling onChange", () => {
+  it("renders auto-refresh dropdown with current interval label", () => {
     const value: TimeRangeSelection = { type: "preset", preset: "1h" }
     const onChange = mock(() => {})
+    const onIntervalChange = mock(() => {})
 
-    const { getByText, queryByText } = render(
-      <TimeRangeDropdown value={value} onChange={onChange} />
+    const { getByTestId, getByText } = render(
+      <TimeRangeDropdown
+        value={value}
+        onChange={onChange}
+        refreshInterval={30_000}
+        onRefreshIntervalChange={onIntervalChange}
+      />
     )
 
-    const trigger = getByText("Last 1 hour")
-    fireEvent.pointerDown(trigger, { button: 0 })
-
-    const customOption = getByText("Custom range...")
-    fireEvent.click(customOption)
-
-    const cancelButton = getByText("Cancel")
-    fireEvent.click(cancelButton)
-
-    expect(onChange).not.toHaveBeenCalled()
-    expect(queryByText("Select Custom Time Range")).not.toBeInTheDocument()
+    const trigger = getByTestId("auto-refresh-trigger")
+    expect(trigger).toBeInTheDocument()
+    expect(getByText("30s")).toBeInTheDocument()
   })
 })

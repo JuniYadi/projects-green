@@ -101,10 +101,9 @@ describe("ClusterTelemetryCards component", () => {
     // Verify TimeRangeDropdown is rendered with default preset label
     expect(getByText("Last 1 hour")).toBeDefined()
 
-    // Open dropdown menu
+    // Open popover
     const trigger = getByText("Last 1 hour")
-    fireEvent.pointerDown(trigger, { button: 0 })
-
+    fireEvent.click(trigger)
     // Select 6h preset
     const option6h = getByText("Last 6 hours")
     expect(option6h).toBeDefined()
