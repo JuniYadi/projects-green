@@ -1807,7 +1807,7 @@ function IntegrationEditModal({
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-lg">
         <h3 className="text-lg font-semibold">
           Edit {INTEGRATION_TYPE_LABELS[type] ?? type}
         </h3>
@@ -1906,11 +1906,16 @@ function IntegrationEditModal({
           })}
           {type === "KUBECONFIG" &&
             (meta.connectionMode === "INTERNAL" || !meta.connectionMode) && (
-              <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-                <p className="font-semibold text-foreground">
-                  In-Cluster ServiceAccount Mode Active
-                </p>
-                <p className="mt-1">
+              <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-foreground">
+                    In-Cluster ServiceAccount Mode Active
+                  </p>
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                    Zero External Secrets
+                  </span>
+                </div>
+                <p>
                   Elysia connects directly to{" "}
                   <code>https://kubernetes.default.svc</code> using the attached
                   pod ServiceAccount (
@@ -1918,8 +1923,92 @@ function IntegrationEditModal({
                   External network round trips are bypassed. Secrets below are
                   optional overrides.
                 </p>
+                <details className="cursor-pointer rounded border border-border bg-background/60 p-2">
+                  <summary className="font-medium text-foreground hover:underline">
+                    View Kubernetes RBAC setup manifest
+                  </summary>
+                  <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 font-mono text-[11px] text-foreground">
+                    {`apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elysia-api-sa
+  namespace: projects-green
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elysia-pod-exec-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create", "get"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elysia-pod-exec-binding
+subjects:
+  - kind: ServiceAccount
+    name: elysia-api-sa
+    namespace: projects-green
+roleRef:
+  kind: ClusterRole
+  name: elysia-pod-exec-role
+  apiGroup: rbac.authorization.k8s.io`}
+                  </pre>
+                </details>
               </div>
             )}
+
+          {type === "KUBECONFIG" && meta.connectionMode === "EXTERNAL" && (
+            <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-foreground">
+                  External Remote Cluster Mode
+                </p>
+                <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                  Network API Access
+                </span>
+              </div>
+              <p>
+                Requires public or routable Kubernetes API Server URL and bearer
+                token or Kubeconfig. Ensure your cluster firewall allows traffic
+                from this server.
+              </p>
+              <details className="cursor-pointer rounded border border-border bg-background/60 p-2">
+                <summary className="font-medium text-foreground hover:underline">
+                  How to generate token for external cluster
+                </summary>
+                <div className="mt-2 space-y-1 font-mono text-[11px] text-foreground">
+                  <p className="font-sans text-muted-foreground">
+                    1. Create ServiceAccount & RBAC on remote cluster:
+                  </p>
+                  <pre className="overflow-x-auto rounded bg-muted p-2">
+                    {`kubectl create serviceaccount elysia-remote-sa -n kube-system
+kubectl create clusterrolebinding elysia-remote-binding \\
+  --clusterrole=cluster-admin \\
+  --serviceaccount=kube-system:elysia-remote-sa`}
+                  </pre>
+                  <p className="font-sans text-muted-foreground">
+                    2. Generate bearer token:
+                  </p>
+                  <pre className="overflow-x-auto rounded bg-muted p-2">
+                    {`kubectl create token elysia-remote-sa -n kube-system --duration=8760h`}
+                  </pre>
+                  <p className="font-sans text-muted-foreground">
+                    3. Fill in API Server URL, token, and optional CA cert
+                    below.
+                  </p>
+                </div>
+              </details>
+            </div>
+          )}
 
           {secretFields.map((field) => {
             const label = labels[field] ?? field
