@@ -35,11 +35,15 @@ import {
 } from "@/lib/time-range"
 export type ClusterTelemetryCardsProps = {
   clusterCode?: string
+  appSlug?: string
+  title?: string
   className?: string
 }
 
 export function ClusterTelemetryCards({
   clusterCode = "sgp",
+  appSlug,
+  title,
   className,
 }: ClusterTelemetryCardsProps = {}) {
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
@@ -61,7 +65,14 @@ export function ClusterTelemetryCards({
     dataUpdatedAt,
     refetch,
   } = useQuery<ClusterTelemetrySummary>({
-    queryKey: ["deploy", "telemetry", timeSelection, clusterCode, userTimeZone],
+    queryKey: [
+      "deploy",
+      "telemetry",
+      timeSelection,
+      clusterCode,
+      userTimeZone,
+      appSlug,
+    ],
     queryFn: async () => {
       const queryParams =
         timeSelection.type === "preset"
@@ -69,12 +80,14 @@ export function ClusterTelemetryCards({
               range: timeSelection.preset,
               cluster: clusterCode,
               tz: userTimeZone,
+              ...(appSlug ? { appSlug } : {}),
             }
           : {
               from: String(timeSelection.from),
               to: String(timeSelection.to),
               cluster: clusterCode,
               tz: userTimeZone,
+              ...(appSlug ? { appSlug } : {}),
             }
       const { data: payload } = await eden.api.deploy.telemetry.get({
         $query: queryParams,
@@ -178,7 +191,10 @@ export function ClusterTelemetryCards({
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-foreground">
-            Cluster Resource Telemetry
+            {title ??
+              (appSlug
+                ? "Workload Resource Telemetry"
+                : "Cluster Resource Telemetry")}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
             <Globe size={13} className="text-emerald-500" />

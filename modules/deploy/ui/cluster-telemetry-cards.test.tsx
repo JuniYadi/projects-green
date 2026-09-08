@@ -160,4 +160,25 @@ describe("ClusterTelemetryCards component", () => {
       )
     })
   })
+
+  it("passes appSlug to query and renders custom title or workload title", async () => {
+    const { getByText } = renderWithClient(
+      <ClusterTelemetryCards
+        appSlug="hermes-vibrant-comet"
+        title="Resource Telemetry"
+      />
+    )
+
+    expect(getByText("Resource Telemetry")).toBeDefined()
+
+    await waitFor(() => {
+      expect(mockTelemetryGet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          $query: expect.objectContaining({
+            appSlug: "hermes-vibrant-comet",
+          }),
+        })
+      )
+    })
+  })
 })

@@ -2,15 +2,13 @@
 
 import Link from "next/link"
 import {
-  RocketLaunch,
-  ChartLine,
   ListMagnifyingGlass,
   GearSix,
   CheckCircle,
   Clock,
   ShieldCheck,
-  Cpu,
 } from "@phosphor-icons/react"
+import { ClusterTelemetryCards } from "@/modules/deploy/ui/cluster-telemetry-cards"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -37,6 +35,9 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* 3 Core Metrics Telemetry (CPU, Memory, Network) per Deployment */}
+      <ClusterTelemetryCards appSlug={stack.slug} title="Resource Telemetry" />
+
       <div className="grid gap-6 md:grid-cols-2">
         {/* Card 1: Active Deployment */}
         <Card>
@@ -161,56 +162,6 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Card 3: Quick Metrics Snapshot */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold">
-                Quick Metrics
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Current cluster resource utilization
-              </CardDescription>
-            </div>
-            <Button asChild variant="outline" size="xs">
-              <Link href={`/${locale}/console/app/metrics?app=${stack.slug}`}>
-                <ChartLine size={13} className="mr-1" />
-                All Charts
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4 text-xs">
-            <div className="space-y-1.5">
-              <div className="flex justify-between font-medium">
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <Cpu size={14} /> CPU Allocation
-                </span>
-                <span className="text-foreground">Healthy (under limit)</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted/40">
-                <div className="h-full w-1/4 rounded-full bg-primary" />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex justify-between font-medium">
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <RocketLaunch size={14} /> Memory Usage
-                </span>
-                <span className="text-foreground">Allocated & Steady</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted/40">
-                <div className="h-full w-1/3 rounded-full bg-primary" />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-1 text-muted-foreground">
-              <span>Status: 0 OOM restarts in 24h</span>
-              <span className="text-emerald-500">● 100% Up</span>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Card 4: Environment & Secrets */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
