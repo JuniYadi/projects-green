@@ -161,8 +161,12 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
               <span className="text-muted-foreground">Compute Resources</span>
               <span className="font-medium text-foreground">
-                {stack.cpu ? `${stack.cpu} vCPU` : "0.5 vCPU"} •{" "}
-                {stack.memory ? `${stack.memory} MB` : "512 MB"}
+                {stack.cpu
+                  ? stack.cpu >= 100
+                    ? `${stack.cpu / 1000} vCPU`
+                    : `${stack.cpu} vCPU`
+                  : "0.5 vCPU"}{" "}
+                • {stack.memory ? `${stack.memory} MB` : "512 MB"}
               </span>
             </div>
             <div className="flex items-center justify-between pt-0.5">
