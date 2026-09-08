@@ -1,5 +1,5 @@
-import { describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { afterEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import { useState } from "react"
 import { INITIAL_LOGS } from "@/modules/deploy/operate.mock"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
@@ -67,6 +67,9 @@ function LogsHarness({ diagnosticMode }: { diagnosticMode: string }) {
 }
 
 describe("Operate tabs coverage", () => {
+  afterEach(() => {
+    cleanup()
+  })
   it("covers overview diagnostic states and rebuild progression", () => {
     const originalSetTimeout = globalThis.setTimeout
     const immediateTimeout: typeof setTimeout = ((handler: TimerHandler) => {
@@ -234,7 +237,7 @@ describe("Operate tabs coverage", () => {
       <TabMounts selectedEnv="prod" mounts={mounts} setMounts={setMounts} />
     )
 
-    expect(view.getByText("Mount Keys & Files")).toBeDefined()
+    expect(view.getByText("File Mounts & Configurations")).toBeDefined()
     expect(view.getByText("Active Pod File Mounts")).toBeDefined()
     expect(view.getByText("/var/secrets/app.key")).toBeDefined()
 
