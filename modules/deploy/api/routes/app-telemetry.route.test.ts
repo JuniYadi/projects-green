@@ -127,6 +127,62 @@ describe("appTelemetryRoutes", () => {
       clusterCode: "sgp",
     })
   })
+  it("supports fast ranges 5m, 15m, and 30m in query", async () => {
+    for (const fastRange of ["5m", "15m", "30m"] as const) {
+      mockFetchNamespaceTelemetry.mockClear()
+      const response = await appTelemetryRoutes.handle(
+        new Request(`http://localhost/deploy/telemetry?range=${fastRange}`)
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockFetchNamespaceTelemetry).toHaveBeenCalledWith({
+        organizationId: "org-1",
+        timeRange: fastRange,
+        clusterCode: "sgp",
+      })
+    }
+  })
+
+  it("passes custom from, to, and tz query parameters to service", async () => {
+    mockFetchNamespaceTelemetry.mockClear()
+    const response = await appTelemetryRoutes.handle(
+      new Request(
+        "http://localhost/deploy/telemetry?from=1710000000&to=1710003600&tz=Asia/Jakarta&cluster=sg-sin-1"
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockFetchNamespaceTelemetry).toHaveBeenCalledWith({
+      organizationId: "org-1",
+      timeRange: "custom",
+      clusterCode: "sg-sin-1",
+      from: "1710000000",
+      to: "1710003600",
+      timeZone: "Asia/Jakarta",
+    })
+  })
+
+  it("preserves explicit range=custom with ISO from and to dates", async () => {
+    mockFetchNamespaceTelemetry.mockClear()
+    const fromIso = "2026-09-08T10:00:00Z"
+    const toIso = "2026-09-08T11:00:00Z"
+    const response = await appTelemetryRoutes.handle(
+      new Request(
+        `http://localhost/deploy/telemetry?range=custom&from=${encodeURIComponent(
+          fromIso
+        )}&to=${encodeURIComponent(toIso)}`
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockFetchNamespaceTelemetry).toHaveBeenCalledWith({
+      organizationId: "org-1",
+      timeRange: "custom",
+      clusterCode: "sgp",
+      from: fromIso,
+      to: toIso,
+    })
+  })
 
   it("returns 500 when service throws an unexpected error", async () => {
     mockFetchNamespaceTelemetry.mockRejectedValueOnce(

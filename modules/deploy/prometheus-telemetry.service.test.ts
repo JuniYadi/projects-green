@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
+const actualClusterIntegration = await import("./cluster-integration.service")
 const mockResolveClusterIntegrationByClusterCode = mock(
   async (_code: string, _type: string) => ({
     endpoint: "https://prometheus.test.local",
@@ -9,6 +10,7 @@ const mockResolveClusterIntegrationByClusterCode = mock(
 )
 
 mock.module("./cluster-integration.service", () => ({
+  ...actualClusterIntegration,
   resolveClusterIntegrationByClusterCode:
     mockResolveClusterIntegrationByClusterCode,
 }))
@@ -304,6 +306,131 @@ describe("fetchNamespaceTelemetry", () => {
     const rangeUrl24h = captured24hUrls.find((u) => u.includes("query_range"))
     expect(rangeUrl24h).toBeDefined()
     expect(rangeUrl24h).toContain("step=7200")
+  })
+  it("handles 5m, 15m, and 30m fast time ranges with appropriate query parameters", async () => {
+    const captured5mUrls: string[] = []
+    const mockFetch5m = mock(async (url: string | URL | Request) => {
+      captured5mUrls.push(url.toString())
+      return new Response(
+        JSON.stringify({ status: "success", data: { result: [] } }),
+        { status: 200 }
+      )
+    })
+
+    const summary5m = await fetchNamespaceTelemetry({
+      organizationId: "org_fast_5m",
+      timeRange: "5m",
+      fetchFn: mockFetch5m as unknown as typeof fetch,
+    })
+
+    expect(summary5m.timeRange).toBe("5m")
+    const rangeUrl5m = captured5mUrls.find((u) => u.includes("query_range"))
+    expect(rangeUrl5m).toBeDefined()
+    expect(rangeUrl5m).toContain("step=15")
+    expect(rangeUrl5m).toContain(encodeURIComponent("[30s]"))
+    // For <=900s (5m), timestamps include seconds (HH:mm:ss)
+    expect(summary5m.points[0].timestamp).toMatch(/^\d{2}:\d{2}:\d{2}$/)
+
+    const captured15mUrls: string[] = []
+    const mockFetch15m = mock(async (url: string | URL | Request) => {
+      captured15mUrls.push(url.toString())
+      return new Response(
+        JSON.stringify({ status: "success", data: { result: [] } }),
+        { status: 200 }
+      )
+    })
+
+    const summary15m = await fetchNamespaceTelemetry({
+      organizationId: "org_fast_15m",
+      timeRange: "15m",
+      fetchFn: mockFetch15m as unknown as typeof fetch,
+    })
+
+    expect(summary15m.timeRange).toBe("15m")
+    const rangeUrl15m = captured15mUrls.find((u) => u.includes("query_range"))
+    expect(rangeUrl15m).toBeDefined()
+    expect(rangeUrl15m).toContain("step=30")
+    expect(rangeUrl15m).toContain(encodeURIComponent("[1m]"))
+    expect(summary15m.points[0].timestamp).toMatch(/^\d{2}:\d{2}:\d{2}$/)
+
+    const captured30mUrls: string[] = []
+    const mockFetch30m = mock(async (url: string | URL | Request) => {
+      captured30mUrls.push(url.toString())
+      return new Response(
+        JSON.stringify({ status: "success", data: { result: [] } }),
+        { status: 200 }
+      )
+    })
+
+    const summary30m = await fetchNamespaceTelemetry({
+      organizationId: "org_fast_30m",
+      timeRange: "30m",
+      fetchFn: mockFetch30m as unknown as typeof fetch,
+    })
+
+    expect(summary30m.timeRange).toBe("30m")
+    const rangeUrl30m = captured30mUrls.find((u) => u.includes("query_range"))
+    expect(rangeUrl30m).toBeDefined()
+    expect(rangeUrl30m).toContain("step=60")
+    expect(rangeUrl30m).toContain(encodeURIComponent("[2m]"))
+    // For 30m (>900s), timestamps are HH:mm
+    expect(summary30m.points[0].timestamp).toMatch(/^\d{2}:\d{2}$/)
+  })
+
+  it("handles custom from and to range options with unix seconds and ISO strings", async () => {
+    const capturedUrls: string[] = []
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      capturedUrls.push(url.toString())
+      return new Response(
+        JSON.stringify({ status: "success", data: { result: [] } }),
+        { status: 200 }
+      )
+    })
+
+    const summary = await fetchNamespaceTelemetry({
+      organizationId: "org_custom_window",
+      from: 1710000000,
+      to: 1710003600,
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(summary.timeRange).toBe("custom")
+    expect(summary.from).toBe(1710000000)
+    expect(summary.to).toBe(1710003600)
+    const rangeUrl = capturedUrls.find((u) => u.includes("query_range"))
+    expect(rangeUrl).toBeDefined()
+    expect(rangeUrl).toContain("start=1710000000")
+    expect(rangeUrl).toContain("end=1710003600")
+
+    // Test with ISO date strings
+    const isoCapturedUrls: string[] = []
+    const mockIsoFetch = mock(async (url: string | URL | Request) => {
+      isoCapturedUrls.push(url.toString())
+      return new Response(
+        JSON.stringify({ status: "success", data: { result: [] } }),
+        { status: 200 }
+      )
+    })
+
+    const fromIso = "2026-09-08T10:00:00.000Z"
+    const toIso = "2026-09-08T11:00:00.000Z"
+    const expectedStart = Math.floor(Date.parse(fromIso) / 1000)
+    const expectedEnd = Math.floor(Date.parse(toIso) / 1000)
+
+    const isoSummary = await fetchNamespaceTelemetry({
+      organizationId: "org_iso_custom",
+      timeRange: "custom",
+      from: fromIso,
+      to: toIso,
+      fetchFn: mockIsoFetch as unknown as typeof fetch,
+    })
+
+    expect(isoSummary.timeRange).toBe("custom")
+    expect(isoSummary.from).toBe(expectedStart)
+    expect(isoSummary.to).toBe(expectedEnd)
+    const isoRangeUrl = isoCapturedUrls.find((u) => u.includes("query_range"))
+    expect(isoRangeUrl).toContain(`start=${expectedStart}`)
+    expect(isoRangeUrl).toContain(`end=${expectedEnd}`)
   })
 
   it("handles custom cluster code and custom step seconds", async () => {

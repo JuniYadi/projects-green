@@ -1,3 +1,5 @@
+import type { PredefinedTimeRange } from "@/lib/time-range"
+
 export type TelemetryDataPoint = {
   timestamp: string
   cpuUsageCores: number
@@ -13,7 +15,9 @@ export type ClusterTelemetrySummary = {
   clusterName: string
   region: string
   isPrimary: boolean
-  timeRange: "1h" | "6h" | "24h" | "7d"
+  timeRange: PredefinedTimeRange | "custom"
+  from?: number
+  to?: number
   namespace?: string
   points: TelemetryDataPoint[]
   cpu: {

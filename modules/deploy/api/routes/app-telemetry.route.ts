@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { fetchNamespaceTelemetry } from "@/modules/deploy/prometheus-telemetry.service"
+import type { PredefinedTimeRange } from "@/lib/time-range"
 
 export const appTelemetryRoutes = new Elysia({
   prefix: "/deploy/telemetry",
@@ -18,12 +19,19 @@ export const appTelemetryRoutes = new Elysia({
     }
 
     try {
-      const timeRange = (query.range ?? "1h") as "1h" | "6h" | "24h" | "7d"
+      const timeRange = query.range
+        ? (query.range as PredefinedTimeRange | "custom")
+        : query.from && query.to
+          ? "custom"
+          : "1h"
       const clusterCode = query.cluster ?? "sgp"
       const data = await fetchNamespaceTelemetry({
         organizationId: auth.organizationId,
         timeRange,
         clusterCode,
+        ...(query.from !== undefined ? { from: query.from } : {}),
+        ...(query.to !== undefined ? { to: query.to } : {}),
+        ...(query.tz !== undefined ? { timeZone: query.tz } : {}),
       })
       return { ok: true, data }
     } catch (error) {
@@ -39,15 +47,11 @@ export const appTelemetryRoutes = new Elysia({
   },
   {
     query: t.Object({
-      range: t.Optional(
-        t.Union([
-          t.Literal("1h"),
-          t.Literal("6h"),
-          t.Literal("24h"),
-          t.Literal("7d"),
-        ])
-      ),
+      range: t.Optional(t.String()),
+      from: t.Optional(t.String()),
+      to: t.Optional(t.String()),
       cluster: t.Optional(t.String()),
+      tz: t.Optional(t.String()),
     }),
   }
 )

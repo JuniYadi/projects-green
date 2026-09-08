@@ -3,26 +3,17 @@ import type {
   TelemetryDataPoint,
 } from "./telemetry.types"
 import { resolveClusterIntegrationByClusterCode } from "./cluster-integration.service"
+import {
+  type PredefinedTimeRange,
+  PRESET_SECONDS,
+  formatTelemetryTick,
+  resolveTimeRangeBounds,
+} from "@/lib/time-range"
 
 export const DEFAULT_CLUSTER_CODE = "sgp"
-export const DEFAULT_TIME_RANGE: "1h" | "6h" | "24h" | "7d" = "1h"
-
+export const DEFAULT_TIME_RANGE: PredefinedTimeRange = "1h"
 export const FALLBACK_CPU_LIMIT_CORES = 2.0
 export const FALLBACK_MEMORY_LIMIT_BYTES = 8 * 1024 * 1024 * 1024 // 8 GB
-
-const TIME_RANGE_SECONDS: Record<"1h" | "6h" | "24h" | "7d", number> = {
-  "1h": 3600,
-  "6h": 21600,
-  "24h": 86400,
-  "7d": 7 * 86400,
-}
-
-const DEFAULT_STEP_SECONDS: Record<"1h" | "6h" | "24h" | "7d", number> = {
-  "1h": 300,
-  "6h": 1800,
-  "24h": 7200,
-  "7d": 14400,
-}
 
 const CLUSTER_CONFIGS: Record<
   string,
@@ -53,22 +44,29 @@ export function formatTenantNamespace(organizationId: string): string {
 
 export type FetchNamespaceTelemetryOptions = {
   organizationId: string
-  timeRange?: "1h" | "6h" | "24h" | "7d"
+  timeRange?: PredefinedTimeRange | "custom"
+  from?: number | string // unix seconds or ISO date string
+  to?: number | string // unix seconds or ISO date string
   clusterCode?: string
   stepSeconds?: number
+  timeZone?: string
   fetchFn?: typeof fetch
 }
 
-function formatTimestamp(unixSeconds: number, isMultiDay = false): string {
-  const d = new Date(unixSeconds * 1000)
-  if (isMultiDay) {
-    const day = String(d.getUTCDate()).padStart(2, "0")
-    const month = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" })
-    return `${day} ${month}`
+function parseToUnixSeconds(val: number | string): number {
+  if (typeof val === "number") {
+    return val > 1e11 ? Math.floor(val / 1000) : Math.floor(val)
   }
-  const hours = String(d.getUTCHours()).padStart(2, "0")
-  const minutes = String(d.getUTCMinutes()).padStart(2, "0")
-  return `${hours}:${minutes}`
+  const trimmed = val.trim()
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    const num = Number(trimmed)
+    return num > 1e11 ? Math.floor(num / 1000) : Math.floor(num)
+  }
+  const parsed = Date.parse(trimmed)
+  if (!Number.isNaN(parsed)) {
+    return Math.floor(parsed / 1000)
+  }
+  throw new Error(`Invalid date/time format: ${val}`)
 }
 
 function parseInstantMetricValue(data: unknown): number | null {
@@ -116,14 +114,44 @@ export async function fetchNamespaceTelemetry(
   opts: FetchNamespaceTelemetryOptions
 ): Promise<ClusterTelemetrySummary> {
   const clusterCode = opts.clusterCode ?? DEFAULT_CLUSTER_CODE
-  const timeRange = opts.timeRange ?? DEFAULT_TIME_RANGE
   const ns = formatTenantNamespace(opts.organizationId)
-  const step = opts.stepSeconds ?? DEFAULT_STEP_SECONDS[timeRange]
-  const duration = TIME_RANGE_SECONDS[timeRange]
 
-  const nowSeconds = Math.floor(Date.now() / 1000)
-  const end = Math.floor(nowSeconds / step) * step
-  const start = end - duration
+  const isCustom =
+    (opts.from !== undefined && opts.to !== undefined) ||
+    opts.timeRange === "custom"
+
+  let bounds: {
+    startSeconds: number
+    endSeconds: number
+    stepSeconds: number
+    rateWindow: string
+  }
+  let summaryTimeRange: PredefinedTimeRange | "custom"
+
+  if (isCustom) {
+    summaryTimeRange = "custom"
+    const nowSeconds = Math.floor(Date.now() / 1000)
+    const toSeconds =
+      opts.to !== undefined ? parseToUnixSeconds(opts.to) : nowSeconds
+    const fromSeconds =
+      opts.from !== undefined ? parseToUnixSeconds(opts.from) : toSeconds - 3600
+    bounds = resolveTimeRangeBounds({
+      type: "custom",
+      from: fromSeconds,
+      to: toSeconds,
+    })
+  } else {
+    const preset: PredefinedTimeRange =
+      opts.timeRange && opts.timeRange in PRESET_SECONDS
+        ? (opts.timeRange as PredefinedTimeRange)
+        : "1h"
+    summaryTimeRange = preset
+    bounds = resolveTimeRangeBounds({ type: "preset", preset })
+  }
+
+  const { startSeconds, endSeconds, rateWindow } = bounds
+  const stepSeconds = opts.stepSeconds ?? bounds.stepSeconds
+  const durationSeconds = Math.max(0, endSeconds - startSeconds)
 
   const config = await resolveClusterIntegrationByClusterCode(
     clusterCode,
@@ -159,7 +187,7 @@ export async function fetchNamespaceTelemetry(
   const queryRange = async (query: string): Promise<Map<number, number>> => {
     const url = `${baseUrl}/api/v1/query_range?query=${encodeURIComponent(
       query
-    )}&start=${start}&end=${end}&step=${step}`
+    )}&start=${startSeconds}&end=${endSeconds}&step=${stepSeconds}`
     const res = await fetchImpl(url, { headers })
     if (!res.ok) {
       throw new Error(
@@ -169,16 +197,6 @@ export async function fetchNamespaceTelemetry(
     const json = await res.json()
     return parseRangeMetricValues(json)
   }
-
-  const rateWindow =
-    timeRange === "1h"
-      ? "5m"
-      : timeRange === "6h"
-        ? "15m"
-        : timeRange === "24h"
-          ? "30m"
-          : "2h"
-
   const [
     instantCpuUsage,
     instantMemUsage,
@@ -244,9 +262,13 @@ export async function fetchNamespaceTelemetry(
   if (returnedTimestamps.size === 0) {
     // 0 metrics / zero-pod fallback handling: render clean baseline points across window
     points = []
-    for (let t = start + step; t <= end; t += step) {
+    for (
+      let t = startSeconds + stepSeconds;
+      t <= endSeconds;
+      t += stepSeconds
+    ) {
       points.push({
-        timestamp: formatTimestamp(t, timeRange === "7d"),
+        timestamp: formatTelemetryTick(t, durationSeconds, opts.timeZone),
         cpuUsageCores: 0,
         cpuLimitCores,
         memoryUsageBytes: 0,
@@ -257,7 +279,11 @@ export async function fetchNamespaceTelemetry(
     }
     if (points.length === 0) {
       points.push({
-        timestamp: formatTimestamp(end),
+        timestamp: formatTelemetryTick(
+          endSeconds,
+          durationSeconds,
+          opts.timeZone
+        ),
         cpuUsageCores: 0,
         cpuLimitCores,
         memoryUsageBytes: 0,
@@ -281,7 +307,7 @@ export async function fetchNamespaceTelemetry(
       const tx = networkTxMap.get(t) ?? 0
 
       return {
-        timestamp: formatTimestamp(t, timeRange === "7d"),
+        timestamp: formatTelemetryTick(t, durationSeconds, opts.timeZone),
         cpuUsageCores: Number(cpuUsage.toFixed(2)),
         cpuLimitCores,
         memoryUsageBytes: Math.round(memUsage ?? lastKnownMem),
@@ -337,10 +363,10 @@ export async function fetchNamespaceTelemetry(
   const peakBytes = points.length > 0 ? Math.max(...memValues) : 0
 
   const totalRxBytes = Math.round(
-    rxValues.reduce((sum, rate) => sum + rate * step, 0)
+    rxValues.reduce((sum, rate) => sum + rate * stepSeconds, 0)
   )
   const totalTxBytes = Math.round(
-    txValues.reduce((sum, rate) => sum + rate * step, 0)
+    txValues.reduce((sum, rate) => sum + rate * stepSeconds, 0)
   )
 
   const isPrimary = clusterCode === DEFAULT_CLUSTER_CODE
@@ -355,7 +381,9 @@ export async function fetchNamespaceTelemetry(
     clusterName: clusterMeta.clusterName,
     region: clusterMeta.region,
     isPrimary: clusterMeta.isPrimary,
-    timeRange,
+    timeRange: summaryTimeRange,
+    from: startSeconds,
+    to: endSeconds,
     namespace: ns,
     points,
     cpu: {
