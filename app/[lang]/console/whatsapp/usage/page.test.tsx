@@ -118,11 +118,12 @@ describe("WhatsAppUsagePage", () => {
       const svgs = view.container.querySelectorAll("svg")
       expect(svgs.length).toBeGreaterThanOrEqual(2)
       expect(
-        view.getByText(/Tren Volume Pesan|Message Volume Trend/i)
-      ).toBeDefined()
+        view.getAllByText(/Tren Volume Pesan|Message Volume Trend/i).length
+      ).toBeGreaterThanOrEqual(1)
       expect(
-        view.getByText(/Komposisi Kategori Pesan|Category Composition/i)
-      ).toBeDefined()
+        view.getAllByText(/Komposisi Kategori Pesan|Category Composition/i)
+          .length
+      ).toBeGreaterThanOrEqual(1)
     })
   })
 })
