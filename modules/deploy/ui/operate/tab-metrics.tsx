@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   ArrowsLeftRight,
   CheckCircle,
@@ -10,6 +11,24 @@ import {
   Timer,
   Warning,
 } from "@phosphor-icons/react"
+import { eden } from "@/lib/eden"
+import {
+  TimeRangeDropdown,
+  type AutoRefreshInterval,
+} from "@/components/telemetry/time-range-dropdown"
+import type { TimeRangeSelection } from "@/lib/time-range"
+import {
+  formatBytes,
+  generateClusterTelemetrySummary,
+} from "@/modules/deploy/telemetry.service"
+import type {
+  ClusterTelemetrySummary,
+  PodStatusState,
+} from "@/modules/deploy/telemetry.types"
+import {
+  PodMultiSeriesSparkline,
+  type PodSeries,
+} from "@/modules/deploy/ui/pod-multi-series-sparkline"
 
 import {
   Card,
@@ -19,8 +38,47 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { ClusterTelemetryCards } from "@/modules/deploy/ui/cluster-telemetry-cards"
 
+const POD_COLORS = ["#10b981", "#38bdf8", "#a855f7", "#f59e0b", "#f43f5e"]
+
+function formatUptime(seconds?: number): string {
+  if (!seconds || seconds <= 0) return "Just started"
+  const d = Math.floor(seconds / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (d > 0) return `${d}d ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m`
+  return `${seconds}s`
+}
+
+function getStatusBadge(status: PodStatusState, ready?: boolean) {
+  if (
+    status === "CrashLoopBackOff" ||
+    status === "OOMKilled" ||
+    status === "Failed"
+  ) {
+    return {
+      label: status,
+      color: "border-destructive/30 bg-destructive/10 text-destructive",
+      dot: "bg-destructive",
+    }
+  }
+  if (status === "Pending" || status === "ImagePullBackOff") {
+    return {
+      label: status,
+      color:
+        "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      dot: "bg-amber-500",
+    }
+  }
+  return {
+    label: ready ? "Running (Ready)" : "Running",
+    color:
+      "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+  }
+}
 type TimeRange = "1h" | "6h" | "24h" | "7d" | "30d"
 
 export type TabMetricsProps = {
@@ -272,85 +330,12 @@ export function TabMetrics({
 
   if (appSlug) {
     return (
-      <div className="space-y-6">
-        {/* Workload Live Telemetry & Pod Quota Breakdown */}
-        <ClusterTelemetryCards
-          appSlug={appSlug}
-          clusterCode={clusterCode}
-          columns={3}
-          chartHeight={110}
-          showPodBreakdown={true}
-          title="Live Workload Telemetry"
-        />
-
-        {/* Deep-dive Observability Cards: Advisory, Latency & Traffic Distribution */}
-        <div className="flex flex-col gap-3 border-t border-border pt-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h4 className="text-sm font-bold text-foreground">
-              Edge Ingress &amp; Observability Insights
-            </h4>
-            <p className="text-xs text-muted-foreground">
-              Latency percentiles, HTTP status codes, and workload advisory
-            </p>
-          </div>
-          <div
-            className="flex items-center gap-1 rounded-lg border border-border bg-muted/20 p-1"
-            role="tablist"
-            aria-label="Time range"
-          >
-            {TIME_RANGE_OPTIONS.map((option) => {
-              const isActive = timeRange === option.value
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setTimeRange(option.value)}
-                  className={cn(
-                    "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                  )}
-                >
-                  <span>{option.label}</span>
-                  {option.badge ? (
-                    <span
-                      className={cn(
-                        "rounded px-1 text-[10px] leading-tight font-semibold",
-                        isActive
-                          ? "bg-primary-foreground/20 text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      ({option.badge})
-                    </span>
-                  ) : null}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-3">
-          <ResourceAdvisoryCard
-            cpuUsageValue={cpuUsageValue}
-            cpuLimitValue={cpuLimitValue}
-            cpuPercent={cpuPercent}
-            memoryUsageValue={memoryUsageValue}
-            memoryLimitValue={memoryLimitValue}
-            memoryPercent={memoryPercent}
-          />
-          <div className="col-span-2 grid gap-6 md:grid-cols-2">
-            <LatencyPercentilesCard
-              currentMetrics={currentMetrics}
-              timeRange={timeRange}
-            />
-            <HttpStatusDistributionCard currentMetrics={currentMetrics} />
-          </div>
-        </div>
-      </div>
+      <PodObservabilityView
+        appSlug={appSlug}
+        clusterCode={clusterCode}
+        cpuLimitValue={cpuLimitValue}
+        memLimitValue={memoryLimitValue}
+      />
     )
   }
 
@@ -862,5 +847,473 @@ function HttpStatusDistributionCard({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function PodObservabilityView({
+  appSlug,
+  clusterCode = "sgp",
+  cpuLimitValue,
+  memLimitValue,
+}: {
+  appSlug: string
+  clusterCode?: string
+  cpuLimitValue: number
+  memLimitValue: number
+}) {
+  const [selectedPod, setSelectedPod] = useState<string>("all")
+  const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
+    type: "preset",
+    preset: "1h",
+  })
+  const [refreshInterval, setRefreshInterval] =
+    useState<AutoRefreshInterval>(30_000)
+
+  const userTimeZone =
+    typeof Intl !== "undefined"
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : "UTC"
+
+  const {
+    data: telemetry = generateClusterTelemetrySummary("1h"),
+    isFetching,
+    refetch,
+  } = useQuery<ClusterTelemetrySummary>({
+    queryKey: [
+      "deploy",
+      "pod-telemetry",
+      timeSelection,
+      clusterCode,
+      userTimeZone,
+      appSlug,
+    ],
+    queryFn: async () => {
+      const queryParams =
+        timeSelection.type === "preset"
+          ? {
+              range: timeSelection.preset,
+              cluster: clusterCode,
+              tz: userTimeZone,
+              appSlug,
+            }
+          : {
+              from: String(timeSelection.from),
+              to: String(timeSelection.to),
+              cluster: clusterCode,
+              tz: userTimeZone,
+              appSlug,
+            }
+
+      const res = await eden.api.deploy.telemetry.get({ $query: queryParams })
+      if (!res.data?.ok || !res.data.data) {
+        throw new Error(res.data?.message ?? "Failed to fetch telemetry")
+      }
+      return res.data.data
+    },
+    refetchInterval:
+      typeof refreshInterval === "number" && refreshInterval > 0
+        ? refreshInterval
+        : false,
+  })
+
+  const rawPods = telemetry?.pods ?? []
+  const pods = rawPods.map((p) => ({
+    ...p,
+    pod:
+      p.pod === "workload-deploy-0" && appSlug ? `${appSlug}-deploy-0` : p.pod,
+  }))
+  const podColors: Record<string, string> = {}
+  for (let idx = 0; idx < pods.length; idx++) {
+    const p = pods[idx]
+    if (p) podColors[p.pod] = POD_COLORS[idx % POD_COLORS.length] ?? "#10b981"
+  }
+
+  const activePods =
+    selectedPod === "all" ? pods : pods.filter((p) => p.pod === selectedPod)
+  const isFiltered = selectedPod !== "all"
+
+  // Common labels across points
+  const timeLabels = (telemetry?.points ?? []).map((p) => p.timestamp)
+
+  // Multi-series lines for CPU
+  const cpuSeries: PodSeries[] = activePods.map((p) => ({
+    id: p.pod,
+    name: p.pod,
+    color: podColors[p.pod] ?? "#10b981",
+    values: p.cpuSeries?.map((pt) => pt.value) ?? [],
+  }))
+
+  // Multi-series lines for RAM (converted to MB)
+  const ramSeries: PodSeries[] = activePods.map((p) => ({
+    id: p.pod,
+    name: p.pod,
+    color: podColors[p.pod] ?? "#10b981",
+    values:
+      p.memorySeries?.map((pt) =>
+        Number((pt.value / (1024 * 1024)).toFixed(1))
+      ) ?? [],
+  }))
+
+  // Multi-series lines for Network Rx
+  const netSeries: PodSeries[] = activePods.map((p) => ({
+    id: p.pod,
+    name: p.pod,
+    color: podColors[p.pod] ?? "#10b981",
+    values:
+      p.networkRxSeries?.map((pt) => Number((pt.value / 1024).toFixed(1))) ??
+      [],
+  }))
+
+  const cpuLimitCores = telemetry?.cpu.limitCores || cpuLimitValue || 1.0
+  const ramLimitMB = Math.round(
+    (telemetry?.memory.limitBytes || memLimitValue || 536870912) / (1024 * 1024)
+  )
+
+  // Diagnostic calculations
+  const totalCpuCores = activePods.reduce((sum, p) => sum + p.cpuUsageCores, 0)
+  const totalMemBytes = activePods.reduce(
+    (sum, p) => sum + p.memoryUsageBytes,
+    0
+  )
+  const cpuPercent = Math.min(
+    100,
+    Math.round((totalCpuCores / (cpuLimitCores || 1)) * 100)
+  )
+  const memPercent = Math.min(
+    100,
+    Math.round((totalMemBytes / (ramLimitMB * 1024 * 1024 || 1)) * 100)
+  )
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Live pulse and controls */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-foreground">
+              Per-Pod Workload Observability
+            </h3>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500">
+              <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+              <span>LIVE</span>
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Multi-replica telemetry breakdown, container lifecycle status, and
+            quota saturation
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <TimeRangeDropdown
+            value={timeSelection}
+            onChange={setTimeSelection}
+            onRefresh={() => void refetch()}
+            isFetching={isFetching}
+            refreshInterval={refreshInterval}
+            onRefreshIntervalChange={setRefreshInterval}
+          />
+        </div>
+      </div>
+
+      {/* Interactive Pod Filter Selector Pills */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/20 p-1.5">
+        <span className="px-2 text-xs font-semibold text-muted-foreground">
+          Filter Pod:
+        </span>
+        <button
+          type="button"
+          onClick={() => setSelectedPod("all")}
+          className={cn(
+            "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+            selectedPod === "all"
+              ? "bg-primary font-semibold text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          )}
+        >
+          <span>All Pods</span>
+          <span className="py-0.2 rounded bg-primary-foreground/20 px-1 text-[10px] font-bold">
+            {pods.length}
+          </span>
+        </button>
+
+        {pods.map((pod) => {
+          const isSelected = selectedPod === pod.pod
+          const dotColor = podColors[pod.pod] ?? "#10b981"
+          return (
+            <button
+              key={pod.pod}
+              type="button"
+              onClick={() => setSelectedPod(pod.pod)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                isSelected
+                  ? "border border-border bg-secondary font-semibold text-secondary-foreground shadow-xs"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              )}
+            >
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: dotColor }}
+              />
+              <span className="font-mono">{pod.pod}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Pod Replica Health & Resource Allocation Table */}
+      <Card className="border-border bg-card shadow-xs">
+        <CardHeader className="space-y-1 pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-bold text-foreground">
+                Pod Replica Health &amp; Resource Allocation
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Live container status, readiness probe, and compute saturation
+                per replica
+              </CardDescription>
+            </div>
+            <span className="text-xs font-medium text-muted-foreground">
+              {activePods.length}{" "}
+              {activePods.length === 1 ? "replica" : "replicas"}{" "}
+              {isFiltered ? "focused" : "monitored"}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
+                <tr>
+                  <th className="px-3.5 py-2.5">Pod Replica</th>
+                  <th className="px-3.5 py-2.5">Container Status</th>
+                  <th className="px-3.5 py-2.5">Uptime</th>
+                  <th className="px-3.5 py-2.5">CPU Consumption</th>
+                  <th className="px-3.5 py-2.5">RAM Working Set</th>
+                  <th className="px-3.5 py-2.5 text-right">Restarts</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {activePods.map((pod) => {
+                  const badge = getStatusBadge(pod.status, pod.ready)
+                  const dotColor = podColors[pod.pod] ?? "#10b981"
+                  return (
+                    <tr key={pod.pod} className="hover:bg-muted/30">
+                      <td className="px-3.5 py-3">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="size-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: dotColor }}
+                          />
+                          <span className="font-mono text-xs font-semibold text-foreground">
+                            {pod.pod}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                            badge.color
+                          )}
+                        >
+                          <span
+                            className={cn("size-1.5 rounded-full", badge.dot)}
+                          />
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-3 font-mono text-[11px] text-muted-foreground">
+                        {formatUptime(pod.uptimeSeconds)}
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                            <span>{pod.cpuUsageCores.toFixed(3)} cores</span>
+                            <span className="text-muted-foreground">
+                              {pod.cpuPercent}% of {pod.cpuLimitCores} Limit
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full bg-emerald-500 transition-all"
+                              style={{
+                                width: `${Math.min(100, pod.cpuPercent)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                            <span>{formatBytes(pod.memoryUsageBytes)}</span>
+                            <span className="text-muted-foreground">
+                              {pod.memoryPercent}% of{" "}
+                              {formatBytes(pod.memoryLimitBytes)} Limit
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={cn(
+                                "h-full transition-all",
+                                pod.memoryPercent > 85
+                                  ? "bg-destructive"
+                                  : "bg-emerald-500"
+                              )}
+                              style={{
+                                width: `${Math.min(100, pod.memoryPercent)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3 text-right font-mono text-xs">
+                        <span
+                          className={cn(
+                            "rounded px-1.5 py-0.5 text-[11px] font-semibold",
+                            pod.restarts > 0
+                              ? "border border-amber-500/30 bg-amber-500/10 text-amber-500"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {pod.restarts} {pod.reason ? `(${pod.reason})` : ""}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3 Per-Pod Multi-Series Charts Grid */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Card 1: CPU Usage per Pod */}
+        <Card className="flex flex-col justify-between">
+          <CardHeader className="space-y-1 pb-2">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Cpu size={14} className="text-primary" /> CPU Usage per Pod
+              </span>
+              <span className="text-xs font-bold text-foreground">
+                {cpuPercent}% Allocated
+              </span>
+            </div>
+            <CardTitle className="text-lg font-bold tracking-tight">
+              {totalCpuCores.toFixed(3)} vCPU
+              <span className="text-xs font-normal text-muted-foreground">
+                {" "}
+                / {cpuLimitCores} Limit
+              </span>
+            </CardTitle>
+            <CardDescription className="text-[11px] text-muted-foreground">
+              {activePods.length}{" "}
+              {activePods.length === 1 ? "replica line" : "replica lines"}{" "}
+              &bull; Limit: {cpuLimitCores} vCPU
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <PodMultiSeriesSparkline
+              labels={timeLabels}
+              series={cpuSeries}
+              limit={cpuLimitCores}
+              unit="vCPU"
+              height={100}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Card 2: Memory Working Set per Pod */}
+        <Card className="flex flex-col justify-between">
+          <CardHeader className="space-y-1 pb-2">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <HardDrive size={14} className="text-primary" /> RAM Working Set
+                per Pod
+              </span>
+              <span className="text-xs font-bold text-foreground">
+                {memPercent}% Allocated
+              </span>
+            </div>
+            <CardTitle className="text-lg font-bold tracking-tight">
+              {formatBytes(totalMemBytes)}
+              <span className="text-xs font-normal text-muted-foreground">
+                {" "}
+                / {ramLimitMB} MB Limit
+              </span>
+            </CardTitle>
+            <CardDescription className="text-[11px] text-muted-foreground">
+              {activePods.length}{" "}
+              {activePods.length === 1 ? "replica line" : "replica lines"}{" "}
+              &bull; Limit: {ramLimitMB} MB
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <PodMultiSeriesSparkline
+              labels={timeLabels}
+              series={ramSeries}
+              limit={ramLimitMB}
+              unit="MB"
+              height={100}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Card 3: Network Ingress Throughput per Pod */}
+        <Card className="flex flex-col justify-between">
+          <CardHeader className="space-y-1 pb-2">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Pulse size={14} className="text-primary" /> Network Ingress per
+                Pod
+              </span>
+              <span className="text-xs font-bold text-foreground">Live Rx</span>
+            </div>
+            <CardTitle className="text-lg font-bold tracking-tight">
+              {formatBytes(telemetry?.network.currentRxBytes ?? 0)}/s
+              <span className="text-xs font-normal text-muted-foreground">
+                {" "}
+                Total In
+              </span>
+            </CardTitle>
+            <CardDescription className="text-[11px] text-muted-foreground">
+              Throughput per pod replica (KB/s)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <PodMultiSeriesSparkline
+              labels={timeLabels}
+              series={netSeries}
+              unit="KB/s"
+              height={100}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Deep-dive Observability Cards: Advisory, Latency & Traffic Distribution */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <ResourceAdvisoryCard
+          cpuUsageValue={totalCpuCores}
+          cpuLimitValue={cpuLimitCores}
+          cpuPercent={cpuPercent}
+          memoryUsageValue={totalMemBytes}
+          memoryLimitValue={ramLimitMB * 1024 * 1024}
+          memoryPercent={memPercent}
+        />
+        <div className="col-span-2 grid gap-6 md:grid-cols-2">
+          <LatencyPercentilesCard
+            currentMetrics={METRICS_BY_RANGE["1h"]}
+            timeRange="1h"
+          />
+          <HttpStatusDistributionCard currentMetrics={METRICS_BY_RANGE["1h"]} />
+        </div>
+      </div>
+    </div>
   )
 }

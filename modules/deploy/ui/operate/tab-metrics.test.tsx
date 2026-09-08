@@ -130,13 +130,40 @@ describe("TabMetrics", () => {
       </QueryClientProvider>
     )
 
-    expect(view.getByText("Live Workload Telemetry")).toBeDefined()
-    expect(view.getByText("Pod Resource & Quota Allocation")).toBeDefined()
+    expect(view.getByText("Per-Pod Workload Observability")).toBeDefined()
     expect(
-      view.getByText("Edge Ingress & Observability Insights")
+      view.getByText("Pod Replica Health & Resource Allocation")
     ).toBeDefined()
+    expect(view.getByText("CPU Usage per Pod")).toBeDefined()
+    expect(view.getByText("RAM Working Set per Pod")).toBeDefined()
+    expect(view.getByText("Network Ingress per Pod")).toBeDefined()
+    expect(view.getByText("Filter Pod:")).toBeDefined()
     expect(view.getByText("Resource Advisory")).toBeDefined()
     expect(view.getByText("Latency Percentiles")).toBeDefined()
     expect(view.getByText("HTTP Status & Error Rate")).toBeDefined()
+  })
+
+  it("filters per-pod charts when clicking a specific pod filter pill", () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const view = render(
+      <QueryClientProvider client={client}>
+        <TabMetrics appSlug="hermes-vibrant-comet" />
+      </QueryClientProvider>
+    )
+
+    const allPodsBtn = view.getByRole("button", { name: /All Pods/i })
+    expect(allPodsBtn).toBeDefined()
+    expect(allPodsBtn.className).toContain("bg-primary")
+
+    const podPills = view.getAllByRole("button", {
+      name: /hermes-vibrant-comet/i,
+    })
+    expect(podPills.length).toBeGreaterThan(0)
+
+    fireEvent.click(podPills[0])
+    expect(podPills[0].className).toContain("bg-secondary")
+    expect(allPodsBtn.className).not.toContain("bg-primary")
   })
 })
