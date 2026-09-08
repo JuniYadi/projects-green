@@ -7,6 +7,7 @@ import {
   CheckCircle,
   Clock,
   Cpu,
+  Globe,
   HardDrive,
   Pulse,
   Timer,
@@ -863,6 +864,9 @@ function PodObservabilityView({
   memLimitValue: number
 }) {
   const [mountTime] = useState(() => Date.now())
+  const [activeSubTab, setActiveSubTab] = useState<"compute" | "ingress">(
+    "compute"
+  )
   const [selectedPod, setSelectedPod] = useState<string>("all")
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
     type: "preset",
@@ -885,6 +889,7 @@ function PodObservabilityView({
     queryKey: [
       "deploy",
       "pod-telemetry",
+      activeSubTab,
       timeSelection,
       clusterCode,
       userTimeZone,
@@ -898,6 +903,7 @@ function PodObservabilityView({
               cluster: clusterCode,
               tz: userTimeZone,
               appSlug,
+              view: activeSubTab,
             }
           : {
               from: String(timeSelection.from),
@@ -905,6 +911,7 @@ function PodObservabilityView({
               cluster: clusterCode,
               tz: userTimeZone,
               appSlug,
+              view: activeSubTab,
             }
 
       const res = await eden.api.deploy.telemetry.get({ $query: queryParams })
@@ -974,6 +981,87 @@ function PodObservabilityView({
       [],
   }))
 
+  const httpStatusSeries: PodSeries[] = [
+    {
+      id: "2xx",
+      name: "2xx Success",
+      color: "#10b981",
+      values:
+        telemetry?.ingress?.statusCodes
+          .find((s) => s.code === "2xx")
+          ?.points.map((p) => p.value) ?? timeLabels.map(() => 0),
+    },
+    {
+      id: "3xx",
+      name: "3xx Redir",
+      color: "#38bdf8",
+      values:
+        telemetry?.ingress?.statusCodes
+          .find((s) => s.code === "3xx")
+          ?.points.map((p) => p.value) ?? timeLabels.map(() => 0),
+    },
+    {
+      id: "4xx",
+      name: "4xx Client Err",
+      color: "#f59e0b",
+      values:
+        telemetry?.ingress?.statusCodes
+          .find((s) => s.code === "4xx")
+          ?.points.map((p) => p.value) ?? timeLabels.map(() => 0),
+    },
+    {
+      id: "5xx",
+      name: "5xx Server Err",
+      color: "#f43f5e",
+      values:
+        telemetry?.ingress?.statusCodes
+          .find((s) => s.code === "5xx")
+          ?.points.map((p) => p.value) ?? timeLabels.map(() => 0),
+    },
+  ]
+
+  const latencySeries: PodSeries[] = [
+    {
+      id: "total",
+      name: "Total Roundtrip",
+      color: "#10b981",
+      values:
+        telemetry?.ingress?.latencyBreakdown
+          .find((s) => s.type === "total")
+          ?.points.map((p) => Math.round(p.value * 1000 * 10) / 10) ??
+        timeLabels.map(() => 0),
+    },
+    {
+      id: "app",
+      name: "App Response",
+      color: "#818cf8",
+      values:
+        telemetry?.ingress?.latencyBreakdown
+          .find((s) => s.type === "app")
+          ?.points.map((p) => Math.round(p.value * 1000 * 10) / 10) ??
+        timeLabels.map(() => 0),
+    },
+    {
+      id: "connect",
+      name: "Connect Time",
+      color: "#fbbf24",
+      values:
+        telemetry?.ingress?.latencyBreakdown
+          .find((s) => s.type === "connect")
+          ?.points.map((p) => Math.round(p.value * 1000 * 10) / 10) ??
+        timeLabels.map(() => 0),
+    },
+    {
+      id: "queue",
+      name: "Queue Time",
+      color: "#a78bfa",
+      values:
+        telemetry?.ingress?.latencyBreakdown
+          .find((s) => s.type === "queue")
+          ?.points.map((p) => Math.round(p.value * 1000 * 10) / 10) ??
+        timeLabels.map(() => 0),
+    },
+  ]
   const cpuLimitCores = telemetry?.cpu.limitCores || cpuLimitValue || 1.0
   const ramLimitMB = Math.round(
     (telemetry?.memory.limitBytes || memLimitValue || 536870912) / (1024 * 1024)
@@ -1031,305 +1119,577 @@ function PodObservabilityView({
           />
         </div>
       </div>
-
-      {/* Interactive Pod Filter Selector Pills */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/20 p-1.5">
-        <span className="px-2 text-xs font-semibold text-muted-foreground">
-          Filter Pod:
-        </span>
+      {/* Metric Category Sub-Tabs */}
+      <div className="flex items-center gap-2 border-b border-border pb-3">
         <button
           type="button"
-          onClick={() => setSelectedPod("all")}
+          onClick={() => setActiveSubTab("compute")}
           className={cn(
-            "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-            selectedPod === "all"
-              ? "bg-primary font-semibold text-primary-foreground shadow-xs"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            "flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all",
+            activeSubTab === "compute"
+              ? "bg-card text-foreground shadow-xs ring-1 ring-border"
+              : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
           )}
         >
-          <span>All Pods</span>
-          <span className="py-0.2 rounded bg-primary-foreground/20 px-1 text-[10px] font-bold">
-            {pods.length}
+          <Cpu
+            size={14}
+            className={
+              activeSubTab === "compute"
+                ? "text-primary"
+                : "text-muted-foreground"
+            }
+          />
+          <span>Compute & Pods</span>
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {pods.length} Replicas
           </span>
         </button>
 
-        {pods.map((pod) => {
-          const isSelected = selectedPod === pod.pod
-          const dotColor = podColors[pod.pod] ?? "#10b981"
-          return (
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("ingress")}
+          className={cn(
+            "flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all",
+            activeSubTab === "ingress"
+              ? "bg-card text-foreground shadow-xs ring-1 ring-border"
+              : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+          )}
+        >
+          <Globe
+            size={14}
+            className={
+              activeSubTab === "ingress"
+                ? "text-primary"
+                : "text-muted-foreground"
+            }
+          />
+          <span>HTTP & Ingress</span>
+          <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-500">
+            HAProxy L7
+          </span>
+        </button>
+      </div>
+
+      {activeSubTab === "compute" ? (
+        <>
+          {/* Interactive Pod Filter Selector Pills */}
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/20 p-1.5">
+            <span className="px-2 text-xs font-semibold text-muted-foreground">
+              Filter Pod:
+            </span>
             <button
-              key={pod.pod}
               type="button"
-              onClick={() => setSelectedPod(pod.pod)}
+              onClick={() => setSelectedPod("all")}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                isSelected
-                  ? "border border-border bg-secondary font-semibold text-secondary-foreground shadow-xs"
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                selectedPod === "all"
+                  ? "bg-primary font-semibold text-primary-foreground shadow-xs"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
             >
-              <span
-                className="size-2 rounded-full"
-                style={{ backgroundColor: dotColor }}
-              />
-              <span className="font-mono">{pod.pod}</span>
+              <span>All Pods</span>
+              <span className="py-0.2 rounded bg-primary-foreground/20 px-1 text-[10px] font-bold">
+                {pods.length}
+              </span>
             </button>
-          )
-        })}
-      </div>
 
-      {/* Pod Replica Health & Resource Allocation Table */}
-      <Card className="border-border bg-card shadow-xs">
-        <CardHeader className="space-y-1 pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm font-bold text-foreground">
-                Pod Replica Health &amp; Resource Allocation
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Live container status, readiness probe, and compute saturation
-                per replica
-              </CardDescription>
-            </div>
-            <span className="text-xs font-medium text-muted-foreground">
-              {activePods.length}{" "}
-              {activePods.length === 1 ? "replica" : "replicas"}{" "}
-              {isFiltered ? "focused" : "monitored"}
-            </span>
+            {pods.map((pod) => {
+              const isSelected = selectedPod === pod.pod
+              const dotColor = podColors[pod.pod] ?? "#10b981"
+              return (
+                <button
+                  key={pod.pod}
+                  type="button"
+                  onClick={() => setSelectedPod(pod.pod)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                    isSelected
+                      ? "border border-border bg-secondary font-semibold text-secondary-foreground shadow-xs"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: dotColor }}
+                  />
+                  <span className="font-mono">{pod.pod}</span>
+                </button>
+              )
+            })}
           </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
-                <tr>
-                  <th className="px-3.5 py-2.5">Pod Replica</th>
-                  <th className="px-3.5 py-2.5">Container Status</th>
-                  <th className="px-3.5 py-2.5">Uptime</th>
-                  <th className="px-3.5 py-2.5">CPU Consumption</th>
-                  <th className="px-3.5 py-2.5">RAM Working Set</th>
-                  <th className="px-3.5 py-2.5 text-right">Restarts</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {activePods.map((pod) => {
-                  const badge = getStatusBadge(pod.status, pod.ready)
-                  const dotColor = podColors[pod.pod] ?? "#10b981"
-                  return (
-                    <tr key={pod.pod} className="hover:bg-muted/30">
-                      <td className="px-3.5 py-3">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="size-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: dotColor }}
-                          />
-                          <span className="font-mono text-xs font-semibold text-foreground">
-                            {pod.pod}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3.5 py-3">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
-                            badge.color
-                          )}
-                        >
-                          <span
-                            className={cn("size-1.5 rounded-full", badge.dot)}
-                          />
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="px-3.5 py-3 font-mono text-[11px] text-muted-foreground">
-                        {formatUptime(pod.uptimeSeconds)}
-                      </td>
-                      <td className="px-3.5 py-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
-                            <span>{pod.cpuUsageCores.toFixed(3)} cores</span>
-                            <span className="text-muted-foreground">
-                              {pod.cpuPercent}% of {pod.cpuLimitCores} Limit
-                            </span>
-                          </div>
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full bg-emerald-500 transition-all"
-                              style={{
-                                width: `${Math.min(100, pod.cpuPercent)}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3.5 py-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
-                            <span>{formatBytes(pod.memoryUsageBytes)}</span>
-                            <span className="text-muted-foreground">
-                              {pod.memoryPercent}% of{" "}
-                              {formatBytes(pod.memoryLimitBytes)} Limit
-                            </span>
-                          </div>
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                            <div
-                              className={cn(
-                                "h-full transition-all",
-                                pod.memoryPercent > 85
-                                  ? "bg-destructive"
-                                  : "bg-emerald-500"
-                              )}
-                              style={{
-                                width: `${Math.min(100, pod.memoryPercent)}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3.5 py-3 text-right font-mono text-xs">
-                        <span
-                          className={cn(
-                            "rounded px-1.5 py-0.5 text-[11px] font-semibold",
-                            pod.restarts > 0
-                              ? "border border-amber-500/30 bg-amber-500/10 text-amber-500"
-                              : "text-muted-foreground"
-                          )}
-                        >
-                          {pod.restarts} {pod.reason ? `(${pod.reason})` : ""}
-                        </span>
-                      </td>
+
+          {/* Pod Replica Health & Resource Allocation Table */}
+          <Card className="border-border bg-card shadow-xs">
+            <CardHeader className="space-y-1 pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-bold text-foreground">
+                    Pod Replica Health &amp; Resource Allocation
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Live container status, readiness probe, and compute
+                    saturation per replica
+                  </CardDescription>
+                </div>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {activePods.length}{" "}
+                  {activePods.length === 1 ? "replica" : "replicas"}{" "}
+                  {isFiltered ? "focused" : "monitored"}
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
+                    <tr>
+                      <th className="px-3.5 py-2.5">Pod Replica</th>
+                      <th className="px-3.5 py-2.5">Container Status</th>
+                      <th className="px-3.5 py-2.5">Uptime</th>
+                      <th className="px-3.5 py-2.5">CPU Consumption</th>
+                      <th className="px-3.5 py-2.5">RAM Working Set</th>
+                      <th className="px-3.5 py-2.5 text-right">Restarts</th>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {activePods.map((pod) => {
+                      const badge = getStatusBadge(pod.status, pod.ready)
+                      const dotColor = podColors[pod.pod] ?? "#10b981"
+                      return (
+                        <tr key={pod.pod} className="hover:bg-muted/30">
+                          <td className="px-3.5 py-3">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="size-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: dotColor }}
+                              />
+                              <span className="font-mono text-xs font-semibold text-foreground">
+                                {pod.pod}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3.5 py-3">
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                                badge.color
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "size-1.5 rounded-full",
+                                  badge.dot
+                                )}
+                              />
+                              {badge.label}
+                            </span>
+                          </td>
+                          <td className="px-3.5 py-3 font-mono text-[11px] text-muted-foreground">
+                            {formatUptime(pod.uptimeSeconds)}
+                          </td>
+                          <td className="px-3.5 py-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                                <span>
+                                  {pod.cpuUsageCores.toFixed(3)} cores
+                                </span>
+                                <span className="text-muted-foreground">
+                                  {pod.cpuPercent}% of {pod.cpuLimitCores} Limit
+                                </span>
+                              </div>
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full bg-emerald-500 transition-all"
+                                  style={{
+                                    width: `${Math.min(100, pod.cpuPercent)}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3.5 py-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                                <span>{formatBytes(pod.memoryUsageBytes)}</span>
+                                <span className="text-muted-foreground">
+                                  {pod.memoryPercent}% of{" "}
+                                  {formatBytes(pod.memoryLimitBytes)} Limit
+                                </span>
+                              </div>
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className={cn(
+                                    "h-full transition-all",
+                                    pod.memoryPercent > 85
+                                      ? "bg-destructive"
+                                      : "bg-emerald-500"
+                                  )}
+                                  style={{
+                                    width: `${Math.min(100, pod.memoryPercent)}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3.5 py-3 text-right font-mono text-xs">
+                            <span
+                              className={cn(
+                                "rounded px-1.5 py-0.5 text-[11px] font-semibold",
+                                pod.restarts > 0
+                                  ? "border border-amber-500/30 bg-amber-500/10 text-amber-500"
+                                  : "text-muted-foreground"
+                              )}
+                            >
+                              {pod.restarts}{" "}
+                              {pod.reason ? `(${pod.reason})` : ""}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 3 Per-Pod Multi-Series Charts Grid */}
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Card 1: CPU Usage per Pod */}
+            <Card className="flex flex-col justify-between">
+              <CardHeader className="space-y-1 pb-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Cpu size={14} className="text-primary" /> CPU Usage per Pod
+                  </span>
+                  <span className="text-xs font-bold text-foreground">
+                    {cpuPercent}% Allocated
+                  </span>
+                </div>
+                <CardTitle className="text-lg font-bold tracking-tight">
+                  {totalCpuCores.toFixed(3)} vCPU
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {" "}
+                    / {cpuLimitCores} Limit
+                  </span>
+                </CardTitle>
+                <CardDescription className="text-[11px] text-muted-foreground">
+                  {activePods.length}{" "}
+                  {activePods.length === 1 ? "replica line" : "replica lines"}{" "}
+                  &bull; Limit: {cpuLimitCores} vCPU
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <PodMultiSeriesSparkline
+                  labels={timeLabels}
+                  series={cpuSeries}
+                  limit={cpuLimitCores}
+                  unit="vCPU"
+                  height={100}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Card 2: Memory Working Set per Pod */}
+            <Card className="flex flex-col justify-between">
+              <CardHeader className="space-y-1 pb-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <HardDrive size={14} className="text-primary" /> RAM Working
+                    Set per Pod
+                  </span>
+                  <span className="text-xs font-bold text-foreground">
+                    {memPercent}% Allocated
+                  </span>
+                </div>
+                <CardTitle className="text-lg font-bold tracking-tight">
+                  {formatBytes(totalMemBytes)}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {" "}
+                    / {ramLimitMB} MB Limit
+                  </span>
+                </CardTitle>
+                <CardDescription className="text-[11px] text-muted-foreground">
+                  {activePods.length}{" "}
+                  {activePods.length === 1 ? "replica line" : "replica lines"}{" "}
+                  &bull; Limit: {ramLimitMB} MB
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <PodMultiSeriesSparkline
+                  labels={timeLabels}
+                  series={ramSeries}
+                  limit={ramLimitMB}
+                  unit="MB"
+                  height={100}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Card 3: Network Ingress Throughput per Pod */}
+            <Card className="flex flex-col justify-between">
+              <CardHeader className="space-y-1 pb-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Pulse size={14} className="text-primary" /> Network Ingress
+                    per Pod
+                  </span>
+                  <span className="text-xs font-bold text-foreground">
+                    Live Rx
+                  </span>
+                </div>
+                <CardTitle className="text-lg font-bold tracking-tight">
+                  {formatBytes(telemetry?.network.currentRxBytes ?? 0)}/s
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {" "}
+                    Total In
+                  </span>
+                </CardTitle>
+                <CardDescription className="text-[11px] text-muted-foreground">
+                  Throughput per pod replica (KB/s)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <PodMultiSeriesSparkline
+                  labels={timeLabels}
+                  series={netSeries}
+                  unit="KB/s"
+                  height={100}
+                />
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* 3 Per-Pod Multi-Series Charts Grid */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Card 1: CPU Usage per Pod */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader className="space-y-1 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Cpu size={14} className="text-primary" /> CPU Usage per Pod
-              </span>
-              <span className="text-xs font-bold text-foreground">
-                {cpuPercent}% Allocated
-              </span>
-            </div>
-            <CardTitle className="text-lg font-bold tracking-tight">
-              {totalCpuCores.toFixed(3)} vCPU
-              <span className="text-xs font-normal text-muted-foreground">
-                {" "}
-                / {cpuLimitCores} Limit
-              </span>
-            </CardTitle>
-            <CardDescription className="text-[11px] text-muted-foreground">
-              {activePods.length}{" "}
-              {activePods.length === 1 ? "replica line" : "replica lines"}{" "}
-              &bull; Limit: {cpuLimitCores} vCPU
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <PodMultiSeriesSparkline
-              labels={timeLabels}
-              series={cpuSeries}
-              limit={cpuLimitCores}
-              unit="vCPU"
-              height={100}
+          {/* Deep-dive Observability Cards: Advisory, Latency & Traffic Distribution */}
+          <div className="grid gap-6 md:grid-cols-3">
+            <ResourceAdvisoryCard
+              cpuUsageValue={totalCpuCores}
+              cpuLimitValue={cpuLimitCores}
+              cpuPercent={cpuPercent}
+              memoryUsageValue={totalMemBytes}
+              memoryLimitValue={ramLimitMB * 1024 * 1024}
+              memoryPercent={memPercent}
             />
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Memory Working Set per Pod */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader className="space-y-1 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <HardDrive size={14} className="text-primary" /> RAM Working Set
-                per Pod
-              </span>
-              <span className="text-xs font-bold text-foreground">
-                {memPercent}% Allocated
-              </span>
+            <div className="col-span-2 grid gap-6 md:grid-cols-2">
+              <LatencyPercentilesCard
+                currentMetrics={METRICS_BY_RANGE["1h"]}
+                timeRange="1h"
+              />
+              <HttpStatusDistributionCard
+                currentMetrics={METRICS_BY_RANGE["1h"]}
+              />
             </div>
-            <CardTitle className="text-lg font-bold tracking-tight">
-              {formatBytes(totalMemBytes)}
-              <span className="text-xs font-normal text-muted-foreground">
-                {" "}
-                / {ramLimitMB} MB Limit
-              </span>
-            </CardTitle>
-            <CardDescription className="text-[11px] text-muted-foreground">
-              {activePods.length}{" "}
-              {activePods.length === 1 ? "replica line" : "replica lines"}{" "}
-              &bull; Limit: {ramLimitMB} MB
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <PodMultiSeriesSparkline
-              labels={timeLabels}
-              series={ramSeries}
-              limit={ramLimitMB}
-              unit="MB"
-              height={100}
-            />
-          </CardContent>
-        </Card>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* HTTP Ingress Performance (HAProxy Layer) */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Stat Card 1: Traffic RPS */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Service Traffic
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
+                  RPS
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+                {telemetry?.ingress?.trafficRps ?? 0}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {" "}
+                  req/s
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                HAProxy Ingress request rate
+              </p>
+            </Card>
 
-        {/* Card 3: Network Ingress Throughput per Pod */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader className="space-y-1 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Pulse size={14} className="text-primary" /> Network Ingress per
-                Pod
-              </span>
-              <span className="text-xs font-bold text-foreground">Live Rx</span>
+            {/* Stat Card 2: Error Rates */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Error Rates
+                </span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                    (telemetry?.ingress?.errorRate5xxPercent ?? 0) > 0
+                      ? "bg-rose-500/10 text-rose-500"
+                      : "bg-emerald-500/10 text-emerald-500"
+                  )}
+                >
+                  {(telemetry?.ingress?.errorRate5xxPercent ?? 0) > 0
+                    ? "5xx Detected"
+                    : "0% 5xx Errors"}
+                </span>
+              </div>
+              <div className="mt-2 flex items-baseline gap-2 text-2xl font-bold tracking-tight text-foreground">
+                <span>{telemetry?.ingress?.errorRate5xxPercent ?? 0}%</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  5xx &bull; {telemetry?.ingress?.errorRate4xxPercent ?? 0}% 4xx
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Server and client error percentages
+              </p>
+            </Card>
+
+            {/* Stat Card 3: Avg Response Time */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Avg Latency
+                </span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                  End-to-End
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+                {(
+                  (telemetry?.ingress?.avgResponseTimeSeconds ?? 0) * 1000
+                ).toFixed(1)}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {" "}
+                  ms
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Average backend application roundtrip
+              </p>
+            </Card>
+
+            {/* Stat Card 4: Active Sessions & Queue */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Active Sessions & Queue
+                </span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                  Concurrency
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+                {telemetry?.ingress?.activeSessions ?? 0}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {" "}
+                  active &bull; {telemetry?.ingress?.activeQueue ?? 0} queued
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {telemetry?.ingress?.healthyServers ?? 1} healthy backend pod
+                servers
+              </p>
+            </Card>
+          </div>
+
+          {/* 2 Main Ingress Charts */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Chart 1: Grouped HTTP Response Codes */}
+            <Card className="flex flex-col justify-between">
+              <CardHeader className="space-y-1 pb-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Pulse size={14} className="text-primary" /> Grouped HTTP
+                    Response Codes
+                  </span>
+                  <span className="text-xs font-bold text-foreground">
+                    Live Rates
+                  </span>
+                </div>
+                <CardTitle className="text-lg font-bold tracking-tight">
+                  Status Code Breakdown (req/s)
+                </CardTitle>
+                <CardDescription className="text-[11px] text-muted-foreground">
+                  2xx Success (Green), 3xx Redirect (Sky), 4xx Client (Amber),
+                  5xx Server (Rose)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <PodMultiSeriesSparkline
+                  labels={timeLabels}
+                  series={httpStatusSeries}
+                  unit="req/s"
+                  height={130}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Chart 2: Latency Breakdown */}
+            <Card className="flex flex-col justify-between">
+              <CardHeader className="space-y-1 pb-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Timer size={14} className="text-primary" /> Latency
+                    Breakdown
+                  </span>
+                  <span className="text-xs font-bold text-foreground">
+                    Queue vs Connect vs App
+                  </span>
+                </div>
+                <CardTitle className="text-lg font-bold tracking-tight">
+                  Response Time Components (ms)
+                </CardTitle>
+                <CardDescription className="text-[11px] text-muted-foreground">
+                  Total (Teal), App Response (Indigo), Connect (Amber), Queue
+                  Time (Purple)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <PodMultiSeriesSparkline
+                  labels={timeLabels}
+                  series={latencySeries}
+                  unit="ms"
+                  height={130}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* HAProxy Gateway Ingress Route Information */}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-0.5">
+                <span className="text-xs font-semibold text-foreground">
+                  HAProxy L7 Ingress Gateway
+                </span>
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  Target Ingress Proxy:{" "}
+                  {telemetry?.ingress?.proxy ?? `${appSlug}_svc`}
+                </p>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>
+                  Inbound:{" "}
+                  <strong className="text-foreground">
+                    {formatBytes((telemetry?.ingress?.bandwidthInBps ?? 0) / 8)}
+                    /s
+                  </strong>
+                </span>
+                <span>&bull;</span>
+                <span>
+                  Outbound:{" "}
+                  <strong className="text-foreground">
+                    {formatBytes(
+                      (telemetry?.ingress?.bandwidthOutBps ?? 0) / 8
+                    )}
+                    /s
+                  </strong>
+                </span>
+                <span>&bull;</span>
+                <span className="inline-flex items-center gap-1 text-emerald-500">
+                  <CheckCircle size={13} />
+                  <span>
+                    {telemetry?.ingress?.healthyServers ?? 1} Servers UP
+                  </span>
+                </span>
+              </div>
             </div>
-            <CardTitle className="text-lg font-bold tracking-tight">
-              {formatBytes(telemetry?.network.currentRxBytes ?? 0)}/s
-              <span className="text-xs font-normal text-muted-foreground">
-                {" "}
-                Total In
-              </span>
-            </CardTitle>
-            <CardDescription className="text-[11px] text-muted-foreground">
-              Throughput per pod replica (KB/s)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <PodMultiSeriesSparkline
-              labels={timeLabels}
-              series={netSeries}
-              unit="KB/s"
-              height={100}
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Deep-dive Observability Cards: Advisory, Latency & Traffic Distribution */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <ResourceAdvisoryCard
-          cpuUsageValue={totalCpuCores}
-          cpuLimitValue={cpuLimitCores}
-          cpuPercent={cpuPercent}
-          memoryUsageValue={totalMemBytes}
-          memoryLimitValue={ramLimitMB * 1024 * 1024}
-          memoryPercent={memPercent}
-        />
-        <div className="col-span-2 grid gap-6 md:grid-cols-2">
-          <LatencyPercentilesCard
-            currentMetrics={METRICS_BY_RANGE["1h"]}
-            timeRange="1h"
-          />
-          <HttpStatusDistributionCard currentMetrics={METRICS_BY_RANGE["1h"]} />
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

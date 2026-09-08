@@ -562,9 +562,18 @@ describe("fetchNamespaceTelemetry", () => {
       fetchFn: mockFetch as unknown as typeof fetch,
     })
 
-    expect(recordedQueries.length).toBeGreaterThan(0)
-    for (const q of recordedQueries) {
+    const podQueries = recordedQueries.filter(
+      (q) => q.includes("container_") || q.includes("kube_pod_")
+    )
+    expect(podQueries.length).toBeGreaterThan(0)
+    for (const q of podQueries) {
       expect(q).toContain('pod=~"hermes-vibrant-comet.*"')
+    }
+
+    const proxyQueries = recordedQueries.filter((q) => q.includes("haproxy_"))
+    expect(proxyQueries.length).toBeGreaterThan(0)
+    for (const q of proxyQueries) {
+      expect(q).toContain('proxy=~".*hermes-vibrant-comet.*"')
     }
   })
 

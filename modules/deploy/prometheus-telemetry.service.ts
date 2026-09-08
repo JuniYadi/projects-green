@@ -12,6 +12,7 @@ import {
   formatTelemetryTick,
   resolveTimeRangeBounds,
 } from "@/lib/time-range"
+import { generateClusterTelemetrySummary } from "./telemetry.service"
 
 export const DEFAULT_CLUSTER_CODE = "sgp"
 export const DEFAULT_TIME_RANGE: PredefinedTimeRange = "1h"
@@ -62,6 +63,7 @@ export type FetchNamespaceTelemetryOptions = {
   timeZone?: string
   fetchFn?: typeof fetch
   appSlug?: string
+  view?: "all" | "compute" | "ingress"
 }
 
 function parseToUnixSeconds(val: number | string): number {
@@ -351,6 +353,10 @@ export async function fetchNamespaceTelemetry(
       return new Map()
     }
   }
+  const shouldFetchCompute = opts.view !== "ingress"
+  const shouldFetchIngress = opts.view !== "compute"
+  const proxyPattern = opts.appSlug ? `.*${opts.appSlug}.*` : `${ns}.*`
+
   const queryPodRange = async (
     query: string
   ): Promise<Map<string, Map<number, number>>> => {
@@ -362,6 +368,23 @@ export async function fetchNamespaceTelemetry(
       if (!res.ok) return new Map()
       const json = await res.json()
       return parsePerPodRangeMetricValues(json, "pod")
+    } catch {
+      return new Map()
+    }
+  }
+
+  const queryGroupedRange = async (
+    query: string,
+    keyLabel = "code"
+  ): Promise<Map<string, Map<number, number>>> => {
+    const url = `${baseUrl}/api/v1/query_range?query=${encodeURIComponent(
+      query
+    )}&start=${startSeconds}&end=${endSeconds}&step=${stepSeconds}`
+    try {
+      const res = await fetchImpl(url, { headers })
+      if (!res.ok) return new Map()
+      const json = await res.json()
+      return parsePerPodRangeMetricValues(json, keyLabel)
     } catch {
       return new Map()
     }
@@ -456,19 +479,110 @@ export async function fetchNamespaceTelemetry(
     queryVector(
       `kube_pod_status_ready{namespace="${ns}"${podFilter}, condition="true"}`
     ),
-    queryPodRange(
-      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}"${podFilter}, container!=""}[${rateWindow}])) by (pod)`
-    ),
-    queryPodRange(
-      `sum(container_memory_working_set_bytes{namespace="${ns}"${podFilter}, container!=""}) by (pod)`
-    ),
-    queryPodRange(
-      `sum(rate(container_network_receive_bytes_total{namespace="${ns}"${podFilter}}[${rateWindow}])) by (pod)`
-    ),
-    queryPodRange(
-      `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"${podFilter}}[${rateWindow}])) by (pod)`
-    ),
+    shouldFetchCompute
+      ? queryPodRange(
+          `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}"${podFilter}, container!=""}[${rateWindow}])) by (pod)`
+        )
+      : Promise.resolve(new Map<string, Map<number, number>>()),
+    shouldFetchCompute
+      ? queryPodRange(
+          `sum(container_memory_working_set_bytes{namespace="${ns}"${podFilter}, container!=""}) by (pod)`
+        )
+      : Promise.resolve(new Map<string, Map<number, number>>()),
+    shouldFetchCompute
+      ? queryPodRange(
+          `sum(rate(container_network_receive_bytes_total{namespace="${ns}"${podFilter}}[${rateWindow}])) by (pod)`
+        )
+      : Promise.resolve(new Map<string, Map<number, number>>()),
+    shouldFetchCompute
+      ? queryPodRange(
+          `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"${podFilter}}[${rateWindow}])) by (pod)`
+        )
+      : Promise.resolve(new Map<string, Map<number, number>>()),
   ])
+
+  const [
+    haproxyStatusMap,
+    haproxyAppLatencyMap,
+    haproxyQueueLatencyMap,
+    haproxyConnectLatencyMap,
+    haproxyTotalLatencyMap,
+    instantTrafficRps,
+    instant5xxRps,
+    instant4xxRps,
+    instantBpsIn,
+    instantBpsOut,
+    instantAvgResponseTime,
+    instantSessions,
+    instantQueue,
+    instantHealthyServers,
+    instantBackupServers,
+  ] = shouldFetchIngress
+    ? await Promise.all([
+        queryGroupedRange(
+          `sum by (code) (rate(haproxy_backend_http_responses_total{proxy=~"${proxyPattern}"}[${rateWindow}]))`,
+          "code"
+        ),
+        queryRange(
+          `avg(haproxy_backend_response_time_average_seconds{proxy=~"${proxyPattern}"})`
+        ),
+        queryRange(
+          `avg(haproxy_backend_queue_time_average_seconds{proxy=~"${proxyPattern}"})`
+        ),
+        queryRange(
+          `avg(haproxy_backend_connect_time_average_seconds{proxy=~"${proxyPattern}"})`
+        ),
+        queryRange(
+          `avg(haproxy_backend_total_time_average_seconds{proxy=~"${proxyPattern}"})`
+        ),
+        queryInstant(
+          `sum(rate(haproxy_backend_http_requests_total{proxy=~"${proxyPattern}"}[${rateWindow}]))`
+        ),
+        queryInstant(
+          `sum(rate(haproxy_backend_http_responses_total{proxy=~"${proxyPattern}",code="5xx"}[${rateWindow}]))`
+        ),
+        queryInstant(
+          `sum(rate(haproxy_backend_http_responses_total{proxy=~"${proxyPattern}",code="4xx"}[${rateWindow}]))`
+        ),
+        queryInstant(
+          `sum(rate(haproxy_backend_bytes_in_total{proxy=~"${proxyPattern}"}[${rateWindow}])) * 8`
+        ),
+        queryInstant(
+          `sum(rate(haproxy_backend_bytes_out_total{proxy=~"${proxyPattern}"}[${rateWindow}])) * 8`
+        ),
+        queryInstant(
+          `avg(haproxy_backend_response_time_average_seconds{proxy=~"${proxyPattern}"})`
+        ),
+        queryInstant(
+          `sum(haproxy_backend_current_sessions{proxy=~"${proxyPattern}"})`
+        ),
+        queryInstant(
+          `sum(haproxy_backend_current_queue{proxy=~"${proxyPattern}"})`
+        ),
+        queryInstant(
+          `max(haproxy_backend_active_servers{proxy=~"${proxyPattern}"})`
+        ),
+        queryInstant(
+          `max(haproxy_backend_backup_servers{proxy=~"${proxyPattern}"})`
+        ),
+      ])
+    : [
+        new Map<string, Map<number, number>>(),
+        new Map<number, number>(),
+        new Map<number, number>(),
+        new Map<number, number>(),
+        new Map<number, number>(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ]
 
   const cpuLimitCores =
     instantCpuLimit && instantCpuLimit > 0
@@ -794,6 +908,100 @@ export async function fetchNamespaceTelemetry(
         ]
       }
       return []
+    })(),
+    ingress: (() => {
+      if (!shouldFetchIngress) return undefined
+      const hasLiveHaproxy =
+        instantTrafficRps !== null || haproxyStatusMap.size > 0
+
+      if (hasLiveHaproxy) {
+        const sortedTimestamps = Array.from(returnedTimestamps).sort(
+          (a, b) => a - b
+        )
+        const codes: Array<"2xx" | "3xx" | "4xx" | "5xx"> = [
+          "2xx",
+          "3xx",
+          "4xx",
+          "5xx",
+        ]
+        const statusCodes = codes.map((code) => {
+          const codeMap = haproxyStatusMap.get(code)
+          return {
+            code,
+            points: sortedTimestamps.map((t) => ({
+              timestamp: formatTelemetryTick(t, durationSeconds, opts.timeZone),
+              value: Number((codeMap?.get(t) ?? 0).toFixed(3)),
+            })),
+          }
+        })
+
+        const latencyBreakdown = [
+          {
+            type: "queue" as const,
+            points: sortedTimestamps.map((t) => ({
+              timestamp: formatTelemetryTick(t, durationSeconds, opts.timeZone),
+              value: Number((haproxyQueueLatencyMap.get(t) ?? 0).toFixed(4)),
+            })),
+          },
+          {
+            type: "connect" as const,
+            points: sortedTimestamps.map((t) => ({
+              timestamp: formatTelemetryTick(t, durationSeconds, opts.timeZone),
+              value: Number((haproxyConnectLatencyMap.get(t) ?? 0).toFixed(4)),
+            })),
+          },
+          {
+            type: "app" as const,
+            points: sortedTimestamps.map((t) => ({
+              timestamp: formatTelemetryTick(t, durationSeconds, opts.timeZone),
+              value: Number((haproxyAppLatencyMap.get(t) ?? 0).toFixed(4)),
+            })),
+          },
+          {
+            type: "total" as const,
+            points: sortedTimestamps.map((t) => ({
+              timestamp: formatTelemetryTick(t, durationSeconds, opts.timeZone),
+              value: Number((haproxyTotalLatencyMap.get(t) ?? 0).toFixed(4)),
+            })),
+          },
+        ]
+
+        const trafficRps = instantTrafficRps ?? 0
+        const err5xx = instant5xxRps ?? 0
+        const err4xx = instant4xxRps ?? 0
+        const totalReqs = trafficRps > 0 ? trafficRps : 1
+        const errorRate5xxPercent =
+          trafficRps > 0 ? Number(((err5xx / totalReqs) * 100).toFixed(2)) : 0
+        const errorRate4xxPercent =
+          trafficRps > 0 ? Number(((err4xx / totalReqs) * 100).toFixed(2)) : 0
+
+        return {
+          proxy: proxyPattern,
+          trafficRps: Number(trafficRps.toFixed(3)),
+          errorRate5xxPercent,
+          errorRate4xxPercent,
+          bandwidthInBps: Math.round(instantBpsIn ?? 0),
+          bandwidthOutBps: Math.round(instantBpsOut ?? 0),
+          avgResponseTimeSeconds: Number(
+            (instantAvgResponseTime ?? 0).toFixed(4)
+          ),
+          activeSessions: Math.round(instantSessions ?? 0),
+          activeQueue: Math.round(instantQueue ?? 0),
+          healthyServers: Math.round(instantHealthyServers ?? 0),
+          backupServers: Math.round(instantBackupServers ?? 0),
+          statusCodes,
+          latencyBreakdown,
+        }
+      }
+      // Fallback simulated ingress for dev/preview
+      const fallbackPreset: "1h" | "6h" | "24h" | "7d" =
+        summaryTimeRange === "6h" ||
+        summaryTimeRange === "24h" ||
+        summaryTimeRange === "7d"
+          ? summaryTimeRange
+          : "1h"
+      return generateClusterTelemetrySummary(fallbackPreset, clusterCode)
+        .ingress
     })(),
   }
 }

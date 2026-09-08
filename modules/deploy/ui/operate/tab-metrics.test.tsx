@@ -166,4 +166,39 @@ describe("TabMetrics", () => {
     expect(podPills[0].className).toContain("bg-secondary")
     expect(allPodsBtn.className).not.toContain("bg-primary")
   })
+
+  it("switches to HTTP & Ingress sub-tab and renders HAProxy L7 metrics", () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const view = render(
+      <QueryClientProvider client={client}>
+        <TabMetrics appSlug="hermes-vibrant-comet" />
+      </QueryClientProvider>
+    )
+
+    const computeTabBtn = view.getByRole("button", { name: /Compute & Pods/i })
+    const ingressTabBtn = view.getByRole("button", { name: /HTTP & Ingress/i })
+    expect(computeTabBtn).toBeDefined()
+    expect(ingressTabBtn).toBeDefined()
+
+    // Default is Compute & Pods
+    expect(
+      view.getByText(/Pod Replica Health & Resource Allocation/i)
+    ).toBeDefined()
+
+    // Switch to HTTP & Ingress
+    fireEvent.click(ingressTabBtn)
+
+    expect(view.getByText(/Service Traffic/i)).toBeDefined()
+    expect(view.getByText(/Grouped HTTP Response Codes/i)).toBeDefined()
+    expect(view.getByText(/Latency Breakdown/i)).toBeDefined()
+    expect(view.getByText(/HAProxy L7 Ingress Gateway/i)).toBeDefined()
+
+    // Switch back to Compute & Pods
+    fireEvent.click(computeTabBtn)
+    expect(
+      view.getByText(/Pod Replica Health & Resource Allocation/i)
+    ).toBeDefined()
+  })
 })
