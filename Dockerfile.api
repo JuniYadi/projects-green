@@ -22,13 +22,7 @@ RUN bun run scripts/copy-standard-fonts.ts
 COPY lib ./lib
 COPY modules ./modules
 COPY public ./public
-RUN bun build ./scripts/api-server.ts \
-  --target=bun \
-  --outfile=./dist/api-server.js \
-  --external @prisma/client \
-  --external @prisma/adapter-pg \
-  --external pg \
-  --external ssh2
+RUN bun run scripts/build-api-server.ts
 
 # ── Production stage ────────────────────────────────────────────────────────
 FROM oven/bun:1-alpine
