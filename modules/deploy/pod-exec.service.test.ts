@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test"
+import { describe, it, expect, mock, beforeEach } from "bun:test"
 import {
   buildKubeExecUrl,
   decodeKubeFrame,
@@ -8,7 +8,17 @@ import {
   resolveStackExecCredentials,
 } from "./pod-exec.service"
 
+const mockResolveClusterIntegration = mock()
+
+mock.module("./cluster-integration.service", () => ({
+  resolveClusterIntegration: mockResolveClusterIntegration,
+}))
+
 describe("pod-exec.service", () => {
+  beforeEach(() => {
+    mockResolveClusterIntegration.mockReset()
+  })
+
   it("builds correct kubernetes exec URL with parameters", () => {
     const url = buildKubeExecUrl(
       "https://10.43.0.1:443",
@@ -27,6 +37,19 @@ describe("pod-exec.service", () => {
     expect(url).toContain("tty=true")
     expect(url).toContain("container=main-app")
     expect(url).toContain("command=%2Fbin%2Fsh")
+  })
+
+  it("builds URL with default command and without container", () => {
+    const url = buildKubeExecUrl(
+      "http://10.43.0.1:443/",
+      "app-my-stack",
+      "my-pod-abc"
+    )
+    expect(url).toContain(
+      "ws://10.43.0.1:443/api/v1/namespaces/app-my-stack/pods/my-pod-abc/exec"
+    )
+    expect(url).toContain("command=%2Fbin%2Fsh")
+    expect(url).not.toContain("container=")
   })
 
   it("encodes and decodes kubernetes subprotocol stream frames", () => {
@@ -66,5 +89,55 @@ describe("pod-exec.service", () => {
     expect(KUBE_EXEC_CHANNELS.STDERR).toBe(2)
     expect(KUBE_EXEC_CHANNELS.ERROR).toBe(3)
     expect(KUBE_EXEC_CHANNELS.RESIZE).toBe(4)
+  })
+
+  describe("resolveStackExecCredentials", () => {
+    it("returns credentials directly when provided in kubeConfig", async () => {
+      mockResolveClusterIntegration.mockResolvedValueOnce({
+        connectionMode: "EXTERNAL",
+        apiServerUrl: "https://k8s.external:6443",
+        serviceAccountToken: "secret-token-xyz",
+        caCertificate: "ca-cert-data",
+      })
+
+      const creds = await resolveStackExecCredentials("stk_1")
+      expect(creds.url).toBe("https://k8s.external:6443")
+      expect(creds.token).toBe("secret-token-xyz")
+      expect(creds.caCert).toBe("ca-cert-data")
+    })
+
+    it("falls back to in-cluster host env when url is missing", async () => {
+      const origHost = process.env.KUBERNETES_SERVICE_HOST
+      const origPort = process.env.KUBERNETES_SERVICE_PORT
+      process.env.KUBERNETES_SERVICE_HOST = "10.43.0.1"
+      process.env.KUBERNETES_SERVICE_PORT = "443"
+
+      mockResolveClusterIntegration.mockResolvedValueOnce({
+        connectionMode: "INTERNAL",
+        apiServerUrl: null,
+        serviceAccountToken: "test-sa-token",
+        caCertificate: null,
+      })
+
+      const creds = await resolveStackExecCredentials("stk_1")
+      expect(creds.url).toBe("https://10.43.0.1:443")
+      expect(creds.token).toBe("test-sa-token")
+
+      process.env.KUBERNETES_SERVICE_HOST = origHost
+      process.env.KUBERNETES_SERVICE_PORT = origPort
+    })
+
+    it("throws error when no token is available", async () => {
+      mockResolveClusterIntegration.mockResolvedValueOnce({
+        connectionMode: "EXTERNAL",
+        apiServerUrl: "https://k8s.external",
+        serviceAccountToken: null,
+        caCertificate: null,
+      })
+
+      expect(resolveStackExecCredentials("stk_1")).rejects.toThrow(
+        "No Kubernetes service account token available"
+      )
+    })
   })
 })

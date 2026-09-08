@@ -41,6 +41,45 @@ export function isAllowedOrigin(origin: string | null): boolean {
   const normalized = origin.trim().replace(/\/+$/, "")
   return allowedOrigins.has(normalized)
 }
+export type WsClientContext = {
+  terminalState?: { clientClosed: boolean }
+  kubeWs?: WebSocket
+}
+
+export function handleWsMessage(ws: WsClientContext, message: unknown): void {
+  const kubeWs = ws.kubeWs
+  if (!kubeWs || kubeWs.readyState !== WebSocket.OPEN) return
+
+  try {
+    const payload =
+      typeof message === "string"
+        ? (JSON.parse(message) as Record<string, unknown>)
+        : (message as Record<string, unknown>)
+    if (payload.type === "stdin" && typeof payload.data === "string") {
+      const frame = encodeKubeFrame(KUBE_EXEC_CHANNELS.STDIN, payload.data)
+      kubeWs.send(frame)
+    } else if (payload.type === "resize") {
+      const cols = Number(payload.cols) || 80
+      const rows = Number(payload.rows) || 24
+      const frame = encodeResizeFrame(cols, rows)
+      kubeWs.send(frame)
+    }
+  } catch {
+    if (typeof message === "string") {
+      kubeWs.send(encodeKubeFrame(KUBE_EXEC_CHANNELS.STDIN, message))
+    }
+  }
+}
+
+export function handleWsClose(ws: WsClientContext): void {
+  if (ws.terminalState) {
+    ws.terminalState.clientClosed = true
+  }
+  const kubeWs = ws.kubeWs
+  if (kubeWs && kubeWs.readyState === WebSocket.OPEN) {
+    kubeWs.close(1000, "Client closed terminal")
+  }
+}
 
 export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
   "/stacks/:stackId/terminal",
@@ -222,42 +261,10 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
       })()
     },
     message(ws, message) {
-      const kubeWs = (ws as unknown as Record<string, WebSocket | undefined>)
-        .kubeWs
-      if (!kubeWs || kubeWs.readyState !== WebSocket.OPEN) return
-
-      try {
-        const payload =
-          typeof message === "string"
-            ? JSON.parse(message)
-            : (message as Record<string, unknown>)
-        if (payload.type === "stdin" && typeof payload.data === "string") {
-          const frame = encodeKubeFrame(KUBE_EXEC_CHANNELS.STDIN, payload.data)
-          kubeWs.send(frame)
-        } else if (payload.type === "resize") {
-          const cols = Number(payload.cols) || 80
-          const rows = Number(payload.rows) || 24
-          const frame = encodeResizeFrame(cols, rows)
-          kubeWs.send(frame)
-        }
-      } catch {
-        if (typeof message === "string") {
-          kubeWs.send(encodeKubeFrame(KUBE_EXEC_CHANNELS.STDIN, message))
-        }
-      }
+      handleWsMessage(ws as unknown as WsClientContext, message)
     },
     close(ws) {
-      const state = (
-        ws as unknown as Record<string, { clientClosed: boolean } | undefined>
-      ).terminalState
-      if (state) {
-        state.clientClosed = true
-      }
-      const kubeWs = (ws as unknown as Record<string, WebSocket | undefined>)
-        .kubeWs
-      if (kubeWs && kubeWs.readyState === WebSocket.OPEN) {
-        kubeWs.close(1000, "Client closed terminal")
-      }
+      handleWsClose(ws as unknown as WsClientContext)
     },
   }
 )
