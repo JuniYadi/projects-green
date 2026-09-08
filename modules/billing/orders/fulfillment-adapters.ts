@@ -801,11 +801,29 @@ async function applyWhatsappFulfillment(
       metadata
     )
     for (const deviceId of deviceIds) {
-      const allowance = allowanceByDevice[deviceId]
+      const allowance = new Prisma.Decimal(allowanceByDevice[deviceId])
+      const existing =
+        typeof tx.whatsappDevice.findUnique === "function"
+          ? await tx.whatsappDevice.findUnique({
+              where: { id: deviceId },
+              select: { quotaBaseOut: true },
+            })
+          : null
+      const currentQuota =
+        existing?.quotaBaseOut instanceof Prisma.Decimal
+          ? existing.quotaBaseOut
+          : new Prisma.Decimal(Number(existing?.quotaBaseOut ?? 0))
+      const newQuotaBaseOut = currentQuota.isNegative()
+        ? Prisma.Decimal.max(
+            new Prisma.Decimal(0),
+            allowance.plus(currentQuota)
+          )
+        : allowance
+
       await tx.whatsappDevice.update({
         where: { id: deviceId },
         data: {
-          quotaBaseOut: allowance,
+          quotaBaseOut: newQuotaBaseOut,
           quotaBase: allowance,
           expiredAt: input.periodEnd,
           status: "ACTIVE",

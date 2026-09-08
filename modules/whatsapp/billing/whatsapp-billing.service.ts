@@ -110,6 +110,7 @@ export class WhatsappBillingService {
       unitPrice: input.unitPrice.toString(),
       periodStart: input.periodStart.toISOString(),
       periodEnd: input.periodEnd.toISOString(),
+      lastResetPeriod: input.period,
     }
     await this.prisma.serviceSubscription.update({
       where: { id: input.subscriptionId },
@@ -144,18 +145,58 @@ export class WhatsappBillingService {
     return result
   }
 
-  private async resetAllowances(
+  async resetAllowances(
     deviceIds: string[],
     allowanceByDevice: Record<string, string>
   ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       for (const deviceId of deviceIds) {
         const allowance = new Prisma.Decimal(allowanceByDevice[deviceId])
+        const existing =
+          typeof tx.whatsappDevice?.findUnique === "function"
+            ? await tx.whatsappDevice.findUnique({
+                where: { id: deviceId },
+                select: { quotaBaseOut: true },
+              })
+            : null
+        const currentQuota =
+          existing?.quotaBaseOut instanceof Prisma.Decimal
+            ? existing.quotaBaseOut
+            : new Prisma.Decimal(Number(existing?.quotaBaseOut ?? 0))
+
+        // If device has negative quota (overage/overdraft), deduct overage from refill allowance:
+        // e.g. allowance (1000) + currentQuota (-313) = 687 (clamped to minimum 0)
+        const newQuotaBaseOut = currentQuota.isNegative()
+          ? Prisma.Decimal.max(
+              new Prisma.Decimal(0),
+              allowance.plus(currentQuota)
+            )
+          : allowance
+
         await tx.whatsappDevice.update({
           where: { id: deviceId },
-          data: { quotaBaseOut: allowance, quotaBase: allowance },
+          data: { quotaBaseOut: newQuotaBaseOut, quotaBase: allowance },
         })
       }
+    })
+  }
+
+  async refillActiveSubscriptionAllowances(input: {
+    subscriptionId: string
+    deviceIds: string[]
+    allowanceByDevice: Record<string, string>
+    period: string
+    metadata: Record<string, unknown>
+  }): Promise<void> {
+    await this.resetAllowances(input.deviceIds, input.allowanceByDevice)
+    await this.prisma.serviceSubscription.update({
+      where: { id: input.subscriptionId },
+      data: {
+        metadata: jsonObject({
+          ...input.metadata,
+          lastResetPeriod: input.period,
+        }),
+      },
     })
   }
 
@@ -352,43 +393,93 @@ export async function runWhatsappBillingCycle(
       skipped++
       continue
     }
+    const planResources = subscription.plan.resources as Record<
+      string,
+      unknown
+    > | null
     const allowance =
-      (subscription.plan.resources as WhatsAppPlanResources | null)
-        ?.quotaOutMonthly ??
-      (subscription.plan.resources as WhatsAppPlanResources | null)?.quotaOut ??
-      0
-    const periodMonths =
-      subscription.billingPeriod === "QUARTERLY"
-        ? 3
-        : subscription.billingPeriod === "SEMI_ANNUAL"
-          ? 6
-          : subscription.billingPeriod === "ANNUAL"
-            ? 12
-            : 1
-    const periodEnd = new Date(subscription.currentPeriodEnd)
-    periodEnd.setUTCMonth(periodEnd.getUTCMonth() + periodMonths)
-    try {
-      await billing.chargeSubscriptionBase({
-        organizationId: subscription.organizationId,
-        subscriptionId: subscription.id,
-        pricingId: subscription.pricingId,
-        unitPrice: new Prisma.Decimal(subscription.priceLocked),
-        quantity: new Prisma.Decimal(devices.length),
-        periodStart: subscription.currentPeriodEnd,
-        periodEnd,
-        deviceIds: devices.map((device) => device.id),
-        period,
-        allowanceByDevice: Object.fromEntries(
-          devices.map((device) => [device.id, allowance])
-        ),
-      })
-      charged++
-    } catch (error) {
-      errors++
-      console.error(
-        `[whatsapp-billing] subscription=${subscription.id} error:`,
-        error
-      )
+      (planResources as WhatsAppPlanResources | null)?.quotaOutMonthly ??
+      (planResources as WhatsAppPlanResources | null)?.quotaOut ??
+      (typeof planResources?.quota === "number" ||
+      typeof planResources?.quota === "string"
+        ? Number(planResources.quota)
+        : null) ??
+      (typeof (planResources?.features as Record<string, unknown> | undefined)
+        ?.quota === "number"
+        ? Number((planResources?.features as Record<string, unknown>).quota)
+        : null) ??
+      (typeof (
+        planResources?.provisioning as Record<string, unknown> | undefined
+      )?.quotaOut === "number"
+        ? Number(
+            (planResources?.provisioning as Record<string, unknown>).quotaOut
+          )
+        : null) ??
+      1000
+
+    const allowanceByDevice = Object.fromEntries(
+      devices.map((device) => [device.id, allowance.toString()])
+    )
+
+    const isDueForRenewal = subscription.currentPeriodEnd <= now
+
+    if (isDueForRenewal) {
+      const periodMonths =
+        subscription.billingPeriod === "QUARTERLY"
+          ? 3
+          : subscription.billingPeriod === "SEMI_ANNUAL"
+            ? 6
+            : subscription.billingPeriod === "ANNUAL"
+              ? 12
+              : 1
+      const periodEnd = new Date(subscription.currentPeriodEnd)
+      periodEnd.setUTCMonth(periodEnd.getUTCMonth() + periodMonths)
+      try {
+        await billing.chargeSubscriptionBase({
+          organizationId: subscription.organizationId,
+          subscriptionId: subscription.id,
+          pricingId: subscription.pricingId,
+          unitPrice: new Prisma.Decimal(subscription.priceLocked),
+          quantity: new Prisma.Decimal(devices.length),
+          periodStart: subscription.currentPeriodEnd,
+          periodEnd,
+          deviceIds: devices.map((device) => device.id),
+          period,
+          allowanceByDevice,
+        })
+        charged++
+      } catch (error) {
+        errors++
+        console.error(
+          `[whatsapp-billing] subscription=${subscription.id} error:`,
+          error
+        )
+      }
+    } else {
+      // Subscription is active and within its paid period.
+      // Refill the monthly quota once per calendar period.
+      const subMeta = metadataObject(subscription.metadata)
+      if (subMeta.lastResetPeriod === period) {
+        skipped++
+        continue
+      }
+
+      try {
+        await billing.refillActiveSubscriptionAllowances({
+          subscriptionId: subscription.id,
+          deviceIds: devices.map((d) => d.id),
+          allowanceByDevice,
+          period,
+          metadata: subMeta,
+        })
+        charged++
+      } catch (error) {
+        errors++
+        console.error(
+          `[whatsapp-billing] subscription=${subscription.id} refill error:`,
+          error
+        )
+      }
     }
   }
   return { charged, skipped, errors }
