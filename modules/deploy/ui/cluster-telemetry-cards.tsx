@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Cpu,
   HardDrive,
@@ -8,6 +8,7 @@ import {
   Globe,
   Clock,
 } from "@phosphor-icons/react"
+import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -22,6 +23,7 @@ import {
   formatCores,
   formatThroughput,
 } from "@/modules/deploy/telemetry.service"
+import type { ClusterTelemetrySummary } from "@/modules/deploy/telemetry.types"
 import {
   ClusterTelemetrySparkline,
   type SparklineDataPoint,
@@ -31,9 +33,49 @@ type TimeRangeOption = "1h" | "6h" | "24h"
 
 export function ClusterTelemetryCards() {
   const [timeRange, setTimeRange] = useState<TimeRangeOption>("1h")
-  const telemetry = generateClusterTelemetrySummary(timeRange)
+  const [telemetry, setTelemetry] = useState<ClusterTelemetrySummary>(() =>
+    generateClusterTelemetrySummary(timeRange)
+  )
+  const [isLive, setIsLive] = useState(false)
 
-  // Map CPU data to sparkline points
+  useEffect(() => {
+    let cancelled = false
+
+    const loadTelemetry = async () => {
+      try {
+        const { data: payload } = await eden.api.deploy.telemetry.get({
+          $query: { range: timeRange, cluster: "sgp" },
+        })
+        if (cancelled) return
+        if (payload?.ok && payload.data) {
+          setTelemetry(payload.data)
+          setIsLive(true)
+        } else {
+          setTelemetry((prev) =>
+            prev.timeRange === timeRange
+              ? prev
+              : generateClusterTelemetrySummary(timeRange)
+          )
+        }
+      } catch {
+        if (!cancelled) {
+          setTelemetry((prev) =>
+            prev.timeRange === timeRange
+              ? prev
+              : generateClusterTelemetrySummary(timeRange)
+          )
+        }
+      }
+    }
+
+    void loadTelemetry()
+    const interval = setInterval(loadTelemetry, 10000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [timeRange])
   const cpuDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
     label: p.timestamp,
     value: p.cpuUsageCores,
@@ -78,6 +120,20 @@ export function ClusterTelemetryCards() {
             <span className="size-1 rounded-full bg-emerald-400" />
             <span className="text-[10px] text-emerald-400/80">Primary</span>
           </span>
+          {telemetry.namespace && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[11px] text-sky-400"
+              data-testid="telemetry-namespace"
+            >
+              ns: {telemetry.namespace}
+            </span>
+          )}
+          {isLive && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+              <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
+              <span>LIVE</span>
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1">

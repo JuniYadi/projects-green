@@ -87,42 +87,74 @@ mock.module("@/lib/i18n/pathname", () => ({
   resolveLocaleOrDefault: (lang: string) => lang || "en",
 }))
 
+const defaultAppsList = [
+  {
+    id: "1",
+    name: "test-app",
+    slug: "test-app",
+    status: "running",
+    framework: "Next.js",
+    branchName: "main",
+    subdomain: "test.example.com",
+    customDomain: null,
+    resourcePlanId: "starter",
+    billingMode: null,
+    billingState: "ACTIVE",
+    latestDeploymentId: "deployment-1",
+    lastDeployedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    currentStepLabel: "Build started",
+    currentStepIndex: 2,
+    currentStepStartedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+  },
+]
+
+const mockAppsGet = mock(() =>
+  Promise.resolve({
+    data: {
+      ok: true,
+      data: defaultAppsList,
+    },
+  })
+)
+
+const mockTelemetryGet = mock(() =>
+  Promise.resolve({
+    data: {
+      ok: true,
+      data: {
+        clusterId: "id-cgk-1",
+        clusterName: "Jakarta Production Cluster",
+        region: "Jakarta (id-cgk-1)",
+        isPrimary: true,
+        timeRange: "1h",
+        points: [],
+        cpu: { currentCores: 1.2, limitCores: 4, avgCores: 1, peakCores: 2 },
+        memory: {
+          currentBytes: 2147483648,
+          limitBytes: 8589934592,
+          avgBytes: 2000000000,
+          peakBytes: 3000000000,
+        },
+        network: {
+          currentRxBytes: 1048576,
+          currentTxBytes: 1048576,
+          totalRxBytes: 10485760,
+          totalTxBytes: 10485760,
+        },
+      },
+    },
+  })
+)
+
 mock.module("@/lib/eden", () => ({
   eden: {
     api: {
       deploy: {
         apps: {
-          get: mock(() =>
-            Promise.resolve({
-              data: {
-                ok: true,
-                data: [
-                  {
-                    id: "1",
-                    name: "test-app",
-                    slug: "test-app",
-                    status: "running",
-                    framework: "Next.js",
-                    branchName: "main",
-                    subdomain: "test.example.com",
-                    customDomain: null,
-                    resourcePlanId: "starter",
-                    billingMode: null,
-                    billingState: "ACTIVE",
-                    latestDeploymentId: "deployment-1",
-                    lastDeployedAt: new Date(
-                      Date.now() - 5 * 60 * 1000
-                    ).toISOString(),
-                    currentStepLabel: "Build started",
-                    currentStepIndex: 2,
-                    currentStepStartedAt: new Date(
-                      Date.now() - 5 * 60 * 1000
-                    ).toISOString(),
-                  },
-                ],
-              },
-            })
-          ),
+          get: mockAppsGet,
+        },
+        telemetry: {
+          get: mockTelemetryGet,
         },
       },
     },
@@ -140,6 +172,14 @@ const { default: ApplicationsPage } = await import("./page")
 
 afterEach(() => {
   rtlCleanup()
+  mockAppsGet.mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        ok: true,
+        data: defaultAppsList,
+      },
+    })
+  )
 })
 
 describe("ApplicationsPage overview", () => {
@@ -222,6 +262,27 @@ describe("ApplicationsPage overview", () => {
       expect(getByText("Needs Attention")).toBeDefined()
       expect(getByText("Marketplace")).toBeDefined()
       expect(getByText("Deploy New App")).toBeDefined()
+    })
+  })
+
+  it("renders cluster telemetry cards even when apps list is empty", async () => {
+    mockAppsGet.mockImplementationOnce(() =>
+      Promise.resolve({
+        data: {
+          ok: true,
+          data: [],
+        },
+      })
+    )
+
+    const { getByText } = render(<ApplicationsPage />)
+
+    await waitFor(() => {
+      expect(getByText("Cluster Resource Telemetry")).toBeDefined()
+      expect(getByText("CPU Utilization")).toBeDefined()
+      expect(getByText("Memory Allocation")).toBeDefined()
+      expect(getByText("Network I/O Throughput")).toBeDefined()
+      expect(getByText("No applications yet")).toBeDefined()
     })
   })
 })

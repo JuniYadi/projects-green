@@ -133,7 +133,7 @@ export default function ApplicationsPage() {
         </div>
       </div>
       {/* 3 Primary Time-Series Telemetry Charts (CPU, Memory, Network I/O) */}
-      {!loading && !error && apps.length > 0 && <ClusterTelemetryCards />}
+      {!loading && !error && <ClusterTelemetryCards />}
 
       {!loading && !error && apps.length > 0 && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
