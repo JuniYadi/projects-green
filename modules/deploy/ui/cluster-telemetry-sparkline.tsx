@@ -64,11 +64,14 @@ export function ClusterTelemetrySparkline({
     .map((d) => d.secondaryValue)
     .filter((v): v is number => typeof v === "number")
 
-  const maxValue = Math.max(1, ...values, ...secondaryValues)
+  const maxValue = Math.max(0.001, ...values, ...secondaryValues)
+  const isLimitWayAbove =
+    typeof limitValue === "number" && limitValue > maxValue * 2.2
+
   const ceiling =
-    typeof limitValue === "number" && limitValue > maxValue
+    typeof limitValue === "number" && limitValue > maxValue && !isLimitWayAbove
       ? limitValue
-      : maxValue
+      : maxValue * 1.35
 
   const tickCount = Math.max(2, yAxisTicks)
   const tickValues = Array.from({ length: tickCount }, (_, i) => {
@@ -95,7 +98,8 @@ export function ClusterTelemetrySparkline({
       ? `M 0,${getY(data[0].value).toFixed(1)} L 400,${getY(data[0].value).toFixed(1)}`
       : `M ${data.map((d, i) => `${getX(i).toFixed(1)},${getY(d.value).toFixed(1)}`).join(" L ")}`
 
-  const primaryAreaD = `${primaryLineD} L 400,100 L 0,100 Z`
+  const baselineY = getY(0).toFixed(1)
+  const primaryAreaD = `${primaryLineD} L 400,${baselineY} L 0,${baselineY} Z`
 
   // Secondary path (if any secondary values exist)
   const hasSecondary = secondaryValues.length > 0
@@ -107,7 +111,10 @@ export function ClusterTelemetrySparkline({
 
   // Limit line
   const hasLimitLine =
-    showLimitLine && typeof limitValue === "number" && limitValue > 0
+    showLimitLine &&
+    typeof limitValue === "number" &&
+    limitValue > 0 &&
+    !isLimitWayAbove
   const limitY = hasLimitLine ? getY(limitValue).toFixed(1) : null
 
   // Labels for bottom axis
@@ -126,7 +133,9 @@ export function ClusterTelemetrySparkline({
     const formattedNum =
       Number.isInteger(val) && (ceiling > 10 || val === 0)
         ? val.toString()
-        : val.toFixed(1)
+        : ceiling < 1
+          ? val.toFixed(2)
+          : val.toFixed(1)
     if (isTop && unit) {
       return `${formattedNum} ${unit}`
     }

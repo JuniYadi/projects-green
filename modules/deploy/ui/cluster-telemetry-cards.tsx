@@ -143,18 +143,41 @@ export function ClusterTelemetryCards({
     limit: p.cpuLimitCores,
   }))
 
-  // Map Memory data to sparkline points (in GB)
+  // Auto-scale Memory units: use MB if under 1GB, else GB
+  const maxMemBytes = Math.max(
+    ...telemetry.points.map((p) => p.memoryUsageBytes),
+    1
+  )
+  const memInGb = maxMemBytes >= 1024 * 1024 * 1024
+  const memUnit = memInGb ? "GB" : "MB"
+  const memDivisor = memInGb ? 1024 * 1024 * 1024 : 1024 * 1024
+
   const memoryDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
     label: formatPointLabel(p.timestamp),
-    value: Number((p.memoryUsageBytes / (1024 * 1024 * 1024)).toFixed(2)),
-    limit: Number((p.memoryLimitBytes / (1024 * 1024 * 1024)).toFixed(2)),
+    value: Number((p.memoryUsageBytes / memDivisor).toFixed(memInGb ? 2 : 0)),
+    limit: Number((p.memoryLimitBytes / memDivisor).toFixed(memInGb ? 2 : 0)),
   }))
 
-  // Map Network data to dual-line sparkline points (in MB/s)
+  // Auto-scale Network units: B/s, KB/s, or MB/s
+  const maxNetBytes = Math.max(
+    ...telemetry.points.map((p) =>
+      Math.max(p.networkRxBytesPerSec, p.networkTxBytesPerSec)
+    ),
+    1
+  )
+  const netUnit =
+    maxNetBytes >= 1024 * 1024 ? "MB/s" : maxNetBytes >= 1024 ? "KB/s" : "B/s"
+  const netDivisor =
+    netUnit === "MB/s" ? 1024 * 1024 : netUnit === "KB/s" ? 1024 : 1
+
   const networkDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
     label: formatPointLabel(p.timestamp),
-    value: Number((p.networkRxBytesPerSec / (1024 * 1024)).toFixed(2)),
-    secondaryValue: Number((p.networkTxBytesPerSec / (1024 * 1024)).toFixed(2)),
+    value: Number(
+      (p.networkRxBytesPerSec / netDivisor).toFixed(netUnit === "B/s" ? 0 : 1)
+    ),
+    secondaryValue: Number(
+      (p.networkTxBytesPerSec / netDivisor).toFixed(netUnit === "B/s" ? 0 : 1)
+    ),
   }))
 
   const cpuPercent = (
@@ -293,7 +316,7 @@ export function ClusterTelemetryCards({
           <CardContent className="pt-0">
             <ClusterTelemetrySparkline
               data={memoryDataPoints}
-              unit="GB"
+              unit={memUnit}
               color="#10b981"
               height={85}
               showArea={true}
@@ -338,7 +361,7 @@ export function ClusterTelemetryCards({
           <CardContent className="pt-0">
             <ClusterTelemetrySparkline
               data={networkDataPoints}
-              unit="MB/s"
+              unit={netUnit}
               color="#10b981"
               secondaryColor="#38bdf8"
               height={85}
