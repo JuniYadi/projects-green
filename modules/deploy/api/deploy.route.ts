@@ -20,6 +20,7 @@ import { podStatusRoutes } from "@/modules/deploy/api/routes/pod-status.route"
 import { publicSourceRoutes } from "@/modules/deploy/api/routes/public-source.route"
 import { appTemplateRoutes } from "@/modules/deploy/api/routes/templates.route"
 import { adminTemplateRoutes } from "@/modules/deploy/api/routes/admin-templates.route"
+import { appTelemetryRoutes } from "@/modules/deploy/api/routes/app-telemetry.route"
 
 export const deployRoutes = new Elysia()
   .use(aiDeploymentSessionRoutes)
@@ -40,3 +41,4 @@ export const deployRoutes = new Elysia()
   .use(podStatusRoutes)
   .use(appTemplateRoutes)
   .use(adminTemplateRoutes)
+  .use(appTelemetryRoutes)
