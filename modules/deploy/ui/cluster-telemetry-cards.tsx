@@ -7,7 +7,6 @@ import {
   HardDrive,
   ArrowsLeftRight,
   Globe,
-  Clock,
   ArrowsClockwise,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
@@ -19,6 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { TimeRangeDropdown } from "@/components/telemetry/time-range-dropdown"
+import {
+  type TimeRangeSelection,
+  PRESET_SECONDS,
+  format24hTime,
+  formatTelemetryTick,
+} from "@/lib/time-range"
 import {
   generateClusterTelemetrySummary,
   formatBytes,
@@ -30,21 +36,36 @@ import {
   ClusterTelemetrySparkline,
   type SparklineDataPoint,
 } from "@/modules/deploy/ui/cluster-telemetry-sparkline"
-
-type TimeRangeOption = "1h" | "6h" | "24h" | "7d"
 export function ClusterTelemetryCards() {
-  const [timeRange, setTimeRange] = useState<TimeRangeOption>("1h")
+  const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
+    type: "preset",
+    preset: "1h",
+  })
+
+  const userTimeZone =
+    typeof Intl !== "undefined"
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : "UTC"
 
   const {
-    data: telemetry = generateClusterTelemetrySummary(timeRange),
+    data: telemetry = generateClusterTelemetrySummary("1h"),
     isFetching,
     dataUpdatedAt,
     refetch,
   } = useQuery<ClusterTelemetrySummary>({
-    queryKey: ["deploy", "telemetry", timeRange, "sgp"],
+    queryKey: ["deploy", "telemetry", timeSelection, "sgp", userTimeZone],
     queryFn: async () => {
+      const queryParams =
+        timeSelection.type === "preset"
+          ? { range: timeSelection.preset, cluster: "sgp", tz: userTimeZone }
+          : {
+              from: String(timeSelection.from),
+              to: String(timeSelection.to),
+              cluster: "sgp",
+              tz: userTimeZone,
+            }
       const { data: payload } = await eden.api.deploy.telemetry.get({
-        $query: { range: timeRange, cluster: "sgp" },
+        $query: queryParams,
       })
       if (!payload || !payload.ok || !payload.data) {
         throw new Error(payload?.message ?? "Unable to load cluster telemetry")
@@ -52,44 +73,61 @@ export function ClusterTelemetryCards() {
       return payload.data
     },
     placeholderData: (previousData) =>
-      previousData?.timeRange === timeRange
-        ? previousData
-        : generateClusterTelemetrySummary(timeRange),
+      previousData ?? generateClusterTelemetrySummary("1h"),
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    staleTime: 5_000,
   })
 
   const isLive = dataUpdatedAt > 0
   const lastUpdated =
     dataUpdatedAt > 0
-      ? new Date(dataUpdatedAt).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
+      ? format24hTime(dataUpdatedAt, {
+          showSeconds: true,
+          timeZone: userTimeZone,
         })
       : null
 
-  const handleRefresh = () => {
-    void refetch()
+  const formatPointLabel = (timestamp: string): string => {
+    const num = Number(timestamp)
+    if (!Number.isNaN(num) && Number.isFinite(num) && num > 0) {
+      const unixSec = num > 1e11 ? Math.floor(num / 1000) : Math.floor(num)
+      const durationSeconds =
+        timeSelection.type === "preset"
+          ? (PRESET_SECONDS[timeSelection.preset] ?? 3600)
+          : Math.max(0, timeSelection.to - timeSelection.from)
+      return formatTelemetryTick(unixSec, durationSeconds, userTimeZone)
+    }
+    const parsed = Date.parse(timestamp)
+    if (
+      !Number.isNaN(parsed) &&
+      (timestamp.includes("T") || timestamp.includes("-"))
+    ) {
+      const unixSec = Math.floor(parsed / 1000)
+      const durationSeconds =
+        timeSelection.type === "preset"
+          ? (PRESET_SECONDS[timeSelection.preset] ?? 3600)
+          : Math.max(0, timeSelection.to - timeSelection.from)
+      return formatTelemetryTick(unixSec, durationSeconds, userTimeZone)
+    }
+    return timestamp
   }
   const cpuDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
-    label: p.timestamp,
+    label: formatPointLabel(p.timestamp),
     value: p.cpuUsageCores,
     limit: p.cpuLimitCores,
   }))
 
   // Map Memory data to sparkline points (in GB)
   const memoryDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
-    label: p.timestamp,
+    label: formatPointLabel(p.timestamp),
     value: Number((p.memoryUsageBytes / (1024 * 1024 * 1024)).toFixed(2)),
     limit: Number((p.memoryLimitBytes / (1024 * 1024 * 1024)).toFixed(2)),
   }))
 
   // Map Network data to dual-line sparkline points (in MB/s)
   const networkDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
-    label: p.timestamp,
+    label: formatPointLabel(p.timestamp),
     value: Number((p.networkRxBytesPerSec / (1024 * 1024)).toFixed(2)),
     secondaryValue: Number((p.networkTxBytesPerSec / (1024 * 1024)).toFixed(2)),
   }))
@@ -114,7 +152,7 @@ export function ClusterTelemetryCards() {
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
             <Globe size={13} className="text-emerald-500" />
-            <span>{telemetry.region}</span>
+            <span>Singapore</span>
             <span className="size-1 rounded-full bg-emerald-400" />
             <span className="text-[10px] text-emerald-400/80">Primary</span>
           </span>
@@ -127,28 +165,17 @@ export function ClusterTelemetryCards() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Clock size={13} className="mr-1 text-muted-foreground" />
-            <span className="mr-1 text-xs text-muted-foreground">Range:</span>
-            {(["1h", "6h", "24h", "7d"] as const).map((r) => (
-              <Button
-                key={r}
-                variant={timeRange === r ? "default" : "outline"}
-                size="xs"
-                onClick={() => setTimeRange(r)}
-                className="h-6 px-2 text-[11px]"
-              >
-                {r}
-              </Button>
-            ))}
-          </div>
+          <TimeRangeDropdown
+            value={timeSelection}
+            onChange={setTimeSelection}
+          />
 
           <Button
             variant="outline"
             size="xs"
-            onClick={handleRefresh}
+            onClick={() => void refetch()}
             disabled={isFetching}
-            className="h-6 gap-1 px-2 text-[11px]"
+            className="h-7 gap-1 px-2 text-[11px]"
             title="Refresh cluster telemetry"
           >
             <ArrowsClockwise

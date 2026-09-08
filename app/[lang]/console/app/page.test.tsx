@@ -73,6 +73,15 @@ mock.module("@phosphor-icons/react", () => ({
   Globe: (props: Record<string, unknown>) => (
     <span data-testid="icon-globe" {...props} />
   ),
+  CaretDown: (props: Record<string, unknown>) => (
+    <span data-testid="icon-caretdown" {...props} />
+  ),
+  Calendar: (props: Record<string, unknown>) => (
+    <span data-testid="icon-calendar" {...props} />
+  ),
+  Check: (props: Record<string, unknown>) => (
+    <span data-testid="icon-check" {...props} />
+  ),
 }))
 
 mock.module("next/navigation", () => ({

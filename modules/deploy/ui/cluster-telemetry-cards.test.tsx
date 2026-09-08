@@ -8,20 +8,41 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type React from "react"
 import { generateClusterTelemetrySummary } from "@/modules/deploy/telemetry.service"
+import type { ClusterTelemetrySummary } from "@/modules/deploy/telemetry.types"
 
-const mockTelemetryGet = mock(
-  ({ $query }: { $query?: { range?: string; cluster?: string } } = {}) =>
-    Promise.resolve({
+type MockTelemetryResponse = {
+  data: {
+    ok: boolean
+    data?: ClusterTelemetrySummary & {
+      namespace?: string
+    }
+    error?: string
+    message?: string
+  }
+}
+
+const mockTelemetryGet = mock<
+  (args?: {
+    $query?: {
+      range?: string
+      from?: string
+      to?: string
+      cluster?: string
+      tz?: string
+    }
+  }) => Promise<MockTelemetryResponse>
+>(({ $query } = {}) =>
+  Promise.resolve({
+    data: {
+      ok: true,
       data: {
-        ok: true,
-        data: {
-          ...generateClusterTelemetrySummary(
-            ($query?.range as "1h" | "6h" | "24h") ?? "1h"
-          ),
-          namespace: "tenant-org-prod",
-        },
+        ...generateClusterTelemetrySummary(
+          ($query?.range as "1h" | "6h" | "24h" | "7d") ?? "1h"
+        ),
+        namespace: "tenant-org-prod",
       },
-    })
+    },
+  })
 )
 
 mock.module("@/lib/eden", () => ({
@@ -74,21 +95,33 @@ describe("ClusterTelemetryCards component", () => {
     })
   })
 
-  it("allows switching time range between 1h, 6h, 24h, and 7d and clicking refresh", async () => {
-    const { getByRole } = renderWithClient(<ClusterTelemetryCards />)
+  it("renders TimeRangeDropdown and allows switching time range via dropdown and clicking refresh", async () => {
+    const { getByText, getByRole } = renderWithClient(<ClusterTelemetryCards />)
 
-    const btn6h = getByRole("button", { name: "6h" })
-    expect(btn6h).toBeDefined()
-    fireEvent.click(btn6h)
+    // Verify TimeRangeDropdown is rendered with default preset label
+    expect(getByText("Last 1 hour")).toBeDefined()
 
-    const btn24h = getByRole("button", { name: "24h" })
-    expect(btn24h).toBeDefined()
-    fireEvent.click(btn24h)
+    // Open dropdown menu
+    const trigger = getByText("Last 1 hour")
+    fireEvent.pointerDown(trigger, { button: 0 })
 
-    const btn7d = getByRole("button", { name: "7d" })
-    expect(btn7d).toBeDefined()
-    fireEvent.click(btn7d)
+    // Select 6h preset
+    const option6h = getByText("Last 6 hours")
+    expect(option6h).toBeDefined()
+    fireEvent.click(option6h)
 
+    await waitFor(() => {
+      expect(mockTelemetryGet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          $query: expect.objectContaining({
+            range: "6h",
+            cluster: "sgp",
+          }),
+        })
+      )
+    })
+
+    // Click refresh button
     const refreshBtn = getByRole("button", { name: /refresh/i })
     expect(refreshBtn).toBeDefined()
     fireEvent.click(refreshBtn)
