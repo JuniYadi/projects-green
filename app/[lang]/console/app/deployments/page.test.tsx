@@ -20,6 +20,23 @@ mock.module("@/lib/i18n/messages", () => ({
           noAppsDescription: "Deploy an app first.",
           retry: "Retry",
         },
+        deployments: {
+          heading: "Deployments",
+          description: "Monitor deployments.",
+          historyTitle: "Deployment history",
+          historyDescription: "Previous deployment attempts",
+          loadingHistory: "Loading deployment history…",
+          noAttempts: "No deployment attempts yet.",
+          table: {
+            status: "Status",
+            attempt: "Attempt",
+            duration: "Duration",
+            commit: "Commit",
+            failure: "Failure",
+            started: "Started",
+            completed: "Completed",
+          },
+        },
       },
     },
   })),
@@ -167,6 +184,14 @@ mock.module("@/modules/deploy/deploy.constants", () => ({
     queued: "Queued",
     idle: "Not started",
   },
+  DEPLOY_STATUS_TONE: {
+    running: "text-emerald-400",
+    failed: "text-rose-400",
+    building: "text-sky-400",
+    deploying: "text-blue-400",
+    queued: "text-amber-400",
+    idle: "text-muted-foreground",
+  },
 }))
 
 mock.module("@/modules/deploy/ui/operate/app-monitor", () => ({
@@ -200,7 +225,9 @@ describe("DeploymentsPage", () => {
     const view = render(<DeploymentsPage />)
 
     await waitFor(() => {
-      expect(view.getByText("Deployments")).toBeDefined()
+      expect(
+        view.getByRole("heading", { level: 1, name: "Deployments" })
+      ).toBeDefined()
       expect(view.getByText("Build failed")).toBeDefined()
       expect(view.getByText("abcdef1")).toBeDefined()
       expect(view.getByTestId("selected-deployment").textContent).toBe(
