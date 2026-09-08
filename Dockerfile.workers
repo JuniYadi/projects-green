@@ -51,7 +51,8 @@ RUN bun add --exact --ignore-scripts \
   @prisma/client@7.10.0 \
   @prisma/adapter-pg@7.10.0 \
   pg@8.23.0 \
-  ssh2@1.17.0
+  ssh2@1.17.0 \
+  && rm -rf /root/.bun
 # Copy generated Prisma client from builder (schema-specific types & engine)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
