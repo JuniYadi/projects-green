@@ -134,4 +134,33 @@ describe("TabDomains", () => {
 
     expect(html).not.toContain("border-white/[0.06]")
   })
+
+  it("renders Reverse Proxy Ingress card and toggles Trust Forwarded Headers switch", () => {
+    const view = render(
+      <TabDomains stackSlug="shop" apiDomains={[sampleDomain]} api={mockApi} />
+    )
+
+    expect(view.getByText("Reverse Proxy Ingress")).toBeDefined()
+    expect(
+      view.getByText("Trust proxy headers to capture authentic client metadata")
+    ).toBeDefined()
+
+    const trustProxySwitch = view.getByRole("switch", {
+      name: "Trust Forwarded Headers",
+    })
+    expect(trustProxySwitch.getAttribute("aria-checked")).toBe("false")
+    expect(
+      view.getByText(
+        "Currently disabled. Client IP may register as an internal cluster IP."
+      )
+    ).toBeDefined()
+
+    fireEvent.click(trustProxySwitch)
+    expect(trustProxySwitch.getAttribute("aria-checked")).toBe("true")
+    expect(
+      view.getByText(
+        "Trust proxies is active. Real client IPs will be available to application code."
+      )
+    ).toBeDefined()
+  })
 })

@@ -251,7 +251,7 @@ describe("Operate tabs coverage", () => {
     expect(view.getByText("All fields are required")).toBeDefined()
   })
 
-  it("covers TabEnv rendering and Trust Forwarded Headers switch", () => {
+  it("covers TabEnv rendering", () => {
     const envVars: Record<string, EnvVar[]> = {
       prod: [
         {
@@ -274,20 +274,7 @@ describe("Operate tabs coverage", () => {
     )
 
     expect(view.getByText("Environment Variables")).toBeDefined()
-    expect(view.getByText("Reverse Proxy Ingress")).toBeDefined()
     expect(view.getByText("NODE_ENV")).toBeDefined()
-
-    const trustProxySwitch = view.getByRole("switch", {
-      name: "Trust Forwarded Headers",
-    })
-    expect(trustProxySwitch.getAttribute("aria-checked")).toBe("false")
-
-    fireEvent.click(trustProxySwitch)
-    expect(trustProxySwitch.getAttribute("aria-checked")).toBe("true")
-    expect(
-      view.getByText(
-        "Trust proxies is active. Real client IPs will be available to application code."
-      )
-    ).toBeDefined()
+    expect(view.queryByText("Reverse Proxy Ingress")).toBeNull()
   })
 })
