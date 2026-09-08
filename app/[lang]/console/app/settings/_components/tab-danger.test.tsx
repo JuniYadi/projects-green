@@ -132,8 +132,12 @@ describe("TabDanger Component", () => {
     const confirmButton = base.getByRole("button", {
       name: "Confirm Cancellation",
     })
-    fireEvent.click(confirmButton)
+    expect(confirmButton).toBeDisabled()
 
+    const input = base.getByPlaceholderText(sampleStack.name)
+    fireEvent.change(input, { target: { value: sampleStack.name } })
+    expect(confirmButton).not.toBeDisabled()
+    fireEvent.click(confirmButton)
     await waitFor(() => {
       expect(mockCancelPost).toHaveBeenCalled()
     })

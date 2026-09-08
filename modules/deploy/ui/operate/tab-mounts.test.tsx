@@ -101,7 +101,7 @@ describe("TabMounts", () => {
 
     expect(view.getByText("/etc/app/config.yaml")).toBeDefined()
 
-    const deleteBtn = view.getByRole("button", { name: "" })
+    const deleteBtn = view.getByRole("button", { name: "Delete mount" })
     await user.click(deleteBtn)
 
     expect(view.queryByText("/etc/app/config.yaml")).toBeNull()

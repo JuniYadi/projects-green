@@ -177,10 +177,7 @@ export function TabDanger({ stack }: TabDangerProps) {
                   <Button
                     variant="destructive"
                     size="sm"
-                    disabled={
-                      isCancelling ||
-                      (confirmText.length > 0 && confirmText !== stack.name)
-                    }
+                    disabled={isCancelling || confirmText !== stack.name}
                     onClick={handleCancel}
                   >
                     {isCancelling ? "Cancelling..." : "Confirm Cancellation"}

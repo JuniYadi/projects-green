@@ -244,6 +244,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
+                      aria-label="Delete mount"
                       onClick={() => handleDeleteMount(item.id)}
                       className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                     >

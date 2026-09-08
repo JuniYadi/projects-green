@@ -381,9 +381,13 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         replicas,
         cpu,
         memory,
-        maxCpu: body.maxCpu,
-        maxMemory: body.maxMemory,
-        maxReplicas: body.maxReplicas,
+        maxCpu: body.maxCpu ? Math.min(body.maxCpu, MAX_CPU) : MAX_CPU,
+        maxMemory: body.maxMemory
+          ? Math.min(body.maxMemory, MAX_MEMORY)
+          : MAX_MEMORY,
+        maxReplicas: body.maxReplicas
+          ? Math.min(body.maxReplicas, MAX_ALLOWED_REPLICAS)
+          : MAX_ALLOWED_REPLICAS,
       })
 
       if (!validation.valid) {
