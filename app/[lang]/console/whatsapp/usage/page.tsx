@@ -17,22 +17,8 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
-import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from "recharts"
-import type { ChartConfig } from "@/components/ui/chart"
+import { WhatsAppTrafficChart } from "@/modules/whatsapp/ui/whatsapp-traffic-chart"
+import { WhatsAppCategoryDonut } from "@/modules/whatsapp/ui/whatsapp-category-donut"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -53,22 +39,6 @@ function getDateRange(range: "14d" | "30d"): { from: string; to: string } {
   const to = now.toISOString().slice(0, 10)
   return { from, to }
 }
-
-const CATEGORY_COLORS: Record<string, string> = {
-  WHATSAPP_MESSAGE_UTILITY: "#22c55e",
-  WHATSAPP_MESSAGE_AUTHENTICATION: "#3b82f6",
-  WHATSAPP_MESSAGE_MARKETING: "#f59e0b",
-  WHATSAPP_MESSAGE_SERVICE: "#a855f7",
-  UTILITY: "#22c55e",
-  AUTHENTICATION: "#3b82f6",
-  MARKETING: "#f59e0b",
-  SERVICE: "#a855f7",
-}
-
-const DAILY_CHART_CONFIG = {
-  in: { label: "Pesan Masuk", color: "#22c55e" },
-  out: { label: "Pesan Terkirim", color: "#3b82f6" },
-} satisfies ChartConfig
 
 interface DailyCount {
   date: string
@@ -295,37 +265,51 @@ export default function WhatsAppUsagePage() {
   )
 
   // Chart series mapping
-  const chartData =
-    timeRange === "3m"
+  const chartData = React.useMemo(() => {
+    return timeRange === "3m"
       ? monthlyCounts.slice(-3).map((m) => ({
+          date: `${m.year}-${String(m.month).padStart(2, "0")}-01`,
           label: new Date(m.year, m.month - 1).toLocaleDateString(
             locale === "id" ? "id-ID" : "en-US",
             { month: "short", year: "numeric" }
           ),
-          in: usageMode === "payg" ? 0 : m.messageInboxCount,
-          out:
+          messageInboxCount: usageMode === "payg" ? 0 : m.messageInboxCount,
+          messageOutboxCount:
             usageMode === "payg"
               ? Math.round(m.messageOutboxCount * 0.2)
               : m.messageOutboxCount,
         }))
       : dailyCounts.map((d) => ({
+          date: d.date,
           label: new Date(d.date).toLocaleDateString(
             locale === "id" ? "id-ID" : "en-US",
             { day: "numeric", month: "short" }
           ),
-          in: usageMode === "payg" ? 0 : d.messageInboxCount,
-          out:
+          messageInboxCount: usageMode === "payg" ? 0 : d.messageInboxCount,
+          messageOutboxCount:
             usageMode === "payg"
               ? d.messageOutboxCount > 5
                 ? Math.round(d.messageOutboxCount * 0.3)
                 : 0
               : d.messageOutboxCount,
         }))
+  }, [dailyCounts, monthlyCounts, timeRange, usageMode, locale])
 
-  const totalChartMessages = chartData.reduce(
-    (sum, item) => sum + item.in + item.out,
-    0
-  )
+  const peakChartVolume = React.useMemo(() => {
+    if (chartData.length === 0) return 0
+    return Math.max(
+      ...chartData.map((d) => d.messageInboxCount + d.messageOutboxCount)
+    )
+  }, [chartData])
+
+  const avgChartVolume = React.useMemo(() => {
+    if (chartData.length === 0) return 0
+    const total = chartData.reduce(
+      (sum, d) => sum + d.messageInboxCount + d.messageOutboxCount,
+      0
+    )
+    return Math.round(total / chartData.length)
+  }, [chartData])
 
   return (
     <div className="space-y-6">
@@ -439,20 +423,20 @@ export default function WhatsAppUsagePage() {
                 </CardTitle>
                 <CardDescription className="text-xs">
                   {locale === "id"
-                    ? `Volume pesan ${usageMode === "payg" ? "PAYG" : "masuk & keluar"} (${timeRange === "14d" ? "14 Hari" : timeRange === "30d" ? "30 Hari" : "3 Bulan"} Terakhir)`
-                    : `Message volume (${timeRange === "14d" ? "Last 14 Days" : timeRange === "30d" ? "Last 30 Days" : "Last 3 Months"})`}
+                    ? `Volume ${timeRange === "14d" ? "14 Hari" : timeRange === "30d" ? "30 Hari" : "3 Bulan"} • Puncak: ${peakChartVolume}/hari • Rata-rata: ${avgChartVolume}/hari`
+                    : `${timeRange === "14d" ? "Last 14 Days" : timeRange === "30d" ? "Last 30 Days" : "Last 3 Months"} • Peak: ${peakChartVolume}/day • Avg: ${avgChartVolume}/day`}
                 </CardDescription>
               </div>
               {/* Legend */}
               <div className="flex items-center gap-3 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-emerald-500" />
+                <div className="flex items-center gap-1">
+                  <span className="size-2 rounded-full bg-emerald-500" />
                   <span className="text-muted-foreground">
                     {locale === "id" ? "Masuk" : "Inbound"}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-blue-500" />
+                <div className="flex items-center gap-1">
+                  <span className="size-2 rounded-full bg-sky-400" />
                   <span className="text-muted-foreground">
                     {locale === "id" ? "Keluar" : "Outbound"}
                   </span>
@@ -467,55 +451,11 @@ export default function WhatsAppUsagePage() {
                 data-testid="usage-value-skeleton"
               />
             ) : (
-              <div className="relative">
-                {totalChartMessages === 0 && (
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/60 text-center text-xs text-muted-foreground">
-                    <span className="rounded-full border bg-background px-3 py-1 font-medium shadow-xs">
-                      {locale === "id"
-                        ? "Belum ada aktivitas pesan pada periode ini (0 Pesan)"
-                        : "No message activity in this period (0 Messages)"}
-                    </span>
-                  </div>
-                )}
-                <ChartContainer
-                  config={DAILY_CHART_CONFIG}
-                  className="h-[220px] w-full"
-                >
-                  <BarChart data={chartData}>
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 10 }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 10 }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={24}
-                    />
-                    <ChartTooltip
-                      content={
-                        <ChartTooltipContent className="border bg-background p-2 shadow-md" />
-                      }
-                    />
-                    <Bar
-                      dataKey="in"
-                      name={locale === "id" ? "Pesan Masuk" : "Inbound"}
-                      fill="#22c55e"
-                      radius={[2, 2, 0, 0]}
-                      maxBarSize={timeRange === "14d" ? 18 : 12}
-                    />
-                    <Bar
-                      dataKey="out"
-                      name={locale === "id" ? "Pesan Keluar" : "Outbound"}
-                      fill="#3b82f6"
-                      radius={[2, 2, 0, 0]}
-                      maxBarSize={timeRange === "14d" ? 18 : 12}
-                    />
-                  </BarChart>
-                </ChartContainer>
-              </div>
+              <WhatsAppTrafficChart
+                data={chartData}
+                locale={locale}
+                height={200}
+              />
             )}
           </CardContent>
         </Card>
@@ -573,79 +513,11 @@ export default function WhatsAppUsagePage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-                  <div className="h-[130px] w-[130px] shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={rawCategories.map((c) => ({
-                            name: c.category
-                              .replace("WHATSAPP_MESSAGE_", "")
-                              .replace("WHATSAPP_", ""),
-                            value: c.count,
-                            category: c.category,
-                          }))}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={36}
-                          outerRadius={56}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          {rawCategories.map((entry) => (
-                            <Cell
-                              key={`cell-${entry.category}`}
-                              fill={
-                                CATEGORY_COLORS[entry.category] ??
-                                "hsl(var(--primary))"
-                              }
-                            />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Horizontal Bar Legend */}
-                  <div className="w-full space-y-2 text-xs">
-                    {rawCategories.map((cat) => {
-                      const cleanName = cat.category
-                        .replace("WHATSAPP_MESSAGE_", "")
-                        .replace("WHATSAPP_", "")
-                      const total = totalCategoryMessages || 1
-                      const pct = Number(((cat.count / total) * 100).toFixed(1))
-                      const catColor =
-                        CATEGORY_COLORS[cat.category] ??
-                        CATEGORY_COLORS[cleanName] ??
-                        "hsl(var(--primary))"
-                      return (
-                        <div key={cat.category} className="space-y-0.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="size-2 rounded-full"
-                                style={{ backgroundColor: catColor }}
-                              />
-                              <span className="font-medium">{cleanName}</span>
-                            </div>
-                            <span className="text-muted-foreground">
-                              {cat.count} pesan ({pct}%)
-                            </span>
-                          </div>
-                          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${Math.min(pct, 100)}%`,
-                                backgroundColor: catColor,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+                <WhatsAppCategoryDonut
+                  items={rawCategories}
+                  totalEntries={totalCategoryMessages}
+                  locale={locale}
+                />
 
                 {/* Cost Status Footer */}
                 <div className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2 text-xs">
@@ -715,9 +587,11 @@ export default function WhatsAppUsagePage() {
             </p>
           ) : (
             filteredDevices.map((dev) => {
-              const totalQuota = dev.quotaBase + dev.addonQuotaTotal || 1
-              const usedQuota = dev.quotaUsed
-              const remainingQuota = dev.quotaBaseOut + dev.addonQuota
+              const totalQuota =
+                (dev.quotaBase ?? 0) + (dev.addonQuotaTotal ?? 0) || 1
+              const usedQuota = dev.quotaUsed ?? 0
+              const remainingQuota =
+                (dev.quotaBaseOut ?? 0) + (dev.addonQuota ?? 0)
               const usedPct = Math.min((usedQuota / totalQuota) * 100, 100)
               const isExhausted = remainingQuota <= 0
               const hasPayg = dev.totalCost > 0
