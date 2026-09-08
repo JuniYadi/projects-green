@@ -567,4 +567,73 @@ describe("fetchNamespaceTelemetry", () => {
       expect(q).toContain('pod=~"hermes-vibrant-comet.*"')
     }
   })
+
+  it("extracts per-pod metrics from vector queries or falls back to workload-level pod summary", async () => {
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+      if (urlString.includes("by (pod)")) {
+        if (urlString.includes("container_cpu_usage_seconds_total")) {
+          return new Response(
+            JSON.stringify({
+              status: "success",
+              data: {
+                result: [
+                  {
+                    metric: { pod: "hermes-vibrant-comet-deploy-0" },
+                    value: [1725822607, "0.165"],
+                  },
+                  {
+                    metric: { pod: "hermes-vibrant-comet-deploy-1" },
+                    value: [1725822607, "0.082"],
+                  },
+                ],
+              },
+            }),
+            { status: 200 }
+          )
+        }
+        if (urlString.includes("container_memory_working_set_bytes")) {
+          return new Response(
+            JSON.stringify({
+              status: "success",
+              data: {
+                result: [
+                  {
+                    metric: { pod: "hermes-vibrant-comet-deploy-0" },
+                    value: [1725822607, "150994944"],
+                  },
+                  {
+                    metric: { pod: "hermes-vibrant-comet-deploy-1" },
+                    value: [1725822607, "134217728"],
+                  },
+                ],
+              },
+            }),
+            { status: 200 }
+          )
+        }
+      }
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    const summary = await fetchNamespaceTelemetry({
+      organizationId: "org_multi_pod",
+      appSlug: "hermes-vibrant-comet",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(summary.pods).toBeDefined()
+    expect(summary.pods?.length).toBe(2)
+    expect(summary.pods?.[0].pod).toBe("hermes-vibrant-comet-deploy-0")
+    expect(summary.pods?.[0].cpuUsageCores).toBe(0.165)
+    expect(summary.pods?.[0].memoryUsageBytes).toBe(150994944)
+    expect(summary.pods?.[1].pod).toBe("hermes-vibrant-comet-deploy-1")
+    expect(summary.pods?.[1].cpuUsageCores).toBe(0.082)
+  })
 })

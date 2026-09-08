@@ -259,5 +259,24 @@ export function generateClusterTelemetrySummary(
       totalRxBytes,
       totalTxBytes,
     },
+    pods: [
+      {
+        pod: "workload-deploy-0",
+        cpuUsageCores: lastPoint.cpuUsageCores,
+        cpuLimitCores: CPU_LIMIT_CORES,
+        cpuPercent: Math.min(
+          100,
+          Math.round((lastPoint.cpuUsageCores / CPU_LIMIT_CORES) * 100)
+        ),
+        memoryUsageBytes: lastPoint.memoryUsageBytes,
+        memoryLimitBytes: MEMORY_LIMIT_BYTES,
+        memoryPercent: Math.min(
+          100,
+          Math.round((lastPoint.memoryUsageBytes / MEMORY_LIMIT_BYTES) * 100)
+        ),
+        restarts: 0,
+        status: "Running",
+      },
+    ],
   }
 }

@@ -10,6 +10,20 @@ export type TelemetryDataPoint = {
   networkTxBytesPerSec: number
 }
 
+export type PodMetricSummary = {
+  pod: string
+  cpuUsageCores: number
+  cpuRequestCores?: number
+  cpuLimitCores: number
+  cpuPercent: number
+  memoryUsageBytes: number
+  memoryRequestBytes?: number
+  memoryLimitBytes: number
+  memoryPercent: number
+  restarts: number
+  status: "Running" | "Pending" | "Terminating" | "Failed"
+}
+
 export type ClusterTelemetrySummary = {
   clusterId: string
   clusterName: string
@@ -38,4 +52,5 @@ export type ClusterTelemetrySummary = {
     totalRxBytes: number
     totalTxBytes: number
   }
+  pods?: PodMetricSummary[]
 }

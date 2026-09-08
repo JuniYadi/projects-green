@@ -1,5 +1,6 @@
 import type {
   ClusterTelemetrySummary,
+  PodMetricSummary,
   TelemetryDataPoint,
 } from "./telemetry.types"
 import { resolveClusterIntegrationByClusterCode } from "./cluster-integration.service"
@@ -118,6 +119,32 @@ function parseRangeMetricValues(data: unknown): Map<number, number> {
   return map
 }
 
+function parseVectorMetricValues(
+  data: unknown,
+  labelKey = "pod"
+): Map<string, number> {
+  const map = new Map<string, number>()
+  if (!data || typeof data !== "object") return map
+  const payload = data as {
+    data?: {
+      result?: Array<{
+        metric?: Record<string, string>
+        value?: [number, string]
+      }>
+    }
+  }
+  const result = payload.data?.result
+  if (!Array.isArray(result)) return map
+  for (const item of result) {
+    const key = item.metric?.[labelKey]
+    const val = Number.parseFloat(item.value?.[1] ?? "")
+    if (key && Number.isFinite(val)) {
+      map.set(key, val)
+    }
+  }
+  return map
+}
+
 export async function fetchNamespaceTelemetry(
   opts: FetchNamespaceTelemetryOptions
 ): Promise<ClusterTelemetrySummary> {
@@ -208,6 +235,17 @@ export async function fetchNamespaceTelemetry(
     const json = await res.json()
     return parseRangeMetricValues(json)
   }
+  const queryVector = async (query: string): Promise<Map<string, number>> => {
+    const url = `${baseUrl}/api/v1/query?query=${encodeURIComponent(query)}`
+    try {
+      const res = await fetchImpl(url, { headers })
+      if (!res.ok) return new Map()
+      const json = await res.json()
+      return parseVectorMetricValues(json, "pod")
+    } catch {
+      return new Map()
+    }
+  }
   const [
     instantCpuUsage,
     instantMemUsage,
@@ -219,6 +257,11 @@ export async function fetchNamespaceTelemetry(
     memUsageMap,
     networkRxMap,
     networkTxMap,
+    podCpuMap,
+    podMemMap,
+    podCpuLimitMap,
+    podMemLimitMap,
+    podRestartsMap,
   ] = await Promise.all([
     queryInstant(
       `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}"${podFilter}, container!=""}[2m]))`
@@ -249,6 +292,21 @@ export async function fetchNamespaceTelemetry(
     ),
     queryRange(
       `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"${podFilter}}[${rateWindow}]))`
+    ),
+    queryVector(
+      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}"${podFilter}, container!=""}[2m])) by (pod)`
+    ),
+    queryVector(
+      `sum(container_memory_working_set_bytes{namespace="${ns}"${podFilter}, container!=""}) by (pod)`
+    ),
+    queryVector(
+      `sum(kube_pod_container_resource_limits{namespace="${ns}"${podFilter}, resource="cpu"}) by (pod)`
+    ),
+    queryVector(
+      `sum(kube_pod_container_resource_limits{namespace="${ns}"${podFilter}, resource="memory"}) by (pod)`
+    ),
+    queryVector(
+      `sum(kube_pod_container_status_restarts_total{namespace="${ns}"${podFilter}}) by (pod)`
     ),
   ])
 
@@ -415,5 +473,62 @@ export async function fetchNamespaceTelemetry(
       totalRxBytes,
       totalTxBytes,
     },
+    pods: (() => {
+      const allPodNames = new Set<string>()
+      for (const p of podCpuMap.keys()) allPodNames.add(p)
+      for (const p of podMemMap.keys()) allPodNames.add(p)
+      for (const p of podRestartsMap.keys()) allPodNames.add(p)
+
+      if (allPodNames.size > 0) {
+        return Array.from(allPodNames)
+          .sort()
+          .map((pod) => {
+            const cpu = podCpuMap.get(pod) ?? 0
+            const cpuLimit = podCpuLimitMap.get(pod) || cpuLimitCores
+            const mem = podMemMap.get(pod) ?? 0
+            const memLimit = podMemLimitMap.get(pod) || memoryLimitBytes
+            const restarts = podRestartsMap.get(pod) ?? 0
+            return {
+              pod,
+              cpuUsageCores: Number(cpu.toFixed(3)),
+              cpuLimitCores: Number(cpuLimit.toFixed(2)),
+              cpuPercent: Math.min(
+                100,
+                Math.round((cpu / (cpuLimit || 1)) * 100)
+              ),
+              memoryUsageBytes: Math.round(mem),
+              memoryLimitBytes: Math.round(memLimit),
+              memoryPercent: Math.min(
+                100,
+                Math.round((mem / (memLimit || 1)) * 100)
+              ),
+              restarts: Math.round(restarts),
+              status: "Running" as const,
+            }
+          })
+      }
+      if (sanitizedSlug) {
+        return [
+          {
+            pod: `${sanitizedSlug}-deploy-0`,
+            cpuUsageCores: currentCores,
+            cpuLimitCores: cpuLimitCores,
+            cpuPercent: Math.min(
+              100,
+              Math.round((currentCores / (cpuLimitCores || 1)) * 100)
+            ),
+            memoryUsageBytes: currentBytes,
+            memoryLimitBytes: memoryLimitBytes,
+            memoryPercent: Math.min(
+              100,
+              Math.round((currentBytes / (memoryLimitBytes || 1)) * 100)
+            ),
+            restarts: 0,
+            status: "Running" as const,
+          },
+        ]
+      }
+      return []
+    })(),
   }
 }
