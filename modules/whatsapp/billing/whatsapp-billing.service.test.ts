@@ -299,6 +299,110 @@ describe("WhatsappBillingService", () => {
     )
   })
 
+  it("deducts overage from refill allowance when quotaBaseOut is negative", async () => {
+    defaultTx.whatsappDevice.findUnique.mockResolvedValueOnce(
+      whatsappDevice({ quotaBaseOut: decimal("-313") })
+    )
+
+    await service.resetAllowances(["device_1"], { device_1: "1000" })
+
+    expect(defaultTx.whatsappDevice.update).toHaveBeenCalledWith({
+      where: { id: "device_1" },
+      data: {
+        quotaBaseOut: decimal("687"),
+        quotaBase: decimal("1000"),
+      },
+    })
+  })
+
+  it("clamps refill allowance to zero if overage exceeds base allowance", async () => {
+    defaultTx.whatsappDevice.findUnique.mockResolvedValueOnce(
+      whatsappDevice({ quotaBaseOut: decimal("-1200") })
+    )
+
+    await service.resetAllowances(["device_1"], { device_1: "1000" })
+
+    expect(defaultTx.whatsappDevice.update).toHaveBeenCalledWith({
+      where: { id: "device_1" },
+      data: {
+        quotaBaseOut: decimal("0"),
+        quotaBase: decimal("1000"),
+      },
+    })
+  })
+
+  it("refills active subscription allowance without renewing when within paid period", async () => {
+    mockPrisma.serviceSubscription.findMany.mockResolvedValue([
+      {
+        id: "subscription_q",
+        organizationId: "org_q",
+        pricingId: "pricing_q",
+        priceLocked: decimal("1800000"),
+        billingPeriod: "QUARTERLY",
+        currentPeriodEnd: new Date("2026-11-30T00:00:00Z"),
+        metadata: { prior: true },
+        plan: { resources: { quota: 1000 } },
+      },
+    ])
+    mockPrisma.whatsappDevice.findMany.mockResolvedValue([{ id: "device_q" }])
+    defaultTx.whatsappDevice.findUnique.mockResolvedValueOnce(
+      whatsappDevice({ id: "device_q", quotaBaseOut: decimal("-313") })
+    )
+
+    const result = await runWhatsappBillingCycle(
+      mockPrisma as unknown as PrismaClient,
+      mockOrderService as never,
+      new Date("2026-09-09T00:00:00Z")
+    )
+
+    expect(result).toEqual({ charged: 1, skipped: 0, errors: 0 })
+    // Crucial: no renewal order should be charged for active quarterly subscription in September!
+    expect(mockOrderService.renewServiceSubscription).not.toHaveBeenCalled()
+    // Device quota is refilled with overage deducted (1000 - 313 = 687)
+    expect(defaultTx.whatsappDevice.update).toHaveBeenCalledWith({
+      where: { id: "device_q" },
+      data: {
+        quotaBaseOut: decimal("687"),
+        quotaBase: decimal("1000"),
+      },
+    })
+    // Subscription metadata is updated with lastResetPeriod
+    expect(mockPrisma.serviceSubscription.update).toHaveBeenCalledWith({
+      where: { id: "subscription_q" },
+      data: {
+        metadata: expect.objectContaining({
+          prior: true,
+          lastResetPeriod: "2026-09",
+        }),
+      },
+    })
+  })
+
+  it("skips refilling active subscription if already refilled for the same period", async () => {
+    mockPrisma.serviceSubscription.findMany.mockResolvedValue([
+      {
+        id: "subscription_q",
+        organizationId: "org_q",
+        pricingId: "pricing_q",
+        priceLocked: decimal("1800000"),
+        billingPeriod: "QUARTERLY",
+        currentPeriodEnd: new Date("2026-11-30T00:00:00Z"),
+        metadata: { lastResetPeriod: "2026-09" },
+        plan: { resources: { quota: 1000 } },
+      },
+    ])
+    mockPrisma.whatsappDevice.findMany.mockResolvedValue([{ id: "device_q" }])
+
+    const result = await runWhatsappBillingCycle(
+      mockPrisma as unknown as PrismaClient,
+      mockOrderService as never,
+      new Date("2026-09-09T00:00:00Z")
+    )
+
+    expect(result).toEqual({ charged: 0, skipped: 1, errors: 0 })
+    expect(mockOrderService.renewServiceSubscription).not.toHaveBeenCalled()
+  })
+
   describe("consumeAllowanceOrChargeOverage", () => {
     beforeEach(() => {
       // Reset tx mocks before each test
