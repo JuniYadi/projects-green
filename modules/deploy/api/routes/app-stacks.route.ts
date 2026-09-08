@@ -91,6 +91,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
       where: { organizationId: auth.organizationId },
       orderBy: { updatedAt: "desc" },
       include: {
+        template: true,
         deployments: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -218,6 +219,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           },
         },
         include: {
+          template: true,
           deployments: {
             orderBy: { createdAt: "desc" },
             take: 1,

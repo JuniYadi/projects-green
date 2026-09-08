@@ -345,6 +345,11 @@ export type StackSummaryDTO = {
   billingState: StackBillingState
   sourceType?: string | null
   templateId?: string | null
+  templateName?: string | null
+  port?: number | null
+  cpu?: number | null
+  memory?: number | null
+  envCount?: number
   lastDeployedAt: string | null
   latestDeploymentId: string | null
   currentStepLabel: string | null
@@ -375,10 +380,28 @@ export const toStackSummaryDTO = (stack: {
   metadataJson: unknown
   sourceType?: string | null
   templateId?: string | null
+  template?: { name?: string | null } | null
+  envVarsJson?: unknown
+  cpu?: number | null
+  memory?: number | null
   lastDeployedAt: Date | null
   deployments?: Array<{ id: string }>
   events?: Array<Pick<ApplicationDeployEvent, "type" | "createdAt">>
 }): StackSummaryDTO => {
+  const meta = (stack.metadataJson ?? {}) as Record<string, unknown>
+  const envVars = Array.isArray(stack.envVarsJson)
+    ? stack.envVarsJson
+    : typeof stack.envVarsJson === "object" && stack.envVarsJson !== null
+      ? Object.keys(stack.envVarsJson)
+      : []
+  const resolvedPort =
+    typeof meta.port === "number"
+      ? meta.port
+      : typeof meta.defaultPort === "number"
+        ? meta.defaultPort
+        : typeof meta.servicePort === "number"
+          ? meta.servicePort
+          : null
   return {
     id: stack.id,
     name: stack.name,
@@ -397,6 +420,13 @@ export const toStackSummaryDTO = (stack: {
         string | undefined) ??
       stack.templateId ??
       null,
+    templateName:
+      stack.template?.name ?? (meta.templateName as string | undefined) ?? null,
+    port: resolvedPort,
+    cpu: stack.cpu ?? (typeof meta.cpu === "number" ? meta.cpu : null),
+    memory:
+      stack.memory ?? (typeof meta.memory === "number" ? meta.memory : null),
+    envCount: envVars.length,
     lastDeployedAt: stack.lastDeployedAt
       ? stack.lastDeployedAt.toISOString()
       : null,

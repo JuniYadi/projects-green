@@ -98,12 +98,12 @@ describe("PlatformInstanceWorkspacePage (/console/app/platform/[slug])", () => {
   })
 
   it("renders platform workspace with Environment variables tab when tab=env", async () => {
-    const { getByText, getAllByText } = render(
+    const { queryByText, getAllByText } = render(
       <PlatformInstanceWorkspacePage />
     )
 
     await waitFor(() => {
-      expect(getByText("Back to Platforms Dashboard")).toBeDefined()
+      expect(queryByText("Back to Platforms Dashboard")).toBeNull()
       expect(getAllByText("Hermes Comet").length).toBeGreaterThan(0)
       expect(getAllByText("Environment Variables").length).toBeGreaterThan(0)
     })

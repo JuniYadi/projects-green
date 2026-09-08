@@ -428,5 +428,35 @@ describe("deploy-monitor.dto", () => {
       expect(dto.currentStepIndex).toBeNull()
       expect(dto.currentStepStartedAt).toBeNull()
     })
+
+    it("maps templateName, port, cpu, memory, and envCount", () => {
+      const dto = toStackSummaryDTO({
+        id: "stack-template",
+        name: "Hermes Comet",
+        slug: "hermes-vibrant-comet",
+        status: "RUNNING",
+        framework: "Node.js",
+        branchName: "main",
+        subdomain: "hermes",
+        customDomain: null,
+        resourcePlanId: "starter",
+        billingMode: "PAYG",
+        metadataJson: { defaultPort: 3000, billingState: "ACTIVE" },
+        envVarsJson: [
+          { key: "NODE_ENV", value: "production" },
+          { key: "PORT", value: "3000" },
+        ],
+        cpu: 1,
+        memory: 1024,
+        template: { name: "Hermes AI Agent" },
+        lastDeployedAt: new Date("2026-06-05T10:00:00.000Z"),
+      })
+
+      expect(dto.templateName).toBe("Hermes AI Agent")
+      expect(dto.port).toBe(3000)
+      expect(dto.cpu).toBe(1)
+      expect(dto.memory).toBe(1024)
+      expect(dto.envCount).toBe(2)
+    })
   })
 })

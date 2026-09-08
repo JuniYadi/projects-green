@@ -60,9 +60,12 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
           <CardContent className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/20 p-3 text-xs">
               <div>
-                <span className="text-muted-foreground">Branch</span>
-                <p className="mt-0.5 font-mono font-medium text-foreground">
-                  {stack.branchName}
+                <span className="text-muted-foreground">Source / Origin</span>
+                <p className="mt-0.5 font-medium text-foreground">
+                  {stack.templateName ??
+                    (stack.branchName && stack.branchName !== "/"
+                      ? stack.branchName
+                      : "Marketplace Template")}
                 </p>
               </div>
               <div>
@@ -126,9 +129,14 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
           </CardHeader>
           <CardContent className="space-y-3 text-xs">
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
-              <span className="text-muted-foreground">Framework / Runtime</span>
+              <span className="text-muted-foreground">
+                Framework / Template
+              </span>
               <span className="font-medium text-foreground">
-                {stack.framework ?? stack.templateId ?? "Custom Container"}
+                {stack.templateName ??
+                  stack.framework ??
+                  stack.templateId ??
+                  "Custom Container"}
               </span>
             </div>
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
@@ -150,8 +158,15 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                 )}
               </span>
             </div>
+            <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              <span className="text-muted-foreground">Compute Resources</span>
+              <span className="font-medium text-foreground">
+                {stack.cpu ? `${stack.cpu} vCPU` : "0.5 vCPU"} •{" "}
+                {stack.memory ? `${stack.memory} MB` : "512 MB"}
+              </span>
+            </div>
             <div className="flex items-center justify-between pt-0.5">
-              <span className="text-muted-foreground">Compute Plan</span>
+              <span className="text-muted-foreground">Billing Plan</span>
               <span className="font-medium text-foreground">
                 {stack.resourcePlanId ?? "small"} ({stack.billingMode ?? "PAYG"}
                 )
@@ -195,9 +210,13 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              <span className="text-muted-foreground">Environment Scope</span>
+              <span className="text-muted-foreground">
+                Variables Configured
+              </span>
               <span className="rounded bg-muted px-2 py-0.5 font-mono text-[11px] font-semibold text-foreground">
-                production
+                {stack.envCount !== undefined
+                  ? `${stack.envCount} Variables`
+                  : "Configured in Vault"}
               </span>
             </div>
           </CardContent>
@@ -229,7 +248,8 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
               <span>Container runtime running healthy.</span>
             </div>
             <p className="mt-1 text-emerald-400">
-              ✓ Ready for inbound traffic on port 80/443.
+              ✓ Ready for inbound traffic on{" "}
+              {stack.port ? `port ${stack.port}` : "port 80/443"}.
             </p>
           </div>
         </CardContent>

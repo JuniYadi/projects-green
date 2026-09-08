@@ -1,12 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useParams, useSearchParams } from "next/navigation"
-import { ArrowLeft, ArrowsClockwise } from "@phosphor-icons/react"
+import { ArrowsClockwise } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { eden } from "@/lib/eden"
-import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -277,17 +276,6 @@ export default function PlatformInstanceWorkspacePage() {
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6">
-      {/* Navigation Breadcrumb back to Dashboard */}
-      <div className="flex items-center justify-between">
-        <Link
-          href={localizePathname({ pathname: "/console/app", locale })}
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft size={14} />
-          <span>Back to Platforms Dashboard</span>
-        </Link>
-      </div>
-
       {overviewLoading ? (
         <div className="rounded-xl border border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
           Loading platform workspace for {slug}…
