@@ -308,7 +308,7 @@ describe("appStacksRoutes", () => {
     expect(body.data[0]?.slug).toBe("console-next-app")
     expect(body.data[0]?.status).toBe("running")
     expect(body.data[0]?.latestDeploymentId).toBe("deploy-1")
-    expect(body.data[0]?.currentStepLabel).toBe("Synced")
+    expect(body.data[0]?.currentStepLabel).toBe("Deployment verified")
     expect(body.data[0]?.currentStepIndex).toBe(10)
     expect(body.data[0]?.currentStepStartedAt).toBe("2026-06-05T09:10:00.000Z")
   })
@@ -344,7 +344,7 @@ describe("appStacksRoutes", () => {
         currentStepStartedAt: string | null
       }>
     }
-    expect(body.data[0]?.currentStepLabel).toBe("Deploy completed")
+    expect(body.data[0]?.currentStepLabel).toBe("Application live")
     expect(body.data[0]?.currentStepIndex).toBe(12)
     expect(body.data[0]?.currentStepStartedAt).toBe("2026-06-05T09:30:00.000Z")
     expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith({
@@ -489,7 +489,7 @@ describe("appStacksRoutes", () => {
       }
     }
     expect(body.data.stack.slug).toBe("console-next-app")
-    expect(body.data.stack.currentStepLabel).toBe("Synced")
+    expect(body.data.stack.currentStepLabel).toBe("Deployment verified")
     expect(body.data.stack.currentStepIndex).toBe(10)
     expect(body.data.stack.currentStepStartedAt).toBe(
       "2026-06-05T09:10:00.000Z"
@@ -533,7 +533,7 @@ describe("appStacksRoutes", () => {
         latestDeployment: { status: string } | null
       }
     }
-    expect(body.data.stack.currentStepLabel).toBe("Deploy completed")
+    expect(body.data.stack.currentStepLabel).toBe("Application live")
     expect(body.data.stack.currentStepIndex).toBe(12)
     expect(body.data.stack.currentStepStartedAt).toBe(
       "2026-06-05T09:30:00.000Z"
