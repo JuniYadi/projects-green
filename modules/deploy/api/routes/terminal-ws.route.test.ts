@@ -28,7 +28,10 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
 mock.module("@/modules/deploy/pod-exec.service", () => ({
   resolveStackExecCredentials: mockResolveStackExecCredentials,
   buildKubeExecUrl: () => "wss://k8s.test/exec",
-  decodeKubeFrame: (buf: ArrayBuffer) => ({ channel: 1, data: "output" }),
+  decodeKubeFrame: (buf: ArrayBuffer) => {
+    const arr = new Uint8Array(buf)
+    return { channel: arr[0] ?? 1, data: "output-text" }
+  },
   encodeKubeFrame: (channel: number, data: string) => new Uint8Array([channel]),
   encodeResizeFrame: () => new Uint8Array([4]),
   KUBE_EXEC_CHANNELS: { STDIN: 0, STDOUT: 1, STDERR: 2, ERROR: 3, RESIZE: 4 },
@@ -253,5 +256,125 @@ describe("executeTerminalSession validation flows", () => {
 
     await executeTerminalSession(ws, { clientClosed: false })
     expect(mockClose).toHaveBeenCalledWith(1008, "Forbidden")
+  })
+
+  it("connects to Kubernetes and sets up event handlers for authorized session", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      type: "workos",
+      platformRole: "super_admin",
+      organizationId: "org_admin",
+    })
+    mockFindUnique.mockResolvedValueOnce({
+      id: "stk_ok",
+      organizationId: "org_target",
+      slug: "target-stack",
+    })
+    mockResolveStackExecCredentials.mockResolvedValueOnce({
+      url: "https://k8s.test",
+      token: "tok_123",
+      caCert: "cert_data",
+    })
+
+    const mockSend = mock()
+    const mockClose = mock()
+    const ws: TerminalWsClient = {
+      data: {
+        params: { stackId: "stk_ok" },
+        query: { pod: "pod_test" },
+        headers: { origin: "https://pfnapp.my.id" },
+        request: new Request("http://localhost"),
+      },
+      send: mockSend,
+      close: mockClose,
+    }
+
+    const state = { clientClosed: false }
+    await executeTerminalSession(ws, state)
+
+    // Verify kubeWs was created and attached
+    expect(ws.kubeWs).toBeDefined()
+    type MockKubeWs = {
+      onopen?: () => void
+      onmessage?: (event: { data: unknown }) => void
+      onclose?: (event: { code: number }) => void
+      onerror?: () => void
+    }
+    const kubeWs = ws.kubeWs as unknown as MockKubeWs
+
+    // Trigger onopen
+    if (kubeWs.onopen) kubeWs.onopen()
+    expect(mockSend).toHaveBeenCalledWith(
+      JSON.stringify({ type: "status", status: "connected" })
+    )
+
+    // Trigger onmessage with stdout
+    if (kubeWs.onmessage) {
+      kubeWs.onmessage({ data: new Uint8Array([1, 104, 105]).buffer }) // channel 1: stdout
+      expect(mockSend).toHaveBeenCalledWith(
+        JSON.stringify({ type: "stdout", data: "output-text" })
+      )
+
+      kubeWs.onmessage({ data: new Uint8Array([3, 101, 114]).buffer }) // channel 3: error
+      expect(mockSend).toHaveBeenCalledWith(
+        JSON.stringify({ type: "error", data: "output-text" })
+      )
+    }
+
+    // Trigger onerror
+    if (kubeWs.onerror) {
+      kubeWs.onerror()
+      expect(mockSend).toHaveBeenCalledWith(
+        JSON.stringify({
+          type: "error",
+          error: "Kubernetes exec connection failed",
+        })
+      )
+    }
+
+    // Trigger onclose
+    if (kubeWs.onclose) {
+      kubeWs.onclose({ code: 1000 })
+      expect(mockSend).toHaveBeenCalledWith(
+        JSON.stringify({ type: "status", status: "disconnected", code: 1000 })
+      )
+    }
+  })
+
+  it("handles exception thrown during credential resolution gracefully", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      type: "workos",
+      platformRole: "super_admin",
+      organizationId: "org_admin",
+    })
+    mockFindUnique.mockResolvedValueOnce({
+      id: "stk_err",
+      organizationId: "org_target",
+      slug: "err-stack",
+    })
+    mockResolveStackExecCredentials.mockRejectedValueOnce(
+      new Error("K8s cluster integration failed")
+    )
+
+    const mockSend = mock()
+    const mockClose = mock()
+    const ws: TerminalWsClient = {
+      data: {
+        params: { stackId: "stk_err" },
+        query: { pod: "pod_test" },
+        headers: { origin: "https://pfnapp.my.id" },
+        request: new Request("http://localhost"),
+      },
+      send: mockSend,
+      close: mockClose,
+    }
+
+    await executeTerminalSession(ws, { clientClosed: false })
+    expect(mockSend).toHaveBeenCalledWith(
+      JSON.stringify({ type: "error", error: "K8s cluster integration failed" })
+    )
+    expect(mockClose).toHaveBeenCalledWith(
+      1011,
+      "K8s cluster integration failed"
+    )
   })
 })
