@@ -129,20 +129,35 @@ describe("ClusterTelemetryCards component", () => {
       expect(mockTelemetryGet).toHaveBeenCalled()
     })
   })
-  it("falls back to local summary gracefully if live telemetry fetch fails", async () => {
+  it("falls back to local summary gracefully and displays error banner if live telemetry fetch fails", async () => {
     mockTelemetryGet.mockImplementationOnce(() =>
-      Promise.resolve({
-        data: {
-          ok: false,
-          error: "TELEMETRY_ERROR",
-          message: "Prometheus unreachable",
-        },
-      })
+      Promise.reject(new Error("Prometheus unreachable"))
     )
 
-    const { getByText } = renderWithClient(<ClusterTelemetryCards />)
+    const { getByText, getByTestId } = renderWithClient(
+      <ClusterTelemetryCards />
+    )
 
     expect(getByText("Cluster Resource Telemetry")).toBeDefined()
     expect(getByText("CPU Utilization")).toBeDefined()
+
+    await waitFor(() => {
+      expect(getByTestId("telemetry-fallback-banner")).toBeDefined()
+      expect(getByText(/Live Prometheus metrics unreachable/i)).toBeDefined()
+    })
+  })
+
+  it("passes custom clusterCode prop to query", async () => {
+    renderWithClient(<ClusterTelemetryCards clusterCode="id-cgk-1" />)
+
+    await waitFor(() => {
+      expect(mockTelemetryGet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          $query: expect.objectContaining({
+            cluster: "id-cgk-1",
+          }),
+        })
+      )
+    })
   })
 })

@@ -33,10 +33,10 @@ describe("formatTenantNamespace", () => {
     expect(formatTenantNamespace(null)).toBe("app-default")
   })
 
-  it("converts org_ prefix to app- and lowercases", () => {
+  it("converts org_ prefix to app-, normalizes underscores, and lowercases", () => {
     expect(formatTenantNamespace("org_01ks2abc")).toBe("app-01ks2abc")
     expect(formatTenantNamespace("org_TEST123")).toBe("app-test123")
-    expect(formatTenantNamespace("org_prod_tenant")).toBe("app-prod_tenant")
+    expect(formatTenantNamespace("org_prod_tenant")).toBe("app-prod-tenant")
   })
 
   it("preserves strings that already start with app-", () => {
@@ -49,6 +49,17 @@ describe("formatTenantNamespace", () => {
   it("prepends app- to bare strings", () => {
     expect(formatTenantNamespace("my-team")).toBe("app-my-team")
     expect(formatTenantNamespace("tenant42")).toBe("app-tenant42")
+  })
+  it("rejects invalid characters to prevent PromQL injection", () => {
+    expect(() => formatTenantNamespace('org_tenant"}[2m]')).toThrow(
+      "Invalid tenant namespace"
+    )
+    expect(() => formatTenantNamespace("app-test;drop table")).toThrow(
+      "Invalid tenant namespace"
+    )
+    expect(() => formatTenantNamespace("org_evil${ns}")).toThrow(
+      "Invalid tenant namespace"
+    )
   })
 })
 

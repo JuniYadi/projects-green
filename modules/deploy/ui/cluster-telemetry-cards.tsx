@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Cpu, HardDrive, ArrowsLeftRight, Globe } from "@phosphor-icons/react"
+import { cn } from "@/lib/utils"
 import { eden } from "@/lib/eden"
 import {
   Card,
@@ -32,7 +33,15 @@ import {
   PRESET_SECONDS,
   formatTelemetryTick,
 } from "@/lib/time-range"
-export function ClusterTelemetryCards() {
+export type ClusterTelemetryCardsProps = {
+  clusterCode?: string
+  className?: string
+}
+
+export function ClusterTelemetryCards({
+  clusterCode = "sgp",
+  className,
+}: ClusterTelemetryCardsProps = {}) {
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
     type: "preset",
     preset: "1h",
@@ -48,18 +57,23 @@ export function ClusterTelemetryCards() {
   const {
     data: telemetry = generateClusterTelemetrySummary("1h"),
     isFetching,
+    isError,
     dataUpdatedAt,
     refetch,
   } = useQuery<ClusterTelemetrySummary>({
-    queryKey: ["deploy", "telemetry", timeSelection, "sgp", userTimeZone],
+    queryKey: ["deploy", "telemetry", timeSelection, clusterCode, userTimeZone],
     queryFn: async () => {
       const queryParams =
         timeSelection.type === "preset"
-          ? { range: timeSelection.preset, cluster: "sgp", tz: userTimeZone }
+          ? {
+              range: timeSelection.preset,
+              cluster: clusterCode,
+              tz: userTimeZone,
+            }
           : {
               from: String(timeSelection.from),
               to: String(timeSelection.to),
-              cluster: "sgp",
+              cluster: clusterCode,
               tz: userTimeZone,
             }
       const { data: payload } = await eden.api.deploy.telemetry.get({
@@ -141,7 +155,25 @@ export function ClusterTelemetryCards() {
   ).toFixed(1)
 
   return (
-    <div className="space-y-3">
+    <div className={cn("space-y-3", className)}>
+      {isError && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-500"
+          data-testid="telemetry-fallback-banner"
+        >
+          <span>
+            Live Prometheus metrics unreachable. Displaying fallback telemetry.
+          </span>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="font-medium underline hover:text-amber-400"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* Cluster Context & Time Range Controls */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">

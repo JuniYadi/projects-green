@@ -38,8 +38,15 @@ const CLUSTER_CONFIGS: Record<
 
 export function formatTenantNamespace(organizationId: string): string {
   if (!organizationId) return "app-default"
-  const clean = organizationId.replace(/^org_/, "app-").toLowerCase()
-  return clean.startsWith("app-") ? clean : `app-${clean}`
+  const clean = organizationId
+    .replace(/^org_/, "app-")
+    .toLowerCase()
+    .replace(/_/g, "-")
+  const ns = clean.startsWith("app-") ? clean : `app-${clean}`
+  if (!/^app-[a-z0-9-]+$/.test(ns)) {
+    throw new Error(`Invalid tenant namespace: ${ns}`)
+  }
+  return ns
 }
 
 export type FetchNamespaceTelemetryOptions = {
