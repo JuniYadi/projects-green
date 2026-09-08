@@ -110,12 +110,38 @@ const POD_STATUS_META: Record<
   },
 }
 
-type TabScalingProps = {
+export type TabScalingProps = {
   replicas: number
   setReplicas: React.Dispatch<React.SetStateAction<number>>
+  maxAllowedReplicas?: number
+  maxCpuQuota?: string
+  maxMemoryQuota?: string
 }
 
-export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
+export function parseCpuToCores(cpuStr: string): number {
+  if (cpuStr.endsWith("m")) {
+    return parseFloat(cpuStr.slice(0, -1)) / 1000
+  }
+  return parseFloat(cpuStr)
+}
+
+export function parseMemoryToMiB(memStr: string): number {
+  if (memStr.endsWith("Gi") || memStr.endsWith("GiB")) {
+    return parseFloat(memStr) * 1024
+  }
+  if (memStr.endsWith("Mi") || memStr.endsWith("MiB")) {
+    return parseFloat(memStr)
+  }
+  return parseFloat(memStr)
+}
+
+export function TabScaling({
+  replicas,
+  setReplicas,
+  maxAllowedReplicas = 8,
+  maxCpuQuota = "4000m",
+  maxMemoryQuota = "4096Mi",
+}: TabScalingProps) {
   const [cpuLimit, setCpuLimit] = useState("1000m")
   const [memRequest, setMemRequest] = useState("256Mi")
   const [memLimit, setMemLimit] = useState("512Mi")
@@ -147,6 +173,33 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
       ? cpuLimitOptions.indexOf(cpuLimit)
       : 1
 
+  // Resource calculations
+  const cpuLimitCores = parseCpuToCores(cpuLimit)
+  const memLimitMiB = parseMemoryToMiB(memLimit)
+  const maxCpuCores = parseCpuToCores(maxCpuQuota)
+  const maxMemoryMiB = parseMemoryToMiB(maxMemoryQuota)
+
+  const totalCores = replicas * cpuLimitCores
+  const totalMemoryMiB = replicas * memLimitMiB
+
+  const cpuPercent = Math.min(100, Math.round((totalCores / maxCpuCores) * 100))
+  const memPercent = Math.min(
+    100,
+    Math.round((totalMemoryMiB / maxMemoryMiB) * 100)
+  )
+
+  const hpaQuotaCeiling = Math.max(
+    1,
+    Math.min(maxAllowedReplicas, Math.floor(maxCpuCores / cpuLimitCores))
+  )
+
+  const wouldExceedCpu = (replicas + 1) * cpuLimitCores > maxCpuCores
+  const wouldExceedMemory = (replicas + 1) * memLimitMiB > maxMemoryMiB
+  const isAtMaxReplicas = replicas >= maxAllowedReplicas
+  const isQuotaCapReached =
+    isAtMaxReplicas || wouldExceedCpu || wouldExceedMemory
+  const isPlusDisabled = hpaEnabled || isQuotaCapReached
+
   const pods = DUMMY_PODS
 
   const podCounts = {
@@ -155,14 +208,10 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
     warning: pods.filter((p) => p.status === "warning").length,
     crashed: pods.filter((p) => p.status === "crashed").length,
   }
-
   return (
     <div className="flex flex-col gap-6">
       {/* Pod Status Overview */}
-      <Card
-        size="sm"
-        className="border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
-      >
+      <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -178,7 +227,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
             </div>
             {/* Summary badges */}
             <div className="flex items-center gap-2 text-[10px] font-bold">
-              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-white/70">
+              <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-muted-foreground">
                 {podCounts.total} Total
               </span>
               <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-400">
@@ -201,7 +250,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-border">
                   {[
                     "Pod Name",
                     "Status",
@@ -227,12 +276,12 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                   return (
                     <tr
                       key={pod.name}
-                      className={`border-b border-white/[0.04] transition-colors hover:bg-white/[0.02] ${
+                      className={`border-b border-border transition-colors hover:bg-muted/30 ${
                         i === pods.length - 1 ? "border-b-0" : ""
                       }`}
                     >
                       {/* Pod name */}
-                      <td className="px-4 py-3 font-mono text-[11px] whitespace-nowrap text-white/80">
+                      <td className="px-4 py-3 font-mono text-[11px] whitespace-nowrap text-foreground">
                         {pod.name}
                       </td>
 
@@ -249,7 +298,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                       {/* CPU */}
                       <td className="min-w-[100px] px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-16 flex-shrink-0 overflow-hidden rounded-full bg-white/5">
+                          <div className="h-1.5 w-16 flex-shrink-0 overflow-hidden rounded-full bg-muted">
                             <div
                               className={`h-full rounded-full ${meta.bar}`}
                               style={{ width: `${pod.cpu}%` }}
@@ -259,7 +308,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                             className={`font-mono text-[10px] font-semibold ${
                               pod.status === "crashed"
                                 ? "text-muted-foreground/30"
-                                : "text-white/70"
+                                : "text-foreground"
                             }`}
                           >
                             {pod.cpu}%
@@ -270,7 +319,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                       {/* RAM */}
                       <td className="min-w-[100px] px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-16 flex-shrink-0 overflow-hidden rounded-full bg-white/5">
+                          <div className="h-1.5 w-16 flex-shrink-0 overflow-hidden rounded-full bg-muted">
                             <div
                               className={`h-full rounded-full ${meta.bar}`}
                               style={{ width: `${pod.ram}%` }}
@@ -280,7 +329,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                             className={`font-mono text-[10px] font-semibold ${
                               pod.status === "crashed"
                                 ? "text-muted-foreground/30"
-                                : "text-white/70"
+                                : "text-foreground"
                             }`}
                           >
                             {pod.ram}%
@@ -289,7 +338,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                       </td>
 
                       {/* Uptime */}
-                      <td className="px-4 py-3 font-mono text-[11px] whitespace-nowrap text-white/60">
+                      <td className="px-4 py-3 font-mono text-[11px] whitespace-nowrap text-muted-foreground">
                         {pod.uptime}
                       </td>
 
@@ -301,7 +350,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                               ? "text-red-400"
                               : pod.restarts > 0
                                 ? "text-amber-400"
-                                : "text-white/50"
+                                : "text-muted-foreground"
                           }`}
                         >
                           {pod.restarts}
@@ -309,7 +358,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                       </td>
 
                       {/* Node */}
-                      <td className="px-4 py-3 font-mono text-[10px] whitespace-nowrap text-white/40">
+                      <td className="px-4 py-3 font-mono text-[10px] whitespace-nowrap text-muted-foreground">
                         {pod.node}
                       </td>
                     </tr>
@@ -418,15 +467,83 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                   min="0"
                   max={cpuLimitOptions.length - 1}
                   value={currentCpuLimitIndex}
-                  onChange={(e) =>
-                    setCpuLimit(cpuLimitOptions[parseInt(e.target.value)])
-                  }
+                  onChange={(e) => {
+                    const nextCpu = cpuLimitOptions[parseInt(e.target.value)]
+                    setCpuLimit(nextCpu)
+                    const nextCores = parseCpuToCores(nextCpu)
+                    const nextCeiling = Math.max(
+                      1,
+                      Math.min(
+                        maxAllowedReplicas,
+                        Math.floor(maxCpuCores / nextCores)
+                      )
+                    )
+                    if (hpaMaxReplicas > nextCeiling) {
+                      setHpaMaxReplicas(nextCeiling)
+                    }
+                  }}
                   className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary transition-all hover:bg-muted/80"
                 />
                 <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
                   <span>0.5 Cores</span>
                   <span>1.0 Cores</span>
                   <span>2.0 Cores</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Total Resource Footprint */}
+            <div className="space-y-3.5 rounded-xl border border-border bg-muted/20 p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-foreground">
+                  Total Resource Footprint
+                </span>
+                <span className="rounded-full border border-border bg-muted/40 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
+                  {replicas} {replicas === 1 ? "replica" : "replicas"}
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                {/* CPU Footprint */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Cpu size={13} />
+                      Total CPU:
+                    </span>
+                    <span className="font-mono text-xs font-semibold text-foreground">
+                      {totalCores.toFixed(1)} / {maxCpuCores.toFixed(1)} Cores
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        cpuPercent >= 100 ? "bg-amber-500" : "bg-primary"
+                      }`}
+                      style={{ width: `${Math.min(100, cpuPercent)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Memory Footprint */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <HardDrive size={13} />
+                      Total Memory:
+                    </span>
+                    <span className="font-mono text-xs font-semibold text-foreground">
+                      {totalMemoryMiB} MiB / {maxMemoryMiB} MiB
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        memPercent >= 100 ? "bg-amber-500" : "bg-primary"
+                      }`}
+                      style={{ width: `${Math.min(100, memPercent)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -442,8 +559,9 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                     type="button"
                     size="sm"
                     variant="outline"
+                    aria-label="Decrease replicas"
                     onClick={() => setReplicas(Math.max(1, replicas - 1))}
-                    disabled={hpaEnabled}
+                    disabled={hpaEnabled || replicas <= 1}
                     className="h-7 w-7 rounded-lg border-border p-0 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
                   >
                     -
@@ -455,8 +573,9 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                     type="button"
                     size="sm"
                     variant="outline"
+                    aria-label="Increase replicas"
                     onClick={() => setReplicas(replicas + 1)}
-                    disabled={hpaEnabled}
+                    disabled={isPlusDisabled}
                     className="h-7 w-7 rounded-lg border-border p-0 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
                   >
                     +
@@ -470,6 +589,12 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                     Manual replicas are locked because Horizontal Pod Autoscaler
                     (HPA) is currently active.
                   </span>
+                </div>
+              )}
+              {!hpaEnabled && isQuotaCapReached && (
+                <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-[10px] text-amber-400">
+                  <Warning size={14} className="shrink-0" />
+                  <span>Maximum resource quota reached for this plan.</span>
                 </div>
               )}
             </div>
@@ -510,6 +635,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                 </div>
                 <button
                   type="button"
+                  aria-label="Toggle Horizontal Pod Autoscaler"
                   onClick={() => setHpaEnabled(!hpaEnabled)}
                   className={`relative inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold transition-all duration-200 focus:outline-none ${
                     hpaEnabled
@@ -529,44 +655,72 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
               </div>
 
               {hpaEnabled && (
-                <div className="animate-fadeIn grid gap-4 border-t border-border pt-3.5 text-xs sm:grid-cols-3">
-                  <div className="space-y-1.5">
-                    <label className="block font-semibold text-muted-foreground">
-                      Min Replicas
-                    </label>
-                    <Input
-                      type="number"
-                      value={hpaMinReplicas}
-                      onChange={(e) =>
-                        setHpaMinReplicas(Number(e.target.value))
-                      }
-                      className="h-8 rounded-lg border-white/[0.08] bg-black/40 text-xs font-semibold text-white focus:border-primary/50"
-                    />
+                <div className="animate-fadeIn space-y-3.5 border-t border-border pt-3.5 text-xs">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <label className="block font-semibold text-muted-foreground">
+                        Min Replicas
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={hpaQuotaCeiling}
+                        value={hpaMinReplicas}
+                        onChange={(e) =>
+                          setHpaMinReplicas(
+                            Math.max(
+                              1,
+                              Math.min(Number(e.target.value), hpaMaxReplicas)
+                            )
+                          )
+                        }
+                        className="h-8 rounded-lg border-border bg-background text-xs font-semibold text-foreground focus:border-primary/50"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block font-semibold text-muted-foreground">
+                        Max Replicas
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={hpaQuotaCeiling}
+                        value={hpaMaxReplicas}
+                        onChange={(e) =>
+                          setHpaMaxReplicas(
+                            Math.max(
+                              1,
+                              Math.min(Number(e.target.value), hpaQuotaCeiling)
+                            )
+                          )
+                        }
+                        className="h-8 rounded-lg border-border bg-background text-xs font-semibold text-foreground focus:border-primary/50"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block font-semibold text-muted-foreground">
+                        CPU Target Utilization (%)
+                      </label>
+                      <Input
+                        type="number"
+                        value={hpaCpuTarget}
+                        onChange={(e) =>
+                          setHpaCpuTarget(Number(e.target.value))
+                        }
+                        className="h-8 rounded-lg border-border bg-background text-xs font-semibold text-foreground focus:border-primary/50"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="block font-semibold text-muted-foreground">
-                      Max Replicas
-                    </label>
-                    <Input
-                      type="number"
-                      value={hpaMaxReplicas}
-                      onChange={(e) =>
-                        setHpaMaxReplicas(Number(e.target.value))
-                      }
-                      className="h-8 rounded-lg border-white/[0.08] bg-black/40 text-xs font-semibold text-white focus:border-primary/50"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block font-semibold text-muted-foreground">
-                      CPU Target Utilization (%)
-                    </label>
-                    <Input
-                      type="number"
-                      value={hpaCpuTarget}
-                      onChange={(e) => setHpaCpuTarget(Number(e.target.value))}
-                      className="h-8 rounded-lg border-border bg-background text-xs font-semibold text-foreground focus:border-primary/50"
-                    />
-                  </div>
+
+                  {hpaMaxReplicas >= hpaQuotaCeiling && (
+                    <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-[10px] text-amber-400">
+                      <Warning size={14} className="shrink-0" />
+                      <span>
+                        HPA max replicas capped at {hpaQuotaCeiling} based on
+                        CPU limits and plan quota.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -585,6 +739,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                 </div>
                 <button
                   type="button"
+                  aria-label="Toggle Vertical Pod Autoscaler"
                   onClick={() => setVpaEnabled(!vpaEnabled)}
                   className={`relative inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold transition-all duration-200 focus:outline-none ${
                     vpaEnabled
@@ -618,7 +773,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                           className={`rounded-lg border px-4 py-1.5 text-xs font-bold transition-all ${
                             vpaMode === mode
                               ? "border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)]"
-                              : "border-white/[0.08] text-muted-foreground hover:bg-white/[0.02] hover:text-white"
+                              : "border-border text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                           }`}
                         >
                           {mode}

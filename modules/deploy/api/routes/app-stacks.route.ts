@@ -65,6 +65,51 @@ export const recentSourcesRoutes = new Elysia({ prefix: "/deploy" }).get(
 
 const MAX_HISTORY_PAGE_SIZE = 100
 
+export const MAX_CPU = 4000
+export const MAX_MEMORY = 4096
+export const MAX_ALLOWED_REPLICAS = 8
+
+export function validateResourceBounds(params: {
+  replicas: number
+  cpu: number
+  memory: number
+  maxCpu?: number
+  maxMemory?: number
+  maxReplicas?: number
+}): { valid: boolean; error?: string; message?: string } {
+  const maxCpu = params.maxCpu ?? MAX_CPU
+  const maxMemory = params.maxMemory ?? MAX_MEMORY
+  const maxReplicas = params.maxReplicas ?? MAX_ALLOWED_REPLICAS
+
+  if (params.replicas > maxReplicas) {
+    return {
+      valid: false,
+      error: "REPLICAS_EXCEEDED",
+      message: `Replicas (${params.replicas}) cannot exceed maximum allowed (${maxReplicas})`,
+    }
+  }
+
+  const totalCpu = params.replicas * params.cpu
+  if (totalCpu > maxCpu) {
+    return {
+      valid: false,
+      error: "CPU_QUOTA_EXCEEDED",
+      message: `Total CPU (${totalCpu}m) exceeds maximum quota (${maxCpu}m)`,
+    }
+  }
+
+  const totalMemory = params.replicas * params.memory
+  if (totalMemory > maxMemory) {
+    return {
+      valid: false,
+      error: "MEMORY_QUOTA_EXCEEDED",
+      message: `Total memory (${totalMemory}Mi) exceeds maximum quota (${maxMemory}Mi)`,
+    }
+  }
+
+  return { valid: true }
+}
+
 /**
  * PGREEN-072 — Console Monitor/Manage truth path.
  *
@@ -281,6 +326,108 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
     {
       params: t.Object({
         slug: t.String(),
+      }),
+    }
+  )
+  .patch(
+    "/:slug/scaling",
+    async ({ params, body, set }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
+      const stack = await prisma.applicationStack.findUnique({
+        where: {
+          organizationId_slug: {
+            organizationId: auth.organizationId,
+            slug: params.slug,
+          },
+        },
+      })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application not found",
+        }
+      }
+
+      const metadata =
+        typeof stack.metadataJson === "object" && stack.metadataJson !== null
+          ? (stack.metadataJson as Record<string, unknown>)
+          : {}
+
+      const replicas =
+        body.replicas ??
+        (typeof metadata.replicas === "number" ? metadata.replicas : 1)
+      const cpu = body.cpu ?? stack.cpu ?? 1000
+      const memory = body.memory ?? stack.memory ?? 512
+
+      const validation = validateResourceBounds({
+        replicas,
+        cpu,
+        memory,
+        maxCpu: body.maxCpu,
+        maxMemory: body.maxMemory,
+        maxReplicas: body.maxReplicas,
+      })
+
+      if (!validation.valid) {
+        set.status = 422
+        return {
+          ok: false,
+          error: validation.error ?? "RESOURCE_QUOTA_EXCEEDED",
+          message: validation.message ?? "Resource bounds exceeded",
+        }
+      }
+
+      await prisma.applicationStack.update({
+        where: { id: stack.id },
+        data: {
+          ...(body.cpu !== undefined ? { cpu: body.cpu } : {}),
+          ...(body.memory !== undefined ? { memory: body.memory } : {}),
+          metadataJson: {
+            ...metadata,
+            ...(body.replicas !== undefined ? { replicas: body.replicas } : {}),
+          },
+        },
+      })
+
+      return {
+        ok: true,
+        data: {
+          replicas,
+          cpu,
+          memory,
+          totalCpu: replicas * cpu,
+          totalMemory: replicas * memory,
+        },
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+      }),
+      body: t.Object({
+        replicas: t.Optional(t.Integer({ minimum: 1 })),
+        cpu: t.Optional(t.Integer({ minimum: 1 })),
+        memory: t.Optional(t.Integer({ minimum: 1 })),
+        maxCpu: t.Optional(t.Integer({ minimum: 1 })),
+        maxMemory: t.Optional(t.Integer({ minimum: 1 })),
+        maxReplicas: t.Optional(t.Integer({ minimum: 1 })),
       }),
     }
   )

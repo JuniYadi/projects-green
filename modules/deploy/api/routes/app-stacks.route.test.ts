@@ -21,22 +21,44 @@ const mockPrisma = {
   applicationStack: {
     findMany: mock(async () => []),
     findUnique: mock(async () => null),
+    update: mock(async () => null),
   },
   applicationDeployment: {
     count: mock(async () => 0),
     findMany: mock(async () => []),
   },
+  billingAccount: {
+    findUnique: mock(async () => null),
+  },
+  servicePlan: {
+    findFirst: mock(async () => null),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
-const { appStacksRoutes } = await import("./app-stacks.route")
+const {
+  appStacksRoutes,
+  validateResourceBounds,
+  MAX_CPU,
+  MAX_MEMORY,
+  MAX_ALLOWED_REPLICAS,
+} = await import("./app-stacks.route")
 const { deployRoutes } = await import("../deploy.route")
 
 const get = (path: string) =>
   appStacksRoutes.handle(
     new Request(`http://localhost${path}`, {
       headers: { "Content-Type": "application/json" },
+    })
+  )
+
+const patch = (path: string, body: unknown) =>
+  appStacksRoutes.handle(
+    new Request(`http://localhost${path}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     })
   )
 
@@ -79,12 +101,18 @@ describe("appStacksRoutes", () => {
     mockWithAuth.mockClear()
     mockPrisma.applicationStack.findMany.mockClear()
     mockPrisma.applicationStack.findUnique.mockClear()
+    mockPrisma.applicationStack.update.mockClear()
     mockPrisma.applicationDeployment.count.mockClear()
     mockPrisma.applicationDeployment.findMany.mockClear()
+    mockPrisma.billingAccount.findUnique.mockClear()
+    mockPrisma.servicePlan.findFirst.mockClear()
     mockPrisma.applicationStack.findMany.mockResolvedValue([] as never)
     mockPrisma.applicationStack.findUnique.mockResolvedValue(null as never)
+    mockPrisma.applicationStack.update.mockResolvedValue(null as never)
     mockPrisma.applicationDeployment.count.mockResolvedValue(0 as never)
     mockPrisma.applicationDeployment.findMany.mockResolvedValue([] as never)
+    mockPrisma.billingAccount.findUnique.mockResolvedValue(null as never)
+    mockPrisma.servicePlan.findFirst.mockResolvedValue(null as never)
   })
 
   afterEach(() => {
@@ -351,6 +379,7 @@ describe("appStacksRoutes", () => {
       where: { organizationId: "org-1" },
       orderBy: { updatedAt: "desc" },
       include: {
+        template: true,
         deployments: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -648,5 +677,145 @@ describe("appStacksRoutes", () => {
     mockWithAuth.mockResolvedValueOnce({ user: null } as never)
     const res = await get("/deploy/apps/")
     expect(res.status).toBe(401)
+  })
+
+  describe("scaling quota bounds and validation", () => {
+    it("validates within bounds correctly", () => {
+      const result = validateResourceBounds({
+        replicas: 2,
+        cpu: 1000,
+        memory: 1024,
+      })
+      expect(result.valid).toBe(true)
+    })
+
+    it("rejects replicas exceeding MAX_ALLOWED_REPLICAS", () => {
+      const result = validateResourceBounds({
+        replicas: 9,
+        cpu: 100,
+        memory: 100,
+      })
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe("REPLICAS_EXCEEDED")
+    })
+
+    it("rejects total CPU exceeding MAX_CPU", () => {
+      const result = validateResourceBounds({
+        replicas: 5,
+        cpu: 1000,
+        memory: 512,
+      })
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe("CPU_QUOTA_EXCEEDED")
+    })
+
+    it("rejects total memory exceeding MAX_MEMORY", () => {
+      const result = validateResourceBounds({
+        replicas: 5,
+        cpu: 500,
+        memory: 1024,
+      })
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe("MEMORY_QUOTA_EXCEEDED")
+    })
+
+    it("rejects scaling PATCH when unauthenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({ user: null } as never)
+      const res = await patch("/deploy/apps/console-next-app/scaling", {
+        replicas: 2,
+      })
+      expect(res.status).toBe(401)
+    })
+
+    it("rejects scaling PATCH when stack not found", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(
+        null as never
+      )
+      const res = await patch("/deploy/apps/missing/scaling", {
+        replicas: 2,
+      })
+      expect(res.status).toBe(404)
+    })
+
+    it("returns 422 when scaling request exceeds CPU quota", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        cpu: 2000,
+        memory: 512,
+        metadataJson: null,
+      } as never)
+
+      const res = await patch("/deploy/apps/console-next-app/scaling", {
+        replicas: 3,
+      })
+      expect(res.status).toBe(422)
+      const body = (await res.json()) as { ok: boolean; error: string }
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("CPU_QUOTA_EXCEEDED")
+    })
+
+    it("returns 422 when scaling request exceeds Memory quota", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        cpu: 500,
+        memory: 2048,
+        metadataJson: null,
+      } as never)
+
+      const res = await patch("/deploy/apps/console-next-app/scaling", {
+        replicas: 3,
+      })
+      expect(res.status).toBe(422)
+      const body = (await res.json()) as { ok: boolean; error: string }
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("MEMORY_QUOTA_EXCEEDED")
+    })
+
+    it("updates stack and returns 200 when scaling request is within bounds", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        cpu: 1000,
+        memory: 512,
+        metadataJson: { replicas: 1 },
+      } as never)
+      mockPrisma.applicationStack.update.mockResolvedValueOnce({
+        id: "stack-1",
+      } as never)
+
+      const res = await patch("/deploy/apps/console-next-app/scaling", {
+        replicas: 3,
+        cpu: 1000,
+        memory: 512,
+      })
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        ok: boolean
+        data: {
+          replicas: number
+          cpu: number
+          memory: number
+          totalCpu: number
+          totalMemory: number
+        }
+      }
+      expect(body.ok).toBe(true)
+      expect(body.data).toEqual({
+        replicas: 3,
+        cpu: 1000,
+        memory: 512,
+        totalCpu: 3000,
+        totalMemory: 1536,
+      })
+      expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith({
+        where: { id: "stack-1" },
+        data: {
+          cpu: 1000,
+          memory: 512,
+          metadataJson: {
+            replicas: 3,
+          },
+        },
+      })
+    })
   })
 })
