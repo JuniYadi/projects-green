@@ -168,7 +168,23 @@ const {
   waitFor,
   cleanup: rtlCleanup,
 } = await import("@testing-library/react")
+const { QueryClient, QueryClientProvider } =
+  await import("@tanstack/react-query")
 const { default: ApplicationsPage } = await import("./page")
+
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+const renderWithClient = (ui: React.ReactElement) => {
+  const client = createTestQueryClient()
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
 
 afterEach(() => {
   rtlCleanup()
@@ -184,7 +200,7 @@ afterEach(() => {
 
 describe("ApplicationsPage overview", () => {
   it("renders heading and description from i18n", async () => {
-    const { getByText } = render(<ApplicationsPage />)
+    const { getByText } = renderWithClient(<ApplicationsPage />)
 
     await waitFor(() => {
       expect(getByText("App Platform")).toBeDefined()
@@ -193,7 +209,7 @@ describe("ApplicationsPage overview", () => {
   })
 
   it("renders app name as a link to app workspace overview", async () => {
-    const { getByText } = render(<ApplicationsPage />)
+    const { getByText } = renderWithClient(<ApplicationsPage />)
 
     await waitFor(() => {
       const appLink = getByText("test-app").closest("a")
@@ -204,7 +220,7 @@ describe("ApplicationsPage overview", () => {
   })
 
   it("renders status badge", async () => {
-    const { getByText } = render(<ApplicationsPage />)
+    const { getByText } = renderWithClient(<ApplicationsPage />)
 
     await waitFor(() => {
       expect(getByText("Running")).toBeDefined()
@@ -212,7 +228,7 @@ describe("ApplicationsPage overview", () => {
   })
 
   it("renders framework and branch in card", async () => {
-    const { getByText } = render(<ApplicationsPage />)
+    const { getByText } = renderWithClient(<ApplicationsPage />)
 
     await waitFor(() => {
       expect(getByText(/Next\.js/i)).toBeDefined()
@@ -221,7 +237,7 @@ describe("ApplicationsPage overview", () => {
   })
 
   it("renders relative time in card footer", async () => {
-    const { getByText } = render(<ApplicationsPage />)
+    const { getByText } = renderWithClient(<ApplicationsPage />)
 
     await waitFor(() => {
       expect(getByText(/\d+ minutes ago|just now/i)).toBeDefined()
@@ -229,7 +245,7 @@ describe("ApplicationsPage overview", () => {
   })
 
   it("renders platform card action links with correct hrefs", async () => {
-    const { getByText } = render(<ApplicationsPage />)
+    const { getByText } = renderWithClient(<ApplicationsPage />)
 
     await waitFor(() => {
       const deploymentsLink = getByText("Deployments").closest("a")
@@ -249,7 +265,7 @@ describe("ApplicationsPage overview", () => {
   })
 
   it("renders dashboard overview KPI stats, telemetry charts, and quick action buttons", async () => {
-    const { getByText } = render(<ApplicationsPage />)
+    const { getByText } = renderWithClient(<ApplicationsPage />)
 
     await waitFor(() => {
       expect(getByText("Cluster Resource Telemetry")).toBeDefined()
@@ -275,7 +291,7 @@ describe("ApplicationsPage overview", () => {
       })
     )
 
-    const { getByText } = render(<ApplicationsPage />)
+    const { getByText } = renderWithClient(<ApplicationsPage />)
 
     await waitFor(() => {
       expect(getByText("Cluster Resource Telemetry")).toBeDefined()

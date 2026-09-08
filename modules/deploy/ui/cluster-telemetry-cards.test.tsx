@@ -5,6 +5,8 @@ import {
   fireEvent,
   waitFor,
 } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import type React from "react"
 import { generateClusterTelemetrySummary } from "@/modules/deploy/telemetry.service"
 
 const mockTelemetryGet = mock(
@@ -36,6 +38,19 @@ mock.module("@/lib/eden", () => ({
 
 // Dynamic import required so mock.module registrations take effect prior to module evaluation.
 const { ClusterTelemetryCards } = await import("./cluster-telemetry-cards")
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+const renderWithClient = (ui: React.ReactElement) => {
+  const client = createTestQueryClient()
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
 
 afterEach(() => {
   rtlCleanup()
@@ -43,7 +58,9 @@ afterEach(() => {
 
 describe("ClusterTelemetryCards component", () => {
   it("renders 3 primary telemetry cards (CPU, Memory, Network I/O) and updates with LIVE badge", async () => {
-    const { getByText, queryByTestId } = render(<ClusterTelemetryCards />)
+    const { getByText, queryByTestId } = renderWithClient(
+      <ClusterTelemetryCards />
+    )
 
     expect(getByText("Cluster Resource Telemetry")).toBeDefined()
     expect(getByText("CPU Utilization")).toBeDefined()
@@ -58,7 +75,7 @@ describe("ClusterTelemetryCards component", () => {
   })
 
   it("allows switching time range between 1h, 6h, 24h, and 7d and clicking refresh", async () => {
-    const { getByRole } = render(<ClusterTelemetryCards />)
+    const { getByRole } = renderWithClient(<ClusterTelemetryCards />)
 
     const btn6h = getByRole("button", { name: "6h" })
     expect(btn6h).toBeDefined()
@@ -91,7 +108,7 @@ describe("ClusterTelemetryCards component", () => {
       })
     )
 
-    const { getByText } = render(<ClusterTelemetryCards />)
+    const { getByText } = renderWithClient(<ClusterTelemetryCards />)
 
     expect(getByText("Cluster Resource Telemetry")).toBeDefined()
     expect(getByText("CPU Utilization")).toBeDefined()

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   Cpu,
   HardDrive,
@@ -31,88 +32,47 @@ import {
 } from "@/modules/deploy/ui/cluster-telemetry-sparkline"
 
 type TimeRangeOption = "1h" | "6h" | "24h" | "7d"
-
 export function ClusterTelemetryCards() {
   const [timeRange, setTimeRange] = useState<TimeRangeOption>("1h")
-  const [telemetry, setTelemetry] = useState<ClusterTelemetrySummary>(() =>
-    generateClusterTelemetrySummary(timeRange)
-  )
-  const [isLive, setIsLive] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-
-    const loadTelemetry = async (manual = false) => {
-      if (manual) setIsRefreshing(true)
-      try {
-        const { data: payload } = await eden.api.deploy.telemetry.get({
-          $query: { range: timeRange, cluster: "sgp" },
-        })
-        if (cancelled) return
-        if (payload?.ok && payload.data) {
-          setTelemetry(payload.data)
-          setIsLive(true)
-          const now = new Date()
-          setLastUpdated(
-            now.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })
-          )
-        } else {
-          setTelemetry((prev) =>
-            prev.timeRange === timeRange
-              ? prev
-              : generateClusterTelemetrySummary(timeRange)
-          )
-        }
-      } catch {
-        if (!cancelled) {
-          setTelemetry((prev) =>
-            prev.timeRange === timeRange
-              ? prev
-              : generateClusterTelemetrySummary(timeRange)
-          )
-        }
-      } finally {
-        if (!cancelled && manual) setIsRefreshing(false)
+  const {
+    data: telemetry = generateClusterTelemetrySummary(timeRange),
+    isFetching,
+    dataUpdatedAt,
+    refetch,
+  } = useQuery<ClusterTelemetrySummary>({
+    queryKey: ["deploy", "telemetry", timeRange, "sgp"],
+    queryFn: async () => {
+      const { data: payload } = await eden.api.deploy.telemetry.get({
+        $query: { range: timeRange, cluster: "sgp" },
+      })
+      if (!payload || !payload.ok || !payload.data) {
+        throw new Error(payload?.message ?? "Unable to load cluster telemetry")
       }
-    }
+      return payload.data
+    },
+    placeholderData: (previousData) =>
+      previousData?.timeRange === timeRange
+        ? previousData
+        : generateClusterTelemetrySummary(timeRange),
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 5_000,
+  })
 
-    void loadTelemetry(false)
-    const interval = setInterval(() => void loadTelemetry(false), 10000)
+  const isLive = dataUpdatedAt > 0
+  const lastUpdated =
+    dataUpdatedAt > 0
+      ? new Date(dataUpdatedAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      : null
 
-    return () => {
-      cancelled = true
-      clearInterval(interval)
-    }
-  }, [timeRange])
   const handleRefresh = () => {
-    void (async () => {
-      setIsRefreshing(true)
-      try {
-        const { data: payload } = await eden.api.deploy.telemetry.get({
-          $query: { range: timeRange, cluster: "sgp" },
-        })
-        if (payload?.ok && payload.data) {
-          setTelemetry(payload.data)
-          setIsLive(true)
-          const now = new Date()
-          setLastUpdated(
-            now.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })
-          )
-        }
-      } finally {
-        setIsRefreshing(false)
-      }
-    })()
+    void refetch()
   }
   const cpuDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
     label: p.timestamp,
@@ -187,14 +147,14 @@ export function ClusterTelemetryCards() {
             variant="outline"
             size="xs"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isFetching}
             className="h-6 gap-1 px-2 text-[11px]"
             title="Refresh cluster telemetry"
           >
             <ArrowsClockwise
               size={12}
               className={
-                isRefreshing
+                isFetching
                   ? "animate-spin text-primary"
                   : "text-muted-foreground"
               }
