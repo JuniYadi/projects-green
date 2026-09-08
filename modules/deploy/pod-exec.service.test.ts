@@ -5,6 +5,7 @@ import {
   encodeKubeFrame,
   encodeResizeFrame,
   KUBE_EXEC_CHANNELS,
+  resolveStackExecCredentials,
 } from "./pod-exec.service"
 
 describe("pod-exec.service", () => {
@@ -36,6 +37,17 @@ describe("pod-exec.service", () => {
     const decoded = decodeKubeFrame(encoded)
     expect(decoded.channel).toBe(0)
     expect(decoded.data).toBe(text)
+
+    // Test with raw Uint8Array input
+    const rawBytes = new TextEncoder().encode("ls -la\n")
+    const encodedRaw = encodeKubeFrame(KUBE_EXEC_CHANNELS.STDIN, rawBytes)
+    const decodedRaw = decodeKubeFrame(encodedRaw)
+    expect(decodedRaw.data).toBe("ls -la\n")
+
+    // Test empty buffer decode
+    const emptyDecoded = decodeKubeFrame(new Uint8Array(0))
+    expect(emptyDecoded.channel).toBe(0)
+    expect(emptyDecoded.data).toBe("")
   })
 
   it("encodes terminal resize frame with channel 4", () => {
@@ -44,7 +56,15 @@ describe("pod-exec.service", () => {
 
     const decoded = decodeKubeFrame(resizeFrame)
     expect(decoded.channel).toBe(4)
-    const json = JSON.parse(decoded.data)
+    const json = JSON.parse(decoded.data) as { Width: number; Height: number }
     expect(json).toEqual({ Width: 120, Height: 35 })
+  })
+
+  it("encodes all kubernetes subprotocol channels accurately", () => {
+    expect(KUBE_EXEC_CHANNELS.STDIN).toBe(0)
+    expect(KUBE_EXEC_CHANNELS.STDOUT).toBe(1)
+    expect(KUBE_EXEC_CHANNELS.STDERR).toBe(2)
+    expect(KUBE_EXEC_CHANNELS.ERROR).toBe(3)
+    expect(KUBE_EXEC_CHANNELS.RESIZE).toBe(4)
   })
 })

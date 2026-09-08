@@ -56,19 +56,24 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
       const { stackId } = ws.data.params
       const { pod, container } = ws.data.query
 
+      const state = { clientClosed: false }
+      ;(ws as unknown as Record<string, unknown>).terminalState = state
+
       void (async () => {
         try {
           // 1. Strict Origin Validation (Block Cross-Site WebSocket Hijacking / CSWSH)
           const origin =
             ws.data.headers?.origin || ws.data.request?.headers?.get("origin")
           if (!isAllowedOrigin(origin)) {
-            ws.send(
-              JSON.stringify({
-                type: "error",
-                error: "Forbidden: Invalid origin",
-              })
-            )
-            ws.close(1008, "Invalid origin")
+            if (!state.clientClosed) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  error: "Forbidden: Invalid origin",
+                })
+              )
+              ws.close(1008, "Invalid origin")
+            }
             return
           }
 
@@ -76,13 +81,15 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
           const request = ws.data.request
           const auth = request ? await resolveAuthContext(request) : null
           if (!auth || auth.type !== "workos") {
-            ws.send(
-              JSON.stringify({
-                type: "error",
-                error: "Unauthorized: Valid WorkOS session required",
-              })
-            )
-            ws.close(1008, "Unauthorized")
+            if (!state.clientClosed) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  error: "Unauthorized: Valid WorkOS session required",
+                })
+              )
+              ws.close(1008, "Unauthorized")
+            }
             return
           }
 
@@ -93,23 +100,32 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
           })
 
           if (!stack) {
-            ws.send(JSON.stringify({ type: "error", error: "Stack not found" }))
-            ws.close(1008, "Stack not found")
+            if (!state.clientClosed) {
+              ws.send(
+                JSON.stringify({ type: "error", error: "Stack not found" })
+              )
+              ws.close(1008, "Stack not found")
+            }
             return
           }
 
           // Platform super admin can inspect any stack, regular users only their own org
           const isSuperAdmin = auth.platformRole === "super_admin"
           if (!isSuperAdmin && stack.organizationId !== auth.organizationId) {
-            ws.send(
-              JSON.stringify({
-                type: "error",
-                error: "Forbidden: Stack does not belong to your organization",
-              })
-            )
-            ws.close(1008, "Forbidden")
+            if (!state.clientClosed) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  error:
+                    "Forbidden: Stack does not belong to your organization",
+                })
+              )
+              ws.close(1008, "Forbidden")
+            }
             return
           }
+
+          if (state.clientClosed) return
 
           const namespace = `app-${stack.slug}`
           const creds = await resolveStackExecCredentials(stackId)
@@ -137,11 +153,22 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
 
           kubeWs.binaryType = "arraybuffer"
 
+          // Guard: if client already disconnected while waiting for async setup, close immediately
+          if (state.clientClosed) {
+            kubeWs.close(1000, "Client already disconnected")
+            return
+          }
+
           kubeWs.onopen = () => {
+            if (state.clientClosed) {
+              kubeWs.close(1000, "Client already disconnected")
+              return
+            }
             ws.send(JSON.stringify({ type: "status", status: "connected" }))
           }
 
           kubeWs.onmessage = (event) => {
+            if (state.clientClosed) return
             if (event.data instanceof ArrayBuffer) {
               const { channel, data } = decodeKubeFrame(event.data)
               if (
@@ -156,35 +183,41 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
           }
 
           kubeWs.onclose = (event) => {
-            ws.send(
-              JSON.stringify({
-                type: "status",
-                status: "disconnected",
-                code: event.code,
-              })
-            )
-            ws.close(1000, "Kubernetes process exited")
+            if (!state.clientClosed) {
+              ws.send(
+                JSON.stringify({
+                  type: "status",
+                  status: "disconnected",
+                  code: event.code,
+                })
+              )
+              ws.close(1000, "Kubernetes process exited")
+            }
           }
 
           kubeWs.onerror = () => {
-            ws.send(
-              JSON.stringify({
-                type: "error",
-                error: "Kubernetes exec connection failed",
-              })
-            )
-            ws.close(1011, "Exec error")
+            if (!state.clientClosed) {
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  error: "Kubernetes exec connection failed",
+                })
+              )
+              ws.close(1011, "Exec error")
+            }
           }
 
           // Attach kubeWs to ws context
           ;(ws as unknown as Record<string, unknown>).kubeWs = kubeWs
         } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Failed to initialize terminal"
-          ws.send(JSON.stringify({ type: "error", error: message }))
-          ws.close(1011, message)
+          if (!state.clientClosed) {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Failed to initialize terminal"
+            ws.send(JSON.stringify({ type: "error", error: message }))
+            ws.close(1011, message)
+          }
         }
       })()
     },
@@ -214,6 +247,12 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
       }
     },
     close(ws) {
+      const state = (
+        ws as unknown as Record<string, { clientClosed: boolean } | undefined>
+      ).terminalState
+      if (state) {
+        state.clientClosed = true
+      }
       const kubeWs = (ws as unknown as Record<string, WebSocket | undefined>)
         .kubeWs
       if (kubeWs && kubeWs.readyState === WebSocket.OPEN) {
