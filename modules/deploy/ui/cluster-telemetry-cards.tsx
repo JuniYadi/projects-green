@@ -26,7 +26,12 @@ import {
   ClusterTelemetrySparkline,
   type SparklineDataPoint,
 } from "@/modules/deploy/ui/cluster-telemetry-sparkline"
-import { type TimeRangeSelection, format24hTime } from "@/lib/time-range"
+import {
+  type TimeRangeSelection,
+  format24hTime,
+  PRESET_SECONDS,
+  formatTelemetryTick,
+} from "@/lib/time-range"
 export function ClusterTelemetryCards() {
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
     type: "preset",
