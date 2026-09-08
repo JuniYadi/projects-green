@@ -10,6 +10,7 @@ import {
 
 import { mapRecentDeploySource } from "../../recent-sources.dto"
 
+import { queryAppLogs } from "../../opensearch/opensearch-query.service"
 const MAX_RECENT_SOURCE_LIMIT = 3
 
 export const recentSourcesRoutes = new Elysia({ prefix: "/deploy" }).get(
@@ -556,5 +557,80 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
       params: t.Object({
         slug: t.String(),
       }),
+    }
+  )
+  .get(
+    "/:slug/logs",
+    async ({ params, query, set }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
+      const stack = await prisma.applicationStack.findUnique({
+        where: {
+          organizationId_slug: {
+            organizationId: auth.organizationId,
+            slug: params.slug,
+          },
+        },
+        select: { id: true },
+      })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application not found",
+        }
+      }
+
+      const limit = query.limit ? parseInt(query.limit, 10) : 100
+      const order = query.order === "asc" ? "asc" : "desc"
+
+      const result = await queryAppLogs({
+        slug: params.slug,
+        q: query.q,
+        level: query.level as "ALL" | "INFO" | "WARN" | "ERROR" | undefined,
+        source: query.source,
+        from: query.from,
+        to: query.to,
+        limit,
+        order,
+      })
+
+      return {
+        ok: true,
+        data: result.hits,
+        total: result.total,
+        took: result.took,
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+      }),
+      query: t.Optional(
+        t.Object({
+          q: t.Optional(t.String()),
+          level: t.Optional(t.String()),
+          source: t.Optional(t.String()),
+          from: t.Optional(t.String()),
+          to: t.Optional(t.String()),
+          limit: t.Optional(t.String()),
+          order: t.Optional(t.String()),
+        })
+      ),
     }
   )
