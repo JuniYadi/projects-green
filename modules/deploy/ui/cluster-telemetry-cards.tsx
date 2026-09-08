@@ -39,6 +39,7 @@ export type ClusterTelemetryCardsProps = {
   title?: string
   columns?: 1 | 3 | "auto"
   chartHeight?: number
+  showPodBreakdown?: boolean
   className?: string
 }
 
@@ -48,6 +49,7 @@ export function ClusterTelemetryCards({
   title,
   columns = "auto",
   chartHeight,
+  showPodBreakdown = false,
   className,
 }: ClusterTelemetryCardsProps = {}) {
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
@@ -372,6 +374,112 @@ export function ClusterTelemetryCards({
           </CardContent>
         </Card>
       </div>
+
+      {/* Pod Quota & Health Table Breakdown */}
+      {showPodBreakdown && telemetry.pods && telemetry.pods.length > 0 && (
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="space-y-1 pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-bold text-foreground">
+                  Pod Resource &amp; Quota Allocation
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Live per-pod compute consumption and restart count
+                </CardDescription>
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">
+                {telemetry.pods.length}{" "}
+                {telemetry.pods.length === 1 ? "pod" : "pods"} active
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
+                  <tr>
+                    <th className="px-3.5 py-2.5">Pod</th>
+                    <th className="px-3.5 py-2.5">Status</th>
+                    <th className="px-3.5 py-2.5">CPU Usage</th>
+                    <th className="px-3.5 py-2.5">Memory Usage</th>
+                    <th className="px-3.5 py-2.5 text-right">Restarts</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {telemetry.pods.map((pod) => (
+                    <tr key={pod.pod} className="hover:bg-muted/30">
+                      <td className="px-3.5 py-3 font-mono text-xs font-semibold text-foreground">
+                        {pod.pod}
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                          <span className="size-1.5 rounded-full bg-emerald-500" />
+                          {pod.status}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                            <span>{pod.cpuUsageCores.toFixed(3)} cores</span>
+                            <span className="text-muted-foreground">
+                              {pod.cpuPercent}% of {pod.cpuLimitCores} Limit
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full bg-emerald-500 transition-all"
+                              style={{
+                                width: `${Math.min(100, pod.cpuPercent)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                            <span>{formatBytes(pod.memoryUsageBytes)}</span>
+                            <span className="text-muted-foreground">
+                              {pod.memoryPercent}% of{" "}
+                              {formatBytes(pod.memoryLimitBytes)} Limit
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={cn(
+                                "h-full transition-all",
+                                pod.memoryPercent > 85
+                                  ? "bg-destructive"
+                                  : "bg-emerald-500"
+                              )}
+                              style={{
+                                width: `${Math.min(100, pod.memoryPercent)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3 text-right font-mono text-xs">
+                        <span
+                          className={cn(
+                            "rounded px-1.5 py-0.5 text-[11px] font-semibold",
+                            pod.restarts > 0
+                              ? "border border-amber-500/30 bg-amber-500/10 text-amber-500"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {pod.restarts}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -19,12 +19,16 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { ClusterTelemetryCards } from "@/modules/deploy/ui/cluster-telemetry-cards"
 
 type TimeRange = "1h" | "6h" | "24h" | "7d" | "30d"
 
-type TabMetricsProps = {
+export type TabMetricsProps = {
   cpuLimit?: string
   memLimit?: string
+  appSlug?: string
+  clusterCode?: string
+  locale?: string
 }
 
 type RangeMetrics = {
@@ -174,6 +178,8 @@ const formatMemoryValue = (bytes: number) => {
 export function TabMetrics({
   cpuLimit = "1000m",
   memLimit = "512Mi",
+  appSlug,
+  clusterCode,
 }: TabMetricsProps) {
   const [timeRange, setTimeRange] = useState<
     "1h" | "6h" | "24h" | "7d" | "30d"
@@ -262,6 +268,90 @@ export function TabMetrics({
     if (points.length === 0) return ""
     const path = generateSvgPath(points, width, height, min, max)
     return `${path} L ${width} ${height} L 0 ${height} Z`
+  }
+
+  if (appSlug) {
+    return (
+      <div className="space-y-6">
+        {/* Workload Live Telemetry & Pod Quota Breakdown */}
+        <ClusterTelemetryCards
+          appSlug={appSlug}
+          clusterCode={clusterCode}
+          columns={3}
+          chartHeight={110}
+          showPodBreakdown={true}
+          title="Live Workload Telemetry"
+        />
+
+        {/* Deep-dive Observability Cards: Advisory, Latency & Traffic Distribution */}
+        <div className="flex flex-col gap-3 border-t border-border pt-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="text-sm font-bold text-foreground">
+              Edge Ingress &amp; Observability Insights
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              Latency percentiles, HTTP status codes, and workload advisory
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-1 rounded-lg border border-border bg-muted/20 p-1"
+            role="tablist"
+            aria-label="Time range"
+          >
+            {TIME_RANGE_OPTIONS.map((option) => {
+              const isActive = timeRange === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setTimeRange(option.value)}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span>{option.label}</span>
+                  {option.badge ? (
+                    <span
+                      className={cn(
+                        "rounded px-1 text-[10px] leading-tight font-semibold",
+                        isActive
+                          ? "bg-primary-foreground/20 text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      ({option.badge})
+                    </span>
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <ResourceAdvisoryCard
+            cpuUsageValue={cpuUsageValue}
+            cpuLimitValue={cpuLimitValue}
+            cpuPercent={cpuPercent}
+            memoryUsageValue={memoryUsageValue}
+            memoryLimitValue={memoryLimitValue}
+            memoryPercent={memoryPercent}
+          />
+          <div className="col-span-2 grid gap-6 md:grid-cols-2">
+            <LatencyPercentilesCard
+              currentMetrics={currentMetrics}
+              timeRange={timeRange}
+            />
+            <HttpStatusDistributionCard currentMetrics={currentMetrics} />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -510,221 +600,267 @@ export function TabMetrics({
           </CardContent>
         </Card>
 
-        {/* Recommendations / warnings */}
-        <Card
-          size="sm"
-          className="col-span-1 h-fit border-border bg-card shadow-xl backdrop-blur-md"
-        >
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-              <Warning size={18} className="text-amber-500" /> Resource Advisory
-            </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Analytics recommendations based on historic metrics
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-xs leading-relaxed">
-            <div className="space-y-2 rounded-xl border border-destructive/20 bg-destructive/10 p-4">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-destructive uppercase">
-                <Warning size={14} /> Low RAM Headroom
-              </span>
-              <p className="pt-0.5 text-xs leading-relaxed text-foreground">
-                Your app is utilizing{" "}
-                <strong>{memoryPercent}% of allocated RAM</strong> (
-                {formatMemoryValue(memoryUsageValue)} of{" "}
-                {formatMemoryValue(memoryLimitValue)}). Under load, pods will
-                suffer OOMKilled restarts.
-              </p>
-              <p className="rounded-lg border border-border bg-muted/30 p-3 font-mono text-[10px] leading-relaxed font-semibold text-foreground">
-                Recommendation: Scale Memory Limit to 1024MiB (1GiB) in the
-                Tuning tab.
-              </p>
-            </div>
-
-            <div className="space-y-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
-                <CheckCircle size={14} /> CPU Headroom Adequate
-              </span>
-              <p className="pt-0.5 text-xs leading-relaxed text-foreground">
-                CPU usage is steady at {cpuPercent}% (
-                {formatCoreValue(cpuUsageValue)} of{" "}
-                {formatCoreValue(cpuLimitValue)} cores). Limit provides adequate
-                buffer.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <ResourceAdvisoryCard
+          cpuUsageValue={cpuUsageValue}
+          cpuLimitValue={cpuLimitValue}
+          cpuPercent={cpuPercent}
+          memoryUsageValue={memoryUsageValue}
+          memoryLimitValue={memoryLimitValue}
+          memoryPercent={memoryPercent}
+        />
       </div>
 
       {/* Deep-dive Observability Cards: Latency & Traffic Distribution */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Latency Percentiles Card */}
-        <Card
-          size="sm"
-          className="border-border bg-card shadow-xl backdrop-blur-md"
-        >
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-                <Timer size={18} className="text-primary" /> Latency Percentiles
-              </CardTitle>
-              <span className="font-mono text-xs text-muted-foreground">
-                Window: {timeRange}
-              </span>
-            </div>
-            <CardDescription className="text-xs text-muted-foreground">
-              End-to-end response latency distribution across percentiles
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              {/* p50 Median */}
-              <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-3.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    p50 Median
-                  </span>
-                  <span className="inline-flex rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                    Fast
-                  </span>
-                </div>
-                <p className="font-mono text-xl font-bold text-foreground">
-                  {currentMetrics.latency.p50}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  50% of requests faster
-                </p>
-              </div>
-
-              {/* p95 Threshold */}
-              <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-3.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    p95 Threshold
-                  </span>
-                  <span className="inline-flex rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                    Expected
-                  </span>
-                </div>
-                <p className="font-mono text-xl font-bold text-foreground">
-                  {currentMetrics.latency.p95}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  95% within SLO target
-                </p>
-              </div>
-
-              {/* p99 Tail Latency */}
-              <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-3.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    p99 Tail Latency
-                  </span>
-                  <span className="inline-flex rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                    Tail
-                  </span>
-                </div>
-                <p className="font-mono text-xl font-bold text-foreground">
-                  {currentMetrics.latency.p99}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  1% slowest outlier
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-border bg-muted/10 p-3 text-[11px] text-muted-foreground">
-              Response times measured at edge gateway before reverse-proxy
-              ingress.
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* HTTP Status & Error Rate Distribution Card */}
-        <Card
-          size="sm"
-          className="border-border bg-card shadow-xl backdrop-blur-md"
-        >
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-                <ArrowsLeftRight size={18} className="text-primary" /> HTTP
-                Status & Error Rate
-              </CardTitle>
-              <span className="font-mono text-xs font-semibold text-foreground">
-                {currentMetrics.http.totalRequests}
-              </span>
-            </div>
-            <CardDescription className="text-xs text-muted-foreground">
-              Traffic volume, client errors, and server fault breakdown
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Total Requests</span>
-                <span className="font-mono font-semibold text-foreground">
-                  {currentMetrics.http.totalRequests}
-                </span>
-              </div>
-
-              {/* Status breakdown bar */}
-              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted/30">
-                <div
-                  className="bg-emerald-500 transition-all duration-300"
-                  style={{ width: currentMetrics.http.status2xx.percent }}
-                  title={`2xx: ${currentMetrics.http.status2xx.percent}`}
-                />
-                <div
-                  className="bg-amber-500 transition-all duration-300"
-                  style={{ width: currentMetrics.http.status4xx.percent }}
-                  title={`4xx: ${currentMetrics.http.status4xx.percent}`}
-                />
-                <div
-                  className="bg-rose-500 transition-all duration-300"
-                  style={{ width: currentMetrics.http.status5xx.percent }}
-                  title={`5xx: ${currentMetrics.http.status5xx.percent}`}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2.5 pt-1">
-              {/* 2xx Successful */}
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
-                <span className="flex items-center gap-2 font-medium text-foreground">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  2xx Successful ({currentMetrics.http.status2xx.percent})
-                </span>
-                <span className="font-mono text-muted-foreground">
-                  {currentMetrics.http.status2xx.count} reqs
-                </span>
-              </div>
-
-              {/* 4xx Client Errors */}
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
-                <span className="flex items-center gap-2 font-medium text-foreground">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" />
-                  4xx Client Errors ({currentMetrics.http.status4xx.percent})
-                </span>
-                <span className="font-mono text-muted-foreground">
-                  {currentMetrics.http.status4xx.count} reqs
-                </span>
-              </div>
-
-              {/* 5xx Server Errors */}
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
-                <span className="flex items-center gap-2 font-medium text-foreground">
-                  <span className="h-2 w-2 rounded-full bg-rose-500" />
-                  5xx Server Errors ({currentMetrics.http.status5xx.percent})
-                </span>
-                <span className="font-mono text-muted-foreground">
-                  {currentMetrics.http.status5xx.count} reqs
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <LatencyPercentilesCard
+          currentMetrics={currentMetrics}
+          timeRange={timeRange}
+        />
+        <HttpStatusDistributionCard currentMetrics={currentMetrics} />
       </div>
     </div>
+  )
+}
+
+function ResourceAdvisoryCard({
+  cpuUsageValue,
+  cpuLimitValue,
+  cpuPercent,
+  memoryUsageValue,
+  memoryLimitValue,
+  memoryPercent,
+}: {
+  cpuUsageValue: number
+  cpuLimitValue: number
+  cpuPercent: number
+  memoryUsageValue: number
+  memoryLimitValue: number
+  memoryPercent: number
+}) {
+  return (
+    <Card
+      size="sm"
+      className="col-span-1 h-fit border-border bg-card shadow-xl backdrop-blur-md"
+    >
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+          <Warning size={18} className="text-amber-500" /> Resource Advisory
+        </CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Analytics recommendations based on historic metrics
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 text-xs leading-relaxed">
+        <div className="space-y-2 rounded-xl border border-destructive/20 bg-destructive/10 p-4">
+          <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-destructive uppercase">
+            <Warning size={14} /> Low RAM Headroom
+          </span>
+          <p className="pt-0.5 text-xs leading-relaxed text-foreground">
+            Your app is utilizing{" "}
+            <strong>{memoryPercent}% of allocated RAM</strong> (
+            {formatMemoryValue(memoryUsageValue)} of{" "}
+            {formatMemoryValue(memoryLimitValue)}). Under load, pods will suffer
+            OOMKilled restarts.
+          </p>
+          <p className="rounded-lg border border-border bg-muted/30 p-3 font-mono text-[10px] leading-relaxed font-semibold text-foreground">
+            Recommendation: Scale Memory Limit to 1024MiB (1GiB) in the Tuning
+            tab.
+          </p>
+        </div>
+
+        <div className="space-y-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+          <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
+            <CheckCircle size={14} /> CPU Headroom Adequate
+          </span>
+          <p className="pt-0.5 text-xs leading-relaxed text-foreground">
+            CPU usage is steady at {cpuPercent}% (
+            {formatCoreValue(cpuUsageValue)} of {formatCoreValue(cpuLimitValue)}{" "}
+            cores). Limit provides adequate buffer.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function LatencyPercentilesCard({
+  currentMetrics,
+  timeRange,
+}: {
+  currentMetrics: RangeMetrics
+  timeRange: string
+}) {
+  return (
+    <Card
+      size="sm"
+      className="border-border bg-card shadow-xl backdrop-blur-md"
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+            <Timer size={18} className="text-primary" /> Latency Percentiles
+          </CardTitle>
+          <span className="font-mono text-xs text-muted-foreground">
+            Window: {timeRange}
+          </span>
+        </div>
+        <CardDescription className="text-xs text-muted-foreground">
+          End-to-end response latency distribution across percentiles
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          {/* p50 Median */}
+          <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">
+                p50 Median
+              </span>
+              <span className="inline-flex rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                Fast
+              </span>
+            </div>
+            <p className="font-mono text-xl font-bold text-foreground">
+              {currentMetrics.latency.p50}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              50% of requests faster
+            </p>
+          </div>
+
+          {/* p95 Threshold */}
+          <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">
+                p95 Threshold
+              </span>
+              <span className="inline-flex rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                Expected
+              </span>
+            </div>
+            <p className="font-mono text-xl font-bold text-foreground">
+              {currentMetrics.latency.p95}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              95% within SLO target
+            </p>
+          </div>
+
+          {/* p99 Tail Latency */}
+          <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">
+                p99 Tail Latency
+              </span>
+              <span className="inline-flex rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                Tail
+              </span>
+            </div>
+            <p className="font-mono text-xl font-bold text-foreground">
+              {currentMetrics.latency.p99}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              1% slowest outlier
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-muted/10 p-3 text-[11px] text-muted-foreground">
+          Response times measured at edge gateway before reverse-proxy ingress.
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function HttpStatusDistributionCard({
+  currentMetrics,
+}: {
+  currentMetrics: RangeMetrics
+}) {
+  return (
+    <Card
+      size="sm"
+      className="border-border bg-card shadow-xl backdrop-blur-md"
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+            <ArrowsLeftRight size={18} className="text-primary" /> HTTP Status &
+            Error Rate
+          </CardTitle>
+          <span className="font-mono text-xs font-semibold text-foreground">
+            {currentMetrics.http.totalRequests}
+          </span>
+        </div>
+        <CardDescription className="text-xs text-muted-foreground">
+          Traffic volume, client errors, and server fault breakdown
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Total Requests</span>
+            <span className="font-mono font-semibold text-foreground">
+              {currentMetrics.http.totalRequests}
+            </span>
+          </div>
+
+          {/* Status breakdown bar */}
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted/30">
+            <div
+              className="bg-emerald-500 transition-all duration-300"
+              style={{ width: currentMetrics.http.status2xx.percent }}
+              title={`2xx: ${currentMetrics.http.status2xx.percent}`}
+            />
+            <div
+              className="bg-amber-500 transition-all duration-300"
+              style={{ width: currentMetrics.http.status4xx.percent }}
+              title={`4xx: ${currentMetrics.http.status4xx.percent}`}
+            />
+            <div
+              className="bg-rose-500 transition-all duration-300"
+              style={{ width: currentMetrics.http.status5xx.percent }}
+              title={`5xx: ${currentMetrics.http.status5xx.percent}`}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2.5 pt-1">
+          {/* 2xx Successful */}
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
+            <span className="flex items-center gap-2 font-medium text-foreground">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              2xx Successful ({currentMetrics.http.status2xx.percent})
+            </span>
+            <span className="font-mono text-muted-foreground">
+              {currentMetrics.http.status2xx.count} reqs
+            </span>
+          </div>
+
+          {/* 4xx Client Errors */}
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
+            <span className="flex items-center gap-2 font-medium text-foreground">
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              4xx Client Errors ({currentMetrics.http.status4xx.percent})
+            </span>
+            <span className="font-mono text-muted-foreground">
+              {currentMetrics.http.status4xx.count} reqs
+            </span>
+          </div>
+
+          {/* 5xx Server Errors */}
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
+            <span className="flex items-center gap-2 font-medium text-foreground">
+              <span className="h-2 w-2 rounded-full bg-rose-500" />
+              5xx Server Errors ({currentMetrics.http.status5xx.percent})
+            </span>
+            <span className="font-mono text-muted-foreground">
+              {currentMetrics.http.status5xx.count} reqs
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { cleanup, fireEvent, render } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
@@ -117,5 +118,25 @@ describe("TabMetrics", () => {
     expect(view.getByText("CPU Headroom Adequate")).toBeDefined()
     expect(view.getAllByText(/Limit: 2000m/).length).toBeGreaterThan(0)
     expect(view.getAllByText(/Limit: 1024Mi/).length).toBeGreaterThan(0)
+  })
+
+  it("renders live workload telemetry and pod quota table when appSlug is provided", () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const view = render(
+      <QueryClientProvider client={client}>
+        <TabMetrics appSlug="hermes-vibrant-comet" />
+      </QueryClientProvider>
+    )
+
+    expect(view.getByText("Live Workload Telemetry")).toBeDefined()
+    expect(view.getByText("Pod Resource & Quota Allocation")).toBeDefined()
+    expect(
+      view.getByText("Edge Ingress & Observability Insights")
+    ).toBeDefined()
+    expect(view.getByText("Resource Advisory")).toBeDefined()
+    expect(view.getByText("Latency Percentiles")).toBeDefined()
+    expect(view.getByText("HTTP Status & Error Rate")).toBeDefined()
   })
 })

@@ -467,8 +467,10 @@ export default function PlatformInstanceWorkspacePage() {
           {/* TAB 4: METRICS */}
           {activeWorkspaceTab === "metrics" && (
             <TabMetrics
+              appSlug={slug}
               cpuLimit={overview.stack.resourcePlanId ? "0.5" : undefined}
               memLimit="512MB"
+              locale={locale}
             />
           )}
 
