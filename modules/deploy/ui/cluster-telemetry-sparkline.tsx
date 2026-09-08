@@ -16,6 +16,7 @@ export type ClusterTelemetrySparklineProps = {
   showArea?: boolean // default true
   showLimitLine?: boolean // default true
   showYAxis?: boolean // default true
+  showGridLines?: boolean // default false (removes background line noise)
   yAxisTicks?: number // default 4 or 5
   unit?: string // e.g. "vCPU", "GB", "MB/s"
   formatter?: (val: number) => string
@@ -30,6 +31,7 @@ export function ClusterTelemetrySparkline({
   showArea = true,
   showLimitLine = true,
   showYAxis = true,
+  showGridLines = false,
   yAxisTicks = 5,
   unit,
   formatter,
@@ -172,24 +174,25 @@ export function ClusterTelemetrySparkline({
               </defs>
             )}
 
-            {/* Horizontal gridlines */}
-            {tickValues.map((val, idx) => {
-              const y = getY(val).toFixed(1)
-              return (
-                <line
-                  key={idx}
-                  x1="0"
-                  y1={y}
-                  x2="400"
-                  y2={y}
-                  stroke="currentColor"
-                  strokeDasharray="3 3"
-                  strokeOpacity={0.12}
-                  strokeWidth={1}
-                  data-testid="sparkline-grid-line"
-                />
-              )
-            })}
+            {/* Horizontal gridlines (optional, off by default) */}
+            {showGridLines &&
+              tickValues.map((val, idx) => {
+                const y = getY(val).toFixed(1)
+                return (
+                  <line
+                    key={idx}
+                    x1="0"
+                    y1={y}
+                    x2="400"
+                    y2={y}
+                    stroke="currentColor"
+                    strokeDasharray="3 3"
+                    strokeOpacity={0.12}
+                    strokeWidth={1}
+                    data-testid="sparkline-grid-line"
+                  />
+                )
+              })}
 
             {/* Limit dashed threshold line */}
             {hasLimitLine && limitY && (
