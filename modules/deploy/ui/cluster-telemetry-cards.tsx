@@ -119,7 +119,7 @@ export function ClusterTelemetryCards({
     refetchOnWindowFocus: true,
   })
 
-  const isLive = true
+  const isLive = dataUpdatedAt > 0
   const lastUpdated = format24hTime(
     dataUpdatedAt > 0 ? dataUpdatedAt : mountTime,
     {
@@ -233,9 +233,17 @@ export function ClusterTelemetryCards({
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
               <Globe size={13} className="text-emerald-500" />
-              <span>Singapore</span>
-              <span className="size-1 rounded-full bg-emerald-400" />
-              <span className="text-[10px] text-emerald-400/80">Primary</span>
+              <span>
+                {telemetry.region || telemetry.clusterName || "Singapore"}
+              </span>
+              {telemetry.isPrimary && (
+                <>
+                  <span className="size-1 rounded-full bg-emerald-400" />
+                  <span className="text-[10px] text-emerald-400/80">
+                    Primary
+                  </span>
+                </>
+              )}
             </span>
             {isLive && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
@@ -273,12 +281,21 @@ export function ClusterTelemetryCards({
                 </CardTitle>
                 <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
                   <Globe size={12} className="text-emerald-500" />
-                  <span>Singapore</span>
+                  <span>
+                    {telemetry.region || telemetry.clusterName || "Singapore"}
+                  </span>
+                  {telemetry.isPrimary && (
+                    <span className="text-[10px] text-emerald-400/80">
+                      &bull; Primary
+                    </span>
+                  )}
                 </span>
-                <span className="py-0.2 inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 text-[10px] font-semibold text-emerald-500">
-                  <span className="size-1 animate-pulse rounded-full bg-emerald-500" />
-                  LIVE
-                </span>
+                {isLive && (
+                  <span className="py-0.2 inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 text-[10px] font-semibold text-emerald-500">
+                    <span className="size-1 animate-pulse rounded-full bg-emerald-500" />
+                    LIVE
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 {lastUpdated && (

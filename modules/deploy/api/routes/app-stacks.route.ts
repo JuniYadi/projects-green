@@ -506,3 +506,55 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
       }),
     }
   )
+  .post(
+    "/:slug/sync",
+    async ({ params, set }) => {
+      const auth = await withAuth({ ensureSignedIn: true })
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
+      const stack = await prisma.applicationStack.findUnique({
+        where: {
+          organizationId_slug: {
+            organizationId: auth.organizationId,
+            slug: params.slug,
+          },
+        },
+      })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application not found",
+        }
+      }
+
+      await prisma.applicationStack.update({
+        where: { id: stack.id },
+        data: { updatedAt: new Date() },
+      })
+
+      return {
+        ok: true,
+        message: "Configuration synced successfully",
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+      }),
+    }
+  )

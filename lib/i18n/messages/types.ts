@@ -1957,6 +1957,9 @@ export type AppMessages = {
         historyDescription: string
         loadingHistory: string
         noAttempts: string
+        pageOf: string
+        previous: string
+        next: string
         table: {
           status: string
           attempt: string

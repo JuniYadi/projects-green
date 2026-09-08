@@ -2159,6 +2159,9 @@ export const enMessages: AppMessages = {
         historyDescription: "Previous deployment attempts",
         loadingHistory: "Loading deployment history…",
         noAttempts: "No deployment attempts yet.",
+        pageOf: "Page {page} of {total}",
+        previous: "Previous",
+        next: "Next",
         table: {
           status: "Status",
           attempt: "Attempt",

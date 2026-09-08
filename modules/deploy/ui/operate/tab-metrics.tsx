@@ -240,6 +240,7 @@ export function TabMetrics({
   memLimit = "512Mi",
   appSlug,
   clusterCode,
+  locale = "en",
 }: TabMetricsProps) {
   const [timeRange, setTimeRange] = useState<
     "1h" | "6h" | "24h" | "7d" | "30d"
@@ -337,6 +338,7 @@ export function TabMetrics({
         clusterCode={clusterCode}
         cpuLimitValue={cpuLimitValue}
         memLimitValue={memoryLimitValue}
+        locale={locale}
       />
     )
   }
@@ -857,11 +859,13 @@ function PodObservabilityView({
   clusterCode = "sgp",
   cpuLimitValue,
   memLimitValue,
+  locale = "en",
 }: {
   appSlug: string
   clusterCode?: string
   cpuLimitValue: number
   memLimitValue: number
+  locale?: string
 }) {
   const [mountTime] = useState(() => Date.now())
   const [activeSubTab, setActiveSubTab] = useState<"compute" | "ingress">(
@@ -877,7 +881,7 @@ function PodObservabilityView({
 
   const userTimeZone =
     typeof Intl !== "undefined"
-      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      ? Intl.DateTimeFormat(locale).resolvedOptions().timeZone
       : "UTC"
 
   const {

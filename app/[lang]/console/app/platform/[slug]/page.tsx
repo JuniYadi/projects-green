@@ -234,7 +234,10 @@ export default function PlatformInstanceWorkspacePage() {
           setHistory(payload.data)
           if (payload.meta) setHistoryMeta(payload.meta)
         }
-        // history fetch error
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load deployment history:", error)
+        }
       } finally {
         if (!cancelled) setHistoryLoading(false)
       }
@@ -250,14 +253,19 @@ export default function PlatformInstanceWorkspacePage() {
     if (!slug) return
     setSyncing(true)
     try {
-      const { data: payload } = await eden.api.deploy.apps[slug].get()
-      if (payload?.ok && payload.data) {
-        setOverview(payload.data)
+      const { data: syncRes } = await eden.api.deploy.apps[slug].sync.post()
+      if (syncRes?.ok) {
+        const { data: payload } = await eden.api.deploy.apps[slug].get()
+        if (payload?.ok && payload.data) {
+          setOverview(payload.data)
+        }
         toast.success(
           locale === "id"
             ? "Konfigurasi berhasil disinkronkan!"
             : "Configuration synced successfully!"
         )
+      } else {
+        toast.error("Sync failed.")
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Sync failed.")
@@ -404,9 +412,15 @@ export default function PlatformInstanceWorkspacePage() {
                       {(historyMeta?.totalPages ?? 0) > 1 && (
                         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                           <span>
-                            {locale === "id"
-                              ? `Halaman ${historyMeta?.page ?? historyPage} dari ${historyMeta?.totalPages}`
-                              : `Page ${historyMeta?.page ?? historyPage} of ${historyMeta?.totalPages}`}
+                            {tDeployments.pageOf
+                              .replace(
+                                "{page}",
+                                String(historyMeta?.page ?? historyPage)
+                              )
+                              .replace(
+                                "{total}",
+                                String(historyMeta?.totalPages ?? 1)
+                              )}
                           </span>
                           <div className="flex gap-2">
                             <Button
@@ -417,7 +431,7 @@ export default function PlatformInstanceWorkspacePage() {
                                 setHistoryPage((p) => Math.max(1, p - 1))
                               }
                             >
-                              {locale === "id" ? "Sebelumnya" : "Previous"}
+                              {tDeployments.previous}
                             </Button>
                             <Button
                               variant="outline"
@@ -431,7 +445,7 @@ export default function PlatformInstanceWorkspacePage() {
                                 )
                               }
                             >
-                              {locale === "id" ? "Berikutnya" : "Next"}
+                              {tDeployments.next}
                             </Button>
                           </div>
                         </div>
