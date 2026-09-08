@@ -147,7 +147,7 @@ export class WhatsappBillingService {
 
   async resetAllowances(
     deviceIds: string[],
-    allowanceByDevice: Record<string, string>
+    allowanceByDevice: Record<string, Prisma.Decimal | number | string>
   ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       for (const deviceId of deviceIds) {
@@ -184,7 +184,7 @@ export class WhatsappBillingService {
   async refillActiveSubscriptionAllowances(input: {
     subscriptionId: string
     deviceIds: string[]
-    allowanceByDevice: Record<string, string>
+    allowanceByDevice: Record<string, Prisma.Decimal | number | string>
     period: string
     metadata: Record<string, unknown>
   }): Promise<void> {
@@ -417,8 +417,8 @@ export async function runWhatsappBillingCycle(
         : null) ??
       1000
 
-    const allowanceByDevice = Object.fromEntries(
-      devices.map((device) => [device.id, allowance.toString()])
+    const allowanceByDevice: Record<string, number> = Object.fromEntries(
+      devices.map((device) => [device.id, allowance])
     )
 
     const isDueForRenewal = subscription.currentPeriodEnd <= now
