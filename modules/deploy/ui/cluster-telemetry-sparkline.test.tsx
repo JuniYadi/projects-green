@@ -154,4 +154,61 @@ describe("ClusterTelemetrySparkline", () => {
     const wrapper = view.container.querySelector(".relative") as HTMLElement
     expect(wrapper?.style.height).toBe("150px")
   })
+
+  describe("Y-axis scale and gridlines", () => {
+    it("renders sparkline-y-axis by default when showYAxis is true or omitted", () => {
+      const view = render(
+        <ClusterTelemetrySparkline data={mockData} unit="vCPU" />
+      )
+      const yAxis = view.container.querySelector(
+        "[data-testid='sparkline-y-axis']"
+      )
+      expect(yAxis).toBeTruthy()
+    })
+
+    it("renders numeric tick values and unit in Y-axis labels", () => {
+      const view = render(
+        <ClusterTelemetrySparkline
+          data={mockData}
+          unit="vCPU"
+          showYAxis={true}
+        />
+      )
+      const yAxis = view.container.querySelector(
+        "[data-testid='sparkline-y-axis']"
+      )
+      expect(yAxis).toBeTruthy()
+      expect(yAxis?.textContent).toContain("500 vCPU")
+      expect(yAxis?.textContent).toContain("0")
+    })
+
+    it("renders horizontal reference gridlines across SVG", () => {
+      const view = render(
+        <ClusterTelemetrySparkline
+          data={mockData}
+          yAxisTicks={5}
+          showYAxis={true}
+        />
+      )
+      const gridLines = view.container.querySelectorAll(
+        "[data-testid='sparkline-grid-line']"
+      )
+      expect(gridLines.length).toBe(5)
+      gridLines.forEach((line) => {
+        expect(line.getAttribute("x1")).toBe("0")
+        expect(line.getAttribute("x2")).toBe("400")
+        expect(line.getAttribute("stroke-dasharray")).toBe("3 3")
+      })
+    })
+
+    it("hides sparkline-y-axis when showYAxis is false", () => {
+      const view = render(
+        <ClusterTelemetrySparkline data={mockData} showYAxis={false} />
+      )
+      const yAxis = view.container.querySelector(
+        "[data-testid='sparkline-y-axis']"
+      )
+      expect(yAxis).toBeNull()
+    })
+  })
 })

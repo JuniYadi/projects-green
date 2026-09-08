@@ -15,6 +15,8 @@ export type ClusterTelemetrySparklineProps = {
   height?: number // default 100
   showArea?: boolean // default true
   showLimitLine?: boolean // default true
+  showYAxis?: boolean // default true
+  yAxisTicks?: number // default 4 or 5
   unit?: string // e.g. "vCPU", "GB", "MB/s"
   formatter?: (val: number) => string
   className?: string
@@ -27,6 +29,8 @@ export function ClusterTelemetrySparkline({
   height = 100,
   showArea = true,
   showLimitLine = true,
+  showYAxis = true,
+  yAxisTicks = 5,
   unit,
   formatter,
   className,
@@ -58,12 +62,17 @@ export function ClusterTelemetrySparkline({
     .map((d) => d.secondaryValue)
     .filter((v): v is number => typeof v === "number")
 
-  const allValues = [
-    ...values,
-    ...secondaryValues,
-    ...(typeof limitValue === "number" ? [limitValue] : []),
-  ]
-  const maxValue = Math.max(1, ...allValues)
+  const maxValue = Math.max(1, ...values, ...secondaryValues)
+  const ceiling =
+    typeof limitValue === "number" && limitValue > maxValue
+      ? limitValue
+      : maxValue
+
+  const tickCount = Math.max(2, yAxisTicks)
+  const tickValues = Array.from({ length: tickCount }, (_, i) => {
+    const ratio = 1 - i / (tickCount - 1)
+    return ceiling * ratio
+  })
 
   const paddingTop = 8
   const paddingBottom = 8
@@ -71,9 +80,8 @@ export function ClusterTelemetrySparkline({
 
   const getY = (val: number) => {
     const clamped = Math.max(0, val)
-    return paddingTop + (1 - clamped / maxValue) * chartHeight
+    return paddingTop + (1 - clamped / ceiling) * chartHeight
   }
-
   const getX = (idx: number) => {
     if (data.length <= 1) return 0
     return (idx / (data.length - 1)) * 400
@@ -109,80 +117,138 @@ export function ClusterTelemetrySparkline({
   const formatValue = (v: number) =>
     formatter ? formatter(v) : `${v}${unit ? ` ${unit}` : ""}`
 
+  const formatTick = (val: number, isTop: boolean) => {
+    if (formatter) {
+      return formatter(val)
+    }
+    const formattedNum =
+      Number.isInteger(val) && (ceiling > 10 || val === 0)
+        ? val.toString()
+        : val.toFixed(1)
+    if (isTop && unit) {
+      return `${formattedNum} ${unit}`
+    }
+    return formattedNum
+  }
+
   return (
     <div className={cn("flex w-full flex-col gap-1.5", className)}>
-      <div className="relative w-full" style={{ height }}>
-        <svg
-          viewBox="0 0 400 100"
-          width="100%"
-          height="100%"
-          preserveAspectRatio="none"
-          className="overflow-visible"
-        >
-          {showArea && (
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.25} />
-                <stop offset="100%" stopColor={color} stopOpacity={0.0} />
-              </linearGradient>
-            </defs>
-          )}
+      <div
+        className="relative flex w-full items-stretch gap-2"
+        style={{ height }}
+      >
+        {showYAxis && (
+          <div
+            data-testid="sparkline-y-axis"
+            className="relative shrink-0 pr-1 text-right text-[10px] font-medium text-muted-foreground tabular-nums select-none"
+            style={{ width: unit ? 54 : 36 }}
+          >
+            {tickValues.map((val, idx) => (
+              <span
+                key={idx}
+                className="absolute right-1 -translate-y-1/2 whitespace-nowrap"
+                style={{ top: `${getY(val)}%` }}
+              >
+                {formatTick(val, idx === 0)}
+              </span>
+            ))}
+          </div>
+        )}
 
-          {/* Limit dashed threshold line */}
-          {hasLimitLine && limitY && (
-            <line
-              x1="0"
-              y1={limitY}
-              x2="400"
-              y2={limitY}
-              stroke="currentColor"
-              strokeDasharray="4 4"
-              strokeOpacity={0.35}
-              strokeWidth={1}
-              data-testid="sparkline-limit-line"
-            >
-              <title>{`Limit: ${formatValue(limitValue!)}`}</title>
-            </line>
-          )}
+        <div className="relative flex-1" style={{ height }}>
+          <svg
+            viewBox="0 0 400 100"
+            width="100%"
+            height="100%"
+            preserveAspectRatio="none"
+            className="overflow-visible"
+          >
+            {showArea && (
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+            )}
 
-          {/* Area under curve */}
-          {showArea && (
+            {/* Horizontal gridlines */}
+            {tickValues.map((val, idx) => {
+              const y = getY(val).toFixed(1)
+              return (
+                <line
+                  key={idx}
+                  x1="0"
+                  y1={y}
+                  x2="400"
+                  y2={y}
+                  stroke="currentColor"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.12}
+                  strokeWidth={1}
+                  data-testid="sparkline-grid-line"
+                />
+              )
+            })}
+
+            {/* Limit dashed threshold line */}
+            {hasLimitLine && limitY && (
+              <line
+                x1="0"
+                y1={limitY}
+                x2="400"
+                y2={limitY}
+                stroke="currentColor"
+                strokeDasharray="4 4"
+                strokeOpacity={0.35}
+                strokeWidth={1}
+                data-testid="sparkline-limit-line"
+              >
+                <title>{`Limit: ${formatValue(limitValue!)}`}</title>
+              </line>
+            )}
+
+            {/* Area under curve */}
+            {showArea && (
+              <path
+                d={primaryAreaD}
+                fill={`url(#${gradientId})`}
+                data-testid="sparkline-area"
+              />
+            )}
+
+            {/* Secondary line (e.g. Tx traffic) */}
+            {hasSecondary && secondaryLineD && (
+              <path
+                d={secondaryLineD}
+                fill="none"
+                stroke={secondaryColor}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                data-testid="sparkline-secondary-line"
+              />
+            )}
+
+            {/* Primary line */}
             <path
-              d={primaryAreaD}
-              fill={`url(#${gradientId})`}
-              data-testid="sparkline-area"
-            />
-          )}
-
-          {/* Secondary line (e.g. Tx traffic) */}
-          {hasSecondary && secondaryLineD && (
-            <path
-              d={secondaryLineD}
+              d={primaryLineD}
               fill="none"
-              stroke={secondaryColor}
-              strokeWidth={1.5}
+              stroke={color}
+              strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
-              data-testid="sparkline-secondary-line"
+              data-testid="sparkline-primary-line"
             />
-          )}
-
-          {/* Primary line */}
-          <path
-            d={primaryLineD}
-            fill="none"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            data-testid="sparkline-primary-line"
-          />
-        </svg>
+          </svg>
+        </div>
       </div>
-
       {/* Bottom X-axis label ticks */}
       <div
-        className="flex items-center justify-between px-0.5 text-[11px] font-medium text-muted-foreground"
+        className={cn(
+          "flex items-center justify-between px-0.5 text-[11px] font-medium text-muted-foreground",
+          showYAxis && (unit ? "pl-[62px]" : "pl-[44px]")
+        )}
         data-testid="sparkline-ticks"
       >
         <span>{firstLabel}</span>
