@@ -7,6 +7,7 @@ import { TabEnv } from "@/modules/deploy/ui/operate/tab-env"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
 import { TabMounts } from "@/modules/deploy/ui/operate/tab-mounts"
 import { TabOverview } from "@/modules/deploy/ui/operate/tab-overview"
+import { TabMetrics } from "@/modules/deploy/ui/operate/tab-metrics"
 import type {
   TenantDomainDTO,
   VolumeMount,
@@ -279,5 +280,20 @@ describe("Operate tabs coverage", () => {
     expect(view.getByText("Environment Variables")).toBeDefined()
     expect(view.getByText("NODE_ENV")).toBeDefined()
     expect(view.queryByText("Reverse Proxy Ingress")).toBeNull()
+  })
+
+  it("covers TabMetrics observability and telemetry rendering", () => {
+    const view = render(<TabMetrics cpuLimit="1500m" memLimit="1024Mi" />)
+
+    expect(view.getByText("Live Telemetry & Observability")).toBeDefined()
+    expect(view.getByText("Latency Percentiles")).toBeDefined()
+    expect(view.getByText("HTTP Status & Error Rate")).toBeDefined()
+    expect(view.getByText("p50 Median")).toBeDefined()
+    expect(view.getByText("p95 Threshold")).toBeDefined()
+    expect(view.getByText("p99 Tail Latency")).toBeDefined()
+
+    const dayBtn = view.getByRole("tab", { name: /24h/i })
+    fireEvent.click(dayBtn)
+    expect(dayBtn.getAttribute("aria-selected")).toBe("true")
   })
 })
