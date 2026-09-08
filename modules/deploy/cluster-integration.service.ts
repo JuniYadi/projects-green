@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs"
 import {
   decrypt,
   deriveEncryptionKey,
@@ -120,6 +121,7 @@ export type ArgoCdClusterConfig = {
 }
 
 export type KubeconfigClusterConfig = {
+  connectionMode: "INTERNAL" | "EXTERNAL"
   apiServerUrl: string | null
   caCertificate: string | null
   serviceAccountToken: string | null
@@ -271,14 +273,64 @@ function buildArgoCdConfig(
   }
 }
 
+function getInClusterServiceAccountCredentials(): {
+  token: string | null
+  ca: string | null
+} {
+  let token: string | null = null
+  let ca: string | null = null
+  try {
+    if (existsSync("/var/run/secrets/kubernetes.io/serviceaccount/token")) {
+      token = readFileSync(
+        "/var/run/secrets/kubernetes.io/serviceaccount/token",
+        "utf8"
+      ).trim()
+    }
+  } catch {}
+  try {
+    if (existsSync("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")) {
+      ca = readFileSync(
+        "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+        "utf8"
+      )
+    }
+  } catch {}
+  return { token, ca }
+}
+
 function buildKubeconfigConfig(
   meta: Record<string, unknown>,
   secrets: Record<string, unknown>
 ): KubeconfigClusterConfig {
+  const connectionMode =
+    meta.connectionMode === "EXTERNAL" ? "EXTERNAL" : "INTERNAL"
+
+  let apiServerUrl = readString(secrets, "apiServerUrl", false)
+  let serviceAccountToken = readString(secrets, "serviceAccountToken", false)
+  let caCertificate = readString(secrets, "caCertificate", false)
+
+  if (connectionMode === "INTERNAL") {
+    if (!apiServerUrl) {
+      const host = process.env.KUBERNETES_SERVICE_HOST
+      const port = process.env.KUBERNETES_SERVICE_PORT || "443"
+      apiServerUrl = host
+        ? `https://${host}:${port}`
+        : "https://kubernetes.default.svc"
+    }
+    if (!serviceAccountToken) {
+      const inCluster = getInClusterServiceAccountCredentials()
+      serviceAccountToken = inCluster.token
+      if (!caCertificate) {
+        caCertificate = inCluster.ca
+      }
+    }
+  }
+
   return {
-    apiServerUrl: readString(secrets, "apiServerUrl", false),
-    caCertificate: readString(secrets, "caCertificate", false),
-    serviceAccountToken: readString(secrets, "serviceAccountToken", false),
+    connectionMode,
+    apiServerUrl,
+    caCertificate,
+    serviceAccountToken,
     kubeconfig: readString(secrets, "kubeconfig", false),
     namespacePattern: readString(meta, "namespacePattern", true),
     labelSelector: readString(meta, "labelSelector", true),

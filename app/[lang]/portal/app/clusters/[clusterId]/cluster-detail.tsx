@@ -1845,14 +1845,31 @@ function IntegrationEditModal({
                     </span>
                   )}
                 </Label>
-                {isBool ? (
+                {field === "connectionMode" ? (
+                  <Select
+                    value={String(meta[field] ?? "INTERNAL")}
+                    onValueChange={(value) => handleMetaChange(field, value)}
+                  >
+                    <SelectTrigger id={`int-meta-${field}`}>
+                      <SelectValue placeholder="Select connection mode..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INTERNAL">
+                        Internal (In-Cluster ServiceAccount)
+                      </SelectItem>
+                      <SelectItem value="EXTERNAL">
+                        External (Kubeconfig / Remote Token)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : isBool ? (
                   <Select
                     value={String(meta[field] ?? "")}
                     onValueChange={(value) =>
                       handleMetaChange(field, value === "true")
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id={`int-meta-${field}`}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -1887,11 +1904,33 @@ function IntegrationEditModal({
               </div>
             )
           })}
+          {type === "KUBECONFIG" &&
+            (meta.connectionMode === "INTERNAL" || !meta.connectionMode) && (
+              <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                <p className="font-semibold text-foreground">
+                  In-Cluster ServiceAccount Mode Active
+                </p>
+                <p className="mt-1">
+                  Elysia connects directly to{" "}
+                  <code>https://kubernetes.default.svc</code> using the attached
+                  pod ServiceAccount (
+                  <code>/var/run/secrets/kubernetes.io/serviceaccount</code>).
+                  External network round trips are bypassed. Secrets below are
+                  optional overrides.
+                </p>
+              </div>
+            )}
 
           {secretFields.map((field) => {
             const label = labels[field] ?? field
             const description = descriptions[field]
             const error = fieldErrors[`secret_${field}`]
+            const isInternalKube =
+              type === "KUBECONFIG" &&
+              (meta.connectionMode === "INTERNAL" || !meta.connectionMode)
+            const secretPlaceholder = isInternalKube
+              ? "Optional override (defaults to in-cluster ServiceAccount)"
+              : "Leave blank to keep existing secrets"
 
             return (
               <div key={field} className="space-y-2">
@@ -1910,7 +1949,7 @@ function IntegrationEditModal({
                     onChange={(event) =>
                       handleSecretChange(field, event.target.value)
                     }
-                    placeholder="Leave blank to keep existing secrets"
+                    placeholder={secretPlaceholder}
                     rows={5}
                     className="w-full rounded-xl border border-border bg-input/50 px-3 py-2 font-mono text-sm"
                   />
@@ -1922,7 +1961,7 @@ function IntegrationEditModal({
                     onChange={(event) =>
                       handleSecretChange(field, event.target.value)
                     }
-                    placeholder="Leave blank to keep existing secrets"
+                    placeholder={secretPlaceholder}
                   />
                 )}
                 {error && <p className="text-xs text-destructive">{error}</p>}

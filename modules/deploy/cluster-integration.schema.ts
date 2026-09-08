@@ -102,6 +102,7 @@ export const argocdMetadataSchema = z.strictObject({
   vaultVersion: z.number().int().positive().optional(),
 })
 export const kubeconfigMetadataSchema = z.strictObject({
+  connectionMode: z.enum(["INTERNAL", "EXTERNAL"]).default("INTERNAL"),
   namespacePattern: z
     .string()
     .trim()
@@ -305,6 +306,7 @@ export const integrationFieldLabels: Record<string, Record<string, string>> = {
     webhookSecret: "Webhook Secret",
   },
   KUBECONFIG: {
+    connectionMode: "Connection Mode",
     namespacePattern: "Namespace Pattern",
     labelSelector: "Label Selector",
     serviceAccountToken: "Service Account Token",
@@ -366,6 +368,8 @@ export const integrationFieldDescriptions: Record<
     webhookSecret: "Optional secret for webhook validation",
   },
   KUBECONFIG: {
+    connectionMode:
+      "INTERNAL (In-cluster ServiceAccount) or EXTERNAL (Kubeconfig / Remote Token)",
     namespacePattern: "Kubernetes namespace pattern using {slug} placeholder",
     labelSelector: "Label selector using {slug} placeholder",
     serviceAccountToken: "Service account token for cluster auth",

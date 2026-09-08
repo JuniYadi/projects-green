@@ -304,4 +304,40 @@ describe("testIntegrationConnection", () => {
     expect(result500.ok).toBe(false)
     expect(result500.message).toContain("OpenSearch returned HTTP 500")
   })
+
+  it("tests KUBECONFIG in-cluster ServiceAccount mode validation", async () => {
+    const result = await testIntegrationConnection(
+      "KUBECONFIG",
+      { connectionMode: "INTERNAL", namespacePattern: "app-{slug}" },
+      {}
+    )
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain("In-cluster ServiceAccount mode")
+  })
+
+  it("tests KUBECONFIG external connection successfully", async () => {
+    const mockFetcher = mock(async () => new Response("ok", { status: 200 }))
+    const result = await testIntegrationConnection(
+      "KUBECONFIG",
+      { connectionMode: "EXTERNAL" },
+      { apiServerUrl: "https://k8s.example.com" },
+      mockFetcher as unknown as typeof fetch
+    )
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain("Kubernetes API server reachable")
+  })
+
+  it("handles KUBECONFIG unreachable external API server", async () => {
+    const mockFetcher = mock(async () => {
+      throw new Error("Network unreachable")
+    })
+    const result = await testIntegrationConnection(
+      "KUBECONFIG",
+      { connectionMode: "EXTERNAL" },
+      { apiServerUrl: "https://k8s-unreachable.example.com" },
+      mockFetcher as unknown as typeof fetch
+    )
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain("Unable to reach Kubernetes API server")
+  })
 })
