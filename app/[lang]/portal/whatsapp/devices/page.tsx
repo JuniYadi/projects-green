@@ -40,41 +40,56 @@ import {
 function QuotaUsageCell({ device }: { device: DeviceListItem }) {
   const total = device.quotaBase > 0 ? device.quotaBase : 1000
   // In the billing model: quotaBaseOut is the REMAINING base quota!
-  // So: used = total - remaining (quotaBaseOut)
-  const remaining = Math.max(0, Math.min(device.quotaBaseOut, total))
-  const used = Math.max(0, total - remaining)
-  const percent = Math.min(Math.round((used / total) * 100), 100)
+  // When usage exceeds base quota, quotaBaseOut is negative (overdraft).
+  const rawRemaining = Number(device.quotaBaseOut)
+  const isOverdraft = rawRemaining < 0
+  const used = total - rawRemaining
+  const percent = total > 0 ? Math.round((used / total) * 100) : 0
+  const barPercent = Math.min(Math.max(0, percent), 100)
 
   // Color bar: used >= 90% (or remaining <= 10%) = red/destructive, 75-90% = amber, <75% = emerald
   const barColor =
-    percent >= 90
+    percent >= 90 || isOverdraft
       ? "bg-destructive"
       : percent >= 75
         ? "bg-amber-500"
         : "bg-emerald-500"
-
   return (
     <TooltipProvider delayDuration={150}>
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex w-36 cursor-pointer flex-col gap-1.5 py-1 text-left">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-medium">
+              <span
+                className={`font-medium ${isOverdraft ? "text-destructive" : ""}`}
+              >
                 {used.toLocaleString()} / {total.toLocaleString()}
               </span>
-              <span className="text-[11px] text-muted-foreground">
+              <span
+                className={`text-[11px] font-semibold ${isOverdraft ? "text-destructive" : "text-muted-foreground"}`}
+              >
                 {percent}%
               </span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-                style={{ width: `${percent}%` }}
+                style={{ width: `${barPercent}%` }}
               />
             </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>Used: {used.toLocaleString()}</span>
-              <span>Left: {remaining.toLocaleString()}</span>
+            <div className="flex justify-between text-[10px]">
+              <span className="text-muted-foreground">
+                Used: {used.toLocaleString()}
+              </span>
+              <span
+                className={
+                  isOverdraft
+                    ? "font-medium text-destructive"
+                    : "text-muted-foreground"
+                }
+              >
+                Left: {rawRemaining.toLocaleString()}
+              </span>
             </div>
           </div>
         </TooltipTrigger>
@@ -83,10 +98,18 @@ function QuotaUsageCell({ device }: { device: DeviceListItem }) {
           <p>
             {used.toLocaleString()} of {total.toLocaleString()} messages used
           </p>
-          <p className="text-muted-foreground">
-            {remaining === 0
-              ? "🔴 Base quota exhausted"
-              : `🟢 ${remaining.toLocaleString()} messages remaining`}
+          <p
+            className={
+              isOverdraft
+                ? "font-medium text-destructive"
+                : "text-muted-foreground"
+            }
+          >
+            {isOverdraft
+              ? `🔴 Overdraft: ${Math.abs(rawRemaining).toLocaleString()} messages over limit (${rawRemaining.toLocaleString()} left)`
+              : rawRemaining === 0
+                ? "🔴 Base quota exhausted"
+                : `🟢 ${rawRemaining.toLocaleString()} messages remaining`}
           </p>
           {device.dailyLimitMessage > 0 && (
             <p className="text-muted-foreground">
