@@ -315,21 +315,37 @@ describe("testIntegrationConnection", () => {
     expect(result.message).toContain("In-cluster ServiceAccount mode")
   })
 
-  it("tests KUBECONFIG external connection successfully", async () => {
+  it("tests KUBECONFIG external connection successfully with token and caCertificate", async () => {
     const mockFetcher = mock(async () => new Response("ok", { status: 200 }))
     const result = await testIntegrationConnection(
       "KUBECONFIG",
       { connectionMode: "EXTERNAL" },
-      { apiServerUrl: "https://k8s.example.com" },
+      {
+        apiServerUrl: "https://k8s.example.com",
+        serviceAccountToken: "sa-token-12345",
+        caCertificate:
+          "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----",
+      },
       mockFetcher as unknown as typeof fetch
     )
     expect(result.ok).toBe(true)
     expect(result.message).toContain("Kubernetes API server reachable")
+    expect(mockFetcher).toHaveBeenCalledWith(
+      "https://k8s.example.com/livez",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer sa-token-12345",
+        }),
+        tls: expect.objectContaining({
+          ca: ["-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"],
+        }),
+      })
+    )
   })
 
-  it("handles KUBECONFIG unreachable external API server", async () => {
+  it("handles KUBECONFIG unreachable external API server with error details", async () => {
     const mockFetcher = mock(async () => {
-      throw new Error("Network unreachable")
+      throw new Error("unable to verify the first certificate")
     })
     const result = await testIntegrationConnection(
       "KUBECONFIG",
@@ -338,6 +354,6 @@ describe("testIntegrationConnection", () => {
       mockFetcher as unknown as typeof fetch
     )
     expect(result.ok).toBe(false)
-    expect(result.message).toContain("Unable to reach Kubernetes API server")
+    expect(result.message).toContain("unable to verify the first certificate")
   })
 })

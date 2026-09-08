@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 export type IntegrationConnectionTestResult = {
   ok: boolean
   message: string
@@ -381,16 +381,62 @@ export async function testIntegrationConnection(
               ? (meta.apiServerUrl as string).replace(/\/+$/, "")
               : ""
 
-        if (connectionMode === "INTERNAL" && !explicitUrl) {
-          const isInsideK8s =
-            Boolean(process.env.KUBERNETES_SERVICE_HOST) ||
-            existsSync("/var/run/secrets/kubernetes.io/serviceaccount/token")
-          if (!isInsideK8s) {
-            return {
-              ok: true,
-              message:
-                "In-cluster ServiceAccount mode configured (runtime will connect via pod ServiceAccount)",
-              durationMs: Date.now() - start,
+        let caCert: string | undefined =
+          typeof secrets.caCertificate === "string" &&
+          secrets.caCertificate.trim()
+            ? secrets.caCertificate
+            : typeof meta.caCertificate === "string" &&
+                meta.caCertificate.trim()
+              ? (meta.caCertificate as string)
+              : undefined
+
+        let token: string | undefined =
+          typeof secrets.serviceAccountToken === "string" &&
+          secrets.serviceAccountToken.trim()
+            ? secrets.serviceAccountToken
+            : undefined
+
+        if (connectionMode === "INTERNAL") {
+          if (!caCert) {
+            try {
+              if (
+                existsSync(
+                  "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+                )
+              ) {
+                caCert = readFileSync(
+                  "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+                  "utf8"
+                )
+              }
+            } catch {}
+          }
+          if (!token) {
+            try {
+              if (
+                existsSync(
+                  "/var/run/secrets/kubernetes.io/serviceaccount/token"
+                )
+              ) {
+                token = readFileSync(
+                  "/var/run/secrets/kubernetes.io/serviceaccount/token",
+                  "utf8"
+                ).trim()
+              }
+            } catch {}
+          }
+
+          if (!explicitUrl) {
+            const isInsideK8s =
+              Boolean(process.env.KUBERNETES_SERVICE_HOST) ||
+              existsSync("/var/run/secrets/kubernetes.io/serviceaccount/token")
+            if (!isInsideK8s) {
+              return {
+                ok: true,
+                message:
+                  "In-cluster ServiceAccount mode configured (runtime will connect via pod ServiceAccount)",
+                durationMs: Date.now() - start,
+              }
             }
           }
         }
@@ -412,7 +458,17 @@ export async function testIntegrationConnection(
           }
         }
         try {
-          const res = await timedFetch(`${apiServerUrl}/livez`)
+          const headers: Record<string, string> = {
+            Accept: "application/json",
+          }
+          if (token) {
+            headers.Authorization = `Bearer ${token}`
+          }
+          const fetchInit: RequestInit & { tls?: { ca?: string[] } } = {
+            headers,
+            ...(caCert ? { tls: { ca: [caCert] } } : {}),
+          }
+          const res = await timedFetch(`${apiServerUrl}/livez`, fetchInit)
           const durationMs = Date.now() - start
           if (res.status === 200 || res.status === 401 || res.status === 403) {
             return {
@@ -426,10 +482,12 @@ export async function testIntegrationConnection(
             message: `Kubernetes API server returned HTTP ${res.status}`,
             durationMs,
           }
-        } catch {
+        } catch (probeError) {
+          const errorDetail =
+            probeError instanceof Error ? `: ${probeError.message}` : ""
           return {
             ok: false,
-            message: `Unable to reach Kubernetes API server at ${apiServerUrl}`,
+            message: `Unable to reach Kubernetes API server at ${apiServerUrl}${errorDetail}`,
             durationMs: Date.now() - start,
           }
         }
