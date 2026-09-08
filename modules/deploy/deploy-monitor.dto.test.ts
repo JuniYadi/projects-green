@@ -2,13 +2,14 @@ import { describe, expect, it } from "bun:test"
 
 import {
   buildDeployTimelineItems,
+  computeNextRenewalDate,
+  deriveCurrentDeployStep,
   mapStackStatusToDeployStatus,
   resolveStackBillingState,
   toDeployEventDTOs,
   toDeployLogLines,
-  toDeploymentStatusDTO,
-  deriveCurrentDeployStep,
   toDeploymentHistoryDTO,
+  toDeploymentStatusDTO,
   toStackSummaryDTO,
 } from "./deploy-monitor.dto"
 
@@ -343,6 +344,58 @@ describe("deploy-monitor.dto", () => {
       expect(resolveStackBillingState({ billingState: "SUSPENDED" })).toBe(
         "SUSPENDED"
       )
+    })
+  })
+
+  describe("computeNextRenewalDate", () => {
+    it("returns null for null, undefined, or invalid date values", () => {
+      expect(computeNextRenewalDate(null)).toBeNull()
+      expect(computeNextRenewalDate(undefined)).toBeNull()
+      expect(computeNextRenewalDate("invalid-date")).toBeNull()
+    })
+
+    it("advances standard mid-month dates by exactly one month", () => {
+      const renewal = computeNextRenewalDate("2026-05-15T10:30:00.000Z")
+      expect(renewal).toBe("2026-06-15T10:30:00.000Z")
+    })
+
+    it("clamps end-of-month dates for January 31 to February 28 in common years", () => {
+      const renewal = computeNextRenewalDate("2026-01-31T00:00:00.000Z")
+      expect(renewal).toBe("2026-02-28T00:00:00.000Z")
+    })
+
+    it("clamps end-of-month dates for January 31 to February 29 in leap years", () => {
+      const renewal = computeNextRenewalDate("2024-01-31T00:00:00.000Z")
+      expect(renewal).toBe("2024-02-29T00:00:00.000Z")
+    })
+
+    it("clamps 31-day months advancing into 30-day months", () => {
+      expect(computeNextRenewalDate("2026-03-31T08:00:00.000Z")).toBe(
+        "2026-04-30T08:00:00.000Z"
+      )
+      expect(computeNextRenewalDate("2026-05-31T08:00:00.000Z")).toBe(
+        "2026-06-30T08:00:00.000Z"
+      )
+      expect(computeNextRenewalDate("2026-08-31T08:00:00.000Z")).toBe(
+        "2026-09-30T08:00:00.000Z"
+      )
+      expect(computeNextRenewalDate("2026-10-31T08:00:00.000Z")).toBe(
+        "2026-11-30T08:00:00.000Z"
+      )
+    })
+
+    it("handles December to January year crossover correctly", () => {
+      expect(computeNextRenewalDate("2026-12-15T12:00:00.000Z")).toBe(
+        "2027-01-15T12:00:00.000Z"
+      )
+      expect(computeNextRenewalDate("2026-12-31T12:00:00.000Z")).toBe(
+        "2027-01-31T12:00:00.000Z"
+      )
+    })
+
+    it("accepts Date object instances directly", () => {
+      const date = new Date("2026-07-20T00:00:00.000Z")
+      expect(computeNextRenewalDate(date)).toBe("2026-08-20T00:00:00.000Z")
     })
   })
 

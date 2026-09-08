@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import { Key, Trash } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import {
   Card,
   CardContent,
@@ -177,30 +178,12 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                   Mode 0400 (Highly Recommended for keys/certs).
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setNewMountReadOnly(!newMountReadOnly)}
-                onKeyDown={(event) => {
-                  if (event.key === " " || event.key === "Enter") {
-                    event.preventDefault()
-                    setNewMountReadOnly((value) => !value)
-                  }
-                }}
-                role="switch"
-                aria-checked={newMountReadOnly}
+              <Switch
+                checked={newMountReadOnly}
+                onCheckedChange={setNewMountReadOnly}
                 aria-label="Set mount as read-only"
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  newMountReadOnly ? "bg-primary" : "bg-muted"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    newMountReadOnly ? "translate-x-4" : "translate-x-0"
-                  }`}
-                />
-              </button>
+              />
             </div>
-
             <Button
               type="submit"
               className="mt-2 h-9 w-full bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/95"

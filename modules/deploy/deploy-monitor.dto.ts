@@ -372,7 +372,12 @@ export const computeNextRenewalDate = (
   const date = new Date(createdAt)
   if (isNaN(date.getTime())) return null
   const next = new Date(date)
-  next.setMonth(next.getMonth() + 1)
+  const targetMonth = (date.getMonth() + 1) % 12
+  next.setMonth(date.getMonth() + 1)
+  // Clamp: if month overflowed beyond targetMonth (e.g. Jan 31 -> Mar 2/3), land on last day of target month
+  if (next.getMonth() !== targetMonth) {
+    next.setDate(0)
+  }
   return next.toISOString()
 }
 

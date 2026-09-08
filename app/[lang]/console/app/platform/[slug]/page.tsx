@@ -91,6 +91,15 @@ type AppClient = {
 type SettingsSubTab =
   "env" | "domains" | "scaling" | "mounts" | "build" | "general" | "danger"
 
+const VALID_SETTINGS_SUBTABS: readonly SettingsSubTab[] = [
+  "env",
+  "domains",
+  "scaling",
+  "mounts",
+  "build",
+  "general",
+  "danger",
+] as const
 const formatDuration = (durationMs: number | null): string => {
   if (durationMs === null) return "—"
   if (durationMs < 1000) return `${durationMs}ms`
@@ -116,7 +125,10 @@ export default function PlatformInstanceWorkspacePage() {
       ? "settings"
       : (rawTab as WorkspaceTabKey)
 
-  const settingsSubTab: SettingsSubTab = (rawSection as SettingsSubTab) || "env"
+  const settingsSubTab: SettingsSubTab =
+    rawSection && VALID_SETTINGS_SUBTABS.includes(rawSection as SettingsSubTab)
+      ? (rawSection as SettingsSubTab)
+      : "env"
 
   const handleSelectSubTab = (subTab: SettingsSubTab) => {
     router.replace(
