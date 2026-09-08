@@ -32,12 +32,7 @@ export type SubscriptionItem = {
   monthlyRateIdr?: string
   pricingId?: string | null
   billingPeriod?:
-    | "MONTHLY"
-    | "QUARTERLY"
-    | "SEMI_ANNUAL"
-    | "ANNUAL"
-    | string
-    | null
+    "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL" | string | null
   periodMonths?: number | null
   periodPrice?: string | null
   currency?: string | null
@@ -497,6 +492,42 @@ export async function getAdminSubscriptions(params?: {
     : "/api/billing/admin/subscriptions"
 
   return fetchBilling<AdminSubscriptionsResponse>(endpoint)
+}
+
+export type UpdateAdminSubscriptionPayload = {
+  planId?: string
+  pricingId?: string
+  billingPeriod?: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
+  currentPeriodEnd?: string
+  cancelAtPeriodEnd?: boolean
+  allocatedConfig?: Record<string, unknown>
+  status?: "ACTIVE" | "SUSPENDED" | "CANCELLED"
+}
+
+export async function updateAdminSubscription(
+  subscriptionId: string,
+  payload: UpdateAdminSubscriptionPayload
+): Promise<{ ok: true; subscription: AdminSubscriptionItem }> {
+  return fetchBilling<{ ok: true; subscription: AdminSubscriptionItem }>(
+    `/api/billing/admin/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  )
+}
+
+export async function renewAdminSubscription(
+  subscriptionId: string
+): Promise<{ ok: true; message: string; order: unknown }> {
+  return fetchBilling<{ ok: true; message: string; order: unknown }>(
+    `/api/billing/admin/subscriptions/${encodeURIComponent(subscriptionId)}/renew`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }
+  )
 }
 
 // ─── Admin Stats ────────────────────────────────────────────────────────
@@ -1292,9 +1323,7 @@ export type VoucherKind = "BALANCE_CREDIT" | "PRODUCT_PROMOTION"
 export type VoucherDiscountType = "PERCENTAGE" | "FIXED"
 
 export type VoucherCurrencyPolicy =
-  | "MATCH_CURRENCY_ONLY"
-  | "CONVERT_AT_CHECKOUT"
-  | "CONVERT_AT_REDEMPTION"
+  "MATCH_CURRENCY_ONLY" | "CONVERT_AT_CHECKOUT" | "CONVERT_AT_REDEMPTION"
 
 export type VoucherStatus = "ACTIVE" | "EXPIRED" | "DEPLETED" | "DISABLED"
 
@@ -1402,8 +1431,7 @@ export type ProductPromotionCreateInput = VoucherCreateBase &
   }
 
 export type VoucherCreateInput =
-  | BalanceCreditVoucherCreateInput
-  | ProductPromotionCreateInput
+  BalanceCreditVoucherCreateInput | ProductPromotionCreateInput
 
 export type VoucherUpdateInput = Partial<VoucherCreateInput> & {
   kind?: VoucherKind

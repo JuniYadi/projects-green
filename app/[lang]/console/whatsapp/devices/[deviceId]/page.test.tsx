@@ -1,7 +1,22 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, waitFor, within } from "@testing-library/react"
+import {
+  fireEvent,
+  render as rtlRender,
+  waitFor,
+  within,
+} from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
+
+const render = (ui: React.ReactElement) => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return rtlRender(
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>
+  )
+}
 const ORIGINAL_FETCH = globalThis.fetch
 
 const jsonResponse = (body: unknown) =>

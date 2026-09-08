@@ -29,14 +29,21 @@ export type AdminAdjustInput = z.infer<typeof adminAdjustSchema>
 // ─── Admin Subscription Update ────────────────────────────────────────────────
 
 export const adminSubscriptionUpdateSchema = z.object({
-  planId: z.string().uuid().optional(),
-  pricingId: z.string().uuid().optional(),
+  planId: z.string().optional(),
+  pricingId: z.string().optional(),
+  planCode: z.string().optional(),
+  billingPeriod: z
+    .enum(["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"])
+    .optional(),
+  currentPeriodEnd: z.string().datetime().optional(),
+  cancelAtPeriodEnd: z.boolean().optional(),
   allocatedConfig: z
     .object({
       cpu: z.number().int().min(100).optional(),
       mem: z.number().int().min(128).optional(),
       devices: z.number().int().min(1).optional(),
     })
+    .passthrough()
     .optional(),
   status: z.enum(["ACTIVE", "SUSPENDED", "CANCELLED"]).optional(),
 })

@@ -756,6 +756,7 @@ export class BillingOrderService {
         totalAmount: amount,
         idempotencyKey,
         metadataJson: jsonObject({
+          ...metadataObject(subscription.metadata),
           renewal: true,
           subscriptionId,
           renewedAt: now.toISOString(),
@@ -775,6 +776,7 @@ export class BillingOrderService {
             periodStart,
             periodEnd,
             metadataJson: jsonObject({
+              ...metadataObject(subscription.metadata),
               renewal: true,
               subscriptionId,
               planId: subscription.planId,

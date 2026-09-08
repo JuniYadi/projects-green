@@ -422,12 +422,12 @@ export function BillingOrdersPage() {
                           onClick={() => setActiveOrder(order)}
                         >
                           <TableCell onClick={(e) => e.stopPropagation()}>
-                            <div className="font-mono text-xs font-semibold">
-                              {order.id}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
+                            <Link
+                              href={`/${lang}/portal/billing/org/${order.organizationId}`}
+                              className="font-mono text-xs font-medium text-primary hover:underline"
+                            >
                               {order.organizationId}
-                            </div>
+                            </Link>
                           </TableCell>
                           <TableCell>
                             {order.line ? (
@@ -465,7 +465,7 @@ export function BillingOrdersPage() {
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             {order.invoice ? (
                               <Link
-                                href={`/${lang}/portal/billing/invoices`}
+                                href={`/${lang}/portal/billing/invoices/${order.invoice.id}`}
                                 className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                               >
                                 {order.invoice.invoiceNumber}
@@ -580,7 +580,12 @@ export function BillingOrdersPage() {
               Order {activeOrder?.id}
             </SheetTitle>
             <SheetDescription className="text-left">
-              Organization: {activeOrder?.organizationId}
+              <Link
+                href={`/${lang}/portal/billing/org/${activeOrder?.organizationId}`}
+                className="font-mono text-xs font-medium text-primary hover:underline"
+              >
+                Organization: {activeOrder?.organizationId}
+              </Link>
             </SheetDescription>
           </SheetHeader>
           {activeOrder && (
@@ -630,13 +635,29 @@ export function BillingOrdersPage() {
                   <div className="mt-2 text-muted-foreground">—</div>
                 )}
 
+                {activeOrder.serviceSubscriptionId && (
+                  <div className="mt-4 border-t pt-3">
+                    <div className="text-xs text-muted-foreground">
+                      Linked Subscription
+                    </div>
+                    <Link
+                      href={`/${lang}/portal/billing/subscriptions?subscriptionId=${activeOrder.serviceSubscriptionId}`}
+                      className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                    >
+                      View Subscription (
+                      {activeOrder.serviceSubscriptionId.slice(0, 12)}...)
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                )}
+
                 {activeOrder.invoice && (
                   <div className="mt-4 border-t pt-3">
                     <div className="text-xs text-muted-foreground">
                       Linked Invoice
                     </div>
                     <Link
-                      href={`/${lang}/portal/billing/invoices`}
+                      href={`/${lang}/portal/billing/invoices/${activeOrder.invoice.id}`}
                       className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                     >
                       {activeOrder.invoice.invoiceNumber} (
@@ -646,7 +667,6 @@ export function BillingOrdersPage() {
                   </div>
                 )}
               </div>
-
               {/* Provisioning Answers & Metadata */}
               {(() => {
                 const meta = (activeOrder.metadata ?? {}) as Record<
@@ -663,8 +683,14 @@ export function BillingOrdersPage() {
                       typeof val === "number" ||
                       typeof val === "boolean")
                 )
+                const deviceId =
+                  (typeof meta.deviceId === "string" ? meta.deviceId : null) ||
+                  (Array.isArray(meta.deviceIds) &&
+                  typeof meta.deviceIds[0] === "string"
+                    ? meta.deviceIds[0]
+                    : null)
 
-                if (answerEntries.length === 0) return null
+                if (answerEntries.length === 0 && !deviceId) return null
 
                 return (
                   <div className="rounded-lg border p-4">
@@ -672,6 +698,20 @@ export function BillingOrdersPage() {
                       Form & Provisioning Responses
                     </div>
                     <div className="mt-3 flex flex-col gap-2">
+                      {deviceId && (
+                        <div className="flex items-center justify-between rounded-md border bg-muted/20 p-2.5 text-xs">
+                          <span className="font-medium text-muted-foreground">
+                            WhatsApp Device
+                          </span>
+                          <Link
+                            href={`/${lang}/portal/whatsapp/devices/${deviceId}`}
+                            className="inline-flex items-center gap-1 font-mono font-semibold text-primary hover:underline"
+                          >
+                            Open Device
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </div>
+                      )}
                       {answerEntries.map(([key, val]) => (
                         <div
                           key={key}

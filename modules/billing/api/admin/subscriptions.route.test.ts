@@ -1,18 +1,14 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 
-import { createAdminSubscriptionRoutes } from "./subscriptions.route"
-import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
-import type { PlatformAccessRole } from "@/lib/platform-role"
-import {
-  type MockAuthContext,
-  defaultAuth,
-  mockPlatformRoleNone,
-  mockPlatformRole,
-  mockIsAdmin,
-  testIsAdmin,
-} from "@/test/helpers/test-auth"
-
+mock.module("server-only", () => ({}))
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  withAuth: mock(async () => ({
+    user: { id: "user_1", email: "admin@example.com" },
+    organizationId: "org_1",
+    role: "admin",
+  })),
+}))
 const mockFindUnique = mock()
 const mockUpdate = mock()
 const mockFindMany = mock()
@@ -62,9 +58,17 @@ mock.module("@/modules/billing/orders/order.service", () => ({
   },
 }))
 
-mock.module("@/lib/prisma", () => ({
-  prisma: mockPrismaClient,
-}))
+import { createAdminSubscriptionRoutes } from "./subscriptions.route"
+import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
+import type { PlatformAccessRole } from "@/lib/platform-role"
+import {
+  type MockAuthContext,
+  defaultAuth,
+  mockPlatformRoleNone,
+  mockPlatformRole,
+  mockIsAdmin,
+  testIsAdmin,
+} from "@/test/helpers/test-auth"
 
 describe("AdminSubscriptionRoute", () => {
   beforeEach(() => {
@@ -584,10 +588,12 @@ describe("AdminSubscriptionRoute", () => {
       )
 
       expect(response.status).toBe(200)
-      expect(mockUpdate).toHaveBeenCalledWith({
-        where: { id: "sub-plan-pricing" },
-        data: { planId, pricingId },
-      })
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "sub-plan-pricing" },
+          data: { planId, pricingId },
+        })
+      )
       const body = await response.json()
       expect(body.subscription.planCode).toBe("STANDARD")
     })

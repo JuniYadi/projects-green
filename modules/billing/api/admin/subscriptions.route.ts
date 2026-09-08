@@ -39,6 +39,7 @@ type AdminSubscriptionRouteDeps = {
     platformRole: PlatformAccessRole
     orgRole: string | null | undefined
   }) => boolean
+  orderService?: BillingOrderService
 }
 
 const defaultDeps: AdminSubscriptionRouteDeps = {
@@ -432,6 +433,20 @@ export const createAdminSubscriptionRoutes = (
             dataToUpdate.pricingId = updateData.pricingId
           }
 
+          if (updateData.billingPeriod !== undefined) {
+            dataToUpdate.billingPeriod = updateData.billingPeriod
+          }
+
+          if (updateData.currentPeriodEnd !== undefined) {
+            dataToUpdate.currentPeriodEnd = new Date(
+              updateData.currentPeriodEnd
+            )
+          }
+
+          if (updateData.cancelAtPeriodEnd !== undefined) {
+            dataToUpdate.cancelAtPeriodEnd = updateData.cancelAtPeriodEnd
+          }
+
           if (updateData.allocatedConfig !== undefined) {
             dataToUpdate.allocatedConfig = updateData.allocatedConfig
           }
@@ -439,7 +454,6 @@ export const createAdminSubscriptionRoutes = (
           if (updateData.status !== undefined) {
             dataToUpdate.status = updateData.status
           }
-
           // If no updates, return current subscription
           if (Object.keys(dataToUpdate).length === 0) {
             const current = await prisma.serviceSubscription.findUnique({
@@ -482,11 +496,39 @@ export const createAdminSubscriptionRoutes = (
           }
 
           // Update subscription
-          await prisma.serviceSubscription.update({
+          const updatedSub = await prisma.serviceSubscription.update({
             where: { id },
             data: dataToUpdate,
+            select: {
+              id: true,
+              organizationId: true,
+              currentPeriodEnd: true,
+              metadata: true,
+              package: { select: { code: true } },
+            },
           })
 
+          // If currentPeriodEnd was updated and package is WHATSAPP, sync expiredAt to devices
+          if (
+            dataToUpdate.currentPeriodEnd &&
+            updatedSub.package.code === "WHATSAPP"
+          ) {
+            const meta = (updatedSub.metadata ?? {}) as Record<string, unknown>
+            const deviceIds = Array.isArray(meta.deviceIds)
+              ? (meta.deviceIds as string[])
+              : []
+            if (deviceIds.length > 0) {
+              await prisma.whatsappDevice.updateMany({
+                where: {
+                  id: { in: deviceIds },
+                  organizationId: updatedSub.organizationId,
+                },
+                data: {
+                  expiredAt: updatedSub.currentPeriodEnd,
+                },
+              })
+            }
+          }
           // Fetch updated subscription with relations
           const updated = await prisma.serviceSubscription.findUnique({
             where: { id },
@@ -543,6 +585,76 @@ export const createAdminSubscriptionRoutes = (
         } catch (error) {
           console.error("[AdminSubscription] Error:", error)
           return toServerError(set, "Unable to update subscription.")
+        }
+      })
+      // POST /billing/admin/subscriptions/:id/renew — Manually renew subscription
+      .post("/admin/subscriptions/:id/renew", async ({ params, set }) => {
+        const auth = await authenticate()
+        if (!auth.user) return toUnauthorized(set)
+
+        const { id } = params as { id: string }
+        if (!id) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Subscription ID is required.",
+          }
+        }
+
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(
+            set,
+            "Only administrators can renew subscriptions."
+          )
+        }
+
+        try {
+          const existing = await prisma.serviceSubscription.findUnique({
+            where: { id },
+            select: { id: true, organizationId: true, status: true },
+          })
+          if (!existing) {
+            return toNotFound(set, "Subscription not found.")
+          }
+          let service = deps.orderService
+          if (!service) {
+            const { BillingOrderService: ServiceClass } =
+              await import("@/modules/billing/orders/order.service")
+            service = new ServiceClass(prisma)
+          }
+          const orderResult = await service.renewServiceSubscription(id)
+
+          emitBillingAudit({
+            entityType: "ServiceSubscription",
+            entityId: id,
+            action: "UPDATED",
+            actorId: auth.user.id,
+            context: {
+              action: "MANUAL_RENEWAL",
+              orderId: orderResult.orderId,
+              status: orderResult.status,
+            },
+          })
+
+          return {
+            ok: true as const,
+            order: orderResult,
+            message: "Subscription renewed successfully.",
+          }
+        } catch (error) {
+          console.error("[AdminSubscription] Renewal error:", error)
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Unable to renew subscription."
+          set.status = 400
+          return {
+            ok: false as const,
+            error: "RENEWAL_FAILED" as const,
+            message,
+          }
         }
       })
   )
