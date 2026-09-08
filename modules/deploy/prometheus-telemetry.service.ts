@@ -30,7 +30,7 @@ const CLUSTER_CONFIGS: Record<
 > = {
   sgp: {
     clusterName: "Singapore Production",
-    region: "Singapore (sgp)",
+    region: "Singapore",
     isPrimary: true,
   },
   "id-cgk-1": {
@@ -140,8 +140,12 @@ export async function fetchNamespaceTelemetry(
     Accept: "application/json",
   }
 
-  const queryInstant = async (query: string): Promise<number | null> => {
-    const url = `${baseUrl}/api/v1/query?query=${encodeURIComponent(query)}&time=${end}`
+  const queryInstant = async (
+    query: string,
+    timestamp?: number
+  ): Promise<number | null> => {
+    const timeParam = timestamp ? `&time=${timestamp}` : ""
+    const url = `${baseUrl}/api/v1/query?query=${encodeURIComponent(query)}${timeParam}`
     const res = await fetchImpl(url, { headers })
     if (!res.ok) {
       throw new Error(
@@ -166,7 +170,20 @@ export async function fetchNamespaceTelemetry(
     return parseRangeMetricValues(json)
   }
 
+  const rateWindow =
+    timeRange === "1h"
+      ? "5m"
+      : timeRange === "6h"
+        ? "15m"
+        : timeRange === "24h"
+          ? "30m"
+          : "2h"
+
   const [
+    instantCpuUsage,
+    instantMemUsage,
+    instantRxRate,
+    instantTxRate,
     instantCpuLimit,
     instantMemLimit,
     cpuUsageMap,
@@ -175,22 +192,34 @@ export async function fetchNamespaceTelemetry(
     networkTxMap,
   ] = await Promise.all([
     queryInstant(
+      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}", container!=""}[2m]))`
+    ),
+    queryInstant(
+      `sum(container_memory_working_set_bytes{namespace="${ns}", container!=""})`
+    ),
+    queryInstant(
+      `sum(rate(container_network_receive_bytes_total{namespace="${ns}"}[2m]))`
+    ),
+    queryInstant(
+      `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"}[2m]))`
+    ),
+    queryInstant(
       `sum(kube_pod_container_resource_limits{namespace="${ns}", resource="cpu"})`
     ),
     queryInstant(
       `sum(kube_pod_container_resource_limits{namespace="${ns}", resource="memory"})`
     ),
     queryRange(
-      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}", container!=""}[2m]))`
+      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}", container!=""}[${rateWindow}]))`
     ),
     queryRange(
       `sum(container_memory_working_set_bytes{namespace="${ns}", container!=""})`
     ),
     queryRange(
-      `sum(rate(container_network_receive_bytes_total{namespace="${ns}"}[2m]))`
+      `sum(rate(container_network_receive_bytes_total{namespace="${ns}"}[${rateWindow}]))`
     ),
     queryRange(
-      `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"}[2m]))`
+      `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"}[${rateWindow}]))`
     ),
   ])
 
@@ -241,9 +270,13 @@ export async function fetchNamespaceTelemetry(
     const sortedTimestamps = Array.from(returnedTimestamps).sort(
       (a, b) => a - b
     )
+    let lastKnownMem = 0
     points = sortedTimestamps.map((t) => {
       const cpuUsage = cpuUsageMap.get(t) ?? 0
-      const memUsage = memUsageMap.get(t) ?? 0
+      const memUsage = memUsageMap.get(t)
+      if (memUsage !== undefined && memUsage > 0) {
+        lastKnownMem = memUsage
+      }
       const rx = networkRxMap.get(t) ?? 0
       const tx = networkTxMap.get(t) ?? 0
 
@@ -251,7 +284,7 @@ export async function fetchNamespaceTelemetry(
         timestamp: formatTimestamp(t, timeRange === "7d"),
         cpuUsageCores: Number(cpuUsage.toFixed(2)),
         cpuLimitCores,
-        memoryUsageBytes: Math.round(memUsage),
+        memoryUsageBytes: Math.round(memUsage ?? lastKnownMem),
         memoryLimitBytes,
         networkRxBytesPerSec: Math.round(rx),
         networkTxBytesPerSec: Math.round(tx),
@@ -260,6 +293,29 @@ export async function fetchNamespaceTelemetry(
   }
 
   const lastPoint = points[points.length - 1]
+  const currentCores =
+    instantCpuUsage !== null && instantCpuUsage > 0
+      ? Number(instantCpuUsage.toFixed(2))
+      : (lastPoint?.cpuUsageCores ?? 0)
+  const currentBytes =
+    instantMemUsage !== null && instantMemUsage > 0
+      ? Math.round(instantMemUsage)
+      : (lastPoint?.memoryUsageBytes ?? 0)
+  const currentRxBytes =
+    instantRxRate !== null && instantRxRate > 0
+      ? Math.round(instantRxRate)
+      : (lastPoint?.networkRxBytesPerSec ?? 0)
+  const currentTxBytes =
+    instantTxRate !== null && instantTxRate > 0
+      ? Math.round(instantTxRate)
+      : (lastPoint?.networkTxBytesPerSec ?? 0)
+
+  if (lastPoint && points.length > 0) {
+    lastPoint.cpuUsageCores = currentCores
+    lastPoint.memoryUsageBytes = currentBytes
+    lastPoint.networkRxBytesPerSec = currentRxBytes
+    lastPoint.networkTxBytesPerSec = currentTxBytes
+  }
   const cpuValues = points.map((p) => p.cpuUsageCores)
   const memValues = points.map((p) => p.memoryUsageBytes)
   const rxValues = points.map((p) => p.networkRxBytesPerSec)
@@ -303,20 +359,20 @@ export async function fetchNamespaceTelemetry(
     namespace: ns,
     points,
     cpu: {
-      currentCores: lastPoint.cpuUsageCores,
+      currentCores,
       limitCores: cpuLimitCores,
       avgCores,
       peakCores,
     },
     memory: {
-      currentBytes: lastPoint.memoryUsageBytes,
+      currentBytes,
       limitBytes: memoryLimitBytes,
       avgBytes,
       peakBytes,
     },
     network: {
-      currentRxBytes: lastPoint.networkRxBytesPerSec,
-      currentTxBytes: lastPoint.networkTxBytesPerSec,
+      currentRxBytes,
+      currentTxBytes,
       totalRxBytes,
       totalTxBytes,
     },
