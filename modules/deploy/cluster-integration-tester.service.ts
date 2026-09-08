@@ -352,7 +352,25 @@ export async function testIntegrationConnection(
 
         const res = await timedFetch(endpoint, { headers })
         const durationMs = Date.now() - start
-        if (res.status === 401 || res.status === 403) {
+        if (res.status === 401) {
+          return {
+            ok: false,
+            message: "OpenSearch authentication required / invalid credentials",
+            durationMs,
+          }
+        }
+        if (res.status === 403) {
+          const accountRes = await timedFetch(
+            `${endpoint}/_plugins/_security/api/account`,
+            { headers }
+          )
+          if (accountRes.ok) {
+            return {
+              ok: true,
+              message: "Successfully reached OpenSearch cluster endpoint",
+              durationMs: Date.now() - start,
+            }
+          }
           return {
             ok: false,
             message: "OpenSearch authentication required / invalid credentials",

@@ -302,6 +302,28 @@ describe("testIntegrationConnection", () => {
     )
   })
 
+  it("succeeds when OpenSearch root returns 403 but security account endpoint returns 200", async () => {
+    const mockFetcher = mock(async (url: string | Request | URL) => {
+      const urlStr = String(url)
+      if (urlStr.endsWith("/_plugins/_security/api/account")) {
+        return new Response(JSON.stringify({ user_name: "pfnapp-readonly" }), {
+          status: 200,
+        })
+      }
+      return new Response("Forbidden", { status: 403 })
+    })
+    const result = await testIntegrationConnection(
+      "OPENSEARCH",
+      { endpoint: "https://opensearch.example.com:9200" },
+      { username: "pfnapp-readonly", password: "secret_password" },
+      mockFetcher as unknown as typeof fetch
+    )
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain(
+      "Successfully reached OpenSearch cluster endpoint"
+    )
+  })
+
   it("handles OpenSearch 403 forbidden and 500 error", async () => {
     const mockFetcher403 = mock(
       async () => new Response("Forbidden", { status: 403 })
