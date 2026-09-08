@@ -1,14 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import {
   Cpu,
   HardDrive,
   ArrowsLeftRight,
   Globe,
-  ArrowRight,
+  Clock,
 } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 import { eden } from "@/lib/eden"
@@ -61,6 +60,7 @@ export function ClusterTelemetryCards({
   showPodBreakdown = false,
   className,
 }: ClusterTelemetryCardsProps = {}) {
+  const [mountTime] = useState(() => Date.now())
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
     type: "preset",
     preset: "1h",
@@ -119,15 +119,14 @@ export function ClusterTelemetryCards({
     refetchOnWindowFocus: true,
   })
 
-  const isLive = dataUpdatedAt > 0
-  const lastUpdated =
-    dataUpdatedAt > 0
-      ? format24hTime(dataUpdatedAt, {
-          showSeconds: true,
-          timeZone: userTimeZone,
-        })
-      : null
-
+  const isLive = true
+  const lastUpdated = format24hTime(
+    dataUpdatedAt > 0 ? dataUpdatedAt : mountTime,
+    {
+      showSeconds: true,
+      timeZone: userTimeZone,
+    }
+  )
   const formatPointLabel = (timestamp: string): string => {
     const num = Number(timestamp)
     if (!Number.isNaN(num) && Number.isFinite(num) && num > 0) {
@@ -247,6 +246,12 @@ export function ClusterTelemetryCards({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">
+            {lastUpdated && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+                <Clock size={12} className="text-muted-foreground" />
+                <span>{lastUpdated}</span>
+              </span>
+            )}
             <TimeRangeDropdown
               value={timeSelection}
               onChange={setTimeSelection}
@@ -255,20 +260,6 @@ export function ClusterTelemetryCards({
               refreshInterval={refreshInterval}
               onRefreshIntervalChange={setRefreshInterval}
             />
-            {appSlug && (
-              <Link
-                href="?tab=metrics"
-                className="ml-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-              >
-                Deep-dive Metrics <ArrowRight size={12} />
-              </Link>
-            )}
-
-            {lastUpdated && (
-              <span className="hidden font-mono text-[11px] text-muted-foreground lg:inline">
-                {lastUpdated}
-              </span>
-            )}
           </div>
         </div>
       )}
@@ -290,6 +281,12 @@ export function ClusterTelemetryCards({
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                {lastUpdated && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+                    <Clock size={12} className="text-muted-foreground" />
+                    <span>{lastUpdated}</span>
+                  </span>
+                )}
                 <TimeRangeDropdown
                   value={timeSelection}
                   onChange={setTimeSelection}
@@ -298,14 +295,6 @@ export function ClusterTelemetryCards({
                   refreshInterval={refreshInterval}
                   onRefreshIntervalChange={setRefreshInterval}
                 />
-                {appSlug && (
-                  <Link
-                    href="?tab=metrics"
-                    className="ml-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-                  >
-                    Deep-dive Metrics <ArrowRight size={12} />
-                  </Link>
-                )}
               </div>
             </div>
           </CardHeader>

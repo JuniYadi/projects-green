@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import {
   ArrowsLeftRight,
   CheckCircle,
+  Clock,
   Cpu,
   HardDrive,
   Pulse,
@@ -16,7 +17,7 @@ import {
   TimeRangeDropdown,
   type AutoRefreshInterval,
 } from "@/components/telemetry/time-range-dropdown"
-import type { TimeRangeSelection } from "@/lib/time-range"
+import { format24hTime, type TimeRangeSelection } from "@/lib/time-range"
 import {
   formatBytes,
   generateClusterTelemetrySummary,
@@ -861,6 +862,7 @@ function PodObservabilityView({
   cpuLimitValue: number
   memLimitValue: number
 }) {
+  const [mountTime] = useState(() => Date.now())
   const [selectedPod, setSelectedPod] = useState<string>("all")
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
     type: "preset",
@@ -877,6 +879,7 @@ function PodObservabilityView({
   const {
     data: telemetry = generateClusterTelemetrySummary("1h"),
     isFetching,
+    dataUpdatedAt,
     refetch,
   } = useQuery<ClusterTelemetrySummary>({
     queryKey: [
@@ -916,6 +919,13 @@ function PodObservabilityView({
         : false,
   })
 
+  const lastUpdated = format24hTime(
+    dataUpdatedAt > 0 ? dataUpdatedAt : mountTime,
+    {
+      showSeconds: true,
+      timeZone: userTimeZone,
+    }
+  )
   const rawPods = telemetry?.pods ?? []
   const pods = rawPods.map((p) => ({
     ...p,
@@ -1004,7 +1014,13 @@ function PodObservabilityView({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">
+          {lastUpdated && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+              <Clock size={12} className="text-muted-foreground" />
+              <span>{lastUpdated}</span>
+            </span>
+          )}
           <TimeRangeDropdown
             value={timeSelection}
             onChange={setTimeSelection}
