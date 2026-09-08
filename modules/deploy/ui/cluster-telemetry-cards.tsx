@@ -147,19 +147,11 @@ export function ClusterTelemetryCards({
     limit: p.cpuLimitCores,
   }))
 
-  // Auto-scale Memory units: use MB if under 1GB, else GB
-  const maxMemBytes = Math.max(
-    ...telemetry.points.map((p) => p.memoryUsageBytes),
-    1
-  )
-  const memInGb = maxMemBytes >= 1024 * 1024 * 1024
-  const memUnit = memInGb ? "GB" : "MB"
-  const memDivisor = memInGb ? 1024 * 1024 * 1024 : 1024 * 1024
-
+  // Map Memory data to sparkline points (in GB) so Limit line (4 GB) and scale match
   const memoryDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
     label: formatPointLabel(p.timestamp),
-    value: Number((p.memoryUsageBytes / memDivisor).toFixed(memInGb ? 2 : 0)),
-    limit: Number((p.memoryLimitBytes / memDivisor).toFixed(memInGb ? 2 : 0)),
+    value: Number((p.memoryUsageBytes / (1024 * 1024 * 1024)).toFixed(2)),
+    limit: Number((p.memoryLimitBytes / (1024 * 1024 * 1024)).toFixed(1)),
   }))
 
   // Auto-scale Network units: B/s, KB/s, or MB/s
@@ -325,7 +317,7 @@ export function ClusterTelemetryCards({
           <CardContent className="pt-0">
             <ClusterTelemetrySparkline
               data={memoryDataPoints}
-              unit={memUnit}
+              unit="GB"
               color="#10b981"
               height={effectiveHeight}
               showArea={true}

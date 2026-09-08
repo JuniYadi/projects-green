@@ -65,12 +65,9 @@ export function ClusterTelemetrySparkline({
     .filter((v): v is number => typeof v === "number")
 
   const maxValue = Math.max(0.001, ...values, ...secondaryValues)
-  const isLimitWayAbove =
-    typeof limitValue === "number" && limitValue > maxValue * 2.2
-
   const ceiling =
-    typeof limitValue === "number" && limitValue > maxValue && !isLimitWayAbove
-      ? limitValue
+    typeof limitValue === "number" && limitValue > 0
+      ? Math.max(limitValue, maxValue)
       : maxValue * 1.35
 
   const tickCount = Math.max(2, yAxisTicks)
@@ -111,10 +108,7 @@ export function ClusterTelemetrySparkline({
 
   // Limit line
   const hasLimitLine =
-    showLimitLine &&
-    typeof limitValue === "number" &&
-    limitValue > 0 &&
-    !isLimitWayAbove
+    showLimitLine && typeof limitValue === "number" && limitValue > 0
   const limitY = hasLimitLine ? getY(limitValue).toFixed(1) : null
 
   // Labels for bottom axis
@@ -182,8 +176,7 @@ export function ClusterTelemetrySparkline({
                 </linearGradient>
               </defs>
             )}
-
-            {/* Horizontal gridlines (optional, off by default) */}
+            {/* Horizontal gridlines (off by default) */}
             {showGridLines &&
               tickValues.map((val, idx) => {
                 const y = getY(val).toFixed(1)
@@ -202,22 +195,35 @@ export function ClusterTelemetrySparkline({
                   />
                 )
               })}
-
             {/* Limit dashed threshold line */}
             {hasLimitLine && limitY && (
-              <line
-                x1="0"
-                y1={limitY}
-                x2="400"
-                y2={limitY}
-                stroke="currentColor"
-                strokeDasharray="4 4"
-                strokeOpacity={0.35}
-                strokeWidth={1}
-                data-testid="sparkline-limit-line"
-              >
-                <title>{`Limit: ${formatValue(limitValue!)}`}</title>
-              </line>
+              <g data-testid="sparkline-limit-group">
+                <line
+                  x1="0"
+                  y1={limitY}
+                  x2="400"
+                  y2={limitY}
+                  stroke="#f43f5e"
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.8}
+                  strokeWidth={1.5}
+                  data-testid="sparkline-limit-line"
+                >
+                  <title>{`Limit: ${formatValue(limitValue!)}`}</title>
+                </line>
+                <text
+                  x="396"
+                  y={
+                    Number(limitY) <= 20
+                      ? Number(limitY) + 12
+                      : Number(limitY) - 4
+                  }
+                  textAnchor="end"
+                  className="fill-rose-500 font-mono text-[9px] font-bold select-none"
+                >
+                  {`Limit: ${formatValue(limitValue!)}`}
+                </text>
+              </g>
             )}
 
             {/* Area under curve */}
