@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
-  ArrowsClockwise,
   Cpu,
   Globe,
   HardDrive,
@@ -15,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -71,21 +71,6 @@ type HistoryMeta = {
   totalPages: number
 }
 
-type AppClient = {
-  deployments?: {
-    get: (opts: { query: { page: number; pageSize: number } }) => Promise<{
-      data?: {
-        ok?: boolean
-        data?: DeploymentHistoryDTO[]
-        meta?: HistoryMeta
-      }
-    }>
-  }
-  sync?: {
-    post: () => Promise<{ data?: unknown }>
-  }
-}
-
 export type SettingsSubTab =
   "env" | "domains" | "scaling" | "mounts" | "build" | "danger"
 
@@ -126,6 +111,8 @@ export default function PlatformInstanceWorkspacePage() {
 
   const locale = resolveLocaleOrDefault(params?.lang)
   const slug = params?.slug ?? ""
+  const messages = getMessages(locale)
+  const tDeployments = messages.console.app.deployments
 
   const rawTab = searchParams.get("tab") || "overview"
   const rawSection = searchParams.get("section")
@@ -240,19 +227,13 @@ export default function PlatformInstanceWorkspacePage() {
     const loadHistory = async () => {
       setHistoryLoading(true)
       try {
-        const client = (
-          eden.api.deploy.apps as unknown as Record<string, AppClient>
-        )[slug]
-        if (client?.deployments) {
-          const { data: payload } = await client.deployments.get({
-            query: { page: historyPage, pageSize: 20 },
-          })
-          if (payload?.ok && Array.isArray(payload.data) && !cancelled) {
-            setHistory(payload.data)
-            if (payload.meta) setHistoryMeta(payload.meta)
-          }
+        const { data: payload } = await eden.api.deploy.apps[slug].history.get({
+          $query: { page: historyPage, pageSize: 20 },
+        })
+        if (payload?.ok && Array.isArray(payload.data) && !cancelled) {
+          setHistory(payload.data)
+          if (payload.meta) setHistoryMeta(payload.meta)
         }
-      } catch {
         // history fetch error
       } finally {
         if (!cancelled) setHistoryLoading(false)
@@ -269,12 +250,14 @@ export default function PlatformInstanceWorkspacePage() {
     if (!slug) return
     setSyncing(true)
     try {
-      const client = (
-        eden.api.deploy.apps as unknown as Record<string, AppClient>
-      )[slug]
-      if (client?.sync) {
-        await client.sync.post()
-        toast.success("Configuration synced successfully!")
+      const { data: payload } = await eden.api.deploy.apps[slug].get()
+      if (payload?.ok && payload.data) {
+        setOverview(payload.data)
+        toast.success(
+          locale === "id"
+            ? "Konfigurasi berhasil disinkronkan!"
+            : "Configuration synced successfully!"
+        )
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Sync failed.")
@@ -344,51 +327,36 @@ export default function PlatformInstanceWorkspacePage() {
           {activeWorkspaceTab === "deployments" && (
             <div className="space-y-6">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <div>
-                    <CardTitle className="text-base font-semibold">
-                      Deployment History
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      {historyMeta
-                        ? `${historyMeta.total} recorded releases`
-                        : "Past deployments and releases"}
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSync}
-                    disabled={syncing}
-                    className="h-8 gap-1.5 text-xs"
-                  >
-                    <ArrowsClockwise
-                      size={14}
-                      className={syncing ? "animate-spin" : ""}
-                    />
-                    <span>{syncing ? "Syncing..." : "Sync Config"}</span>
-                  </Button>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">
+                    {tDeployments.historyTitle}
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    {historyMeta
+                      ? `${historyMeta.total} ${locale === "id" ? "rilis tercatat" : "recorded releases"}`
+                      : tDeployments.historyDescription}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {historyLoading ? (
                     <p className="p-4 text-xs text-muted-foreground">
-                      Loading history...
+                      {tDeployments.loadingHistory}
                     </p>
                   ) : history.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                      No deployments recorded yet.
+                      {tDeployments.noAttempts}
                     </p>
                   ) : (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow className="text-xs">
-                            <TableHead>Status</TableHead>
-                            <TableHead>Attempt</TableHead>
-                            <TableHead>Duration</TableHead>
-                            <TableHead>Commit</TableHead>
-                            <TableHead>Failure Reason</TableHead>
-                            <TableHead>Started</TableHead>
+                            <TableHead>{tDeployments.table.status}</TableHead>
+                            <TableHead>{tDeployments.table.attempt}</TableHead>
+                            <TableHead>{tDeployments.table.duration}</TableHead>
+                            <TableHead>{tDeployments.table.commit}</TableHead>
+                            <TableHead>{tDeployments.table.failure}</TableHead>
+                            <TableHead>{tDeployments.table.started}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -436,8 +404,9 @@ export default function PlatformInstanceWorkspacePage() {
                       {(historyMeta?.totalPages ?? 0) > 1 && (
                         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                           <span>
-                            Page {historyMeta?.page ?? historyPage} of{" "}
-                            {historyMeta?.totalPages}
+                            {locale === "id"
+                              ? `Halaman ${historyMeta?.page ?? historyPage} dari ${historyMeta?.totalPages}`
+                              : `Page ${historyMeta?.page ?? historyPage} of ${historyMeta?.totalPages}`}
                           </span>
                           <div className="flex gap-2">
                             <Button
@@ -448,7 +417,7 @@ export default function PlatformInstanceWorkspacePage() {
                                 setHistoryPage((p) => Math.max(1, p - 1))
                               }
                             >
-                              Previous
+                              {locale === "id" ? "Sebelumnya" : "Previous"}
                             </Button>
                             <Button
                               variant="outline"
@@ -462,7 +431,7 @@ export default function PlatformInstanceWorkspacePage() {
                                 )
                               }
                             >
-                              Next
+                              {locale === "id" ? "Berikutnya" : "Next"}
                             </Button>
                           </div>
                         </div>
