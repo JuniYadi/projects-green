@@ -209,7 +209,7 @@ export default function MyTemplatesPage() {
     }
   }
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
+    <div className="flex flex-1 flex-col gap-6">
       {/* Header & CTAs */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
