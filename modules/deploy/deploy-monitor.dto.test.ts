@@ -451,12 +451,48 @@ describe("deploy-monitor.dto", () => {
         template: { name: "Hermes AI Agent" },
         lastDeployedAt: new Date("2026-06-05T10:00:00.000Z"),
       })
-
       expect(dto.templateName).toBe("Hermes AI Agent")
       expect(dto.port).toBe(3000)
       expect(dto.cpu).toBe(1)
       expect(dto.memory).toBe(1024)
       expect(dto.envCount).toBe(2)
+    })
+
+    it("maps catalogPlan, createdAt, orderedAt, and computes renewalAt", () => {
+      const createdAt = new Date("2026-09-07T15:50:27.570Z")
+      const dto = toStackSummaryDTO({
+        id: "stack-catalog",
+        name: "Hermes Comet",
+        slug: "hermes-vibrant-comet",
+        status: "RUNNING",
+        framework: "Node.js",
+        branchName: "main",
+        subdomain: "hermes",
+        customDomain: null,
+        resourcePlanId: "small",
+        billingMode: "PACKAGE",
+        metadataJson: null,
+        createdAt,
+        catalogPlan: {
+          name: "SMALL (S)",
+          code: "SMALL",
+          pricings: [
+            {
+              periodPrice: "20000",
+              currency: "IDR",
+              billingPeriod: "MONTHLY",
+            },
+          ],
+        },
+        lastDeployedAt: createdAt,
+      })
+
+      expect(dto.catalogPlanName).toBe("SMALL (S)")
+      expect(dto.catalogPlanPrice).toBe("20000")
+      expect(dto.catalogPlanCurrency).toBe("IDR")
+      expect(dto.catalogBillingPeriod).toBe("MONTHLY")
+      expect(dto.orderedAt).toBe(createdAt.toISOString())
+      expect(dto.renewalAt).toBe("2026-10-07T15:50:27.570Z")
     })
   })
 })

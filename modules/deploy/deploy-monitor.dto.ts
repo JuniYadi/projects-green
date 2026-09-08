@@ -350,11 +350,30 @@ export type StackSummaryDTO = {
   cpu?: number | null
   memory?: number | null
   envCount?: number
+  createdAt?: string
+  orderedAt?: string
+  renewalAt?: string | null
+  catalogPlanName?: string | null
+  catalogPlanPrice?: string | null
+  catalogPlanCurrency?: string | null
+  catalogBillingPeriod?: string | null
+  hourlyCost?: string | null
   lastDeployedAt: string | null
   latestDeploymentId: string | null
   currentStepLabel: string | null
   currentStepIndex: number | null
   currentStepStartedAt: string | null
+}
+
+export const computeNextRenewalDate = (
+  createdAt: Date | string | null | undefined
+): string | null => {
+  if (!createdAt) return null
+  const date = new Date(createdAt)
+  if (isNaN(date.getTime())) return null
+  const next = new Date(date)
+  next.setMonth(next.getMonth() + 1)
+  return next.toISOString()
 }
 
 export const resolveStackBillingState = (
@@ -384,6 +403,17 @@ export const toStackSummaryDTO = (stack: {
   envVarsJson?: unknown
   cpu?: number | null
   memory?: number | null
+  createdAt?: Date | null
+  hourlyCost?: unknown
+  catalogPlan?: {
+    name: string
+    code: string
+    pricings?: Array<{
+      periodPrice?: unknown
+      currency?: string
+      billingPeriod?: string
+    }>
+  } | null
   lastDeployedAt: Date | null
   deployments?: Array<{ id: string }>
   events?: Array<Pick<ApplicationDeployEvent, "type" | "createdAt">>
@@ -427,6 +457,21 @@ export const toStackSummaryDTO = (stack: {
     memory:
       stack.memory ?? (typeof meta.memory === "number" ? meta.memory : null),
     envCount: envVars.length,
+    createdAt: stack.createdAt ? stack.createdAt.toISOString() : undefined,
+    orderedAt: stack.createdAt ? stack.createdAt.toISOString() : undefined,
+    renewalAt: computeNextRenewalDate(stack.createdAt),
+    catalogPlanName:
+      stack.catalogPlan?.name ??
+      (stack.resourcePlanId
+        ? `${stack.resourcePlanId.toUpperCase()} Plan`
+        : null),
+    catalogPlanPrice: stack.catalogPlan?.pricings?.[0]?.periodPrice
+      ? String(stack.catalogPlan.pricings[0].periodPrice)
+      : null,
+    catalogPlanCurrency: stack.catalogPlan?.pricings?.[0]?.currency ?? "IDR",
+    catalogBillingPeriod:
+      stack.catalogPlan?.pricings?.[0]?.billingPeriod ?? "MONTHLY",
+    hourlyCost: stack.hourlyCost != null ? String(stack.hourlyCost) : null,
     lastDeployedAt: stack.lastDeployedAt
       ? stack.lastDeployedAt.toISOString()
       : null,

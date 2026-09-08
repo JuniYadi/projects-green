@@ -241,14 +241,35 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           message: "Application not found",
         }
       }
-
       const latestDeployment = stack.deployments[0] ?? null
 
+      const billingAccount = await prisma.billingAccount.findUnique({
+        where: { organizationId: auth.organizationId },
+        select: { currency: true },
+      })
+      const currency = billingAccount?.currency ?? "IDR"
+
+      const catalogPlan = stack.resourcePlanId
+        ? await prisma.servicePlan.findFirst({
+            where: {
+              package: { code: "APP_HOSTING" },
+              code: stack.resourcePlanId.toUpperCase(),
+              isActive: true,
+            },
+            include: {
+              pricings: {
+                where: { currency, isActive: true },
+                take: 1,
+              },
+            },
+          })
+        : null
       return {
         ok: true,
         data: {
           stack: toStackSummaryDTO({
             ...stack,
+            catalogPlan,
             events: latestDeployment?.events ?? [],
           }),
           latestDeployment: latestDeployment
