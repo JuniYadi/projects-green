@@ -37,6 +37,8 @@ export type ClusterTelemetryCardsProps = {
   clusterCode?: string
   appSlug?: string
   title?: string
+  columns?: 1 | 3 | "auto"
+  chartHeight?: number
   className?: string
 }
 
@@ -44,6 +46,8 @@ export function ClusterTelemetryCards({
   clusterCode = "sgp",
   appSlug,
   title,
+  columns = "auto",
+  chartHeight,
   className,
 }: ClusterTelemetryCardsProps = {}) {
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
@@ -179,6 +183,11 @@ export function ClusterTelemetryCards({
       (p.networkTxBytesPerSec / netDivisor).toFixed(netUnit === "B/s" ? 0 : 1)
     ),
   }))
+  const isSingleCol = columns === 1
+  const effectiveHeight = chartHeight ?? (isSingleCol ? 125 : 85)
+  const gridClass = isSingleCol
+    ? "grid gap-4 grid-cols-1"
+    : "grid gap-4 md:grid-cols-3"
 
   const cpuPercent = (
     (telemetry.cpu.currentCores / telemetry.cpu.limitCores) *
@@ -252,7 +261,7 @@ export function ClusterTelemetryCards({
       </div>
 
       {/* 3 Telemetry Cards Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className={gridClass}>
         {/* Card 1: CPU Utilization */}
         <Card className="flex flex-col justify-between">
           <CardHeader className="space-y-1 pb-2">
@@ -282,7 +291,7 @@ export function ClusterTelemetryCards({
               data={cpuDataPoints}
               unit="vCPU"
               color="#10b981"
-              height={85}
+              height={effectiveHeight}
               showArea={true}
               showLimitLine={true}
             />
@@ -318,7 +327,7 @@ export function ClusterTelemetryCards({
               data={memoryDataPoints}
               unit={memUnit}
               color="#10b981"
-              height={85}
+              height={effectiveHeight}
               showArea={true}
               showLimitLine={true}
             />
@@ -364,7 +373,7 @@ export function ClusterTelemetryCards({
               unit={netUnit}
               color="#10b981"
               secondaryColor="#38bdf8"
-              height={85}
+              height={effectiveHeight}
               showArea={false}
               showLimitLine={false}
             />

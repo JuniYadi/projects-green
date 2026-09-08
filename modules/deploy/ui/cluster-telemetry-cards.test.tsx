@@ -182,4 +182,11 @@ describe("ClusterTelemetryCards component", () => {
       )
     })
   })
+
+  it("renders single column grid when columns={1} is passed", () => {
+    const { container } = renderWithClient(
+      <ClusterTelemetryCards columns={1} chartHeight={125} />
+    )
+    expect(container.querySelector(".grid-cols-1")).not.toBeNull()
+  })
 })

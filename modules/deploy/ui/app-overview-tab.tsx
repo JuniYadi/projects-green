@@ -51,6 +51,8 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
         <ClusterTelemetryCards
           appSlug={stack.slug}
           title="Resource Telemetry"
+          columns={1}
+          chartHeight={125}
         />
       </div>
 
