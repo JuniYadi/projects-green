@@ -47,7 +47,7 @@ export function ClusterTelemetryCards({
     preset: "1h",
   })
   const [refreshInterval, setRefreshInterval] =
-    useState<AutoRefreshInterval>(10_000)
+    useState<AutoRefreshInterval>(30_000)
 
   const userTimeZone =
     typeof Intl !== "undefined"

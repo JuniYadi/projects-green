@@ -122,16 +122,15 @@ describe("TimeRangeDropdown (Grafana Style)", () => {
     expect(onRefresh).toHaveBeenCalledTimes(1)
   })
 
-  it("renders auto-refresh dropdown with current interval label", () => {
+  it("renders auto-refresh dropdown with default 30s interval and excludes 5s and 10s", () => {
     const value: TimeRangeSelection = { type: "preset", preset: "1h" }
     const onChange = mock(() => {})
     const onIntervalChange = mock(() => {})
 
-    const { getByTestId, getByText } = render(
+    const { getByTestId, getByText, getAllByText, queryByText } = render(
       <TimeRangeDropdown
         value={value}
         onChange={onChange}
-        refreshInterval={30_000}
         onRefreshIntervalChange={onIntervalChange}
       />
     )
@@ -139,5 +138,12 @@ describe("TimeRangeDropdown (Grafana Style)", () => {
     const trigger = getByTestId("auto-refresh-trigger")
     expect(trigger).toBeInTheDocument()
     expect(getByText("30s")).toBeInTheDocument()
+
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false })
+    expect(queryByText("5s")).toBeNull()
+    expect(queryByText("10s")).toBeNull()
+    expect(getAllByText("30s")).toHaveLength(2)
+    expect(getByText("1m")).toBeInTheDocument()
+    expect(getByText("5m")).toBeInTheDocument()
   })
 })
