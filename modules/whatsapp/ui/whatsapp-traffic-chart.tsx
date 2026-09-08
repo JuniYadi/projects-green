@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { cn } from "@/lib/utils"
 
 export type WhatsAppDailyTraffic = {
   date: string
+  label?: string
   messageInboxCount: number
   messageOutboxCount: number
 }
@@ -14,6 +15,7 @@ export type WhatsAppTrafficChartProps = {
   locale?: string
   height?: number
   className?: string
+  showSummary?: boolean
 }
 
 export function WhatsAppTrafficChart({
@@ -21,10 +23,21 @@ export function WhatsAppTrafficChart({
   locale = "id",
   height = 200,
   className,
+  showSummary = true,
 }: WhatsAppTrafficChartProps) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const rawId = useId()
+  const gradientId = `whatsapp-traffic-grad-${rawId.replace(/[^a-zA-Z0-9-_]/g, "")}`
 
-  if (!data || data.length === 0) {
+  const isAllZero =
+    !data ||
+    data.length === 0 ||
+    data.every(
+      (d) =>
+        (d.messageInboxCount ?? 0) === 0 && (d.messageOutboxCount ?? 0) === 0
+    )
+
+  if (isAllZero) {
     return (
       <div
         className={cn(
@@ -38,184 +51,228 @@ export function WhatsAppTrafficChart({
     )
   }
 
-  // Calculate maximum count to scale Y-axis cleanly (at least 5 for empty/low data)
-  const maxRaw = Math.max(
-    ...data.flatMap((d) => [d.messageInboxCount, d.messageOutboxCount]),
-    5
-  )
-  // Round up to nice integer ticks
-  const maxY = Math.ceil(maxRaw * 1.15)
-  const ticks = [0, Math.round(maxY * 0.5), maxY]
+  const allInbound = data.map((d) => d.messageInboxCount ?? 0)
+  const allOutbound = data.map((d) => d.messageOutboxCount ?? 0)
+  const maxValue = Math.max(1, ...allInbound, ...allOutbound)
 
-  // Chart dimensions in viewBox coordinates
-  const svgWidth = 500
-  const svgHeight = 160
-  const chartTop = 15
-  const chartBottom = 135
-  const chartLeft = 35
-  const chartRight = 490
-  const chartPlotWidth = chartRight - chartLeft
-  const chartPlotHeight = chartBottom - chartTop
+  const totalInbox = allInbound.reduce((acc, v) => acc + v, 0)
+  const totalOutbox = allOutbound.reduce((acc, v) => acc + v, 0)
+
+  const paddingTop = 10
+  const paddingBottom = 10
+  const chartHeight = 100 - paddingTop - paddingBottom
 
   const getY = (val: number) => {
     const clamped = Math.max(0, val)
-    return chartBottom - (clamped / maxY) * chartPlotHeight
+    return paddingTop + (1 - clamped / maxValue) * chartHeight
   }
 
-  const stepX = chartPlotWidth / Math.max(data.length, 1)
-  const barWidth = Math.min(14, stepX * 0.35)
-  const barGap = 3
+  const getX = (idx: number) => {
+    if (data.length <= 1) return 0
+    return (idx / (data.length - 1)) * 400
+  }
+
+  const primaryLineD =
+    data.length === 1
+      ? `M 0,${getY(data[0].messageInboxCount).toFixed(1)} L 400,${getY(data[0].messageInboxCount).toFixed(1)}`
+      : `M ${data.map((d, i) => `${getX(i).toFixed(1)},${getY(d.messageInboxCount).toFixed(1)}`).join(" L ")}`
+
+  const primaryAreaD = `${primaryLineD} L 400,100 L 0,100 Z`
+
+  const secondaryLineD =
+    data.length === 1
+      ? `M 0,${getY(data[0].messageOutboxCount).toFixed(1)} L 400,${getY(data[0].messageOutboxCount).toFixed(1)}`
+      : `M ${data.map((d, i) => `${getX(i).toFixed(1)},${getY(d.messageOutboxCount).toFixed(1)}`).join(" L ")}`
+
+  const formatTickDate = (d?: WhatsAppDailyTraffic) => {
+    if (!d) return ""
+    if (d.label) return d.label
+    try {
+      const parsed = new Date(d.date)
+      if (Number.isNaN(parsed.getTime())) return d.date
+      return parsed.toLocaleDateString(locale === "id" ? "id-ID" : "en-US", {
+        day: "numeric",
+        month: "short",
+      })
+    } catch {
+      return d.date
+    }
+  }
+
+  const firstLabel = formatTickDate(data[0])
+  const middleIndex = Math.floor(data.length / 2)
+  const middleLabel =
+    data.length > 2 ? formatTickDate(data[middleIndex]) : undefined
+  const lastLabel = data.length > 1 ? formatTickDate(data[data.length - 1]) : ""
+
+  const hoveredItem =
+    hoveredIdx !== null && data[hoveredIdx] ? data[hoveredIdx] : null
 
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>
-      <div className="relative w-full" style={{ height }}>
+      <div
+        className="relative w-full"
+        style={{ height }}
+        onMouseLeave={() => setHoveredIdx(null)}
+      >
         <svg
-          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          viewBox="0 0 400 100"
           width="100%"
           height="100%"
           preserveAspectRatio="none"
           className="overflow-visible select-none"
         >
-          {/* Horizontal grid lines & Y-axis labels */}
-          {ticks.map((tickVal) => {
-            const yPos = getY(tickVal)
-            return (
-              <g key={`tick-${tickVal}`} className="text-muted-foreground/50">
-                <line
-                  x1={chartLeft}
-                  y1={yPos}
-                  x2={chartRight}
-                  y2={yPos}
-                  stroke="currentColor"
-                  strokeDasharray="4 4"
-                  strokeWidth={0.8}
-                  strokeOpacity={0.25}
-                />
-                <text
-                  x={chartLeft - 8}
-                  y={yPos + 3.5}
-                  textAnchor="end"
-                  className="fill-muted-foreground font-mono text-[10px]"
-                >
-                  {tickVal}
-                </text>
-              </g>
-            )
-          })}
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
 
-          {/* Grouped Bars per Date */}
+          {/* Inbound Gradient Fill Area */}
+          <path
+            d={primaryAreaD}
+            fill={`url(#${gradientId})`}
+            data-testid="traffic-primary-area"
+          />
+
+          {/* Outbound Line (Sky-400) */}
+          <path
+            d={secondaryLineD}
+            fill="none"
+            stroke="#38bdf8"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            data-testid="traffic-secondary-line"
+          />
+
+          {/* Inbound Line (Emerald-500) */}
+          <path
+            d={primaryLineD}
+            fill="none"
+            stroke="#10b981"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            data-testid="traffic-primary-line"
+          />
+
+          {/* Hover Crosshair and Markers */}
+          {hoveredIdx !== null && hoveredItem && (
+            <g data-testid="traffic-hover-group">
+              <line
+                x1={getX(hoveredIdx)}
+                y1={0}
+                x2={getX(hoveredIdx)}
+                y2={100}
+                stroke="currentColor"
+                strokeDasharray="3 3"
+                strokeOpacity={0.35}
+                strokeWidth={1}
+                data-testid="traffic-crosshair"
+              />
+              <circle
+                cx={getX(hoveredIdx)}
+                cy={getY(hoveredItem.messageInboxCount)}
+                r={3.5}
+                fill="#10b981"
+                stroke="white"
+                strokeWidth={1.5}
+                data-testid="traffic-inbound-marker"
+              />
+              <circle
+                cx={getX(hoveredIdx)}
+                cy={getY(hoveredItem.messageOutboxCount)}
+                r={3.5}
+                fill="#38bdf8"
+                stroke="white"
+                strokeWidth={1.5}
+                data-testid="traffic-outbound-marker"
+              />
+            </g>
+          )}
+
+          {/* Interactive Invisible Slice Columns for Hover Tracking */}
           {data.map((item, idx) => {
-            const groupCenterX = chartLeft + idx * stepX + stepX / 2
-            const barInX = groupCenterX - barWidth - barGap / 2
-            const barOutX = groupCenterX + barGap / 2
-
-            const inY = getY(item.messageInboxCount)
-            const inHeight = Math.max(0, chartBottom - inY)
-
-            const outY = getY(item.messageOutboxCount)
-            const outHeight = Math.max(0, chartBottom - outY)
-
-            const isHovered = hoveredIdx === idx
-            const formattedDate = new Date(item.date).toLocaleDateString(
-              locale === "id" ? "id-ID" : "en-US",
-              { day: "numeric", month: "short" }
-            )
-
+            const sliceWidth = 400 / data.length
+            const x = idx * sliceWidth
             return (
-              <g
-                key={`group-${item.date}-${idx}`}
+              <rect
+                key={`slice-${item.date}-${idx}`}
+                x={x}
+                y={0}
+                width={sliceWidth}
+                height={100}
+                fill="transparent"
+                className="cursor-pointer"
+                data-testid={`traffic-slice-${idx}`}
                 onMouseEnter={() => setHoveredIdx(idx)}
-                onMouseLeave={() => setHoveredIdx(null)}
-                className="cursor-pointer transition-opacity"
-              >
-                {/* Transparent column hit area for hover */}
-                <rect
-                  x={chartLeft + idx * stepX}
-                  y={chartTop}
-                  width={stepX}
-                  height={chartPlotHeight}
-                  fill={isHovered ? "currentColor" : "transparent"}
-                  className="text-muted/15"
-                />
-
-                {/* Inbound Bar (Green) */}
-                {inHeight > 0 && (
-                  <rect
-                    x={barInX}
-                    y={inY}
-                    width={barWidth}
-                    height={inHeight}
-                    rx={2.5}
-                    className="fill-emerald-500 transition-all hover:brightness-110"
-                    data-testid={`bar-in-${idx}`}
-                  >
-                    <title>{`${formattedDate} - Masuk: ${item.messageInboxCount}`}</title>
-                  </rect>
-                )}
-
-                {/* Outbound Bar (Blue) */}
-                {outHeight > 0 && (
-                  <rect
-                    x={barOutX}
-                    y={outY}
-                    width={barWidth}
-                    height={outHeight}
-                    rx={2.5}
-                    className="fill-sky-500 transition-all hover:brightness-110"
-                    data-testid={`bar-out-${idx}`}
-                  >
-                    <title>{`${formattedDate} - Keluar: ${item.messageOutboxCount}`}</title>
-                  </rect>
-                )}
-
-                {/* Bottom X-axis Date Label */}
-                <text
-                  x={groupCenterX}
-                  y={chartBottom + 16}
-                  textAnchor="middle"
-                  className={cn(
-                    "text-[10px] font-medium transition-colors",
-                    isHovered
-                      ? "fill-foreground font-bold"
-                      : "fill-muted-foreground"
-                  )}
-                >
-                  {formattedDate}
-                </text>
-              </g>
+              />
             )
           })}
         </svg>
       </div>
 
-      {/* Interactive Tooltip Badge when Hovered */}
-      {hoveredIdx !== null && data[hoveredIdx] && (
+      {/* External Bottom Ticks */}
+      <div
+        className="flex items-center justify-between px-0.5 text-[11px] font-medium text-muted-foreground"
+        data-testid="traffic-chart-ticks"
+      >
+        <span>{firstLabel}</span>
+        {middleLabel && <span>{middleLabel}</span>}
+        {lastLabel && <span>{lastLabel}</span>}
+      </div>
+
+      {/* Interactive Tooltip Badge when Hovered or Summary */}
+      {hoveredItem ? (
         <div
           data-testid="traffic-tooltip"
           className="flex items-center justify-center gap-4 rounded-md border border-border/80 bg-muted/40 px-3 py-1 text-xs"
         >
           <span className="font-semibold text-foreground">
-            {new Date(data[hoveredIdx].date).toLocaleDateString(
-              locale === "id" ? "id-ID" : "en-US",
-              { weekday: "short", day: "numeric", month: "short" }
-            )}
+            {hoveredItem.label ??
+              new Date(hoveredItem.date).toLocaleDateString(
+                locale === "id" ? "id-ID" : "en-US",
+                { weekday: "short", day: "numeric", month: "short" }
+              )}
           </span>
           <span className="flex items-center gap-1.5 font-medium text-emerald-500">
             <span className="size-1.5 rounded-full bg-emerald-500" />
             <span>
               {locale === "id" ? "Masuk" : "Inbound"}:{" "}
-              <strong>{data[hoveredIdx].messageInboxCount}</strong>
+              <strong>{hoveredItem.messageInboxCount}</strong>
             </span>
           </span>
-          <span className="flex items-center gap-1.5 font-medium text-sky-500">
-            <span className="size-1.5 rounded-full bg-sky-500" />
+          <span className="flex items-center gap-1.5 font-medium text-sky-400">
+            <span className="size-1.5 rounded-full bg-sky-400" />
             <span>
               {locale === "id" ? "Keluar" : "Outbound"}:{" "}
-              <strong>{data[hoveredIdx].messageOutboxCount}</strong>
+              <strong>{hoveredItem.messageOutboxCount}</strong>
             </span>
           </span>
         </div>
-      )}
+      ) : showSummary ? (
+        <div
+          data-testid="traffic-summary"
+          className="flex items-center justify-center gap-4 text-xs text-muted-foreground"
+        >
+          <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            <span>
+              {locale === "id" ? "Masuk" : "Inbound"}:{" "}
+              <strong>{totalInbox}</strong>
+            </span>
+          </span>
+          <span className="flex items-center gap-1.5 font-medium text-sky-500 dark:text-sky-400">
+            <span className="size-1.5 rounded-full bg-sky-400" />
+            <span>
+              {locale === "id" ? "Keluar" : "Outbound"}:{" "}
+              <strong>{totalOutbox}</strong>
+            </span>
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }
