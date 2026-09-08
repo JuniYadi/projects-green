@@ -7,6 +7,7 @@ import {
   ArrowsLeftRight,
   Globe,
   Clock,
+  ArrowsClockwise,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
@@ -29,7 +30,7 @@ import {
   type SparklineDataPoint,
 } from "@/modules/deploy/ui/cluster-telemetry-sparkline"
 
-type TimeRangeOption = "1h" | "6h" | "24h"
+type TimeRangeOption = "1h" | "6h" | "24h" | "7d"
 
 export function ClusterTelemetryCards() {
   const [timeRange, setTimeRange] = useState<TimeRangeOption>("1h")
@@ -37,11 +38,14 @@ export function ClusterTelemetryCards() {
     generateClusterTelemetrySummary(timeRange)
   )
   const [isLive, setIsLive] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
-    const loadTelemetry = async () => {
+    const loadTelemetry = async (manual = false) => {
+      if (manual) setIsRefreshing(true)
       try {
         const { data: payload } = await eden.api.deploy.telemetry.get({
           $query: { range: timeRange, cluster: "sgp" },
@@ -50,6 +54,14 @@ export function ClusterTelemetryCards() {
         if (payload?.ok && payload.data) {
           setTelemetry(payload.data)
           setIsLive(true)
+          const now = new Date()
+          setLastUpdated(
+            now.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })
+          )
         } else {
           setTelemetry((prev) =>
             prev.timeRange === timeRange
@@ -65,17 +77,43 @@ export function ClusterTelemetryCards() {
               : generateClusterTelemetrySummary(timeRange)
           )
         }
+      } finally {
+        if (!cancelled && manual) setIsRefreshing(false)
       }
     }
 
-    void loadTelemetry()
-    const interval = setInterval(loadTelemetry, 10000)
+    void loadTelemetry(false)
+    const interval = setInterval(() => void loadTelemetry(false), 10000)
 
     return () => {
       cancelled = true
       clearInterval(interval)
     }
   }, [timeRange])
+  const handleRefresh = () => {
+    void (async () => {
+      setIsRefreshing(true)
+      try {
+        const { data: payload } = await eden.api.deploy.telemetry.get({
+          $query: { range: timeRange, cluster: "sgp" },
+        })
+        if (payload?.ok && payload.data) {
+          setTelemetry(payload.data)
+          setIsLive(true)
+          const now = new Date()
+          setLastUpdated(
+            now.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })
+          )
+        }
+      } finally {
+        setIsRefreshing(false)
+      }
+    })()
+  }
   const cpuDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
     label: p.timestamp,
     value: p.cpuUsageCores,
@@ -120,14 +158,6 @@ export function ClusterTelemetryCards() {
             <span className="size-1 rounded-full bg-emerald-400" />
             <span className="text-[10px] text-emerald-400/80">Primary</span>
           </span>
-          {telemetry.namespace && (
-            <span
-              className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[11px] text-sky-400"
-              data-testid="telemetry-namespace"
-            >
-              ns: {telemetry.namespace}
-            </span>
-          )}
           {isLive && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
               <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
@@ -136,20 +166,47 @@ export function ClusterTelemetryCards() {
           )}
         </div>
 
-        <div className="flex items-center gap-1">
-          <Clock size={13} className="mr-1 text-muted-foreground" />
-          <span className="mr-1 text-xs text-muted-foreground">Range:</span>
-          {(["1h", "6h", "24h"] as const).map((r) => (
-            <Button
-              key={r}
-              variant={timeRange === r ? "default" : "outline"}
-              size="xs"
-              onClick={() => setTimeRange(r)}
-              className="h-6 px-2 text-[11px]"
-            >
-              {r}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Clock size={13} className="mr-1 text-muted-foreground" />
+            <span className="mr-1 text-xs text-muted-foreground">Range:</span>
+            {(["1h", "6h", "24h", "7d"] as const).map((r) => (
+              <Button
+                key={r}
+                variant={timeRange === r ? "default" : "outline"}
+                size="xs"
+                onClick={() => setTimeRange(r)}
+                className="h-6 px-2 text-[11px]"
+              >
+                {r}
+              </Button>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-6 gap-1 px-2 text-[11px]"
+            title="Refresh cluster telemetry"
+          >
+            <ArrowsClockwise
+              size={12}
+              className={
+                isRefreshing
+                  ? "animate-spin text-primary"
+                  : "text-muted-foreground"
+              }
+            />
+            <span>Refresh</span>
+          </Button>
+
+          {lastUpdated && (
+            <span className="hidden text-[11px] text-muted-foreground lg:inline">
+              {lastUpdated}
+            </span>
+          )}
         </div>
       </div>
 
@@ -197,7 +254,7 @@ export function ClusterTelemetryCards() {
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <HardDrive size={14} className="text-primary" />
-                Memory Allocation
+                Memory Utilization
               </span>
               <span className="text-xs font-bold text-foreground">
                 {memoryPercent}%

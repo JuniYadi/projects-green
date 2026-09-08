@@ -23,7 +23,7 @@ const CLUSTER_CONFIGS: Record<
   },
 }
 
-const TIMESTAMPS_BY_RANGE: Record<"1h" | "6h" | "24h", string[]> = {
+const TIMESTAMPS_BY_RANGE: Record<"1h" | "6h" | "24h" | "7d", string[]> = {
   "1h": [
     "12:05",
     "12:10",
@@ -66,6 +66,7 @@ const TIMESTAMPS_BY_RANGE: Record<"1h" | "6h" | "24h", string[]> = {
     "11:00",
     "13:00",
   ],
+  "7d": ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7"],
 }
 
 type ProfileFactors = {
@@ -75,7 +76,7 @@ type ProfileFactors = {
   tx: number[]
 }
 
-const PROFILES: Record<"1h" | "6h" | "24h", ProfileFactors> = {
+const PROFILES: Record<"1h" | "6h" | "24h" | "7d", ProfileFactors> = {
   "1h": {
     cpu: [
       0.12, 0.25, 0.45, 0.68, 0.88, 0.96, 0.78, 0.62, 0.5, 0.74, 0.52, 0.42,
@@ -100,6 +101,12 @@ const PROFILES: Record<"1h" | "6h" | "24h", ProfileFactors> = {
     rx: [0.08, 0.06, 0.15, 0.35, 0.62, 0.88, 0.96, 0.86, 0.72, 0.5, 0.32, 0.2],
     tx: [0.12, 0.09, 0.2, 0.42, 0.7, 0.92, 0.98, 0.89, 0.75, 0.55, 0.38, 0.28],
   },
+  "7d": {
+    cpu: [0.12, 0.25, 0.45, 0.68, 0.88, 0.65, 0.42],
+    mem: [0.2, 0.25, 0.4, 0.6, 0.75, 0.7, 0.55],
+    rx: [0.15, 0.3, 0.5, 0.7, 0.85, 0.6, 0.4],
+    tx: [0.2, 0.35, 0.6, 0.8, 0.9, 0.7, 0.5],
+  },
 }
 
 // Ranges
@@ -115,10 +122,11 @@ const RX_MAX_BYTES_PER_SEC = Math.round(2.4 * 1024 * 1024)
 const TX_MIN_BYTES_PER_SEC = Math.round(1.8 * 1024 * 1024)
 const TX_MAX_BYTES_PER_SEC = Math.round(6.2 * 1024 * 1024)
 
-const INTERVAL_SECONDS_BY_RANGE: Record<"1h" | "6h" | "24h", number> = {
+const INTERVAL_SECONDS_BY_RANGE: Record<"1h" | "6h" | "24h" | "7d", number> = {
   "1h": 300,
   "6h": 1800,
   "24h": 7200,
+  "7d": 86400,
 }
 
 export function formatBytes(bytes: number, decimals?: number): string {
@@ -157,7 +165,7 @@ export function formatThroughput(bytesPerSec: number): string {
 }
 
 export function generateClusterTelemetrySummary(
-  timeRange: "1h" | "6h" | "24h" = "1h",
+  timeRange: "1h" | "6h" | "24h" | "7d" = "1h",
   clusterCode: string = DEFAULT_CLUSTER_CODE
 ): ClusterTelemetrySummary {
   const isPrimary = clusterCode === DEFAULT_CLUSTER_CODE

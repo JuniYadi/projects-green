@@ -42,41 +42,44 @@ afterEach(() => {
 })
 
 describe("ClusterTelemetryCards component", () => {
-  it("renders 3 primary telemetry cards (CPU, Memory, Network I/O) and updates with LIVE and namespace badges", async () => {
-    const { getByText, getByTestId } = render(<ClusterTelemetryCards />)
+  it("renders 3 primary telemetry cards (CPU, Memory, Network I/O) and updates with LIVE badge", async () => {
+    const { getByText, queryByTestId } = render(<ClusterTelemetryCards />)
 
     expect(getByText("Cluster Resource Telemetry")).toBeDefined()
     expect(getByText("CPU Utilization")).toBeDefined()
-    expect(getByText("Memory Allocation")).toBeDefined()
+    expect(getByText("Memory Utilization")).toBeDefined()
     expect(getByText("Network I/O Throughput")).toBeDefined()
 
     await waitFor(() => {
       expect(getByText("LIVE")).toBeDefined()
-      expect(getByTestId("telemetry-namespace")).toBeDefined()
-      expect(getByText("ns: tenant-org-prod")).toBeDefined()
+      // Namespace badge is hidden per user requirements
+      expect(queryByTestId("telemetry-namespace")).toBeNull()
     })
   })
 
-  it("allows switching time range between 1h, 6h, and 24h", async () => {
+  it("allows switching time range between 1h, 6h, 24h, and 7d and clicking refresh", async () => {
     const { getByRole } = render(<ClusterTelemetryCards />)
 
     const btn6h = getByRole("button", { name: "6h" })
     expect(btn6h).toBeDefined()
     fireEvent.click(btn6h)
 
-    await waitFor(() => {
-      expect(mockTelemetryGet).toHaveBeenCalled()
-    })
-
     const btn24h = getByRole("button", { name: "24h" })
     expect(btn24h).toBeDefined()
     fireEvent.click(btn24h)
+
+    const btn7d = getByRole("button", { name: "7d" })
+    expect(btn7d).toBeDefined()
+    fireEvent.click(btn7d)
+
+    const refreshBtn = getByRole("button", { name: /refresh/i })
+    expect(refreshBtn).toBeDefined()
+    fireEvent.click(refreshBtn)
 
     await waitFor(() => {
       expect(mockTelemetryGet).toHaveBeenCalled()
     })
   })
-
   it("falls back to local summary gracefully if live telemetry fetch fails", async () => {
     mockTelemetryGet.mockImplementationOnce(() =>
       Promise.resolve({

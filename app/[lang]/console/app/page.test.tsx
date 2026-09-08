@@ -254,7 +254,7 @@ describe("ApplicationsPage overview", () => {
     await waitFor(() => {
       expect(getByText("Cluster Resource Telemetry")).toBeDefined()
       expect(getByText("CPU Utilization")).toBeDefined()
-      expect(getByText("Memory Allocation")).toBeDefined()
+      expect(getByText("Memory Utilization")).toBeDefined()
       expect(getByText("Network I/O Throughput")).toBeDefined()
       expect(getByText("Total Platforms")).toBeDefined()
       expect(getByText("Active & Live")).toBeDefined()
@@ -280,7 +280,7 @@ describe("ApplicationsPage overview", () => {
     await waitFor(() => {
       expect(getByText("Cluster Resource Telemetry")).toBeDefined()
       expect(getByText("CPU Utilization")).toBeDefined()
-      expect(getByText("Memory Allocation")).toBeDefined()
+      expect(getByText("Memory Utilization")).toBeDefined()
       expect(getByText("Network I/O Throughput")).toBeDefined()
       expect(getByText("No applications yet")).toBeDefined()
     })

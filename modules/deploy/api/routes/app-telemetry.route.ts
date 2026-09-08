@@ -18,7 +18,7 @@ export const appTelemetryRoutes = new Elysia({
     }
 
     try {
-      const timeRange = (query.range ?? "1h") as "1h" | "6h" | "24h"
+      const timeRange = (query.range ?? "1h") as "1h" | "6h" | "24h" | "7d"
       const clusterCode = query.cluster ?? "sgp"
       const data = await fetchNamespaceTelemetry({
         organizationId: auth.organizationId,
@@ -40,7 +40,12 @@ export const appTelemetryRoutes = new Elysia({
   {
     query: t.Object({
       range: t.Optional(
-        t.Union([t.Literal("1h"), t.Literal("6h"), t.Literal("24h")])
+        t.Union([
+          t.Literal("1h"),
+          t.Literal("6h"),
+          t.Literal("24h"),
+          t.Literal("7d"),
+        ])
       ),
       cluster: t.Optional(t.String()),
     }),

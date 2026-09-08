@@ -5,21 +5,23 @@ import type {
 import { resolveClusterIntegrationByClusterCode } from "./cluster-integration.service"
 
 export const DEFAULT_CLUSTER_CODE = "sgp"
-export const DEFAULT_TIME_RANGE: "1h" | "6h" | "24h" = "1h"
+export const DEFAULT_TIME_RANGE: "1h" | "6h" | "24h" | "7d" = "1h"
 
 export const FALLBACK_CPU_LIMIT_CORES = 2.0
 export const FALLBACK_MEMORY_LIMIT_BYTES = 8 * 1024 * 1024 * 1024 // 8 GB
 
-const TIME_RANGE_SECONDS: Record<"1h" | "6h" | "24h", number> = {
+const TIME_RANGE_SECONDS: Record<"1h" | "6h" | "24h" | "7d", number> = {
   "1h": 3600,
   "6h": 21600,
   "24h": 86400,
+  "7d": 7 * 86400,
 }
 
-const DEFAULT_STEP_SECONDS: Record<"1h" | "6h" | "24h", number> = {
+const DEFAULT_STEP_SECONDS: Record<"1h" | "6h" | "24h" | "7d", number> = {
   "1h": 300,
   "6h": 1800,
   "24h": 7200,
+  "7d": 14400,
 }
 
 const CLUSTER_CONFIGS: Record<
@@ -51,14 +53,19 @@ export function formatTenantNamespace(organizationId: string): string {
 
 export type FetchNamespaceTelemetryOptions = {
   organizationId: string
-  timeRange?: "1h" | "6h" | "24h"
+  timeRange?: "1h" | "6h" | "24h" | "7d"
   clusterCode?: string
   stepSeconds?: number
   fetchFn?: typeof fetch
 }
 
-function formatTimestamp(unixSeconds: number): string {
+function formatTimestamp(unixSeconds: number, isMultiDay = false): string {
   const d = new Date(unixSeconds * 1000)
+  if (isMultiDay) {
+    const day = String(d.getUTCDate()).padStart(2, "0")
+    const month = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" })
+    return `${day} ${month}`
+  }
   const hours = String(d.getUTCHours()).padStart(2, "0")
   const minutes = String(d.getUTCMinutes()).padStart(2, "0")
   return `${hours}:${minutes}`
@@ -210,7 +217,7 @@ export async function fetchNamespaceTelemetry(
     points = []
     for (let t = start + step; t <= end; t += step) {
       points.push({
-        timestamp: formatTimestamp(t),
+        timestamp: formatTimestamp(t, timeRange === "7d"),
         cpuUsageCores: 0,
         cpuLimitCores,
         memoryUsageBytes: 0,
@@ -241,7 +248,7 @@ export async function fetchNamespaceTelemetry(
       const tx = networkTxMap.get(t) ?? 0
 
       return {
-        timestamp: formatTimestamp(t),
+        timestamp: formatTimestamp(t, timeRange === "7d"),
         cpuUsageCores: Number(cpuUsage.toFixed(2)),
         cpuLimitCores,
         memoryUsageBytes: Math.round(memUsage),
