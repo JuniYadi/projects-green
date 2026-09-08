@@ -24,22 +24,8 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
-import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from "recharts"
-import type { ChartConfig } from "@/components/ui/chart"
+import { WhatsAppTrafficChart } from "@/modules/whatsapp/ui/whatsapp-traffic-chart"
+import { WhatsAppCategoryDonut } from "@/modules/whatsapp/ui/whatsapp-category-donut"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { AccessRestricted } from "@/modules/whatsapp/ui/access-restricted"
@@ -48,17 +34,6 @@ import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsap
 import { WhatsAppCommandCenter } from "@/modules/whatsapp/onboarding/whatsapp-command-center"
 import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 
-const CATEGORY_COLORS: Record<string, string> = {
-  UTILITY: "var(--color-chart-1, #22c55e)",
-  AUTHENTICATION: "var(--color-chart-2, #3b82f6)",
-  MARKETING: "var(--color-chart-3, #f59e0b)",
-  SERVICE: "var(--color-chart-4, #a855f7)",
-}
-
-const DASHBOARD_CHART_CONFIG = {
-  in: { label: "Pesan Masuk", color: "var(--color-chart-1, #22c55e)" },
-  out: { label: "Pesan Keluar", color: "var(--color-chart-2, #3b82f6)" },
-} satisfies ChartConfig
 type WebhookStats = {
   periodEnd: string
   totalEvents: number
@@ -87,18 +62,6 @@ type ConversationListItem = {
   createdAt: string
   updatedAt: string
   _count: { whatsappMessages: number }
-}
-
-function WebhookAlertBadge({ rate, label }: { rate: number; label: string }) {
-  if (rate > 5) {
-    return (
-      <Badge variant="destructive">
-        <Warning className="mr-1 size-3" weight="fill" />
-        {label}
-      </Badge>
-    )
-  }
-  return null
 }
 
 function StatCardSkeleton() {
@@ -558,53 +521,11 @@ export default function WhatsAppDashboardPage() {
                 {state === "loading" ? (
                   <Skeleton className="h-[220px] w-full" />
                 ) : (
-                  <ChartContainer
-                    config={DASHBOARD_CHART_CONFIG}
-                    className="h-[220px] w-full"
-                  >
-                    <BarChart
-                      data={dailyCounts.map((c) => ({
-                        date: new Date(c.date).toLocaleDateString(
-                          locale === "id" ? "id-ID" : "en-US",
-                          { day: "numeric", month: "short" }
-                        ),
-                        in: c.messageInboxCount,
-                        out: c.messageOutboxCount,
-                      }))}
-                    >
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 10 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 10 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={24}
-                      />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent className="border bg-background p-2 shadow-md" />
-                        }
-                      />
-                      <Bar
-                        dataKey="in"
-                        name={locale === "id" ? "Pesan Masuk" : "Inbound"}
-                        fill="#22c55e"
-                        radius={[2, 2, 0, 0]}
-                        maxBarSize={24}
-                      />
-                      <Bar
-                        dataKey="out"
-                        name={locale === "id" ? "Pesan Keluar" : "Outbound"}
-                        fill="#3b82f6"
-                        radius={[2, 2, 0, 0]}
-                        maxBarSize={24}
-                      />
-                    </BarChart>
-                  </ChartContainer>
+                  <WhatsAppTrafficChart
+                    data={dailyCounts}
+                    locale={locale}
+                    height={200}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -727,7 +648,6 @@ export default function WhatsAppDashboardPage() {
               ) : !overview?.cost?.byCategory ||
                 overview.cost.byCategory.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground">
-                  <ChatCircle className="mb-2 size-8 text-muted-foreground" />
                   <span>
                     {locale === "id"
                       ? "Belum ada data kategori bulan ini."
@@ -735,80 +655,11 @@ export default function WhatsAppDashboardPage() {
                   </span>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-                  <div className="h-[150px] w-[150px] shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={overview.cost.byCategory.map((c) => ({
-                            name: c.category
-                              .replace("WHATSAPP_MESSAGE_", "")
-                              .replace("WHATSAPP_", ""),
-                            value: c.count,
-                            category: c.category,
-                          }))}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={40}
-                          outerRadius={65}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          {overview.cost.byCategory.map((entry) => (
-                            <Cell
-                              key={`cell-${entry.category}`}
-                              fill={
-                                CATEGORY_COLORS[entry.category] ??
-                                "hsl(var(--primary))"
-                              }
-                            />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  {/* Horizontal Bar Breakdown */}
-                  <div className="w-full space-y-3 text-xs">
-                    {overview.cost.byCategory.map((cat) => {
-                      const cleanName = cat.category
-                        .replace("WHATSAPP_MESSAGE_", "")
-                        .replace("WHATSAPP_", "")
-                      const total = overview.cost?.totalEntries ?? 1
-                      const pct = Number(
-                        ((cat.count / (total || 1)) * 100).toFixed(1)
-                      )
-                      const catColor =
-                        CATEGORY_COLORS[cat.category] ??
-                        CATEGORY_COLORS[cleanName] ??
-                        "hsl(var(--primary))"
-                      return (
-                        <div key={cat.category} className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="size-2.5 rounded-full"
-                                style={{ backgroundColor: catColor }}
-                              />
-                              <span className="font-medium">{cleanName}</span>
-                            </div>
-                            <span className="text-muted-foreground">
-                              {cat.count} pesan ({pct}%)
-                            </span>
-                          </div>
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(pct, 100)}%`,
-                                backgroundColor: catColor,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+                <WhatsAppCategoryDonut
+                  items={overview.cost.byCategory}
+                  totalEntries={overview.cost.totalEntries ?? undefined}
+                  locale={locale}
+                />
               )}
             </CardContent>
           </Card>

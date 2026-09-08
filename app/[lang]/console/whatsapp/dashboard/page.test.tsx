@@ -170,7 +170,7 @@ describe("WhatsAppDashboardPage", () => {
       view.getByRole("button", { name: /hubungkan whatsapp sekarang/i })
     ).toBeInTheDocument()
   })
-  it("renders visual donut category breakdown and 7-day trend card", async () => {
+  it("renders visual donut category breakdown and 7-day trend card with pure-SVG charts", async () => {
     const view = render(<WhatsAppDashboardPage />)
 
     await waitFor(() => {
@@ -180,6 +180,9 @@ describe("WhatsAppDashboardPage", () => {
       expect(
         view.getAllByText(/Tren Trafik 7 Hari|7-Day Traffic Trend/i).length
       ).toBeGreaterThan(0)
+      // Check that SVGs for traffic and donut are rendered
+      const svgs = view.container.querySelectorAll("svg")
+      expect(svgs.length).toBeGreaterThanOrEqual(2)
     })
   })
 })
