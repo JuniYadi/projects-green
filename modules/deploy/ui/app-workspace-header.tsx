@@ -169,8 +169,8 @@ export function AppWorkspaceHeader({
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Action Controls (Right-aligned CTA) */}
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">
           {onSync && (
             <Button
               type="button"

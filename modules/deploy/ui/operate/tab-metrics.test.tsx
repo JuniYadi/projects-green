@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { cleanup, fireEvent, render } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
@@ -117,5 +118,143 @@ describe("TabMetrics", () => {
     expect(view.getByText("CPU Headroom Adequate")).toBeDefined()
     expect(view.getAllByText(/Limit: 2000m/).length).toBeGreaterThan(0)
     expect(view.getAllByText(/Limit: 1024Mi/).length).toBeGreaterThan(0)
+  })
+
+  it("renders live workload telemetry and pod replicas table when appSlug is provided", () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const view = render(
+      <QueryClientProvider client={client}>
+        <TabMetrics appSlug="hermes-vibrant-comet" />
+      </QueryClientProvider>
+    )
+
+    expect(view.getByText("Workload Observability")).toBeDefined()
+    expect(view.getByText("Pod Replicas & Health")).toBeDefined()
+    expect(view.getByText("CPU Usage per Pod")).toBeDefined()
+    expect(view.getByText("RAM Working Set per Pod")).toBeDefined()
+    expect(view.getByText("Network Ingress per Pod")).toBeDefined()
+    expect(view.queryByText("Filter Pod:")).toBeNull()
+    expect(view.getByText("Resource Advisory")).toBeDefined()
+    expect(view.getByText("Latency Percentiles")).toBeDefined()
+    expect(view.getByText("HTTP Status & Error Rate")).toBeDefined()
+  })
+
+  it("renders pod replica selector when multiple pods are present", () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    client.setQueryData(
+      [
+        "deploy",
+        "pod-telemetry",
+        "compute",
+        { type: "preset", preset: "1h" },
+        "sgp",
+        "UTC",
+        "hermes-vibrant-comet",
+      ],
+      {
+        clusterId: "sgp",
+        clusterName: "Singapore",
+        region: "Singapore",
+        isPrimary: true,
+        timeRange: "1h",
+        points: [],
+        cpu: {
+          currentCores: 0.1,
+          limitCores: 1,
+          avgCores: 0.1,
+          peakCores: 0.2,
+        },
+        memory: {
+          currentBytes: 1000,
+          limitBytes: 2000,
+          avgBytes: 1000,
+          peakBytes: 1500,
+        },
+        network: {
+          currentRxBytes: 10,
+          currentTxBytes: 20,
+          totalRxBytes: 100,
+          totalTxBytes: 200,
+        },
+        pods: [
+          {
+            pod: "hermes-vibrant-comet-deploy-0",
+            status: "Running",
+            cpuUsageCores: 0.1,
+            cpuLimitCores: 1,
+            cpuPercent: 10,
+            memoryUsageBytes: 100,
+            memoryLimitBytes: 1000,
+            memoryPercent: 10,
+            restarts: 0,
+          },
+          {
+            pod: "hermes-vibrant-comet-deploy-1",
+            status: "Running",
+            cpuUsageCores: 0.1,
+            cpuLimitCores: 1,
+            cpuPercent: 10,
+            memoryUsageBytes: 100,
+            memoryLimitBytes: 1000,
+            memoryPercent: 10,
+            restarts: 0,
+          },
+        ],
+      }
+    )
+    const view = render(
+      <QueryClientProvider client={client}>
+        <TabMetrics appSlug="hermes-vibrant-comet" />
+      </QueryClientProvider>
+    )
+
+    const allBtn = view.getByRole("button", { name: /All \(2\)/i })
+    expect(allBtn).toBeDefined()
+    expect(allBtn.className).toContain("bg-primary")
+
+    const pod1Btn = view.getByRole("button", {
+      name: /hermes-vibrant-comet-deploy-1/i,
+    })
+    expect(pod1Btn).toBeDefined()
+    fireEvent.click(pod1Btn)
+    expect(pod1Btn.className).toContain("bg-secondary")
+    expect(allBtn.className).not.toContain("bg-primary")
+  })
+  it("switches to HTTP Traffic sub-tab and renders Edge L7 metrics without HAProxy labels", () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const view = render(
+      <QueryClientProvider client={client}>
+        <TabMetrics appSlug="hermes-vibrant-comet" />
+      </QueryClientProvider>
+    )
+
+    const computeTabBtn = view.getByRole("button", { name: /^Compute/i })
+    const httpTrafficBtn = view.getByRole("button", { name: /HTTP Traffic/i })
+    expect(computeTabBtn).toBeDefined()
+    expect(httpTrafficBtn).toBeDefined()
+
+    // Default is Compute with Pod Replicas & Health
+    expect(view.getByText(/Pod Replicas & Health/i)).toBeDefined()
+
+    // Switch to HTTP Traffic
+    fireEvent.click(httpTrafficBtn)
+
+    expect(view.getByText(/Service Traffic/i)).toBeDefined()
+    expect(view.getByText(/Grouped HTTP Response Codes/i)).toBeDefined()
+    expect(view.getByText(/Latency Breakdown/i)).toBeDefined()
+    // Ensure internal plumbing / gateway routing noise is hidden
+    expect(view.queryByText(/Edge Ingress Gateway/i)).toBeNull()
+    expect(view.queryByText(/Routing Service/i)).toBeNull()
+    expect(view.queryByText(/HAProxy/i)).toBeNull()
+
+    // Switch back to Compute
+    fireEvent.click(computeTabBtn)
+    expect(view.getByText(/Pod Replicas & Health/i)).toBeDefined()
   })
 })

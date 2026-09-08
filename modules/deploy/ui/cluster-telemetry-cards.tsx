@@ -2,7 +2,13 @@
 
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Cpu, HardDrive, ArrowsLeftRight, Globe } from "@phosphor-icons/react"
+import {
+  Cpu,
+  HardDrive,
+  ArrowsLeftRight,
+  Globe,
+  Clock,
+} from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 import { eden } from "@/lib/eden"
 import {
@@ -39,6 +45,8 @@ export type ClusterTelemetryCardsProps = {
   title?: string
   columns?: 1 | 3 | "auto"
   chartHeight?: number
+  compact?: boolean
+  showPodBreakdown?: boolean
   className?: string
 }
 
@@ -48,8 +56,11 @@ export function ClusterTelemetryCards({
   title,
   columns = "auto",
   chartHeight,
+  compact = false,
+  showPodBreakdown = false,
   className,
 }: ClusterTelemetryCardsProps = {}) {
+  const [mountTime] = useState(() => Date.now())
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
     type: "preset",
     preset: "1h",
@@ -109,14 +120,13 @@ export function ClusterTelemetryCards({
   })
 
   const isLive = dataUpdatedAt > 0
-  const lastUpdated =
-    dataUpdatedAt > 0
-      ? format24hTime(dataUpdatedAt, {
-          showSeconds: true,
-          timeZone: userTimeZone,
-        })
-      : null
-
+  const lastUpdated = format24hTime(
+    dataUpdatedAt > 0 ? dataUpdatedAt : mountTime,
+    {
+      showSeconds: true,
+      timeZone: userTimeZone,
+    }
+  )
   const formatPointLabel = (timestamp: string): string => {
     const num = Number(timestamp)
     if (!Number.isNaN(num) && Number.isFinite(num) && num > 0) {
@@ -212,166 +222,444 @@ export function ClusterTelemetryCards({
         </div>
       )}
       {/* Cluster Context & Time Range Controls */}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-foreground">
-            {title ??
-              (appSlug
-                ? "Workload Resource Telemetry"
-                : "Cluster Resource Telemetry")}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
-            <Globe size={13} className="text-emerald-500" />
-            <span>Singapore</span>
-            <span className="size-1 rounded-full bg-emerald-400" />
-            <span className="text-[10px] text-emerald-400/80">Primary</span>
-          </span>
-          {isLive && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
-              <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
-              <span>LIVE</span>
+      {!compact && (
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-foreground">
+              {title ??
+                (appSlug
+                  ? "Workload Resource Telemetry"
+                  : "Cluster Resource Telemetry")}
             </span>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <TimeRangeDropdown
-            value={timeSelection}
-            onChange={setTimeSelection}
-            onRefresh={() => void refetch()}
-            isFetching={isFetching}
-            refreshInterval={refreshInterval}
-            onRefreshIntervalChange={setRefreshInterval}
-          />
-
-          {lastUpdated && (
-            <span className="hidden font-mono text-[11px] text-muted-foreground lg:inline">
-              {lastUpdated}
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+              <Globe size={13} className="text-emerald-500" />
+              <span>
+                {telemetry.region || telemetry.clusterName || "Singapore"}
+              </span>
+              {telemetry.isPrimary && (
+                <>
+                  <span className="size-1 rounded-full bg-emerald-400" />
+                  <span className="text-[10px] text-emerald-400/80">
+                    Primary
+                  </span>
+                </>
+              )}
             </span>
-          )}
+            {isLive && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <span>LIVE</span>
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">
+            {lastUpdated && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+                <Clock size={12} className="text-muted-foreground" />
+                <span>{lastUpdated}</span>
+              </span>
+            )}
+            <TimeRangeDropdown
+              value={timeSelection}
+              onChange={setTimeSelection}
+              onRefresh={() => void refetch()}
+              isFetching={isFetching}
+              refreshInterval={refreshInterval}
+              onRefreshIntervalChange={setRefreshInterval}
+            />
+          </div>
         </div>
-      </div>
-
-      {/* 3 Telemetry Cards Grid */}
-      <div className={gridClass}>
-        {/* Card 1: CPU Utilization */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader className="space-y-1 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Cpu size={14} className="text-primary" />
-                CPU Utilization
-              </span>
-              <span className="text-xs font-bold text-foreground">
-                {cpuPercent}%
-              </span>
-            </div>
-            <CardTitle className="text-lg font-bold tracking-tight">
-              {formatCores(telemetry.cpu.currentCores)}
-              <span className="text-xs font-normal text-muted-foreground">
-                {" "}
-                / {formatCores(telemetry.cpu.limitCores)} Limit
-              </span>
-            </CardTitle>
-            <CardDescription className="text-[11px] text-muted-foreground">
-              Peak: {formatCores(telemetry.cpu.peakCores)} &bull; Avg:{" "}
-              {formatCores(telemetry.cpu.avgCores)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <ClusterTelemetrySparkline
-              data={cpuDataPoints}
-              unit="vCPU"
-              color="#10b981"
-              height={effectiveHeight}
-              showArea={true}
-              showLimitLine={true}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Memory Allocation */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader className="space-y-1 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <HardDrive size={14} className="text-primary" />
-                Memory Utilization
-              </span>
-              <span className="text-xs font-bold text-foreground">
-                {memoryPercent}%
-              </span>
-            </div>
-            <CardTitle className="text-lg font-bold tracking-tight">
-              {formatBytes(telemetry.memory.currentBytes)}
-              <span className="text-xs font-normal text-muted-foreground">
-                {" "}
-                / {formatBytes(telemetry.memory.limitBytes)} Limit
-              </span>
-            </CardTitle>
-            <CardDescription className="text-[11px] text-muted-foreground">
-              Peak: {formatBytes(telemetry.memory.peakBytes)} &bull; Avg:{" "}
-              {formatBytes(telemetry.memory.avgBytes)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <ClusterTelemetrySparkline
-              data={memoryDataPoints}
-              unit="GB"
-              color="#10b981"
-              height={effectiveHeight}
-              showArea={true}
-              showLimitLine={true}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Card 3: Network I/O Bandwidth */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader className="space-y-1 pb-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <ArrowsLeftRight size={14} className="text-sky-400" />
-                Network I/O Throughput
-              </span>
-              <div className="flex items-center gap-2 text-[10px]">
-                <span className="inline-flex items-center gap-1 font-medium text-emerald-400">
-                  <span className="size-1.5 rounded-full bg-emerald-400" /> Rx
+      )}
+      {compact ? (
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="px-4 pt-3.5 pb-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-sm font-bold text-foreground">
+                  {title ?? "Workload Resource Pulse"}
+                </CardTitle>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                  <Globe size={12} className="text-emerald-500" />
+                  <span>
+                    {telemetry.region || telemetry.clusterName || "Singapore"}
+                  </span>
+                  {telemetry.isPrimary && (
+                    <span className="text-[10px] text-emerald-400/80">
+                      &bull; Primary
+                    </span>
+                  )}
                 </span>
-                <span className="inline-flex items-center gap-1 font-medium text-sky-400">
-                  <span className="size-1.5 rounded-full bg-sky-400" /> Tx
-                </span>
+                {isLive && (
+                  <span className="py-0.2 inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 text-[10px] font-semibold text-emerald-500">
+                    <span className="size-1 animate-pulse rounded-full bg-emerald-500" />
+                    LIVE
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {lastUpdated && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
+                    <Clock size={12} className="text-muted-foreground" />
+                    <span>{lastUpdated}</span>
+                  </span>
+                )}
+                <TimeRangeDropdown
+                  value={timeSelection}
+                  onChange={setTimeSelection}
+                  onRefresh={() => void refetch()}
+                  isFetching={isFetching}
+                  refreshInterval={refreshInterval}
+                  onRefreshIntervalChange={setRefreshInterval}
+                />
               </div>
             </div>
-            <CardTitle className="text-lg font-bold tracking-tight">
-              <span className="text-emerald-400">
-                ▲ {formatThroughput(telemetry.network.currentRxBytes)}
-              </span>
-              <span className="mx-1.5 text-sm text-muted-foreground">
-                &bull;
-              </span>
-              <span className="text-sky-400">
-                ▼ {formatThroughput(telemetry.network.currentTxBytes)}
-              </span>
-            </CardTitle>
-            <CardDescription className="text-[11px] text-muted-foreground">
-              Total In: {formatBytes(telemetry.network.totalRxBytes)} &bull;
-              Total Out: {formatBytes(telemetry.network.totalTxBytes)}
-            </CardDescription>
           </CardHeader>
-          <CardContent className="pt-0">
-            <ClusterTelemetrySparkline
-              data={networkDataPoints}
-              unit={netUnit}
-              color="#10b981"
-              secondaryColor="#38bdf8"
-              height={effectiveHeight}
-              showArea={false}
-              showLimitLine={false}
-            />
+          <CardContent className="space-y-2.5 px-4 pt-0 pb-3.5">
+            {/* CPU Row */}
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+              <div className="min-w-[130px] space-y-0.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <Cpu size={14} className="text-primary" /> CPU Allocation
+                </div>
+                <div className="font-mono text-[11px] text-muted-foreground">
+                  <span className="font-bold text-foreground">
+                    {formatCores(telemetry.cpu.currentCores)}
+                  </span>{" "}
+                  / {formatCores(telemetry.cpu.limitCores)}{" "}
+                  <span className="font-semibold text-emerald-500">
+                    ({cpuPercent}%)
+                  </span>
+                </div>
+              </div>
+              <div className="h-9 w-28 shrink-0 sm:w-36">
+                <ClusterTelemetrySparkline
+                  data={cpuDataPoints}
+                  color="#10b981"
+                  height={36}
+                  showArea={true}
+                  showLimitLine={true}
+                  showYAxis={false}
+                />
+              </div>
+            </div>
+
+            {/* RAM Row */}
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+              <div className="min-w-[130px] space-y-0.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <HardDrive size={14} className="text-primary" /> RAM
+                  Allocation
+                </div>
+                <div className="font-mono text-[11px] text-muted-foreground">
+                  <span className="font-bold text-foreground">
+                    {formatBytes(telemetry.memory.currentBytes)}
+                  </span>{" "}
+                  / {formatBytes(telemetry.memory.limitBytes)}{" "}
+                  <span className="font-semibold text-emerald-500">
+                    ({memoryPercent}%)
+                  </span>
+                </div>
+              </div>
+              <div className="h-9 w-28 shrink-0 sm:w-36">
+                <ClusterTelemetrySparkline
+                  data={memoryDataPoints}
+                  color="#10b981"
+                  height={36}
+                  showArea={true}
+                  showLimitLine={true}
+                  showYAxis={false}
+                />
+              </div>
+            </div>
+
+            {/* Network Row */}
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+              <div className="min-w-[130px] space-y-0.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <ArrowsLeftRight size={14} className="text-primary" /> Network
+                  I/O
+                </div>
+                <div className="font-mono text-[11px] text-muted-foreground">
+                  Rx{" "}
+                  <span className="font-bold text-foreground">
+                    {formatThroughput(telemetry.network.currentRxBytes)}
+                  </span>{" "}
+                  &bull; Tx {formatThroughput(telemetry.network.currentTxBytes)}
+                </div>
+              </div>
+              <div className="h-9 w-28 shrink-0 sm:w-36">
+                <ClusterTelemetrySparkline
+                  data={networkDataPoints}
+                  color="#10b981"
+                  secondaryColor="#38bdf8"
+                  height={36}
+                  showArea={false}
+                  showLimitLine={false}
+                  showYAxis={false}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 text-[10px] text-muted-foreground">
+              <span>
+                {telemetry.pods?.length ?? 1} replica monitored &bull; 0
+                restarts
+              </span>
+              <span>
+                Window:{" "}
+                {timeSelection.type === "preset"
+                  ? timeSelection.preset
+                  : "custom"}
+              </span>
+            </div>
           </CardContent>
         </Card>
-      </div>
+      ) : (
+        <div className={gridClass}>
+          {/* Card 1: CPU Utilization */}
+          <Card className="flex flex-col justify-between">
+            <CardHeader className="space-y-1 pb-2">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Cpu size={14} className="text-primary" />
+                  CPU Utilization
+                </span>
+                <span className="text-xs font-bold text-foreground">
+                  {cpuPercent}%
+                </span>
+              </div>
+              <CardTitle
+                className={cn(
+                  isSingleCol
+                    ? "font-mono text-base font-bold tracking-tight"
+                    : "text-lg font-bold tracking-tight"
+                )}
+              >
+                {formatCores(telemetry.cpu.currentCores)}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {" "}
+                  / {formatCores(telemetry.cpu.limitCores)} Limit
+                </span>
+              </CardTitle>
+              <CardDescription className="text-[11px] text-muted-foreground">
+                Peak: {formatCores(telemetry.cpu.peakCores)} &bull; Avg:{" "}
+                {formatCores(telemetry.cpu.avgCores)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ClusterTelemetrySparkline
+                data={cpuDataPoints}
+                unit="vCPU"
+                color="#10b981"
+                height={effectiveHeight}
+                showArea={true}
+                showLimitLine={true}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Card 2: Memory Allocation */}
+          <Card className="flex flex-col justify-between">
+            <CardHeader className="space-y-1 pb-2">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <HardDrive size={14} className="text-primary" />
+                  Memory Utilization
+                </span>
+                <span className="text-xs font-bold text-foreground">
+                  {memoryPercent}%
+                </span>
+              </div>
+              <CardTitle
+                className={cn(
+                  isSingleCol
+                    ? "font-mono text-base font-bold tracking-tight"
+                    : "text-lg font-bold tracking-tight"
+                )}
+              >
+                {formatBytes(telemetry.memory.currentBytes)}
+                <span className="text-xs font-normal text-muted-foreground">
+                  {" "}
+                  / {formatBytes(telemetry.memory.limitBytes)} Limit
+                </span>
+              </CardTitle>
+              <CardDescription className="text-[11px] text-muted-foreground">
+                Peak: {formatBytes(telemetry.memory.peakBytes)} &bull; Avg:{" "}
+                {formatBytes(telemetry.memory.avgBytes)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ClusterTelemetrySparkline
+                data={memoryDataPoints}
+                unit="GB"
+                color="#10b981"
+                height={effectiveHeight}
+                showArea={true}
+                showLimitLine={true}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Card 3: Network I/O Bandwidth */}
+          <Card className="flex flex-col justify-between">
+            <CardHeader className="space-y-1 pb-2">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <ArrowsLeftRight size={14} className="text-sky-400" />
+                  Network I/O Throughput
+                </span>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <span className="inline-flex items-center gap-1 font-medium text-emerald-400">
+                    <span className="size-1.5 rounded-full bg-emerald-400" /> Rx
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-medium text-sky-400">
+                    <span className="size-1.5 rounded-full bg-sky-400" /> Tx
+                  </span>
+                </div>
+              </div>
+              <CardTitle
+                className={cn(
+                  isSingleCol
+                    ? "font-mono text-base font-bold tracking-tight"
+                    : "text-lg font-bold tracking-tight"
+                )}
+              >
+                <span className="text-emerald-400">
+                  ▲ {formatThroughput(telemetry.network.currentRxBytes)}
+                </span>
+                <span className="mx-1.5 text-sm text-muted-foreground">
+                  &bull;
+                </span>
+                <span className="text-sky-400">
+                  ▼ {formatThroughput(telemetry.network.currentTxBytes)}
+                </span>
+              </CardTitle>
+              <CardDescription className="text-[11px] text-muted-foreground">
+                Total In: {formatBytes(telemetry.network.totalRxBytes)} &bull;
+                Total Out: {formatBytes(telemetry.network.totalTxBytes)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ClusterTelemetrySparkline
+                data={networkDataPoints}
+                unit={netUnit}
+                color="#10b981"
+                secondaryColor="#38bdf8"
+                height={effectiveHeight}
+                showArea={false}
+                showLimitLine={false}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Pod Quota & Health Table Breakdown */}
+      {showPodBreakdown && telemetry.pods && telemetry.pods.length > 0 && (
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="space-y-1 pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-bold text-foreground">
+                  Pod Resource &amp; Quota Allocation
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Live per-pod compute consumption and restart count
+                </CardDescription>
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">
+                {telemetry.pods.length}{" "}
+                {telemetry.pods.length === 1 ? "pod" : "pods"} active
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
+                  <tr>
+                    <th className="px-3.5 py-2.5">Pod</th>
+                    <th className="px-3.5 py-2.5">Status</th>
+                    <th className="px-3.5 py-2.5">CPU Usage</th>
+                    <th className="px-3.5 py-2.5">Memory Usage</th>
+                    <th className="px-3.5 py-2.5 text-right">Restarts</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {telemetry.pods.map((pod) => (
+                    <tr key={pod.pod} className="hover:bg-muted/30">
+                      <td className="px-3.5 py-3 font-mono text-xs font-semibold text-foreground">
+                        {pod.pod}
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                          <span className="size-1.5 rounded-full bg-emerald-500" />
+                          {pod.status}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                            <span>{pod.cpuUsageCores.toFixed(3)} cores</span>
+                            <span className="text-muted-foreground">
+                              {pod.cpuPercent}% of {pod.cpuLimitCores} Limit
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full bg-emerald-500 transition-all"
+                              style={{
+                                width: `${Math.min(100, pod.cpuPercent)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                            <span>{formatBytes(pod.memoryUsageBytes)}</span>
+                            <span className="text-muted-foreground">
+                              {pod.memoryPercent}% of{" "}
+                              {formatBytes(pod.memoryLimitBytes)} Limit
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={cn(
+                                "h-full transition-all",
+                                pod.memoryPercent > 85
+                                  ? "bg-destructive"
+                                  : "bg-emerald-500"
+                              )}
+                              style={{
+                                width: `${Math.min(100, pod.memoryPercent)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3.5 py-3 text-right font-mono text-xs">
+                        <span
+                          className={cn(
+                            "rounded px-1.5 py-0.5 text-[11px] font-semibold",
+                            pod.restarts > 0
+                              ? "border border-amber-500/30 bg-amber-500/10 text-amber-500"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {pod.restarts}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

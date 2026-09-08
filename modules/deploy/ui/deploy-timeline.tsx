@@ -253,9 +253,11 @@ export function DeployStepTimeline({
   const activeIndex =
     events.length === 0
       ? activeStepIndex(effectiveStatus)
-      : latestEvent
-        ? DEPLOY_EVENT_STEP_INDEX[latestEvent.type]
-        : -1
+      : latestEvent?.type === "DEPLOY_COMPLETED"
+        ? 13
+        : latestEvent
+          ? DEPLOY_EVENT_STEP_INDEX[latestEvent.type]
+          : -1
   const failedIndex = latestEvent
     ? DEPLOY_EVENT_STEP_INDEX[latestEvent.type]
     : null
@@ -464,7 +466,7 @@ export function DeployStepTimeline({
             !isSynthetic &&
             duration !== null &&
             duration > LAG_THRESHOLD_MS &&
-            (uiState === "completed" || uiState === "active")
+            uiState === "active"
           const isOpen = openStep === step.id
 
           return (

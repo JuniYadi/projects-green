@@ -562,9 +562,459 @@ describe("fetchNamespaceTelemetry", () => {
       fetchFn: mockFetch as unknown as typeof fetch,
     })
 
-    expect(recordedQueries.length).toBeGreaterThan(0)
-    for (const q of recordedQueries) {
+    const podQueries = recordedQueries.filter(
+      (q) => q.includes("container_") || q.includes("kube_pod_")
+    )
+    expect(podQueries.length).toBeGreaterThan(0)
+    for (const q of podQueries) {
       expect(q).toContain('pod=~"hermes-vibrant-comet.*"')
     }
+
+    const proxyQueries = recordedQueries.filter((q) => q.includes("haproxy_"))
+    expect(proxyQueries.length).toBeGreaterThan(0)
+    for (const q of proxyQueries) {
+      expect(q).toContain('proxy=~".*hermes-vibrant-comet.*"')
+    }
+  })
+
+  it("extracts per-pod metrics from vector queries or falls back to workload-level pod summary", async () => {
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+      if (urlString.includes("by (pod)")) {
+        if (urlString.includes("container_cpu_usage_seconds_total")) {
+          return new Response(
+            JSON.stringify({
+              status: "success",
+              data: {
+                result: [
+                  {
+                    metric: { pod: "hermes-vibrant-comet-deploy-0" },
+                    value: [1725822607, "0.165"],
+                  },
+                  {
+                    metric: { pod: "hermes-vibrant-comet-deploy-1" },
+                    value: [1725822607, "0.082"],
+                  },
+                ],
+              },
+            }),
+            { status: 200 }
+          )
+        }
+        if (urlString.includes("container_memory_working_set_bytes")) {
+          return new Response(
+            JSON.stringify({
+              status: "success",
+              data: {
+                result: [
+                  {
+                    metric: { pod: "hermes-vibrant-comet-deploy-0" },
+                    value: [1725822607, "150994944"],
+                  },
+                  {
+                    metric: { pod: "hermes-vibrant-comet-deploy-1" },
+                    value: [1725822607, "134217728"],
+                  },
+                ],
+              },
+            }),
+            { status: 200 }
+          )
+        }
+      }
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    const summary = await fetchNamespaceTelemetry({
+      organizationId: "org_multi_pod",
+      appSlug: "hermes-vibrant-comet",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(summary.pods).toBeDefined()
+    expect(summary.pods?.length).toBe(2)
+    expect(summary.pods?.[0].pod).toBe("hermes-vibrant-comet-deploy-0")
+    expect(summary.pods?.[0].cpuUsageCores).toBe(0.165)
+    expect(summary.pods?.[0].memoryUsageBytes).toBe(150994944)
+    expect(summary.pods?.[1].pod).toBe("hermes-vibrant-comet-deploy-1")
+    expect(summary.pods?.[1].cpuUsageCores).toBe(0.082)
+  })
+
+  it("resolves live pod health status, readiness, uptime and per-pod time-series", async () => {
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+      if (urlString.includes("kube_pod_status_phase")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: { pod: "hermes-deploy-0", phase: "Running" },
+                  value: [1725822607, "1"],
+                },
+                {
+                  metric: { pod: "hermes-deploy-1", phase: "Running" },
+                  value: [1725822607, "1"],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("kube_pod_container_status_waiting_reason")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {
+                    pod: "hermes-deploy-1",
+                    reason: "CrashLoopBackOff",
+                  },
+                  value: [1725822607, "1"],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("kube_pod_start_time")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: { pod: "hermes-deploy-0" },
+                  value: [1725822607, "1725820000"],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("container_cpu_usage_seconds_total") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: { pod: "hermes-deploy-0" },
+                  values: [
+                    [1725822000, "0.150"],
+                    [1725822300, "0.180"],
+                  ],
+                },
+                {
+                  metric: { pod: "hermes-deploy-1" },
+                  values: [
+                    [1725822000, "0.040"],
+                    [1725822300, "0.050"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    const summary = await fetchNamespaceTelemetry({
+      organizationId: "org_status_pod",
+      appSlug: "hermes",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(summary.pods).toBeDefined()
+    expect(summary.pods?.length).toBe(2)
+
+    const pod0 = summary.pods?.find((p) => p.pod === "hermes-deploy-0")
+    const pod1 = summary.pods?.find((p) => p.pod === "hermes-deploy-1")
+
+    expect(pod0).toBeDefined()
+    expect(pod0?.status).toBe("Running")
+    expect(pod0?.startTime).toBe(1725820000)
+    expect(pod0?.uptimeSeconds).toBeGreaterThan(0)
+    expect(pod0?.cpuSeries?.length).toBeGreaterThan(0)
+
+    expect(pod1).toBeDefined()
+    expect(pod1?.status).toBe("CrashLoopBackOff")
+    expect(pod1?.reason).toBe("CrashLoopBackOff")
+  })
+
+  it("resolves live HAProxy HTTP ingress telemetry with grouped status codes and latency breakdown", async () => {
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+
+      if (
+        urlString.includes("haproxy_backend_http_responses_total") &&
+        urlString.includes("sum by (code)")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: { code: "2xx" },
+                  values: [
+                    [1725822000, "15.5"],
+                    [1725822300, "20.2"],
+                  ],
+                },
+                {
+                  metric: { code: "3xx" },
+                  values: [
+                    [1725822000, "0.5"],
+                    [1725822300, "0.8"],
+                  ],
+                },
+                {
+                  metric: { code: "4xx" },
+                  values: [
+                    [1725822000, "0.1"],
+                    [1725822300, "0.2"],
+                  ],
+                },
+                {
+                  metric: { code: "5xx" },
+                  values: [
+                    [1725822000, "0.0"],
+                    [1725822300, "0.01"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("haproxy_backend_response_time_average_seconds") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {},
+                  values: [
+                    [1725822000, "0.045"],
+                    [1725822300, "0.052"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("haproxy_backend_queue_time_average_seconds") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {},
+                  values: [
+                    [1725822000, "0.001"],
+                    [1725822300, "0.002"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("haproxy_backend_connect_time_average_seconds") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {},
+                  values: [
+                    [1725822000, "0.003"],
+                    [1725822300, "0.004"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("haproxy_backend_total_time_average_seconds") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {},
+                  values: [
+                    [1725822000, "0.049"],
+                    [1725822300, "0.058"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("haproxy_backend_http_requests_total")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              resultType: "vector",
+              result: [{ value: [1725822300, "21.5"] }],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("haproxy_backend_current_sessions")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              resultType: "vector",
+              result: [{ value: [1725822300, "8"] }],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("haproxy_backend_active_servers")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              resultType: "vector",
+              result: [{ value: [1725822300, "3"] }],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    const summary = await fetchNamespaceTelemetry({
+      organizationId: "org_live_ingress",
+      appSlug: "storefront",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(summary.ingress).toBeDefined()
+    expect(summary.ingress?.trafficRps).toBe(21.5)
+    expect(summary.ingress?.activeSessions).toBe(8)
+    expect(summary.ingress?.healthyServers).toBe(3)
+    expect(summary.ingress?.statusCodes.length).toBe(4)
+
+    const code2xx = summary.ingress?.statusCodes.find((s) => s.code === "2xx")
+    expect(code2xx).toBeDefined()
+    expect(code2xx?.points.length).toBeGreaterThan(0)
+
+    const latencyTotal = summary.ingress?.latencyBreakdown.find(
+      (s) => s.type === "total"
+    )
+    expect(latencyTotal).toBeDefined()
+    expect(latencyTotal?.points.length).toBeGreaterThan(0)
+  })
+
+  it("skips HAProxy ingress queries when view option is 'compute'", async () => {
+    const executedQueries: string[] = []
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+      executedQueries.push(urlString)
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    const summary = await fetchNamespaceTelemetry({
+      organizationId: "org_view_compute",
+      view: "compute",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(summary.ingress).toBeUndefined()
+    expect(executedQueries.some((q) => q.includes("haproxy_"))).toBe(false)
+  })
+
+  it("skips pod series range queries when view option is 'ingress'", async () => {
+    const executedQueries: string[] = []
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+      executedQueries.push(urlString)
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    await fetchNamespaceTelemetry({
+      organizationId: "org_view_ingress",
+      view: "ingress",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    const podRangeQueries = executedQueries.filter(
+      (q) => q.includes("query_range") && q.includes("by (pod)")
+    )
+    expect(podRangeQueries.length).toBe(0)
   })
 })

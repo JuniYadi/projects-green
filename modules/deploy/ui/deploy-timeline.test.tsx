@@ -279,6 +279,46 @@ describe("DeployStepTimeline", () => {
     ).toBe("https://myapp.pfnapp.dev")
   })
 
+  it("marks live step completed and not active when DEPLOY_COMPLETED event is received", async () => {
+    globalThis.fetch = mockFetch((url) => {
+      if (url.includes("/status/")) {
+        return {
+          status: "running",
+          failureReason: null,
+          startedAt: "2026-07-29T00:00:00.000Z",
+          completedAt: "2026-07-29T00:05:00.000Z",
+        }
+      }
+      return {
+        data: [{ id: "queued" }],
+        events: [
+          {
+            id: "evt-1",
+            type: "DEPLOY_COMPLETED",
+            label: "Deploy completed",
+            message: null,
+            createdAt: "2026-07-29T00:00:00.000Z",
+          },
+        ],
+      }
+    })
+
+    const view = render(
+      <DeployStepTimeline
+        deployId="deploy-1"
+        status="running"
+        liveDomain="myapp.pfnapp.dev"
+      />
+    )
+
+    await waitFor(() => {
+      expect(view.getByText("Open live deployment →")).toBeInTheDocument()
+    })
+
+    // No step should have aria-current="step" (no spinning step)
+    expect(view.container.querySelector('[aria-current="step"]')).toBeNull()
+  })
+
   it("shows retry CTA on failed step when onRetry provided", async () => {
     globalThis.fetch = mockFetch((url) => {
       if (url.includes("/status/")) {

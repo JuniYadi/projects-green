@@ -2177,6 +2177,9 @@ export const idMessages: AppMessages = {
         historyDescription: "Percobaan deployment sebelumnya",
         loadingHistory: "Memuat riwayat deployment…",
         noAttempts: "Belum ada percobaan deployment.",
+        pageOf: "Halaman {page} dari {total}",
+        previous: "Sebelumnya",
+        next: "Berikutnya",
         table: {
           status: "Status",
           attempt: "Percobaan",

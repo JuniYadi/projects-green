@@ -68,6 +68,15 @@ const appsProxy = new Proxy(
             },
           })),
         },
+        history: {
+          get: mock(async () => ({
+            data: {
+              ok: true,
+              data: [],
+              meta: { total: 0, totalPages: 1, page: 1, pageSize: 20 },
+            },
+          })),
+        },
         sync: {
           post: mock(async () => ({
             data: {

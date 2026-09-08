@@ -901,4 +901,48 @@ describe("appStacksRoutes", () => {
       })
     })
   })
+
+  describe("POST /deploy/apps/:slug/sync", () => {
+    it("updates updatedAt timestamp and returns 200", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "console-next-app",
+        organizationId: "org-1",
+      } as never)
+      mockPrisma.applicationStack.update.mockResolvedValueOnce({
+        id: "stack-1",
+      } as never)
+
+      const res = await post("/deploy/apps/console-next-app/sync")
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { ok: boolean; message: string }
+      expect(body.ok).toBe(true)
+      expect(body.message).toBe("Configuration synced successfully")
+      expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith({
+        where: { id: "stack-1" },
+        data: { updatedAt: expect.any(Date) },
+      })
+    })
+
+    it("returns 404 when stack is not found", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null)
+      const res = await post("/deploy/apps/nonexistent/sync")
+      expect(res.status).toBe(404)
+    })
+
+    it("returns 401 when user is not authenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({ user: null } as never)
+      const res = await post("/deploy/apps/console-next-app/sync")
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 when user has no organizationId", async () => {
+      mockWithAuth.mockResolvedValueOnce({
+        user: { id: "user-1" },
+        organizationId: null,
+      } as never)
+      const res = await post("/deploy/apps/console-next-app/sync")
+      expect(res.status).toBe(403)
+    })
+  })
 })

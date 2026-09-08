@@ -259,5 +259,95 @@ export function generateClusterTelemetrySummary(
       totalRxBytes,
       totalTxBytes,
     },
+    pods: [
+      {
+        pod: "workload-deploy-0",
+        cpuUsageCores: lastPoint.cpuUsageCores,
+        cpuLimitCores: CPU_LIMIT_CORES,
+        cpuPercent: Math.min(
+          100,
+          Math.round((lastPoint.cpuUsageCores / CPU_LIMIT_CORES) * 100)
+        ),
+        memoryUsageBytes: lastPoint.memoryUsageBytes,
+        memoryLimitBytes: MEMORY_LIMIT_BYTES,
+        memoryPercent: Math.min(
+          100,
+          Math.round((lastPoint.memoryUsageBytes / MEMORY_LIMIT_BYTES) * 100)
+        ),
+        restarts: 0,
+        status: "Running",
+      },
+    ],
+    ingress: {
+      proxy: "app_svc_web_http",
+      trafficRps: 1.25,
+      errorRate5xxPercent: 0,
+      errorRate4xxPercent: 0.05,
+      bandwidthInBps: 64200,
+      bandwidthOutBps: 182000,
+      avgResponseTimeSeconds: 0.048,
+      activeSessions: 6,
+      activeQueue: 0,
+      healthyServers: 2,
+      backupServers: 0,
+      statusCodes: [
+        {
+          code: "2xx",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 1.2 })),
+        },
+        {
+          code: "3xx",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0.04 })),
+        },
+        {
+          code: "4xx",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0.01 })),
+        },
+        {
+          code: "5xx",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0 })),
+        },
+      ],
+      latencyBreakdown: [
+        {
+          type: "queue",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0.001 })),
+        },
+        {
+          type: "connect",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0.002 })),
+        },
+        {
+          type: "app",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0.045 })),
+        },
+        {
+          type: "total",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0.048 })),
+        },
+      ],
+      reliability: [
+        {
+          type: "conn_errors",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0 })),
+        },
+        {
+          type: "resp_errors",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0 })),
+        },
+        {
+          type: "retries",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0 })),
+        },
+        {
+          type: "client_aborts",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0.01 })),
+        },
+        {
+          type: "server_aborts",
+          points: points.map((p) => ({ timestamp: p.timestamp, value: 0 })),
+        },
+      ],
+    },
   }
 }
