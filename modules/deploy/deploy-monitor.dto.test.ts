@@ -2,13 +2,14 @@ import { describe, expect, it } from "bun:test"
 
 import {
   buildDeployTimelineItems,
+  computeNextRenewalDate,
+  deriveCurrentDeployStep,
   mapStackStatusToDeployStatus,
   resolveStackBillingState,
   toDeployEventDTOs,
   toDeployLogLines,
-  toDeploymentStatusDTO,
-  deriveCurrentDeployStep,
   toDeploymentHistoryDTO,
+  toDeploymentStatusDTO,
   toStackSummaryDTO,
 } from "./deploy-monitor.dto"
 
@@ -346,6 +347,58 @@ describe("deploy-monitor.dto", () => {
     })
   })
 
+  describe("computeNextRenewalDate", () => {
+    it("returns null for null, undefined, or invalid date values", () => {
+      expect(computeNextRenewalDate(null)).toBeNull()
+      expect(computeNextRenewalDate(undefined)).toBeNull()
+      expect(computeNextRenewalDate("invalid-date")).toBeNull()
+    })
+
+    it("advances standard mid-month dates by exactly one month", () => {
+      const renewal = computeNextRenewalDate("2026-05-15T10:30:00.000Z")
+      expect(renewal).toBe("2026-06-15T10:30:00.000Z")
+    })
+
+    it("clamps end-of-month dates for January 31 to February 28 in common years", () => {
+      const renewal = computeNextRenewalDate("2026-01-31T00:00:00.000Z")
+      expect(renewal).toBe("2026-02-28T00:00:00.000Z")
+    })
+
+    it("clamps end-of-month dates for January 31 to February 29 in leap years", () => {
+      const renewal = computeNextRenewalDate("2024-01-31T00:00:00.000Z")
+      expect(renewal).toBe("2024-02-29T00:00:00.000Z")
+    })
+
+    it("clamps 31-day months advancing into 30-day months", () => {
+      expect(computeNextRenewalDate("2026-03-31T08:00:00.000Z")).toBe(
+        "2026-04-30T08:00:00.000Z"
+      )
+      expect(computeNextRenewalDate("2026-05-31T08:00:00.000Z")).toBe(
+        "2026-06-30T08:00:00.000Z"
+      )
+      expect(computeNextRenewalDate("2026-08-31T08:00:00.000Z")).toBe(
+        "2026-09-30T08:00:00.000Z"
+      )
+      expect(computeNextRenewalDate("2026-10-31T08:00:00.000Z")).toBe(
+        "2026-11-30T08:00:00.000Z"
+      )
+    })
+
+    it("handles December to January year crossover correctly", () => {
+      expect(computeNextRenewalDate("2026-12-15T12:00:00.000Z")).toBe(
+        "2027-01-15T12:00:00.000Z"
+      )
+      expect(computeNextRenewalDate("2026-12-31T12:00:00.000Z")).toBe(
+        "2027-01-31T12:00:00.000Z"
+      )
+    })
+
+    it("accepts Date object instances directly", () => {
+      const date = new Date("2026-07-20T00:00:00.000Z")
+      expect(computeNextRenewalDate(date)).toBe("2026-08-20T00:00:00.000Z")
+    })
+  })
+
   describe("toStackSummaryDTO", () => {
     it("maps a stack with its latest deployment id and billing state", () => {
       const lastDeployedAt = new Date("2026-06-05T10:00:00.000Z")
@@ -427,6 +480,72 @@ describe("deploy-monitor.dto", () => {
       expect(dto.currentStepLabel).toBeNull()
       expect(dto.currentStepIndex).toBeNull()
       expect(dto.currentStepStartedAt).toBeNull()
+    })
+
+    it("maps templateName, port, cpu, memory, and envCount", () => {
+      const dto = toStackSummaryDTO({
+        id: "stack-template",
+        name: "Hermes Comet",
+        slug: "hermes-vibrant-comet",
+        status: "RUNNING",
+        framework: "Node.js",
+        branchName: "main",
+        subdomain: "hermes",
+        customDomain: null,
+        resourcePlanId: "starter",
+        billingMode: "PAYG",
+        metadataJson: { defaultPort: 3000, billingState: "ACTIVE" },
+        envVarsJson: [
+          { key: "NODE_ENV", value: "production" },
+          { key: "PORT", value: "3000" },
+        ],
+        cpu: 1,
+        memory: 1024,
+        template: { name: "Hermes AI Agent" },
+        lastDeployedAt: new Date("2026-06-05T10:00:00.000Z"),
+      })
+      expect(dto.templateName).toBe("Hermes AI Agent")
+      expect(dto.port).toBe(3000)
+      expect(dto.cpu).toBe(1)
+      expect(dto.memory).toBe(1024)
+      expect(dto.envCount).toBe(2)
+    })
+
+    it("maps catalogPlan, createdAt, orderedAt, and computes renewalAt", () => {
+      const createdAt = new Date("2026-09-07T15:50:27.570Z")
+      const dto = toStackSummaryDTO({
+        id: "stack-catalog",
+        name: "Hermes Comet",
+        slug: "hermes-vibrant-comet",
+        status: "RUNNING",
+        framework: "Node.js",
+        branchName: "main",
+        subdomain: "hermes",
+        customDomain: null,
+        resourcePlanId: "small",
+        billingMode: "PACKAGE",
+        metadataJson: null,
+        createdAt,
+        catalogPlan: {
+          name: "SMALL (S)",
+          code: "SMALL",
+          pricings: [
+            {
+              periodPrice: "20000",
+              currency: "IDR",
+              billingPeriod: "MONTHLY",
+            },
+          ],
+        },
+        lastDeployedAt: createdAt,
+      })
+
+      expect(dto.catalogPlanName).toBe("SMALL (S)")
+      expect(dto.catalogPlanPrice).toBe("20000")
+      expect(dto.catalogPlanCurrency).toBe("IDR")
+      expect(dto.catalogBillingPeriod).toBe("MONTHLY")
+      expect(dto.orderedAt).toBe(createdAt.toISOString())
+      expect(dto.renewalAt).toBe("2026-10-07T15:50:27.570Z")
     })
   })
 })

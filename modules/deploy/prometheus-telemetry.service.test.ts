@@ -540,4 +540,31 @@ describe("fetchNamespaceTelemetry", () => {
       })
     ).rejects.toThrow("Prometheus query failed (500): Internal Server Error")
   })
+
+  it("injects pod regex when appSlug is passed in options", async () => {
+    const recordedQueries: string[] = []
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = url.toString()
+      const queryParam = new URL(urlString).searchParams.get("query")
+      if (queryParam) recordedQueries.push(queryParam)
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    await fetchNamespaceTelemetry({
+      organizationId: "org_workload_tenant",
+      appSlug: "hermes-vibrant-comet",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(recordedQueries.length).toBeGreaterThan(0)
+    for (const q of recordedQueries) {
+      expect(q).toContain('pod=~"hermes-vibrant-comet.*"')
+    }
+  })
 })

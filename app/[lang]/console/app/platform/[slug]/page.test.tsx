@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 
+let mockSearchParams = new Map<string, string>([["tab", "env"]])
+
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en", slug: "hermes-vibrant-comet" }),
   useSearchParams: () => ({
-    get: (key: string) => (key === "tab" ? "env" : null),
+    get: (key: string) => mockSearchParams.get(key) ?? null,
   }),
-  useRouter: () => ({ push: () => {} }),
+  useRouter: () => ({ push: () => {}, replace: () => {} }),
 }))
 
 const mockStack = {
@@ -79,6 +81,7 @@ const appsProxy = new Proxy(
 )
 
 mock.module("@/lib/eden", () => ({
+  getApiBaseUrl: () => "http://localhost:3300",
   eden: {
     api: {
       deploy: {
@@ -97,14 +100,38 @@ describe("PlatformInstanceWorkspacePage (/console/app/platform/[slug])", () => {
     cleanup()
   })
 
-  it("renders platform workspace with Environment variables tab when tab=env", async () => {
-    const { getByText, getAllByText } = render(
+  it("renders platform workspace with vertical settings subnav when tab=env", async () => {
+    mockSearchParams = new Map([["tab", "env"]])
+    const { queryByText, getAllByText, getByRole } = render(
       <PlatformInstanceWorkspacePage />
     )
 
     await waitFor(() => {
-      expect(getByText("Back to Platforms Dashboard")).toBeDefined()
-      expect(getByText("Hermes Comet")).toBeDefined()
+      expect(queryByText("Back to Platforms Dashboard")).toBeNull()
+      expect(getAllByText("Hermes Comet").length).toBeGreaterThan(0)
+      expect(getAllByText("Environment Variables").length).toBeGreaterThan(0)
+      expect(
+        getByRole("navigation", { name: "Platform Settings" })
+      ).toBeDefined()
+      expect(queryByText("Domains & SSL")).not.toBeNull()
+      expect(queryByText("Scaling & Resources")).not.toBeNull()
+      expect(queryByText("Danger Zone")).not.toBeNull()
+    })
+  })
+
+  it("falls back to env subtab when section parameter is invalid", async () => {
+    mockSearchParams = new Map([
+      ["tab", "settings"],
+      ["section", "nonexistent-bogus-section"],
+    ])
+    const { getAllByText, getByRole } = render(
+      <PlatformInstanceWorkspacePage />
+    )
+
+    await waitFor(() => {
+      expect(
+        getByRole("navigation", { name: "Platform Settings" })
+      ).toBeDefined()
       expect(getAllByText("Environment Variables").length).toBeGreaterThan(0)
     })
   })

@@ -1,12 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
-import { useParams, useSearchParams } from "next/navigation"
-import { ArrowLeft, ArrowsClockwise } from "@phosphor-icons/react"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
+import {
+  ArrowsClockwise,
+  Cpu,
+  Globe,
+  HardDrive,
+  Info,
+  Key,
+  WarningOctagon,
+  Wrench,
+} from "@phosphor-icons/react"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { eden } from "@/lib/eden"
-import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -82,6 +91,15 @@ type AppClient = {
 type SettingsSubTab =
   "env" | "domains" | "scaling" | "mounts" | "build" | "general" | "danger"
 
+const VALID_SETTINGS_SUBTABS: readonly SettingsSubTab[] = [
+  "env",
+  "domains",
+  "scaling",
+  "mounts",
+  "build",
+  "general",
+  "danger",
+] as const
 const formatDuration = (durationMs: number | null): string => {
   if (durationMs === null) return "—"
   if (durationMs < 1000) return `${durationMs}ms`
@@ -94,20 +112,30 @@ const formatDuration = (durationMs: number | null): string => {
 
 export default function PlatformInstanceWorkspacePage() {
   const params = useParams<{ lang?: string; slug?: string }>()
+  const router = useRouter()
   const searchParams = useSearchParams()
 
   const locale = resolveLocaleOrDefault(params?.lang)
   const slug = params?.slug ?? ""
 
   const rawTab = searchParams.get("tab") || "overview"
+  const rawSection = searchParams.get("section")
   const activeWorkspaceTab: WorkspaceTabKey =
     rawTab === "env" || rawTab === "settings"
       ? "settings"
       : (rawTab as WorkspaceTabKey)
 
-  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>(
-    rawTab === "settings" ? "general" : "env"
-  )
+  const settingsSubTab: SettingsSubTab =
+    rawSection && VALID_SETTINGS_SUBTABS.includes(rawSection as SettingsSubTab)
+      ? (rawSection as SettingsSubTab)
+      : "env"
+
+  const handleSelectSubTab = (subTab: SettingsSubTab) => {
+    router.replace(
+      `/${locale}/console/app/platform/${slug}?tab=settings&section=${subTab}`,
+      { scroll: false }
+    )
+  }
 
   const [apps, setApps] = useState<StackSummaryDTO[]>([])
   const [overview, setOverview] = useState<{
@@ -276,18 +304,7 @@ export default function PlatformInstanceWorkspacePage() {
   }
 
   return (
-    <main className="flex w-full min-w-0 flex-1 flex-col gap-6 p-6 pt-0">
-      {/* Navigation Breadcrumb back to Dashboard */}
-      <div className="flex items-center justify-between">
-        <Link
-          href={localizePathname({ pathname: "/console/app", locale })}
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft size={14} />
-          <span>Back to Platforms Dashboard</span>
-        </Link>
-      </div>
-
+    <div className="flex w-full min-w-0 flex-1 flex-col gap-6">
       {overviewLoading ? (
         <div className="rounded-xl border border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
           Loading platform workspace for {slug}…
@@ -480,75 +497,214 @@ export default function PlatformInstanceWorkspacePage() {
             />
           )}
 
-          {/* TAB 5: SETTINGS & ENV */}
+          {/* TAB 5: SETTINGS */}
           {activeWorkspaceTab === "settings" && (
-            <div className="space-y-6">
-              <div className="flex flex-wrap gap-1.5 border-b border-border pb-3">
-                {(
-                  [
-                    ["env", "Environment Variables"],
-                    ["domains", "Domains & SSL"],
-                    ["scaling", "Scaling & Resources"],
-                    ["mounts", "Storage Mounts"],
-                    ["build", "Build & Deploy"],
-                    ["general", "General Info"],
-                    ["danger", "Danger Zone"],
-                  ] as const
-                ).map(([subTab, label]) => (
-                  <Button
-                    key={subTab}
-                    type="button"
-                    variant={settingsSubTab === subTab ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSettingsSubTab(subTab)}
-                    className="h-8 text-xs"
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
+            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
+              {/* Left Column: Vertical Sub-Navigation */}
+              <nav
+                aria-label="Platform Settings"
+                className="flex flex-col gap-1 rounded-xl border border-border bg-card p-2 lg:col-span-3"
+              >
+                <div className="mb-1 px-3 py-1.5">
+                  <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                    Settings
+                  </h2>
+                </div>
 
-              {settingsSubTab === "env" && (
-                <TabEnv
-                  selectedEnv={selectedEnv}
-                  envVars={envVars}
-                  setEnvVars={setEnvVars}
-                  stackId={overview.stack.id}
-                />
-              )}
-              {settingsSubTab === "domains" && (
-                <TabDomains
-                  stackSlug={overview.stack.slug}
-                  apiDomains={domains}
-                  api={domainCallbacks}
-                  domainsLoading={domainsLoading}
-                  domainsError={domainsError}
-                />
-              )}
-              {settingsSubTab === "scaling" && (
-                <TabScaling replicas={replicas} setReplicas={setReplicas} />
-              )}
-              {settingsSubTab === "mounts" && (
-                <TabMounts
-                  selectedEnv={selectedEnv}
-                  mounts={mounts}
-                  setMounts={setMounts}
-                />
-              )}
-              {settingsSubTab === "build" && <TabBuild />}
-              {settingsSubTab === "general" && (
-                <TabGeneral
-                  stack={overview.stack}
-                  lastDeployedAt={overview.stack.lastDeployedAt}
-                />
-              )}
-              {settingsSubTab === "danger" && (
-                <TabDanger stack={overview.stack} />
-              )}
+                <button
+                  type="button"
+                  onClick={() => handleSelectSubTab("env")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
+                    settingsSubTab === "env"
+                      ? "bg-secondary font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <Key
+                    size={16}
+                    className={
+                      settingsSubTab === "env"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }
+                  />
+                  <span className="flex-1">Environment Variables</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectSubTab("domains")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
+                    settingsSubTab === "domains"
+                      ? "bg-secondary font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <Globe
+                    size={16}
+                    className={
+                      settingsSubTab === "domains"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }
+                  />
+                  <span className="flex-1">Domains & SSL</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectSubTab("scaling")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
+                    settingsSubTab === "scaling"
+                      ? "bg-secondary font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <Cpu
+                    size={16}
+                    className={
+                      settingsSubTab === "scaling"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }
+                  />
+                  <span className="flex-1">Scaling & Resources</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectSubTab("mounts")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
+                    settingsSubTab === "mounts"
+                      ? "bg-secondary font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <HardDrive
+                    size={16}
+                    className={
+                      settingsSubTab === "mounts"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }
+                  />
+                  <span className="flex-1">Storage Mounts</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectSubTab("build")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
+                    settingsSubTab === "build"
+                      ? "bg-secondary font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <Wrench
+                    size={16}
+                    className={
+                      settingsSubTab === "build"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }
+                  />
+                  <span className="flex-1">Build & Deploy</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectSubTab("general")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
+                    settingsSubTab === "general"
+                      ? "bg-secondary font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <Info
+                    size={16}
+                    className={
+                      settingsSubTab === "general"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }
+                  />
+                  <span className="flex-1">General Info</span>
+                </button>
+
+                <div className="my-1.5 border-t border-border" />
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectSubTab("danger")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
+                    settingsSubTab === "danger"
+                      ? "bg-destructive/15 font-semibold text-destructive"
+                      : "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  )}
+                >
+                  <WarningOctagon
+                    size={16}
+                    className={
+                      settingsSubTab === "danger"
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                    }
+                  />
+                  <span className="flex-1">Danger Zone</span>
+                </button>
+              </nav>
+
+              {/* Right Column: Settings Content */}
+              <div className="min-w-0 lg:col-span-9">
+                {settingsSubTab === "env" && (
+                  <TabEnv
+                    selectedEnv={selectedEnv}
+                    envVars={envVars}
+                    setEnvVars={setEnvVars}
+                    stackId={overview.stack.id}
+                  />
+                )}
+                {settingsSubTab === "domains" && (
+                  <TabDomains
+                    stackSlug={overview.stack.slug}
+                    apiDomains={domains}
+                    api={domainCallbacks}
+                    domainsLoading={domainsLoading}
+                    domainsError={domainsError}
+                  />
+                )}
+                {settingsSubTab === "scaling" && (
+                  <TabScaling replicas={replicas} setReplicas={setReplicas} />
+                )}
+                {settingsSubTab === "mounts" && (
+                  <TabMounts
+                    selectedEnv={selectedEnv}
+                    mounts={mounts}
+                    setMounts={setMounts}
+                  />
+                )}
+                {settingsSubTab === "build" && <TabBuild />}
+                {settingsSubTab === "general" && (
+                  <TabGeneral
+                    stack={overview.stack}
+                    lastDeployedAt={overview.stack.lastDeployedAt}
+                  />
+                )}
+                {settingsSubTab === "danger" && (
+                  <TabDanger stack={overview.stack} />
+                )}
+              </div>
             </div>
           )}
         </div>
       ) : null}
-    </main>
+    </div>
   )
 }

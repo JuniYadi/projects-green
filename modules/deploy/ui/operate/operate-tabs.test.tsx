@@ -3,9 +3,15 @@ import { fireEvent, render, waitFor } from "@testing-library/react"
 import { useState } from "react"
 import { INITIAL_LOGS } from "@/modules/deploy/operate.mock"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
+import { TabEnv } from "@/modules/deploy/ui/operate/tab-env"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
+import { TabMounts } from "@/modules/deploy/ui/operate/tab-mounts"
 import { TabOverview } from "@/modules/deploy/ui/operate/tab-overview"
-import type { TenantDomainDTO } from "@/modules/deploy/operate.types"
+import type {
+  TenantDomainDTO,
+  VolumeMount,
+  EnvVar,
+} from "@/modules/deploy/operate.types"
 
 const tenantDomain: TenantDomainDTO = {
   id: "dom-1",
@@ -206,5 +212,82 @@ describe("Operate tabs coverage", () => {
       globalThis.clearInterval = originalClearInterval
       Element.prototype.scrollIntoView = originalScrollIntoView
     }
+  })
+
+  it("covers TabMounts rendering and Read-Only Mount switch toggle", () => {
+    const mounts: Record<string, VolumeMount[]> = {
+      prod: [
+        {
+          id: "mnt-1",
+          name: "app-secret",
+          mountPath: "/var/secrets/app.key",
+          sourceType: "secret",
+          fileMode: "0400",
+          readOnly: true,
+          contentSummary: "[REDACTED] type=key bytes=64 fingerprint=abc123",
+        },
+      ],
+    }
+    const setMounts = mock(() => {})
+
+    const view = render(
+      <TabMounts selectedEnv="prod" mounts={mounts} setMounts={setMounts} />
+    )
+
+    expect(view.getByText("Mount Keys & Files")).toBeDefined()
+    expect(view.getByText("Active Pod File Mounts")).toBeDefined()
+    expect(view.getByText("/var/secrets/app.key")).toBeDefined()
+
+    const switchControl = view.getByRole("switch", {
+      name: "Set mount as read-only",
+    })
+    expect(switchControl.getAttribute("aria-checked")).toBe("true")
+
+    fireEvent.click(switchControl)
+    expect(switchControl.getAttribute("aria-checked")).toBe("false")
+
+    // Submit empty form to trigger validation error
+    fireEvent.click(view.getByRole("button", { name: "Create File Mount" }))
+    expect(view.getByText("All fields are required")).toBeDefined()
+  })
+
+  it("covers TabEnv rendering and Trust Forwarded Headers switch", () => {
+    const envVars: Record<string, EnvVar[]> = {
+      prod: [
+        {
+          id: "env-1",
+          key: "NODE_ENV",
+          value: "production",
+          type: "plain",
+          scope: "runtime",
+          isSecret: false,
+          masked: false,
+          isStoredSecret: false,
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+    }
+    const setEnvVars = mock(() => {})
+
+    const view = render(
+      <TabEnv selectedEnv="prod" envVars={envVars} setEnvVars={setEnvVars} />
+    )
+
+    expect(view.getByText("Environment Variables")).toBeDefined()
+    expect(view.getByText("Reverse Proxy Ingress")).toBeDefined()
+    expect(view.getByText("NODE_ENV")).toBeDefined()
+
+    const trustProxySwitch = view.getByRole("switch", {
+      name: "Trust Forwarded Headers",
+    })
+    expect(trustProxySwitch.getAttribute("aria-checked")).toBe("false")
+
+    fireEvent.click(trustProxySwitch)
+    expect(trustProxySwitch.getAttribute("aria-checked")).toBe("true")
+    expect(
+      view.getByText(
+        "Trust proxies is active. Real client IPs will be available to application code."
+      )
+    ).toBeDefined()
   })
 })

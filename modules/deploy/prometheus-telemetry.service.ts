@@ -58,6 +58,7 @@ export type FetchNamespaceTelemetryOptions = {
   stepSeconds?: number
   timeZone?: string
   fetchFn?: typeof fetch
+  appSlug?: string
 }
 
 function parseToUnixSeconds(val: number | string): number {
@@ -122,7 +123,10 @@ export async function fetchNamespaceTelemetry(
 ): Promise<ClusterTelemetrySummary> {
   const clusterCode = opts.clusterCode ?? DEFAULT_CLUSTER_CODE
   const ns = formatTenantNamespace(opts.organizationId)
-
+  const sanitizedSlug = opts.appSlug
+    ? opts.appSlug.replace(/[^a-zA-Z0-9_-]/g, "")
+    : undefined
+  const podFilter = sanitizedSlug ? `, pod=~"${sanitizedSlug}.*"` : ""
   const isCustom =
     (opts.from !== undefined && opts.to !== undefined) ||
     opts.timeRange === "custom"
@@ -217,34 +221,34 @@ export async function fetchNamespaceTelemetry(
     networkTxMap,
   ] = await Promise.all([
     queryInstant(
-      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}", container!=""}[2m]))`
+      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}"${podFilter}, container!=""}[2m]))`
     ),
     queryInstant(
-      `sum(container_memory_working_set_bytes{namespace="${ns}", container!=""})`
+      `sum(container_memory_working_set_bytes{namespace="${ns}"${podFilter}, container!=""})`
     ),
     queryInstant(
-      `sum(rate(container_network_receive_bytes_total{namespace="${ns}"}[2m]))`
+      `sum(rate(container_network_receive_bytes_total{namespace="${ns}"${podFilter}}[2m]))`
     ),
     queryInstant(
-      `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"}[2m]))`
+      `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"${podFilter}}[2m]))`
     ),
     queryInstant(
-      `sum(kube_pod_container_resource_limits{namespace="${ns}", resource="cpu"})`
+      `sum(kube_pod_container_resource_limits{namespace="${ns}"${podFilter}, resource="cpu"})`
     ),
     queryInstant(
-      `sum(kube_pod_container_resource_limits{namespace="${ns}", resource="memory"})`
+      `sum(kube_pod_container_resource_limits{namespace="${ns}"${podFilter}, resource="memory"})`
     ),
     queryRange(
-      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}", container!=""}[${rateWindow}]))`
+      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}"${podFilter}, container!=""}[${rateWindow}]))`
     ),
     queryRange(
-      `sum(container_memory_working_set_bytes{namespace="${ns}", container!=""})`
+      `sum(container_memory_working_set_bytes{namespace="${ns}"${podFilter}, container!=""})`
     ),
     queryRange(
-      `sum(rate(container_network_receive_bytes_total{namespace="${ns}"}[${rateWindow}]))`
+      `sum(rate(container_network_receive_bytes_total{namespace="${ns}"${podFilter}}[${rateWindow}]))`
     ),
     queryRange(
-      `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"}[${rateWindow}]))`
+      `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"${podFilter}}[${rateWindow}]))`
     ),
   ])
 

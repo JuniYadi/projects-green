@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, fireEvent } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, fireEvent, render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
 import { TrafficFlowCanvas } from "./traffic-flow-canvas"
@@ -35,6 +35,10 @@ describe("TrafficFlowCanvas", () => {
   beforeEach(() => {
     defaultProps.setCloudflareEnabled.mockClear()
     defaultProps.setDbConnected.mockClear()
+  })
+
+  afterEach(() => {
+    cleanup()
   })
 
   it("renders the canvas nodes and title", () => {

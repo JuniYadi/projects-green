@@ -35,11 +35,19 @@ import {
 } from "@/lib/time-range"
 export type ClusterTelemetryCardsProps = {
   clusterCode?: string
+  appSlug?: string
+  title?: string
+  columns?: 1 | 3 | "auto"
+  chartHeight?: number
   className?: string
 }
 
 export function ClusterTelemetryCards({
   clusterCode = "sgp",
+  appSlug,
+  title,
+  columns = "auto",
+  chartHeight,
   className,
 }: ClusterTelemetryCardsProps = {}) {
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
@@ -47,7 +55,7 @@ export function ClusterTelemetryCards({
     preset: "1h",
   })
   const [refreshInterval, setRefreshInterval] =
-    useState<AutoRefreshInterval>(10_000)
+    useState<AutoRefreshInterval>(30_000)
 
   const userTimeZone =
     typeof Intl !== "undefined"
@@ -61,7 +69,14 @@ export function ClusterTelemetryCards({
     dataUpdatedAt,
     refetch,
   } = useQuery<ClusterTelemetrySummary>({
-    queryKey: ["deploy", "telemetry", timeSelection, clusterCode, userTimeZone],
+    queryKey: [
+      "deploy",
+      "telemetry",
+      timeSelection,
+      clusterCode,
+      userTimeZone,
+      appSlug,
+    ],
     queryFn: async () => {
       const queryParams =
         timeSelection.type === "preset"
@@ -69,12 +84,14 @@ export function ClusterTelemetryCards({
               range: timeSelection.preset,
               cluster: clusterCode,
               tz: userTimeZone,
+              ...(appSlug ? { appSlug } : {}),
             }
           : {
               from: String(timeSelection.from),
               to: String(timeSelection.to),
               cluster: clusterCode,
               tz: userTimeZone,
+              ...(appSlug ? { appSlug } : {}),
             }
       const { data: payload } = await eden.api.deploy.telemetry.get({
         $query: queryParams,
@@ -130,19 +147,39 @@ export function ClusterTelemetryCards({
     limit: p.cpuLimitCores,
   }))
 
-  // Map Memory data to sparkline points (in GB)
+  // Map Memory data to sparkline points (in GB) so Limit line (4 GB) and scale match
   const memoryDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
     label: formatPointLabel(p.timestamp),
     value: Number((p.memoryUsageBytes / (1024 * 1024 * 1024)).toFixed(2)),
-    limit: Number((p.memoryLimitBytes / (1024 * 1024 * 1024)).toFixed(2)),
+    limit: Number((p.memoryLimitBytes / (1024 * 1024 * 1024)).toFixed(1)),
   }))
 
-  // Map Network data to dual-line sparkline points (in MB/s)
+  // Auto-scale Network units: B/s, KB/s, or MB/s
+  const maxNetBytes = Math.max(
+    ...telemetry.points.map((p) =>
+      Math.max(p.networkRxBytesPerSec, p.networkTxBytesPerSec)
+    ),
+    1
+  )
+  const netUnit =
+    maxNetBytes >= 1024 * 1024 ? "MB/s" : maxNetBytes >= 1024 ? "KB/s" : "B/s"
+  const netDivisor =
+    netUnit === "MB/s" ? 1024 * 1024 : netUnit === "KB/s" ? 1024 : 1
+
   const networkDataPoints: SparklineDataPoint[] = telemetry.points.map((p) => ({
     label: formatPointLabel(p.timestamp),
-    value: Number((p.networkRxBytesPerSec / (1024 * 1024)).toFixed(2)),
-    secondaryValue: Number((p.networkTxBytesPerSec / (1024 * 1024)).toFixed(2)),
+    value: Number(
+      (p.networkRxBytesPerSec / netDivisor).toFixed(netUnit === "B/s" ? 0 : 1)
+    ),
+    secondaryValue: Number(
+      (p.networkTxBytesPerSec / netDivisor).toFixed(netUnit === "B/s" ? 0 : 1)
+    ),
   }))
+  const isSingleCol = columns === 1
+  const effectiveHeight = chartHeight ?? (isSingleCol ? 125 : 85)
+  const gridClass = isSingleCol
+    ? "grid gap-4 grid-cols-1"
+    : "grid gap-4 md:grid-cols-3"
 
   const cpuPercent = (
     (telemetry.cpu.currentCores / telemetry.cpu.limitCores) *
@@ -178,7 +215,10 @@ export function ClusterTelemetryCards({
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-foreground">
-            Cluster Resource Telemetry
+            {title ??
+              (appSlug
+                ? "Workload Resource Telemetry"
+                : "Cluster Resource Telemetry")}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
             <Globe size={13} className="text-emerald-500" />
@@ -213,7 +253,7 @@ export function ClusterTelemetryCards({
       </div>
 
       {/* 3 Telemetry Cards Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className={gridClass}>
         {/* Card 1: CPU Utilization */}
         <Card className="flex flex-col justify-between">
           <CardHeader className="space-y-1 pb-2">
@@ -243,7 +283,7 @@ export function ClusterTelemetryCards({
               data={cpuDataPoints}
               unit="vCPU"
               color="#10b981"
-              height={85}
+              height={effectiveHeight}
               showArea={true}
               showLimitLine={true}
             />
@@ -279,7 +319,7 @@ export function ClusterTelemetryCards({
               data={memoryDataPoints}
               unit="GB"
               color="#10b981"
-              height={85}
+              height={effectiveHeight}
               showArea={true}
               showLimitLine={true}
             />
@@ -322,10 +362,10 @@ export function ClusterTelemetryCards({
           <CardContent className="pt-0">
             <ClusterTelemetrySparkline
               data={networkDataPoints}
-              unit="MB/s"
+              unit={netUnit}
               color="#10b981"
               secondaryColor="#38bdf8"
-              height={85}
+              height={effectiveHeight}
               showArea={false}
               showLimitLine={false}
             />

@@ -32,6 +32,7 @@ export const appTelemetryRoutes = new Elysia({
         ...(query.from !== undefined ? { from: query.from } : {}),
         ...(query.to !== undefined ? { to: query.to } : {}),
         ...(query.tz !== undefined ? { timeZone: query.tz } : {}),
+        ...(query.appSlug !== undefined ? { appSlug: query.appSlug } : {}),
       })
       return { ok: true, data }
     } catch (error) {
@@ -52,6 +53,7 @@ export const appTelemetryRoutes = new Elysia({
       to: t.Optional(t.String()),
       cluster: t.Optional(t.String()),
       tz: t.Optional(t.String()),
+      appSlug: t.Optional(t.String()),
     }),
   }
 )

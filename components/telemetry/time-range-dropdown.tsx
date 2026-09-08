@@ -46,13 +46,10 @@ const PRESET_OPTIONS: PredefinedTimeRange[] = [
   "7d",
 ]
 
-export type AutoRefreshInterval =
-  false | 5_000 | 10_000 | 30_000 | 60_000 | 300_000
+export type AutoRefreshInterval = false | 30_000 | 60_000 | 300_000
 
 const REFRESH_OPTIONS: Array<{ label: string; value: AutoRefreshInterval }> = [
   { label: "Off", value: false },
-  { label: "5s", value: 5_000 },
-  { label: "10s", value: 10_000 },
   { label: "30s", value: 30_000 },
   { label: "1m", value: 60_000 },
   { label: "5m", value: 300_000 },
@@ -84,7 +81,7 @@ export function TimeRangeDropdown({
   onChange,
   onRefresh,
   isFetching = false,
-  refreshInterval = 10_000,
+  refreshInterval = 30_000,
   onRefreshIntervalChange,
   disabled = false,
   className,
@@ -172,7 +169,7 @@ export function TimeRangeDropdown({
 
   const refreshIntervalLabel = React.useMemo(() => {
     const opt = REFRESH_OPTIONS.find((o) => o.value === refreshInterval)
-    return opt?.label ?? "10s"
+    return opt?.label ?? "30s"
   }, [refreshInterval])
 
   return (

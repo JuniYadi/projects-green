@@ -345,11 +345,40 @@ export type StackSummaryDTO = {
   billingState: StackBillingState
   sourceType?: string | null
   templateId?: string | null
+  templateName?: string | null
+  port?: number | null
+  cpu?: number | null
+  memory?: number | null
+  envCount?: number
+  createdAt?: string
+  orderedAt?: string
+  renewalAt?: string | null
+  catalogPlanName?: string | null
+  catalogPlanPrice?: string | null
+  catalogPlanCurrency?: string | null
+  catalogBillingPeriod?: string | null
+  hourlyCost?: string | null
   lastDeployedAt: string | null
   latestDeploymentId: string | null
   currentStepLabel: string | null
   currentStepIndex: number | null
   currentStepStartedAt: string | null
+}
+
+export const computeNextRenewalDate = (
+  createdAt: Date | string | null | undefined
+): string | null => {
+  if (!createdAt) return null
+  const date = new Date(createdAt)
+  if (isNaN(date.getTime())) return null
+  const next = new Date(date)
+  const targetMonth = (date.getMonth() + 1) % 12
+  next.setMonth(date.getMonth() + 1)
+  // Clamp: if month overflowed beyond targetMonth (e.g. Jan 31 -> Mar 2/3), land on last day of target month
+  if (next.getMonth() !== targetMonth) {
+    next.setDate(0)
+  }
+  return next.toISOString()
 }
 
 export const resolveStackBillingState = (
@@ -375,10 +404,39 @@ export const toStackSummaryDTO = (stack: {
   metadataJson: unknown
   sourceType?: string | null
   templateId?: string | null
+  template?: { name?: string | null } | null
+  envVarsJson?: unknown
+  cpu?: number | null
+  memory?: number | null
+  createdAt?: Date | null
+  hourlyCost?: unknown
+  catalogPlan?: {
+    name: string
+    code: string
+    pricings?: Array<{
+      periodPrice?: unknown
+      currency?: string | null
+      billingPeriod?: string | null
+    }>
+  } | null
   lastDeployedAt: Date | null
   deployments?: Array<{ id: string }>
   events?: Array<Pick<ApplicationDeployEvent, "type" | "createdAt">>
 }): StackSummaryDTO => {
+  const meta = (stack.metadataJson ?? {}) as Record<string, unknown>
+  const envVars = Array.isArray(stack.envVarsJson)
+    ? stack.envVarsJson
+    : typeof stack.envVarsJson === "object" && stack.envVarsJson !== null
+      ? Object.keys(stack.envVarsJson)
+      : []
+  const resolvedPort =
+    typeof meta.port === "number"
+      ? meta.port
+      : typeof meta.defaultPort === "number"
+        ? meta.defaultPort
+        : typeof meta.servicePort === "number"
+          ? meta.servicePort
+          : null
   return {
     id: stack.id,
     name: stack.name,
@@ -397,6 +455,28 @@ export const toStackSummaryDTO = (stack: {
         string | undefined) ??
       stack.templateId ??
       null,
+    templateName:
+      stack.template?.name ?? (meta.templateName as string | undefined) ?? null,
+    port: resolvedPort,
+    cpu: stack.cpu ?? (typeof meta.cpu === "number" ? meta.cpu : null),
+    memory:
+      stack.memory ?? (typeof meta.memory === "number" ? meta.memory : null),
+    envCount: envVars.length,
+    createdAt: stack.createdAt ? stack.createdAt.toISOString() : undefined,
+    orderedAt: stack.createdAt ? stack.createdAt.toISOString() : undefined,
+    renewalAt: computeNextRenewalDate(stack.createdAt),
+    catalogPlanName:
+      stack.catalogPlan?.name ??
+      (stack.resourcePlanId
+        ? `${stack.resourcePlanId.toUpperCase()} Plan`
+        : null),
+    catalogPlanPrice: stack.catalogPlan?.pricings?.[0]?.periodPrice
+      ? String(stack.catalogPlan.pricings[0].periodPrice)
+      : null,
+    catalogPlanCurrency: stack.catalogPlan?.pricings?.[0]?.currency ?? "IDR",
+    catalogBillingPeriod:
+      stack.catalogPlan?.pricings?.[0]?.billingPeriod ?? "MONTHLY",
+    hourlyCost: stack.hourlyCost != null ? String(stack.hourlyCost) : null,
     lastDeployedAt: stack.lastDeployedAt
       ? stack.lastDeployedAt.toISOString()
       : null,

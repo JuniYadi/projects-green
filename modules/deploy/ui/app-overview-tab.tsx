@@ -1,17 +1,7 @@
 "use client"
 
-import Link from "next/link"
-import {
-  RocketLaunch,
-  ChartLine,
-  ListMagnifyingGlass,
-  GearSix,
-  CheckCircle,
-  Clock,
-  ShieldCheck,
-  Cpu,
-} from "@phosphor-icons/react"
-import { Button } from "@/components/ui/button"
+import { CheckCircle } from "@phosphor-icons/react"
+import { ClusterTelemetryCards } from "@/modules/deploy/ui/cluster-telemetry-cards"
 import {
   Card,
   CardContent,
@@ -19,10 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  DEPLOY_STATUS_LABELS,
-  DEPLOY_STATUS_TONE as STATUS_TONE,
-} from "@/modules/deploy/deploy.constants"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
 
 type AppOverviewTabProps = {
@@ -32,257 +18,155 @@ type AppOverviewTabProps = {
 
 export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
   const targetDomain = stack.customDomain || stack.subdomain
-  const tone = STATUS_TONE[stack.status] ?? STATUS_TONE.idle
-  const statusLabel = DEPLOY_STATUS_LABELS[stack.status] ?? stack.status
+
+  const formattedPrice = stack.catalogPlanPrice
+    ? stack.catalogPlanCurrency === "IDR"
+      ? `Rp ${Number(stack.catalogPlanPrice).toLocaleString("id-ID")} / bulan`
+      : `$${stack.catalogPlanPrice} / month`
+    : stack.hourlyCost
+      ? `$${stack.hourlyCost} / hour (PAYG)`
+      : "Included with Package"
+
+  const orderedDate = stack.orderedAt || stack.createdAt
+  const formattedOrdered = orderedDate
+    ? new Date(orderedDate).toLocaleDateString(locale, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "—"
+
+  const formattedRenewal = stack.renewalAt
+    ? new Date(stack.renewalAt).toLocaleDateString(locale, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "Auto-renews monthly"
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Card 1: Active Deployment */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold">
-                Active Deployment
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Production release currently live in cluster
-              </CardDescription>
-            </div>
-            <span
-              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${tone}`}
-            >
-              <span className="size-1.5 rounded-full bg-current" />
-              <span>{statusLabel}</span>
-            </span>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/20 p-3 text-xs">
-              <div>
-                <span className="text-muted-foreground">Branch</span>
-                <p className="mt-0.5 font-mono font-medium text-foreground">
-                  {stack.branchName}
-                </p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Last Deployed</span>
-                <p className="mt-0.5 font-medium text-foreground">
-                  {stack.lastDeployedAt
-                    ? new Date(stack.lastDeployedAt).toLocaleString(locale)
-                    : "Never"}
-                </p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Current Step</span>
-                <p className="mt-0.5 font-medium text-foreground">
-                  {stack.currentStepLabel ?? "Application Live"}
-                </p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Target Domain</span>
-                <p className="mt-0.5 truncate font-medium text-primary">
-                  {targetDomain ?? "—"}
-                </p>
-              </div>
-            </div>
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      {/* Left Column: Live Telemetry Metrics (~58% width) */}
+      <div className="space-y-4 lg:col-span-7">
+        <ClusterTelemetryCards
+          appSlug={stack.slug}
+          title="Resource Telemetry"
+          columns={1}
+          chartHeight={125}
+        />
+      </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <CheckCircle size={14} className="text-emerald-500" />
-                Pipeline Synced with ArgoCD
-              </span>
-              <Button asChild variant="outline" size="xs">
-                <Link
-                  href={`/${locale}/console/app/deployments?app=${stack.slug}`}
-                >
-                  <ListMagnifyingGlass size={13} className="mr-1" />
-                  View Deployments
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Application Summary */}
+      {/* Right Column: Commercial Subscription & Platform Specification (~42% width) */}
+      <div className="space-y-6 lg:col-span-5">
+        {/* Card 1: Subscription & Billing */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold">
-                Application Summary
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Infrastructure and routing metadata
-              </CardDescription>
-            </div>
-            <Button asChild variant="ghost" size="xs">
-              <Link
-                href={`/${locale}/console/app/settings?app=${stack.slug}&tab=general`}
-              >
-                <GearSix size={13} className="mr-1" />
-                Configure
-              </Link>
-            </Button>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">
+              Subscription & Billing
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Active package, catalog plan, and renewal cycle
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-xs">
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
-              <span className="text-muted-foreground">Framework / Runtime</span>
-              <span className="font-medium text-foreground">
-                {stack.framework ?? stack.templateId ?? "Custom Container"}
+              <span className="text-muted-foreground">Catalog Plan</span>
+              <span className="font-semibold text-foreground">
+                {stack.catalogPlanName ??
+                  (stack.resourcePlanId
+                    ? `${stack.resourcePlanId.toUpperCase()} Plan`
+                    : "Small")}
               </span>
             </div>
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
-              <span className="text-muted-foreground">Default Subdomain</span>
-              <span className="truncate font-mono font-medium text-foreground">
-                {stack.subdomain ? `${stack.subdomain}.pfnapp.dev` : "—"}
+              <span className="text-muted-foreground">Price & Cycle</span>
+              <span className="font-semibold text-foreground">
+                {formattedPrice}
               </span>
             </div>
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
-              <span className="text-muted-foreground">Custom Domain</span>
+              <span className="text-muted-foreground">Billing Status</span>
+              <span className="inline-flex items-center gap-1.5 font-medium text-emerald-500">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                Active ({stack.billingState ?? "Good Standing"})
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              <span className="text-muted-foreground">Ordered On</span>
               <span className="font-medium text-foreground">
-                {stack.customDomain ? (
-                  <span className="inline-flex items-center gap-1 text-emerald-500">
-                    <CheckCircle size={13} />
-                    {stack.customDomain}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">Not configured</span>
-                )}
+                {formattedOrdered}
               </span>
             </div>
             <div className="flex items-center justify-between pt-0.5">
-              <span className="text-muted-foreground">Compute Plan</span>
+              <span className="text-muted-foreground">Next Renewal</span>
               <span className="font-medium text-foreground">
-                {stack.resourcePlanId ?? "small"} ({stack.billingMode ?? "PAYG"}
-                )
+                {formattedRenewal}
               </span>
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Card 3: Quick Metrics Snapshot */}
+        {/* Card 2: Platform Specification */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold">
-                Quick Metrics
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Current cluster resource utilization
-              </CardDescription>
-            </div>
-            <Button asChild variant="outline" size="xs">
-              <Link href={`/${locale}/console/app/metrics?app=${stack.slug}`}>
-                <ChartLine size={13} className="mr-1" />
-                All Charts
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4 text-xs">
-            <div className="space-y-1.5">
-              <div className="flex justify-between font-medium">
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <Cpu size={14} /> CPU Allocation
-                </span>
-                <span className="text-foreground">Healthy (under limit)</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted/40">
-                <div className="h-full w-1/4 rounded-full bg-primary" />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex justify-between font-medium">
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <RocketLaunch size={14} /> Memory Usage
-                </span>
-                <span className="text-foreground">Allocated & Steady</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted/40">
-                <div className="h-full w-1/3 rounded-full bg-primary" />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-1 text-muted-foreground">
-              <span>Status: 0 OOM restarts in 24h</span>
-              <span className="text-emerald-500">● 100% Up</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 4: Environment & Secrets */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div>
-              <CardTitle className="text-base font-semibold">
-                Environment & Secrets
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Configuration and Vault credentials injected into pods
-              </CardDescription>
-            </div>
-            <Button asChild variant="outline" size="xs">
-              <Link
-                href={`/${locale}/console/app/settings?app=${stack.slug}&tab=env`}
-              >
-                <GearSix size={13} className="mr-1" />
-                Edit Env
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-3 text-xs">
-            <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-              <div className="flex items-center gap-2 font-medium text-foreground">
-                <ShieldCheck size={16} className="text-primary" />
-                <span>Vault Encryption Active</span>
-              </div>
-              <p className="mt-1 text-muted-foreground">
-                Environment variables and API secrets are encrypted and mounted
-                as Kubernetes Secrets at runtime.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-muted-foreground">Environment Scope</span>
-              <span className="rounded bg-muted px-2 py-0.5 font-mono text-[11px] font-semibold text-foreground">
-                production
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Card 5: Live Activity & Logs Quick Jump */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <div>
+          <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">
-              Recent Activity & Runtime Logs
+              Platform Specification
             </CardTitle>
             <CardDescription className="text-xs">
-              Live stdout/stderr stream from container replicas
+              Template engine, service port, and cluster routing
             </CardDescription>
-          </div>
-          <Button asChild variant="outline" size="xs">
-            <Link href={`/${locale}/console/app/logs?app=${stack.slug}`}>
-              <ListMagnifyingGlass size={13} className="mr-1" />
-              Stream Logs
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-lg border border-border/70 bg-black/80 p-3 font-mono text-xs text-zinc-300">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Clock size={13} />
-              <span>Container runtime running healthy.</span>
+          </CardHeader>
+          <CardContent className="space-y-3 text-xs">
+            <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              <span className="text-muted-foreground">Template / Engine</span>
+              <span className="font-medium text-foreground">
+                {stack.templateName ??
+                  stack.framework ??
+                  stack.templateId ??
+                  "Custom Container"}
+              </span>
             </div>
-            <p className="mt-1 text-emerald-400">
-              ✓ Ready for inbound traffic on port 80/443.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              <span className="text-muted-foreground">Service Port</span>
+              <span className="font-mono font-medium text-foreground">
+                {stack.port ? `Port ${stack.port}` : "Port 80/443"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              <span className="text-muted-foreground">Allocated Resources</span>
+              <span className="font-medium text-foreground">
+                {stack.cpu
+                  ? stack.cpu >= 100
+                    ? `${stack.cpu / 1000} vCPU`
+                    : `${stack.cpu} vCPU`
+                  : "0.5 vCPU"}{" "}
+                • {stack.memory ? `${stack.memory} MB RAM` : "512 MB RAM"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              <span className="text-muted-foreground">Environment Secrets</span>
+              <span className="font-medium text-foreground">
+                {stack.envCount !== undefined
+                  ? `${stack.envCount} Variables (Vault)`
+                  : "Configured in Vault"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              <span className="text-muted-foreground">GitOps Status</span>
+              <span className="inline-flex items-center gap-1 font-medium text-emerald-500">
+                <CheckCircle size={13} />
+                ArgoCD Synced
+              </span>
+            </div>
+            <div className="flex items-center justify-between pt-0.5">
+              <span className="text-muted-foreground">Canonical Endpoint</span>
+              <span className="truncate font-mono text-[11px] text-primary">
+                {targetDomain ?? "—"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

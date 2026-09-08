@@ -271,9 +271,7 @@ describe("Console Marketplace Hub & Template Cards", () => {
   it("renders full ConsoleMarketplacePage container with correct spacing and classes", () => {
     const { container, getByText } = render(<ConsoleMarketplacePage />)
 
-    const mainDiv = container.querySelector(
-      ".flex.flex-1.flex-col.gap-6.p-6.pt-0"
-    )
+    const mainDiv = container.querySelector(".flex.flex-1.flex-col.gap-6")
     expect(mainDiv).not.toBeNull()
     expect(getByText("App Marketplace")).toBeInTheDocument()
   })

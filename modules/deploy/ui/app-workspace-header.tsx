@@ -59,7 +59,7 @@ export function AppWorkspaceHeader({
     DEPLOY_STATUS_LABELS[selectedApp.status] ?? selectedApp.status
 
   const getTabUrl = (tab: WorkspaceTabKey, slug = selectedApp.slug) => {
-    return `/${locale}/console/app/platform/${slug}?tab=${tab === "settings" ? "env" : tab}`
+    return `/${locale}/console/app/platform/${slug}?tab=${tab}`
   }
 
   const tabs: Array<{
@@ -75,7 +75,7 @@ export function AppWorkspaceHeader({
     },
     { key: "logs", label: "Logs", icon: <ListMagnifyingGlass size={15} /> },
     { key: "metrics", label: "Metrics", icon: <ChartLine size={15} /> },
-    { key: "settings", label: "Settings & Env", icon: <GearSix size={15} /> },
+    { key: "settings", label: "Settings", icon: <GearSix size={15} /> },
   ]
 
   const handleSwitchApp = (slug: string) => {

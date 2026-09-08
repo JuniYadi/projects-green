@@ -125,7 +125,7 @@ export default async function ConsoleLayout({
   })
 
   return (
-    <SidebarProvider className="h-svh">
+    <SidebarProvider>
       <AppSidebar
         surface="console"
         user={sidebarUser}

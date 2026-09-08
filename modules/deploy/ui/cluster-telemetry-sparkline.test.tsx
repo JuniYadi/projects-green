@@ -182,12 +182,21 @@ describe("ClusterTelemetrySparkline", () => {
       expect(yAxis?.textContent).toContain("0")
     })
 
-    it("renders horizontal reference gridlines across SVG", () => {
+    it("does not render horizontal gridlines by default", () => {
+      const view = render(<ClusterTelemetrySparkline data={mockData} />)
+      const gridLines = view.container.querySelectorAll(
+        "[data-testid='sparkline-grid-line']"
+      )
+      expect(gridLines.length).toBe(0)
+    })
+
+    it("renders horizontal reference gridlines when showGridLines is true", () => {
       const view = render(
         <ClusterTelemetrySparkline
           data={mockData}
           yAxisTicks={5}
           showYAxis={true}
+          showGridLines={true}
         />
       )
       const gridLines = view.container.querySelectorAll(
@@ -200,7 +209,6 @@ describe("ClusterTelemetrySparkline", () => {
         expect(line.getAttribute("stroke-dasharray")).toBe("3 3")
       })
     })
-
     it("hides sparkline-y-axis when showYAxis is false", () => {
       const view = render(
         <ClusterTelemetrySparkline data={mockData} showYAxis={false} />
