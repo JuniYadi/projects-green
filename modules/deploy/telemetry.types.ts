@@ -10,8 +10,30 @@ export type TelemetryDataPoint = {
   networkTxBytesPerSec: number
 }
 
+export type PodStatusState =
+  | "Running"
+  | "Pending"
+  | "Terminating"
+  | "Failed"
+  | "CrashLoopBackOff"
+  | "ImagePullBackOff"
+  | "OOMKilled"
+  | "Completed"
+  | "Unknown"
+
+export type PodMetricPoint = {
+  timestamp: string
+  value: number
+}
+
 export type PodMetricSummary = {
   pod: string
+  status: PodStatusState
+  phase?: string
+  ready?: boolean
+  reason?: string
+  startTime?: number
+  uptimeSeconds?: number
   cpuUsageCores: number
   cpuRequestCores?: number
   cpuLimitCores: number
@@ -21,7 +43,10 @@ export type PodMetricSummary = {
   memoryLimitBytes: number
   memoryPercent: number
   restarts: number
-  status: "Running" | "Pending" | "Terminating" | "Failed"
+  cpuSeries?: PodMetricPoint[]
+  memorySeries?: PodMetricPoint[]
+  networkRxSeries?: PodMetricPoint[]
+  networkTxSeries?: PodMetricPoint[]
 }
 
 export type ClusterTelemetrySummary = {

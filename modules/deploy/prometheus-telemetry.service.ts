@@ -1,6 +1,8 @@
 import type {
   ClusterTelemetrySummary,
+  PodMetricPoint,
   PodMetricSummary,
+  PodStatusState,
   TelemetryDataPoint,
 } from "./telemetry.types"
 import { resolveClusterIntegrationByClusterCode } from "./cluster-integration.service"
@@ -145,6 +147,94 @@ function parseVectorMetricValues(
   return map
 }
 
+function parseVectorLabelMap(
+  data: unknown,
+  keyLabel = "pod",
+  valLabel = "phase"
+): Map<string, string> {
+  const map = new Map<string, string>()
+  if (!data || typeof data !== "object") return map
+  const payload = data as {
+    data?: {
+      result?: Array<{
+        metric?: Record<string, string>
+        value?: [number, string]
+      }>
+    }
+  }
+  const result = payload.data?.result
+  if (!Array.isArray(result)) return map
+  for (const item of result) {
+    const key = item.metric?.[keyLabel]
+    const val = item.metric?.[valLabel]
+    if (key && val) {
+      map.set(key, val)
+    }
+  }
+  return map
+}
+
+function parsePerPodRangeMetricValues(
+  data: unknown,
+  keyLabel = "pod"
+): Map<string, Map<number, number>> {
+  const podMap = new Map<string, Map<number, number>>()
+  if (!data || typeof data !== "object") return podMap
+  const payload = data as {
+    data?: {
+      result?: Array<{
+        metric?: Record<string, string>
+        values?: Array<[number, string]>
+      }>
+    }
+  }
+  const result = payload.data?.result
+  if (!Array.isArray(result)) return podMap
+  for (const series of result) {
+    const pod = series.metric?.[keyLabel]
+    if (!pod || !Array.isArray(series.values)) continue
+    let timeMap = podMap.get(pod)
+    if (!timeMap) {
+      timeMap = new Map<number, number>()
+      podMap.set(pod, timeMap)
+    }
+    for (const [ts, valStr] of series.values) {
+      const parsed = Number.parseFloat(valStr)
+      if (Number.isFinite(parsed)) {
+        timeMap.set(ts, (timeMap.get(ts) ?? 0) + parsed)
+      }
+    }
+  }
+  return podMap
+}
+
+function resolvePodStatus(
+  phase?: string,
+  waitingReason?: string,
+  terminatedReason?: string
+): PodStatusState {
+  if (waitingReason) {
+    if (waitingReason === "CrashLoopBackOff") return "CrashLoopBackOff"
+    if (
+      waitingReason === "ImagePullBackOff" ||
+      waitingReason === "ErrImagePull"
+    ) {
+      return "ImagePullBackOff"
+    }
+    if (waitingReason === "ContainerCreating") return "Pending"
+  }
+  if (terminatedReason) {
+    if (terminatedReason === "OOMKilled") return "OOMKilled"
+    if (terminatedReason === "Error") return "Failed"
+    if (terminatedReason === "Completed") return "Completed"
+  }
+  if (phase === "Pending") return "Pending"
+  if (phase === "Failed") return "Failed"
+  if (phase === "Succeeded") return "Completed"
+  if (phase === "Running") return "Running"
+  return "Running"
+}
+
 export async function fetchNamespaceTelemetry(
   opts: FetchNamespaceTelemetryOptions
 ): Promise<ClusterTelemetrySummary> {
@@ -246,6 +336,36 @@ export async function fetchNamespaceTelemetry(
       return new Map()
     }
   }
+  const queryVectorLabel = async (
+    query: string,
+    keyLabel = "pod",
+    valLabel = "phase"
+  ): Promise<Map<string, string>> => {
+    const url = `${baseUrl}/api/v1/query?query=${encodeURIComponent(query)}`
+    try {
+      const res = await fetchImpl(url, { headers })
+      if (!res.ok) return new Map()
+      const json = await res.json()
+      return parseVectorLabelMap(json, keyLabel, valLabel)
+    } catch {
+      return new Map()
+    }
+  }
+  const queryPodRange = async (
+    query: string
+  ): Promise<Map<string, Map<number, number>>> => {
+    const url = `${baseUrl}/api/v1/query_range?query=${encodeURIComponent(
+      query
+    )}&start=${startSeconds}&end=${endSeconds}&step=${stepSeconds}`
+    try {
+      const res = await fetchImpl(url, { headers })
+      if (!res.ok) return new Map()
+      const json = await res.json()
+      return parsePerPodRangeMetricValues(json, "pod")
+    } catch {
+      return new Map()
+    }
+  }
   const [
     instantCpuUsage,
     instantMemUsage,
@@ -262,6 +382,15 @@ export async function fetchNamespaceTelemetry(
     podCpuLimitMap,
     podMemLimitMap,
     podRestartsMap,
+    podPhaseMap,
+    podWaitingReasonMap,
+    podTerminatedReasonMap,
+    podStartTimeMap,
+    podReadyMap,
+    podCpuSeriesMap,
+    podMemSeriesMap,
+    podRxSeriesMap,
+    podTxSeriesMap,
   ] = await Promise.all([
     queryInstant(
       `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}"${podFilter}, container!=""}[2m]))`
@@ -307,6 +436,37 @@ export async function fetchNamespaceTelemetry(
     ),
     queryVector(
       `sum(kube_pod_container_status_restarts_total{namespace="${ns}"${podFilter}}) by (pod)`
+    ),
+    queryVectorLabel(
+      `sum by (pod, phase) (kube_pod_status_phase{namespace="${ns}"${podFilter}} == 1)`,
+      "pod",
+      "phase"
+    ),
+    queryVectorLabel(
+      `sum by (pod, reason) (kube_pod_container_status_waiting_reason{namespace="${ns}"${podFilter}} == 1)`,
+      "pod",
+      "reason"
+    ),
+    queryVectorLabel(
+      `sum by (pod, reason) (kube_pod_container_status_terminated_reason{namespace="${ns}"${podFilter}} == 1)`,
+      "pod",
+      "reason"
+    ),
+    queryVector(`kube_pod_start_time{namespace="${ns}"${podFilter}}`),
+    queryVector(
+      `kube_pod_status_ready{namespace="${ns}"${podFilter}, condition="true"}`
+    ),
+    queryPodRange(
+      `sum(rate(container_cpu_usage_seconds_total{namespace="${ns}"${podFilter}, container!=""}[${rateWindow}])) by (pod)`
+    ),
+    queryPodRange(
+      `sum(container_memory_working_set_bytes{namespace="${ns}"${podFilter}, container!=""}) by (pod)`
+    ),
+    queryPodRange(
+      `sum(rate(container_network_receive_bytes_total{namespace="${ns}"${podFilter}}[${rateWindow}])) by (pod)`
+    ),
+    queryPodRange(
+      `sum(rate(container_network_transmit_bytes_total{namespace="${ns}"${podFilter}}[${rateWindow}])) by (pod)`
     ),
   ])
 
@@ -478,6 +638,13 @@ export async function fetchNamespaceTelemetry(
       for (const p of podCpuMap.keys()) allPodNames.add(p)
       for (const p of podMemMap.keys()) allPodNames.add(p)
       for (const p of podRestartsMap.keys()) allPodNames.add(p)
+      for (const p of podPhaseMap.keys()) allPodNames.add(p)
+      for (const p of podCpuSeriesMap.keys()) allPodNames.add(p)
+
+      const nowSec = Math.floor(Date.now() / 1000)
+      const sortedTimestamps = Array.from(returnedTimestamps).sort(
+        (a, b) => a - b
+      )
 
       if (allPodNames.size > 0) {
         return Array.from(allPodNames)
@@ -488,8 +655,81 @@ export async function fetchNamespaceTelemetry(
             const mem = podMemMap.get(pod) ?? 0
             const memLimit = podMemLimitMap.get(pod) || memoryLimitBytes
             const restarts = podRestartsMap.get(pod) ?? 0
+            const phase = podPhaseMap.get(pod)
+            const waitingReason = podWaitingReasonMap.get(pod)
+            const terminatedReason = podTerminatedReasonMap.get(pod)
+            const startTime = podStartTimeMap.get(pod)
+            const ready = (podReadyMap.get(pod) ?? 1) > 0
+
+            const podCpuSeries = podCpuSeriesMap.get(pod)
+            const podMemSeries = podMemSeriesMap.get(pod)
+            const podRxSeries = podRxSeriesMap.get(pod)
+            const podTxSeries = podTxSeriesMap.get(pod)
+
+            const cpuSeries: PodMetricPoint[] =
+              sortedTimestamps.length > 0
+                ? sortedTimestamps.map((t) => ({
+                    timestamp: formatTelemetryTick(
+                      t,
+                      durationSeconds,
+                      opts.timeZone
+                    ),
+                    value: Number((podCpuSeries?.get(t) ?? 0).toFixed(3)),
+                  }))
+                : points.map((p) => ({
+                    timestamp: p.timestamp,
+                    value: Number(cpu.toFixed(3)),
+                  }))
+
+            const memorySeries: PodMetricPoint[] =
+              sortedTimestamps.length > 0
+                ? sortedTimestamps.map((t) => ({
+                    timestamp: formatTelemetryTick(
+                      t,
+                      durationSeconds,
+                      opts.timeZone
+                    ),
+                    value: Math.round(podMemSeries?.get(t) ?? 0),
+                  }))
+                : points.map((p) => ({
+                    timestamp: p.timestamp,
+                    value: Math.round(mem),
+                  }))
+
+            const networkRxSeries: PodMetricPoint[] =
+              sortedTimestamps.length > 0
+                ? sortedTimestamps.map((t) => ({
+                    timestamp: formatTelemetryTick(
+                      t,
+                      durationSeconds,
+                      opts.timeZone
+                    ),
+                    value: Math.round(podRxSeries?.get(t) ?? 0),
+                  }))
+                : []
+
+            const networkTxSeries: PodMetricPoint[] =
+              sortedTimestamps.length > 0
+                ? sortedTimestamps.map((t) => ({
+                    timestamp: formatTelemetryTick(
+                      t,
+                      durationSeconds,
+                      opts.timeZone
+                    ),
+                    value: Math.round(podTxSeries?.get(t) ?? 0),
+                  }))
+                : []
+
             return {
               pod,
+              status: resolvePodStatus(phase, waitingReason, terminatedReason),
+              phase,
+              ready,
+              reason: waitingReason || terminatedReason,
+              startTime,
+              uptimeSeconds: startTime
+                ? Math.max(0, nowSec - startTime)
+                : undefined,
               cpuUsageCores: Number(cpu.toFixed(3)),
               cpuLimitCores: Number(cpuLimit.toFixed(2)),
               cpuPercent: Math.min(
@@ -503,16 +743,38 @@ export async function fetchNamespaceTelemetry(
                 Math.round((mem / (memLimit || 1)) * 100)
               ),
               restarts: Math.round(restarts),
-              status: "Running" as const,
+              cpuSeries,
+              memorySeries,
+              networkRxSeries,
+              networkTxSeries,
             }
           })
       }
       if (sanitizedSlug) {
+        const fallbackCpuSeries = points.map((p) => ({
+          timestamp: p.timestamp,
+          value: p.cpuUsageCores,
+        }))
+        const fallbackMemSeries = points.map((p) => ({
+          timestamp: p.timestamp,
+          value: p.memoryUsageBytes,
+        }))
+        const fallbackRxSeries = points.map((p) => ({
+          timestamp: p.timestamp,
+          value: p.networkRxBytesPerSec,
+        }))
+        const fallbackTxSeries = points.map((p) => ({
+          timestamp: p.timestamp,
+          value: p.networkTxBytesPerSec,
+        }))
         return [
           {
             pod: `${sanitizedSlug}-deploy-0`,
+            status: "Running" as const,
+            phase: "Running",
+            ready: true,
             cpuUsageCores: currentCores,
-            cpuLimitCores: cpuLimitCores,
+            cpuLimitCores,
             cpuPercent: Math.min(
               100,
               Math.round((currentCores / (cpuLimitCores || 1)) * 100)
@@ -524,7 +786,10 @@ export async function fetchNamespaceTelemetry(
               Math.round((currentBytes / (memoryLimitBytes || 1)) * 100)
             ),
             restarts: 0,
-            status: "Running" as const,
+            cpuSeries: fallbackCpuSeries,
+            memorySeries: fallbackMemSeries,
+            networkRxSeries: fallbackRxSeries,
+            networkTxSeries: fallbackTxSeries,
           },
         ]
       }

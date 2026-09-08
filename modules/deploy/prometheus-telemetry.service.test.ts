@@ -636,4 +636,123 @@ describe("fetchNamespaceTelemetry", () => {
     expect(summary.pods?.[1].pod).toBe("hermes-vibrant-comet-deploy-1")
     expect(summary.pods?.[1].cpuUsageCores).toBe(0.082)
   })
+
+  it("resolves live pod health status, readiness, uptime and per-pod time-series", async () => {
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+      if (urlString.includes("kube_pod_status_phase")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: { pod: "hermes-deploy-0", phase: "Running" },
+                  value: [1725822607, "1"],
+                },
+                {
+                  metric: { pod: "hermes-deploy-1", phase: "Running" },
+                  value: [1725822607, "1"],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("kube_pod_container_status_waiting_reason")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {
+                    pod: "hermes-deploy-1",
+                    reason: "CrashLoopBackOff",
+                  },
+                  value: [1725822607, "1"],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("kube_pod_start_time")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: { pod: "hermes-deploy-0" },
+                  value: [1725822607, "1725820000"],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("container_cpu_usage_seconds_total") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: { pod: "hermes-deploy-0" },
+                  values: [
+                    [1725822000, "0.150"],
+                    [1725822300, "0.180"],
+                  ],
+                },
+                {
+                  metric: { pod: "hermes-deploy-1" },
+                  values: [
+                    [1725822000, "0.040"],
+                    [1725822300, "0.050"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    const summary = await fetchNamespaceTelemetry({
+      organizationId: "org_status_pod",
+      appSlug: "hermes",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(summary.pods).toBeDefined()
+    expect(summary.pods?.length).toBe(2)
+
+    const pod0 = summary.pods?.find((p) => p.pod === "hermes-deploy-0")
+    const pod1 = summary.pods?.find((p) => p.pod === "hermes-deploy-1")
+
+    expect(pod0).toBeDefined()
+    expect(pod0?.status).toBe("Running")
+    expect(pod0?.startTime).toBe(1725820000)
+    expect(pod0?.uptimeSeconds).toBeGreaterThan(0)
+    expect(pod0?.cpuSeries?.length).toBeGreaterThan(0)
+
+    expect(pod1).toBeDefined()
+    expect(pod1?.status).toBe("CrashLoopBackOff")
+    expect(pod1?.reason).toBe("CrashLoopBackOff")
+  })
 })
