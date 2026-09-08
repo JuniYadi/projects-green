@@ -469,10 +469,10 @@ export function TabDomains({
     <div className="grid gap-6 md:grid-cols-3">
       <Card
         size="sm"
-        className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        className="col-span-2 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
       >
         <CardHeader className="pb-4">
-          <CardTitle className="text-base font-bold text-white">
+          <CardTitle className="text-base font-bold text-foreground">
             Custom Domain Settings
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
@@ -616,10 +616,10 @@ export function TabDomains({
       {apiMode && (
         <Card
           size="sm"
-          className="h-fit border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+          className="h-fit border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
         >
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-bold text-white">
+            <CardTitle className="text-base font-bold text-foreground">
               Domain endpoint
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">

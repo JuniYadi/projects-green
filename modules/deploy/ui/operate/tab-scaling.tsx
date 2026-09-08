@@ -161,12 +161,12 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
       {/* Pod Status Overview */}
       <Card
         size="sm"
-        className="border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        className="border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
       >
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-primary/20 bg-primary/10">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
                 </span>
@@ -327,10 +327,10 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
 
         <Card
           size="sm"
-          className="col-span-1 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+          className="col-span-1 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
         >
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
               <Cpu size={18} className="text-primary" /> Resource Tuning
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
@@ -493,10 +493,10 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
         {/* Autoscaling Policies */}
         <Card
           size="sm"
-          className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+          className="col-span-2 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
         >
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-bold text-white">
+            <CardTitle className="text-base font-bold text-foreground">
               Autoscaling Policies (HPA / VPA)
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">

@@ -114,10 +114,10 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
       {/* Create Mount form */}
       <Card
         size="sm"
-        className="col-span-1 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        className="col-span-1 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
       >
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
             <Key size={18} className="text-primary" /> Mount Keys & Files
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
@@ -217,10 +217,10 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
       {/* Active Mounts List */}
       <Card
         size="sm"
-        className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        className="col-span-2 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
       >
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold text-white">
+          <CardTitle className="text-base font-bold text-foreground">
             Active Pod File Mounts
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">

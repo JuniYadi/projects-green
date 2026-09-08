@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 
 import type { LogMessage } from "@/modules/deploy/operate.types"
 
@@ -114,43 +115,34 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
   return (
     <Card
       size="sm"
-      className="border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+      className="border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
     >
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div className="space-y-1">
-          <CardTitle className="text-base font-bold text-white">
+          <CardTitle className="text-base font-bold text-foreground">
             Opensearch Log Viewer
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
             Live streaming log aggregates index from this workspace cluster
           </CardDescription>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span
             className="cursor-pointer text-xs text-muted-foreground select-none"
             onClick={() => setIsLiveTailing(!isLiveTailing)}
           >
             Live Tail
           </span>
-          <button
-            type="button"
+          <Switch
+            checked={isLiveTailing}
+            onCheckedChange={setIsLiveTailing}
             aria-label="Live Tail"
-            onClick={() => setIsLiveTailing(!isLiveTailing)}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              isLiveTailing ? "bg-primary" : "bg-neutral-800"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                isLiveTailing ? "translate-x-4" : "translate-x-0"
-              }`}
-            />
-          </button>
+          />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search & Level Filter bar */}
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.06] bg-black/40 px-4 py-2.5 text-xs">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/20 px-4 py-2.5 text-xs dark:bg-black/40">
           <div className="relative min-w-[240px] flex-1">
             <MagnifyingGlass
               size={15}
@@ -161,7 +153,7 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
               placeholder="Search logs (e.g. nginx, connect, database)..."
               value={logFilterQuery}
               onChange={(e) => setLogFilterQuery(e.target.value)}
-              className="h-8 rounded-lg border-white/[0.08] bg-black/50 pl-9 text-xs focus:border-primary/50"
+              className="h-8 rounded-lg pl-9 text-xs"
             />
           </div>
 
@@ -175,7 +167,7 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
                     ? "bg-amber-400"
                     : lvl === "ERROR"
                       ? "bg-red-400"
-                      : "bg-white"
+                      : "bg-foreground"
               return (
                 <Button
                   key={lvl}
@@ -183,11 +175,7 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
                   onClick={() => setLogFilterLevel(lvl)}
                   variant={isActive ? "default" : "outline"}
                   size="xs"
-                  className={`flex h-8 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                    isActive
-                      ? "bg-primary text-white hover:bg-primary/95"
-                      : "border-white/[0.08] bg-black/40 text-muted-foreground hover:bg-white/[0.02] hover:text-white"
-                  }`}
+                  className="flex h-8 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
                 >
                   <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
                   {lvl}
@@ -198,7 +186,7 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
         </div>
 
         {/* Logs display shell */}
-        <div className="max-h-[350px] min-h-[220px] space-y-1 overflow-auto rounded-xl border border-white/[0.08] bg-[#050507] px-4 py-3.5 font-mono text-[11px] leading-relaxed shadow-inner">
+        <div className="max-h-[350px] min-h-[220px] space-y-1 overflow-auto rounded-xl border border-border bg-zinc-950 px-4 py-3.5 font-mono text-[11px] leading-relaxed text-zinc-100 shadow-inner dark:bg-[#050507]">
           {filteredLogs.map((log, idx) => {
             const levelBadgeStyle =
               log.level === "ERROR"

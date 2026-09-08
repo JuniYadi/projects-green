@@ -104,7 +104,7 @@ describe("PlatformInstanceWorkspacePage (/console/app/platform/[slug])", () => {
 
     await waitFor(() => {
       expect(getByText("Back to Platforms Dashboard")).toBeDefined()
-      expect(getByText("Hermes Comet")).toBeDefined()
+      expect(getAllByText("Hermes Comet").length).toBeGreaterThan(0)
       expect(getAllByText("Environment Variables").length).toBeGreaterThan(0)
     })
   })

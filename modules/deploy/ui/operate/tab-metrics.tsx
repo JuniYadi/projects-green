@@ -187,10 +187,10 @@ export function TabMetrics({
       {/* Real-time telemetry */}
       <Card
         size="sm"
-        className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        className="col-span-2 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
       >
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold text-white">
+          <CardTitle className="text-base font-bold text-foreground">
             Live Resource Monitoring
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
@@ -199,19 +199,19 @@ export function TabMetrics({
         </CardHeader>
         <CardContent className="space-y-6">
           {/* CPU Telemetry Card */}
-          <div className="space-y-3.5 rounded-xl border border-white/[0.06] bg-black/30 p-4">
+          <div className="space-y-3.5 rounded-xl border border-border bg-muted/20 p-4 dark:bg-black/30">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-xs font-bold text-white">
+              <span className="flex items-center gap-2 text-xs font-bold text-foreground">
                 <Cpu size={16} className="text-emerald-400" /> CPU Allocation
               </span>
-              <span className="font-mono text-xs font-semibold text-white/95">
+              <span className="font-mono text-xs font-semibold text-foreground">
                 {cpuUsage} / {cpuLimit}{" "}
                 <span className="text-emerald-400">({cpuPercent}%)</span>
               </span>
             </div>
 
             {/* Sparkline chart */}
-            <div className="relative h-[70px] w-full overflow-hidden rounded-lg border border-white/[0.04] bg-neutral-950/50 p-1">
+            <div className="relative h-[70px] w-full overflow-hidden rounded-lg border border-border bg-muted/10 p-1 dark:bg-neutral-950/50">
               <svg
                 className="h-full w-full"
                 viewBox="0 0 400 70"
@@ -243,19 +243,19 @@ export function TabMetrics({
           </div>
 
           {/* RAM Telemetry Card */}
-          <div className="space-y-3.5 rounded-xl border border-white/[0.06] bg-black/30 p-4">
+          <div className="space-y-3.5 rounded-xl border border-border bg-muted/20 p-4 dark:bg-black/30">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-xs font-bold text-white">
+              <span className="flex items-center gap-2 text-xs font-bold text-foreground">
                 <HardDrive size={16} className="text-red-400" /> RAM Allocation
               </span>
-              <span className="font-mono text-xs font-semibold text-white/95">
+              <span className="font-mono text-xs font-semibold text-foreground">
                 {memoryUsage} / {memLimit}{" "}
                 <span className="text-red-400">({memoryPercent}%)</span>
               </span>
             </div>
 
             {/* Sparkline chart */}
-            <div className="relative h-[70px] w-full overflow-hidden rounded-lg border border-white/[0.04] bg-neutral-950/50 p-1">
+            <div className="relative h-[70px] w-full overflow-hidden rounded-lg border border-border bg-muted/10 p-1 dark:bg-neutral-950/50">
               <svg
                 className="h-full w-full"
                 viewBox="0 0 400 70"
@@ -287,19 +287,19 @@ export function TabMetrics({
           </div>
 
           {/* Network Ingress Telemetry Card */}
-          <div className="space-y-3.5 rounded-xl border border-white/[0.06] bg-black/30 p-4">
+          <div className="space-y-3.5 rounded-xl border border-border bg-muted/20 p-4 dark:bg-black/30">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-xs font-bold text-white">
+              <span className="flex items-center gap-2 text-xs font-bold text-foreground">
                 <Pulse size={16} className="text-purple-400" /> Network Ingress
               </span>
-              <span className="font-mono text-xs font-semibold text-white/95">
+              <span className="font-mono text-xs font-semibold text-foreground">
                 {networkHistory[networkHistory.length - 1]} rps{" "}
                 <span className="text-purple-400">(Normal)</span>
               </span>
             </div>
 
             {/* Sparkline chart */}
-            <div className="relative h-[70px] w-full overflow-hidden rounded-lg border border-white/[0.04] bg-neutral-950/50 p-1">
+            <div className="relative h-[70px] w-full overflow-hidden rounded-lg border border-border bg-muted/10 p-1 dark:bg-neutral-950/50">
               <svg
                 className="h-full w-full"
                 viewBox="0 0 400 70"
@@ -341,10 +341,10 @@ export function TabMetrics({
       {/* Recommendations / warnings */}
       <Card
         size="sm"
-        className="col-span-1 h-fit border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        className="col-span-1 h-fit border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
       >
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
             <Warning size={18} className="text-amber-500" /> Resource Advisory
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
@@ -352,28 +352,28 @@ export function TabMetrics({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs leading-relaxed">
-          <div className="space-y-2 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-red-300">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-red-400 uppercase">
+          <div className="text-destructive-foreground space-y-2 rounded-xl border border-destructive/20 bg-destructive/10 p-4 dark:text-red-300">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-destructive uppercase dark:text-red-400">
               <Warning size={14} /> ⚠️ Low RAM Headroom
             </span>
-            <p className="pt-0.5 text-xs leading-relaxed text-red-200/90">
+            <p className="pt-0.5 text-xs leading-relaxed text-foreground dark:text-red-200/90">
               Your app is utilizing{" "}
               <strong>{memoryPercent}% of allocated RAM</strong> (
               {formatMemoryValue(memoryUsageValue)} of{" "}
               {formatMemoryValue(memoryLimitValue)}). Under load, pods will
               suffer OOMKilled restarts.
             </p>
-            <p className="rounded-lg border border-red-500/10 bg-black/60 p-3 font-mono text-[10px] leading-relaxed font-semibold text-white">
+            <p className="rounded-lg border border-border bg-muted p-3 font-mono text-[10px] leading-relaxed font-semibold text-foreground dark:bg-black/60 dark:text-white">
               Recommendation: Scale Memory Limit to 1024MiB (1GiB) in the Tuning
               tab.
             </p>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-emerald-300">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-emerald-400 uppercase">
+          <div className="space-y-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-950 dark:text-emerald-300">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-emerald-700 uppercase dark:text-emerald-400">
               <CheckCircle size={14} /> CPU Headroom Adequate
             </span>
-            <p className="pt-0.5 text-xs leading-relaxed text-emerald-200/90">
+            <p className="pt-0.5 text-xs leading-relaxed text-emerald-900 dark:text-emerald-200/90">
               CPU usage is steady at {cpuPercent}% (
               {formatCoreValue(cpuUsageValue)} of{" "}
               {formatCoreValue(cpuLimitValue)} cores). Limit provides adequate

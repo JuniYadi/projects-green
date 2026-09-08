@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 import { EnvVarsEditor } from "@/modules/deploy/ui/env-vars-editor"
 import { isSecretEnvVarType } from "@/modules/deploy/environment-vars"
 import type { EnvVar, SharedSecretOption } from "@/modules/deploy/deploy.types"
@@ -99,11 +100,11 @@ export function TabEnv({
     <div className="grid gap-6 md:grid-cols-3">
       <Card
         size="sm"
-        className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        className="col-span-2 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
       >
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div className="flex flex-col gap-1">
-            <CardTitle className="text-base font-bold text-white">
+            <CardTitle className="text-base font-bold text-foreground">
               Environment Variables
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
@@ -126,10 +127,10 @@ export function TabEnv({
 
       <Card
         size="sm"
-        className="col-span-1 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        className="col-span-1 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
       >
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
             <ArrowsLeftRight size={18} className="text-primary" /> Reverse Proxy
             Ingress
           </CardTitle>
@@ -138,33 +139,20 @@ export function TabEnv({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 text-xs leading-relaxed">
-          <div className="flex flex-col gap-3.5 rounded-xl border border-white/[0.06] bg-black/40 p-4">
+          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-muted/20 p-4 dark:bg-black/40">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">
+              <span className="font-semibold text-foreground">
                 Trust Forwarded Headers
               </span>
-              <button
-                type="button"
-                onClick={() => setTrustProxy((value) => !value)}
-                className={
-                  trustProxy
-                    ? "relative inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1 text-[10px] font-bold text-white transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    : "relative inline-flex items-center gap-2 rounded-full border border-white/5 bg-neutral-800 px-3 py-1 text-[10px] font-bold text-muted-foreground transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                }
-              >
-                <span
-                  className={
-                    trustProxy
-                      ? "inline-block size-1.5 animate-pulse rounded-full bg-white"
-                      : "inline-block size-1.5 rounded-full bg-neutral-500"
-                  }
-                />
-                {trustProxy ? "TRUST ACTIVE" : "DISABLED"}
-              </button>
+              <Switch
+                checked={trustProxy}
+                onCheckedChange={setTrustProxy}
+                aria-label="Trust Forwarded Headers"
+              />
             </div>
             <p className="text-[11px] leading-normal text-muted-foreground">
               Configures nginx and the application setting{" "}
-              <code className="rounded bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white">
+              <code className="rounded border border-border/50 bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
                 TRUST_PROXIES=*
               </code>
               .
@@ -172,7 +160,7 @@ export function TabEnv({
           </div>
 
           <div className="flex flex-col gap-2 border-l-2 border-blue-500/40 pl-3">
-            <h4 className="text-xs leading-tight font-bold text-white">
+            <h4 className="text-xs leading-tight font-bold text-foreground">
               User IP Resolution
             </h4>
             <p className="text-[11px] leading-normal text-muted-foreground">
@@ -183,7 +171,7 @@ export function TabEnv({
             <p className="text-[11px] leading-normal font-medium text-muted-foreground">
               Trusting forwarded headers lets the application read the
               client&apos;s{" "}
-              <code className="font-mono text-white/90">X-Forwarded-For</code>{" "}
+              <code className="font-mono text-foreground">X-Forwarded-For</code>{" "}
               value.
             </p>
             {trustProxy ? (
