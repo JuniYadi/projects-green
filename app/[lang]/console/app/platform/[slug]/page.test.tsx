@@ -79,6 +79,7 @@ const appsProxy = new Proxy(
 )
 
 mock.module("@/lib/eden", () => ({
+  getApiBaseUrl: () => "http://localhost:3300",
   eden: {
     api: {
       deploy: {
