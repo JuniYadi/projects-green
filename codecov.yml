@@ -8,6 +8,8 @@ coverage:
 
   status:
     project:
+      default:
+        informational: true
       full:
         target: 85%
         threshold: 0%
