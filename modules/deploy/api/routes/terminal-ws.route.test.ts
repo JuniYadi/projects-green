@@ -1,11 +1,38 @@
-import { describe, it, expect, mock } from "bun:test"
+import { describe, it, expect, mock, beforeEach } from "bun:test"
 import {
   isAllowedOrigin,
   terminalWsRoute,
   handleWsMessage,
   handleWsClose,
+  executeTerminalSession,
   type WsClientContext,
+  type TerminalWsClient,
 } from "./terminal-ws.route"
+
+const mockFindUnique = mock()
+const mockResolveAuthContext = mock()
+const mockResolveStackExecCredentials = mock()
+
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    applicationStack: {
+      findUnique: mockFindUnique,
+    },
+  },
+}))
+
+mock.module("@/lib/auth/resolve-proxy-auth", () => ({
+  resolveAuthContext: mockResolveAuthContext,
+}))
+
+mock.module("@/modules/deploy/pod-exec.service", () => ({
+  resolveStackExecCredentials: mockResolveStackExecCredentials,
+  buildKubeExecUrl: () => "wss://k8s.test/exec",
+  decodeKubeFrame: (buf: ArrayBuffer) => ({ channel: 1, data: "output" }),
+  encodeKubeFrame: (channel: number, data: string) => new Uint8Array([channel]),
+  encodeResizeFrame: () => new Uint8Array([4]),
+  KUBE_EXEC_CHANNELS: { STDIN: 0, STDOUT: 1, STDERR: 2, ERROR: 3, RESIZE: 4 },
+}))
 
 describe("terminal-ws.route isAllowedOrigin", () => {
   it("rejects null or empty origin", () => {
@@ -128,5 +155,103 @@ describe("terminalWsRoute definition and message handlers", () => {
     handleWsClose(ctx)
     expect(terminalState.clientClosed).toBe(true)
     expect(mockClose).toHaveBeenCalledWith(1000, "Client closed terminal")
+  })
+})
+
+describe("executeTerminalSession validation flows", () => {
+  beforeEach(() => {
+    mockFindUnique.mockReset()
+    mockResolveAuthContext.mockReset()
+    mockResolveStackExecCredentials.mockReset()
+  })
+
+  it("rejects invalid origin with 1008 close code", async () => {
+    const mockSend = mock()
+    const mockClose = mock()
+    const ws: TerminalWsClient = {
+      data: {
+        params: { stackId: "stk_1" },
+        query: { pod: "pod_1" },
+        headers: { origin: "https://evil.com" },
+      },
+      send: mockSend,
+      close: mockClose,
+    }
+
+    await executeTerminalSession(ws, { clientClosed: false })
+    expect(mockClose).toHaveBeenCalledWith(1008, "Invalid origin")
+  })
+
+  it("rejects unauthenticated request with 1008 close code", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce(null)
+    const mockSend = mock()
+    const mockClose = mock()
+    const ws: TerminalWsClient = {
+      data: {
+        params: { stackId: "stk_1" },
+        query: { pod: "pod_1" },
+        headers: { origin: "https://pfnapp.my.id" },
+        request: new Request("http://localhost"),
+      },
+      send: mockSend,
+      close: mockClose,
+    }
+
+    await executeTerminalSession(ws, { clientClosed: false })
+    expect(mockClose).toHaveBeenCalledWith(1008, "Unauthorized")
+  })
+
+  it("rejects non-existent stack with 1008 close code", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      type: "workos",
+      platformRole: "member",
+      organizationId: "org_1",
+    })
+    mockFindUnique.mockResolvedValueOnce(null)
+
+    const mockSend = mock()
+    const mockClose = mock()
+    const ws: TerminalWsClient = {
+      data: {
+        params: { stackId: "stk_nonexistent" },
+        query: { pod: "pod_1" },
+        headers: { origin: "https://pfnapp.my.id" },
+        request: new Request("http://localhost"),
+      },
+      send: mockSend,
+      close: mockClose,
+    }
+
+    await executeTerminalSession(ws, { clientClosed: false })
+    expect(mockClose).toHaveBeenCalledWith(1008, "Stack not found")
+  })
+
+  it("rejects stack belonging to another organization for non-super-admin", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      type: "workos",
+      platformRole: "member",
+      organizationId: "org_user",
+    })
+    mockFindUnique.mockResolvedValueOnce({
+      id: "stk_other",
+      organizationId: "org_other",
+      slug: "other-stack",
+    })
+
+    const mockSend = mock()
+    const mockClose = mock()
+    const ws: TerminalWsClient = {
+      data: {
+        params: { stackId: "stk_other" },
+        query: { pod: "pod_1" },
+        headers: { origin: "https://pfnapp.my.id" },
+        request: new Request("http://localhost"),
+      },
+      send: mockSend,
+      close: mockClose,
+    }
+
+    await executeTerminalSession(ws, { clientClosed: false })
+    expect(mockClose).toHaveBeenCalledWith(1008, "Forbidden")
   })
 })
