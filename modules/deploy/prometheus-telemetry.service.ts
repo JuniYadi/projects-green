@@ -599,7 +599,10 @@ export async function fetchNamespaceTelemetry(
   for (const t of memUsageMap.keys()) returnedTimestamps.add(t)
   for (const t of networkRxMap.keys()) returnedTimestamps.add(t)
   for (const t of networkTxMap.keys()) returnedTimestamps.add(t)
-
+  for (const statusSeries of haproxyStatusMap.values()) {
+    for (const t of statusSeries.keys()) returnedTimestamps.add(t)
+  }
+  for (const t of haproxyAppLatencyMap.keys()) returnedTimestamps.add(t)
   let points: TelemetryDataPoint[]
 
   if (returnedTimestamps.size === 0) {

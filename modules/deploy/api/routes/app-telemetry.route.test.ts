@@ -184,6 +184,25 @@ describe("appTelemetryRoutes", () => {
     })
   })
 
+  it("passes view query parameter (compute or ingress) to service", async () => {
+    for (const view of ["compute", "ingress"] as const) {
+      mockFetchNamespaceTelemetry.mockClear()
+      const response = await appTelemetryRoutes.handle(
+        new Request(
+          `http://localhost/deploy/telemetry?view=${view}&appSlug=my-app`
+        )
+      )
+      expect(response.status).toBe(200)
+      expect(mockFetchNamespaceTelemetry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-1",
+          view,
+          appSlug: "my-app",
+        })
+      )
+    }
+  })
+
   it("returns 500 when service throws an unexpected error", async () => {
     mockFetchNamespaceTelemetry.mockRejectedValueOnce(
       new Error("Prometheus connection failed")

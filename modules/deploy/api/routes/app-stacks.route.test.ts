@@ -929,5 +929,20 @@ describe("appStacksRoutes", () => {
       const res = await post("/deploy/apps/nonexistent/sync")
       expect(res.status).toBe(404)
     })
+
+    it("returns 401 when user is not authenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({ user: null } as never)
+      const res = await post("/deploy/apps/console-next-app/sync")
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 when user has no organizationId", async () => {
+      mockWithAuth.mockResolvedValueOnce({
+        user: { id: "user-1" },
+        organizationId: null,
+      } as never)
+      const res = await post("/deploy/apps/console-next-app/sync")
+      expect(res.status).toBe(403)
+    })
   })
 })

@@ -764,4 +764,257 @@ describe("fetchNamespaceTelemetry", () => {
     expect(pod1?.status).toBe("CrashLoopBackOff")
     expect(pod1?.reason).toBe("CrashLoopBackOff")
   })
+
+  it("resolves live HAProxy HTTP ingress telemetry with grouped status codes and latency breakdown", async () => {
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+
+      if (
+        urlString.includes("haproxy_backend_http_responses_total") &&
+        urlString.includes("sum by (code)")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: { code: "2xx" },
+                  values: [
+                    [1725822000, "15.5"],
+                    [1725822300, "20.2"],
+                  ],
+                },
+                {
+                  metric: { code: "3xx" },
+                  values: [
+                    [1725822000, "0.5"],
+                    [1725822300, "0.8"],
+                  ],
+                },
+                {
+                  metric: { code: "4xx" },
+                  values: [
+                    [1725822000, "0.1"],
+                    [1725822300, "0.2"],
+                  ],
+                },
+                {
+                  metric: { code: "5xx" },
+                  values: [
+                    [1725822000, "0.0"],
+                    [1725822300, "0.01"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("haproxy_backend_response_time_average_seconds") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {},
+                  values: [
+                    [1725822000, "0.045"],
+                    [1725822300, "0.052"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("haproxy_backend_queue_time_average_seconds") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {},
+                  values: [
+                    [1725822000, "0.001"],
+                    [1725822300, "0.002"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("haproxy_backend_connect_time_average_seconds") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {},
+                  values: [
+                    [1725822000, "0.003"],
+                    [1725822300, "0.004"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (
+        urlString.includes("haproxy_backend_total_time_average_seconds") &&
+        urlString.includes("query_range")
+      ) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              result: [
+                {
+                  metric: {},
+                  values: [
+                    [1725822000, "0.049"],
+                    [1725822300, "0.058"],
+                  ],
+                },
+              ],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("haproxy_backend_http_requests_total")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              resultType: "vector",
+              result: [{ value: [1725822300, "21.5"] }],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("haproxy_backend_current_sessions")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              resultType: "vector",
+              result: [{ value: [1725822300, "8"] }],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlString.includes("haproxy_backend_active_servers")) {
+        return new Response(
+          JSON.stringify({
+            status: "success",
+            data: {
+              resultType: "vector",
+              result: [{ value: [1725822300, "3"] }],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    const summary = await fetchNamespaceTelemetry({
+      organizationId: "org_live_ingress",
+      appSlug: "storefront",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(summary.ingress).toBeDefined()
+    expect(summary.ingress?.trafficRps).toBe(21.5)
+    expect(summary.ingress?.activeSessions).toBe(8)
+    expect(summary.ingress?.healthyServers).toBe(3)
+    expect(summary.ingress?.statusCodes.length).toBe(4)
+
+    const code2xx = summary.ingress?.statusCodes.find((s) => s.code === "2xx")
+    expect(code2xx).toBeDefined()
+    expect(code2xx?.points.length).toBeGreaterThan(0)
+
+    const latencyTotal = summary.ingress?.latencyBreakdown.find(
+      (s) => s.type === "total"
+    )
+    expect(latencyTotal).toBeDefined()
+    expect(latencyTotal?.points.length).toBeGreaterThan(0)
+  })
+
+  it("skips HAProxy ingress queries when view option is 'compute'", async () => {
+    const executedQueries: string[] = []
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+      executedQueries.push(urlString)
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    const summary = await fetchNamespaceTelemetry({
+      organizationId: "org_view_compute",
+      view: "compute",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    expect(summary.ingress).toBeUndefined()
+    expect(executedQueries.some((q) => q.includes("haproxy_"))).toBe(false)
+  })
+
+  it("skips pod series range queries when view option is 'ingress'", async () => {
+    const executedQueries: string[] = []
+    const mockFetch = mock(async (url: string | URL | Request) => {
+      const urlString = decodeURIComponent(url.toString())
+      executedQueries.push(urlString)
+      return new Response(
+        JSON.stringify({
+          status: "success",
+          data: { resultType: "vector", result: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    })
+
+    await fetchNamespaceTelemetry({
+      organizationId: "org_view_ingress",
+      view: "ingress",
+      fetchFn: mockFetch as unknown as typeof fetch,
+    })
+
+    const podRangeQueries = executedQueries.filter(
+      (q) => q.includes("query_range") && q.includes("by (pod)")
+    )
+    expect(podRangeQueries.length).toBe(0)
+  })
 })
