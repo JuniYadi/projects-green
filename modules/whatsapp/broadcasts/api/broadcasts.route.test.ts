@@ -5,7 +5,7 @@ import {
   WhatsappBroadcastStatus,
   type Prisma,
 } from "@prisma/client"
-
+import type { DeviceBroadcastCapacityDTO } from "../broadcast-schedule.dto"
 type DeviceSelection = Prisma.WhatsappDeviceGetPayload<{
   select: { id: true }
 }>
@@ -82,14 +82,7 @@ const mockTemplateFindFirst = mock<() => Promise<TemplateSelection | null>>(
   async () => null
 )
 const mockGetDeviceBroadcastCapacity = mock<
-  () => Promise<{
-    dailyLimit: number
-    dailyUsed: number
-    hourlyLimit: number
-    hourlyUsed: number
-    remainingToday: number
-    remainingThisHour: number
-  }>
+  (...args: unknown[]) => Promise<DeviceBroadcastCapacityDTO>
 >(async () => ({
   dailyLimit: 1000,
   dailyUsed: 0,
@@ -392,6 +385,39 @@ describe("broadcastsRoutes /:id/send", () => {
     expect(mockCampaignUpdate).not.toHaveBeenCalled()
     expect(mockAddBulk).not.toHaveBeenCalled()
   })
+
+  it("blocks dispatch when broadcast capacity is not affordable", async () => {
+    mockFindUnique.mockResolvedValueOnce(campaign())
+    mockDeviceFindFirst.mockResolvedValueOnce({ id: "device-1" })
+    mockTemplateFindFirst.mockResolvedValueOnce({
+      id: "template-1",
+      name: "Authoritative template",
+      languages: [{ body: "Hello" }],
+    })
+    mockGetDeviceBroadcastCapacity.mockResolvedValueOnce({
+      dailyLimit: 1000,
+      dailyUsed: 0,
+      hourlyLimit: 41,
+      hourlyUsed: 0,
+      remainingToday: 1000,
+      remainingThisHour: 41,
+      quotaRemaining: 0,
+      maxAffordableRecipients: 0,
+      isAffordable: false,
+    })
+
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123/send", {
+        method: "POST",
+      })
+    )
+    const body = await response.json()
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INSUFFICIENT_CAPACITY")
+    expect(mockCampaignUpdate).not.toHaveBeenCalled()
+    expect(mockAddBulk).not.toHaveBeenCalled()
+  })
 })
 
 describe("broadcastsRoutes POST /preflight", () => {
@@ -611,5 +637,40 @@ describe("broadcastsRoutes POST /", () => {
       deviceId: "device-1",
       acknowledgeMultiDay: true,
     })
+  })
+
+  it("rejects broadcast creation when capacity is not affordable", async () => {
+    mockGetDeviceBroadcastCapacity.mockResolvedValueOnce({
+      dailyLimit: 1000,
+      dailyUsed: 0,
+      hourlyLimit: 41,
+      hourlyUsed: 0,
+      remainingToday: 1000,
+      remainingThisHour: 41,
+      quotaRemaining: 10,
+      maxAffordableRecipients: 10,
+      isAffordable: false,
+    })
+
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          templateId: "template-1",
+          templateName: "Authoritative template",
+          templateLanguage: "en",
+          whatsappDeviceId: "device-1",
+          recipients: [{ phoneNumber: "+628123456789" }],
+        }),
+      })
+    )
+
+    expect(response.status).toBe(422)
+    const body = await response.json()
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INSUFFICIENT_CAPACITY")
+    expect(body.capacity.maxAffordableRecipients).toBe(10)
+    expect(mockCampaignCreate).not.toHaveBeenCalled()
   })
 })

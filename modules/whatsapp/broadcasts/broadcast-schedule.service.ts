@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { getHourlyMessageLimit } from "@/modules/whatsapp/devices/devices.constants"
+import { MessageCostService } from "@/modules/billing/message-cost.service"
+import { WhatsappBillingCategory } from "@prisma/client"
 import type {
   DeviceBroadcastCapacityDTO,
   BroadcastScheduleRecommendationDTO,
@@ -14,12 +16,36 @@ export class BroadcastScheduleLimitError extends Error {
 
 export async function getDeviceBroadcastCapacity(
   organizationId: string,
-  deviceId: string
+  deviceId: string,
+  totalRecipients?: number,
+  category?: WhatsappBillingCategory | null
 ): Promise<DeviceBroadcastCapacityDTO> {
-  const device = await prisma.whatsappDevice.findFirst({
-    where: { id: deviceId, organizationId },
-    select: { dailyLimitMessage: true },
-  })
+  const [device, account, subscription] = await Promise.all([
+    prisma.whatsappDevice.findFirst({
+      where: { id: deviceId, organizationId },
+      select: {
+        dailyLimitMessage: true,
+        quotaBaseOut: true,
+        addonQuota: true,
+      },
+    }),
+    typeof prisma.billingAccount?.findUnique === "function"
+      ? prisma.billingAccount.findUnique({
+          where: { organizationId },
+          select: { balance: true, currency: true },
+        })
+      : null,
+    typeof prisma.serviceSubscription?.findFirst === "function"
+      ? prisma.serviceSubscription.findFirst({
+          where: {
+            organizationId,
+            package: { code: "WHATSAPP" },
+            status: "ACTIVE",
+          },
+          include: { plan: true },
+        })
+      : null,
+  ])
 
   if (!device) {
     throw new BroadcastScheduleLimitError("Device not found")
@@ -67,6 +93,55 @@ export async function getDeviceBroadcastCapacity(
   const dailyUsed = dailyCount?.messageOutboxCount ?? 0
   const hourlyUsed = hourlyCount?.messageOutboxCount ?? 0
 
+  const planResources = subscription?.plan?.resources as Record<
+    string,
+    unknown
+  > | null
+  const isUnlimited = planResources?.unlimited === true
+
+  let unitPrice = 0
+  let pricingCurrency: string | null = null
+  if (!isUnlimited) {
+    try {
+      const messageCostService = new MessageCostService(prisma)
+      const pricing = await messageCostService.getMessagePricing({
+        organizationId,
+        messageType: "template",
+        deviceId,
+        category: category ?? WhatsappBillingCategory.MARKETING,
+      })
+      if (pricing.unitPrice) {
+        unitPrice = Number(pricing.unitPrice)
+      }
+      pricingCurrency = pricing.currency ?? null
+    } catch {
+      unitPrice = 0
+    }
+  }
+
+  const quotaBaseOut = Number(device.quotaBaseOut ?? 0)
+  const addonQuota = Number(device.addonQuota ?? 0)
+  const quotaRemaining = Math.max(0, quotaBaseOut) + Math.max(0, addonQuota)
+  const depositBalance = Number(account?.balance ?? 0)
+  const currency = account?.currency ?? pricingCurrency ?? "IDR"
+
+  const recipientsCount = totalRecipients ?? 0
+  const coveredByQuota = Math.min(recipientsCount, quotaRemaining)
+  const overageRecipients = Math.max(0, recipientsCount - quotaRemaining)
+  const estimatedOverageCost = overageRecipients * unitPrice
+
+  const maxFromBalance =
+    unitPrice > 0
+      ? Math.floor(depositBalance / unitPrice)
+      : isUnlimited
+        ? 999999
+        : 0
+  const maxAffordableRecipients = isUnlimited
+    ? 999999
+    : quotaRemaining + maxFromBalance
+
+  const isAffordable = isUnlimited || recipientsCount <= maxAffordableRecipients
+
   return {
     dailyLimit,
     dailyUsed,
@@ -74,6 +149,16 @@ export async function getDeviceBroadcastCapacity(
     hourlyUsed,
     remainingToday: Math.max(0, dailyLimit - dailyUsed),
     remainingThisHour: Math.max(0, hourlyLimit - hourlyUsed),
+    quotaRemaining,
+    depositBalance,
+    unitPrice,
+    currency,
+    coveredByQuota,
+    overageRecipients,
+    estimatedOverageCost,
+    maxAffordableRecipients,
+    isAffordable,
+    isUnlimited,
   }
 }
 

@@ -372,4 +372,54 @@ describe("NewWhatsAppBroadcastPage selection flow", () => {
       view.getByRole("button", { name: "Unduh template CSV" })
     ).toBeEnabled()
   })
+
+  it("disables submit and displays capacity warning when isAffordable is false", async () => {
+    const { whatsappClient } =
+      await import("@/modules/whatsapp/whatsapp-client")
+    const mockPreflight =
+      whatsappClient.preflightBroadcast as unknown as ReturnType<typeof mock>
+    mockPreflight.mockResolvedValueOnce({
+      capacity: {
+        dailyLimit: 1000,
+        remainingToday: 1000,
+        hourlyLimit: 100,
+        quotaRemaining: 10,
+        depositBalance: 0,
+        unitPrice: 500,
+        overageRecipients: 90,
+        estimatedOverageCost: 45000,
+        maxAffordableRecipients: 10,
+        isAffordable: false,
+      },
+      recommendation: null,
+      selection: {
+        deviceId: "device-1",
+        templateId: "template-1",
+        templateName: "Order ready",
+        templateLanguage: "id",
+        templateBody: null,
+      },
+      recipientCount: 1,
+      dispatchMode: "MANUAL_DISPATCH" as const,
+    })
+
+    const view = render(<NewWhatsAppBroadcastPage />)
+    await selectOption(view, "Perangkat WhatsApp", "+628111")
+    await selectOption(view, "Template", "Order ready")
+    fireEvent.click(await view.findByRole("radio", { name: /id/ }))
+    fireEvent.change(view.getByPlaceholderText(/6281234567890/i), {
+      target: { value: "08123456789" },
+    })
+
+    expect(
+      await view.findByText("Kuota & Saldo Tidak Mencukupi")
+    ).toBeInTheDocument()
+    expect(
+      view.getByRole("button", { name: /Top Up Saldo/i })
+    ).toBeInTheDocument()
+    expect(
+      view.getByRole("button", { name: /Kirim ke 10 Kontak Saja/i })
+    ).toBeInTheDocument()
+    expect(view.getByRole("button", { name: "Buat Broadcast" })).toBeDisabled()
+  })
 })

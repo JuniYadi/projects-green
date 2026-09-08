@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import type { WhatsappBillingCategory } from "@prisma/client"
 import {
   enqueueWhatsAppBroadcast,
   getWhatsAppBroadcastQueue,
@@ -145,7 +146,6 @@ type BroadcastPreflightPayload = {
   acknowledgeMultiDay?: boolean
   recipients: BroadcastPreflightRecipient[]
 }
-
 type ValidatedBroadcastSelection = {
   deviceId: string
   templateId: string
@@ -204,7 +204,6 @@ async function resolveBroadcastSelection({
   if (!device || !template || !language) {
     return null
   }
-
   return {
     deviceId: device.id,
     templateId: template.id,
@@ -276,7 +275,8 @@ async function validateBroadcastPreflight({
   try {
     const capacity = await getDeviceBroadcastCapacity(
       organizationId,
-      payload.whatsappDeviceId
+      payload.whatsappDeviceId,
+      payload.recipients.length
     )
     const recommendation = await computeRecommendedSchedule({
       totalRecipients: payload.recipients.length,
@@ -610,6 +610,15 @@ export const broadcastsRoutes = new Elysia({
         }
       }
 
+      if (preflight.capacity.isAffordable === false) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "INSUFFICIENT_CAPACITY",
+          message: `Kuota dan saldo Anda hanya cukup untuk mengirim ${preflight.capacity.maxAffordableRecipients ?? 0} dari ${recipients.length} pesan. Silakan isi saldo atau kurangi penerima.`,
+          capacity: toDeviceBroadcastCapacityDTO(preflight.capacity),
+        }
+      }
       const campaign = await prisma.whatsappBroadcastCampaign.create({
         data: {
           ...campaignData,
@@ -867,6 +876,15 @@ export const broadcastsRoutes = new Elysia({
         }
       }
 
+      if (preflight.capacity.isAffordable === false) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "INSUFFICIENT_CAPACITY",
+          message: `Kuota dan saldo Anda hanya cukup untuk mengirim ${preflight.capacity.maxAffordableRecipients ?? 0} dari ${campaign.recipients.length} pesan. Silakan isi saldo atau kurangi penerima.`,
+          capacity: toDeviceBroadcastCapacityDTO(preflight.capacity),
+        }
+      }
       // Update campaign status to processing
       await prisma.whatsappBroadcastCampaign.update({
         where: { id },
