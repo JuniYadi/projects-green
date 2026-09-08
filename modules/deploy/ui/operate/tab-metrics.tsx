@@ -1657,47 +1657,6 @@ function PodObservabilityView({
               </CardContent>
             </Card>
           </div>
-
-          {/* Gateway Ingress Route Information */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-0.5">
-                <span className="text-xs font-semibold text-foreground">
-                  Edge Ingress Gateway
-                </span>
-                <p className="font-mono text-[11px] text-muted-foreground">
-                  Routing Service:{" "}
-                  {telemetry?.ingress?.proxy ?? `${appSlug}_svc`}
-                </p>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span>
-                  Inbound:{" "}
-                  <strong className="text-foreground">
-                    {formatBytes((telemetry?.ingress?.bandwidthInBps ?? 0) / 8)}
-                    /s
-                  </strong>
-                </span>
-                <span>&bull;</span>
-                <span>
-                  Outbound:{" "}
-                  <strong className="text-foreground">
-                    {formatBytes(
-                      (telemetry?.ingress?.bandwidthOutBps ?? 0) / 8
-                    )}
-                    /s
-                  </strong>
-                </span>
-                <span>&bull;</span>
-                <span className="inline-flex items-center gap-1 text-emerald-500">
-                  <CheckCircle size={13} />
-                  <span>
-                    {telemetry?.ingress?.healthyServers ?? 1} Servers UP
-                  </span>
-                </span>
-              </div>
-            </div>
-          </div>
         </>
       )}
     </div>

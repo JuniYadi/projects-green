@@ -195,9 +195,9 @@ describe("TabMetrics", () => {
     expect(view.getByText(/Service Traffic/i)).toBeDefined()
     expect(view.getByText(/Grouped HTTP Response Codes/i)).toBeDefined()
     expect(view.getByText(/Latency Breakdown/i)).toBeDefined()
-    expect(view.getByText(/Edge Ingress Gateway/i)).toBeDefined()
-
-    // Ensure no HAProxy label is shown
+    // Ensure internal plumbing / gateway routing noise is hidden
+    expect(view.queryByText(/Edge Ingress Gateway/i)).toBeNull()
+    expect(view.queryByText(/Routing Service/i)).toBeNull()
     expect(view.queryByText(/HAProxy/i)).toBeNull()
 
     // Switch back to Compute
