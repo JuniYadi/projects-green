@@ -122,12 +122,18 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
           )
 
           // Connect to Kubernetes APIServer exec subprotocol
-          const kubeWs = new WebSocket(execUrl, ["v4.channel.k8s.io"], {
+          const kubeWs = new (
+            WebSocket as unknown as new (
+              url: string,
+              protocols: string[],
+              options?: Record<string, unknown>
+            ) => WebSocket
+          )(execUrl, ["v4.channel.k8s.io"], {
             headers: {
               Authorization: `Bearer ${creds.token}`,
             },
             tls: creds.caCert ? { ca: [creds.caCert] } : undefined,
-          } as unknown as string[])
+          })
 
           kubeWs.binaryType = "arraybuffer"
 
