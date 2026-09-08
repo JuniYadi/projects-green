@@ -98,8 +98,8 @@ describe("PlatformInstanceWorkspacePage (/console/app/platform/[slug])", () => {
     cleanup()
   })
 
-  it("renders platform workspace with Environment variables tab when tab=env", async () => {
-    const { queryByText, getAllByText } = render(
+  it("renders platform workspace with vertical settings subnav when tab=env", async () => {
+    const { queryByText, getAllByText, getByRole } = render(
       <PlatformInstanceWorkspacePage />
     )
 
@@ -107,6 +107,12 @@ describe("PlatformInstanceWorkspacePage (/console/app/platform/[slug])", () => {
       expect(queryByText("Back to Platforms Dashboard")).toBeNull()
       expect(getAllByText("Hermes Comet").length).toBeGreaterThan(0)
       expect(getAllByText("Environment Variables").length).toBeGreaterThan(0)
+      expect(
+        getByRole("navigation", { name: "Platform Settings" })
+      ).toBeDefined()
+      expect(queryByText("Domains & SSL")).not.toBeNull()
+      expect(queryByText("Scaling & Resources")).not.toBeNull()
+      expect(queryByText("Danger Zone")).not.toBeNull()
     })
   })
 })
