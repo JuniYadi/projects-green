@@ -15,39 +15,29 @@ mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush }),
 }))
-const mockGetCluster = mock(
-  async (): Promise<unknown> => ({
+const mockGetCluster = mock(async (): Promise<unknown> => ({
+  ok: true,
+  data: { ok: true, data: MOCK_CLUSTER },
+}))
+const mockGetEndpoint = mock(async (): Promise<unknown> => ({
+  ok: true,
+  data: { ok: true, data: MOCK_ENDPOINT },
+}))
+const mockPutEndpoint = mock(async (body: unknown): Promise<unknown> => ({
+  ok: true,
+  data: {
     ok: true,
-    data: { ok: true, data: MOCK_CLUSTER },
-  })
-)
-const mockGetEndpoint = mock(
-  async (): Promise<unknown> => ({
-    ok: true,
-    data: { ok: true, data: MOCK_ENDPOINT },
-  })
-)
-const mockPutEndpoint = mock(
-  async (body: unknown): Promise<unknown> => ({
-    ok: true,
-    data: {
-      ok: true,
-      data: { ...MOCK_ENDPOINT, ...(body as Record<string, unknown>) },
-    },
-  })
-)
-const mockPatchCluster = mock(
-  async (_body: unknown): Promise<unknown> => ({
-    ok: true,
-    data: { ok: true, data: MOCK_CLUSTER },
-  })
-)
-const mockGetRegions = mock(
-  async (): Promise<unknown> => ({
-    ok: true,
-    data: { ok: true, data: MOCK_REGIONS },
-  })
-)
+    data: { ...MOCK_ENDPOINT, ...(body as Record<string, unknown>) },
+  },
+}))
+const mockPatchCluster = mock(async (_body: unknown): Promise<unknown> => ({
+  ok: true,
+  data: { ok: true, data: MOCK_CLUSTER },
+}))
+const mockGetRegions = mock(async (): Promise<unknown> => ({
+  ok: true,
+  data: { ok: true, data: MOCK_REGIONS },
+}))
 mock.module("@/lib/eden", () => ({
   eden: {
     api: {
@@ -373,6 +363,96 @@ describe("ClusterDetail", () => {
     await waitFor(
       () => {
         expect(view.getByLabelText(/webhook token/i)).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it("opens add modal for the remaining available integration type when only one is left", async () => {
+    mockGetCluster.mockImplementationOnce(async () => ({
+      ok: true,
+      data: {
+        ok: true,
+        data: {
+          ...MOCK_CLUSTER,
+          integrations: [
+            {
+              id: "int_jenkins",
+              type: "JENKINS" as const,
+              metaJson: { baseUrl: "https://jenkins.example.com" },
+              secretPreview: "****",
+              isActive: true,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+            {
+              id: "int_gitops",
+              type: "GITOPS" as const,
+              metaJson: { repo: "acme/gitops", branch: "main" },
+              secretPreview: null,
+              isActive: true,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+            {
+              id: "int_registry",
+              type: "REGISTRY" as const,
+              metaJson: {},
+              secretPreview: null,
+              isActive: true,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+            {
+              id: "int_argocd",
+              type: "ARGOCD" as const,
+              metaJson: {},
+              secretPreview: null,
+              isActive: true,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+            {
+              id: "int_kubeconfig",
+              type: "KUBECONFIG" as const,
+              metaJson: {},
+              secretPreview: null,
+              isActive: true,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+            {
+              id: "int_prometheus",
+              type: "PROMETHEUS" as const,
+              metaJson: {},
+              secretPreview: null,
+              isActive: true,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        },
+      },
+    }))
+
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => {
+        expect(
+          view.getByRole("button", { name: /add integration/i })
+        ).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+
+    fireEvent.click(view.getByRole("button", { name: /add integration/i }))
+
+    await waitFor(
+      () => {
+        expect(
+          view.getByRole("heading", { name: "Add OpenSearch" })
+        ).toBeTruthy()
       },
       { timeout: 5000 }
     )

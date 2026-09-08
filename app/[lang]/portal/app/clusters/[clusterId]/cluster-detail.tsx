@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { eden } from "@/lib/eden"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -221,9 +221,26 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   )
   const [metadataSaving, setMetadataSaving] = useState(false)
   const [metadataError, setMetadataError] = useState<string | null>(null)
-  const [newIntegrationType, setNewIntegrationType] = useState<
-    (typeof INTEGRATION_TYPES)[number]
-  >(INTEGRATION_TYPES[0])
+  const configuredIntegrationTypes = useMemo(
+    () =>
+      new Set(
+        cluster?.integrations.map((integration) => integration.type) ?? []
+      ),
+    [cluster?.integrations]
+  )
+  const availableIntegrationTypes = useMemo(
+    () =>
+      INTEGRATION_TYPES.filter((type) => !configuredIntegrationTypes.has(type)),
+    [configuredIntegrationTypes]
+  )
+  const [selectedIntegrationType, setSelectedIntegrationType] = useState<
+    (typeof INTEGRATION_TYPES)[number] | null
+  >(null)
+  const effectiveNewIntegrationType =
+    (selectedIntegrationType &&
+    availableIntegrationTypes.includes(selectedIntegrationType)
+      ? selectedIntegrationType
+      : availableIntegrationTypes[0]) ?? INTEGRATION_TYPES[0]
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [importJsonText, setImportJsonText] = useState("")
   const [importError, setImportError] = useState<string | null>(null)
@@ -494,10 +511,16 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   }
 
   const handleIntegrationCreate = () => {
+    const typeToCreate =
+      selectedIntegrationType &&
+      availableIntegrationTypes.includes(selectedIntegrationType)
+        ? selectedIntegrationType
+        : availableIntegrationTypes[0]
+    if (!typeToCreate) return
     const now = new Date().toISOString()
     setEditingIntegration({
-      id: `new-${newIntegrationType}`,
-      type: newIntegrationType,
+      id: `new-${typeToCreate}`,
+      type: typeToCreate,
       metaJson: {},
       secretPreview: null,
       isActive: true,
@@ -791,13 +814,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   }
 
   if (!cluster) return null
-
-  const configuredIntegrationTypes = new Set(
-    cluster.integrations.map((integration) => integration.type)
-  )
-  const availableIntegrationTypes = INTEGRATION_TYPES.filter(
-    (type) => !configuredIntegrationTypes.has(type)
-  )
 
   return (
     <div className="space-y-6">
@@ -1538,9 +1554,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               <>
                 <select
                   aria-label="Integration type"
-                  value={newIntegrationType}
+                  value={effectiveNewIntegrationType}
                   onChange={(event) =>
-                    setNewIntegrationType(
+                    setSelectedIntegrationType(
                       event.target.value as (typeof INTEGRATION_TYPES)[number]
                     )
                   }
@@ -1809,10 +1825,13 @@ function IntegrationEditModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-lg">
         <h3 className="text-lg font-semibold">
-          Edit {INTEGRATION_TYPE_LABELS[type] ?? type}
+          {integration.id.startsWith("new-") ? "Add" : "Edit"}{" "}
+          {INTEGRATION_TYPE_LABELS[type] ?? type}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Update metadata and secrets for this integration.
+          {integration.id.startsWith("new-")
+            ? "Configure metadata and secrets for this integration."
+            : "Update metadata and secrets for this integration."}
         </p>
 
         {formError && (
