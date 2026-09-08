@@ -49,20 +49,37 @@ function getCachedClient(config: OpenSearchClusterConfig): Client {
   }
   return client
 }
+export type ResolvedAppClientInfo = {
+  client: Client
+  namespace: string
+  organizationId: string | null
+  orgNamespace: string | null
+}
+
 export async function resolveOpenSearchClientForApp(
   slug: string
-): Promise<{ client: Client; namespace: string }> {
+): Promise<ResolvedAppClientInfo> {
   const namespace = `app-${slug}`
 
   const stack = await prisma.applicationStack.findFirst({
     where: { slug },
-    select: { id: true, clusterId: true },
+    select: { id: true, clusterId: true, organizationId: true },
   })
+
+  const orgId = stack?.organizationId ?? null
+  const orgNamespace = orgId
+    ? `app-${orgId.replace(/^org_/, "").toLowerCase().replace(/_/g, "-")}`
+    : null
 
   if (stack) {
     try {
       const config = await resolveClusterIntegration(stack.id, "OPENSEARCH")
-      return { client: getCachedClient(config), namespace }
+      return {
+        client: getCachedClient(config),
+        namespace,
+        organizationId: orgId,
+        orgNamespace,
+      }
     } catch {
       // Integration not configured or failed to resolve for stack
     }
@@ -79,24 +96,55 @@ export async function resolveOpenSearchClientForApp(
         defaultCluster.code,
         "OPENSEARCH"
       )
-      return { client: getCachedClient(config), namespace }
+      return {
+        client: getCachedClient(config),
+        namespace,
+        organizationId: orgId,
+        orgNamespace,
+      }
     }
   } catch {
     // Fallback to env-configured client
   }
 
-  return { client: getOpenSearchClient(), namespace }
+  return {
+    client: getOpenSearchClient(),
+    namespace,
+    organizationId: orgId,
+    orgNamespace,
+  }
 }
 
 function buildSearchQuery(
   params: AppLogsQueryParams,
-  namespaceFilter?: string
+  namespaceFilters?: string[]
 ) {
   const must: Record<string, unknown>[] = []
   const filter: Record<string, unknown>[] = []
-  if (namespaceFilter) {
+
+  if (namespaceFilters && namespaceFilters.length > 0) {
     filter.push({
-      term: { "kubernetes.namespace_name.keyword": namespaceFilter },
+      bool: {
+        should: [
+          ...namespaceFilters.map((ns) => ({
+            term: { "kubernetes.namespace_name.keyword": ns },
+          })),
+          {
+            term: {
+              "kubernetes.labels.app\\.kubernetes\\.io/instance.keyword":
+                params.slug,
+            },
+          },
+          {
+            term: {
+              "kubernetes.labels.app\\.kubernetes\\.io/name.keyword":
+                params.slug,
+            },
+          },
+          { wildcard: { "kubernetes.pod_name.keyword": `*${params.slug}*` } },
+        ],
+        minimum_should_match: 1,
+      },
     })
   }
 
@@ -195,13 +243,17 @@ function buildSearchQuery(
 export async function queryAppLogs(
   params: AppLogsQueryParams
 ): Promise<AppLogsQueryResult> {
-  const { client, namespace } = await resolveOpenSearchClientForApp(params.slug)
+  const { client, namespace, orgNamespace } =
+    await resolveOpenSearchClientForApp(params.slug)
   const limit = Math.min(Math.max(params.limit ?? 100, 1), 1000)
   const order = params.order ?? "desc"
 
-  const primaryIndex = `app-${params.slug}-*`
+  const candidateIndices = [
+    `app-${params.slug}-*`,
+    orgNamespace ? `${orgNamespace}-*` : null,
+  ].filter(Boolean)
+  const primaryIndex = candidateIndices.join(",")
   const query = buildSearchQuery(params)
-
   try {
     const response = await client.search({
       index: primaryIndex,
@@ -233,7 +285,8 @@ export async function queryAppLogs(
     // If primary index pattern has 0 shards (e.g. index not created yet),
     // try fallback search across all app-* indices filtered by namespace
     if (rawHits.length === 0 && (body._shards?.total ?? 0) === 0) {
-      const fallbackQuery = buildSearchQuery(params, namespace)
+      const namespaces = [namespace, orgNamespace].filter(Boolean) as string[]
+      const fallbackQuery = buildSearchQuery(params, namespaces)
       try {
         const fallbackRes = await client.search({
           index: "app-*",
