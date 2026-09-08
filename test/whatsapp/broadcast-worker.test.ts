@@ -45,6 +45,7 @@ const rateFU = mock(async () => null) as any
 const rateUp = mock(async () => ({})) as any
 const convUp = mock(async () => ({ id: "c" })) as any
 const deviceFU = mock(async () => device()) as any
+const deviceUpd = mock(async () => ({})) as any
 const dailyCountFU = mock(async () => null) as any
 const hourlyCountFU = mock(async () => null) as any
 const txn = mock(async (ops: unknown) =>
@@ -66,7 +67,7 @@ mock.module(
           findUnique: campaignFU,
           update: campaignUpd,
         },
-        whatsappDevice: { findUnique: deviceFU },
+        whatsappDevice: { findUnique: deviceFU, update: deviceUpd },
         whatsappBroadcastRateState: {
           findUnique: rateFU,
           upsert: rateUp,
@@ -160,6 +161,8 @@ function device(overrides: Record<string, unknown> = {}) {
     tokenEncrypted: "tok",
     whatsappPhoneId: "pid",
     whatsappBusinessAccountId: "waba",
+    quotaBaseOut: 1000,
+    addonQuota: 0,
     ...overrides,
   }
 }
@@ -187,6 +190,7 @@ beforeEach(() => {
     dailyCountFU,
     hourlyCountFU,
     txn,
+    deviceUpd,
   ]) {
     m.mockClear()
   }
@@ -263,6 +267,14 @@ describe("dispatch", () => {
       expect.objectContaining({
         where: { id: "r1" },
         data: expect.objectContaining({ status: "SENT", waMessageId: "wmid" }),
+      })
+    )
+    expect(deviceUpd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "d1" },
+        data: expect.objectContaining({
+          quotaBaseOut: { decrement: expect.anything() },
+        }),
       })
     )
   })

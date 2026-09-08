@@ -478,6 +478,58 @@ async function dispatchBroadcast(
       category: resolvedCategory,
       phoneNumber: recipient.phoneNumber,
     })
+    const credit = quotaCredit.quotaCredit
+    let deviceQuotaPromise: Promise<unknown> = Promise.resolve()
+
+    if (device?.id) {
+      try {
+        const currentDevice = await prisma.whatsappDevice.findUnique({
+          where: { id: device.id },
+          select: { quotaBaseOut: true, addonQuota: true },
+        })
+
+        if (currentDevice) {
+          const defaultRemaining =
+            currentDevice.quotaBaseOut instanceof Prisma.Decimal
+              ? currentDevice.quotaBaseOut
+              : new Prisma.Decimal(Number(currentDevice.quotaBaseOut ?? 0))
+          const addonRemaining =
+            currentDevice.addonQuota instanceof Prisma.Decimal
+              ? currentDevice.addonQuota
+              : new Prisma.Decimal(Number(currentDevice.addonQuota ?? 0))
+
+          if (defaultRemaining.gte(credit)) {
+            deviceQuotaPromise = prisma.whatsappDevice.update({
+              where: { id: device.id },
+              data: { quotaBaseOut: { decrement: credit } },
+            })
+          } else if (defaultRemaining.plus(addonRemaining).gte(credit)) {
+            const addonNeed = credit.minus(defaultRemaining)
+            deviceQuotaPromise = prisma.whatsappDevice.update({
+              where: { id: device.id },
+              data: {
+                quotaBaseOut: new Prisma.Decimal(0),
+                addonQuota: { decrement: addonNeed },
+              },
+            })
+          } else {
+            deviceQuotaPromise = prisma.whatsappDevice.update({
+              where: { id: device.id },
+              data: {
+                quotaBaseOut: new Prisma.Decimal(0),
+                addonQuota: new Prisma.Decimal(0),
+              },
+            })
+          }
+        }
+      } catch (err) {
+        logger.warn(
+          { err, deviceId: device.id },
+          "failed to decrement device broadcast quota allowance"
+        )
+      }
+    }
+
     await Promise.all([
       prisma.whatsappMonthlyCount.upsert({
         where: {
@@ -508,8 +560,8 @@ async function dispatchBroadcast(
           whatsappDeviceId: device.id,
         },
       }),
+      deviceQuotaPromise,
     ])
-
     await prisma.whatsappBroadcastRecipient.update({
       where: { id: recipient.id },
       data: {

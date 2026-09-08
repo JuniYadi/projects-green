@@ -245,10 +245,7 @@ export type UpdateGroupInput = Partial<CreateGroupInput>
 // ─── Broadcast Types ──────────────────────────────────────────────────────
 
 export type BroadcastStatus =
-  | "QUEUED"
-  | "PROCESSING"
-  | "COMPLETED"
-  | "COMPLETED_WITH_ERRORS"
+  "QUEUED" | "PROCESSING" | "COMPLETED" | "COMPLETED_WITH_ERRORS"
 
 export type BroadcastRecipientStatus = "QUEUED" | "SENT" | "FAILED"
 
@@ -774,16 +771,19 @@ export const createWhatsAppClient = () => {
       const searchParams = new URLSearchParams()
       if (orgId) searchParams.set("organizationId", orgId)
       const query = searchParams.toString()
-      const payload = await requestJson<ApiSuccess<BroadcastSummary>>(
+      const payload = await requestJson<
+        ApiSuccess<{ summary?: BroadcastSummary } & Partial<BroadcastSummary>>
+      >(
         `${API_BASE}/broadcasts/summary${query ? `?${query}` : ""}`,
         undefined,
         "Unable to load WhatsApp broadcast summary."
       )
+      const summary = payload.summary ?? payload
       return {
-        total: payload.total,
-        active: payload.active,
-        sent: payload.sent,
-        failed: payload.failed,
+        total: summary.total ?? 0,
+        active: summary.active ?? 0,
+        sent: summary.sent ?? 0,
+        failed: summary.failed ?? 0,
       }
     },
 
