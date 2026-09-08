@@ -123,7 +123,7 @@ export const kubeconfigMetadataSchema = z.strictObject({
   vaultVersion: z.number().int().positive().optional(),
 })
 export const opensearchMetadataSchema = z.strictObject({
-  host: z.string().trim().min(1, "OpenSearch host is required."),
+  endpoint: z.url("OpenSearch endpoint must be valid."),
   sslVerify: z.boolean().default(true),
   timeout: z.number().int().positive().default(30),
   vaultPath: z.string().trim().min(1).optional(),
@@ -315,7 +315,7 @@ export const integrationFieldLabels: Record<string, Record<string, string>> = {
     kubeconfig: "Kubeconfig",
   },
   OPENSEARCH: {
-    host: "Host URL",
+    endpoint: "Endpoint URL",
     sslVerify: "Verify SSL",
     timeout: "Timeout (seconds)",
     username: "Username",
@@ -378,7 +378,7 @@ export const integrationFieldDescriptions: Record<
     kubeconfig: "Raw kubeconfig YAML for direct cluster access",
   },
   OPENSEARCH: {
-    host: "OpenSearch cluster host URL",
+    endpoint: "OpenSearch cluster endpoint URL",
     sslVerify: "Whether to verify SSL certificates",
     timeout: "Request timeout in seconds",
     username: "Basic auth username",
