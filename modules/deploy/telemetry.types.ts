@@ -14,6 +14,7 @@ export type ClusterTelemetrySummary = {
   region: string
   isPrimary: boolean
   timeRange: "1h" | "6h" | "24h"
+  namespace?: string
   points: TelemetryDataPoint[]
   cpu: {
     currentCores: number
