@@ -321,14 +321,10 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
         </CardContent>
       </Card>
 
-      {/* Resource Tuning + Autoscaling grid */}
-      <div className="grid gap-6 md:grid-cols-3">
+      {/* Resource Tuning + Autoscaling */}
+      <div className="space-y-6">
         {/* Resource Limits */}
-
-        <Card
-          size="sm"
-          className="col-span-1 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
-        >
+        <Card size="sm" className="border-border bg-card shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
               <Cpu size={18} className="text-primary" /> Resource Tuning
@@ -338,11 +334,11 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 text-xs">
-            <div className="space-y-4 rounded-xl border border-white/[0.06] bg-black/40 p-4">
+            <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
               {/* Memory Request Slider */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 font-semibold text-white/90">
+                  <span className="flex items-center gap-1.5 font-semibold text-foreground">
                     <HardDrive size={13} className="text-muted-foreground" />{" "}
                     Memory Request (Min)
                   </span>
@@ -358,7 +354,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                   onChange={(e) =>
                     setMemRequest(memRequestOptions[parseInt(e.target.value)])
                   }
-                  className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-primary transition-all hover:bg-neutral-700"
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary transition-all hover:bg-muted/80"
                 />
                 <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
                   <span>128Mi</span>
@@ -371,7 +367,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
               {/* Memory Limit Slider */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 font-semibold text-white/90">
+                  <span className="flex items-center gap-1.5 font-semibold text-foreground">
                     <HardDrive size={13} className="text-red-400" /> Memory
                     Limit (Max)
                   </span>
@@ -387,7 +383,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                   onChange={(e) =>
                     setMemLimit(memLimitOptions[parseInt(e.target.value)])
                   }
-                  className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-primary transition-all hover:bg-neutral-700"
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary transition-all hover:bg-muted/80"
                 />
                 <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
                   <span>256Mi</span>
@@ -404,7 +400,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
               {/* CPU Limit Slider */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 font-semibold text-white/90">
+                  <span className="flex items-center gap-1.5 font-semibold text-foreground">
                     <Cpu size={13} className="text-muted-foreground" /> CPU
                     Limit (Max)
                   </span>
@@ -425,7 +421,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                   onChange={(e) =>
                     setCpuLimit(cpuLimitOptions[parseInt(e.target.value)])
                   }
-                  className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-primary transition-all hover:bg-neutral-700"
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary transition-all hover:bg-muted/80"
                 />
                 <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
                   <span>0.5 Cores</span>
@@ -436,9 +432,9 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
             </div>
 
             {/* Manual Replicas */}
-            <div className="space-y-3.5 rounded-xl border border-white/[0.06] bg-black/20 p-4">
+            <div className="space-y-3.5 rounded-xl border border-border bg-muted/30 p-4">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-white">
+                <span className="font-semibold text-foreground">
                   Manual Replicas
                 </span>
                 <div className="flex items-center gap-2">
@@ -448,11 +444,11 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                     variant="outline"
                     onClick={() => setReplicas(Math.max(1, replicas - 1))}
                     disabled={hpaEnabled}
-                    className="h-7 w-7 rounded-lg border-white/10 p-0 text-sm font-semibold text-white transition-all hover:bg-white/5 active:scale-95"
+                    className="h-7 w-7 rounded-lg border-border p-0 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
                   >
                     -
                   </Button>
-                  <span className="w-6 text-center font-mono text-sm font-bold text-white">
+                  <span className="w-6 text-center font-mono text-sm font-bold text-foreground">
                     {replicas}
                   </span>
                   <Button
@@ -461,7 +457,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                     variant="outline"
                     onClick={() => setReplicas(replicas + 1)}
                     disabled={hpaEnabled}
-                    className="h-7 w-7 rounded-lg border-white/10 p-0 text-sm font-semibold text-white transition-all hover:bg-white/5 active:scale-95"
+                    className="h-7 w-7 rounded-lg border-border p-0 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
                   >
                     +
                   </Button>
@@ -480,7 +476,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
 
             <Button
               type="button"
-              className="h-9 w-full rounded-lg bg-primary text-xs font-semibold text-white transition-all hover:bg-primary/95"
+              className="h-9 w-full rounded-lg bg-primary text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/95"
               onClick={() =>
                 alert("Configurations updated! Initiating rolling restart...")
               }
@@ -491,10 +487,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
         </Card>
 
         {/* Autoscaling Policies */}
-        <Card
-          size="sm"
-          className="col-span-2 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
-        >
+        <Card size="sm" className="border-border bg-card shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold text-foreground">
               Autoscaling Policies (HPA / VPA)
@@ -505,10 +498,10 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* HPA Card section */}
-            <div className="space-y-4 rounded-xl border border-white/[0.06] bg-black/40 p-4 transition-all">
+            <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4 transition-all">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="block text-sm font-bold text-white">
+                  <span className="block text-sm font-bold text-foreground">
                     Horizontal Pod Autoscaler (HPA)
                   </span>
                   <span className="block text-xs leading-normal text-muted-foreground">
@@ -521,7 +514,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                   className={`relative inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold transition-all duration-200 focus:outline-none ${
                     hpaEnabled
                       ? "border border-emerald-500/30 bg-emerald-500/20 text-emerald-400"
-                      : "border border-white/5 bg-neutral-800 text-muted-foreground"
+                      : "border border-border bg-muted text-muted-foreground"
                   }`}
                 >
                   <span
@@ -536,7 +529,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
               </div>
 
               {hpaEnabled && (
-                <div className="animate-fadeIn grid gap-4 border-t border-white/[0.06] pt-3.5 text-xs sm:grid-cols-3">
+                <div className="animate-fadeIn grid gap-4 border-t border-border pt-3.5 text-xs sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <label className="block font-semibold text-muted-foreground">
                       Min Replicas
@@ -571,7 +564,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                       type="number"
                       value={hpaCpuTarget}
                       onChange={(e) => setHpaCpuTarget(Number(e.target.value))}
-                      className="h-8 rounded-lg border-white/[0.08] bg-black/40 text-xs font-semibold text-white focus:border-primary/50"
+                      className="h-8 rounded-lg border-border bg-background text-xs font-semibold text-foreground focus:border-primary/50"
                     />
                   </div>
                 </div>
@@ -579,10 +572,10 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
             </div>
 
             {/* VPA Card section */}
-            <div className="space-y-4 rounded-xl border border-white/[0.06] bg-black/40 p-4 transition-all">
+            <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4 transition-all">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="block text-sm font-bold text-white">
+                  <span className="block text-sm font-bold text-foreground">
                     Vertical Pod Autoscaler (VPA)
                   </span>
                   <span className="block text-xs leading-normal text-muted-foreground">
@@ -596,7 +589,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
                   className={`relative inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold transition-all duration-200 focus:outline-none ${
                     vpaEnabled
                       ? "border border-emerald-500/30 bg-emerald-500/20 text-emerald-400"
-                      : "border border-white/5 bg-neutral-800 text-muted-foreground"
+                      : "border border-border bg-muted text-muted-foreground"
                   }`}
                 >
                   <span
@@ -611,7 +604,7 @@ export function TabScaling({ replicas, setReplicas }: TabScalingProps) {
               </div>
 
               {vpaEnabled && (
-                <div className="animate-fadeIn space-y-3 border-t border-white/[0.06] pt-3.5 text-xs">
+                <div className="animate-fadeIn space-y-3 border-t border-border pt-3.5 text-xs">
                   <div className="space-y-1.5">
                     <label className="block font-semibold text-muted-foreground">
                       VPA Update Mode

@@ -110,12 +110,9 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-3">
-      {/* Create Mount form */}
-      <Card
-        size="sm"
-        className="col-span-1 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
-      >
+    <div className="space-y-6">
+      {/* Active Mounts List */}
+      <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
             <Key size={18} className="text-primary" /> Mount Keys & Files
@@ -139,7 +136,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                 placeholder="e.g. application-private-key"
                 value={newMountName}
                 onChange={(e) => setNewMountName(e.target.value)}
-                className="h-9 border-white/[0.08] bg-black/40 text-xs focus:border-primary/50"
+                className="h-9 border-border bg-background text-xs focus:border-primary/50"
               />
             </div>
             <div className="space-y-1.5">
@@ -150,7 +147,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                 placeholder="e.g. /var/www/html/storage/app/key.pem"
                 value={newMountPath}
                 onChange={(e) => setNewMountPath(e.target.value)}
-                className="h-9 border-white/[0.08] bg-black/40 font-mono text-xs focus:border-primary/50"
+                className="h-9 border-border bg-background font-mono text-xs focus:border-primary/50"
               />
               <span className="block text-[10px] leading-relaxed text-muted-foreground/80">
                 Must be absolute. Path is write-protected for container
@@ -167,13 +164,13 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                   "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0..."
                 }
                 rows={6}
-                className="w-full rounded-xl border border-white/[0.08] bg-black/50 p-3 font-mono text-[10px] leading-relaxed text-white focus:ring-1 focus:ring-primary/50 focus:outline-none"
+                className="w-full rounded-xl border border-border bg-background p-3 font-mono text-[10px] leading-relaxed text-foreground focus:ring-1 focus:ring-primary/50 focus:outline-none"
               />
             </div>
 
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-black/40 p-3.5">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 p-3.5">
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-semibold text-white">
+                <span className="text-xs font-semibold text-foreground">
                   Read-Only Mount
                 </span>
                 <span className="text-[10px] text-muted-foreground">
@@ -193,7 +190,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                 aria-checked={newMountReadOnly}
                 aria-label="Set mount as read-only"
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  newMountReadOnly ? "bg-primary" : "bg-neutral-800"
+                  newMountReadOnly ? "bg-primary" : "bg-muted"
                 }`}
               >
                 <span
@@ -206,7 +203,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
 
             <Button
               type="submit"
-              className="mt-2 h-9 w-full bg-primary text-xs font-medium text-white hover:bg-primary/95"
+              className="mt-2 h-9 w-full bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/95"
             >
               Create File Mount
             </Button>
@@ -214,11 +211,8 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
         </CardContent>
       </Card>
 
-      {/* Active Mounts List */}
-      <Card
-        size="sm"
-        className="col-span-2 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
-      >
+      {/* Create Mount form */}
+      <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold text-foreground">
             Active Pod File Mounts
@@ -228,21 +222,21 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/20 text-xs">
-            <div className="grid grid-cols-12 border-b border-white/[0.08] bg-white/[0.02] px-4 py-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+          <div className="overflow-hidden rounded-xl border border-border bg-card text-xs">
+            <div className="grid grid-cols-12 border-b border-border bg-muted/30 px-4 py-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
               <span className="col-span-4">Mount Target</span>
               <span className="col-span-3">Type / Mode</span>
               <span className="col-span-3">Content Summary</span>
               <span className="col-span-2 text-right font-normal">Actions</span>
             </div>
 
-            <div className="divide-y divide-white/[0.06]">
+            <div className="divide-y divide-border">
               {mounts[selectedEnv].map((item) => (
                 <div
                   key={item.id}
-                  className="grid grid-cols-12 items-center px-4 py-3.5 transition-colors hover:bg-white/[0.02]"
+                  className="grid grid-cols-12 items-center px-4 py-3.5 transition-colors hover:bg-muted/30"
                 >
-                  <span className="col-span-4 pr-2 font-mono text-xs font-bold break-all text-white/95">
+                  <span className="col-span-4 pr-2 font-mono text-xs font-bold break-all text-foreground">
                     {item.mountPath}
                   </span>
                   <span className="col-span-3 flex flex-col gap-0.5 font-mono text-xs text-muted-foreground">

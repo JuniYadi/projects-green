@@ -97,11 +97,8 @@ export function TabEnv({
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-3">
-      <Card
-        size="sm"
-        className="col-span-2 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
-      >
+    <div className="space-y-6">
+      <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div className="flex flex-col gap-1">
             <CardTitle className="text-base font-bold text-foreground">
@@ -125,10 +122,7 @@ export function TabEnv({
         </CardContent>
       </Card>
 
-      <Card
-        size="sm"
-        className="col-span-1 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
-      >
+      <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
             <ArrowsLeftRight size={18} className="text-primary" /> Reverse Proxy
@@ -139,7 +133,7 @@ export function TabEnv({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 text-xs leading-relaxed">
-          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-muted/20 p-4 dark:bg-black/40">
+          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-muted/30 p-4">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-foreground">
                 Trust Forwarded Headers

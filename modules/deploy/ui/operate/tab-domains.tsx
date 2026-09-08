@@ -198,7 +198,7 @@ export function TabDomains({
       ...ipv6.map((value) => ({ type: "AAAA", host: "@", value })),
     ]
     return (
-      <div className="mt-3 space-y-2 rounded-lg border border-white/[0.06] bg-black/20 p-3">
+      <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/30 p-3">
         <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
           DNS targets
         </p>
@@ -213,7 +213,7 @@ export function TabDomains({
               className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
             >
               <span className="font-bold text-emerald-400">{record.type}</span>
-              <span className="truncate text-white">{record.value}</span>
+              <span className="truncate text-foreground">{record.value}</span>
               {renderCopyButton(
                 record.value,
                 `${domain.id}-${record.type}-${index}`
@@ -252,10 +252,10 @@ export function TabDomains({
     return (
       <div
         key={domain.id}
-        className="space-y-3 border-b border-white/[0.06] p-4 last:border-b-0"
+        className="space-y-3 border-b border-border p-4 last:border-b-0"
       >
         <div className="grid gap-3 md:grid-cols-[1.3fr_0.8fr_0.8fr_1.4fr_auto] md:items-start">
-          <div className="font-semibold text-white">
+          <div className="font-semibold text-foreground">
             <div className="flex flex-wrap items-center gap-2">
               <span>{domain.hostname}</span>
               {domain.isPrimary && (
@@ -263,7 +263,7 @@ export function TabDomains({
                   Primary
                 </span>
               )}
-              <span className="rounded-md border border-white/10 px-2 py-0.5 text-[9px] font-bold text-muted-foreground uppercase">
+              <span className="rounded-md border border-border px-2 py-0.5 text-[9px] font-bold text-muted-foreground uppercase">
                 {domain.kind}
               </span>
             </div>
@@ -325,7 +325,7 @@ export function TabDomains({
           </div>
         </div>
         {renderDns(domain)}
-        <div className="grid gap-3 rounded-lg border border-white/[0.06] bg-neutral-900/35 p-3 md:grid-cols-3">
+        <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-3">
           {(["certificatePem", "privateKeyPem", "chainPem"] as const).map(
             (field) => (
               <label
@@ -374,9 +374,11 @@ export function TabDomains({
             Save certificate
           </Button>
         </div>
-        <div className="space-y-2 rounded-lg border border-white/[0.06] bg-neutral-900/35 p-3">
+        <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold text-white">Allowlist</span>
+            <span className="text-xs font-semibold text-foreground">
+              Allowlist
+            </span>
             <Select
               value={domain.allowlistMode}
               onValueChange={(value) =>
@@ -466,11 +468,8 @@ export function TabDomains({
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-3">
-      <Card
-        size="sm"
-        className="col-span-2 border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
-      >
+    <div className="space-y-6">
+      <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-bold text-foreground">
             Custom Domain Settings
@@ -502,7 +501,7 @@ export function TabDomains({
           {apiMode && (
             <form
               onSubmit={handleSubmit}
-              className="flex gap-2 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-3"
+              className="flex gap-2 rounded-xl border border-border bg-muted/30 p-3"
             >
               <div className="relative flex-1">
                 <Globe
@@ -527,7 +526,7 @@ export function TabDomains({
               Loading domains…
             </p>
           ) : apiMode ? (
-            <div className="overflow-hidden rounded-xl border border-white/[0.08]">
+            <div className="overflow-hidden rounded-xl border border-border">
               {items.length ? (
                 items.map(renderApiDomain)
               ) : (
@@ -537,10 +536,10 @@ export function TabDomains({
               )}
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-white/[0.08]">
+            <div className="overflow-hidden rounded-xl border border-border">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-white/[0.08] text-muted-foreground">
+                  <tr className="border-b border-border text-muted-foreground">
                     <th className="p-3">Domain</th>
                     <th className="p-3">DNS</th>
                     <th className="p-3">TLS</th>
@@ -549,8 +548,8 @@ export function TabDomains({
                 </thead>
                 <tbody>
                   {legacyItems.map((item) => (
-                    <tr key={item.id} className="border-b border-white/[0.06]">
-                      <td className="p-3 font-semibold text-white">
+                    <tr key={item.id} className="border-b border-border">
+                      <td className="p-3 font-semibold text-foreground">
                         {item.domain}
                       </td>
                       <td className="p-3 text-muted-foreground">
@@ -614,10 +613,7 @@ export function TabDomains({
         </CardContent>
       </Card>
       {apiMode && (
-        <Card
-          size="sm"
-          className="h-fit border-border bg-card/50 shadow-xl backdrop-blur-md dark:bg-[#0A0A0C]/50"
-        >
+        <Card size="sm" className="h-fit border-border bg-card shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold text-foreground">
               Domain endpoint
@@ -629,12 +625,15 @@ export function TabDomains({
           </CardHeader>
           <CardContent className="space-y-3 text-xs text-muted-foreground">
             <p>
-              Stack: <span className="font-mono text-white">{stackSlug}</span>
+              Stack:{" "}
+              <span className="font-mono text-foreground">{stackSlug}</span>
             </p>
             {items[0]?.cluster && (
               <p>
                 Region:{" "}
-                <span className="text-white">{items[0].cluster.region}</span>
+                <span className="text-foreground">
+                  {items[0].cluster.region}
+                </span>
               </p>
             )}
           </CardContent>
