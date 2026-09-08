@@ -130,7 +130,8 @@ describe("TabMetrics", () => {
       </QueryClientProvider>
     )
 
-    expect(view.getByText("Per-Pod Workload Observability")).toBeDefined()
+    expect(view.getByText("Workload Observability")).toBeDefined()
+    expect(view.getByText("Per-Pod Workload Breakdown")).toBeDefined()
     expect(
       view.getByText("Pod Replica Health & Resource Allocation")
     ).toBeDefined()
@@ -167,7 +168,7 @@ describe("TabMetrics", () => {
     expect(allPodsBtn.className).not.toContain("bg-primary")
   })
 
-  it("switches to HTTP & Ingress sub-tab and renders HAProxy L7 metrics", () => {
+  it("switches to HTTP Traffic sub-tab and renders Edge L7 metrics without HAProxy labels", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
@@ -177,26 +178,31 @@ describe("TabMetrics", () => {
       </QueryClientProvider>
     )
 
-    const computeTabBtn = view.getByRole("button", { name: /Compute & Pods/i })
-    const ingressTabBtn = view.getByRole("button", { name: /HTTP & Ingress/i })
+    const computeTabBtn = view.getByRole("button", { name: /^Compute/i })
+    const httpTrafficBtn = view.getByRole("button", { name: /HTTP Traffic/i })
     expect(computeTabBtn).toBeDefined()
-    expect(ingressTabBtn).toBeDefined()
+    expect(httpTrafficBtn).toBeDefined()
 
-    // Default is Compute & Pods
+    // Default is Compute with Per-Pod Workload Breakdown inside
+    expect(view.getByText(/Per-Pod Workload Breakdown/i)).toBeDefined()
     expect(
       view.getByText(/Pod Replica Health & Resource Allocation/i)
     ).toBeDefined()
 
-    // Switch to HTTP & Ingress
-    fireEvent.click(ingressTabBtn)
+    // Switch to HTTP Traffic
+    fireEvent.click(httpTrafficBtn)
 
     expect(view.getByText(/Service Traffic/i)).toBeDefined()
     expect(view.getByText(/Grouped HTTP Response Codes/i)).toBeDefined()
     expect(view.getByText(/Latency Breakdown/i)).toBeDefined()
-    expect(view.getByText(/HAProxy L7 Ingress Gateway/i)).toBeDefined()
+    expect(view.getByText(/Edge Ingress Gateway/i)).toBeDefined()
 
-    // Switch back to Compute & Pods
+    // Ensure no HAProxy label is shown
+    expect(view.queryByText(/HAProxy/i)).toBeNull()
+
+    // Switch back to Compute
     fireEvent.click(computeTabBtn)
+    expect(view.getByText(/Per-Pod Workload Breakdown/i)).toBeDefined()
     expect(
       view.getByText(/Pod Replica Health & Resource Allocation/i)
     ).toBeDefined()

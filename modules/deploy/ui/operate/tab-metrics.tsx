@@ -1089,7 +1089,7 @@ function PodObservabilityView({
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-foreground">
-              Per-Pod Workload Observability
+              Workload Observability
             </h3>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500">
               <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
@@ -1097,8 +1097,8 @@ function PodObservabilityView({
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Multi-replica telemetry breakdown, container lifecycle status, and
-            quota saturation
+            Real-time telemetry for compute resources, replica pods, and edge
+            traffic
           </p>
         </div>
 
@@ -1139,7 +1139,7 @@ function PodObservabilityView({
                 : "text-muted-foreground"
             }
           />
-          <span>Compute & Pods</span>
+          <span>Compute</span>
           <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             {pods.length} Replicas
           </span>
@@ -1163,15 +1163,25 @@ function PodObservabilityView({
                 : "text-muted-foreground"
             }
           />
-          <span>HTTP & Ingress</span>
-          <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-500">
-            HAProxy L7
-          </span>
+          <span>HTTP Traffic</span>
         </button>
       </div>
 
       {activeSubTab === "compute" ? (
         <>
+          {/* Per-Pod Section Header */}
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-foreground">
+                Per-Pod Workload Breakdown
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Multi-replica telemetry breakdown, container lifecycle status,
+                and quota saturation
+              </p>
+            </div>
+          </div>
+
           {/* Interactive Pod Filter Selector Pills */}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/20 p-1.5">
             <span className="px-2 text-xs font-semibold text-muted-foreground">
@@ -1503,7 +1513,7 @@ function PodObservabilityView({
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                HAProxy Ingress request rate
+                Edge gateway request rate
               </p>
             </Card>
 
@@ -1648,15 +1658,15 @@ function PodObservabilityView({
             </Card>
           </div>
 
-          {/* HAProxy Gateway Ingress Route Information */}
+          {/* Gateway Ingress Route Information */}
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-0.5">
                 <span className="text-xs font-semibold text-foreground">
-                  HAProxy L7 Ingress Gateway
+                  Edge Ingress Gateway
                 </span>
                 <p className="font-mono text-[11px] text-muted-foreground">
-                  Target Ingress Proxy:{" "}
+                  Routing Service:{" "}
                   {telemetry?.ingress?.proxy ?? `${appSlug}_svc`}
                 </p>
               </div>
