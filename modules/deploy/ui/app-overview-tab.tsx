@@ -46,29 +46,29 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-      {/* Left Column: Live Telemetry Metrics (~58% width) */}
-      <div className="space-y-4 lg:col-span-7">
+      {/* Left Column: Live Telemetry Metrics (Compact Pulse ~50% width) */}
+      <div className="space-y-4 lg:col-span-6">
         <ClusterTelemetryCards
           appSlug={stack.slug}
-          title="Resource Telemetry"
+          title="Live Workload Telemetry"
           columns={1}
-          chartHeight={125}
+          compact={true}
         />
       </div>
 
-      {/* Right Column: Commercial Subscription & Platform Specification (~42% width) */}
-      <div className="space-y-6 lg:col-span-5">
+      {/* Right Column: Commercial Subscription & Platform Specification (~50% width) */}
+      <div className="space-y-4 lg:col-span-6">
         {/* Card 1: Subscription & Billing */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="px-4 pt-3.5 pb-2">
+            <CardTitle className="text-sm font-bold">
               Subscription & Billing
             </CardTitle>
             <CardDescription className="text-xs">
               Active package, catalog plan, and renewal cycle
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 text-xs">
+          <CardContent className="space-y-2 px-4 pt-0 pb-3.5 text-xs">
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
               <span className="text-muted-foreground">Catalog Plan</span>
               <span className="font-semibold text-foreground">
@@ -107,16 +107,16 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
         </Card>
 
         {/* Card 2: Platform Specification */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
+        <Card className="border-border bg-card shadow-xs">
+          <CardHeader className="px-4 pt-3.5 pb-2">
+            <CardTitle className="text-sm font-bold">
               Platform Specification
             </CardTitle>
             <CardDescription className="text-xs">
               Template engine, service port, and cluster routing
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 text-xs">
+          <CardContent className="space-y-2 px-4 pt-0 pb-3.5 text-xs">
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
               <span className="text-muted-foreground">Template / Engine</span>
               <span className="font-medium text-foreground">
