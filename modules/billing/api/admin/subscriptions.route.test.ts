@@ -1,18 +1,14 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 
-import { createAdminSubscriptionRoutes } from "./subscriptions.route"
-import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
-import type { PlatformAccessRole } from "@/lib/platform-role"
-import {
-  type MockAuthContext,
-  defaultAuth,
-  mockPlatformRoleNone,
-  mockPlatformRole,
-  mockIsAdmin,
-  testIsAdmin,
-} from "@/test/helpers/test-auth"
-
+mock.module("server-only", () => ({}))
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  withAuth: mock(async () => ({
+    user: { id: "user_1", email: "admin@example.com" },
+    organizationId: "org_1",
+    role: "admin",
+  })),
+}))
 const mockFindUnique = mock()
 const mockUpdate = mock()
 const mockFindMany = mock()
@@ -47,6 +43,7 @@ const mockPrismaClient = {
   },
   whatsappDevice: {
     findMany: mockWhatsappDeviceFindMany,
+    updateMany: mock(),
   },
 }
 
@@ -62,9 +59,17 @@ mock.module("@/modules/billing/orders/order.service", () => ({
   },
 }))
 
-mock.module("@/lib/prisma", () => ({
-  prisma: mockPrismaClient,
-}))
+import { createAdminSubscriptionRoutes } from "./subscriptions.route"
+import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
+import type { PlatformAccessRole } from "@/lib/platform-role"
+import {
+  type MockAuthContext,
+  defaultAuth,
+  mockPlatformRoleNone,
+  mockPlatformRole,
+  mockIsAdmin,
+  testIsAdmin,
+} from "@/test/helpers/test-auth"
 
 describe("AdminSubscriptionRoute", () => {
   beforeEach(() => {
@@ -584,12 +589,117 @@ describe("AdminSubscriptionRoute", () => {
       )
 
       expect(response.status).toBe(200)
-      expect(mockUpdate).toHaveBeenCalledWith({
-        where: { id: "sub-plan-pricing" },
-        data: { planId, pricingId },
-      })
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "sub-plan-pricing" },
+          data: { planId, pricingId },
+        })
+      )
       const body = await response.json()
       expect(body.subscription.planCode).toBe("STANDARD")
+    })
+
+    it("updates currentPeriodEnd and billingPeriod and syncs WhatsApp devices", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "sub-renewal",
+        organizationId: "org-1",
+        status: "ACTIVE",
+      })
+      mockUpdate.mockResolvedValueOnce({
+        id: "sub-renewal",
+        organizationId: "org-1",
+        currentPeriodEnd: new Date("2026-12-31T00:00:00.000Z"),
+        metadata: { deviceIds: ["dev-1"] },
+        package: { code: "WHATSAPP" },
+      })
+      const mockWhatsappUpdateMany = mock().mockResolvedValue({ count: 1 })
+      mockPrismaClient.whatsappDevice.updateMany = mockWhatsappUpdateMany
+      mockFindUnique.mockResolvedValueOnce({
+        id: "sub-renewal",
+        status: "ACTIVE",
+        allocatedConfig: null,
+        currentPeriodEnd: new Date("2026-12-31T00:00:00.000Z"),
+        plan: { code: "BASIC", resources: {} },
+        pricing: {
+          billingMode: "SUBSCRIPTION",
+          type: "STANDARD",
+          basePriceIdr: new Decimal("299000"),
+          region: { code: "GLOBAL" },
+          servicePlan: { code: "WS", packageId: "pkg-1" },
+        },
+        package: { code: "WHATSAPP" },
+      })
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions/sub-renewal", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            billingPeriod: "ANNUAL",
+            currentPeriodEnd: "2026-12-31T00:00:00.000Z",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockWhatsappUpdateMany).toHaveBeenCalledWith({
+        where: { id: { in: ["dev-1"] }, organizationId: "org-1" },
+        data: { expiredAt: new Date("2026-12-31T00:00:00.000Z") },
+      })
+    })
+
+    it("renews subscription via POST /admin/subscriptions/:id/renew", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "sub-renew-trigger",
+        organizationId: "org-1",
+        status: "ACTIVE",
+      })
+      const mockRenewServiceSubscription = mock().mockResolvedValue({
+        orderId: "order-renewed",
+        status: "FULFILLED",
+      })
+      const mockOrderService = {
+        renewServiceSubscription: mockRenewServiceSubscription,
+      } as unknown as import("@/modules/billing/orders/order.service").BillingOrderService
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+            orderService: mockOrderService,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/admin/subscriptions/sub-renew-trigger/renew",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.order.orderId).toBe("order-renewed")
+      expect(mockRenewServiceSubscription).toHaveBeenCalledWith(
+        "sub-renew-trigger"
+      )
     })
 
     it("returns 404 when the current subscription disappears for an empty update", async () => {

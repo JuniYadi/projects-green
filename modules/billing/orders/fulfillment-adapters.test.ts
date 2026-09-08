@@ -781,13 +781,21 @@ describe("WhatsApp fulfillment adapter", () => {
     expect(prisma.whatsappDevice.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "device-1" },
-        data: { quotaBaseOut: decimal("1000"), quotaBase: decimal("1000") },
+        data: expect.objectContaining({
+          quotaBaseOut: decimal("1000"),
+          quotaBase: decimal("1000"),
+          status: "ACTIVE",
+        }),
       })
     )
     expect(prisma.whatsappDevice.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "device-2" },
-        data: { quotaBaseOut: decimal("2000"), quotaBase: decimal("2000") },
+        data: expect.objectContaining({
+          quotaBaseOut: decimal("2000"),
+          quotaBase: decimal("2000"),
+          status: "ACTIVE",
+        }),
       })
     )
   })

@@ -6,9 +6,15 @@ const mockUseSearchParams = mock()
 
 mock.module("@/hooks/use-billing-data", () => ({
   useAdminSubscriptionsQuery: mockUseAdminSubscriptionsQuery,
+  useSubscriptionsQuery: mock(() => ({
+    data: { subscriptions: [] },
+    isLoading: false,
+  })),
 }))
 mock.module("next/navigation", () => ({
   useSearchParams: mockUseSearchParams,
+  useParams: () => ({ lang: "en" }),
+  useRouter: () => ({ push: mock() }),
 }))
 
 const { BillingSubscriptionsPage } = await import("./page")

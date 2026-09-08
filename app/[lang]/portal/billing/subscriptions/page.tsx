@@ -25,8 +25,22 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useAdminSubscriptionsQuery } from "@/hooks/use-billing-data"
 import { formatKey } from "@/lib/format-key"
-import type { AdminSubscriptionItem } from "@/lib/billing-client"
+import {
+  type AdminSubscriptionItem,
+  updateAdminSubscription,
+  renewAdminSubscription,
+} from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { toast } from "sonner"
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All statuses" },
@@ -112,6 +126,20 @@ export function BillingSubscriptionsPage() {
     useState<AdminSubscriptionItem | null>(null)
   const [selectedConfigSub, setSelectedConfigSub] =
     useState<AdminSubscriptionItem | null>(null)
+  const [editingSub, setEditingSub] = useState<AdminSubscriptionItem | null>(
+    null
+  )
+  const [renewingSubId, setRenewingSubId] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editForm, setEditForm] = useState<{
+    billingPeriod: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
+    currentPeriodEnd: string
+    status: "ACTIVE" | "SUSPENDED" | "CANCELLED"
+  }>({
+    billingPeriod: "MONTHLY",
+    currentPeriodEnd: "",
+    status: "ACTIVE",
+  })
   const [page, setPage] = useState(1)
   const subscriptionsQuery = useAdminSubscriptionsQuery({
     page,
@@ -299,8 +327,65 @@ export function BillingSubscriptionsPage() {
           )
         },
       },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const sub = row.original
+          return (
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => {
+                  setEditingSub(sub)
+                  setEditForm({
+                    billingPeriod:
+                      (sub.billingPeriod as
+                        "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL") ||
+                      "MONTHLY",
+                    currentPeriodEnd: sub.currentPeriodEnd
+                      ? new Date(sub.currentPeriodEnd)
+                          .toISOString()
+                          .slice(0, 16)
+                      : "",
+                    status:
+                      (sub.status as "ACTIVE" | "SUSPENDED" | "CANCELLED") ||
+                      "ACTIVE",
+                  })
+                }}
+              >
+                Edit Renewal
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={renewingSubId === sub.id}
+                onClick={async () => {
+                  try {
+                    setRenewingSubId(sub.id)
+                    await renewAdminSubscription(sub.id)
+                    toast.success("Subscription renewal processed successfully")
+                    void subscriptionsQuery.refetch()
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to renew subscription"
+                    )
+                  } finally {
+                    setRenewingSubId(null)
+                  }
+                }}
+              >
+                {renewingSubId === sub.id ? "Renewing..." : "Renew Now"}
+              </Button>
+            </div>
+          )
+        },
+      },
     ],
-    []
+    [renewingSubId, subscriptionsQuery]
   )
 
   return (
@@ -420,13 +505,38 @@ export function BillingSubscriptionsPage() {
                 {selectedSubscription.id}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedSubscription(null)}
-            >
-              Close
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditingSub(selectedSubscription)
+                  setEditForm({
+                    billingPeriod:
+                      (selectedSubscription.billingPeriod as
+                        "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL") ||
+                      "MONTHLY",
+                    currentPeriodEnd: selectedSubscription.currentPeriodEnd
+                      ? new Date(selectedSubscription.currentPeriodEnd)
+                          .toISOString()
+                          .slice(0, 16)
+                      : "",
+                    status:
+                      (selectedSubscription.status as
+                        "ACTIVE" | "SUSPENDED" | "CANCELLED") || "ACTIVE",
+                  })
+                }}
+              >
+                Edit Renewal
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedSubscription(null)}
+              >
+                Close
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
@@ -539,6 +649,126 @@ export function BillingSubscriptionsPage() {
                 </div>
               )
             })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Dialog for Editing Subscription Renewal */}
+      <Dialog
+        open={Boolean(editingSub)}
+        onOpenChange={(open) => {
+          if (!open) setEditingSub(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Subscription & Renewal</DialogTitle>
+            <DialogDescription>
+              Update billing period, status, or adjust the next renewal date for{" "}
+              <span className="font-mono font-medium text-foreground">
+                {editingSub?.id}
+              </span>
+              .
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-3">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-status">Service Status</Label>
+              <Select
+                value={editForm.status}
+                onValueChange={(val: "ACTIVE" | "SUSPENDED" | "CANCELLED") =>
+                  setEditForm((prev) => ({ ...prev, status: val }))
+                }
+              >
+                <SelectTrigger id="edit-status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-period">Billing Period</Label>
+              <Select
+                value={editForm.billingPeriod}
+                onValueChange={(
+                  val: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
+                ) => setEditForm((prev) => ({ ...prev, billingPeriod: val }))}
+              >
+                <SelectTrigger id="edit-period">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                  <SelectItem value="SEMI_ANNUAL">Semi-Annual</SelectItem>
+                  <SelectItem value="ANNUAL">Annual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-period-end">
+                Renewal Expiry (Current Period End)
+              </Label>
+              <Input
+                id="edit-period-end"
+                type="datetime-local"
+                value={editForm.currentPeriodEnd}
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    currentPeriodEnd: e.target.value,
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Updating this date automatically synchronizes the expiry on
+                connected WhatsApp devices.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              disabled={isSubmitting}
+              onClick={() => setEditingSub(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isSubmitting}
+              onClick={async () => {
+                if (!editingSub) return
+                try {
+                  setIsSubmitting(true)
+                  await updateAdminSubscription(editingSub.id, {
+                    status: editForm.status,
+                    billingPeriod: editForm.billingPeriod,
+                    currentPeriodEnd: editForm.currentPeriodEnd
+                      ? new Date(editForm.currentPeriodEnd).toISOString()
+                      : undefined,
+                  })
+                  toast.success("Subscription updated successfully")
+                  setEditingSub(null)
+                  void subscriptionsQuery.refetch()
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error
+                      ? err.message
+                      : "Failed to update subscription"
+                  )
+                } finally {
+                  setIsSubmitting(false)
+                }
+              }}
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

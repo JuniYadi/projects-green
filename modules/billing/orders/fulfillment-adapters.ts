@@ -218,11 +218,7 @@ type VpnSubscriptionRecord = {
     serverId: string
     protocol: "OPENVPN" | "WIREGUARD" | "PROXY"
     provisioningStatus:
-      | "PENDING"
-      | "PROVISIONING"
-      | "ACTIVE"
-      | "FAILED"
-      | "REVOKED"
+      "PENDING" | "PROVISIONING" | "ACTIVE" | "FAILED" | "REVOKED"
   }>
 }
 
@@ -808,7 +804,12 @@ async function applyWhatsappFulfillment(
       const allowance = allowanceByDevice[deviceId]
       await tx.whatsappDevice.update({
         where: { id: deviceId },
-        data: { quotaBaseOut: allowance, quotaBase: allowance },
+        data: {
+          quotaBaseOut: allowance,
+          quotaBase: allowance,
+          expiredAt: input.periodEnd,
+          status: "ACTIVE",
+        },
       })
     }
     return serviceSubscription.id

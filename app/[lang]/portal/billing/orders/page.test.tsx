@@ -5,13 +5,18 @@ const mockGetAdminOrders = mock()
 const mockCancelAdminOrder = mock()
 const mockFulfillAdminOrder = mock()
 
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
+  useRouter: () => ({ push: mock() }),
+  useSearchParams: () => new URLSearchParams(),
+}))
+
 mock.module("@/lib/billing-client", () => ({
   getAdminOrders: mockGetAdminOrders,
   cancelAdminOrder: mockCancelAdminOrder,
   fulfillAdminOrder: mockFulfillAdminOrder,
   billingPeriodLabel: (period: string) => period,
 }))
-
 const { BillingOrdersPage } = await import("./page")
 
 const baseOrder = {

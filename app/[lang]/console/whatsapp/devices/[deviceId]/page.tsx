@@ -23,8 +23,13 @@ import {
   MapPin,
   Info,
   Trash,
+  CreditCard,
+  ArrowSquareOut,
 } from "@phosphor-icons/react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import Link from "next/link"
+import { useSubscriptionsQuery } from "@/hooks/use-billing-data"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 import { detectCountryFromPhone } from "@/modules/whatsapp/messages/phone-number"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -508,8 +513,24 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       setErrorMessage(message)
       setPageState("error")
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId])
+
+  const subscriptionsQuery = useSubscriptionsQuery()
+  const matchingSubscription = React.useMemo(() => {
+    const list = subscriptionsQuery.data?.subscriptions ?? []
+    return (
+      list.find((s) => {
+        if (s.packageCode !== "WHATSAPP") return false
+        const config = (s.allocatedConfig ?? {}) as Record<string, unknown>
+        const devIds = Array.isArray(config.deviceIds)
+          ? (config.deviceIds as string[])
+          : []
+        return devIds.includes(deviceId)
+      }) ||
+      list.find((s) => s.packageCode === "WHATSAPP") ||
+      null
+    )
+  }, [subscriptionsQuery.data, deviceId])
 
   const handleSyncMeta = async () => {
     if (!deviceId) return
@@ -768,7 +789,114 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
               </dl>
             </CardContent>
           </Card>
-
+          {/* Subscription and Renewal Card */}
+          <Card className="shadow-xs">
+            <CardHeader className="border-b pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                    <CreditCard className="size-4 text-emerald-600 dark:text-emerald-400" />
+                    Subscription & Renewal
+                  </CardTitle>
+                  <CardDescription>
+                    Commercial plan, quota allowances, and renewal cycle.
+                  </CardDescription>
+                </div>
+                {matchingSubscription && (
+                  <Badge
+                    variant={
+                      matchingSubscription.status === "ACTIVE"
+                        ? "success"
+                        : "secondary"
+                    }
+                  >
+                    {matchingSubscription.status}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-5">
+              {matchingSubscription ? (
+                <>
+                  <dl className="space-y-3.5">
+                    <InfoRow
+                      label="Active Plan"
+                      value={
+                        <span className="font-semibold">
+                          {matchingSubscription.packageCode} —{" "}
+                          {matchingSubscription.planCode}
+                        </span>
+                      }
+                    />
+                    <InfoRow
+                      label="Billing Period"
+                      value={matchingSubscription.billingPeriod || "MONTHLY"}
+                    />
+                    <InfoRow
+                      label="Next Renewal / Expiry"
+                      value={
+                        matchingSubscription.currentPeriodEnd
+                          ? formatDate(matchingSubscription.currentPeriodEnd)
+                          : device.expiredAt
+                            ? formatDate(device.expiredAt)
+                            : "—"
+                      }
+                    />
+                    <InfoRow
+                      label="Price per Period"
+                      value={formatBillingMoney(
+                        matchingSubscription.periodPrice ??
+                          matchingSubscription.monthlyRateIdr ??
+                          "0",
+                        matchingSubscription.currency ?? "IDR"
+                      )}
+                    />
+                  </dl>
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3">
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-semibold text-foreground">
+                        Manage or Change Subscription
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        View invoices, change payment cycles, or renew.
+                      </p>
+                    </div>
+                    <Link
+                      href={`/${locale}/console/billing/subscriptions/${matchingSubscription.id}`}
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-xs"
+                      >
+                        Open Billing
+                        <ArrowSquareOut className="size-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3 text-xs text-muted-foreground">
+                  <p>
+                    No linked subscription found for this device. Renewal is
+                    managed through your organization billing account.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/${locale}/console/billing/subscriptions`}>
+                      <Button size="sm" variant="outline" className="text-xs">
+                        View Subscriptions
+                      </Button>
+                    </Link>
+                    <Link href={`/${locale}/console/billing/orders`}>
+                      <Button size="sm" variant="ghost" className="text-xs">
+                        View Orders
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           <Card className="shadow-xs">
             <CardHeader className="border-b pb-4">
               <CardTitle className="text-base font-semibold">

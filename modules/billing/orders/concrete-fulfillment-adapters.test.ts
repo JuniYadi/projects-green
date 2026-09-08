@@ -297,18 +297,27 @@ describe("concrete billing fulfillment adapters", () => {
       1,
       expect.objectContaining({
         where: { id: "device-1" },
-        data: { quotaBaseOut: decimal("1000"), quotaBase: decimal("1000") },
+        data: expect.objectContaining({
+          quotaBase: decimal("1000"),
+          quotaBaseOut: decimal("1000"),
+          status: "ACTIVE",
+        }),
       })
     )
     expect(mockPrisma.whatsappDevice.update).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         where: { id: "device-2" },
-        data: { quotaBaseOut: decimal("2000"), quotaBase: decimal("2000") },
+        data: expect.objectContaining({
+          quotaBase: decimal("2000"),
+          quotaBaseOut: decimal("2000"),
+          status: "ACTIVE",
+        }),
       })
     )
   })
-  it("renews VPN fulfillment from the locked subscription snapshot", async () => {
+
+  it("renews VPN subscription when subscription exists", async () => {
     mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
       id: "service-sub-existing",
       organizationId: "org-1",
