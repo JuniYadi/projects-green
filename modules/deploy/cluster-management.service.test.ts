@@ -76,6 +76,7 @@ const {
   updateCluster,
   updateClusterStatus,
   upsertClusterIntegration,
+  getExistingClusterIntegrationConfig,
   updateClusterIntegrationStatus,
   deleteClusterIntegration,
 } = await import("@/modules/deploy/cluster-management.service")
@@ -612,6 +613,65 @@ describe("ClusterManagementService", () => {
       expect(mockRedisDel).toHaveBeenCalledWith(
         "sec:cluster:creds:cl_1:JENKINS"
       )
+    })
+  })
+
+  describe("getExistingClusterIntegrationConfig", () => {
+    it("returns null when integration does not exist", async () => {
+      mockPrismaAppHostingClusterIntegration.findUnique.mockResolvedValue(null)
+      const result = await getExistingClusterIntegrationConfig(
+        "cl_1",
+        "PROMETHEUS"
+      )
+      expect(result).toBeNull()
+    })
+
+    it("returns meta and decrypted secrets when integration exists", async () => {
+      const { encryptClusterIntegrationSecrets } =
+        await import("./cluster-integration.service")
+      const ciphertext = encryptClusterIntegrationSecrets({
+        username: "prom_admin",
+        password: "secret_password",
+      })
+      mockPrismaAppHostingClusterIntegration.findUnique.mockResolvedValue(
+        fakeIntegration({
+          type: "PROMETHEUS",
+          metaJson: { endpoint: "https://prometheus.example.com" },
+          secretCiphertext: ciphertext,
+          keyVersion: 1,
+        })
+      )
+
+      const result = await getExistingClusterIntegrationConfig(
+        "cl_1",
+        "PROMETHEUS"
+      )
+      expect(result).toEqual({
+        meta: { endpoint: "https://prometheus.example.com" },
+        secrets: {
+          username: "prom_admin",
+          password: "secret_password",
+        },
+      })
+    })
+
+    it("handles integration with empty meta and no secret ciphertext", async () => {
+      mockPrismaAppHostingClusterIntegration.findUnique.mockResolvedValue(
+        fakeIntegration({
+          type: "PROMETHEUS",
+          metaJson: null,
+          secretCiphertext: null,
+        })
+      )
+
+      const result = await getExistingClusterIntegrationConfig(
+        "cl_1",
+        "PROMETHEUS"
+      )
+      expect(result).toEqual({
+        meta: {},
+        secrets: {},
+      })
     })
   })
 })
