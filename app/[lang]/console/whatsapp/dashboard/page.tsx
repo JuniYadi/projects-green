@@ -260,6 +260,21 @@ export default function WhatsAppDashboardPage() {
     [conversations]
   )
 
+  const peakDailyTraffic = React.useMemo(() => {
+    if (dailyCounts.length === 0) return 0
+    return Math.max(
+      ...dailyCounts.map((d) => d.messageInboxCount + d.messageOutboxCount)
+    )
+  }, [dailyCounts])
+
+  const avgDailyTraffic = React.useMemo(() => {
+    if (dailyCounts.length === 0) return 0
+    const total = dailyCounts.reduce(
+      (sum, d) => sum + d.messageInboxCount + d.messageOutboxCount,
+      0
+    )
+    return Math.round(total / dailyCounts.length)
+  }, [dailyCounts])
   const onboarding = useWhatsAppOnboarding({ locale })
 
   if (!onboarding.isGraduated && state === "loaded") {
@@ -497,8 +512,8 @@ export default function WhatsAppDashboardPage() {
                     </CardTitle>
                     <CardDescription className="text-xs">
                       {locale === "id"
-                        ? "Volume pesan masuk vs keluar 7 hari berturut-turut"
-                        : "Inbound vs outbound volume over 7 consecutive days"}
+                        ? `Puncak: ${peakDailyTraffic}/hari • Rata-rata: ${avgDailyTraffic}/hari`
+                        : `Peak: ${peakDailyTraffic}/day • Avg: ${avgDailyTraffic}/day`}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
@@ -509,7 +524,7 @@ export default function WhatsAppDashboardPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="size-2 rounded-full bg-blue-500" />
+                      <span className="size-2 rounded-full bg-sky-400" />
                       <span className="text-muted-foreground">
                         {locale === "id" ? "Keluar" : "Outbound"}
                       </span>
