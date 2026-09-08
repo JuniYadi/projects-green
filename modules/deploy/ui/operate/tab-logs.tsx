@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { MagnifyingGlass } from "@phosphor-icons/react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ArrowsClockwise, MagnifyingGlass } from "@phosphor-icons/react"
 
 import {
   Card,
@@ -17,23 +17,88 @@ import { Switch } from "@/components/ui/switch"
 import type { LogMessage } from "@/modules/deploy/operate.types"
 
 type TabLogsProps = {
-  logs: LogMessage[]
-  setLogs: React.Dispatch<React.SetStateAction<LogMessage[]>>
-  diagnosticMode: string
+  logs?: LogMessage[]
+  setLogs?: React.Dispatch<React.SetStateAction<LogMessage[]>>
+  diagnosticMode?: string
+  appSlug?: string
 }
 
-export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
+export function TabLogs({
+  logs: propLogs,
+  setLogs: propSetLogs,
+  diagnosticMode = "production",
+  appSlug,
+}: TabLogsProps) {
+  const [internalLogs, setInternalLogs] = useState<LogMessage[]>(propLogs ?? [])
   const [logFilterQuery, setLogFilterQuery] = useState("")
   const [logFilterLevel, setLogFilterLevel] = useState<
     "ALL" | "INFO" | "WARN" | "ERROR"
   >("ALL")
   const [isLiveTailing, setIsLiveTailing] = useState(true)
+  const [isLoading, setIsLoading] = useState(Boolean(appSlug))
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
+  const activeLogs = propLogs ?? internalLogs
+  const updateLogs = propSetLogs ?? setInternalLogs
   const logConsoleEndRef = useRef<HTMLDivElement>(null)
 
-  // Simulate logs tick
+  // Fetch real logs from OpenSearch API when appSlug is present
+  const fetchRealLogs = useCallback(async () => {
+    if (!appSlug) return
+    try {
+      const queryParams = new URLSearchParams()
+      queryParams.set("limit", "100")
+      queryParams.set("order", "asc")
+      if (logFilterLevel !== "ALL") {
+        queryParams.set("level", logFilterLevel)
+      }
+      if (logFilterQuery.trim().length > 0) {
+        queryParams.set("q", logFilterQuery.trim())
+      }
+
+      const res = await fetch(
+        `/api/deploy/apps/${encodeURIComponent(appSlug)}/logs?${queryParams.toString()}`
+      )
+      if (res.ok) {
+        const json = await res.json()
+        if (json?.ok && Array.isArray(json.data)) {
+          updateLogs(json.data)
+        }
+      }
+    } catch (error) {
+      console.error("[TabLogs] Failed to fetch real OpenSearch logs:", error)
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+  }, [appSlug, logFilterLevel, logFilterQuery, updateLogs])
+
+  // Initial fetch on mount or when filter changes
   useEffect(() => {
-    if (!isLiveTailing) return
+    if (!appSlug) return
+    void fetchRealLogs()
+  }, [appSlug, fetchRealLogs])
+
+  // Polling for live tailing when appSlug is present
+  useEffect(() => {
+    if (!appSlug || !isLiveTailing) return
+
+    const interval = setInterval(() => {
+      void fetchRealLogs()
+    }, 4000)
+
+    return () => clearInterval(interval)
+  }, [appSlug, isLiveTailing, fetchRealLogs])
+  // Scroll to bottom of logs when new logs arrive
+  useEffect(() => {
+    if (logConsoleEndRef.current && isLiveTailing) {
+      logConsoleEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [activeLogs, isLiveTailing])
+
+  // Fallback simulator ONLY when appSlug is NOT provided and diagnosticMode != production
+  useEffect(() => {
+    if (appSlug || !isLiveTailing || diagnosticMode === "production") return
 
     const interval = setInterval(() => {
       const now = new Date()
@@ -88,21 +153,21 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
 
       const randomSelection =
         randomLogs[Math.floor(Math.random() * randomLogs.length)]
-      setLogs((prev) => [...prev.slice(-30), randomSelection])
+      updateLogs((prev) => [...prev.slice(-30), randomSelection])
     }, 4000)
 
     return () => clearInterval(interval)
-  }, [isLiveTailing, diagnosticMode, setLogs])
+  }, [appSlug, isLiveTailing, diagnosticMode, updateLogs])
 
-  // Scroll to bottom of logs
+  // Scroll to bottom of logs when new logs arrive
   useEffect(() => {
     if (logConsoleEndRef.current && isLiveTailing) {
       logConsoleEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
-  }, [logs, isLiveTailing])
+  }, [activeLogs, isLiveTailing])
 
   const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
+    return activeLogs.filter((log) => {
       const matchQuery =
         log.message.toLowerCase().includes(logFilterQuery.toLowerCase()) ||
         log.source.toLowerCase().includes(logFilterQuery.toLowerCase())
@@ -110,7 +175,7 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
         logFilterLevel === "ALL" || log.level === logFilterLevel
       return matchQuery && matchLevel
     })
-  }, [logs, logFilterQuery, logFilterLevel])
+  }, [activeLogs, logFilterQuery, logFilterLevel])
 
   return (
     <Card
@@ -126,7 +191,26 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
             Live streaming log aggregates index from this workspace cluster
           </CardDescription>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {appSlug && (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => {
+                setIsRefreshing(true)
+                void fetchRealLogs()
+              }}
+              disabled={isRefreshing}
+              className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground"
+            >
+              <ArrowsClockwise
+                size={13}
+                className={isRefreshing ? "animate-spin" : ""}
+              />
+              <span>Refresh</span>
+            </Button>
+          )}
           <span
             className="cursor-pointer text-xs text-muted-foreground select-none"
             onClick={() => setIsLiveTailing(!isLiveTailing)}
@@ -187,49 +271,75 @@ export function TabLogs({ logs, setLogs, diagnosticMode }: TabLogsProps) {
 
         {/* Logs display shell */}
         <div className="max-h-[350px] min-h-[220px] space-y-1 overflow-auto rounded-xl border border-border bg-zinc-950 px-4 py-3.5 font-mono text-[11px] leading-relaxed text-zinc-100 shadow-inner dark:bg-[#050507]">
-          {filteredLogs.map((log, idx) => {
-            const levelBadgeStyle =
-              log.level === "ERROR"
-                ? "bg-red-500/10 text-red-400 border-red-500/20"
-                : log.level === "WARN"
-                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                  : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+          {isLoading && activeLogs.length === 0 ? (
+            <div className="flex h-[200px] flex-col items-center justify-center gap-2 text-muted-foreground">
+              <ArrowsClockwise
+                size={20}
+                className="animate-spin text-primary"
+              />
+              <p className="text-xs">Memuat log dari OpenSearch cluster...</p>
+            </div>
+          ) : (
+            filteredLogs.map((log, idx) => {
+              const levelBadgeStyle =
+                log.level === "ERROR"
+                  ? "bg-red-500/10 text-red-400 border-red-500/20"
+                  : log.level === "WARN"
+                    ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    : "bg-blue-500/10 text-blue-400 border-blue-500/20"
 
-            const sourceBadgeStyle =
-              log.source === "nginx"
-                ? "text-purple-400"
-                : log.source === "app"
-                  ? "text-cyan-400"
-                  : "text-amber-300"
+              const sourceBadgeStyle =
+                log.source === "nginx"
+                  ? "text-purple-400"
+                  : log.source === "app" || log.source === "deploy"
+                    ? "text-cyan-400"
+                    : "text-amber-300"
 
-            return (
-              <div
-                key={idx}
-                className="flex items-start gap-3 rounded-lg border border-transparent px-2 py-1 transition-colors select-text hover:border-white/[0.03] hover:bg-white/[0.03]"
+              return (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 rounded-lg border border-transparent px-2 py-1 transition-colors select-text hover:border-white/[0.03] hover:bg-white/[0.03]"
+                >
+                  <span className="shrink-0 font-semibold text-muted-foreground/60 select-none">
+                    {log.timestamp}
+                  </span>
+                  <span
+                    className={`py-0.2 shrink-0 rounded border px-1.5 text-[9px] font-bold tracking-wider uppercase ${levelBadgeStyle}`}
+                  >
+                    {log.level}
+                  </span>
+                  <span
+                    className={`shrink-0 text-[10px] font-semibold ${sourceBadgeStyle}`}
+                  >
+                    [{log.source}]
+                  </span>
+                  <span className="leading-relaxed font-medium break-all text-white/90">
+                    {log.message}
+                  </span>
+                </div>
+              )
+            })
+          )}
+
+          {!isLoading && filteredLogs.length === 0 && (
+            <div className="flex h-[200px] flex-col items-center justify-center gap-2 p-10 text-center font-sans text-xs font-medium text-muted-foreground/80">
+              <p>Belum ada output log di OpenSearch untuk service ini.</p>
+              <p className="text-[11px] text-muted-foreground/60">
+                Pod mungkin sedang proses booting atau belum menghasilkan output
+                stdout/stderr.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => {
+                  setIsRefreshing(true)
+                  void fetchRealLogs()
+                }}
+                className="mt-2 text-xs"
               >
-                <span className="shrink-0 font-semibold text-muted-foreground/60 select-none">
-                  {log.timestamp}
-                </span>
-                <span
-                  className={`py-0.2 shrink-0 rounded border px-1.5 text-[9px] font-bold tracking-wider uppercase ${levelBadgeStyle}`}
-                >
-                  {log.level}
-                </span>
-                <span
-                  className={`shrink-0 text-[10px] font-semibold ${sourceBadgeStyle}`}
-                >
-                  [{log.source}]
-                </span>
-                <span className="leading-relaxed font-medium break-all text-white/90">
-                  {log.message}
-                </span>
-              </div>
-            )
-          })}
-
-          {filteredLogs.length === 0 && (
-            <div className="p-10 text-center font-sans text-xs font-medium text-muted-foreground/80">
-              No log outputs correspond to the search queries.
+                Cek Ulang
+              </Button>
             </div>
           )}
           <div ref={logConsoleEndRef} />
