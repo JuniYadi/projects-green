@@ -17,13 +17,10 @@ describe("resolveSidebarMenu", () => {
     expect(navMainLabel).toBe("App Hosting")
 
     expect(navMain.map((item) => item.title)).toEqual([
+      "Overview",
       "Deploy",
       "Marketplace",
-      "Deployments",
-      "Overview",
-      "Logs",
-      "Metrics",
-      "Settings",
+      "Platforms",
       "Credentials",
     ])
     // After flattening Manage container, no single item is active for /console/app/manage
@@ -33,29 +30,28 @@ describe("resolveSidebarMenu", () => {
     expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
   })
 
-  it("marks settings active for its routes", () => {
-    const settingsMenu = resolveSidebarMenu({
+  it("marks Platforms active for platforms fleet and platform instance routes", () => {
+    const platformsFleetMenu = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/app/settings",
+      pathname: "/console/app/platforms",
       locale: "en",
     })
 
     expect(
-      settingsMenu.navMain.find((item) => item.title === "Settings")?.isActive
+      platformsFleetMenu.navMain.find((item) => item.title === "Platforms")
+        ?.isActive
     ).toBe(true)
-  })
-  it("marks Deployments active with localized URL", () => {
-    const deploymentsMenu = resolveSidebarMenu({
+
+    const platformMenu = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/app/deployments/stack-1",
+      pathname: "/console/app/platform/hermes-vibrant-comet",
       locale: "en",
     })
 
-    const deployments = deploymentsMenu.navMain.find(
-      (item) => item.title === "Deployments"
+    const platformsItem = platformMenu.navMain.find(
+      (item) => item.title === "Platforms"
     )
-    expect(deployments?.url).toBe("/en/console/app/deployments")
-    expect(deployments?.isActive).toBe(true)
+    expect(platformsItem?.isActive).toBe(true)
   })
 
   it("marks items active for console utility routes in their context", () => {

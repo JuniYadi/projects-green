@@ -45,6 +45,7 @@ const {
   maskClusterIntegrationSecret,
   resolveAppHostingClusterForStack,
   resolveClusterIntegration,
+  resolveClusterIntegrationByClusterCode,
   resolveDefaultAppHostingClusterId,
 } = await import("./cluster-integration.service")
 
@@ -482,6 +483,120 @@ describe("cluster-integration.service", () => {
     expect(resolveClusterIntegration("stack-1", "JENKINS")).rejects.toThrow(
       "Missing JENKINS integration for App Hosting cluster sgp"
     )
+  })
+  it("resolveClusterIntegration returns PROMETHEUS typed config with decrypted DB secrets", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValue({
+      clusterId: null,
+    })
+    mockPrisma.appHostingCluster.findMany.mockResolvedValue([
+      { id: "cluster-1", code: "sgp", name: "SG", region: "Singapore" },
+    ])
+    const ciphertext = encryptClusterIntegrationSecrets({
+      username: "prom-admin",
+      password: "prom-secret-password",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-1",
+      type: "PROMETHEUS",
+      metaJson: {
+        endpoint: "https://prometheus-sgp.internal:9090",
+      },
+      secretCiphertext: ciphertext,
+    })
+
+    const config = await resolveClusterIntegration("stack-1", "PROMETHEUS")
+    expect(config.endpoint).toBe("https://prometheus-sgp.internal:9090")
+    expect(config.username).toBe("prom-admin")
+    expect(config.password).toBe("prom-secret-password")
+  })
+
+  it("resolveClusterIntegrationByClusterCode resolves PROMETHEUS config for sgp", async () => {
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValue({
+      id: "cluster-sgp",
+      code: "sgp",
+      name: "Singapore Cluster",
+    })
+    const ciphertext = encryptClusterIntegrationSecrets({
+      username: "prom-user-sgp",
+      password: "prom-password-sgp",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-sgp",
+      type: "PROMETHEUS",
+      metaJson: {
+        endpoint: "https://prometheus.sgp.pfnapp.com",
+      },
+      secretCiphertext: ciphertext,
+    })
+
+    const config = await resolveClusterIntegrationByClusterCode(
+      "sgp",
+      "PROMETHEUS"
+    )
+    expect(config.endpoint).toBe("https://prometheus.sgp.pfnapp.com")
+    expect(config.username).toBe("prom-user-sgp")
+    expect(config.password).toBe("prom-password-sgp")
+    expect(mockPrisma.appHostingCluster.findUnique).toHaveBeenCalledWith({
+      where: { code: "sgp" },
+    })
+  })
+
+  it("resolveClusterIntegrationByClusterCode falls back to id when code lookup returns null", async () => {
+    mockPrisma.appHostingCluster.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "cluster-id-123",
+        code: "sgp",
+        name: "Singapore Cluster",
+      })
+    const ciphertext = encryptClusterIntegrationSecrets({
+      username: "prom-user-id",
+      password: "prom-password-id",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-id-123",
+      type: "PROMETHEUS",
+      metaJson: {
+        endpoint: "https://prometheus-fallback.pfnapp.com",
+      },
+      secretCiphertext: ciphertext,
+    })
+
+    const config = await resolveClusterIntegrationByClusterCode(
+      "cluster-id-123",
+      "PROMETHEUS"
+    )
+    expect(config.endpoint).toBe("https://prometheus-fallback.pfnapp.com")
+    expect(config.username).toBe("prom-user-id")
+    expect(config.password).toBe("prom-password-id")
+  })
+
+  it("resolveClusterIntegrationByClusterCode throws when cluster is not found", async () => {
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValue(null)
+
+    await expect(
+      resolveClusterIntegrationByClusterCode("unknown-cluster", "PROMETHEUS")
+    ).rejects.toThrow("App Hosting cluster not found: unknown-cluster")
+  })
+
+  it("buildPrometheusConfig throws when required field is missing", async () => {
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValue({
+      id: "cluster-sgp",
+      code: "sgp",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-sgp",
+      type: "PROMETHEUS",
+      metaJson: {},
+      secretCiphertext: encryptClusterIntegrationSecrets({
+        username: "prom-user",
+        password: "prom-pass",
+      }),
+    })
+
+    await expect(
+      resolveClusterIntegrationByClusterCode("sgp", "PROMETHEUS")
+    ).rejects.toThrow("Missing required cluster integration field: endpoint")
   })
 
   it("decrypting with a different key version throws", () => {

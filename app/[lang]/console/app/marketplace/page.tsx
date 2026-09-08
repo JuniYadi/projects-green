@@ -62,7 +62,9 @@ export default function ConsoleMarketplacePage() {
 
             toast.success(`Deployment for ${submission.appName} started!`)
             setIsDrawerOpen(false)
-            router.push(`/${lang}/console/app/deployments`)
+            router.push(
+              `/${lang}/console/app/platform/${encodeURIComponent(submission.appName)}?tab=deployments`
+            )
           } catch (error) {
             toast.error(
               error instanceof Error ? error.message : "Deploy failed"
