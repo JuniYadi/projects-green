@@ -99,6 +99,37 @@ describe("getDeviceBroadcastCapacity", () => {
     expect(result.remainingToday).toBe(1000)
     expect(result.remainingThisHour).toBe(41)
   })
+
+  it("returns isAffordable false when recipients exceed quota and balance is zero", async () => {
+    mockFindFirst.mockResolvedValueOnce({
+      ...DEVICE,
+      quotaBaseOut: 10,
+      addonQuota: 0,
+    })
+    mockFindUnique.mockResolvedValue(null)
+
+    const result = await getDeviceBroadcastCapacity("org_1", "dev_1", 100)
+    expect(result.quotaRemaining).toBe(10)
+    expect(result.coveredByQuota).toBe(10)
+    expect(result.overageRecipients).toBe(90)
+    expect(result.maxAffordableRecipients).toBe(10)
+    expect(result.isAffordable).toBe(false)
+  })
+
+  it("returns isAffordable true when quota covers all recipients", async () => {
+    mockFindFirst.mockResolvedValueOnce({
+      ...DEVICE,
+      quotaBaseOut: 500,
+      addonQuota: 0,
+    })
+    mockFindUnique.mockResolvedValue(null)
+
+    const result = await getDeviceBroadcastCapacity("org_1", "dev_1", 100)
+    expect(result.quotaRemaining).toBe(500)
+    expect(result.coveredByQuota).toBe(100)
+    expect(result.overageRecipients).toBe(0)
+    expect(result.isAffordable).toBe(true)
+  })
 })
 
 describe("validateSchedule", () => {

@@ -7,7 +7,14 @@ import {
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { CaretLeft, CaretRight, Warning } from "@phosphor-icons/react"
+import {
+  CaretLeft,
+  CaretRight,
+  Warning,
+  CreditCard,
+  Scissors,
+} from "@phosphor-icons/react"
+import { QuickTopUpDialog } from "@/components/billing/quick-top-up-dialog"
 import { toast } from "sonner"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -155,7 +162,8 @@ export default function NewWhatsAppBroadcastPage() {
   } | null>(null)
   const [acknowledgeMultiDay, setAcknowledgeMultiDay] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-
+  const [showTopUpDialog, setShowTopUpDialog] = React.useState(false)
+  const [preflightRefreshKey, setPreflightRefreshKey] = React.useState(0)
   // ─── Derived form data ──────────────────────────────────────────────
 
   const activeDevices = React.useMemo(
@@ -361,6 +369,7 @@ export default function NewWhatsAppBroadcastPage() {
         )
       : 0
   const isPreflightErrorCurrent = preflightError?.key === preflightRequestKey
+  const isAffordable = capacity?.isAffordable !== false
   const canSubmit = Boolean(
     selectedTemplate &&
     templateLanguage &&
@@ -370,7 +379,8 @@ export default function NewWhatsAppBroadcastPage() {
     isPreflightCurrent &&
     !isPreflightErrorCurrent &&
     !isSubmitting &&
-    (!needsMultiDayAck || acknowledgeMultiDay)
+    (!needsMultiDayAck || acknowledgeMultiDay) &&
+    isAffordable
   )
 
   // ─── Data loading ───────────────────────────────────────────────────
@@ -448,9 +458,43 @@ export default function NewWhatsAppBroadcastPage() {
     selectedTemplate,
     templateLanguage,
     preflightRequestKey,
+    preflightRefreshKey,
   ])
 
-  // ─── Handlers ───────────────────────────────────────────────────────
+  const handleTopUpSuccess = () => {
+    setShowTopUpDialog(false)
+    toast.success(
+      locale === "id"
+        ? "Saldo berhasil ditambahkan! Memvalidasi ulang kuota broadcast..."
+        : "Balance added successfully! Revalidating broadcast capacity..."
+    )
+    setPreflightRefreshKey((k) => k + 1)
+  }
+
+  const handleTrimToAffordable = () => {
+    const limit = capacity?.maxAffordableRecipients ?? 0
+    if (limit <= 0) return
+
+    if (recipientTab === "manual") {
+      const lines = manualRecipients
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+      const trimmed = lines.slice(0, limit).join("\n")
+      setManualRecipients(trimmed)
+    } else if (recipientTab === "contacts") {
+      const trimmedIds = new Set(Array.from(selectedContactIds).slice(0, limit))
+      setSelectedContactIds(trimmedIds)
+    } else if (recipientTab === "csv") {
+      setCsvRows((prev) => prev.slice(0, limit))
+    }
+
+    toast.success(
+      locale === "id"
+        ? `Daftar penerima dipangkas menjadi ${limit.toLocaleString()} kontak sesuai kuota dan saldo.`
+        : `Recipients trimmed to ${limit.toLocaleString()} contacts matching your available capacity.`
+    )
+  }
 
   function handleTemplateChange(value: string) {
     setTemplateId(value)
@@ -1408,6 +1452,173 @@ export default function NewWhatsAppBroadcastPage() {
                 </span>
               </div>
             </div>
+            {/* Financial Cost & Quota Coverage Breakdown */}
+            {capacity && totalRecipients > 0 && (
+              <div className="space-y-2 rounded-lg border border-border/80 bg-muted/20 p-3">
+                <div className="flex items-center justify-between text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  <span>
+                    {locale === "id"
+                      ? "Rincian Biaya & Kuota"
+                      : "Cost & Quota Coverage"}
+                  </span>
+                  {capacity.isUnlimited ? (
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    >
+                      {locale === "id" ? "Paket Unlimited" : "Unlimited Plan"}
+                    </Badge>
+                  ) : (
+                    <span className="text-[11px] font-normal text-muted-foreground normal-case">
+                      {locale === "id" ? "Sisa Kuota: " : "Remaining Quota: "}
+                      <strong className="font-semibold text-foreground">
+                        {(capacity.quotaRemaining ?? 0).toLocaleString()}
+                      </strong>
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1.5 pt-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      {locale === "id"
+                        ? "Tercakup Kuota Gratis"
+                        : "Covered by Free Quota"}
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {(
+                        capacity.coveredByQuota ??
+                        Math.min(totalRecipients, capacity.quotaRemaining ?? 0)
+                      ).toLocaleString()}{" "}
+                      {locale === "id" ? "pesan" : "messages"} (Rp 0)
+                    </span>
+                  </div>
+
+                  {(capacity.overageRecipients ?? 0) > 0 && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          {locale === "id"
+                            ? "Kelebihan Kuota (PAYG Overage)"
+                            : "PAYG Overage Recipients"}
+                        </span>
+                        <span className="font-medium text-amber-600 dark:text-amber-400">
+                          +{(capacity.overageRecipients ?? 0).toLocaleString()}{" "}
+                          {locale === "id" ? "pesan" : "messages"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          {locale === "id"
+                            ? "Estimasi Biaya Overage"
+                            : "Estimated Overage Cost"}
+                        </span>
+                        <span className="font-semibold text-foreground">
+                          Rp{" "}
+                          {(
+                            capacity.estimatedOverageCost ?? 0
+                          ).toLocaleString()}
+                          {(capacity.unitPrice ?? 0) > 0 && (
+                            <span className="text-[11px] font-normal text-muted-foreground">
+                              {" "}
+                              (@Rp {(capacity.unitPrice ?? 0).toLocaleString()})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          {locale === "id"
+                            ? "Saldo Deposit Anda"
+                            : "Your Deposit Balance"}
+                        </span>
+                        <span
+                          className={
+                            (capacity.depositBalance ?? 0) >=
+                            (capacity.estimatedOverageCost ?? 0)
+                              ? "font-medium text-emerald-600 dark:text-emerald-400"
+                              : "font-medium text-destructive"
+                          }
+                        >
+                          Rp {(capacity.depositBalance ?? 0).toLocaleString()}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Insufficient Capacity Alert with Instant Recovery Actions */}
+            {capacity && capacity.isAffordable === false && (
+              <Alert className="border-destructive/40 bg-destructive/10 text-destructive dark:border-destructive/50 dark:bg-destructive/10">
+                <Warning className="size-5 text-destructive" weight="fill" />
+                <div className="ml-2 space-y-2">
+                  <div className="font-semibold text-destructive">
+                    {locale === "id"
+                      ? "Kuota & Saldo Tidak Mencukupi"
+                      : "Insufficient Quota & Balance"}
+                  </div>
+                  <AlertDescription className="text-xs text-foreground/90">
+                    {locale === "id"
+                      ? `Anda ingin mengirim ${totalRecipients.toLocaleString()} pesan, tetapi kuota gratis (${(
+                          capacity.quotaRemaining ?? 0
+                        ).toLocaleString()}) dan saldo deposit (Rp ${(
+                          capacity.depositBalance ?? 0
+                        ).toLocaleString()}) hanya cukup untuk ${(
+                          capacity.maxAffordableRecipients ?? 0
+                        ).toLocaleString()} pesan. Estimasi kekurangan: Rp ${Math.max(
+                          0,
+                          (capacity.estimatedOverageCost ?? 0) -
+                            (capacity.depositBalance ?? 0)
+                        ).toLocaleString()}.`
+                      : `You want to send ${totalRecipients.toLocaleString()} messages, but your free quota (${(
+                          capacity.quotaRemaining ?? 0
+                        ).toLocaleString()}) and deposit balance (Rp ${(
+                          capacity.depositBalance ?? 0
+                        ).toLocaleString()}) only cover ${(
+                          capacity.maxAffordableRecipients ?? 0
+                        ).toLocaleString()} messages. Estimated deficit: Rp ${Math.max(
+                          0,
+                          (capacity.estimatedOverageCost ?? 0) -
+                            (capacity.depositBalance ?? 0)
+                        ).toLocaleString()}.`}
+                  </AlertDescription>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="default"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={() => setShowTopUpDialog(true)}
+                    >
+                      <CreditCard className="size-4" weight="bold" />
+                      {locale === "id" ? "Top Up Saldo" : "Top Up Balance"}
+                    </Button>
+
+                    {(capacity.maxAffordableRecipients ?? 0) > 0 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 gap-1.5 border-border/80 bg-background text-xs hover:bg-muted"
+                        onClick={handleTrimToAffordable}
+                      >
+                        <Scissors className="size-4" weight="bold" />
+                        {locale === "id"
+                          ? `Kirim ke ${(
+                              capacity.maxAffordableRecipients ?? 0
+                            ).toLocaleString()} Kontak Saja`
+                          : `Trim to ${(
+                              capacity.maxAffordableRecipients ?? 0
+                            ).toLocaleString()} Recipients`}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Alert>
+            )}
 
             {needsMultiDayAck && (
               <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
@@ -1453,6 +1664,26 @@ export default function NewWhatsAppBroadcastPage() {
           </CardContent>
         </Card>
       </form>
+      <QuickTopUpDialog
+        open={showTopUpDialog}
+        onOpenChange={setShowTopUpDialog}
+        currentBalance={capacity?.depositBalance ?? 0}
+        suggestedAmount={
+          capacity
+            ? Math.max(
+                10000,
+                Math.ceil(
+                  ((capacity.estimatedOverageCost ?? 0) -
+                    (capacity.depositBalance ?? 0)) /
+                    10000
+                ) * 10000
+              )
+            : 50000
+        }
+        currency="IDR"
+        lang={locale}
+        onSuccess={handleTopUpSuccess}
+      />
     </div>
   )
 }

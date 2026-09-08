@@ -322,6 +322,16 @@ export type DeviceBroadcastCapacity = {
   hourlyUsed: number
   remainingToday: number
   remainingThisHour: number
+  quotaRemaining?: number
+  depositBalance?: number
+  unitPrice?: number
+  currency?: string
+  coveredByQuota?: number
+  overageRecipients?: number
+  estimatedOverageCost?: number
+  maxAffordableRecipients?: number
+  isAffordable?: boolean
+  isUnlimited?: boolean
 }
 
 export type BroadcastScheduleRecommendation = {
