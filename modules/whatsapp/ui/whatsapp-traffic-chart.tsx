@@ -53,18 +53,31 @@ export function WhatsAppTrafficChart({
 
   const allInbound = data.map((d) => d.messageInboxCount ?? 0)
   const allOutbound = data.map((d) => d.messageOutboxCount ?? 0)
-  const maxValue = Math.max(1, ...allInbound, ...allOutbound)
+  const rawMax = Math.max(1, ...allInbound, ...allOutbound)
+  const getNiceYScale = (val: number) => {
+    if (val <= 2) return { max: 2, mid: 1 }
+    if (val <= 4) return { max: 4, mid: 2 }
+    if (val <= 6) return { max: 6, mid: 3 }
+    if (val <= 10) return { max: 10, mid: 5 }
+    if (val <= 20) return { max: 20, mid: 10 }
+    if (val <= 50) return { max: 50, mid: 25 }
+    if (val <= 100) return { max: 100, mid: 50 }
+    const mag = Math.pow(10, Math.floor(Math.log10(val)))
+    const step = Math.ceil(val / (mag * 2)) * (mag * 2)
+    return { max: step, mid: Math.round(step / 2) }
+  }
+  const { max: maxY, mid: midY } = getNiceYScale(rawMax)
 
   const totalInbox = allInbound.reduce((acc, v) => acc + v, 0)
   const totalOutbox = allOutbound.reduce((acc, v) => acc + v, 0)
 
-  const paddingTop = 10
-  const paddingBottom = 10
+  const paddingTop = 8
+  const paddingBottom = 8
   const chartHeight = 100 - paddingTop - paddingBottom
 
   const getY = (val: number) => {
     const clamped = Math.max(0, val)
-    return paddingTop + (1 - clamped / maxValue) * chartHeight
+    return paddingTop + (1 - clamped / maxY) * chartHeight
   }
 
   const getX = (idx: number) => {
@@ -110,113 +123,155 @@ export function WhatsAppTrafficChart({
 
   return (
     <div className={cn("flex w-full flex-col gap-2", className)}>
-      <div
-        className="relative w-full"
-        style={{ height }}
-        onMouseLeave={() => setHoveredIdx(null)}
-      >
-        <svg
-          viewBox="0 0 400 100"
-          width="100%"
-          height="100%"
-          preserveAspectRatio="none"
-          className="overflow-visible select-none"
+      <div className="flex w-full items-stretch gap-2.5" style={{ height }}>
+        {/* Left Y-axis scale numbers */}
+        <div
+          data-testid="traffic-y-axis"
+          className="flex w-6 shrink-0 flex-col justify-between pt-1 pb-1 text-right font-mono text-[10px] text-muted-foreground/80 select-none"
         >
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-            </linearGradient>
-          </defs>
+          <span>{maxY}</span>
+          <span>{midY}</span>
+          <span>0</span>
+        </div>
 
-          {/* Inbound Gradient Fill Area */}
-          <path
-            d={primaryAreaD}
-            fill={`url(#${gradientId})`}
-            data-testid="traffic-primary-area"
-          />
+        {/* SVG Canvas Area */}
+        <div
+          className="relative flex-1"
+          onMouseLeave={() => setHoveredIdx(null)}
+        >
+          <svg
+            viewBox="0 0 400 100"
+            width="100%"
+            height="100%"
+            preserveAspectRatio="none"
+            className="overflow-visible select-none"
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
 
-          {/* Outbound Line (Sky-400) */}
-          <path
-            d={secondaryLineD}
-            fill="none"
-            stroke="#38bdf8"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            data-testid="traffic-secondary-line"
-          />
+            {/* Horizontal Grid Guide Lines */}
+            <line
+              x1={0}
+              y1={paddingTop}
+              x2={400}
+              y2={paddingTop}
+              stroke="currentColor"
+              strokeDasharray="3 3"
+              strokeOpacity={0.15}
+              data-testid="traffic-grid-top"
+            />
+            <line
+              x1={0}
+              y1={paddingTop + chartHeight / 2}
+              x2={400}
+              y2={paddingTop + chartHeight / 2}
+              stroke="currentColor"
+              strokeDasharray="3 3"
+              strokeOpacity={0.15}
+              data-testid="traffic-grid-mid"
+            />
+            <line
+              x1={0}
+              y1={100 - paddingBottom}
+              x2={400}
+              y2={100 - paddingBottom}
+              stroke="currentColor"
+              strokeOpacity={0.2}
+              data-testid="traffic-grid-base"
+            />
+            {/* Inbound Gradient Fill Area */}
+            <path
+              d={primaryAreaD}
+              fill={`url(#${gradientId})`}
+              data-testid="traffic-primary-area"
+            />
 
-          {/* Inbound Line (Emerald-500) */}
-          <path
-            d={primaryLineD}
-            fill="none"
-            stroke="#10b981"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            data-testid="traffic-primary-line"
-          />
+            {/* Outbound Line (Sky-400) */}
+            <path
+              d={secondaryLineD}
+              fill="none"
+              stroke="#38bdf8"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              data-testid="traffic-secondary-line"
+            />
 
-          {/* Hover Crosshair and Markers */}
-          {hoveredIdx !== null && hoveredItem && (
-            <g data-testid="traffic-hover-group">
-              <line
-                x1={getX(hoveredIdx)}
-                y1={0}
-                x2={getX(hoveredIdx)}
-                y2={100}
-                stroke="currentColor"
-                strokeDasharray="3 3"
-                strokeOpacity={0.35}
-                strokeWidth={1}
-                data-testid="traffic-crosshair"
-              />
-              <circle
-                cx={getX(hoveredIdx)}
-                cy={getY(hoveredItem.messageInboxCount)}
-                r={3.5}
-                fill="#10b981"
-                stroke="white"
-                strokeWidth={1.5}
-                data-testid="traffic-inbound-marker"
-              />
-              <circle
-                cx={getX(hoveredIdx)}
-                cy={getY(hoveredItem.messageOutboxCount)}
-                r={3.5}
-                fill="#38bdf8"
-                stroke="white"
-                strokeWidth={1.5}
-                data-testid="traffic-outbound-marker"
-              />
-            </g>
-          )}
+            {/* Inbound Line (Emerald-500) */}
+            <path
+              d={primaryLineD}
+              fill="none"
+              stroke="#10b981"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              data-testid="traffic-primary-line"
+            />
 
-          {/* Interactive Invisible Slice Columns for Hover Tracking */}
-          {data.map((item, idx) => {
-            const sliceWidth = 400 / data.length
-            const x = idx * sliceWidth
-            return (
-              <rect
-                key={`slice-${item.date}-${idx}`}
-                x={x}
-                y={0}
-                width={sliceWidth}
-                height={100}
-                fill="transparent"
-                className="cursor-pointer"
-                data-testid={`traffic-slice-${idx}`}
-                onMouseEnter={() => setHoveredIdx(idx)}
-              />
-            )
-          })}
-        </svg>
+            {/* Hover Crosshair and Markers */}
+            {hoveredIdx !== null && hoveredItem && (
+              <g data-testid="traffic-hover-group">
+                <line
+                  x1={getX(hoveredIdx)}
+                  y1={0}
+                  x2={getX(hoveredIdx)}
+                  y2={100}
+                  stroke="currentColor"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.35}
+                  strokeWidth={1}
+                  data-testid="traffic-crosshair"
+                />
+                <circle
+                  cx={getX(hoveredIdx)}
+                  cy={getY(hoveredItem.messageInboxCount)}
+                  r={3.5}
+                  fill="#10b981"
+                  stroke="white"
+                  strokeWidth={1.5}
+                  data-testid="traffic-inbound-marker"
+                />
+                <circle
+                  cx={getX(hoveredIdx)}
+                  cy={getY(hoveredItem.messageOutboxCount)}
+                  r={3.5}
+                  fill="#38bdf8"
+                  stroke="white"
+                  strokeWidth={1.5}
+                  data-testid="traffic-outbound-marker"
+                />
+              </g>
+            )}
+
+            {/* Interactive Invisible Slice Columns for Hover Tracking */}
+            {data.map((item, idx) => {
+              const sliceWidth = 400 / data.length
+              const x = idx * sliceWidth
+              return (
+                <rect
+                  key={`slice-${item.date}-${idx}`}
+                  x={x}
+                  y={0}
+                  width={sliceWidth}
+                  height={100}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  data-testid={`traffic-slice-${idx}`}
+                  onMouseEnter={() => setHoveredIdx(idx)}
+                />
+              )
+            })}
+          </svg>
+        </div>
       </div>
 
       {/* External Bottom Ticks */}
       <div
-        className="flex items-center justify-between px-0.5 text-[11px] font-medium text-muted-foreground"
+        className="flex items-center justify-between pr-0.5 pl-[34px] text-[11px] font-medium text-muted-foreground"
         data-testid="traffic-chart-ticks"
       >
         <span>{firstLabel}</span>

@@ -43,6 +43,22 @@ describe("WhatsAppTrafficChart component", () => {
     expect(secondaryLine.getAttribute("stroke")).toBe("#38bdf8")
   })
 
+  it("renders numerical Y-axis scale and horizontal grid guide lines", () => {
+    const view = render(<WhatsAppTrafficChart data={mockData} locale="id" />)
+
+    const yAxis = view.getByTestId("traffic-y-axis")
+    expect(yAxis).toBeTruthy()
+    // mockData max is 22 (niceScale -> max: 50, mid: 25)
+    expect(yAxis.textContent).toContain("50")
+    expect(yAxis.textContent).toContain("25")
+    expect(yAxis.textContent).toContain("0")
+
+    // horizontal grid lines
+    expect(view.getByTestId("traffic-grid-top")).toBeTruthy()
+    expect(view.getByTestId("traffic-grid-mid")).toBeTruthy()
+    expect(view.getByTestId("traffic-grid-base")).toBeTruthy()
+  })
+
   it("renders ticks with first, middle, and last labels cleanly outside SVG", () => {
     const view = render(<WhatsAppTrafficChart data={mockData} locale="en" />)
 
