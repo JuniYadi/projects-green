@@ -62,6 +62,15 @@ const patch = (path: string, body: unknown) =>
     })
   )
 
+const post = (path: string, body?: unknown) =>
+  appStacksRoutes.handle(
+    new Request(`http://localhost${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    })
+  )
+
 const getRecent = (path: string) =>
   deployRoutes.handle(
     new Request(`http://localhost${path}`, {
@@ -814,6 +823,80 @@ describe("appStacksRoutes", () => {
           metadataJson: {
             replicas: 3,
           },
+        },
+      })
+    })
+  })
+
+  describe("POST /deploy/apps/:slug/cancel", () => {
+    it("returns 401 when unauthenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({
+        user: null,
+        organizationId: null,
+      } as never)
+
+      const res = await post("/deploy/apps/console-next-app/cancel")
+      expect(res.status).toBe(401)
+      const body = (await res.json()) as { ok: boolean; error: string }
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when organization is missing", async () => {
+      mockWithAuth.mockResolvedValueOnce({
+        user: { id: "user-123" },
+        organizationId: null,
+      } as never)
+
+      const res = await post("/deploy/apps/console-next-app/cancel")
+      expect(res.status).toBe(403)
+      const body = (await res.json()) as { ok: boolean; error: string }
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 404 when application stack does not exist", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(
+        null as never
+      )
+      const res = await post("/deploy/apps/unknown-app/cancel")
+      expect(res.status).toBe(404)
+      const body = (await res.json()) as { ok: boolean; error: string }
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("schedules cancellation and returns 200 with activeUntil", async () => {
+      const createdAt = new Date("2026-09-01T00:00:00.000Z")
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        ...sampleStack,
+        createdAt,
+        metadataJson: { customKey: "value" },
+      } as never)
+      mockPrisma.applicationStack.update.mockResolvedValueOnce({
+        ...sampleStack,
+        createdAt,
+      } as never)
+
+      const res = await post("/deploy/apps/console-next-app/cancel")
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        ok: boolean
+        message: string
+        activeUntil: string
+      }
+      expect(body.ok).toBe(true)
+      expect(body.message).toBe("Service cancellation scheduled")
+      expect(body.activeUntil).toBe("2026-10-01T00:00:00.000Z")
+
+      expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith({
+        where: { id: sampleStack.id },
+        data: {
+          metadataJson: expect.objectContaining({
+            customKey: "value",
+            cancellationScheduled: true,
+            cancelledAt: expect.any(String),
+          }),
         },
       })
     })

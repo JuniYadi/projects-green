@@ -5,6 +5,7 @@ import {
   toDeploymentHistoryDTO,
   toDeploymentStatusDTO,
   toStackSummaryDTO,
+  computeNextRenewalDate,
 } from "../../deploy-monitor.dto"
 
 import { mapRecentDeploySource } from "../../recent-sources.dto"
@@ -428,6 +429,76 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         maxCpu: t.Optional(t.Integer({ minimum: 1 })),
         maxMemory: t.Optional(t.Integer({ minimum: 1 })),
         maxReplicas: t.Optional(t.Integer({ minimum: 1 })),
+      }),
+    }
+  )
+  .post(
+    "/:slug/cancel",
+    async ({ params, set }) => {
+      const auth = await withAuth({ ensureSignedIn: true })
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
+      const stack = await prisma.applicationStack.findUnique({
+        where: {
+          organizationId_slug: {
+            organizationId: auth.organizationId,
+            slug: params.slug,
+          },
+        },
+      })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application not found",
+        }
+      }
+
+      const metadata =
+        typeof stack.metadataJson === "object" && stack.metadataJson !== null
+          ? (stack.metadataJson as Record<string, unknown>)
+          : {}
+
+      const cancelledAt = new Date().toISOString()
+      await prisma.applicationStack.update({
+        where: { id: stack.id },
+        data: {
+          metadataJson: {
+            ...metadata,
+            cancellationScheduled: true,
+            cancelledAt,
+          },
+        },
+      })
+
+      const activeUntil =
+        (stack as unknown as { renewalAt?: string }).renewalAt ||
+        computeNextRenewalDate(stack.createdAt) ||
+        cancelledAt
+
+      return {
+        ok: true,
+        message: "Service cancellation scheduled",
+        activeUntil,
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
       }),
     }
   )

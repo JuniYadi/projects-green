@@ -353,6 +353,8 @@ export type StackSummaryDTO = {
   createdAt?: string
   orderedAt?: string
   renewalAt?: string | null
+  cancellationScheduled?: boolean
+  cancelledAt?: string | null
   catalogPlanName?: string | null
   catalogPlanPrice?: string | null
   catalogPlanCurrency?: string | null
@@ -465,6 +467,8 @@ export const toStackSummaryDTO = (stack: {
     createdAt: stack.createdAt ? stack.createdAt.toISOString() : undefined,
     orderedAt: stack.createdAt ? stack.createdAt.toISOString() : undefined,
     renewalAt: computeNextRenewalDate(stack.createdAt),
+    cancellationScheduled: Boolean(meta.cancellationScheduled),
+    cancelledAt: typeof meta.cancelledAt === "string" ? meta.cancelledAt : null,
     catalogPlanName:
       stack.catalogPlan?.name ??
       (stack.resourcePlanId
