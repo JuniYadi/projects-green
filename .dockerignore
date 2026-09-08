@@ -48,6 +48,18 @@ __tests__
 jest.config.*
 vitest.config.*
 
+# Workspace artifacts and tooling caches
+graphify-out
+playwright-report
+*.tsbuildinfo
+.worktrees
+.agents
+.codex
+.claude
+.pi
+storage
+e2e
+
 # Misc
 .DS_Store
 Thumbs.db
