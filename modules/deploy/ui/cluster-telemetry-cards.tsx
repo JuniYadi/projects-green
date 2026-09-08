@@ -255,6 +255,14 @@ export function ClusterTelemetryCards({
               refreshInterval={refreshInterval}
               onRefreshIntervalChange={setRefreshInterval}
             />
+            {appSlug && (
+              <Link
+                href="?tab=metrics"
+                className="ml-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+              >
+                Deep-dive Metrics <ArrowRight size={12} />
+              </Link>
+            )}
 
             {lastUpdated && (
               <span className="hidden font-mono text-[11px] text-muted-foreground lg:inline">
@@ -415,7 +423,13 @@ export function ClusterTelemetryCards({
                   {cpuPercent}%
                 </span>
               </div>
-              <CardTitle className="text-lg font-bold tracking-tight">
+              <CardTitle
+                className={cn(
+                  isSingleCol
+                    ? "font-mono text-base font-bold tracking-tight"
+                    : "text-lg font-bold tracking-tight"
+                )}
+              >
                 {formatCores(telemetry.cpu.currentCores)}
                 <span className="text-xs font-normal text-muted-foreground">
                   {" "}
@@ -451,7 +465,13 @@ export function ClusterTelemetryCards({
                   {memoryPercent}%
                 </span>
               </div>
-              <CardTitle className="text-lg font-bold tracking-tight">
+              <CardTitle
+                className={cn(
+                  isSingleCol
+                    ? "font-mono text-base font-bold tracking-tight"
+                    : "text-lg font-bold tracking-tight"
+                )}
+              >
                 {formatBytes(telemetry.memory.currentBytes)}
                 <span className="text-xs font-normal text-muted-foreground">
                   {" "}
@@ -492,7 +512,13 @@ export function ClusterTelemetryCards({
                   </span>
                 </div>
               </div>
-              <CardTitle className="text-lg font-bold tracking-tight">
+              <CardTitle
+                className={cn(
+                  isSingleCol
+                    ? "font-mono text-base font-bold tracking-tight"
+                    : "text-lg font-bold tracking-tight"
+                )}
+              >
                 <span className="text-emerald-400">
                   ▲ {formatThroughput(telemetry.network.currentRxBytes)}
                 </span>
