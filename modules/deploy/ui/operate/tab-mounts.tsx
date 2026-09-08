@@ -116,10 +116,12 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
       <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-            <Key size={18} className="text-primary" /> Mount Keys & Files
+            <Key size={18} className="text-primary" /> File Mounts &
+            Configurations
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Mount certificates or secrets securely as localized file paths
+            Mount configuration files, certificates, or secrets securely into
+            container paths
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs">
@@ -134,7 +136,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                 Mount Name
               </label>
               <Input
-                placeholder="e.g. application-private-key"
+                placeholder="e.g. app-config or application-key"
                 value={newMountName}
                 onChange={(e) => setNewMountName(e.target.value)}
                 className="h-9 border-border bg-background text-xs focus:border-primary/50"
@@ -145,7 +147,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                 Container Target Path
               </label>
               <Input
-                placeholder="e.g. /var/www/html/storage/app/key.pem"
+                placeholder="e.g. /etc/app/config.yaml or /var/secrets/key.pem"
                 value={newMountPath}
                 onChange={(e) => setNewMountPath(e.target.value)}
                 className="h-9 border-border bg-background font-mono text-xs focus:border-primary/50"
@@ -157,12 +159,12 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
             </div>
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-muted-foreground">
-                PEM Content / Private Key Data
+                File Content / Configuration Data
               </label>
               <Textarea
                 ref={mountContentInputRef}
                 placeholder={
-                  "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0..."
+                  "# Configuration data (YAML, JSON, text, or PEM secret)\nPORT: 3000\nLOG_LEVEL: info"
                 }
                 rows={6}
                 className="w-full rounded-xl border border-border bg-background p-3 font-mono text-[10px] leading-relaxed text-foreground focus:ring-1 focus:ring-primary/50 focus:outline-none"
@@ -233,7 +235,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                     )}
                   </span>
                   <span className="col-span-3">
-                    <span className="inline-block max-w-full rounded-lg border border-white/[0.08] bg-black/40 px-2 py-1 font-mono text-[9px] leading-normal break-all whitespace-pre text-muted-foreground/90">
+                    <span className="inline-block max-w-full rounded-lg border border-border bg-muted/30 px-2 py-1 font-mono text-[9px] leading-normal break-all whitespace-pre text-muted-foreground">
                       {item.contentSummary}
                     </span>
                   </span>
@@ -242,6 +244,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
+                      aria-label="Delete mount"
                       onClick={() => handleDeleteMount(item.id)}
                       className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                     >
@@ -253,24 +256,29 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
 
               {mounts[selectedEnv].length === 0 && (
                 <div className="p-6 text-center font-medium text-muted-foreground">
-                  No private key or volume files mounted.
+                  No volume or configuration files mounted.
                 </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-white/[0.06] bg-black/40 p-4 text-xs leading-relaxed">
-            <span className="block text-xs font-bold text-white">
-              In-Container Mounting Mechanics
+          <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-4 text-xs leading-relaxed">
+            <span className="block text-xs font-bold text-foreground">
+              In-Container File Mounting Mechanics
             </span>
             <p className="leading-normal text-muted-foreground">
-              Private keys are stored in encrypted Kubernetes{" "}
-              <code className="rounded bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white">
+              Configuration files and secret materials are stored in encrypted
+              Kubernetes{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-foreground">
                 Secrets
+              </code>{" "}
+              or{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-foreground">
+                ConfigMaps
               </code>
-              , then mapped at boot via a volume definition:
+              , then mounted into the container filesystem at boot:
             </p>
-            <pre className="overflow-x-auto rounded-xl border border-white/[0.06] bg-black/80 p-3.5 font-mono text-[10px] leading-relaxed text-emerald-400">
+            <pre className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-3.5 font-mono text-[10px] leading-relaxed text-emerald-400">
               {`volumes:
   - name: secure-key-volume
     secret:

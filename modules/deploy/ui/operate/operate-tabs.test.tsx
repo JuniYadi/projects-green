@@ -1,5 +1,5 @@
-import { describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { afterEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import { useState } from "react"
 import { INITIAL_LOGS } from "@/modules/deploy/operate.mock"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
@@ -7,6 +7,7 @@ import { TabEnv } from "@/modules/deploy/ui/operate/tab-env"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
 import { TabMounts } from "@/modules/deploy/ui/operate/tab-mounts"
 import { TabOverview } from "@/modules/deploy/ui/operate/tab-overview"
+import { TabMetrics } from "@/modules/deploy/ui/operate/tab-metrics"
 import type {
   TenantDomainDTO,
   VolumeMount,
@@ -67,6 +68,9 @@ function LogsHarness({ diagnosticMode }: { diagnosticMode: string }) {
 }
 
 describe("Operate tabs coverage", () => {
+  afterEach(() => {
+    cleanup()
+  })
   it("covers overview diagnostic states and rebuild progression", () => {
     const originalSetTimeout = globalThis.setTimeout
     const immediateTimeout: typeof setTimeout = ((handler: TimerHandler) => {
@@ -234,7 +238,7 @@ describe("Operate tabs coverage", () => {
       <TabMounts selectedEnv="prod" mounts={mounts} setMounts={setMounts} />
     )
 
-    expect(view.getByText("Mount Keys & Files")).toBeDefined()
+    expect(view.getByText("File Mounts & Configurations")).toBeDefined()
     expect(view.getByText("Active Pod File Mounts")).toBeDefined()
     expect(view.getByText("/var/secrets/app.key")).toBeDefined()
 
@@ -251,7 +255,7 @@ describe("Operate tabs coverage", () => {
     expect(view.getByText("All fields are required")).toBeDefined()
   })
 
-  it("covers TabEnv rendering and Trust Forwarded Headers switch", () => {
+  it("covers TabEnv rendering", () => {
     const envVars: Record<string, EnvVar[]> = {
       prod: [
         {
@@ -274,20 +278,22 @@ describe("Operate tabs coverage", () => {
     )
 
     expect(view.getByText("Environment Variables")).toBeDefined()
-    expect(view.getByText("Reverse Proxy Ingress")).toBeDefined()
     expect(view.getByText("NODE_ENV")).toBeDefined()
+    expect(view.queryByText("Reverse Proxy Ingress")).toBeNull()
+  })
 
-    const trustProxySwitch = view.getByRole("switch", {
-      name: "Trust Forwarded Headers",
-    })
-    expect(trustProxySwitch.getAttribute("aria-checked")).toBe("false")
+  it("covers TabMetrics observability and telemetry rendering", () => {
+    const view = render(<TabMetrics cpuLimit="1500m" memLimit="1024Mi" />)
 
-    fireEvent.click(trustProxySwitch)
-    expect(trustProxySwitch.getAttribute("aria-checked")).toBe("true")
-    expect(
-      view.getByText(
-        "Trust proxies is active. Real client IPs will be available to application code."
-      )
-    ).toBeDefined()
+    expect(view.getByText("Live Telemetry & Observability")).toBeDefined()
+    expect(view.getByText("Latency Percentiles")).toBeDefined()
+    expect(view.getByText("HTTP Status & Error Rate")).toBeDefined()
+    expect(view.getByText("p50 Median")).toBeDefined()
+    expect(view.getByText("p95 Threshold")).toBeDefined()
+    expect(view.getByText("p99 Tail Latency")).toBeDefined()
+
+    const dayBtn = view.getByRole("tab", { name: /24h/i })
+    fireEvent.click(dayBtn)
+    expect(dayBtn.getAttribute("aria-selected")).toBe("true")
   })
 })

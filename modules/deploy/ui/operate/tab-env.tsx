@@ -1,8 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ArrowsLeftRight } from "@phosphor-icons/react"
-
+import { useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -10,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
 import { EnvVarsEditor } from "@/modules/deploy/ui/env-vars-editor"
 import { isSecretEnvVarType } from "@/modules/deploy/environment-vars"
 import type { EnvVar, SharedSecretOption } from "@/modules/deploy/deploy.types"
@@ -83,7 +80,6 @@ export function TabEnv({
   stackId,
   sharedSecretOptions = [],
 }: TabEnvProps) {
-  const [trustProxy, setTrustProxy] = useState(false)
   const editorEnvVars = useMemo(
     () => toEditorEnvVars(envVars[selectedEnv]),
     [envVars, selectedEnv]
@@ -119,67 +115,6 @@ export function TabEnv({
             stackId={stackId}
             sharedSecretOptions={sharedSecretOptions}
           />
-        </CardContent>
-      </Card>
-
-      <Card size="sm" className="border-border bg-card shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-            <ArrowsLeftRight size={18} className="text-primary" /> Reverse Proxy
-            Ingress
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">
-            Trust proxy headers to capture authentic client metadata
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 text-xs leading-relaxed">
-          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-muted/30 p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground">
-                Trust Forwarded Headers
-              </span>
-              <Switch
-                checked={trustProxy}
-                onCheckedChange={setTrustProxy}
-                aria-label="Trust Forwarded Headers"
-              />
-            </div>
-            <p className="text-[11px] leading-normal text-muted-foreground">
-              Configures nginx and the application setting{" "}
-              <code className="rounded border border-border/50 bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
-                TRUST_PROXIES=*
-              </code>
-              .
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2 border-l-2 border-blue-500/40 pl-3">
-            <h4 className="text-xs leading-tight font-bold text-foreground">
-              User IP Resolution
-            </h4>
-            <p className="text-[11px] leading-normal text-muted-foreground">
-              When deployed behind Cloudflare, an ALB, or an Ingress, client
-              requests can otherwise show internal cluster IPs in application
-              logs.
-            </p>
-            <p className="text-[11px] leading-normal font-medium text-muted-foreground">
-              Trusting forwarded headers lets the application read the
-              client&apos;s{" "}
-              <code className="font-mono text-foreground">X-Forwarded-For</code>{" "}
-              value.
-            </p>
-            {trustProxy ? (
-              <span className="text-[11px] font-semibold text-emerald-400">
-                Trust proxies is active. Real client IPs will be available to
-                application code.
-              </span>
-            ) : (
-              <span className="text-[11px] font-semibold text-amber-400">
-                Currently disabled. Client IP may register as an internal
-                cluster IP.
-              </span>
-            )}
-          </div>
         </CardContent>
       </Card>
     </div>

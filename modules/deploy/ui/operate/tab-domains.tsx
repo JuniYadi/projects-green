@@ -1,7 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Copy, Globe, Trash, Wrench } from "@phosphor-icons/react"
+import {
+  ArrowsLeftRight,
+  Check,
+  Copy,
+  Globe,
+  Trash,
+  Wrench,
+} from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -19,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import type {
   CustomDomain,
   DomainAllowlistMode,
@@ -92,6 +100,7 @@ export function TabDomains({
   const legacyItems = domains?.[selectedEnv] ?? []
   const items = apiMode ? apiDomains : []
   const [newDomain, setNewDomain] = useState("")
+  const [trustProxy, setTrustProxy] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
@@ -177,7 +186,7 @@ export function TabDomains({
       variant="ghost"
       size="xs"
       aria-label="Copy"
-      className="h-6 w-6 p-0 text-muted-foreground hover:text-white"
+      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
     >
       {copiedKey === key ? (
         <Check size={12} className="text-emerald-400" />
@@ -277,13 +286,15 @@ export function TabDomains({
             <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
               DNS
             </p>
-            <p className="text-xs text-white">{domain.dnsStatus}</p>
+            <p className="text-xs text-foreground">{domain.dnsStatus}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
               Certificate
             </p>
-            <p className="text-xs text-white">{certificateLabel(domain)}</p>
+            <p className="text-xs text-foreground">
+              {certificateLabel(domain)}
+            </p>
             {domain.certificate?.validationError && (
               <p className="text-[11px] text-rose-400">
                 {domain.certificate.validationError}
@@ -338,7 +349,7 @@ export function TabDomains({
                     ? "Private key PEM"
                     : "Chain PEM"}
                 <textarea
-                  className="min-h-20 w-full rounded-md border border-white/10 bg-black/30 p-2 font-mono text-[10px] text-white"
+                  className="min-h-20 w-full rounded-md border border-border bg-background p-2 font-mono text-[10px] text-foreground"
                   value={certificate[field]}
                   onChange={(event) =>
                     updateCertificateField(domain.id, field, event.target.value)
@@ -585,7 +596,7 @@ export function TabDomains({
               </table>
               <form
                 onSubmit={handleSubmit}
-                className="flex gap-2 border-t border-white/[0.06] p-3"
+                className="flex gap-2 border-t border-border p-3"
               >
                 <Input
                   placeholder="e.g. shop.acme.com"
@@ -600,8 +611,8 @@ export function TabDomains({
             </div>
           )}
           {apiMode && (
-            <div className="space-y-3 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-4 text-xs">
-              <span className="flex items-center gap-2 font-bold text-white">
+            <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4 text-xs">
+              <span className="flex items-center gap-2 font-bold text-foreground">
                 <Wrench size={15} className="text-primary" /> DNS configuration
               </span>
               <p className="text-[11px] text-muted-foreground">
@@ -624,6 +635,15 @@ export function TabDomains({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-xs text-muted-foreground">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-2.5">
+              <span className="font-mono text-xs font-semibold text-primary">
+                https://{items[0]?.hostname || `${stackSlug}.pfnapp.my.id`}
+              </span>
+              {renderCopyButton(
+                `https://${items[0]?.hostname || `${stackSlug}.pfnapp.my.id`}`,
+                "endpoint-url"
+              )}
+            </div>
             <p>
               Stack:{" "}
               <span className="font-mono text-foreground">{stackSlug}</span>
@@ -639,6 +659,66 @@ export function TabDomains({
           </CardContent>
         </Card>
       )}
+      <Card size="sm" className="border-border bg-card shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+            <ArrowsLeftRight size={18} className="text-primary" /> Reverse Proxy
+            Ingress
+          </CardTitle>
+          <CardDescription className="text-xs text-muted-foreground">
+            Trust proxy headers to capture authentic client metadata
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-xs leading-relaxed">
+          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-muted/30 p-4">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-foreground">
+                Trust Forwarded Headers
+              </span>
+              <Switch
+                checked={trustProxy}
+                onCheckedChange={setTrustProxy}
+                aria-label="Trust Forwarded Headers"
+              />
+            </div>
+            <p className="text-[11px] leading-normal text-muted-foreground">
+              Configures nginx and the application setting{" "}
+              <code className="rounded border border-border/50 bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
+                TRUST_PROXIES=*
+              </code>
+              .
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 border-l-2 border-blue-500/40 pl-3">
+            <h4 className="text-xs leading-tight font-bold text-foreground">
+              User IP Resolution
+            </h4>
+            <p className="text-[11px] leading-normal text-muted-foreground">
+              When deployed behind Cloudflare, an ALB, or an Ingress, client
+              requests can otherwise show internal cluster IPs in application
+              logs.
+            </p>
+            <p className="text-[11px] leading-normal font-medium text-muted-foreground">
+              Trusting forwarded headers lets the application read the
+              client&apos;s{" "}
+              <code className="font-mono text-foreground">X-Forwarded-For</code>{" "}
+              value.
+            </p>
+            {trustProxy ? (
+              <span className="text-[11px] font-semibold text-emerald-400">
+                Trust proxies is active. Real client IPs will be available to
+                application code.
+              </span>
+            ) : (
+              <span className="text-[11px] font-semibold text-amber-400">
+                Currently disabled. Client IP may register as an internal
+                cluster IP.
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
