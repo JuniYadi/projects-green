@@ -224,10 +224,18 @@ export function QuotaBalanceCard({
                 label="Monthly Allowance"
                 value={`${initialQuotaBaseOut.toLocaleString()} / ${initialQuotaBase.toLocaleString()}`}
               />
-              {initialQuotaBaseOut === 0 && initialQuotaBase > 0 && (
-                <div className="flex items-center gap-2 rounded-md bg-amber-50 p-2 text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+              {initialQuotaBaseOut <= 0 && initialQuotaBase > 0 && (
+                <div
+                  className={`flex items-center gap-2 rounded-md p-2 text-sm ${
+                    initialQuotaBaseOut < 0
+                      ? "bg-rose-50 text-destructive dark:bg-rose-950 dark:text-rose-300"
+                      : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                  }`}
+                >
                   <span className="font-medium">
-                    Monthly allowance exhausted — overage charges apply
+                    {initialQuotaBaseOut < 0
+                      ? `Monthly allowance in overdraft (${Math.abs(initialQuotaBaseOut).toLocaleString()} over limit) — overage charges apply`
+                      : "Monthly allowance exhausted — overage charges apply"}
                   </span>
                 </div>
               )}

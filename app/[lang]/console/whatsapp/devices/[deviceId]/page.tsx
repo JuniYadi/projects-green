@@ -614,16 +614,18 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
 
   // Quota calculation (quotaBaseOut is remaining base quota)
   const totalQuota = device.quotaBase > 0 ? device.quotaBase : 1000
-  const remainingQuota = Math.max(0, Math.min(device.quotaBaseOut, totalQuota))
-  const usedQuota = Math.max(0, totalQuota - remainingQuota)
-  const quotaPercent = Math.min(Math.round((usedQuota / totalQuota) * 100), 100)
+  const rawRemaining = Number(device.quotaBaseOut)
+  const isOverdraft = rawRemaining < 0
+  const usedQuota = totalQuota - rawRemaining
+  const quotaPercent =
+    totalQuota > 0 ? Math.round((usedQuota / totalQuota) * 100) : 0
+  const barPercent = Math.min(Math.max(0, quotaPercent), 100)
   const quotaBarColor =
-    quotaPercent >= 90
+    quotaPercent >= 90 || isOverdraft
       ? "bg-destructive"
       : quotaPercent >= 75
         ? "bg-amber-500"
         : "bg-emerald-500"
-
   const countryInfo = detectCountryFromPhone(device.phoneNumber)
 
   const overviewContent = (
@@ -690,21 +692,31 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           </CardHeader>
           <CardContent className="space-y-1.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-sm font-bold">
+              <span
+                className={`text-sm font-bold ${isOverdraft ? "text-destructive" : ""}`}
+              >
                 {usedQuota.toLocaleString()} / {totalQuota.toLocaleString()}
               </span>
-              <span className="font-medium text-muted-foreground">
+              <span
+                className={`font-medium ${isOverdraft ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+              >
                 {quotaPercent}%
               </span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${quotaBarColor}`}
-                style={{ width: `${quotaPercent}%` }}
+                style={{ width: `${barPercent}%` }}
               />
             </div>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>{remainingQuota.toLocaleString()} msgs remaining</span>
+              <span
+                className={isOverdraft ? "font-medium text-destructive" : ""}
+              >
+                {isOverdraft
+                  ? `Overdraft: ${Math.abs(rawRemaining).toLocaleString()} msgs over limit`
+                  : `${rawRemaining.toLocaleString()} msgs remaining`}
+              </span>
               <a
                 href={`/${locale}/console/billing/alerts`}
                 className="text-primary hover:underline"

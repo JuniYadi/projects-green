@@ -275,6 +275,23 @@ describe("whatsappClient", () => {
     expect(summary).toEqual({ total: 7, active: 2, sent: 5, failed: 1 })
     expect(calls[14]?.input).toContain("/api/whatsapp/broadcasts/summary")
 
+    queueJson({
+      ok: true,
+      summary: {
+        total: 15,
+        active: 0,
+        sent: 689,
+        failed: 0,
+      },
+    })
+    const nestedSummary = await whatsappClient.broadcasts.summary()
+    expect(nestedSummary).toEqual({
+      total: 15,
+      active: 0,
+      sent: 689,
+      failed: 0,
+    })
+
     queueJson({ ok: true, data: [] })
     await whatsappClient.catalogs.list()
     queueJson({ ok: true, data: {} })

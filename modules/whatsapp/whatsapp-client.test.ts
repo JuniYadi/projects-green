@@ -286,7 +286,7 @@ describe("createWhatsAppClient", () => {
     respond()
     await client.deleteGroup("group-1")
 
-    respond({ total: 7, active: 2, sent: 5, failed: 1 })
+    respond({ ok: true, summary: { total: 7, active: 2, sent: 5, failed: 1 } })
     await client.summary("org-1")
     expect(requestCall(fetchMock.mock.calls.length - 1)[0]).toBe(
       "/api/whatsapp/broadcasts/summary?organizationId=org-1"
@@ -361,6 +361,28 @@ describe("createWhatsAppClient", () => {
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(49)
+  })
+
+  it("unwraps broadcast summary with flat or nested payload", async () => {
+    const client = createWhatsAppClient()
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ ok: true, total: 10, active: 1, sent: 8, failed: 1 })
+      )
+    )
+    const flatSummary = await client.summary()
+    expect(flatSummary).toEqual({ total: 10, active: 1, sent: 8, failed: 1 })
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          summary: { total: 15, active: 0, sent: 15, failed: 0 },
+        })
+      )
+    )
+    const nestedSummary = await client.summary("org-2")
+    expect(nestedSummary).toEqual({ total: 15, active: 0, sent: 15, failed: 0 })
   })
 
   it("handles invalid and incomplete API error payloads", async () => {

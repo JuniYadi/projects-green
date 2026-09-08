@@ -620,16 +620,23 @@ export const whatsappClient = {
     summary: async () => {
       const payload = await serverFetch<{
         ok: boolean
-        total: number
-        active: number
-        sent: number
-        failed: number
+        summary?: {
+          total: number
+          active: number
+          sent: number
+          failed: number
+        }
+        total?: number
+        active?: number
+        sent?: number
+        failed?: number
       }>("/api/whatsapp/broadcasts/summary")
+      const summary = payload.summary ?? payload
       return {
-        total: payload.total,
-        active: payload.active,
-        sent: payload.sent,
-        failed: payload.failed,
+        total: summary.total ?? 0,
+        active: summary.active ?? 0,
+        sent: summary.sent ?? 0,
+        failed: summary.failed ?? 0,
       }
     },
   },
