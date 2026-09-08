@@ -653,7 +653,7 @@ describe("Admin App Hosting Clusters Routes", () => {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            metaJson: { host: "", sslVerify: "not-a-boolean" },
+            metaJson: { endpoint: "", sslVerify: "not-a-boolean" },
           }),
         })
       )
@@ -663,7 +663,7 @@ describe("Admin App Hosting Clusters Routes", () => {
       expect(body.ok).toBe(false)
       expect(body.error).toBe("VALIDATION_ERROR")
       expect(body.fieldErrors).toBeDefined()
-      expect(body.fieldErrors?.["metaJson.host"]?.[0]).toContain("host")
+      expect(body.fieldErrors?.["metaJson.endpoint"]?.[0]).toContain("endpoint")
     })
 
     it("returns 422 with fieldErrors for invalid PROMETHEUS metaJson", async () => {
@@ -702,7 +702,10 @@ describe("Admin App Hosting Clusters Routes", () => {
       mockUpsertClusterIntegration.mockResolvedValueOnce({
         id: "int_1",
         type: "OPENSEARCH",
-        metaJson: { host: "https://opensearch.example.com", sslVerify: true },
+        metaJson: {
+          endpoint: "https://opensearch.example.com",
+          sslVerify: true,
+        },
         secretPreview: null,
         isActive: true,
         createdAt: "2026-01-01T00:00:00.000Z",
@@ -717,7 +720,7 @@ describe("Admin App Hosting Clusters Routes", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             metaJson: {
-              host: "https://opensearch.example.com",
+              endpoint: "https://opensearch.example.com",
               sslVerify: true,
             },
             secrets: { username: "admin", password: "secret" },

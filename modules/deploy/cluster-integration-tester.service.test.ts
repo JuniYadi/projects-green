@@ -245,6 +245,31 @@ describe("testIntegrationConnection", () => {
     )
   })
 
+  it("returns error when OpenSearch endpoint is missing", async () => {
+    const result = await testIntegrationConnection("OPENSEARCH", {}, {})
+    expect(result.ok).toBe(false)
+    expect(result.message).toBe("Missing OpenSearch endpoint")
+  })
+
+  it("supports OpenSearch legacy host field fallback", async () => {
+    const mockFetcher = mock(
+      async () =>
+        new Response(JSON.stringify({ version: { number: "2.11.0" } }), {
+          status: 200,
+        })
+    )
+    const result = await testIntegrationConnection(
+      "OPENSEARCH",
+      { host: "https://opensearch.example.com:9200" },
+      { username: "os_admin", password: "os_password" },
+      mockFetcher as unknown as typeof fetch
+    )
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain(
+      "Successfully reached OpenSearch cluster endpoint"
+    )
+  })
+
   it("supports OpenSearch basic auth credentials from meta as fallback", async () => {
     const mockFetcher = mock(
       async () =>

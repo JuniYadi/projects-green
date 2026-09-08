@@ -314,10 +314,13 @@ export async function testIntegrationConnection(
       }
 
       case "OPENSEARCH": {
-        const endpoint =
-          typeof meta.endpoint === "string"
-            ? meta.endpoint.replace(/\/+$/, "")
-            : ""
+        const rawEndpoint =
+          typeof meta.endpoint === "string" && meta.endpoint.trim()
+            ? meta.endpoint
+            : typeof meta.host === "string" && meta.host.trim()
+              ? meta.host
+              : ""
+        const endpoint = rawEndpoint.replace(/\/+$/, "")
         if (!endpoint) {
           return {
             ok: false,

@@ -73,7 +73,7 @@ describe("cluster integration schemas", () => {
     ).toBe(false)
     expect(
       opensearchMetadataSchema.safeParse({
-        host: "https://search.example.com",
+        endpoint: "https://search.example.com",
         sslVerify: true,
         timeout: 30,
       }).success

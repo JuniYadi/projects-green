@@ -1740,6 +1740,33 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   )
 }
 
+function getFieldType(schema: unknown): string {
+  let s = schema as {
+    type?: string
+    def?: { type?: string; innerType?: unknown }
+    unwrap?: () => unknown
+    _def?: { typeName?: string; innerType?: unknown }
+  }
+  while (s) {
+    if (typeof s.unwrap === "function") {
+      s = s.unwrap() as typeof s
+    } else if (s.def?.innerType) {
+      s = s.def.innerType as typeof s
+    } else if (s._def?.innerType) {
+      s = s._def.innerType as typeof s
+    } else {
+      break
+    }
+  }
+  return (
+    s?.type ||
+    s?.def?.type ||
+    s?._def?.typeName ||
+    (s as { constructor?: { name?: string } })?.constructor?.name ||
+    ""
+  )
+}
+
 function IntegrationEditModal({
   integration,
   meta,
@@ -1845,11 +1872,10 @@ function IntegrationEditModal({
 
         <div className="mt-4 space-y-4">
           {metaFields.map((field) => {
-            const schema = (
-              metaSchema.shape as Record<string, { _type?: string }>
-            )[field]
-            const isBool = schema?._type === "ZodBoolean"
-            const isNum = schema?._type === "ZodNumber"
+            const schema = (metaSchema.shape as Record<string, unknown>)[field]
+            const fieldType = getFieldType(schema)
+            const isBool = fieldType === "boolean" || fieldType === "ZodBoolean"
+            const isNum = fieldType === "number" || fieldType === "ZodNumber"
             const label = labels[field] ?? field
             const description = descriptions[field]
             const error = fieldErrors[field]
@@ -1883,7 +1909,11 @@ function IntegrationEditModal({
                   </Select>
                 ) : isBool ? (
                   <Select
-                    value={String(meta[field] ?? "")}
+                    value={
+                      meta[field] === undefined || meta[field] === null
+                        ? ""
+                        : String(meta[field])
+                    }
                     onValueChange={(value) =>
                       handleMetaChange(field, value === "true")
                     }
