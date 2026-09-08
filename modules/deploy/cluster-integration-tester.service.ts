@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs"
 export type IntegrationConnectionTestResult = {
   ok: boolean
   message: string
@@ -370,10 +371,38 @@ export async function testIntegrationConnection(
       }
 
       case "KUBECONFIG": {
+        const connectionMode =
+          meta.connectionMode === "EXTERNAL" ? "EXTERNAL" : "INTERNAL"
+        const explicitUrl =
+          typeof secrets.apiServerUrl === "string" &&
+          secrets.apiServerUrl.trim()
+            ? (secrets.apiServerUrl as string).replace(/\/+$/, "")
+            : typeof meta.apiServerUrl === "string" && meta.apiServerUrl.trim()
+              ? (meta.apiServerUrl as string).replace(/\/+$/, "")
+              : ""
+
+        if (connectionMode === "INTERNAL" && !explicitUrl) {
+          const isInsideK8s =
+            Boolean(process.env.KUBERNETES_SERVICE_HOST) ||
+            existsSync("/var/run/secrets/kubernetes.io/serviceaccount/token")
+          if (!isInsideK8s) {
+            return {
+              ok: true,
+              message:
+                "In-cluster ServiceAccount mode configured (runtime will connect via pod ServiceAccount)",
+              durationMs: Date.now() - start,
+            }
+          }
+        }
+
         const apiServerUrl =
-          typeof meta.apiServerUrl === "string"
-            ? meta.apiServerUrl.replace(/\/+$/, "")
-            : ""
+          explicitUrl ||
+          (connectionMode === "INTERNAL"
+            ? process.env.KUBERNETES_SERVICE_HOST
+              ? `https://${process.env.KUBERNETES_SERVICE_HOST}:${process.env.KUBERNETES_SERVICE_PORT || 443}`
+              : "https://kubernetes.default.svc"
+            : "")
+
         if (!apiServerUrl) {
           return {
             ok: true,

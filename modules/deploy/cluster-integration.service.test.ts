@@ -470,6 +470,29 @@ describe("cluster-integration.service", () => {
     expect(config.apiServerUrl).toBe("https://k8s.example.com")
     expect(config.kubeconfig).toBeNull()
   })
+  it("resolveClusterIntegration returns in-cluster default apiServerUrl for INTERNAL connectionMode", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValue({
+      clusterId: null,
+    })
+    mockPrisma.appHostingCluster.findMany.mockResolvedValue([
+      { id: "cluster-1", code: "sgp", name: "SG", region: "Singapore" },
+    ])
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-1",
+      type: "KUBECONFIG",
+      metaJson: {
+        connectionMode: "INTERNAL",
+        namespacePattern: "app-{slug}",
+        labelSelector: "app.kubernetes.io/instance={slug}",
+      },
+      secretCiphertext: null,
+    })
+
+    const config = await resolveClusterIntegration("stack-1", "KUBECONFIG")
+    expect(config.connectionMode).toBe("INTERNAL")
+    expect(config.apiServerUrl).toBe("https://kubernetes.default.svc")
+    expect(config.namespacePattern).toBe("app-{slug}")
+  })
 
   it("resolveClusterIntegration throws when integration is missing", async () => {
     mockPrisma.applicationStack.findUnique.mockResolvedValue({

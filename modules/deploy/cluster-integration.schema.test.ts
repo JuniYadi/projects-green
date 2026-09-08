@@ -79,6 +79,27 @@ describe("cluster integration schemas", () => {
       }).success
     ).toBe(true)
   })
+  it("validates Kubeconfig connectionMode default and explicit values", () => {
+    const defaultParsed = kubeconfigMetadataSchema.parse({
+      namespacePattern: "app-{slug}",
+      labelSelector: "app={slug}",
+    })
+    expect(defaultParsed.connectionMode).toBe("INTERNAL")
+
+    const explicitParsed = kubeconfigMetadataSchema.parse({
+      connectionMode: "EXTERNAL",
+      namespacePattern: "app-{slug}",
+      labelSelector: "app={slug}",
+    })
+    expect(explicitParsed.connectionMode).toBe("EXTERNAL")
+
+    const invalid = kubeconfigMetadataSchema.safeParse({
+      connectionMode: "INVALID",
+      namespacePattern: "app-{slug}",
+      labelSelector: "app={slug}",
+    })
+    expect(invalid.success).toBe(false)
+  })
 
   it("validates Prometheus endpoint", () => {
     expect(
