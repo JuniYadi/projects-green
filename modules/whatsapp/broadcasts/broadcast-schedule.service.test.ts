@@ -2,6 +2,24 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 const mockFindFirst = mock()
 const mockFindUnique = mock()
+const mockBillingAccountFindUnique = mock<() => Promise<unknown>>(
+  async () => null
+)
+const mockServiceSubscriptionFindFirst = mock<() => Promise<unknown>>(
+  async () => null
+)
+const mockGetMessagePricing = mock<(...args: unknown[]) => Promise<unknown>>(
+  async () => ({
+    unitPrice: 500,
+    currency: "IDR",
+  })
+)
+
+mock.module("@/modules/billing/message-cost.service", () => ({
+  MessageCostService: class {
+    getMessagePricing = mockGetMessagePricing
+  },
+}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -15,9 +33,14 @@ mock.module("@/lib/prisma", () => ({
     whatsappHourlyCount: {
       findUnique: mockFindUnique,
     },
+    billingAccount: {
+      findUnique: mockBillingAccountFindUnique,
+    },
+    serviceSubscription: {
+      findFirst: mockServiceSubscriptionFindFirst,
+    },
   },
 }))
-
 const {
   computeRecommendedSchedule,
   getDeviceBroadcastCapacity,
@@ -129,6 +152,55 @@ describe("getDeviceBroadcastCapacity", () => {
     expect(result.coveredByQuota).toBe(100)
     expect(result.overageRecipients).toBe(0)
     expect(result.isAffordable).toBe(true)
+  })
+
+  it("calculates financial capacity with unit price and deposit balance", async () => {
+    mockFindFirst.mockResolvedValueOnce({
+      ...DEVICE,
+      quotaBaseOut: 10,
+      addonQuota: 0,
+    })
+    mockBillingAccountFindUnique.mockResolvedValueOnce({
+      balance: 50000,
+      currency: "IDR",
+    })
+    mockGetMessagePricing.mockResolvedValueOnce({
+      unitPrice: 500,
+      currency: "IDR",
+    })
+    mockFindUnique.mockResolvedValue(null)
+
+    const result = await getDeviceBroadcastCapacity("org_1", "dev_1", 100)
+    expect(result.depositBalance).toBe(50000)
+    expect(result.unitPrice).toBe(500)
+    expect(result.currency).toBe("IDR")
+    expect(result.coveredByQuota).toBe(10)
+    expect(result.overageRecipients).toBe(90)
+    expect(result.estimatedOverageCost).toBe(45000)
+    expect(result.maxAffordableRecipients).toBe(110)
+    expect(result.isAffordable).toBe(true)
+  })
+
+  it("handles unlimited subscription plan correctly", async () => {
+    mockFindFirst.mockResolvedValueOnce(DEVICE)
+    mockServiceSubscriptionFindFirst.mockResolvedValueOnce({
+      plan: { resources: { unlimited: true } },
+    })
+    mockFindUnique.mockResolvedValue(null)
+
+    const result = await getDeviceBroadcastCapacity("org_1", "dev_1", 5000)
+    expect(result.isUnlimited).toBe(true)
+    expect(result.isAffordable).toBe(true)
+    expect(result.maxAffordableRecipients).toBe(999999)
+  })
+
+  it("falls back to zero unit price when pricing service throws", async () => {
+    mockFindFirst.mockResolvedValueOnce(DEVICE)
+    mockGetMessagePricing.mockRejectedValueOnce(new Error("pricing failed"))
+    mockFindUnique.mockResolvedValue(null)
+
+    const result = await getDeviceBroadcastCapacity("org_1", "dev_1", 10)
+    expect(result.unitPrice).toBe(0)
   })
 })
 

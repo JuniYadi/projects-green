@@ -385,6 +385,39 @@ describe("broadcastsRoutes /:id/send", () => {
     expect(mockCampaignUpdate).not.toHaveBeenCalled()
     expect(mockAddBulk).not.toHaveBeenCalled()
   })
+
+  it("blocks dispatch when broadcast capacity is not affordable", async () => {
+    mockFindUnique.mockResolvedValueOnce(campaign())
+    mockDeviceFindFirst.mockResolvedValueOnce({ id: "device-1" })
+    mockTemplateFindFirst.mockResolvedValueOnce({
+      id: "template-1",
+      name: "Authoritative template",
+      languages: [{ body: "Hello" }],
+    })
+    mockGetDeviceBroadcastCapacity.mockResolvedValueOnce({
+      dailyLimit: 1000,
+      dailyUsed: 0,
+      hourlyLimit: 41,
+      hourlyUsed: 0,
+      remainingToday: 1000,
+      remainingThisHour: 41,
+      quotaRemaining: 0,
+      maxAffordableRecipients: 0,
+      isAffordable: false,
+    })
+
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123/send", {
+        method: "POST",
+      })
+    )
+    const body = await response.json()
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INSUFFICIENT_CAPACITY")
+    expect(mockCampaignUpdate).not.toHaveBeenCalled()
+    expect(mockAddBulk).not.toHaveBeenCalled()
+  })
 })
 
 describe("broadcastsRoutes POST /preflight", () => {
