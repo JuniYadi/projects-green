@@ -1,0 +1,137 @@
+import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
+import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
+import type {
+  TenantDomainDTO,
+  CustomDomain,
+} from "@/modules/deploy/operate.types"
+
+const sampleDomain: TenantDomainDTO = {
+  id: "dom-1",
+  hostname: "shop.acme.test",
+  kind: "CUSTOM",
+  isPrimary: true,
+  cluster: { id: "cluster-1", code: "iad", name: "IAD", region: "us-east" },
+  dnsStatus: "PENDING",
+  expectedCnameTarget: "shop.edge.example",
+  endpoint: {
+    cnameTarget: "shop.edge.example",
+    ipv4Addresses: ["192.0.2.1"],
+    ipv6Addresses: ["2001:db8::1"],
+    managedBaseDomain: "example.org",
+  },
+  certificate: {
+    source: "LET_S_ENCRYPT",
+    status: "READY",
+    expiresAt: "2026-12-31T00:00:00.000Z",
+    fingerprint: null,
+    validationError: null,
+  },
+  allowlistMode: "OPEN",
+  allowlistEntries: [],
+}
+
+const mockApi = {
+  onAddDomain: mock(async () => undefined),
+  onDeleteDomain: mock(async () => undefined),
+  onVerifyDomain: mock(async () => undefined),
+  onUploadCertificate: mock(async () => undefined),
+  onUpdateAllowlist: mock(async () => undefined),
+  onAddAllowlistEntry: mock(async () => undefined),
+  onDeleteAllowlistEntry: mock(async () => undefined),
+  onRetry: mock(async () => undefined),
+}
+
+describe("TabDomains", () => {
+  const originalClipboard = navigator.clipboard
+  let writeTextMock: (text: string) => Promise<void>
+
+  beforeEach(() => {
+    writeTextMock = mock(() => Promise.resolve())
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      writable: true,
+      value: {
+        writeText: writeTextMock,
+      },
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      writable: true,
+      value: originalClipboard,
+    })
+  })
+
+  it("renders canonical domain endpoint full URL when domain is present", () => {
+    const view = render(
+      <TabDomains stackSlug="shop" apiDomains={[sampleDomain]} api={mockApi} />
+    )
+
+    expect(view.getByText("https://shop.acme.test")).toBeTruthy()
+    expect(view.getByText("Domain endpoint")).toBeTruthy()
+    expect(view.getByText("shop")).toBeTruthy()
+    expect(view.getByText("us-east")).toBeTruthy()
+  })
+
+  it("renders fallback canonical domain endpoint full URL when no domain is present", () => {
+    const view = render(
+      <TabDomains stackSlug="my-app" apiDomains={[]} api={mockApi} />
+    )
+
+    expect(view.getByText("https://my-app.pfnapp.my.id")).toBeTruthy()
+    expect(view.getByText("Domain endpoint")).toBeTruthy()
+  })
+
+  it("copies the endpoint URL when the copy button is clicked", async () => {
+    const view = render(
+      <TabDomains stackSlug="shop" apiDomains={[sampleDomain]} api={mockApi} />
+    )
+
+    const endpointEl = view.getByText("https://shop.acme.test")
+    const copyButton = endpointEl.parentElement?.querySelector("button")
+    expect(copyButton).toBeTruthy()
+    fireEvent.click(copyButton!)
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith("https://shop.acme.test")
+    })
+  })
+
+  it("uses semantic tokens and does not use hardcoded white or dark background classes", () => {
+    const view = render(
+      <TabDomains stackSlug="shop" apiDomains={[sampleDomain]} api={mockApi} />
+    )
+
+    const container = view.container
+    const html = container.innerHTML
+
+    expect(html).not.toContain("text-white")
+    expect(html).not.toContain("hover:text-white")
+    expect(html).not.toContain("border-white")
+    expect(html).not.toContain("bg-black")
+    expect(html).not.toContain("bg-neutral-900")
+  })
+
+  it("does not contain hardcoded white borders in legacy mode form", () => {
+    const legacyDomains: Record<string, CustomDomain[]> = {
+      prod: [],
+    }
+    const setDomainsMock = mock(() => {})
+
+    const view = render(
+      <TabDomains
+        selectedEnv="prod"
+        domains={legacyDomains}
+        setDomains={setDomainsMock}
+      />
+    )
+
+    const container = view.container
+    const html = container.innerHTML
+
+    expect(html).not.toContain("border-white/[0.06]")
+  })
+})

@@ -177,7 +177,7 @@ export function TabDomains({
       variant="ghost"
       size="xs"
       aria-label="Copy"
-      className="h-6 w-6 p-0 text-muted-foreground hover:text-white"
+      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
     >
       {copiedKey === key ? (
         <Check size={12} className="text-emerald-400" />
@@ -277,13 +277,15 @@ export function TabDomains({
             <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
               DNS
             </p>
-            <p className="text-xs text-white">{domain.dnsStatus}</p>
+            <p className="text-xs text-foreground">{domain.dnsStatus}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
               Certificate
             </p>
-            <p className="text-xs text-white">{certificateLabel(domain)}</p>
+            <p className="text-xs text-foreground">
+              {certificateLabel(domain)}
+            </p>
             {domain.certificate?.validationError && (
               <p className="text-[11px] text-rose-400">
                 {domain.certificate.validationError}
@@ -338,7 +340,7 @@ export function TabDomains({
                     ? "Private key PEM"
                     : "Chain PEM"}
                 <textarea
-                  className="min-h-20 w-full rounded-md border border-white/10 bg-black/30 p-2 font-mono text-[10px] text-white"
+                  className="min-h-20 w-full rounded-md border border-border bg-background p-2 font-mono text-[10px] text-foreground"
                   value={certificate[field]}
                   onChange={(event) =>
                     updateCertificateField(domain.id, field, event.target.value)
@@ -585,7 +587,7 @@ export function TabDomains({
               </table>
               <form
                 onSubmit={handleSubmit}
-                className="flex gap-2 border-t border-white/[0.06] p-3"
+                className="flex gap-2 border-t border-border p-3"
               >
                 <Input
                   placeholder="e.g. shop.acme.com"
@@ -600,8 +602,8 @@ export function TabDomains({
             </div>
           )}
           {apiMode && (
-            <div className="space-y-3 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-4 text-xs">
-              <span className="flex items-center gap-2 font-bold text-white">
+            <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4 text-xs">
+              <span className="flex items-center gap-2 font-bold text-foreground">
                 <Wrench size={15} className="text-primary" /> DNS configuration
               </span>
               <p className="text-[11px] text-muted-foreground">
@@ -624,6 +626,15 @@ export function TabDomains({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-xs text-muted-foreground">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-2.5">
+              <span className="font-mono text-xs font-semibold text-primary">
+                https://{items[0]?.hostname || `${stackSlug}.pfnapp.my.id`}
+              </span>
+              {renderCopyButton(
+                `https://${items[0]?.hostname || `${stackSlug}.pfnapp.my.id`}`,
+                "endpoint-url"
+              )}
+            </div>
             <p>
               Stack:{" "}
               <span className="font-mono text-foreground">{stackSlug}</span>
