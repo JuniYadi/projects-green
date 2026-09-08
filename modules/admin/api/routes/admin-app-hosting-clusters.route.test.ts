@@ -139,6 +139,12 @@ const mockImportClusterIntegrations = mock(async () => ({
     },
   ],
 }))
+const mockGetExistingClusterIntegrationConfig = mock(
+  async (): Promise<{
+    meta: Record<string, unknown>
+    secrets: Record<string, unknown>
+  } | null> => null
+)
 
 const mockGetClusterEndpoint = mock(
   async (): Promise<AppHostingClusterEndpointDTO> => ({
@@ -177,6 +183,7 @@ mock.module("@/modules/deploy/cluster-management.service", () => ({
   updateCluster: mockUpdateCluster,
   updateClusterStatus: mockUpdateClusterStatus,
   upsertClusterIntegration: mockUpsertClusterIntegration,
+  getExistingClusterIntegrationConfig: mockGetExistingClusterIntegrationConfig,
   updateClusterIntegrationStatus: mockUpdateClusterIntegrationStatus,
   deleteClusterIntegration: mockDeleteClusterIntegration,
   exportClusterIntegrations: mockExportClusterIntegrations,
@@ -1159,6 +1166,36 @@ describe("Admin App Hosting Clusters Routes", () => {
       expect(body.ok).toBe(true)
       expect(body.data).toHaveProperty("ok")
       expect(body.data).toHaveProperty("message")
+    })
+
+    it("merges existing saved secrets when testing connection with partial secrets", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      mockGetExistingClusterIntegrationConfig.mockResolvedValueOnce({
+        meta: { endpoint: "https://prometheus.example.com" },
+        secrets: { username: "admin", password: "saved_password" },
+      })
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/integrations/PROMETHEUS/test`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            metaJson: { endpoint: "https://prometheus.example.com" },
+            secrets: {},
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockGetExistingClusterIntegrationConfig).toHaveBeenCalledWith(
+        "cl_1",
+        "PROMETHEUS"
+      )
     })
   })
 })
