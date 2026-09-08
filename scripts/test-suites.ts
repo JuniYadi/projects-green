@@ -97,8 +97,8 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
   {
     name: "whatsapp-organization-api-keys",
     sourcePrefixes: [
-      "app/[lang]/console/whatsapp/",
-      "app/[lang]/portal/whatsapp/",
+      "app/[lang]/console/whatsapp/api-keys/",
+      "app/[lang]/portal/whatsapp/api-keys/",
       "modules/admin/api/admin.route.ts",
       "modules/whatsapp/api/organization-api-key-hono.ts",
       "modules/whatsapp/organization-api-keys/",
@@ -107,7 +107,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "scripts/dump-seed-data.ts",
     ],
     testPrefixes: [
-      "app/[lang]/console/whatsapp/",
+      "app/[lang]/console/whatsapp/api-keys/",
       "modules/whatsapp/api/organization-api-key-hono.test.ts",
       "modules/whatsapp/organization-api-keys/",
     ],
