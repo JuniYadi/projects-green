@@ -85,7 +85,7 @@ export function TabLogs({
 
     const interval = setInterval(() => {
       void fetchRealLogs()
-    }, 4000)
+    }, 30000)
 
     return () => clearInterval(interval)
   }, [appSlug, isLiveTailing, fetchRealLogs])
@@ -154,7 +154,7 @@ export function TabLogs({
       const randomSelection =
         randomLogs[Math.floor(Math.random() * randomLogs.length)]
       updateLogs((prev) => [...prev.slice(-30), randomSelection])
-    }, 4000)
+    }, 30000)
 
     return () => clearInterval(interval)
   }, [appSlug, isLiveTailing, diagnosticMode, updateLogs])
@@ -215,7 +215,7 @@ export function TabLogs({
             className="cursor-pointer text-xs text-muted-foreground select-none"
             onClick={() => setIsLiveTailing(!isLiveTailing)}
           >
-            Live Tail
+            Live Tail (30s)
           </span>
           <Switch
             checked={isLiveTailing}
