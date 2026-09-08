@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 
-let mockSearchParams = new Map<string, string>([["tab", "env"]])
+let mockSearchParams: Record<string, string> = { tab: "env" }
 
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en", slug: "hermes-vibrant-comet" }),
   useSearchParams: () => ({
-    get: (key: string) => mockSearchParams.get(key) ?? null,
+    get: (key: string) => mockSearchParams[key] ?? null,
   }),
   useRouter: () => ({ push: () => {}, replace: () => {} }),
 }))
@@ -91,17 +91,55 @@ mock.module("@/lib/eden", () => ({
   },
 }))
 
-// Dynamic import after mocks per AGENTS.md
+// Dynamic import required here to evaluate page after mock.module registrations
 const { cleanup, render, waitFor } = await import("@testing-library/react")
-const { default: PlatformInstanceWorkspacePage } = await import("./page")
+const {
+  default: PlatformInstanceWorkspacePage,
+  VALID_SETTINGS_SUBTABS,
+  resolveSettingsSubTab,
+} = await import("./page")
+
+describe("PlatformInstanceWorkspacePage - SettingsSubTabs validation", () => {
+  it("includes all expected subtabs in VALID_SETTINGS_SUBTABS", () => {
+    expect(VALID_SETTINGS_SUBTABS).toEqual([
+      "env",
+      "domains",
+      "scaling",
+      "mounts",
+      "build",
+      "danger",
+    ])
+  })
+
+  it("strictly excludes 'general' from VALID_SETTINGS_SUBTABS", () => {
+    expect(VALID_SETTINGS_SUBTABS as readonly string[]).not.toContain("general")
+  })
+
+  it("resolves valid subtabs correctly", () => {
+    for (const tab of VALID_SETTINGS_SUBTABS) {
+      expect(resolveSettingsSubTab(tab)).toBe(tab)
+    }
+  })
+
+  it("falls back deprecated 'general' section to 'env'", () => {
+    expect(resolveSettingsSubTab("general")).toBe("env")
+  })
+
+  it("falls back null, undefined, or unknown sections to 'env'", () => {
+    expect(resolveSettingsSubTab(null)).toBe("env")
+    expect(resolveSettingsSubTab(undefined)).toBe("env")
+    expect(resolveSettingsSubTab("unknown-section")).toBe("env")
+    expect(resolveSettingsSubTab("")).toBe("env")
+  })
+})
 
 describe("PlatformInstanceWorkspacePage (/console/app/platform/[slug])", () => {
   afterEach(() => {
     cleanup()
   })
 
-  it("renders platform workspace with vertical settings subnav when tab=env", async () => {
-    mockSearchParams = new Map([["tab", "env"]])
+  it("renders platform workspace with vertical settings subnav without general subtab", async () => {
+    mockSearchParams = { tab: "env" }
     const { queryByText, getAllByText, getByRole } = render(
       <PlatformInstanceWorkspacePage />
     )
@@ -116,14 +154,33 @@ describe("PlatformInstanceWorkspacePage (/console/app/platform/[slug])", () => {
       expect(queryByText("Domains & SSL")).not.toBeNull()
       expect(queryByText("Scaling & Resources")).not.toBeNull()
       expect(queryByText("Danger Zone")).not.toBeNull()
+      expect(queryByText("General Info")).toBeNull()
+    })
+  })
+
+  it("falls back to env subtab when section=general is provided in searchParams", async () => {
+    mockSearchParams = {
+      tab: "settings",
+      section: "general",
+    }
+    const { getAllByText, getByRole, queryByText } = render(
+      <PlatformInstanceWorkspacePage />
+    )
+
+    await waitFor(() => {
+      expect(
+        getByRole("navigation", { name: "Platform Settings" })
+      ).toBeDefined()
+      expect(getAllByText("Environment Variables").length).toBeGreaterThan(0)
+      expect(queryByText("General Info")).toBeNull()
     })
   })
 
   it("falls back to env subtab when section parameter is invalid", async () => {
-    mockSearchParams = new Map([
-      ["tab", "settings"],
-      ["section", "nonexistent-bogus-section"],
-    ])
+    mockSearchParams = {
+      tab: "settings",
+      section: "nonexistent-bogus-section",
+    }
     const { getAllByText, getByRole } = render(
       <PlatformInstanceWorkspacePage />
     )

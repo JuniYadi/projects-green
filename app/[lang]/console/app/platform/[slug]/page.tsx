@@ -7,7 +7,6 @@ import {
   Cpu,
   Globe,
   HardDrive,
-  Info,
   Key,
   WarningOctagon,
   Wrench,
@@ -61,7 +60,6 @@ import { TabEnv } from "@/modules/deploy/ui/operate/tab-env"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
 import { TabScaling } from "@/modules/deploy/ui/operate/tab-scaling"
 import { TabMounts } from "@/modules/deploy/ui/operate/tab-mounts"
-import { TabGeneral } from "@/app/[lang]/console/app/settings/_components/tab-general"
 import { TabBuild } from "@/app/[lang]/console/app/settings/_components/tab-build"
 import { TabDanger } from "@/app/[lang]/console/app/settings/_components/tab-danger"
 import { INITIAL_LOGS } from "@/modules/deploy/operate.mock"
@@ -88,18 +86,29 @@ type AppClient = {
   }
 }
 
-type SettingsSubTab =
-  "env" | "domains" | "scaling" | "mounts" | "build" | "general" | "danger"
+export type SettingsSubTab =
+  "env" | "domains" | "scaling" | "mounts" | "build" | "danger"
 
-const VALID_SETTINGS_SUBTABS: readonly SettingsSubTab[] = [
+export const VALID_SETTINGS_SUBTABS: readonly SettingsSubTab[] = [
   "env",
   "domains",
   "scaling",
   "mounts",
   "build",
-  "general",
   "danger",
 ] as const
+
+export function resolveSettingsSubTab(
+  rawSection: string | null | undefined
+): SettingsSubTab {
+  if (
+    rawSection &&
+    (VALID_SETTINGS_SUBTABS as readonly string[]).includes(rawSection)
+  ) {
+    return rawSection as SettingsSubTab
+  }
+  return "env"
+}
 const formatDuration = (durationMs: number | null): string => {
   if (durationMs === null) return "—"
   if (durationMs < 1000) return `${durationMs}ms`
@@ -125,10 +134,7 @@ export default function PlatformInstanceWorkspacePage() {
       ? "settings"
       : (rawTab as WorkspaceTabKey)
 
-  const settingsSubTab: SettingsSubTab =
-    rawSection && VALID_SETTINGS_SUBTABS.includes(rawSection as SettingsSubTab)
-      ? (rawSection as SettingsSubTab)
-      : "env"
+  const settingsSubTab: SettingsSubTab = resolveSettingsSubTab(rawSection)
 
   const handleSelectSubTab = (subTab: SettingsSubTab) => {
     router.replace(
@@ -616,27 +622,6 @@ export default function PlatformInstanceWorkspacePage() {
                   <span className="flex-1">Build & Deploy</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleSelectSubTab("general")}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
-                    settingsSubTab === "general"
-                      ? "bg-secondary font-semibold text-foreground"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                  )}
-                >
-                  <Info
-                    size={16}
-                    className={
-                      settingsSubTab === "general"
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                    }
-                  />
-                  <span className="flex-1">General Info</span>
-                </button>
-
                 <div className="my-1.5 border-t border-border" />
 
                 <button
@@ -691,12 +676,6 @@ export default function PlatformInstanceWorkspacePage() {
                   />
                 )}
                 {settingsSubTab === "build" && <TabBuild />}
-                {settingsSubTab === "general" && (
-                  <TabGeneral
-                    stack={overview.stack}
-                    lastDeployedAt={overview.stack.lastDeployedAt}
-                  />
-                )}
                 {settingsSubTab === "danger" && (
                   <TabDanger stack={overview.stack} />
                 )}
