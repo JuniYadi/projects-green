@@ -1917,7 +1917,7 @@ function IntegrationEditModal({
                 ) : (
                   <Input
                     id={`int-secret-${field}`}
-                    type="password"
+                    type={field === "username" ? "text" : "password"}
                     value={String(secrets[field] ?? "")}
                     onChange={(event) =>
                       handleSecretChange(field, event.target.value)

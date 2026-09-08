@@ -261,8 +261,43 @@ export async function testIntegrationConnection(
           }
         }
 
-        const res = await timedFetch(`${endpoint}/-/healthy`)
+        const username =
+          typeof secrets.username === "string"
+            ? secrets.username.trim()
+            : typeof meta.username === "string"
+              ? meta.username.trim()
+              : ""
+        const password =
+          typeof secrets.password === "string"
+            ? secrets.password
+            : typeof meta.password === "string"
+              ? meta.password
+              : ""
+
+        const headers: Record<string, string> = { Accept: "application/json" }
+        if (username && password) {
+          const authString = Buffer.from(`${username}:${password}`).toString(
+            "base64"
+          )
+          headers.Authorization = `Basic ${authString}`
+        }
+
+        const healthyUrl =
+          endpoint.endsWith("/-/healthy") || endpoint.endsWith("/-/ready")
+            ? endpoint
+            : `${endpoint}/-/healthy`
+
+        const res = await timedFetch(healthyUrl, { headers })
         const durationMs = Date.now() - start
+
+        if (res.status === 401 || res.status === 403) {
+          return {
+            ok: false,
+            message: `Prometheus authentication failed (HTTP ${res.status}). Check username and password.`,
+            durationMs,
+          }
+        }
+
         if (!res.ok) {
           return {
             ok: false,
@@ -290,9 +325,30 @@ export async function testIntegrationConnection(
           }
         }
 
-        const res = await timedFetch(endpoint)
+        const username =
+          typeof secrets.username === "string"
+            ? secrets.username.trim()
+            : typeof meta.username === "string"
+              ? meta.username.trim()
+              : ""
+        const password =
+          typeof secrets.password === "string"
+            ? secrets.password
+            : typeof meta.password === "string"
+              ? meta.password
+              : ""
+
+        const headers: Record<string, string> = { Accept: "application/json" }
+        if (username && password) {
+          const authString = Buffer.from(`${username}:${password}`).toString(
+            "base64"
+          )
+          headers.Authorization = `Basic ${authString}`
+        }
+
+        const res = await timedFetch(endpoint, { headers })
         const durationMs = Date.now() - start
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403) {
           return {
             ok: false,
             message: "OpenSearch authentication required / invalid credentials",

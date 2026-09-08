@@ -343,6 +343,33 @@ export async function updateClusterStatus(
 const getVaultClient = (): Pick<VaultClient, "writeKV"> => new VaultClient()
 const getFullVaultClient = (): VaultClient => new VaultClient()
 
+export async function getExistingClusterIntegrationConfig(
+  clusterId: string,
+  type: AppHostingClusterIntegrationType
+): Promise<{
+  meta: Record<string, unknown>
+  secrets: Record<string, unknown>
+} | null> {
+  const existing = await prisma.appHostingClusterIntegration.findUnique({
+    where: { clusterId_type: { clusterId, type } },
+  })
+  if (!existing) return null
+
+  const meta =
+    existing.metaJson && typeof existing.metaJson === "object"
+      ? (existing.metaJson as Record<string, unknown>)
+      : {}
+
+  const secrets = existing.secretCiphertext
+    ? decryptClusterIntegrationSecrets(
+        existing.secretCiphertext,
+        existing.keyVersion
+      )
+    : {}
+
+  return { meta, secrets }
+}
+
 export async function upsertClusterIntegration(
   clusterId: string,
   type: AppHostingClusterIntegrationType,

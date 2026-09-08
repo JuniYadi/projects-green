@@ -32,6 +32,7 @@ import {
   updateCluster,
   updateClusterStatus,
   upsertClusterIntegration,
+  getExistingClusterIntegrationConfig,
   updateClusterIntegrationStatus,
   deleteClusterIntegration,
   exportClusterIntegrations,
@@ -338,8 +339,26 @@ export const createAdminAppHostingClusterRoutes = (
             }
           }
 
-          const meta = (body?.metaJson ?? {}) as Record<string, unknown>
-          const secrets = (body?.secrets ?? {}) as Record<string, unknown>
+          const inputMeta = (body?.metaJson ?? {}) as Record<string, unknown>
+          const inputSecrets = (body?.secrets ?? {}) as Record<string, unknown>
+
+          const existing = await getExistingClusterIntegrationConfig(
+            params.id,
+            params.type
+          )
+
+          const meta = {
+            ...(existing?.meta ?? {}),
+            ...inputMeta,
+          }
+          const secrets = {
+            ...(existing?.secrets ?? {}),
+          }
+          for (const [k, v] of Object.entries(inputSecrets)) {
+            if (v !== undefined && v !== "") {
+              secrets[k] = v
+            }
+          }
 
           const result = await testIntegrationConnection(
             params.type,

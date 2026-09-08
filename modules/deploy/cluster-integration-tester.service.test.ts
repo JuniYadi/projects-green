@@ -70,4 +70,115 @@ describe("testIntegrationConnection", () => {
     expect(result.ok).toBe(false)
     expect(result.message).toContain("Missing Jenkins baseUrl")
   })
+
+  it("tests Prometheus connection successfully with basic auth", async () => {
+    const mockFetcher = mock(
+      async () => new Response("Prometheus Server is Healthy.", { status: 200 })
+    )
+    const result = await testIntegrationConnection(
+      "PROMETHEUS",
+      { endpoint: "https://prometheus.example.com" },
+      { username: "prom_user", password: "prom_password" },
+      mockFetcher as unknown as typeof fetch
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain(
+      "Successfully reached Prometheus health endpoint"
+    )
+    const expectedAuth = Buffer.from("prom_user:prom_password").toString(
+      "base64"
+    )
+    expect(mockFetcher).toHaveBeenCalledWith(
+      "https://prometheus.example.com/-/healthy",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: `Basic ${expectedAuth}`,
+        }),
+      })
+    )
+  })
+
+  it("tests Prometheus connection successfully without auth", async () => {
+    const mockFetcher = mock(
+      async () => new Response("Prometheus Server is Healthy.", { status: 200 })
+    )
+    const result = await testIntegrationConnection(
+      "PROMETHEUS",
+      { endpoint: "https://prometheus.example.com" },
+      {},
+      mockFetcher as unknown as typeof fetch
+    )
+
+    expect(result.ok).toBe(true)
+    expect(mockFetcher).toHaveBeenCalledWith(
+      "https://prometheus.example.com/-/healthy",
+      expect.objectContaining({
+        headers: { Accept: "application/json" },
+      })
+    )
+  })
+
+  it("handles Prometheus 401 unauthorized with descriptive error", async () => {
+    const mockFetcher = mock(
+      async () => new Response("Unauthorized", { status: 401 })
+    )
+    const result = await testIntegrationConnection(
+      "PROMETHEUS",
+      { endpoint: "https://prometheus.example.com" },
+      { username: "prom_user", password: "wrong_password" },
+      mockFetcher as unknown as typeof fetch
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain(
+      "Prometheus authentication failed (HTTP 401). Check username and password."
+    )
+  })
+
+  it("tests OpenSearch connection successfully with basic auth", async () => {
+    const mockFetcher = mock(
+      async () =>
+        new Response(JSON.stringify({ version: { number: "2.11.0" } }), {
+          status: 200,
+        })
+    )
+    const result = await testIntegrationConnection(
+      "OPENSEARCH",
+      { endpoint: "https://opensearch.example.com:9200" },
+      { username: "os_admin", password: "os_password" },
+      mockFetcher as unknown as typeof fetch
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain(
+      "Successfully reached OpenSearch cluster endpoint"
+    )
+    const expectedAuth = Buffer.from("os_admin:os_password").toString("base64")
+    expect(mockFetcher).toHaveBeenCalledWith(
+      "https://opensearch.example.com:9200",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: `Basic ${expectedAuth}`,
+        }),
+      })
+    )
+  })
+
+  it("handles OpenSearch 401 unauthorized", async () => {
+    const mockFetcher = mock(
+      async () => new Response("Unauthorized", { status: 401 })
+    )
+    const result = await testIntegrationConnection(
+      "OPENSEARCH",
+      { endpoint: "https://opensearch.example.com:9200" },
+      { username: "os_admin", password: "bad_password" },
+      mockFetcher as unknown as typeof fetch
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain(
+      "OpenSearch authentication required / invalid credentials"
+    )
+  })
 })
