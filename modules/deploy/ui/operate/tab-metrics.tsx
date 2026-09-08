@@ -947,7 +947,6 @@ function PodObservabilityView({
 
   const activePods =
     selectedPod === "all" ? pods : pods.filter((p) => p.pod === selectedPod)
-  const isFiltered = selectedPod !== "all"
 
   // Common labels across points
   const timeLabels = (telemetry?.points ?? []).map((p) => p.timestamp)
@@ -1169,83 +1168,60 @@ function PodObservabilityView({
 
       {activeSubTab === "compute" ? (
         <>
-          {/* Per-Pod Section Header */}
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h4 className="text-sm font-semibold text-foreground">
-                Per-Pod Workload Breakdown
-              </h4>
-              <p className="text-xs text-muted-foreground">
-                Multi-replica telemetry breakdown, container lifecycle status,
-                and quota saturation
-              </p>
-            </div>
-          </div>
-
-          {/* Interactive Pod Filter Selector Pills */}
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/20 p-1.5">
-            <span className="px-2 text-xs font-semibold text-muted-foreground">
-              Filter Pod:
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedPod("all")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                selectedPod === "all"
-                  ? "bg-primary font-semibold text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              )}
-            >
-              <span>All Pods</span>
-              <span className="py-0.2 rounded bg-primary-foreground/20 px-1 text-[10px] font-bold">
-                {pods.length}
-              </span>
-            </button>
-
-            {pods.map((pod) => {
-              const isSelected = selectedPod === pod.pod
-              const dotColor = podColors[pod.pod] ?? "#10b981"
-              return (
-                <button
-                  key={pod.pod}
-                  type="button"
-                  onClick={() => setSelectedPod(pod.pod)}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                    isSelected
-                      ? "border border-border bg-secondary font-semibold text-secondary-foreground shadow-xs"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                  )}
-                >
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ backgroundColor: dotColor }}
-                  />
-                  <span className="font-mono">{pod.pod}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Pod Replica Health & Resource Allocation Table */}
+          {/* Pod Replicas & Health Table */}
           <Card className="border-border bg-card shadow-xs">
             <CardHeader className="space-y-1 pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <CardTitle className="text-sm font-bold text-foreground">
-                    Pod Replica Health &amp; Resource Allocation
+                    Pod Replicas &amp; Health
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground">
-                    Live container status, readiness probe, and compute
-                    saturation per replica
+                    Live container status, uptime, and compute saturation per
+                    replica
                   </CardDescription>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground">
-                  {activePods.length}{" "}
-                  {activePods.length === 1 ? "replica" : "replicas"}{" "}
-                  {isFiltered ? "focused" : "monitored"}
-                </span>
+                {pods.length > 1 && (
+                  <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/20 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPod("all")}
+                      className={cn(
+                        "rounded-md px-2 py-0.5 text-xs font-medium transition-colors",
+                        selectedPod === "all"
+                          ? "bg-primary font-semibold text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      )}
+                    >
+                      All ({pods.length})
+                    </button>
+                    {pods.map((pod) => {
+                      const isSelected = selectedPod === pod.pod
+                      const dotColor = podColors[pod.pod] ?? "#10b981"
+                      return (
+                        <button
+                          key={pod.pod}
+                          type="button"
+                          onClick={() => setSelectedPod(pod.pod)}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium transition-colors",
+                            isSelected
+                              ? "bg-secondary font-semibold text-secondary-foreground shadow-xs"
+                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                          )}
+                        >
+                          <span
+                            className="size-1.5 rounded-full"
+                            style={{ backgroundColor: dotColor }}
+                          />
+                          <span className="font-mono text-[11px]">
+                            {pod.pod}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="pt-0">

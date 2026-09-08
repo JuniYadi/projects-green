@@ -120,7 +120,7 @@ describe("TabMetrics", () => {
     expect(view.getAllByText(/Limit: 1024Mi/).length).toBeGreaterThan(0)
   })
 
-  it("renders live workload telemetry and pod quota table when appSlug is provided", () => {
+  it("renders live workload telemetry and pod replicas table when appSlug is provided", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
@@ -131,43 +131,99 @@ describe("TabMetrics", () => {
     )
 
     expect(view.getByText("Workload Observability")).toBeDefined()
-    expect(view.getByText("Per-Pod Workload Breakdown")).toBeDefined()
-    expect(
-      view.getByText("Pod Replica Health & Resource Allocation")
-    ).toBeDefined()
+    expect(view.getByText("Pod Replicas & Health")).toBeDefined()
     expect(view.getByText("CPU Usage per Pod")).toBeDefined()
     expect(view.getByText("RAM Working Set per Pod")).toBeDefined()
     expect(view.getByText("Network Ingress per Pod")).toBeDefined()
-    expect(view.getByText("Filter Pod:")).toBeDefined()
+    expect(view.queryByText("Filter Pod:")).toBeNull()
     expect(view.getByText("Resource Advisory")).toBeDefined()
     expect(view.getByText("Latency Percentiles")).toBeDefined()
     expect(view.getByText("HTTP Status & Error Rate")).toBeDefined()
   })
 
-  it("filters per-pod charts when clicking a specific pod filter pill", () => {
+  it("renders pod replica selector when multiple pods are present", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
+    client.setQueryData(
+      [
+        "deploy",
+        "pod-telemetry",
+        "compute",
+        { type: "preset", preset: "1h" },
+        "sgp",
+        "UTC",
+        "hermes-vibrant-comet",
+      ],
+      {
+        clusterId: "sgp",
+        clusterName: "Singapore",
+        region: "Singapore",
+        isPrimary: true,
+        timeRange: "1h",
+        points: [],
+        cpu: {
+          currentCores: 0.1,
+          limitCores: 1,
+          avgCores: 0.1,
+          peakCores: 0.2,
+        },
+        memory: {
+          currentBytes: 1000,
+          limitBytes: 2000,
+          avgBytes: 1000,
+          peakBytes: 1500,
+        },
+        network: {
+          currentRxBytes: 10,
+          currentTxBytes: 20,
+          totalRxBytes: 100,
+          totalTxBytes: 200,
+        },
+        pods: [
+          {
+            pod: "hermes-vibrant-comet-deploy-0",
+            status: "Running",
+            cpuUsageCores: 0.1,
+            cpuLimitCores: 1,
+            cpuPercent: 10,
+            memoryUsageBytes: 100,
+            memoryLimitBytes: 1000,
+            memoryPercent: 10,
+            restarts: 0,
+          },
+          {
+            pod: "hermes-vibrant-comet-deploy-1",
+            status: "Running",
+            cpuUsageCores: 0.1,
+            cpuLimitCores: 1,
+            cpuPercent: 10,
+            memoryUsageBytes: 100,
+            memoryLimitBytes: 1000,
+            memoryPercent: 10,
+            restarts: 0,
+          },
+        ],
+      }
+    )
     const view = render(
       <QueryClientProvider client={client}>
         <TabMetrics appSlug="hermes-vibrant-comet" />
       </QueryClientProvider>
     )
 
-    const allPodsBtn = view.getByRole("button", { name: /All Pods/i })
-    expect(allPodsBtn).toBeDefined()
-    expect(allPodsBtn.className).toContain("bg-primary")
+    const allBtn = view.getByRole("button", { name: /All \(2\)/i })
+    expect(allBtn).toBeDefined()
+    expect(allBtn.className).toContain("bg-primary")
 
-    const podPills = view.getAllByRole("button", {
-      name: /hermes-vibrant-comet/i,
+    const pod1Btn = view.getByRole("button", {
+      name: /hermes-vibrant-comet-deploy-1/i,
     })
-    expect(podPills.length).toBeGreaterThan(0)
-
-    fireEvent.click(podPills[0])
-    expect(podPills[0].className).toContain("bg-secondary")
-    expect(allPodsBtn.className).not.toContain("bg-primary")
+    expect(pod1Btn).toBeDefined()
+    fireEvent.click(pod1Btn)
+    expect(pod1Btn.className).toContain("bg-secondary")
+    expect(allBtn.className).not.toContain("bg-primary")
   })
-
   it("switches to HTTP Traffic sub-tab and renders Edge L7 metrics without HAProxy labels", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -183,11 +239,8 @@ describe("TabMetrics", () => {
     expect(computeTabBtn).toBeDefined()
     expect(httpTrafficBtn).toBeDefined()
 
-    // Default is Compute with Per-Pod Workload Breakdown inside
-    expect(view.getByText(/Per-Pod Workload Breakdown/i)).toBeDefined()
-    expect(
-      view.getByText(/Pod Replica Health & Resource Allocation/i)
-    ).toBeDefined()
+    // Default is Compute with Pod Replicas & Health
+    expect(view.getByText(/Pod Replicas & Health/i)).toBeDefined()
 
     // Switch to HTTP Traffic
     fireEvent.click(httpTrafficBtn)
@@ -202,9 +255,6 @@ describe("TabMetrics", () => {
 
     // Switch back to Compute
     fireEvent.click(computeTabBtn)
-    expect(view.getByText(/Per-Pod Workload Breakdown/i)).toBeDefined()
-    expect(
-      view.getByText(/Pod Replica Health & Resource Allocation/i)
-    ).toBeDefined()
+    expect(view.getByText(/Pod Replicas & Health/i)).toBeDefined()
   })
 })
