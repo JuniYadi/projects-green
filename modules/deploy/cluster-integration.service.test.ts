@@ -532,6 +532,35 @@ describe("cluster-integration.service", () => {
     expect(config.username).toBe("prom-admin")
     expect(config.password).toBe("prom-secret-password")
   })
+  it("resolveClusterIntegration returns OPENSEARCH typed config with decrypted DB secrets", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValue({
+      clusterId: null,
+    })
+    mockPrisma.appHostingCluster.findMany.mockResolvedValue([
+      { id: "cluster-1", code: "sgp", name: "SG", region: "Singapore" },
+    ])
+    const ciphertext = encryptClusterIntegrationSecrets({
+      username: "os-admin",
+      password: "os-secret-password",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-1",
+      type: "OPENSEARCH",
+      metaJson: {
+        endpoint: "https://opensearch.sg.pfnapp.com",
+        sslVerify: true,
+        timeout: 30,
+      },
+      secretCiphertext: ciphertext,
+    })
+
+    const config = await resolveClusterIntegration("stack-1", "OPENSEARCH")
+    expect(config.endpoint).toBe("https://opensearch.sg.pfnapp.com")
+    expect(config.username).toBe("os-admin")
+    expect(config.password).toBe("os-secret-password")
+    expect(config.sslVerify).toBe(true)
+    expect(config.timeout).toBe(30)
+  })
 
   it("resolveClusterIntegrationByClusterCode resolves PROMETHEUS config for sgp", async () => {
     mockPrisma.appHostingCluster.findUnique.mockResolvedValue({
