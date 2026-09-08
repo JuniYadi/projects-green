@@ -128,12 +128,19 @@ export type KubeconfigClusterConfig = {
   labelSelector: string
 }
 
+export type PrometheusClusterConfig = {
+  endpoint: string
+  username: string
+  password: string
+}
+
 export type ClusterIntegrationConfigMap = {
   JENKINS: JenkinsClusterConfig
   GITOPS: GitOpsClusterConfig
   REGISTRY: RegistryClusterConfig
   ARGOCD: ArgoCdClusterConfig
   KUBECONFIG: KubeconfigClusterConfig
+  PROMETHEUS: PrometheusClusterConfig
 }
 
 export function encryptClusterIntegrationSecrets(
@@ -277,6 +284,16 @@ function buildKubeconfigConfig(
     labelSelector: readString(meta, "labelSelector", true),
   }
 }
+function buildPrometheusConfig(
+  meta: Record<string, unknown>,
+  secrets: Record<string, unknown>
+): PrometheusClusterConfig {
+  return {
+    endpoint: readString(meta, "endpoint", true),
+    username: readString(secrets, "username", true),
+    password: readString(secrets, "password", true),
+  }
+}
 
 function buildTypedConfig<T extends keyof ClusterIntegrationConfigMap>(
   type: T,
@@ -297,6 +314,11 @@ function buildTypedConfig<T extends keyof ClusterIntegrationConfigMap>(
       return buildArgoCdConfig(meta, secrets) as ClusterIntegrationConfigMap[T]
     case "KUBECONFIG":
       return buildKubeconfigConfig(
+        meta,
+        secrets
+      ) as ClusterIntegrationConfigMap[T]
+    case "PROMETHEUS":
+      return buildPrometheusConfig(
         meta,
         secrets
       ) as ClusterIntegrationConfigMap[T]
@@ -409,15 +431,14 @@ export async function resolveDefaultAppHostingClusterId(): Promise<string> {
 
 const getVaultClient = (): Pick<VaultClient, "readKV"> => new VaultClient()
 
-export async function resolveClusterIntegration<
+async function resolveClusterIntegrationForCluster<
   T extends keyof ClusterIntegrationConfigMap,
 >(
-  stackId: string,
+  cluster: { id: string; code: string },
   type: T,
   vaultClient?: Pick<VaultClient, "readKV">
 ): Promise<ClusterIntegrationConfigMap[T]> {
   const client = vaultClient ?? getVaultClient()
-  const cluster = await resolveAppHostingClusterForStack(stackId)
   const integration = await prisma.appHostingClusterIntegration.findFirst({
     where: { clusterId: cluster.id, type, isActive: true },
   })
@@ -470,4 +491,35 @@ export async function resolveClusterIntegration<
   }
 
   return buildTypedConfig(type, meta, secrets)
+}
+
+export async function resolveClusterIntegration<
+  T extends keyof ClusterIntegrationConfigMap,
+>(
+  stackId: string,
+  type: T,
+  vaultClient?: Pick<VaultClient, "readKV">
+): Promise<ClusterIntegrationConfigMap[T]> {
+  const cluster = await resolveAppHostingClusterForStack(stackId)
+  return resolveClusterIntegrationForCluster(cluster, type, vaultClient)
+}
+
+export async function resolveClusterIntegrationByClusterCode<
+  T extends keyof ClusterIntegrationConfigMap,
+>(
+  clusterCode: string,
+  type: T,
+  vaultClient?: Pick<VaultClient, "readKV">
+): Promise<ClusterIntegrationConfigMap[T]> {
+  const cluster =
+    (await prisma.appHostingCluster.findUnique({
+      where: { code: clusterCode },
+    })) ??
+    (await prisma.appHostingCluster.findUnique({
+      where: { id: clusterCode },
+    }))
+  if (!cluster) {
+    throw new Error(`App Hosting cluster not found: ${clusterCode}`)
+  }
+  return resolveClusterIntegrationForCluster(cluster, type, vaultClient)
 }
