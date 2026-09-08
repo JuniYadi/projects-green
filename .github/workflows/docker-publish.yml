@@ -24,6 +24,9 @@ jobs:
           - file: Dockerfile.workers
             suffix: workers
             build_args: ""
+          - file: Dockerfile.api
+            suffix: api
+            build_args: ""
 
     steps:
       - uses: actions/checkout@v7
