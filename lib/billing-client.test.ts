@@ -29,6 +29,9 @@ import {
   getAdminOrgDetail,
   getAdminOrgs,
   getAdminOrders,
+  getAdminSubscriptions,
+  updateAdminSubscription,
+  renewAdminSubscription,
   getAdminPricing,
   getAdminCatalogProductsList,
   getAdminCatalogProductDetail,
@@ -39,7 +42,6 @@ import {
   getAdminPromotionClaims,
   getAdminPromotions,
   getAdminStats,
-  getAdminSubscriptions,
   getAdminUsage,
   getBillingAccount,
   getAdminCatalogPackages,
@@ -281,6 +283,30 @@ describe("admin billing fetch helpers", () => {
     )
   })
 
+  it("updates admin subscription and triggers renewal", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: true, subscription: { id: "sub-1" } })
+    )
+    await updateAdminSubscription("sub-1", {
+      status: "ACTIVE",
+      billingPeriod: "ANNUAL",
+      currentPeriodEnd: "2026-12-31T00:00:00.000Z",
+    })
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/subscriptions/sub-1"
+    )
+    expect(calledRequest().init?.method).toBe("PATCH")
+    expect(calledRequest().init?.body).toContain('"status":"ACTIVE"')
+
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: true, message: "renewed", order: { id: "ord-1" } })
+    )
+    await renewAdminSubscription("sub-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/subscriptions/sub-1/renew"
+    )
+    expect(calledRequest().init?.method).toBe("POST")
+  })
   it("fetches admin stats and organization details", async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, activeOrgs: 2 }))
     await getAdminStats()
