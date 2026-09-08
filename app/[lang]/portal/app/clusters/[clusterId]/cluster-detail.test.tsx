@@ -38,6 +38,17 @@ const mockGetRegions = mock(async (): Promise<unknown> => ({
   ok: true,
   data: { ok: true, data: MOCK_REGIONS },
 }))
+const mockTestIntegration = mock(async (_body: unknown): Promise<unknown> => ({
+  ok: true,
+  data: {
+    ok: true,
+    data: {
+      ok: true,
+      message: "Successfully reached Jenkins server",
+      durationMs: 42,
+    },
+  },
+}))
 mock.module("@/lib/eden", () => ({
   eden: {
     api: {
@@ -53,6 +64,11 @@ mock.module("@/lib/eden", () => ({
               endpoint: {
                 get: mockGetEndpoint,
                 put: mockPutEndpoint,
+              },
+              integrations: {
+                JENKINS: {
+                  test: { post: mockTestIntegration },
+                },
               },
             },
           },
@@ -452,6 +468,41 @@ describe("ClusterDetail", () => {
       () => {
         expect(
           view.getByRole("heading", { name: "Add OpenSearch" })
+        ).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it("tests integration from the table row without sending plaintext secrets", async () => {
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => {
+        expect(view.getByText("Jenkins")).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+
+    const testButton = view.getAllByRole("button", {
+      name: /^test$/i,
+    })[0]!
+    fireEvent.click(testButton)
+
+    await waitFor(
+      () => {
+        expect(mockTestIntegration).toHaveBeenCalledWith({
+          metaJson: {},
+          secrets: {},
+        })
+      },
+      { timeout: 5000 }
+    )
+
+    await waitFor(
+      () => {
+        expect(
+          view.getByText(/Successfully reached Jenkins server/)
         ).toBeTruthy()
       },
       { timeout: 5000 }

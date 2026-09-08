@@ -24,6 +24,7 @@ import {
   DownloadSimple,
   Pencil,
   Power,
+  Pulse,
   Trash,
   UploadSimple,
 } from "@phosphor-icons/react"
@@ -191,6 +192,12 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     useState<FieldErrors>({})
   const [integrationSaving, setIntegrationSaving] = useState(false)
   const [integrationError, setIntegrationError] = useState<string | null>(null)
+  const [testingIntegrationType, setTestingIntegrationType] = useState<
+    string | null
+  >(null)
+  const [integrationTestResults, setIntegrationTestResults] = useState<
+    Record<string, { ok: boolean; message: string; durationMs?: number }>
+  >({})
 
   const [endpoint, setEndpoint] = useState<ClusterEndpointDTO>({
     managedBaseDomain: "",
@@ -658,6 +665,44 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       alert(
         cause instanceof Error ? cause.message : "Failed to toggle integration."
       )
+    }
+  }
+  const handleIntegrationTest = async (type: string) => {
+    setTestingIntegrationType(type)
+    try {
+      const { data: body } = await eden.api.admin["app-hosting"].clusters[
+        clusterId
+      ].integrations[type as (typeof INTEGRATION_TYPES)[number]].test.post({
+        metaJson: {},
+        secrets: {},
+      })
+
+      if (body && body.ok && body.data) {
+        setIntegrationTestResults((prev) => ({
+          ...prev,
+          [type]: body.data as {
+            ok: boolean
+            message: string
+            durationMs?: number
+          },
+        }))
+      } else {
+        setIntegrationTestResults((prev) => ({
+          ...prev,
+          [type]: { ok: false, message: "Failed to run connection probe" },
+        }))
+      }
+    } catch (err) {
+      setIntegrationTestResults((prev) => ({
+        ...prev,
+        [type]: {
+          ok: false,
+          message:
+            err instanceof Error ? err.message : "Connection probe failed",
+        },
+      }))
+    } finally {
+      setTestingIntegrationType(null)
     }
   }
 
@@ -1603,8 +1648,48 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                         Secret: {integration.secretPreview}
                       </p>
                     )}
+                    {integrationTestResults[integration.type] && (
+                      <p
+                        className={`text-xs ${
+                          integrationTestResults[integration.type].ok
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-destructive"
+                        }`}
+                      >
+                        {integrationTestResults[integration.type].ok
+                          ? "✓ "
+                          : "✗ "}
+                        {integrationTestResults[integration.type].message}
+                        {integrationTestResults[integration.type].durationMs !==
+                          undefined && (
+                          <span className="ml-1 text-muted-foreground">
+                            (
+                            {
+                              integrationTestResults[integration.type]
+                                .durationMs
+                            }
+                            ms)
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      disabled={testingIntegrationType === integration.type}
+                      onClick={() =>
+                        void handleIntegrationTest(integration.type)
+                      }
+                      title="Test connection using saved credentials"
+                    >
+                      <Pulse size={14} className="mr-1" />
+                      {testingIntegrationType === integration.type
+                        ? "Testing..."
+                        : "Test"}
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -1663,7 +1748,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           onSecretsChange={setIntegrationSecrets}
           onSave={handleIntegrationSave}
           onCancel={() => setEditingIntegration(null)}
-          clusterId={clusterId}
         />
       )}
 
@@ -1778,7 +1862,6 @@ function IntegrationEditModal({
   onSecretsChange,
   onSave,
   onCancel,
-  clusterId,
 }: {
   integration: ClusterIntegration
   meta: Record<string, unknown>
@@ -1790,14 +1873,8 @@ function IntegrationEditModal({
   onSecretsChange: (value: Record<string, unknown>) => void
   onSave: () => void
   onCancel: () => void
-  clusterId: string
 }) {
   const type = integration.type
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{
-    ok: boolean
-    message: string
-  } | null>(null)
 
   const metaSchema = getMetadataSchema(type)
   const secretsSchema = getSecretsSchema(type)
@@ -1820,34 +1897,6 @@ function IntegrationEditModal({
     onSecretsChange({ ...secrets, [key]: value || undefined })
   }
 
-  const handleTestConnection = async () => {
-    setTesting(true)
-    setTestResult(null)
-    try {
-      const payload = {
-        metaJson: meta,
-        secrets,
-      }
-      const { data: body } =
-        await eden.api.admin["app-hosting"].clusters[clusterId].integrations[
-          type
-        ].test.post(payload)
-
-      if (body && body.ok && body.data) {
-        setTestResult(body.data as { ok: boolean; message: string })
-      } else {
-        setTestResult({ ok: false, message: "Failed to run connection probe" })
-      }
-    } catch (err) {
-      setTestResult({
-        ok: false,
-        message:
-          err instanceof Error ? err.message : "Connection failed or timed out",
-      })
-    } finally {
-      setTesting(false)
-    }
-  }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-lg">
@@ -2108,43 +2157,13 @@ kubectl create clusterrolebinding elysia-remote-binding \\
           })}
         </div>
 
-        {testResult && (
-          <div
-            className={`mt-4 rounded-lg border p-3 text-xs ${
-              testResult.ok
-                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-            }`}
-          >
-            <span className="font-semibold">
-              {testResult.ok
-                ? "✓ Connection Successful"
-                : "✗ Connection Failed"}
-              :
-            </span>{" "}
-            {testResult.message}
-          </div>
-        )}
-
-        <div className="mt-6 flex items-center justify-between">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={handleTestConnection}
-            disabled={testing || saving}
-            data-testid="test-connection-btn"
-          >
-            {testing ? "Testing..." : "Test Connection"}
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
           </Button>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={onSave} disabled={saving}>
-              {saving ? "Saving..." : "Save Integration"}
-            </Button>
-          </div>
+          <Button type="button" onClick={onSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Integration"}
+          </Button>
         </div>
       </div>
     </div>
