@@ -104,7 +104,7 @@ export async function executeTerminalSession(
 
     // 1. Strict Origin Validation
     const origin =
-      ws.data.headers?.origin || ws.data.request?.headers?.get("origin")
+      ws.data.headers?.origin || ws.data.request?.headers?.get("origin") || null
     if (!isAllowedOrigin(origin)) {
       if (!state.clientClosed) {
         ws.send(
