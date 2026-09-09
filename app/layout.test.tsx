@@ -46,4 +46,34 @@ describe("RootLayout", () => {
     expect(view.getByTestId("root-child")).toHaveTextContent("Test Content")
     expect(view.getByTestId("toaster")).toBeInTheDocument()
   })
+
+  it("renders head script that strips next.js version from window.next", async () => {
+    const LayoutComponent = await RootLayout({
+      children: <div>Child</div>,
+    })
+
+    const [head] = LayoutComponent.props.children as [
+      React.ReactElement<{
+        children: React.ReactElement<{
+          dangerouslySetInnerHTML: { __html: string }
+        }>
+      }>,
+      React.ReactElement,
+    ]
+    expect(head.type).toBe("head")
+    const script = head.props.children
+    expect(script.type).toBe("script")
+    const scriptContent = script.props.dangerouslySetInnerHTML.__html
+    expect(scriptContent).toContain("delete v.version")
+
+    // Execute the script content to verify it sanitizes window.next
+    const mockWindow: Record<string, unknown> = {}
+    const initScript = new Function("window", scriptContent)
+    initScript(mockWindow)
+
+    // Next.js client bootstrap assignment simulation
+    mockWindow.next = { version: "16.2.11", appDir: true }
+    expect((mockWindow.next as Record<string, unknown>).version).toBeUndefined()
+    expect((mockWindow.next as Record<string, unknown>).appDir).toBe(true)
+  })
 })
