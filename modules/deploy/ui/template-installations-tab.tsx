@@ -82,62 +82,49 @@ export function TemplateInstallationsTab({
   >([])
   const [isSyncing, startSyncTransition] = useTransition()
 
-  const fetchInstallations = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const res = await fetch(
-        `/api/admin/templates/${templateId}/installations`
-      )
-      if (!res.ok) {
-        throw new Error("Failed to load template installations")
-      }
-      const data = await res.json()
-      if (Array.isArray(data?.installations)) {
-        setInstallations(data.installations)
-      }
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Error loading installations"
-      toast.error(message)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [templateId])
-
-  useEffect(() => {
-    let isCancelled = false
-    const load = async () => {
+  const loadInstallations = useCallback(
+    async (signal?: AbortSignal) => {
       try {
         const res = await fetch(
-          `/api/admin/templates/${templateId}/installations`
+          `/api/admin/templates/${templateId}/installations`,
+          { signal }
         )
         if (!res.ok) {
           throw new Error("Failed to load template installations")
         }
         const data = await res.json()
-        if (!isCancelled && Array.isArray(data?.installations)) {
+        if (Array.isArray(data?.installations)) {
           setInstallations(data.installations)
         }
       } catch (err) {
-        if (!isCancelled) {
-          const message =
-            err instanceof Error ? err.message : "Error loading installations"
-          toast.error(message)
-        }
+        if (signal?.aborted) return
+        const message =
+          err instanceof Error ? err.message : "Error loading installations"
+        toast.error(message)
       } finally {
-        if (!isCancelled) {
+        if (!signal?.aborted) {
           setIsLoading(false)
         }
       }
-    }
+    },
+    [templateId]
+  )
 
+  const handleRefresh = useCallback(() => {
+    setIsLoading(true)
+    void loadInstallations()
+  }, [loadInstallations])
+
+  useEffect(() => {
+    const controller = new AbortController()
     if (templateId) {
-      load()
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadInstallations(controller.signal)
     }
     return () => {
-      isCancelled = true
+      controller.abort()
     }
-  }, [templateId])
+  }, [templateId, loadInstallations])
 
   const displayedInstallations = filterOutdatedOnly
     ? installations.filter((item) => !item.isAligned)
@@ -193,18 +180,16 @@ export function TemplateInstallationsTab({
           body: JSON.stringify({ stackIds }),
         })
 
+        const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          const errData = await res.json().catch(() => ({}))
-          throw new Error(errData?.error || "Failed to trigger sync")
+          throw new Error(data?.error || "Failed to trigger sync")
         }
-
-        const data = await res.json()
         toast.success(
           `Sync completed! Succeeded: ${data.succeeded}/${data.total}`
         )
         setConfirmDialogOpen(false)
         setSelectedStackIds([])
-        await fetchInstallations()
+        await loadInstallations()
       } catch (err) {
         const message = err instanceof Error ? err.message : "Sync error"
         toast.error(message)
@@ -301,9 +286,9 @@ export function TemplateInstallationsTab({
               type="button"
               variant="outline"
               size="sm"
-              onClick={fetchInstallations}
               disabled={isLoading}
               className="size-8 p-0"
+              onClick={handleRefresh}
               title="Refresh list"
             >
               <ArrowsClockwise
@@ -315,10 +300,15 @@ export function TemplateInstallationsTab({
               <Button
                 type="button"
                 size="sm"
+                disabled={isSyncing}
                 onClick={handleOpenSyncBulk}
                 className="gap-1.5 bg-primary text-xs text-primary-foreground"
               >
-                <ArrowsClockwise className="size-3.5" />
+                {isSyncing ? (
+                  <Spinner className="size-3.5 animate-spin" />
+                ) : (
+                  <ArrowsClockwise className="size-3.5" />
+                )}
                 Sync Selected ({selectedStackIds.length})
               </Button>
             )}
@@ -436,6 +426,7 @@ export function TemplateInstallationsTab({
                           type="button"
                           variant="outline"
                           size="xs"
+                          disabled={isSyncing}
                           onClick={() => handleOpenSyncSingle(stack)}
                           className="gap-1 text-xs"
                         >

@@ -517,10 +517,10 @@ export const adminTemplateRoutes = new Elysia({ prefix: "/admin/templates" })
         const result = await listTemplateInstallations(id)
         return result
       } catch (error) {
-        set.status = 404
-        return {
-          error: error instanceof Error ? error.message : "Template not found",
-        }
+        const message =
+          error instanceof Error ? error.message : "Internal error"
+        set.status = message.includes("Template not found") ? 404 : 500
+        return { error: message }
       }
     },
     {

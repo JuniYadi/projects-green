@@ -139,6 +139,12 @@ export async function listTemplateInstallations(
 export async function syncStackFromParentTemplate(params: {
   templateId: string
   stackId: string
+  preloadedTemplate?: {
+    id: string
+    slug: string
+    blueprintJson: unknown
+    version?: string | null
+  } | null
 }): Promise<{
   ok: boolean
   stackId: string
@@ -146,11 +152,13 @@ export async function syncStackFromParentTemplate(params: {
   commitSha: string | null
   message: string
 }> {
-  const template = await prisma.appTemplate.findFirst({
-    where: {
-      OR: [{ id: params.templateId }, { slug: params.templateId }],
-    },
-  })
+  const template =
+    params.preloadedTemplate ??
+    (await prisma.appTemplate.findFirst({
+      where: {
+        OR: [{ id: params.templateId }, { slug: params.templateId }],
+      },
+    }))
 
   if (!template) {
     throw new Error(`Template not found: ${params.templateId}`)
@@ -273,6 +281,16 @@ export async function syncMultipleStacksFromParentTemplate(params: {
     error?: string
   }>
 }> {
+  const template = await prisma.appTemplate.findFirst({
+    where: {
+      OR: [{ id: params.templateId }, { slug: params.templateId }],
+    },
+  })
+
+  if (!template) {
+    throw new Error(`Template not found: ${params.templateId}`)
+  }
+
   const results: Array<{
     stackId: string
     slug?: string
@@ -286,6 +304,7 @@ export async function syncMultipleStacksFromParentTemplate(params: {
       const res = await syncStackFromParentTemplate({
         templateId: params.templateId,
         stackId,
+        preloadedTemplate: template,
       })
       results.push({
         stackId,

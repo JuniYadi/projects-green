@@ -482,6 +482,19 @@ describe("adminTemplateRoutes", () => {
       expect(res.status).toBe(404)
     })
 
+    it("returns 500 when listTemplateInstallations throws unexpected error", async () => {
+      mockListTemplateInstallations.mockRejectedValueOnce(
+        new Error("Database connection pool timeout")
+      )
+
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/installations")
+      )
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toBe("Database connection pool timeout")
+    })
+
     it("returns 401 when unauthenticated", async () => {
       mockAuth.user = null
       const res = await adminTemplateRoutes.handle(
