@@ -62,7 +62,6 @@ import { TabScaling } from "@/modules/deploy/ui/operate/tab-scaling"
 import { TabMounts } from "@/modules/deploy/ui/operate/tab-mounts"
 import { TabBuild } from "@/app/[lang]/console/app/settings/_components/tab-build"
 import { TabDanger } from "@/app/[lang]/console/app/settings/_components/tab-danger"
-import { INITIAL_LOGS } from "@/modules/deploy/operate.mock"
 
 type HistoryMeta = {
   page: number
@@ -150,7 +149,7 @@ export default function PlatformInstanceWorkspacePage() {
   const [syncing, setSyncing] = useState(false)
 
   // Logs state
-  const [logs, setLogs] = useState<LogMessage[]>(INITIAL_LOGS)
+  const [logs, setLogs] = useState<LogMessage[]>([])
 
   // Settings / Env state
   const [selectedEnv] = useState<K8sEnvironmentId>("prod")
@@ -475,6 +474,7 @@ export default function PlatformInstanceWorkspacePage() {
               logs={logs}
               setLogs={setLogs}
               diagnosticMode="production"
+              appSlug={slug}
             />
           )}
 

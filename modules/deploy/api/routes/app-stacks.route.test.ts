@@ -36,6 +36,23 @@ const mockPrisma = {
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
+const mockQueryAppLogs = mock(async () => ({
+  hits: [
+    {
+      id: "log-1",
+      timestamp: "12:00:00",
+      level: "INFO",
+      source: "deploy",
+      message: "Hello world",
+    },
+  ],
+  total: 1,
+  took: 5,
+}))
+
+mock.module("../../opensearch/opensearch-query.service", () => ({
+  queryAppLogs: mockQueryAppLogs,
+}))
 
 const {
   appStacksRoutes,
@@ -943,6 +960,84 @@ describe("appStacksRoutes", () => {
       } as never)
       const res = await post("/deploy/apps/console-next-app/sync")
       expect(res.status).toBe(403)
+    })
+  })
+
+  describe("GET /deploy/apps/:slug/logs", () => {
+    it("returns logs for an application stack", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+      } as never)
+
+      const res = await get(
+        "/deploy/apps/console-next-app/logs?limit=50&level=INFO"
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        ok: boolean
+        data: Array<{ message: string; source: string; level: string }>
+        total: number
+        took: number
+      }
+      expect(body.ok).toBe(true)
+      expect(body.data).toHaveLength(1)
+      expect(body.data[0].message).toBe("Hello world")
+      expect(body.total).toBe(1)
+      expect(mockQueryAppLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slug: "console-next-app",
+          limit: 50,
+          level: "INFO",
+        })
+      )
+    })
+
+    it("returns 404 when application stack does not exist", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null)
+      const res = await get("/deploy/apps/nonexistent/logs")
+      expect(res.status).toBe(404)
+    })
+
+    it("returns 401 when unauthenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({ user: null } as never)
+      const res = await get("/deploy/apps/console-next-app/logs")
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 when user has no organizationId", async () => {
+      mockWithAuth.mockResolvedValueOnce({
+        user: { id: "u-1" },
+        organizationId: null,
+      } as never)
+      const res = await get("/deploy/apps/console-next-app/logs")
+      expect(res.status).toBe(403)
+      expect(await res.json()).toMatchObject({
+        ok: false,
+        error: "FORBIDDEN",
+        message: "Organization required",
+      })
+    })
+
+    it("passes search, source, time range, and asc order to queryAppLogs", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+      } as never)
+
+      const res = await get(
+        "/deploy/apps/console-next-app/logs?q=fatal&source=nginx&order=asc&from=2026-09-01&to=2026-09-08"
+      )
+      expect(res.status).toBe(200)
+      expect(mockQueryAppLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slug: "console-next-app",
+          q: "fatal",
+          source: "nginx",
+          order: "asc",
+          from: "2026-09-01",
+          to: "2026-09-08",
+          limit: 100,
+        })
+      )
     })
   })
 })

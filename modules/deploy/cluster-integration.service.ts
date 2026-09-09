@@ -136,6 +136,14 @@ export type PrometheusClusterConfig = {
   password: string
 }
 
+export type OpenSearchClusterConfig = {
+  endpoint: string
+  username: string
+  password: string
+  sslVerify: boolean
+  timeout: number
+}
+
 export type ClusterIntegrationConfigMap = {
   JENKINS: JenkinsClusterConfig
   GITOPS: GitOpsClusterConfig
@@ -143,6 +151,7 @@ export type ClusterIntegrationConfigMap = {
   ARGOCD: ArgoCdClusterConfig
   KUBECONFIG: KubeconfigClusterConfig
   PROMETHEUS: PrometheusClusterConfig
+  OPENSEARCH: OpenSearchClusterConfig
 }
 
 export function encryptClusterIntegrationSecrets(
@@ -346,6 +355,20 @@ function buildPrometheusConfig(
     password: readString(secrets, "password", true),
   }
 }
+function buildOpenSearchConfig(
+  meta: Record<string, unknown>,
+  secrets: Record<string, unknown>
+): OpenSearchClusterConfig {
+  const endpoint =
+    readString(meta, "endpoint", false) ?? readString(meta, "host", true)
+  return {
+    endpoint,
+    username: readString(secrets, "username", true),
+    password: readString(secrets, "password", true),
+    sslVerify: meta.sslVerify !== false,
+    timeout: typeof meta.timeout === "number" ? meta.timeout : 30,
+  }
+}
 
 function buildTypedConfig<T extends keyof ClusterIntegrationConfigMap>(
   type: T,
@@ -371,6 +394,11 @@ function buildTypedConfig<T extends keyof ClusterIntegrationConfigMap>(
       ) as ClusterIntegrationConfigMap[T]
     case "PROMETHEUS":
       return buildPrometheusConfig(
+        meta,
+        secrets
+      ) as ClusterIntegrationConfigMap[T]
+    case "OPENSEARCH":
+      return buildOpenSearchConfig(
         meta,
         secrets
       ) as ClusterIntegrationConfigMap[T]

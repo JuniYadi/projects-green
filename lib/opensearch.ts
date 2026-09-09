@@ -3,6 +3,7 @@ import { Client } from "@opensearch-project/opensearch"
 export interface OpenSearchConfig {
   node: string
   auth: { username: string; password: string }
+  ssl?: { rejectUnauthorized: boolean }
 }
 
 function getRegionConfig(region?: string): OpenSearchConfig {
@@ -22,7 +23,11 @@ function getRegionConfig(region?: string): OpenSearchConfig {
 }
 
 export function createOpenSearchClient(config: OpenSearchConfig): Client {
-  return new Client({ node: config.node, auth: config.auth })
+  return new Client({
+    node: config.node,
+    auth: config.auth,
+    ssl: config.ssl,
+  })
 }
 
 const clients = new Map<string, Client>()
