@@ -19,77 +19,71 @@ type MockTemplate = {
   languages: Record<string, unknown>[]
 }
 
-const mockTemplateCreate = mock(
-  async (): Promise<MockTemplate> => ({
-    id: "tpl-1",
-    slug: "hello_world",
-    name: "Hello World",
-    description: "A greeting template",
-    organizationId: "org-1",
-    whatsappDeviceId: null,
-    syncStatus: "NOT_SYNCED",
-    metaStatus: null,
-    lastSyncedAt: null,
-    category: "UTILITY",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    languages: [],
-  })
-)
+const mockTemplateCreate = mock(async (): Promise<MockTemplate> => ({
+  id: "tpl-1",
+  slug: "hello_world",
+  name: "Hello World",
+  description: "A greeting template",
+  organizationId: "org-1",
+  whatsappDeviceId: null,
+  syncStatus: "NOT_SYNCED",
+  metaStatus: null,
+  lastSyncedAt: null,
+  category: "UTILITY",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  languages: [],
+}))
 
-const mockTemplateUpdate = mock(
-  async (): Promise<MockTemplate> => ({
-    id: "tpl-1",
-    slug: "hello_world",
-    name: "Hello World Updated",
-    description: "Updated description",
-    organizationId: "org-1",
-    whatsappDeviceId: null,
-    syncStatus: "NOT_SYNCED",
-    metaStatus: null,
-    lastSyncedAt: null,
-    category: "MARKETING",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    languages: [],
-  })
-)
+const mockTemplateUpdate = mock(async (): Promise<MockTemplate> => ({
+  id: "tpl-1",
+  slug: "hello_world",
+  name: "Hello World Updated",
+  description: "Updated description",
+  organizationId: "org-1",
+  whatsappDeviceId: null,
+  syncStatus: "NOT_SYNCED",
+  metaStatus: null,
+  lastSyncedAt: null,
+  category: "MARKETING",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  languages: [],
+}))
 
-const mockTemplateFindUnique = mock(
-  async (): Promise<MockTemplate> => ({
-    id: "tpl-1",
-    slug: "hello_world",
-    name: "Hello World",
-    description: "A greeting template",
-    organizationId: "org-1",
-    whatsappDeviceId: null,
-    syncStatus: "NOT_SYNCED",
-    metaStatus: null,
-    lastSyncedAt: null,
-    category: "UTILITY",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    languages: [],
-  })
-)
+const mockTemplateFindUnique = mock(async (): Promise<MockTemplate> => ({
+  id: "tpl-1",
+  slug: "hello_world",
+  name: "Hello World",
+  description: "A greeting template",
+  organizationId: "org-1",
+  whatsappDeviceId: null,
+  syncStatus: "NOT_SYNCED",
+  metaStatus: null,
+  lastSyncedAt: null,
+  category: "UTILITY",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  languages: [],
+}))
 const mockTemplateFindMany = mock(async () => [])
 const mockTemplateCount = mock(async () => 0)
+const mockTemplateDelete = mock(async () => ({ id: "tpl-1" }))
+const mockEnqueueTemplateSync = mock(async () => {})
 const mockSubscriptionFindFirst = mock(async () => ({
   id: "sub-1",
   organizationId: "org-1",
   status: "ACTIVE",
 }))
 const mockLogAudit = mock(async () => {})
-const mockDeviceFindFirst = mock(
-  async (): Promise<any> => ({
-    id: "dev-1",
-    tokenEncrypted: "encrypted-token",
-    whatsappBusinessAccountId: "waba-1",
-    whatsappPhoneId: "phone-1",
-    organizationId: "org-1",
-    status: "ACTIVE",
-  })
-)
+const mockDeviceFindFirst = mock(async (): Promise<any> => ({
+  id: "dev-1",
+  tokenEncrypted: "encrypted-token",
+  whatsappBusinessAccountId: "waba-1",
+  whatsappPhoneId: "phone-1",
+  organizationId: "org-1",
+  status: "ACTIVE",
+}))
 
 const mockCreateMetaTemplate = mock(async () => ({
   id: "meta-tpl-1",
@@ -104,6 +98,7 @@ mock.module("@/lib/prisma", () => ({
       findUnique: mockTemplateFindUnique,
       findMany: mockTemplateFindMany,
       count: mockTemplateCount,
+      delete: mockTemplateDelete,
     },
     whatsappDevice: {
       findFirst: mockDeviceFindFirst,
@@ -112,6 +107,9 @@ mock.module("@/lib/prisma", () => ({
       findFirst: mockSubscriptionFindFirst,
     },
   },
+}))
+mock.module("@/lib/queue/whatsapp-template-sync", () => ({
+  enqueueWhatsAppTemplateSync: mockEnqueueTemplateSync,
 }))
 
 mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
@@ -247,6 +245,8 @@ describe("templatesRoutes", () => {
     mockTemplateCount.mockClear()
     mockDeviceFindFirst.mockClear()
     mockSubscriptionFindFirst.mockClear()
+    mockTemplateDelete.mockClear()
+    mockEnqueueTemplateSync.mockClear()
     mockDeviceFindFirst.mockResolvedValue({
       id: "dev-1",
       tokenEncrypted: "encrypted-token",
@@ -973,6 +973,276 @@ describe("templatesRoutes", () => {
         },
         select: { id: true },
       })
+    })
+  })
+  describe("GET /", () => {
+    it("returns 401 when unauthenticated", async () => {
+      setMockAuthContext(null)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/")
+      )
+      expect(res.status).toBe(401)
+      expect((await res.json()).error).toBe("UNAUTHORIZED")
+      expect(mockTemplateFindMany).not.toHaveBeenCalled()
+    })
+
+    it("requires an organization for non-super-admin users", async () => {
+      setMockAuthContext({ organizationId: null })
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/")
+      )
+      expect(res.status).toBe(403)
+      expect((await res.json()).error).toBe("FORBIDDEN")
+    })
+
+    it("does not add an organization filter for super admins", async () => {
+      setMockAuthContext({ platformRole: "super_admin" })
+      const res = await createTestApp().handle(
+        new Request(
+          "http://localhost/templates/?sort=asc&syncStatus=NOT_SYNCED"
+        )
+      )
+      expect(res.status).toBe(200)
+      expect(mockTemplateFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { syncStatus: "NOT_SYNCED" },
+          orderBy: { createdAt: "asc" },
+        })
+      )
+      expect(mockTemplateCount).toHaveBeenCalledWith({
+        where: { syncStatus: "NOT_SYNCED" },
+      })
+    })
+
+    it("returns an empty result when phoneId has no matching device", async () => {
+      mockDeviceFindFirst.mockResolvedValueOnce(null)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/?phoneId=missing-phone")
+      )
+      expect(res.status).toBe(200)
+      expect(mockDeviceFindFirst).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", whatsappPhoneId: "missing-phone" },
+        select: { id: true },
+      })
+      expect(mockTemplateFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            organizationId: "org-1",
+            whatsappDeviceId: "non-existent-device-id",
+          },
+        })
+      )
+    })
+
+    it("combines waba and phone filters when resolving a device", async () => {
+      mockDeviceFindFirst.mockResolvedValueOnce({ id: "resolved-device" })
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/?wabaId=waba-9&phoneId=phone-9")
+      )
+      expect(res.status).toBe(200)
+      expect(mockDeviceFindFirst).toHaveBeenCalledWith({
+        where: {
+          organizationId: "org-1",
+          whatsappBusinessAccountId: "waba-9",
+          whatsappPhoneId: "phone-9",
+        },
+        select: { id: true },
+      })
+      expect(mockTemplateFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            organizationId: "org-1",
+            whatsappDeviceId: "resolved-device",
+          },
+        })
+      )
+    })
+  })
+
+  describe("GET /:id", () => {
+    it("returns 401 when unauthenticated", async () => {
+      setMockAuthContext(null)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-1")
+      )
+      expect(res.status).toBe(401)
+      expect((await res.json()).error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 404 when the template does not exist", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce(null)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/missing")
+      )
+      expect(res.status).toBe(404)
+      expect((await res.json()).error).toBe("NOT_FOUND")
+    })
+
+    it("rejects access to a template owned by another organization", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        organizationId: "org-other",
+      } as unknown as MockTemplate)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/cross-org")
+      )
+      expect(res.status).toBe(403)
+      expect((await res.json()).error).toBe("FORBIDDEN")
+    })
+
+    it("returns a template for its organization", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce(
+        approvedTemplate() as unknown as MockTemplate
+      )
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved")
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.template.id).toBe("tpl-approved")
+    })
+  })
+
+  describe("DELETE /:id", () => {
+    it("returns 401 when unauthenticated", async () => {
+      setMockAuthContext(null)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-1", { method: "DELETE" })
+      )
+      expect(res.status).toBe(401)
+      expect((await res.json()).error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 404 when deleting a missing template", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce(null)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/missing", { method: "DELETE" })
+      )
+      expect(res.status).toBe(404)
+      expect(mockTemplateDelete).not.toHaveBeenCalled()
+    })
+
+    it("rejects deleting a template from another organization", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        organizationId: "org-other",
+      } as unknown as MockTemplate)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/cross-org", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(403)
+      expect(mockTemplateDelete).not.toHaveBeenCalled()
+    })
+
+    it("deletes an organization template and records an audit event", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        name: "Delete me",
+      } as unknown as MockTemplate)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(200)
+      expect((await res.json()).ok).toBe(true)
+      expect(mockTemplateDelete).toHaveBeenCalledWith({
+        where: { id: "tpl-approved" },
+      })
+      expect(mockLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "TEMPLATE_DELETED",
+          organizationId: "org-1",
+        })
+      )
+    })
+  })
+
+  describe("POST /:id/sync", () => {
+    it("returns 401 when unauthenticated", async () => {
+      setMockAuthContext(null)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-1/sync", { method: "POST" })
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 404 for a missing template", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce(null)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/missing/sync", {
+          method: "POST",
+        })
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it("rejects sync across organizations", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        organizationId: "org-other",
+        whatsappDeviceId: "dev-other",
+      } as unknown as MockTemplate)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/cross-org/sync", {
+          method: "POST",
+        })
+      )
+      expect(res.status).toBe(403)
+      expect(mockEnqueueTemplateSync).not.toHaveBeenCalled()
+    })
+
+    it("rejects sync when the template has no device", async () => {
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-1/sync", { method: "POST" })
+      )
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toBe("BAD_REQUEST")
+    })
+
+    it("enqueues a sync job for a device-backed template", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        whatsappDeviceId: "dev-1",
+      } as unknown as MockTemplate)
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved/sync", {
+          method: "POST",
+        })
+      )
+      expect(res.status).toBe(200)
+      expect((await res.json()).message).toBe("Sync job enqueued.")
+      expect(mockEnqueueTemplateSync).toHaveBeenCalledWith(
+        "org-1",
+        "dev-1",
+        "sync-templates"
+      )
+    })
+
+    it("returns 500 and audits when enqueueing fails", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        whatsappDeviceId: "dev-1",
+      } as unknown as MockTemplate)
+      mockEnqueueTemplateSync.mockRejectedValueOnce(
+        new Error("queue unavailable")
+      )
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved/sync", {
+          method: "POST",
+        })
+      )
+      expect(res.status).toBe(500)
+      expect((await res.json()).error).toBe("INTERNAL")
+      expect(mockLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "TEMPLATE_SYNC_FAILED",
+          status: "FAILED",
+        })
+      )
     })
   })
 })

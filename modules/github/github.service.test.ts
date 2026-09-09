@@ -35,12 +35,17 @@ const validPrivateKeyBase64 = Buffer.from(
 
 // Dynamic import is required so Redis mock loads before service infrastructure.
 const {
+  commitFileToRepo,
   createGithubRepositoryService,
   createGithubService,
+  fetchGithubInstallationDetails,
   fetchGithubInstallationRepositories,
+  getGithubInstallUrl,
+  GithubConfigurationError,
   GithubIntegrationDisabledError,
   GithubReconnectRequiredError,
   listRepoFiles,
+  readRepoFile,
   syncGithubInstallation,
 } = await import("@/modules/github/github.service")
 import type { GithubInstallationRecord } from "@/modules/github/github.types"
@@ -921,5 +926,247 @@ describe("githubRepositoryService", () => {
 
     expect(deactivateInstallation).toHaveBeenCalledTimes(2)
     expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
+  })
+
+  it("returns empty results for no installations and unmatched owner filters", async () => {
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return []
+      },
+      async createInstallationAccessToken() {
+        return "token"
+      },
+      async listRepositoriesForInstallation() {
+        return []
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    await expect(
+      service.listRepositoriesForActor({ userId: "user_1" }, {})
+    ).resolves.toEqual({ items: [], nextCursor: null })
+
+    const scopedService = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return [installations[0]]
+      },
+      async createInstallationAccessToken() {
+        return "token"
+      },
+      async listRepositoriesForInstallation() {
+        return []
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    await expect(
+      scopedService.listRepositoriesForActor(
+        { userId: "user_1" },
+        { ownerId: "missing-owner" }
+      )
+    ).resolves.toEqual({ items: [], nextCursor: null })
+  })
+
+  it("returns a single repository page with a null cursor", async () => {
+    const repository = {
+      repositoryId: 77,
+      fullName: "acme/only-repo",
+      name: "only-repo",
+      owner: "acme",
+      installationId: 101,
+      defaultBranch: "main",
+      private: false,
+      pushedAt: null,
+    }
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return [installations[0]]
+      },
+      async createInstallationAccessToken() {
+        return "token"
+      },
+      async listRepositoriesForInstallation() {
+        return [repository]
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1" },
+        { limit: 1, cursor: "  " }
+      )
+    ).resolves.toEqual({ items: [repository], nextCursor: null })
+  })
+
+  it("propagates installation upsert and repository sync failures", async () => {
+    const installation = {
+      id: 123,
+      account: { login: "acme", type: "Organization" },
+      target_type: "Organization",
+      target_id: null,
+      permissions: null,
+      events: null,
+    }
+    const upsertError = new Error("installation upsert failed")
+    const prismaClient = {
+      $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          githubInstallation: {
+            upsert: async () => {
+              throw upsertError
+            },
+          },
+          githubRepositoryConnection: {
+            upsert: async () => {},
+            deleteMany: async () => {},
+          },
+        }),
+    }
+
+    await expect(
+      syncGithubInstallation({
+        installationId: BigInt(123),
+        workosUserId: "user_1",
+        organizationId: null,
+        installation,
+        repositories: [],
+        prismaClient,
+      })
+    ).rejects.toBe(upsertError)
+
+    const repositoryError = new Error("repository sync failed")
+    const repositoryUpsert = mock(async () => {
+      throw repositoryError
+    })
+    const syncClient = {
+      $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          githubInstallation: { upsert: async () => ({ id: "record-1" }) },
+          githubRepositoryConnection: {
+            upsert: repositoryUpsert,
+            deleteMany: async () => {},
+          },
+        }),
+    }
+
+    await expect(
+      syncGithubInstallation({
+        installationId: BigInt(123),
+        workosUserId: "user_1",
+        organizationId: null,
+        installation,
+        repositories: [
+          {
+            id: 1,
+            full_name: "acme/repo",
+            name: "repo",
+            owner: { login: "acme" },
+            default_branch: "main",
+            private: false,
+          },
+        ],
+        prismaClient: syncClient,
+      })
+    ).rejects.toBe(repositoryError)
+  })
+
+  it("throws reconnect when every installation fails non-reconnectably", async () => {
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      async createInstallationAccessToken() {
+        throw new Error("provider unavailable")
+      },
+      async listRepositoriesForInstallation() {
+        return []
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    await expect(
+      service.listRepositoriesForActor({ userId: "user_1" }, {})
+    ).rejects.toThrow(GithubReconnectRequiredError)
+  })
+
+  it("fetches installation details and builds an install URL", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 123,
+        account: { login: "acme", type: "Organization" },
+      }),
+    } as Response)
+    await expect(
+      fetchGithubInstallationDetails(BigInt(123))
+    ).resolves.toMatchObject({ id: 123 })
+
+    process.env.GITHUB_APP_SLUG = "my app"
+    process.env.GITHUB_APP_INSTALL_REDIRECT_URI =
+      " https://example.test/callback "
+    expect(getGithubInstallUrl({ state: "state-value" })).toBe(
+      "https://github.com/apps/my%20app/installations/new?state=state-value&redirect_uri=https%3A%2F%2Fexample.test%2Fcallback"
+    )
+    delete process.env.GITHUB_APP_SLUG
+    delete process.env.GITHUB_APP_INSTALL_REDIRECT_URI
+    expect(() => getGithubInstallUrl({ state: "x" })).toThrow(
+      GithubConfigurationError
+    )
+  })
+
+  it("reads files and commits both new and existing content", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ token: "token" }),
+    } as Response)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        content: Buffer.from("hello").toString("base64"),
+        encoding: "base64",
+        path: "src/a.ts",
+        sha: "sha",
+        size: 5,
+      }),
+    } as Response)
+    await expect(
+      readRepoFile({
+        installationId: 1,
+        owner: "acme",
+        repo: "repo",
+        filePath: "a.ts",
+        subdir: "src",
+        ref: "main",
+      })
+    ).resolves.toMatchObject({ content: "hello", path: "src/a.ts" })
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ token: "token" }),
+    } as Response)
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      text: async () => "missing",
+    } as Response)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ commit: { sha: "new-sha" } }),
+    } as Response)
+    await expect(
+      commitFileToRepo({
+        installationId: 1,
+        owner: "acme",
+        repo: "repo",
+        filePath: "a.ts",
+        content: "new",
+        message: "add",
+      })
+    ).resolves.toMatchObject({ commitSha: "new-sha", action: "created" })
   })
 })

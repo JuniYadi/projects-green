@@ -71,7 +71,8 @@ const mockAggregate = mock<() => Promise<SummaryAggregate>>(async () => ({
   _sum: { sent: 0, failed: 0 },
 }))
 const mockFindUnique = mock<() => Promise<Campaign | null>>(async () => null)
-const mockCampaignUpdate = mock<() => Promise<Record<string, never>>>(
+const mockCampaignUpdate = mock<() => Promise<Campaign>>(async () => campaign())
+const mockCampaignDelete = mock<() => Promise<Record<string, never>>>(
   async () => ({})
 )
 const mockCampaignCreate = mock<() => Promise<Campaign>>(async () => campaign())
@@ -113,6 +114,7 @@ const mockPrisma = {
     findMany: mockCampaignFindMany,
     findUnique: mockFindUnique,
     update: mockCampaignUpdate,
+    delete: mockCampaignDelete,
     create: mockCampaignCreate,
   },
   whatsappDevice: {
@@ -135,8 +137,10 @@ const authContext = {
   source: "proxy_header" as const,
 }
 
+const mockResolveAuthContext = mock(async () => authContext)
+
 mock.module("@/lib/auth/resolve-proxy-auth", () => ({
-  resolveAuthContext: mock(async () => authContext),
+  resolveAuthContext: mockResolveAuthContext,
 }))
 
 mock.module("../broadcast-schedule.service", () => ({
@@ -164,6 +168,7 @@ beforeEach(() => {
   mockAggregate.mockClear()
   mockFindUnique.mockClear()
   mockCampaignUpdate.mockClear()
+  mockCampaignDelete.mockClear()
   mockCampaignCreate.mockClear()
   mockDeviceFindFirst.mockClear()
   mockTemplateFindFirst.mockClear()
@@ -171,13 +176,14 @@ beforeEach(() => {
   mockComputeRecommendedSchedule.mockClear()
   mockValidateSchedule.mockClear()
   mockAddBulk.mockClear()
+  mockResolveAuthContext.mockClear()
 
   mockCount.mockResolvedValue(0)
   mockAggregate.mockResolvedValue({ _sum: { sent: 0, failed: 0 } })
   mockFindUnique.mockResolvedValue(null)
-  mockCampaignUpdate.mockResolvedValue({})
+  mockCampaignUpdate.mockResolvedValue(campaign())
+  mockCampaignDelete.mockResolvedValue({})
   mockCampaignCreate.mockResolvedValue(campaign())
-  mockDeviceFindFirst.mockResolvedValue({ id: "device-1" })
   mockTemplateFindFirst.mockResolvedValue({
     id: "template-1",
     name: "Authoritative template",
@@ -198,6 +204,8 @@ beforeEach(() => {
   })
   mockValidateSchedule.mockResolvedValue()
   mockAddBulk.mockResolvedValue([])
+  mockDeviceFindFirst.mockResolvedValue({ id: "device-1" } as unknown as never)
+  mockResolveAuthContext.mockResolvedValue(authContext)
 })
 
 describe("broadcastsRoutes summary", () => {
@@ -672,5 +680,313 @@ describe("broadcastsRoutes POST /", () => {
     expect(body.error).toBe("INSUFFICIENT_CAPACITY")
     expect(body.capacity.maxAffordableRecipients).toBe(10)
     expect(mockCampaignCreate).not.toHaveBeenCalled()
+  })
+})
+
+describe("broadcastsRoutes GET /", () => {
+  it("returns 401 when unauthenticated", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts")
+    )
+    expect(res.status).toBe(401)
+    expect((await res.json()).error).toBe("UNAUTHORIZED")
+  })
+
+  it("returns paginated campaigns scoped to organization", async () => {
+    mockCampaignFindMany.mockResolvedValueOnce([campaign()])
+    mockCount.mockResolvedValueOnce(1)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts?page=1&limit=10")
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.data).toHaveLength(1)
+    expect(body.meta.total).toBe(1)
+  })
+
+  it("super_admin sees all campaigns without org filter", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      ...authContext,
+      platformRole: "super_admin",
+      organizationId: null,
+    })
+    mockCampaignFindMany.mockResolvedValueOnce([campaign()])
+    mockCount.mockResolvedValueOnce(1)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts")
+    )
+    expect(res.status).toBe(200)
+    expect(mockCampaignFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: {} })
+    )
+  })
+})
+
+describe("broadcastsRoutes GET /summary", () => {
+  it("returns 401 when unauthenticated", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/summary")
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it("returns 400 when org missing for non-super_admin", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      ...authContext,
+      organizationId: null,
+    })
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/summary")
+    )
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe("BAD_REQUEST")
+  })
+
+  it("returns aggregated summary for organization", async () => {
+    mockCount.mockResolvedValueOnce(5).mockResolvedValueOnce(2)
+    mockAggregate
+      .mockResolvedValueOnce({ _sum: { sent: 100, failed: 0 } })
+      .mockResolvedValueOnce({ _sum: { sent: 0, failed: 3 } })
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/summary")
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.total).toBe(5)
+    expect(body.active).toBe(2)
+    expect(body.sent).toBe(100)
+    expect(body.failed).toBe(3)
+  })
+
+  it("super_admin can filter by orgId query param", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      ...authContext,
+      platformRole: "super_admin",
+      organizationId: null,
+    })
+    mockCount.mockResolvedValue(0)
+    mockAggregate.mockResolvedValue({ _sum: { sent: 0, failed: 0 } })
+    await createTestApp().handle(
+      new Request("http://localhost/broadcasts/summary?organizationId=org-99")
+    )
+    expect(mockCount).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { organizationId: "org-99" } })
+    )
+  })
+})
+
+describe("broadcastsRoutes GET /:id", () => {
+  it("returns 401 when unauthenticated", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123")
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it("returns 404 when campaign not found", async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-999")
+    )
+    expect(res.status).toBe(404)
+    expect((await res.json()).error).toBe("NOT_FOUND")
+  })
+
+  it("returns 403 for campaign belonging to another org", async () => {
+    mockFindUnique.mockResolvedValueOnce(
+      campaign({ organizationId: "org-other" })
+    )
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123")
+    )
+    expect(res.status).toBe(403)
+    expect((await res.json()).error).toBe("FORBIDDEN")
+  })
+
+  it("returns campaign details for matching org", async () => {
+    mockFindUnique.mockResolvedValueOnce(campaign())
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123")
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.campaign.id).toBe("camp-123")
+  })
+})
+
+describe("broadcastsRoutes PATCH /:id", () => {
+  it("returns 401 when unauthenticated", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ throttleMaxMessages: 10 }),
+      })
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it("returns 404 when campaign not found", async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-999", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ throttleMaxMessages: 10 }),
+      })
+    )
+    expect(res.status).toBe(404)
+  })
+
+  it("returns 403 for campaign from another org", async () => {
+    mockFindUnique.mockResolvedValueOnce(
+      campaign({ organizationId: "org-other" })
+    )
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ throttleMaxMessages: 10 }),
+      })
+    )
+    expect(res.status).toBe(403)
+  })
+
+  it("updates throttle settings and returns result", async () => {
+    mockFindUnique.mockResolvedValueOnce(campaign())
+    mockCampaignUpdate.mockResolvedValueOnce(
+      campaign({ throttleMaxMessages: 5, throttlePerMinutes: 2 })
+    )
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ throttleMaxMessages: 5, throttlePerMinutes: 2 }),
+      })
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(mockCampaignUpdate).toHaveBeenCalledWith({
+      where: { id: "camp-123" },
+      data: { throttleMaxMessages: 5, throttlePerMinutes: 2 },
+    })
+  })
+
+  it("updates campaign and returns result", async () => {
+    mockFindUnique.mockResolvedValueOnce(campaign())
+    mockCampaignUpdate.mockResolvedValueOnce(
+      campaign({ throttleMaxMessages: 20 })
+    )
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ throttleMaxMessages: 20 }),
+      })
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+  })
+})
+
+describe("broadcastsRoutes DELETE /:id", () => {
+  it("returns 401 when unauthenticated", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123", { method: "DELETE" })
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it("returns 404 when campaign not found", async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-999", { method: "DELETE" })
+    )
+    expect(res.status).toBe(404)
+  })
+
+  it("returns 403 for campaign from another org", async () => {
+    mockFindUnique.mockResolvedValueOnce(
+      campaign({ organizationId: "org-other" })
+    )
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123", { method: "DELETE" })
+    )
+    expect(res.status).toBe(403)
+  })
+
+  it("deletes campaign and returns ok", async () => {
+    mockFindUnique.mockResolvedValueOnce(campaign())
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123", { method: "DELETE" })
+    )
+    expect(res.status).toBe(200)
+    expect((await res.json()).ok).toBe(true)
+    expect(mockCampaignDelete).toHaveBeenCalledWith({
+      where: { id: "camp-123" },
+    })
+  })
+})
+
+describe("broadcastsRoutes POST /preview", () => {
+  it("returns 401 when unauthenticated", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          whatsappDeviceId: "device-1",
+          recipients: [{ phoneNumber: "+628123456789" }],
+        }),
+      })
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it("returns capacity and recommendation for valid request", async () => {
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          whatsappDeviceId: "device-1",
+          recipients: [{ phoneNumber: "+628123456789" }],
+        }),
+      })
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.capacity).toBeDefined()
+    expect(body.recommendation).toBeDefined()
+  })
+
+  it("returns 400 when BAD_REQUEST from no org", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      ...authContext,
+      organizationId: null,
+    })
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          whatsappDeviceId: "device-1",
+          recipients: [{ phoneNumber: "+628123456789" }],
+        }),
+      })
+    )
+    expect(res.status).toBe(400)
   })
 })
