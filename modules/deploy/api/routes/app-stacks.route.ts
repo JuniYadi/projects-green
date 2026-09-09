@@ -555,7 +555,8 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           commitSha: result.commitSha,
           message: result.message,
         }
-      } catch {
+      } catch (err) {
+        console.warn(`[sync] Fallback for ${params.slug}:`, err)
         await prisma.applicationStack.update({
           where: { id: stack.id },
           data: { updatedAt: new Date() },
