@@ -5,6 +5,7 @@ import {
   formStateToPayload,
   gitopsMetadataSchema,
   INTEGRATION_TYPES,
+  integrationDefaultValues,
   jenkinsMetadataSchema,
   kubeconfigMetadataSchema,
   opensearchMetadataSchema,
@@ -22,6 +23,15 @@ describe("cluster integration schemas", () => {
       "OPENSEARCH",
       "PROMETHEUS",
     ])
+  })
+  it("provides valid recommended defaults for ARGOCD and omits KUBECONFIG", () => {
+    const defaults = integrationDefaultValues.ARGOCD
+    expect(defaults).toBeDefined()
+    expect(defaults?.project).toBe("default")
+    expect(defaults?.appNamespace).toBe("argocd")
+    expect(defaults?.chartRepo).toBe("https://pfnapp.github.io/charts")
+    expect(defaults?.chartVersion).toBe("2.12.4")
+    expect(integrationDefaultValues.KUBECONFIG).toBeUndefined()
   })
 
   it("requires Jenkins metadata", () => {

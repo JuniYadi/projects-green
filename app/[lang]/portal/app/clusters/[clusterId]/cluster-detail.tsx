@@ -25,6 +25,7 @@ import {
   Pencil,
   Power,
   Pulse,
+  Sparkle,
   Trash,
   UploadSimple,
 } from "@phosphor-icons/react"
@@ -49,6 +50,7 @@ import {
   prometheusSecretsPatchSchema,
   integrationFieldLabels,
   integrationFieldDescriptions,
+  integrationDefaultValues,
   formStateToPayload,
   type ClusterMetadataInput,
   clusterIntegrationsImportSchema,
@@ -525,16 +527,20 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         : availableIntegrationTypes[0]
     if (!typeToCreate) return
     const now = new Date().toISOString()
+    const defaults = (integrationDefaultValues[typeToCreate] ?? {}) as Record<
+      string,
+      unknown
+    >
     setEditingIntegration({
       id: `new-${typeToCreate}`,
       type: typeToCreate,
-      metaJson: {},
+      metaJson: { ...defaults },
       secretPreview: null,
       isActive: true,
       createdAt: now,
       updatedAt: now,
     })
-    setIntegrationMeta({})
+    setIntegrationMeta({ ...defaults })
     setIntegrationSecrets({})
     setIntegrationFieldErrors({})
     setIntegrationError(null)
@@ -1900,15 +1906,35 @@ function IntegrationEditModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">
-          {integration.id.startsWith("new-") ? "Add" : "Edit"}{" "}
-          {INTEGRATION_TYPE_LABELS[type] ?? type}
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {integration.id.startsWith("new-")
-            ? "Configure metadata and secrets for this integration."
-            : "Update metadata and secrets for this integration."}
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold">
+              {integration.id.startsWith("new-") ? "Add" : "Edit"}{" "}
+              {INTEGRATION_TYPE_LABELS[type] ?? type}
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {integration.id.startsWith("new-")
+                ? "Configure metadata and secrets for this integration."
+                : "Update metadata and secrets for this integration."}
+            </p>
+          </div>
+          {integrationDefaultValues[type] && (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              className="shrink-0"
+              onClick={() => {
+                const defaults = integrationDefaultValues[type] ?? {}
+                onMetaChange({ ...defaults, ...meta })
+              }}
+              title="Auto-fill recommended defaults"
+            >
+              <Sparkle size={13} className="mr-1 text-primary" />
+              Auto-fill Defaults
+            </Button>
+          )}
+        </div>
 
         {formError && (
           <div
@@ -1993,6 +2019,12 @@ function IntegrationEditModal({
                   <Input
                     id={`int-meta-${field}`}
                     value={String(meta[field] ?? "")}
+                    placeholder={
+                      field === "apiUrl" && type === "ARGOCD"
+                        ? "https://argocd.example.com"
+                        : ((integrationDefaultValues[type]?.[field] as
+                            string | undefined) ?? "")
+                    }
                     onChange={(event) =>
                       handleMetaChange(field, event.target.value)
                     }

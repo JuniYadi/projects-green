@@ -9,6 +9,7 @@ import {
 import {
   resolveAppHostingClusterForStack,
   resolveClusterIntegration,
+  type ArgoCdClusterConfig,
   type GitOpsClusterConfig,
   type JenkinsClusterConfig,
   type RegistryClusterConfig,
@@ -548,6 +549,12 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
   try {
     const cluster = await resolveAppHostingClusterForStack(stack.id)
     const gitopsConfig = await resolveClusterIntegration(stack.id, "GITOPS")
+    let argocdConfig: ArgoCdClusterConfig | null = null
+    try {
+      argocdConfig = await resolveClusterIntegration(stack.id, "ARGOCD")
+    } catch {
+      argocdConfig = null
+    }
     const { imageRepository, imageTag } =
       await resolveTemplateImageReference(stack)
 
@@ -652,6 +659,7 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
       deploymentType: getStackDeploymentType(stack.metadataJson),
       additionalContainerPorts: getStackAdditionalPorts(stack.metadataJson),
       reloader: true,
+      logging: true,
       runAsNonRoot: blueprintRuntime?.runAsNonRoot !== false,
       fsGroup: resolvedFsGroup,
       livenessProbe: healthCheckPath
@@ -670,6 +678,8 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
           gitopsConfig,
           imageTag,
           tx,
+          chartVersion: argocdConfig?.chartVersion,
+          chartRepoUrl: argocdConfig?.chartRepo,
         }),
       { timeout: 30000 }
     )

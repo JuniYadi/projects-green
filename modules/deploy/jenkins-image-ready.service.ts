@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import {
   resolveAppHostingClusterForStack,
   resolveClusterIntegration,
+  type ArgoCdClusterConfig,
   type GitOpsClusterConfig,
 } from "@/modules/deploy/cluster-integration.service"
 import { buildHelmValues } from "./helm-values.builder"
@@ -241,6 +242,7 @@ export async function handleJenkinsImageReady(
 
   let values: Record<string, unknown>
   let gitopsConfig: GitOpsClusterConfig
+  let argocdConfig: ArgoCdClusterConfig | null = null
   try {
     const cluster = await resolveAppHostingClusterForStack(stack.id)
     gitopsConfig = await resolveClusterIntegration(deployment.stackId, "GITOPS")
@@ -248,7 +250,14 @@ export async function handleJenkinsImageReady(
       deployment.stackId,
       "REGISTRY"
     )
-
+    try {
+      argocdConfig = await resolveClusterIntegration(
+        deployment.stackId,
+        "ARGOCD"
+      )
+    } catch {
+      argocdConfig = null
+    }
     const imageRepository = registryConfig.namespace
       ? `${registryConfig.host}/${registryConfig.namespace}/${stack.slug}`
       : `${registryConfig.host}/${stack.slug}`
@@ -277,6 +286,8 @@ export async function handleJenkinsImageReady(
       tolerations: cluster.tolerations,
       edge,
       externalSecretVaultPath,
+      reloader: true,
+      logging: true,
     })
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Unknown error"
@@ -379,6 +390,8 @@ export async function handleJenkinsImageReady(
       imageTag: input.imageTag,
       buildNumber: input.buildNumber,
       tx,
+      chartVersion: argocdConfig?.chartVersion,
+      chartRepoUrl: argocdConfig?.chartRepo,
     })
 
     return {
@@ -398,9 +411,20 @@ export async function commitHelmValuesAndAdvanceToDeploying(params: {
   imageTag: string
   buildNumber?: number
   tx: PrismaTransactionClient
+  chartVersion?: string | null
+  chartRepoUrl?: string | null
 }): Promise<{ gitopsCommitSha: string }> {
-  const { deployment, stack, values, gitopsConfig, imageTag, buildNumber, tx } =
-    params
+  const {
+    deployment,
+    stack,
+    values,
+    gitopsConfig,
+    imageTag,
+    buildNumber,
+    tx,
+    chartVersion,
+    chartRepoUrl,
+  } = params
 
   const valuesYaml = jsYaml.dump(values, {
     indent: 2,
@@ -441,6 +465,8 @@ export async function commitHelmValuesAndAdvanceToDeploying(params: {
     branch: gitopsConfig.branch,
     valueFilePath: valuePath,
     namespace,
+    ...(chartVersion ? { chartVersion } : {}),
+    ...(chartRepoUrl ? { chartRepoUrl } : {}),
   })
 
   const gitops = new GitOpsRepositoryService({

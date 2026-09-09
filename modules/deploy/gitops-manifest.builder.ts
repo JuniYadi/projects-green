@@ -147,7 +147,7 @@ export function buildHelmApplicationManifest(params: {
 }): string {
   const chartRepoUrl = params.chartRepoUrl ?? "https://pfnapp.github.io/charts"
   const chartName = params.chartName ?? "deploy"
-  const chartVersion = params.chartVersion ?? "2.10.0"
+  const chartVersion = params.chartVersion ?? "2.12.4"
 
   const manifest = {
     apiVersion: "argoproj.io/v1alpha1",

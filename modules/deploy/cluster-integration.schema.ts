@@ -390,6 +390,17 @@ export const integrationFieldDescriptions: Record<
     password: "Basic auth password",
   },
 }
+export const integrationDefaultValues: Record<
+  string,
+  Record<string, unknown>
+> = {
+  ARGOCD: {
+    project: "default",
+    appNamespace: "argocd",
+    chartRepo: "https://pfnapp.github.io/charts",
+    chartVersion: "2.12.4",
+  },
+}
 
 // ── Form State to Payload Helper ───────────────────────
 
