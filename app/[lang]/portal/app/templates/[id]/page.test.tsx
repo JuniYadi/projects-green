@@ -28,7 +28,20 @@ const mockTemplate = {
     runAsNonRoot: true,
     resources: { defaultCpu: 500, defaultMemory: 512 },
     dependencies: [],
-    envSchema: [],
+    envSchema: [
+      {
+        key: "DATA_DIR",
+        label: "Default Location for Data",
+        description: "Admin key for gateway configuration and key issuance",
+        defaultValue: "/app/data",
+        required: true,
+        isSecret: false,
+        dataType: "string",
+        generateRandomHex: 32,
+        isFixed: false,
+        isHidden: false,
+      },
+    ],
   },
   installCount: 10,
   createdAt: "2026-01-01T00:00:00Z",
@@ -100,6 +113,32 @@ describe("PortalEditAppTemplatePage", () => {
 
     await waitFor(() => {
       expect(mockPut).toHaveBeenCalled()
+    })
+  })
+
+  it("renders all envSchema fields including description and random hex on Env Schema tab", async () => {
+    const user = userEvent.setup()
+    const { getByRole, getByDisplayValue } = render(
+      <PortalEditAppTemplatePage />
+    )
+
+    await waitFor(() => {
+      expect(getByRole("tab", { name: /4\. Env Schema/i })).toBeInTheDocument()
+    })
+
+    const envTab = getByRole("tab", { name: /4\. Env Schema/i })
+    await user.click(envTab)
+
+    await waitFor(() => {
+      expect(getByDisplayValue("DATA_DIR")).toBeInTheDocument()
+      expect(getByDisplayValue("Default Location for Data")).toBeInTheDocument()
+      expect(
+        getByDisplayValue(
+          "Admin key for gateway configuration and key issuance"
+        )
+      ).toBeInTheDocument()
+      expect(getByDisplayValue("32")).toBeInTheDocument()
+      expect(getByDisplayValue("/app/data")).toBeInTheDocument()
     })
   })
 })

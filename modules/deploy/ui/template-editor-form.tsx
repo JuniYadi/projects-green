@@ -44,14 +44,6 @@ import {
   HardDrive,
   Key,
 } from "@phosphor-icons/react"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   AlertDialog,
@@ -67,6 +59,7 @@ import type { AdminTemplateRecord } from "@/app/[lang]/portal/marketplace/_compo
 import {
   appTemplateBlueprintSchema,
   type AppTemplateBlueprint,
+  type AppTemplateBlueprintEnvVar,
   type AppTemplatePackage,
 } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 import {
@@ -164,19 +157,9 @@ export function TemplateEditorForm({
     }>
   >(initialData?.blueprintJson?.dependencies || [])
 
-  const [envSchema, setEnvSchema] = useState<
-    Array<{
-      key: string
-      label: string
-      description?: string
-      defaultValue?: string
-      required: boolean
-      isSecret: boolean
-      dataType: "string" | "number" | "boolean" | "select"
-      isFixed?: boolean
-      isHidden?: boolean
-    }>
-  >(initialData?.blueprintJson?.envSchema || [])
+  const [envSchema, setEnvSchema] = useState<AppTemplateBlueprintEnvVar[]>(
+    initialData?.blueprintJson?.envSchema || []
+  )
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [importJsonText, setImportJsonText] = useState("")
   const [activeTab, setActiveTab] = useState("general")
@@ -219,7 +202,28 @@ export function TemplateEditorForm({
         }
       : {}),
     dependencies,
-    envSchema,
+    envSchema: envSchema.map((item) => ({
+      key: item.key.trim(),
+      label: item.label.trim() || item.key.trim(),
+      description: item.description?.trim() || undefined,
+      defaultValue:
+        item.defaultValue !== undefined && item.defaultValue !== ""
+          ? item.defaultValue
+          : undefined,
+      required: Boolean(item.required),
+      isSecret: Boolean(item.isSecret),
+      dataType: item.dataType,
+      options:
+        item.dataType === "select" && item.options?.length
+          ? item.options
+          : undefined,
+      generateRandomHex:
+        item.generateRandomHex && item.generateRandomHex > 0
+          ? Number(item.generateRandomHex)
+          : undefined,
+      isFixed: Boolean(item.isFixed),
+      isHidden: Boolean(item.isHidden),
+    })),
   })
 
   const addEnvVar = () => {
@@ -240,7 +244,10 @@ export function TemplateEditorForm({
     setEnvSchema(envSchema.filter((_, i) => i !== idx))
   }
 
-  const updateEnvVar = (idx: number, patch: Partial<(typeof envSchema)[0]>) => {
+  const updateEnvVar = (
+    idx: number,
+    patch: Partial<AppTemplateBlueprintEnvVar>
+  ) => {
     setEnvSchema(
       envSchema.map((item, i) => (i === idx ? { ...item, ...patch } : item))
     )
@@ -1134,45 +1141,42 @@ export function TemplateEditorForm({
                   </Button>
                 </div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Key</TableHead>
-                        <TableHead>Label</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Default</TableHead>
-                        <TableHead className="w-20 text-center text-xs">
-                          Required
-                        </TableHead>
-                        <TableHead className="w-20 text-center text-xs">
-                          Secret 🔒
-                        </TableHead>
-                        <TableHead className="w-12"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {envSchema.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="p-2">
+                <div className="space-y-4">
+                  {envSchema.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="space-y-3 rounded-lg border bg-card p-4 shadow-2xs"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="space-y-1">
+                            <Label className="text-xs font-medium">
+                              Key <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                               value={item.key}
                               onChange={(e) =>
                                 updateEnvVar(idx, { key: e.target.value })
                               }
+                              placeholder="e.g. DATA_DIR"
                               className="h-8 font-mono text-xs"
                             />
-                          </TableCell>
-                          <TableCell className="p-2">
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs font-medium">
+                              Label <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                               value={item.label}
                               onChange={(e) =>
                                 updateEnvVar(idx, { label: e.target.value })
                               }
+                              placeholder="e.g. Data Directory"
                               className="h-8 text-xs"
                             />
-                          </TableCell>
-                          <TableCell className="p-2">
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs font-medium">Type</Label>
                             <Select
                               value={item.dataType}
                               onValueChange={(
@@ -1189,8 +1193,11 @@ export function TemplateEditorForm({
                                 <SelectItem value="select">select</SelectItem>
                               </SelectContent>
                             </Select>
-                          </TableCell>
-                          <TableCell className="p-2">
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs font-medium">
+                              Default Value
+                            </Label>
                             <Input
                               value={item.defaultValue || ""}
                               onChange={(e) =>
@@ -1198,44 +1205,142 @@ export function TemplateEditorForm({
                                   defaultValue: e.target.value,
                                 })
                               }
+                              placeholder="e.g. /app/data"
                               className="h-8 font-mono text-xs"
                             />
-                          </TableCell>
-                          <TableCell className="p-2 text-center">
-                            <Checkbox
-                              checked={item.required}
-                              onCheckedChange={(checked) =>
-                                updateEnvVar(idx, {
-                                  required: Boolean(checked),
-                                })
-                              }
-                            />
-                          </TableCell>
-                          <TableCell className="p-2 text-center">
-                            <Checkbox
-                              checked={item.isSecret}
-                              onCheckedChange={(checked) =>
-                                updateEnvVar(idx, {
-                                  isSecret: Boolean(checked),
-                                })
-                              }
-                            />
-                          </TableCell>
-                          <TableCell className="p-2">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeEnvVar(idx)}
-                              className="size-8 p-0 text-muted-foreground hover:text-destructive"
-                            >
-                              <TrashIcon className="size-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEnvVar(idx)}
+                          className="mt-6 size-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <TrashIcon className="size-4" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="space-y-1 lg:col-span-2">
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Description (Helper text shown to user)
+                          </Label>
+                          <Input
+                            value={item.description || ""}
+                            onChange={(e) =>
+                              updateEnvVar(idx, {
+                                description: e.target.value,
+                              })
+                            }
+                            placeholder="e.g. Admin key for gateway configuration and key issuance"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Generate Random Hex (Length)
+                          </Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={item.generateRandomHex ?? ""}
+                            onChange={(e) => {
+                              const num = parseInt(e.target.value, 10)
+                              updateEnvVar(idx, {
+                                generateRandomHex:
+                                  isNaN(num) || num <= 0 ? undefined : num,
+                              })
+                            }}
+                            placeholder="e.g. 32 (auto-generates hex token)"
+                            className="h-8 font-mono text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {item.dataType === "select" && (
+                        <div className="space-y-1">
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Options (Comma-separated)
+                          </Label>
+                          <Input
+                            value={item.options?.join(", ") || ""}
+                            onChange={(e) => {
+                              const opts = e.target.value
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean)
+                              updateEnvVar(idx, { options: opts })
+                            }}
+                            placeholder="e.g. dev, staging, production"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-6 border-t border-border/50 pt-2 text-xs">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <Checkbox
+                            checked={item.required}
+                            onCheckedChange={(checked) =>
+                              updateEnvVar(idx, {
+                                required: Boolean(checked),
+                              })
+                            }
+                          />
+                          <span className="font-medium">Required</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            (Must be set)
+                          </span>
+                        </label>
+
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <Checkbox
+                            checked={item.isSecret}
+                            onCheckedChange={(checked) =>
+                              updateEnvVar(idx, {
+                                isSecret: Boolean(checked),
+                              })
+                            }
+                          />
+                          <span className="font-medium">Secret 🔒</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            (Masked input)
+                          </span>
+                        </label>
+
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <Checkbox
+                            checked={Boolean(item.isFixed)}
+                            onCheckedChange={(checked) =>
+                              updateEnvVar(idx, {
+                                isFixed: Boolean(checked),
+                              })
+                            }
+                          />
+                          <span className="font-medium">Fixed 📌</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            (Locked for tenant)
+                          </span>
+                        </label>
+
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <Checkbox
+                            checked={Boolean(item.isHidden)}
+                            onCheckedChange={(checked) =>
+                              updateEnvVar(idx, {
+                                isHidden: Boolean(checked),
+                              })
+                            }
+                          />
+                          <span className="font-medium">Hidden 👁️‍🗨️</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            (Hidden in deploy drawer)
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

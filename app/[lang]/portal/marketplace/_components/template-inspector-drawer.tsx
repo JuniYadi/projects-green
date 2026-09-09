@@ -303,7 +303,7 @@ export function TemplateInspectorDrawer({
                         <span className="font-mono font-semibold">
                           {env.key}
                         </span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           {env.required && (
                             <Badge
                               variant="destructive"
@@ -318,6 +318,30 @@ export function TemplateInspectorDrawer({
                               className="h-4 px-1 text-[10px]"
                             >
                               Secret
+                            </Badge>
+                          )}
+                          {env.isFixed && (
+                            <Badge
+                              variant="outline"
+                              className="h-4 border-amber-500/30 px-1 text-[10px] text-amber-600 dark:text-amber-400"
+                            >
+                              Fixed
+                            </Badge>
+                          )}
+                          {env.isHidden && (
+                            <Badge
+                              variant="outline"
+                              className="h-4 border-purple-500/30 px-1 text-[10px] text-purple-600 dark:text-purple-400"
+                            >
+                              Hidden
+                            </Badge>
+                          )}
+                          {Boolean(env.generateRandomHex) && (
+                            <Badge
+                              variant="outline"
+                              className="h-4 border-blue-500/30 px-1 text-[10px] text-blue-600 dark:text-blue-400"
+                            >
+                              Random Hex: {env.generateRandomHex}
                             </Badge>
                           )}
                           <Badge
@@ -335,6 +359,11 @@ export function TemplateInspectorDrawer({
                       {env.defaultValue && (
                         <p className="mt-1 font-mono text-[11px] text-muted-foreground">
                           Default: {env.defaultValue}
+                        </p>
+                      )}
+                      {env.options && env.options.length > 0 && (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Options: {env.options.join(", ")}
                         </p>
                       )}
                     </div>
