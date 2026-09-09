@@ -73,7 +73,7 @@ export function format24hDateTime(
   timeZone?: string
 ): string {
   const d = toDate(date)
-  const formatter = new Intl.DateTimeFormat("en-GB", {
+  const formatter = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

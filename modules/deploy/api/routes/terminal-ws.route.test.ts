@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test"
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test"
 import {
   isAllowedOrigin,
   terminalWsRoute,
@@ -36,6 +36,28 @@ mock.module("@/modules/deploy/pod-exec.service", () => ({
   encodeResizeFrame: () => new Uint8Array([4]),
   KUBE_EXEC_CHANNELS: { STDIN: 0, STDOUT: 1, STDERR: 2, ERROR: 3, RESIZE: 4 },
 }))
+class MockWebSocket {
+  url: string
+  protocols?: string[]
+  options?: unknown
+  binaryType = "blob"
+  readyState = 0
+  onopen: (() => void) | null = null
+  onmessage: ((event: { data: unknown }) => void) | null = null
+  onclose: ((event: { code: number }) => void) | null = null
+  onerror: (() => void) | null = null
+  close = mock()
+  send = mock()
+  on = mock()
+  addEventListener = mock()
+  removeEventListener = mock()
+
+  constructor(url: string, protocols?: string[], options?: unknown) {
+    this.url = url
+    this.protocols = protocols
+    this.options = options
+  }
+}
 
 describe("terminal-ws.route isAllowedOrigin", () => {
   it("rejects null or empty origin", () => {
@@ -162,10 +184,17 @@ describe("terminalWsRoute definition and message handlers", () => {
 })
 
 describe("executeTerminalSession validation flows", () => {
+  const originalWebSocket = globalThis.WebSocket
+
   beforeEach(() => {
+    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
     mockFindUnique.mockReset()
     mockResolveAuthContext.mockReset()
     mockResolveStackExecCredentials.mockReset()
+  })
+
+  afterEach(() => {
+    globalThis.WebSocket = originalWebSocket
   })
 
   it("rejects invalid origin with 1008 close code", async () => {
