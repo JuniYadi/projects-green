@@ -226,34 +226,91 @@ describe("PaypalPaymentProvider", () => {
   })
 
   describe("verifyCallback", () => {
-    it("returns true when webhookId is not provided (dev mode)", async () => {
+    const fullConfig = {
+      webhookId: "WH-123",
+      clientId: "client-id-123",
+      clientSecret: "client-secret-456",
+      authAlgo: "SHA256withRSA",
+      certUrl: "https://api.sandbox.paypal.com/v1/notifications/certs/CERT-1",
+      transmissionId: "trans-123",
+      transmissionSig: "sig-abc",
+      transmissionTime: "2026-09-10T12:00:00Z",
+    }
+
+    it("returns false when webhookId is not provided (fail closed)", async () => {
       const verified = await paypalProvider.verifyCallback!(
-        { event_type: "UNKNOWN.EVENT" },
+        { event_type: "PAYMENT.CAPTURE.COMPLETED" },
         {}
       )
-      expect(verified).toBe(true)
+      expect(verified).toBe(false)
     })
 
-    it("returns true for CHECKOUT.ORDER.APPROVED when webhookId is set", async () => {
+    it("returns false for unsupported event type", async () => {
       const verified = await paypalProvider.verifyCallback!(
-        { event_type: "CHECKOUT.ORDER.APPROVED" },
-        { webhookId: "WH-123" }
+        { event_type: "CUSTOMER.DISPUTE.CREATED" },
+        fullConfig
       )
-      expect(verified).toBe(true)
+      expect(verified).toBe(false)
     })
 
-    it("returns true for PAYMENT.CAPTURE.COMPLETED when webhookId is set", async () => {
+    it("returns false when required transmission headers or secrets are missing", async () => {
       const verified = await paypalProvider.verifyCallback!(
         { event_type: "PAYMENT.CAPTURE.COMPLETED" },
         { webhookId: "WH-123" }
       )
-      expect(verified).toBe(true)
+      expect(verified).toBe(false)
     })
 
-    it("returns false for unsupported event type when webhookId is set", async () => {
+    it("calls PayPal verification API and returns true on SUCCESS", async () => {
+      let calledVerifyEndpoint = false
+      globalThis.fetch = (async (url: string, init?: RequestInit) => {
+        if (url.includes("/v1/oauth2/token")) {
+          return {
+            ok: true,
+            json: async () => ({ access_token: "test-token" }),
+          } as unknown as Response
+        }
+        if (url.includes("/v1/notifications/verify-webhook-signature")) {
+          calledVerifyEndpoint = true
+          const body = JSON.parse(String(init?.body || "{}"))
+          expect(body.webhook_id).toBe("WH-123")
+          expect(body.auth_algo).toBe("SHA256withRSA")
+          return {
+            ok: true,
+            json: async () => ({ verification_status: "SUCCESS" }),
+          } as unknown as Response
+        }
+        return { ok: false } as unknown as Response
+      }) as typeof fetch
+
       const verified = await paypalProvider.verifyCallback!(
-        { event_type: "CUSTOMER.DISPUTE.CREATED" },
-        { webhookId: "WH-123" }
+        { event_type: "PAYMENT.CAPTURE.COMPLETED" },
+        fullConfig
+      )
+      expect(verified).toBe(true)
+      expect(calledVerifyEndpoint).toBe(true)
+    })
+
+    it("returns false when PayPal verification fails", async () => {
+      globalThis.fetch = (async (url: string) => {
+        if (url.includes("/v1/oauth2/token")) {
+          return {
+            ok: true,
+            json: async () => ({ access_token: "test-token" }),
+          } as unknown as Response
+        }
+        if (url.includes("/v1/notifications/verify-webhook-signature")) {
+          return {
+            ok: true,
+            json: async () => ({ verification_status: "FAILURE" }),
+          } as unknown as Response
+        }
+        return { ok: false } as unknown as Response
+      }) as typeof fetch
+
+      const verified = await paypalProvider.verifyCallback!(
+        { event_type: "PAYMENT.CAPTURE.COMPLETED" },
+        fullConfig
       )
       expect(verified).toBe(false)
     })

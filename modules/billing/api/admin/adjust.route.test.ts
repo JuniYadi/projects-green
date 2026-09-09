@@ -775,7 +775,7 @@ describe("AdminAdjustRoute", () => {
             authenticate: async () =>
               ({
                 user: { id: "owner-1" },
-                organizationId: "org-1",
+                organizationId: "550e8400-e29b-41d4-a716-446655440000",
                 role: "owner",
               }) as unknown as MockAuthContext,
             getPlatformRole: async () => "none" as PlatformAccessRole,
@@ -798,6 +798,41 @@ describe("AdminAdjustRoute", () => {
       )
 
       expect(res.status).toBe(200)
+    })
+    it("returns 403 when non-super_admin attempts cross-organization balance adjustment", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminBillingRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-own",
+                role: "admin",
+              }) as unknown as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+          })
+        )
+        .compile()
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/adjust", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-target-different",
+            type: "CREDIT",
+            amount: 50000,
+            reason: "Attempted cross-org adjustment",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(403)
+      const body = await res.json()
+      expect(body.error).toBe("FORBIDDEN")
+      expect(body.message).toBe(
+        "Cannot adjust balances for another organization."
+      )
     })
 
     it("returns 403 when default isAdmin and user is member", async () => {

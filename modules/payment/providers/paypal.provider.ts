@@ -95,28 +95,89 @@ export const paypalProvider: PaymentProvider = {
     payload: Record<string, unknown>,
     config: Record<string, string>
   ): Promise<boolean> {
-    // PayPal webhook verification uses POST to PayPal with the
-    // webhook id + headers. For now, a basic stub is returned.
-    // Full implementation will validate headers and call PayPal's
-    // verify-webhook-signature endpoint.
-    const { webhookId } = config
+    const { webhookId, clientId, clientSecret } = config
     if (!webhookId) {
-      // If no webhook id configured, accept all callbacks (dev mode)
-      return true
+      return false
     }
 
-    // Stub: real verification requires the CERT_URL header and POST to
-    //   /v1/notifications/verify-webhook-signature
-    // See: https://developer.paypal.com/docs/api/webhooks/v1/#verify-webhook-signature_post
     const eventType = String(payload.event_type || "")
     if (
-      eventType === "CHECKOUT.ORDER.APPROVED" ||
-      eventType === "PAYMENT.CAPTURE.COMPLETED"
+      eventType !== "CHECKOUT.ORDER.APPROVED" &&
+      eventType !== "PAYMENT.CAPTURE.COMPLETED"
     ) {
-      return true
+      return false
     }
 
-    return false
+    const headers =
+      (payload._headers as Record<string, string> | undefined) || {}
+    const authAlgo =
+      config.authAlgo ||
+      config["paypal-auth-algo"] ||
+      headers["paypal-auth-algo"]
+    const certUrl =
+      config.certUrl || config["paypal-cert-url"] || headers["paypal-cert-url"]
+    const transmissionId =
+      config.transmissionId ||
+      config["paypal-transmission-id"] ||
+      headers["paypal-transmission-id"]
+    const transmissionSig =
+      config.transmissionSig ||
+      config["paypal-transmission-sig"] ||
+      headers["paypal-transmission-sig"]
+    const transmissionTime =
+      config.transmissionTime ||
+      config["paypal-transmission-time"] ||
+      headers["paypal-transmission-time"]
+
+    if (
+      !clientId ||
+      !clientSecret ||
+      !authAlgo ||
+      !certUrl ||
+      !transmissionId ||
+      !transmissionSig ||
+      !transmissionTime
+    ) {
+      return false
+    }
+
+    try {
+      const environment = config.environment || "sandbox"
+      const baseUrl =
+        PAYPAL_API_URLS[environment as keyof typeof PAYPAL_API_URLS] ||
+        PAYPAL_API_URLS.sandbox
+      const accessToken = await getAccessToken(baseUrl, clientId, clientSecret)
+
+      const response = await fetch(
+        `${baseUrl}/v1/notifications/verify-webhook-signature`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            auth_algo: authAlgo,
+            cert_url: certUrl,
+            transmission_id: transmissionId,
+            transmission_sig: transmissionSig,
+            transmission_time: transmissionTime,
+            webhook_id: webhookId,
+            webhook_event: payload,
+          }),
+        }
+      )
+
+      if (!response.ok) {
+        return false
+      }
+
+      const data = (await response.json()) as { verification_status?: string }
+      return data.verification_status === "SUCCESS"
+    } catch {
+      return false
+    }
   },
 }
 
