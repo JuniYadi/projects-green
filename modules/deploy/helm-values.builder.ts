@@ -1,3 +1,4 @@
+import { buildHelmApplicationManifest } from "./gitops-manifest.builder"
 import * as jsYaml from "js-yaml"
 
 export type HelmValuesEnvEntry = {
@@ -104,7 +105,7 @@ export type HelmValuesInput = {
   fsGroup?: number | null
   podSecurityContext?: Record<string, unknown> | null
 }
-export const omitUndefined = <T extends Record<string, unknown>>(obj: T): T =>
+const omitUndefined = <T extends Record<string, unknown>>(obj: T): T =>
   Object.fromEntries(
     Object.entries(obj).filter(([, value]) => value !== undefined)
   ) as T
@@ -637,72 +638,21 @@ export class HelmChartBuilder {
   }
 
   build(): Record<string, unknown> {
-    return {
-      apiVersion: "argoproj.io/v1alpha1",
-      kind: "Application",
-      metadata: {
-        name: this._appName,
-        namespace: "argocd",
-      },
-      spec: {
-        project: "default",
-        sources: [
-          {
-            repoURL: this._chartRepoUrl,
-            chart: this._chartName,
-            targetRevision: this._chartVersion,
-            helm: {
-              valueFiles: [`$repoValue/${this._valueFilePath}`],
-            },
-          },
-          {
-            repoURL: this._gitopsRepoUrl,
-            targetRevision: this._branch,
-            ref: "repoValue",
-          },
-        ],
-        destination: {
-          server: "https://kubernetes.default.svc",
-          namespace: this._namespace,
-        },
-        syncPolicy: {
-          automated: {
-            prune: true,
-            selfHeal: true,
-            allowEmpty: false,
-          },
-          syncOptions: ["CreateNamespace=true", "PruneLast=true"],
-          retry: {
-            limit: 5,
-            backoff: {
-              duration: "5s",
-              factor: 2,
-              maxDuration: "3m",
-            },
-          },
-        },
-        revisionHistoryLimit: 10,
-        ignoreDifferences: [
-          {
-            group: "apps",
-            kind: "Deployment",
-            jsonPointers: ["/status/replicas", "/status/updatedReplicas"],
-          },
-          {
-            group: "autoscaling",
-            kind: "HorizontalPodAutoscaler",
-            jsonPointers: [
-              "/status/currentReplicas",
-              "/status/desiredReplicas",
-            ],
-          },
-        ],
-      },
-    }
+    const yaml = this.toYaml()
+    return jsYaml.load(yaml) as Record<string, unknown>
   }
 
   toYaml(): string {
-    return jsYaml.dump(this.build(), { indent: 2, lineWidth: -1, noRefs: true })
+    return buildHelmApplicationManifest({
+      appName: this._appName,
+      namespace: this._namespace,
+      chartRepoUrl: this._chartRepoUrl,
+      chartName: this._chartName,
+      chartVersion: this._chartVersion,
+      gitopsRepoUrl: this._gitopsRepoUrl,
+      branch: this._branch,
+      valueFilePath: this._valueFilePath,
+    })
   }
 }
 

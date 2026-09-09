@@ -1926,22 +1926,7 @@ function IntegrationEditModal({
               className="shrink-0"
               onClick={() => {
                 const defaults = integrationDefaultValues[type] ?? {}
-                onMetaChange({
-                  ...defaults,
-                  ...meta,
-                  ...(defaults.project && !meta.project
-                    ? { project: defaults.project }
-                    : {}),
-                  ...(defaults.appNamespace && !meta.appNamespace
-                    ? { appNamespace: defaults.appNamespace }
-                    : {}),
-                  ...(defaults.chartRepo && !meta.chartRepo
-                    ? { chartRepo: defaults.chartRepo }
-                    : {}),
-                  ...(defaults.chartVersion && !meta.chartVersion
-                    ? { chartVersion: defaults.chartVersion }
-                    : {}),
-                })
+                onMetaChange({ ...defaults, ...meta })
               }}
               title="Auto-fill recommended defaults"
             >
