@@ -203,6 +203,248 @@ describe("webhooks.route", () => {
       expect(data.data).toBeDefined()
       expect(mockListWebhookEvents).toHaveBeenCalled()
     })
+
+    it("returns 403 when organization is missing", async () => {
+      mockAuthContext.current = { type: "workos", organizationId: null }
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/events")
+      )
+      expect(res.status).toBe(403)
+      expect((await res.json()).error).toBe("FORBIDDEN")
+    })
+
+    it("passes organization filters and bounded pagination", async () => {
+      mockAuthContext.current = { type: "workos", organizationId: "org-1" }
+      await app.handle(
+        new Request(
+          "http://localhost/webhooks/events?deviceId=device-1&type=status_update&status=FAILED&page=2&limit=200"
+        )
+      )
+      expect(mockListWebhookEvents).toHaveBeenCalledWith({
+        organizationId: "org-1",
+        whatsappDeviceId: "device-1",
+        eventType: "status_update",
+        processingStatus: "FAILED",
+        from: undefined,
+        to: undefined,
+        page: 2,
+        limit: 100,
+      })
+    })
+  })
+
+  describe("GET /webhooks list authorization", () => {
+    it("requires authentication", async () => {
+      const res = await app.handle(new Request("http://localhost/webhooks/"))
+      expect(res.status).toBe(401)
+    })
+
+    it("allows super admins to query an explicit organization", async () => {
+      mockAuthContext.current = { type: "workos", platformRole: "super_admin" }
+      await app.handle(
+        new Request(
+          "http://localhost/webhooks/?organizationId=org-2&deviceId=device-2&page=2&limit=5"
+        )
+      )
+      expect(mockWebhookFindMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-2", whatsappDeviceId: "device-2" },
+        take: 5,
+        skip: 5,
+        orderBy: { createdAt: "desc" },
+      })
+      expect(mockWebhookCount).toHaveBeenCalledWith({
+        where: { organizationId: "org-2", whatsappDeviceId: "device-2" },
+      })
+    })
+  })
+
+  describe("GET /webhooks/:id/verify", () => {
+    it("returns the challenge for subscribe mode", async () => {
+      const res = await app.handle(
+        new Request(
+          "http://localhost/webhooks/wh-1/verify?hub.mode=subscribe&hub.challenge=abc123"
+        )
+      )
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe("abc123")
+    })
+
+    it("rejects invalid verification mode", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/wh-1/verify?hub.mode=invalid")
+      )
+      expect(res.status).toBe(500)
+    })
+  })
+
+  describe("GET /webhooks/:id/deliveries authorization", () => {
+    it("returns 401 without authentication", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/wh-1/deliveries")
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 for another organization", async () => {
+      mockAuthContext.current = { type: "workos", organizationId: "org-1" }
+      mockWebhookFindUnique.mockResolvedValueOnce({
+        organizationId: "org-2",
+      } as unknown as never)
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/wh-1/deliveries")
+      )
+      expect(res.status).toBe(403)
+    })
+
+    it("passes delivery filters and pagination", async () => {
+      mockAuthContext.current = { type: "workos", organizationId: "org-1" }
+      mockWebhookFindUnique.mockResolvedValueOnce({
+        organizationId: "org-1",
+      } as unknown as never)
+      await app.handle(
+        new Request(
+          "http://localhost/webhooks/wh-1/deliveries?eventType=message&status=FAILED&page=3&limit=7"
+        )
+      )
+      expect(mockGetDeliveryLogs).toHaveBeenCalledWith("wh-1", {
+        eventType: "message",
+        status: "FAILED",
+        from: undefined,
+        to: undefined,
+        page: 3,
+        limit: 7,
+      })
+    })
+  })
+
+  describe("POST /webhooks/:id Meta inbound", () => {
+    const inbound = {
+      entry: [{ changes: [{ value: { messages: [{ id: "m-1" }] } }] }],
+    }
+    const statuses = {
+      entry: [{ changes: [{ value: { statuses: [{ id: "s-1" }] } }] }],
+    }
+
+    it("returns received when device is missing", async () => {
+      mockDeviceFindUnique.mockResolvedValueOnce(null)
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/missing", {
+          method: "POST",
+          body: JSON.stringify(inbound),
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ status: "received" })
+    })
+
+    it("rejects a configured secret when raw body is empty", async () => {
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        organizationId: "org-1",
+        appSecret: "secret",
+      } as unknown as never)
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/device-1", { method: "POST" })
+      )
+      expect(res.status).toBe(401)
+      expect((await res.json()).message).toBe("Empty body")
+    })
+
+    it("rejects an invalid signature", async () => {
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        organizationId: "org-1",
+        appSecret: "secret",
+      } as unknown as never)
+      mockVerifyWebhookSignature.mockReturnValueOnce(false)
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/device-1", {
+          method: "POST",
+          body: JSON.stringify(inbound),
+        })
+      )
+      expect(res.status).toBe(401)
+      expect((await res.json()).message).toBe("Invalid signature")
+    })
+
+    it("creates inbound event and enqueues message retry", async () => {
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        organizationId: "org-1",
+        appSecret: "secret",
+      } as unknown as never)
+      mockEventCreate.mockResolvedValueOnce("event-42" as never)
+      const raw = JSON.stringify(inbound)
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/device-1", {
+          method: "POST",
+          headers: { "x-hub-signature-256": "sha256=ok" },
+          body: raw,
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(mockEventCreate).toHaveBeenCalledWith(
+        "org-1",
+        "device-1",
+        "inbound_message",
+        inbound
+      )
+      expect(mockJobDispatch).toHaveBeenCalledWith({
+        eventId: "event-42",
+        eventType: "message",
+        deviceId: "device-1",
+        organizationId: "org-1",
+        payload: inbound,
+      })
+    })
+
+    it("processes without app secret and records inline result", async () => {
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        organizationId: "org-1",
+        appSecret: "",
+      } as unknown as never)
+      mockEventCreate.mockResolvedValueOnce("event-43" as never)
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/device-1", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(statuses),
+        })
+      )
+      expect(res.status).toBe(200)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(mockHandleIncomingWebhook).toHaveBeenCalledWith(
+        statuses,
+        "device-1",
+        "org-1"
+      )
+      expect(mockRecordProcessingResult).toHaveBeenCalledWith(
+        "event-43",
+        "SUCCESS",
+        undefined
+      )
+    })
+  })
+
+  describe("GET /webhooks/:id/events additional paths", () => {
+    it("clamps page to minimum 1 and defaults limit when 0", async () => {
+      mockAuthContext.current = { type: "workos", organizationId: "org-1" }
+      mockDeviceFindUnique.mockResolvedValueOnce(mockDevice as unknown as never)
+      await app.handle(
+        new Request(
+          getEventsUrl("device-1", {
+            page: "0",
+            limit: "0",
+            type: "status_update",
+          })
+        )
+      )
+      // page=0 → Math.max(0||1,1) = 1; limit=0 → Math.min(Math.max(0||20,1),100) = 20
+      expect(mockListWebhookEvents).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 1,
+          limit: 20,
+          eventType: "status_update",
+        })
+      )
+    })
   })
 
   describe("GET /webhooks (CRUD)", () => {

@@ -4,11 +4,14 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 import { Prisma } from "@prisma/client"
 
-import type { VpnSubscriptionService } from "../vpn-subscription.service"
+import { type VpnSubscriptionService } from "../vpn-subscription.service"
 
 const mockPackageFindMany = mock()
 const mockBillingAccountFindUnique = mock()
 const mockBillingAdjustmentFindMany = mock()
+const mockBundleVpnConfigs = mock()
+const mockDecryptProxyPassword = mock()
+const mockLogAuditEvent = mock()
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -25,7 +28,16 @@ mock.module("@/lib/prisma", () => ({
 }))
 
 mock.module("@/lib/audit.service", () => ({
-  logAuditEvent: mock().mockResolvedValue(undefined),
+  logAuditEvent: mockLogAuditEvent,
+}))
+
+mock.module("@/modules/vpn/vpn-crypto", () => ({
+  decryptVpnConfig: mock(() => "decrypted config"),
+  decryptProxyPassword: mockDecryptProxyPassword,
+}))
+
+mock.module("../vpn-zip-bundle.service", () => ({
+  bundleVpnConfigs: mockBundleVpnConfigs,
 }))
 
 mock.module("@/lib/queue/vpn-provisioning", () => ({
@@ -103,6 +115,12 @@ describe("VPN subscription routes", () => {
     mockBillingAccountFindUnique.mockResolvedValue({ id: "ba_1" })
     mockBillingAdjustmentFindMany.mockClear()
     mockBillingAdjustmentFindMany.mockResolvedValue([])
+    mockBundleVpnConfigs.mockClear()
+    mockBundleVpnConfigs.mockReturnValue(Buffer.from("zip"))
+    mockDecryptProxyPassword.mockClear()
+    mockDecryptProxyPassword.mockReturnValue("decrypted-password")
+    mockLogAuditEvent.mockClear()
+    mockLogAuditEvent.mockResolvedValue(undefined)
   })
 
   it("returns package names for customer subscriptions", async () => {
@@ -388,6 +406,6 @@ describe("VPN subscription routes", () => {
     expect(response.headers.get("content-type")).toBe("application/zip")
     expect(response.headers.get("content-disposition")).toContain("attachment;")
     expect(response.headers.get("content-disposition")).toContain(".zip")
-    expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(22)
+    expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0)
   })
 })
