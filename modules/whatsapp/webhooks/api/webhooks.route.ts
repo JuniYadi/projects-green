@@ -1,18 +1,15 @@
 import { Elysia, t } from "elysia"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
-import {
-  createWebhookEvent,
-  handleIncomingWebhook,
-  recordProcessingResult,
-  listWebhookEvents,
-} from "../webhooks.service"
+import { createWebhookEvent, listWebhookEvents } from "../webhooks.service"
 import {
   webhookDispatcher,
   toDeliveryLogDTO,
 } from "../webhook-dispatcher.service"
 import { verifyWebhookSignature } from "../services/webhook-hmac.service"
 import { WebhookRetryJob } from "../jobs/webhook-retry.job"
+import { decryptWithAppKey } from "@/lib/whatsapp/crypto"
 
 /**
  * Infer the webhook event type from the Meta payload structure.
@@ -569,13 +566,21 @@ export const webhooksRoutes = new Elysia({
 
   // POST /:id — Meta webhook incoming event
   // Verifies HMAC, inserts raw event, enqueues for retry processing
-  .post("/:id", async ({ params, request, body, set, store }: any) => {
+  .post("/:id", async ({ params, request, set, store }: any) => {
     const deviceId = params.id
 
     // Look up device to get organizationId and appSecret for HMAC verification
     const device = await prisma.whatsappDevice.findUnique({
       where: { id: deviceId },
-      select: { organizationId: true, appSecret: true },
+      select: {
+        organizationId: true,
+        appSecret: true,
+        whatsappMetaApp: {
+          select: {
+            appSecretEncrypted: true,
+          },
+        },
+      },
     })
 
     if (!device) {
@@ -583,84 +588,77 @@ export const webhooksRoutes = new Elysia({
       return { status: "received" }
     }
 
-    // HMAC verification if appSecret is configured
-    if (device.appSecret) {
-      const signatureHeader = request.headers.get("x-hub-signature-256")
-      // Use raw body captured in onRequest before Elysia's body parser consumed the stream
-      const rawBody: string = store.rawBody ?? ""
-      if (!rawBody) {
-        set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Empty body" }
+    let secret: string | null = device.appSecret || null
+    if (!secret && device.whatsappMetaApp?.appSecretEncrypted) {
+      try {
+        secret = await decryptWithAppKey(
+          device.whatsappMetaApp.appSecretEncrypted
+        )
+      } catch {
+        secret = null
       }
-      const parsedBody = JSON.parse(rawBody)
-
-      const isValid = verifyWebhookSignature(
-        device.appSecret,
-        rawBody,
-        signatureHeader
-      )
-
-      if (!isValid) {
-        set.status = 401
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          message: "Invalid signature",
-        }
-      }
-
-      // Determine event type from payload structure
-      const eventType = determineEventType(parsedBody)
-
-      // Insert raw webhook event BEFORE processing
-      const eventId = await createWebhookEvent(
-        device.organizationId,
-        deviceId,
-        eventType,
-        parsedBody as any
-      )
-
-      // Map event type to job event type
-      const jobEventType =
-        eventType === "inbound_message" ? "message" : "statuses"
-
-      // Enqueue for retry processing
-      await WebhookRetryJob.dispatch({
-        eventId,
-        eventType: jobEventType,
-        deviceId,
-        organizationId: device.organizationId,
-        payload: parsedBody,
-      })
-    } else {
-      // No appSecret configured — process inline (backward compatible)
-      const eventType = determineEventType(body)
-
-      const eventId = await createWebhookEvent(
-        device.organizationId,
-        deviceId,
-        eventType,
-        body as any
-      )
-
-      ;(async () => {
-        try {
-          const result = await handleIncomingWebhook(
-            body,
-            deviceId,
-            device.organizationId
-          )
-          await recordProcessingResult(
-            eventId,
-            result.success ? "SUCCESS" : "FAILED",
-            result.success ? undefined : result.error
-          )
-        } catch (e) {
-          console.error("Error processing whatsapp webhook:", e)
-          await recordProcessingResult(eventId, "FAILED", String(e))
-        }
-      })().catch(console.error)
     }
+    if (!secret && process.env.WHATSAPP_APP_SECRET) {
+      secret = process.env.WHATSAPP_APP_SECRET
+    }
+    if (!secret) {
+      set.status = 401
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Device app secret not configured",
+      }
+    }
+
+    // Use raw body captured in onRequest before Elysia's body parser consumed the stream
+    const rawBody: string = store.rawBody ?? ""
+    if (!rawBody) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Empty body" }
+    }
+
+    const signatureHeader = request.headers.get("x-hub-signature-256")
+    const isValid = verifyWebhookSignature(secret, rawBody, signatureHeader)
+
+    if (!isValid) {
+      set.status = 401
+      return {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Invalid signature",
+      }
+    }
+    let parsedBody: Record<string, unknown>
+    try {
+      parsedBody = JSON.parse(rawBody) as Record<string, unknown>
+    } catch {
+      set.status = 400
+      return { ok: false, error: "BAD_REQUEST", message: "Malformed JSON" }
+    }
+
+    // Determine event type from payload structure
+    const eventType = determineEventType(parsedBody)
+
+    // Insert raw webhook event BEFORE processing
+    const eventId = await createWebhookEvent(
+      device.organizationId,
+      deviceId,
+      eventType,
+      parsedBody as unknown as Prisma.InputJsonValue
+    )
+
+    // Map event type to job event type
+    const jobEventType =
+      eventType === "inbound_message" ? "message" : "statuses"
+
+    // Enqueue for retry processing
+    await WebhookRetryJob.dispatch({
+      eventId,
+      eventType: jobEventType,
+      deviceId,
+      organizationId: device.organizationId,
+      payload: parsedBody,
+    })
 
     set.status = 200
     return { status: "received" }

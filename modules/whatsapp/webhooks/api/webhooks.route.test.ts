@@ -395,12 +395,11 @@ describe("webhooks.route", () => {
       })
     })
 
-    it("processes without app secret and records inline result", async () => {
+    it("rejects when app secret or signature is missing", async () => {
       mockDeviceFindUnique.mockResolvedValueOnce({
         organizationId: "org-1",
         appSecret: "",
       } as unknown as never)
-      mockEventCreate.mockResolvedValueOnce("event-43" as never)
       const res = await app.handle(
         new Request("http://localhost/webhooks/device-1", {
           method: "POST",
@@ -408,18 +407,9 @@ describe("webhooks.route", () => {
           body: JSON.stringify(statuses),
         })
       )
-      expect(res.status).toBe(200)
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      expect(mockHandleIncomingWebhook).toHaveBeenCalledWith(
-        statuses,
-        "device-1",
-        "org-1"
-      )
-      expect(mockRecordProcessingResult).toHaveBeenCalledWith(
-        "event-43",
-        "SUCCESS",
-        undefined
-      )
+      expect(res.status).toBe(401)
+      const json = await res.json()
+      expect(json.error).toBe("UNAUTHORIZED")
     })
   })
 

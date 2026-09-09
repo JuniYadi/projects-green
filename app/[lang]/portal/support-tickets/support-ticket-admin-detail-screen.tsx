@@ -41,6 +41,7 @@ import { formatBytes } from "@/lib/utils"
 import { MarkdownEditor } from "@/components/ui/markdown-editor"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 type SupportTicketAdminDetailScreenProps = {
   ticketId: string
@@ -945,7 +946,7 @@ export function SupportTicketAdminDetailScreen({
                     <div
                       className="mt-1.5 space-y-3 text-sm leading-relaxed text-muted-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
                       dangerouslySetInnerHTML={{
-                        __html: ticket.descriptionHtml,
+                        __html: sanitizeHtml(ticket.descriptionHtml),
                       }}
                     />
                   ) : (
@@ -1066,7 +1067,7 @@ export function SupportTicketAdminDetailScreen({
                             <div
                               className="space-y-3 pt-1 text-sm leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
                               dangerouslySetInnerHTML={{
-                                __html: reply.bodyHtml,
+                                __html: sanitizeHtml(reply.bodyHtml),
                               }}
                             />
                           ) : (

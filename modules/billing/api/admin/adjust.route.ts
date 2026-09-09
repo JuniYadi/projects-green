@@ -128,6 +128,16 @@ export const createAdminBillingRoutes = (
           )
         }
 
+        if (
+          actor.platformRole !== "super_admin" &&
+          organizationId !== auth.organizationId
+        ) {
+          return toForbidden(
+            set,
+            "Cannot adjust balances for another organization."
+          )
+        }
+
         try {
           // Perform adjustment in transaction to prevent race conditions
           const result = await prisma.$transaction(async (tx) => {

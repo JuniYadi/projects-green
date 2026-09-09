@@ -31,6 +31,7 @@ import {
 import { SECURE_ONLY_REPLY_BODY } from "@/modules/support-tickets/support-ticket.types"
 import { getCachedOrganizations, getCachedUsers } from "@/lib/workos-directory"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 type SupportTicketAuthContext = {
   organizationId?: string | null
@@ -600,16 +601,18 @@ export const createSupportTicketRoutes = (
           ...reply,
           bodyHtml:
             typeof Bun !== "undefined"
-              ? Bun.markdown.html(reply.body, { tagFilter: true })
+              ? sanitizeHtml(Bun.markdown.html(reply.body, { tagFilter: true }))
               : reply.body,
         }))
         const compiledTicket = {
           ...thread.ticket,
           descriptionHtml: thread.ticket.description
             ? typeof Bun !== "undefined"
-              ? Bun.markdown.html(thread.ticket.description, {
-                  tagFilter: true,
-                })
+              ? sanitizeHtml(
+                  Bun.markdown.html(thread.ticket.description, {
+                    tagFilter: true,
+                  })
+                )
               : thread.ticket.description
             : null,
           organizationName,
