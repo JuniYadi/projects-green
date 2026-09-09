@@ -99,6 +99,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     sourcePrefixes: [
       "app/[lang]/console/whatsapp/api-keys/",
       "app/[lang]/portal/whatsapp/api-keys/",
+      "app/[lang]/portal/whatsapp/page.tsx",
       "modules/admin/api/admin.route.ts",
       "modules/whatsapp/api/organization-api-key-hono.ts",
       "modules/whatsapp/organization-api-keys/",

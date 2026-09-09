@@ -226,7 +226,7 @@ export async function executeTerminalSession(
       }
     }
 
-    kubeWs.onerror = () => {
+    const handleWsError = () => {
       if (!state.clientClosed) {
         ws.send(
           JSON.stringify({
@@ -236,6 +236,11 @@ export async function executeTerminalSession(
         )
         ws.close(1011, "Exec error")
       }
+    }
+
+    kubeWs.onerror = handleWsError
+    if ("on" in kubeWs && typeof kubeWs.on === "function") {
+      kubeWs.on("error", handleWsError)
     }
 
     ws.kubeWs = kubeWs
