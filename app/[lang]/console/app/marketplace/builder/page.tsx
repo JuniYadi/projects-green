@@ -129,7 +129,7 @@ const INITIAL_STATE: TemplateBuilderState = {
   defaultPort: 8080,
   command: "",
   args: "",
-  healthCheckPath: "/healthz",
+  healthCheckPath: "",
   runAsNonRoot: true,
   defaultCpu: 500,
   defaultMemory: 512,
@@ -768,11 +768,11 @@ export default function TemplateBuilderPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="healthCheckPath">
-                    Health Check HTTP Path
+                    Health Check HTTP Path (Optional)
                   </Label>
                   <Input
                     id="healthCheckPath"
-                    placeholder="/healthz or /api/health"
+                    placeholder="e.g. /healthz (leave empty for none)"
                     value={formData.healthCheckPath}
                     onChange={(e) =>
                       updateField("healthCheckPath", e.target.value)

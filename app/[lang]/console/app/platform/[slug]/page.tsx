@@ -53,6 +53,7 @@ import {
   type WorkspaceTabKey,
 } from "@/modules/deploy/ui/app-workspace-header"
 import { AppOverviewTab } from "@/modules/deploy/ui/app-overview-tab"
+import { TemplateUpdateBanner } from "@/modules/deploy/ui/template-update-banner"
 import { AppMonitor } from "@/modules/deploy/ui/operate/app-monitor"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
 import { TabMetrics } from "@/modules/deploy/ui/operate/tab-metrics"
@@ -324,6 +325,20 @@ export default function PlatformInstanceWorkspacePage() {
             onSync={handleSync}
             isSyncing={syncing}
           />
+
+          {/* Template Update Banner */}
+          {overview.stack.templateUpdate?.hasUpdate && (
+            <TemplateUpdateBanner
+              stack={overview.stack}
+              locale={locale}
+              onUpdated={async () => {
+                const { data: payload } = await eden.api.deploy.apps[slug].get()
+                if (payload?.ok && payload.data) {
+                  setOverview(payload.data)
+                }
+              }}
+            />
+          )}
 
           {/* TAB 1: OVERVIEW */}
           {activeWorkspaceTab === "overview" && (

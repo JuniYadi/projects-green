@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   DownloadSimple,
   UploadSimple,
+  Warning,
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -55,11 +56,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { TemplateInstallationsTab } from "./template-installations-tab"
 import type { AdminTemplateRecord } from "@/app/[lang]/portal/marketplace/_components/template-inspector-drawer"
 import {
   appTemplateBlueprintSchema,
   type AppTemplateBlueprint,
   type AppTemplateBlueprintEnvVar,
+  type AppTemplateBlueprintMount,
   type AppTemplatePackage,
 } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 import {
@@ -123,7 +126,23 @@ export function TemplateEditorForm({
     initialData?.blueprintJson?.runtime?.defaultPort || 80
   )
   const [healthCheckPath, setHealthCheckPath] = useState(
-    initialData?.blueprintJson?.runtime?.healthCheckPath || "/healthz"
+    initialData?.blueprintJson?.runtime?.healthCheckPath || ""
+  )
+  const [startupProbePath, setStartupProbePath] = useState(
+    initialData?.blueprintJson?.runtime?.startupProbe?.path || ""
+  )
+  const [startupProbeDelay, setStartupProbeDelay] = useState<number>(
+    initialData?.blueprintJson?.runtime?.startupProbe?.initialDelaySeconds ?? 10
+  )
+  const [startupProbeThreshold, setStartupProbeThreshold] = useState<number>(
+    initialData?.blueprintJson?.runtime?.startupProbe?.failureThreshold ?? 30
+  )
+  const [readinessProbePath, setReadinessProbePath] = useState(
+    initialData?.blueprintJson?.runtime?.readinessProbe?.path || ""
+  )
+  const [readinessProbeDelay, setReadinessProbeDelay] = useState<number>(
+    initialData?.blueprintJson?.runtime?.readinessProbe?.initialDelaySeconds ??
+      10
   )
   const [runAsNonRoot, setRunAsNonRoot] = useState(
     initialData?.blueprintJson?.runtime?.runAsNonRoot ?? true
@@ -149,6 +168,17 @@ export function TemplateEditorForm({
   const [storageSizeGb, setStorageSizeGb] = useState<number>(
     initialData?.blueprintJson?.storage?.sizeGbDefault || 10
   )
+  const [mounts, setMounts] = useState<AppTemplateBlueprintMount[]>(
+    (initialData?.blueprintJson?.storage
+      ?.mounts as AppTemplateBlueprintMount[]) || []
+  )
+  const [newMountType, setNewMountType] = useState<
+    "pvc" | "configmap" | "secret" | "emptyDir"
+  >("configmap")
+  const [newMountName, setNewMountName] = useState("")
+  const [newMountPath, setNewMountPath] = useState("")
+  const [newMountSourceName, setNewMountSourceName] = useState("")
+  const [newMountReadOnly, setNewMountReadOnly] = useState(false)
   const [dependencies, setDependencies] = useState<
     Array<{
       serviceType: "POSTGRESQL" | "MYSQL" | "REDIS"
@@ -178,53 +208,118 @@ export function TemplateEditorForm({
     }
   }
 
-  const constructBlueprint = (): AppTemplateBlueprint => ({
-    version: "1.0.0",
-    runtime: {
-      image: runtimeImage,
-      defaultPort,
-      healthCheckPath: healthCheckPath || undefined,
-      runAsNonRoot,
-      deploymentType,
-      additionalPorts,
-    },
-    resources: {
-      defaultCpu,
-      defaultMemory,
-    },
-    ...(storageEnabled
-      ? {
-          storage: {
-            enabled: true,
-            mountPath: storageMountPath,
-            sizeGbDefault: storageSizeGb,
-          },
-        }
-      : {}),
-    dependencies,
-    envSchema: envSchema.map((item) => ({
-      key: item.key.trim(),
-      label: item.label.trim() || item.key.trim(),
-      description: item.description?.trim() || undefined,
-      defaultValue:
-        item.defaultValue !== undefined && item.defaultValue !== ""
-          ? item.defaultValue
-          : undefined,
-      required: Boolean(item.required),
-      isSecret: Boolean(item.isSecret),
-      dataType: item.dataType,
-      options:
-        item.dataType === "select" && item.options?.length
-          ? item.options
-          : undefined,
-      generateRandomHex:
-        item.generateRandomHex && item.generateRandomHex > 0
-          ? Number(item.generateRandomHex)
-          : undefined,
-      isFixed: Boolean(item.isFixed),
-      isHidden: Boolean(item.isHidden),
-    })),
-  })
+  const constructBlueprint = (): AppTemplateBlueprint => {
+    const hasStorageOrMounts = storageEnabled || mounts.length > 0
+    return {
+      version: "1.0.0",
+      runtime: {
+        image: runtimeImage,
+        defaultPort,
+        healthCheckPath: healthCheckPath || undefined,
+        ...(healthCheckPath
+          ? {
+              livenessProbe: {
+                path: healthCheckPath.trim(),
+                initialDelaySeconds: 30,
+                periodSeconds: 10,
+              },
+            }
+          : {}),
+        ...(readinessProbePath.trim()
+          ? {
+              readinessProbe: {
+                path: readinessProbePath.trim(),
+                initialDelaySeconds: readinessProbeDelay,
+                periodSeconds: 5,
+              },
+            }
+          : {}),
+        ...(startupProbePath.trim()
+          ? {
+              startupProbe: {
+                path: startupProbePath.trim(),
+                initialDelaySeconds: startupProbeDelay,
+                periodSeconds: 5,
+                failureThreshold: startupProbeThreshold,
+              },
+            }
+          : {}),
+        runAsNonRoot,
+        deploymentType,
+        additionalPorts,
+      },
+      resources: {
+        defaultCpu,
+        defaultMemory,
+      },
+      ...(hasStorageOrMounts
+        ? {
+            storage: {
+              enabled: true,
+              ...(storageEnabled
+                ? {
+                    mountPath: storageMountPath,
+                    sizeGbDefault: storageSizeGb,
+                  }
+                : {}),
+              mounts,
+            },
+            scaling: {
+              allowAutoscale: false,
+              maxReplicas: 1,
+              advisoryNote:
+                "Workloads with Persistent Storage (RWO) cannot be scaled horizontally across multiple nodes. Max replicas is locked to 1.",
+            },
+          }
+        : {}),
+      dependencies,
+      envSchema: envSchema.map((item) => ({
+        key: item.key.trim(),
+        label: item.label.trim() || item.key.trim(),
+        description: item.description?.trim() || undefined,
+        defaultValue:
+          item.defaultValue !== undefined && item.defaultValue !== ""
+            ? item.defaultValue
+            : undefined,
+        required: Boolean(item.required),
+        isSecret: Boolean(item.isSecret),
+        dataType: item.dataType,
+        options:
+          item.dataType === "select" && item.options?.length
+            ? item.options
+            : undefined,
+        generateRandomHex:
+          item.generateRandomHex && item.generateRandomHex > 0
+            ? Number(item.generateRandomHex)
+            : undefined,
+        isFixed: Boolean(item.isFixed),
+        isHidden: Boolean(item.isHidden),
+      })),
+    }
+  }
+
+  const addMount = () => {
+    if (!newMountName.trim() || !newMountPath.trim()) {
+      toast.error("Mount name and mount path are required")
+      return
+    }
+    const entry: AppTemplateBlueprintMount = {
+      type: newMountType,
+      name: newMountName.trim(),
+      mountPath: newMountPath.trim(),
+      sourceName: newMountSourceName.trim() || undefined,
+      readOnly: newMountReadOnly,
+    }
+    setMounts((prev) => [...prev, entry])
+    setNewMountName("")
+    setNewMountPath("")
+    setNewMountSourceName("")
+    setNewMountReadOnly(false)
+  }
+
+  const removeMount = (index: number) => {
+    setMounts((prev) => prev.filter((_, i) => i !== index))
+  }
 
   const addEnvVar = () => {
     setEnvSchema([
@@ -592,12 +687,17 @@ export function TemplateEditorForm({
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList
+          className={`grid w-full ${!isNew && initialData?.id ? "grid-cols-6" : "grid-cols-5"}`}
+        >
           <TabsTrigger value="general">1. General</TabsTrigger>
           <TabsTrigger value="runtime">2. Runtime & Specs</TabsTrigger>
           <TabsTrigger value="dependencies">3. Dependencies</TabsTrigger>
           <TabsTrigger value="env">4. Env Schema</TabsTrigger>
           <TabsTrigger value="documentation">5. Readme & Docs</TabsTrigger>
+          {!isNew && initialData?.id && (
+            <TabsTrigger value="installations">6. Installations</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Tab 1: General Info */}
@@ -848,13 +948,102 @@ export function TemplateEditorForm({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="runtime-health">Health Check Path</Label>
+                    <Label htmlFor="runtime-health">
+                      Liveness Probe Path (Optional)
+                    </Label>
                     <Input
                       id="runtime-health"
                       value={healthCheckPath}
                       onChange={(e) => setHealthCheckPath(e.target.value)}
-                      placeholder="/healthz"
+                      placeholder="e.g. /healthz (leave empty for none)"
                     />
+                  </div>
+                </div>
+
+                <div className="space-y-3 rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">
+                      Kubernetes Probes (Startup & Readiness)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      By default, probes are disabled so complex templates
+                      don&apos;t fail during first-time setup or migrations.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="startup-probe" className="text-xs">
+                        Startup Probe Path
+                      </Label>
+                      <Input
+                        id="startup-probe"
+                        value={startupProbePath}
+                        onChange={(e) => setStartupProbePath(e.target.value)}
+                        placeholder="e.g. /health/startup (or empty)"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="startup-delay" className="text-xs">
+                        Startup Delay (s)
+                      </Label>
+                      <Input
+                        id="startup-delay"
+                        type="number"
+                        value={startupProbeDelay}
+                        onChange={(e) =>
+                          setStartupProbeDelay(parseInt(e.target.value) || 10)
+                        }
+                        placeholder="10"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="startup-threshold" className="text-xs">
+                        Startup Threshold
+                      </Label>
+                      <Input
+                        id="startup-threshold"
+                        type="number"
+                        value={startupProbeThreshold}
+                        onChange={(e) =>
+                          setStartupProbeThreshold(
+                            parseInt(e.target.value) || 30
+                          )
+                        }
+                        placeholder="30"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="readiness-probe" className="text-xs">
+                        Readiness Probe Path
+                      </Label>
+                      <Input
+                        id="readiness-probe"
+                        value={readinessProbePath}
+                        onChange={(e) => setReadinessProbePath(e.target.value)}
+                        placeholder="e.g. /health/ready (or empty)"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="readiness-delay" className="text-xs">
+                        Readiness Initial Delay (s)
+                      </Label>
+                      <Input
+                        id="readiness-delay"
+                        type="number"
+                        value={readinessProbeDelay}
+                        onChange={(e) =>
+                          setReadinessProbeDelay(parseInt(e.target.value) || 10)
+                        }
+                        placeholder="10"
+                        className="h-8 text-xs"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -1033,6 +1222,168 @@ export function TemplateEditorForm({
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Autoscaling Advisory Alert */}
+                {(storageEnabled || mounts.length > 0) && (
+                  <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+                    <Warning className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div className="space-y-1">
+                      <p className="font-semibold">Autoscaling Advisory:</p>
+                      <p className="text-[11px] leading-relaxed">
+                        Workloads with persistent storage (RWO) cannot be scaled
+                        horizontally across multiple nodes. Maximum replicas is
+                        locked to 1 to prevent volume multi-attach errors.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Volume Mounts (ConfigMap, Secret, PVC, EmptyDir) */}
+                <div className="space-y-3 rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">
+                      Volume Mounts (ConfigMap, Secret, PVC, EmptyDir)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Mount configuration files, certificates, or additional
+                      storage volumes
+                    </p>
+                  </div>
+
+                  {mounts.length > 0 && (
+                    <div className="space-y-2 border-t pt-2">
+                      {mounts.map((m, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between rounded border bg-muted/30 p-2 text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className="font-mono text-[10px] uppercase"
+                            >
+                              {m.type}
+                            </Badge>
+                            <span className="font-semibold">{m.name}</span>
+                            <span className="text-muted-foreground">→</span>
+                            <span className="font-mono text-muted-foreground">
+                              {m.mountPath}
+                            </span>
+                            {m.sourceName && (
+                              <span className="text-[10px] text-muted-foreground">
+                                ({m.sourceName})
+                              </span>
+                            )}
+                            {m.readOnly && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px]"
+                              >
+                                RO
+                              </Badge>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeMount(idx)}
+                            className="size-6 text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash className="size-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add Mount Input Row */}
+                  <div className="space-y-2 rounded border border-dashed bg-muted/10 p-2.5">
+                    <p className="text-[11px] font-medium text-foreground">
+                      Add New Mount
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Type</Label>
+                        <Select
+                          value={newMountType}
+                          onValueChange={(
+                            v: "pvc" | "configmap" | "secret" | "emptyDir"
+                          ) => setNewMountType(v)}
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="configmap">ConfigMap</SelectItem>
+                            <SelectItem value="secret">Secret</SelectItem>
+                            <SelectItem value="pvc">PVC</SelectItem>
+                            <SelectItem value="emptyDir">EmptyDir</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Volume Name *</Label>
+                        <Input
+                          value={newMountName}
+                          onChange={(e) => setNewMountName(e.target.value)}
+                          placeholder="e.g. app-config"
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Mount Path *</Label>
+                        <Input
+                          value={newMountPath}
+                          onChange={(e) => setNewMountPath(e.target.value)}
+                          placeholder="e.g. /etc/config"
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px]">Source Name</Label>
+                        <Input
+                          value={newMountSourceName}
+                          onChange={(e) =>
+                            setNewMountSourceName(e.target.value)
+                          }
+                          placeholder="ConfigMap/Secret name"
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="mount-readonly"
+                          checked={newMountReadOnly}
+                          onCheckedChange={(c) =>
+                            setNewMountReadOnly(Boolean(c))
+                          }
+                        />
+                        <Label
+                          htmlFor="mount-readonly"
+                          className="cursor-pointer text-[11px]"
+                        >
+                          Mount as Read-Only
+                        </Label>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={addMount}
+                        className="h-7 gap-1 text-xs"
+                      >
+                        <Plus className="size-3" /> Add Mount
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1369,6 +1720,16 @@ export function TemplateEditorForm({
             </CardContent>
           </Card>
         </TabsContent>
+
+        {!isNew && initialData?.id && (
+          <TabsContent value="installations" className="space-y-4">
+            <TemplateInstallationsTab
+              templateId={initialData.id}
+              templateName={name || initialData.name}
+              targetDeploymentType={deploymentType}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Delete Confirmation Alert Dialog */}

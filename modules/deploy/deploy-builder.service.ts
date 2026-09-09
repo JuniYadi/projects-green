@@ -615,6 +615,9 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
             storageClass: cluster.storageClass,
             accessMode: "ReadWriteOnce",
             fsGroup: resolvedFsGroup,
+            mounts: Array.isArray(blueprintStorage.mounts)
+              ? (blueprintStorage.mounts as never)
+              : undefined,
           }
         : null
     const runtimePort =
@@ -635,6 +638,102 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
             ? blueprintRuntime.healthCheckPath.trim() || null
             : null
 
+    const rawLiveness =
+      blueprintRuntime?.livenessProbe &&
+      typeof blueprintRuntime.livenessProbe === "object"
+        ? (blueprintRuntime.livenessProbe as Record<string, unknown>)
+        : null
+    const rawReadiness =
+      blueprintRuntime?.readinessProbe &&
+      typeof blueprintRuntime.readinessProbe === "object"
+        ? (blueprintRuntime.readinessProbe as Record<string, unknown>)
+        : null
+    const rawStartup =
+      blueprintRuntime?.startupProbe &&
+      typeof blueprintRuntime.startupProbe === "object"
+        ? (blueprintRuntime.startupProbe as Record<string, unknown>)
+        : null
+
+    const livenessProbe = rawLiveness?.path
+      ? {
+          path: String(rawLiveness.path),
+          port:
+            typeof rawLiveness.port === "number"
+              ? rawLiveness.port
+              : runtimePort,
+          initialDelaySeconds:
+            typeof rawLiveness.initialDelaySeconds === "number"
+              ? rawLiveness.initialDelaySeconds
+              : 30,
+          periodSeconds:
+            typeof rawLiveness.periodSeconds === "number"
+              ? rawLiveness.periodSeconds
+              : 10,
+          timeoutSeconds:
+            typeof rawLiveness.timeoutSeconds === "number"
+              ? rawLiveness.timeoutSeconds
+              : 5,
+          failureThreshold:
+            typeof rawLiveness.failureThreshold === "number"
+              ? rawLiveness.failureThreshold
+              : 3,
+        }
+      : healthCheckPath
+        ? {
+            path: healthCheckPath,
+            port: runtimePort,
+          }
+        : null
+
+    const readinessProbe = rawReadiness?.path
+      ? {
+          path: String(rawReadiness.path),
+          port:
+            typeof rawReadiness.port === "number"
+              ? rawReadiness.port
+              : runtimePort,
+          initialDelaySeconds:
+            typeof rawReadiness.initialDelaySeconds === "number"
+              ? rawReadiness.initialDelaySeconds
+              : 10,
+          periodSeconds:
+            typeof rawReadiness.periodSeconds === "number"
+              ? rawReadiness.periodSeconds
+              : 5,
+          timeoutSeconds:
+            typeof rawReadiness.timeoutSeconds === "number"
+              ? rawReadiness.timeoutSeconds
+              : 3,
+          failureThreshold:
+            typeof rawReadiness.failureThreshold === "number"
+              ? rawReadiness.failureThreshold
+              : 3,
+        }
+      : null
+
+    const startupProbe = rawStartup?.path
+      ? {
+          path: String(rawStartup.path),
+          port:
+            typeof rawStartup.port === "number" ? rawStartup.port : runtimePort,
+          initialDelaySeconds:
+            typeof rawStartup.initialDelaySeconds === "number"
+              ? rawStartup.initialDelaySeconds
+              : 10,
+          periodSeconds:
+            typeof rawStartup.periodSeconds === "number"
+              ? rawStartup.periodSeconds
+              : 5,
+          timeoutSeconds:
+            typeof rawStartup.timeoutSeconds === "number"
+              ? rawStartup.timeoutSeconds
+              : 3,
+          failureThreshold:
+            typeof rawStartup.failureThreshold === "number"
+              ? rawStartup.failureThreshold
+              : 30,
+        }
+      : null
     const command = Array.isArray(blueprintRuntime?.command)
       ? (blueprintRuntime.command as string[])
       : undefined
@@ -662,12 +761,9 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
       logging: true,
       runAsNonRoot: blueprintRuntime?.runAsNonRoot !== false,
       fsGroup: resolvedFsGroup,
-      livenessProbe: healthCheckPath
-        ? {
-            path: healthCheckPath,
-            port: runtimePort,
-          }
-        : null,
+      livenessProbe,
+      readinessProbe,
+      startupProbe,
     })
     const { gitopsCommitSha } = await prisma.$transaction(
       (tx) =>

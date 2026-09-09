@@ -48,6 +48,7 @@ export type StackUpsertInput = {
   healthCheckPath?: string | null
   templateId?: string | null
   templateSlug?: string | null
+  templateVersion?: string | null
 }
 
 const IN_PROGRESS_STATUSES = ["QUEUED", "BUILDING", "DEPLOYING"] as const
@@ -179,6 +180,9 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
     const templateIdentifier = input.templateSlug ?? input.templateId
     if (templateIdentifier != null) {
       buildMetadata.templateId = templateIdentifier
+    }
+    if (input.templateVersion != null) {
+      buildMetadata.templateVersion = input.templateVersion
     }
     // Merge with existing metadataJson on update
     const existingJson =

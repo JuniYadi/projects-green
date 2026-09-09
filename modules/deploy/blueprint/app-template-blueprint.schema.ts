@@ -1,5 +1,31 @@
 import { z } from "zod"
 
+export const appTemplateBlueprintProbeSchema = z.object({
+  path: z.string().trim().min(1, "Probe path is required"),
+  port: z.number().int().min(1).max(65535).optional(),
+  initialDelaySeconds: z.number().int().nonnegative().optional(),
+  periodSeconds: z.number().int().positive().optional(),
+  timeoutSeconds: z.number().int().positive().optional(),
+  failureThreshold: z.number().int().positive().optional(),
+})
+
+export const appTemplateBlueprintMountSchema = z.object({
+  type: z.enum(["pvc", "configmap", "secret", "emptyDir"]).default("pvc"),
+  name: z.string().trim().min(1, "Mount name is required"),
+  mountPath: z.string().trim().min(1, "Mount path is required"),
+  subPath: z.string().trim().optional(),
+  readOnly: z.boolean().default(false),
+  sizeGb: z.number().min(1).optional(),
+  sourceName: z.string().trim().optional(),
+  defaultMode: z.number().int().optional(),
+})
+
+export const appTemplateBlueprintScalingSchema = z.object({
+  allowAutoscale: z.boolean().default(true),
+  maxReplicas: z.number().int().min(1).default(1),
+  advisoryNote: z.string().trim().optional(),
+})
+
 export const appTemplateBlueprintRuntimeSchema = z.object({
   image: z.string().trim().min(1, "Runtime image is required"),
   command: z.array(z.string()).optional(),
@@ -10,6 +36,9 @@ export const appTemplateBlueprintRuntimeSchema = z.object({
     .min(1, "Port must be at least 1")
     .max(65535, "Port must be at most 65535"),
   healthCheckPath: z.string().trim().optional(),
+  livenessProbe: appTemplateBlueprintProbeSchema.optional(),
+  readinessProbe: appTemplateBlueprintProbeSchema.optional(),
+  startupProbe: appTemplateBlueprintProbeSchema.optional(),
   runAsNonRoot: z.boolean().default(true),
   deploymentType: z.enum(["deployment", "statefulset"]).default("deployment"),
   additionalPorts: z
@@ -32,9 +61,10 @@ export const appTemplateBlueprintResourcesSchema = z.object({
 
 export const appTemplateBlueprintStorageSchema = z.object({
   enabled: z.boolean(),
-  mountPath: z.string().trim().min(1, "Mount path is required"),
-  sizeGbDefault: z.number().min(1, "Default storage size must be at least 1GB"),
+  mountPath: z.string().trim().optional(),
+  sizeGbDefault: z.number().min(1).optional(),
   fsGroup: z.number().int().positive().optional(),
+  mounts: z.array(appTemplateBlueprintMountSchema).default([]),
 })
 
 export const appTemplateBlueprintDependencySchema = z.object({
@@ -64,6 +94,7 @@ export const appTemplateBlueprintSchema = z.object({
   storage: appTemplateBlueprintStorageSchema.optional(),
   dependencies: z.array(appTemplateBlueprintDependencySchema).default([]),
   envSchema: z.array(appTemplateBlueprintEnvVarSchema).default([]),
+  scaling: appTemplateBlueprintScalingSchema.optional(),
 })
 
 export type AppTemplateBlueprint = z.input<typeof appTemplateBlueprintSchema>
@@ -84,6 +115,15 @@ export type AppTemplateBlueprintDependency = z.infer<
 >
 export type AppTemplateBlueprintEnvVar = z.infer<
   typeof appTemplateBlueprintEnvVarSchema
+>
+export type AppTemplateBlueprintProbe = z.infer<
+  typeof appTemplateBlueprintProbeSchema
+>
+export type AppTemplateBlueprintMount = z.infer<
+  typeof appTemplateBlueprintMountSchema
+>
+export type AppTemplateBlueprintScaling = z.infer<
+  typeof appTemplateBlueprintScalingSchema
 >
 
 export const appTemplatePackageSchema = z.object({

@@ -5,6 +5,10 @@ import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { hasScopedSuperAdminClaim } from "@/modules/tenants/tenant-policy"
 import { Prisma } from "@prisma/client"
 import { appTemplateBlueprintSchema } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+import {
+  listTemplateInstallations,
+  syncMultipleStacksFromParentTemplate,
+} from "@/modules/deploy/template-sync.service"
 
 export const adminTemplateRoutes = new Elysia({ prefix: "/admin/templates" })
   // GET /api/admin/templates - List all templates with filters (visibility, category, search)
@@ -485,6 +489,92 @@ export const adminTemplateRoutes = new Elysia({ prefix: "/admin/templates" })
     {
       params: t.Object({
         id: t.String(),
+      }),
+    }
+  )
+
+  // GET /api/admin/templates/:id/installations - List active installations and alignment
+  .get(
+    "/:id/installations",
+    async ({ params: { id }, set }) => {
+      const auth = await withAuth({ ensureSignedIn: true })
+      if (!auth.user) {
+        set.status = 401
+        return { error: "Unauthorized" }
+      }
+
+      const platformRole = await getPlatformRoleForUser(auth.user)
+      const isSuperAdmin =
+        platformRole === "super_admin" ||
+        hasScopedSuperAdminClaim(auth.role ?? null, auth.roles ?? null)
+
+      if (!isSuperAdmin) {
+        set.status = 403
+        return { error: "Forbidden: Super Admin access required" }
+      }
+
+      try {
+        const result = await listTemplateInstallations(id)
+        return result
+      } catch (error) {
+        set.status = 404
+        return {
+          error: error instanceof Error ? error.message : "Template not found",
+        }
+      }
+    },
+    {
+      params: t.Object({
+        id: t.String(),
+      }),
+    }
+  )
+
+  // POST /api/admin/templates/:id/sync - Sync selected stacks from parent template
+  .post(
+    "/:id/sync",
+    async ({ params: { id }, body, set }) => {
+      const auth = await withAuth({ ensureSignedIn: true })
+      if (!auth.user) {
+        set.status = 401
+        return { error: "Unauthorized" }
+      }
+
+      const platformRole = await getPlatformRoleForUser(auth.user)
+      const isSuperAdmin =
+        platformRole === "super_admin" ||
+        hasScopedSuperAdminClaim(auth.role ?? null, auth.roles ?? null)
+
+      if (!isSuperAdmin) {
+        set.status = 403
+        return { error: "Forbidden: Super Admin access required" }
+      }
+
+      if (!Array.isArray(body.stackIds) || body.stackIds.length === 0) {
+        set.status = 400
+        return { error: "stackIds array cannot be empty" }
+      }
+
+      try {
+        const result = await syncMultipleStacksFromParentTemplate({
+          templateId: id,
+          stackIds: body.stackIds,
+        })
+        return result
+      } catch (error) {
+        set.status = 500
+        return {
+          error:
+            error instanceof Error ? error.message : "Failed to sync stacks",
+        }
+      }
+    },
+    {
+      params: t.Object({
+        id: t.String(),
+      }),
+      body: t.Object({
+        stackIds: t.Array(t.String()),
       }),
     }
   )
