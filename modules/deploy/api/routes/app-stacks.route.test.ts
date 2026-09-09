@@ -1003,5 +1003,41 @@ describe("appStacksRoutes", () => {
       const res = await get("/deploy/apps/console-next-app/logs")
       expect(res.status).toBe(401)
     })
+
+    it("returns 403 when user has no organizationId", async () => {
+      mockWithAuth.mockResolvedValueOnce({
+        user: { id: "u-1" },
+        organizationId: null,
+      } as never)
+      const res = await get("/deploy/apps/console-next-app/logs")
+      expect(res.status).toBe(403)
+      expect(await res.json()).toMatchObject({
+        ok: false,
+        error: "FORBIDDEN",
+        message: "Organization required",
+      })
+    })
+
+    it("passes search, source, time range, and asc order to queryAppLogs", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+      } as never)
+
+      const res = await get(
+        "/deploy/apps/console-next-app/logs?q=fatal&source=nginx&order=asc&from=2026-09-01&to=2026-09-08"
+      )
+      expect(res.status).toBe(200)
+      expect(mockQueryAppLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slug: "console-next-app",
+          q: "fatal",
+          source: "nginx",
+          order: "asc",
+          from: "2026-09-01",
+          to: "2026-09-08",
+          limit: 100,
+        })
+      )
+    })
   })
 })

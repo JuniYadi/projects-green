@@ -159,13 +159,6 @@ export function TabLogs({
     return () => clearInterval(interval)
   }, [appSlug, isLiveTailing, diagnosticMode, updateLogs])
 
-  // Scroll to bottom of logs when new logs arrive
-  useEffect(() => {
-    if (logConsoleEndRef.current && isLiveTailing) {
-      logConsoleEndRef.current.scrollIntoView({ behavior: "smooth" })
-    }
-  }, [activeLogs, isLiveTailing])
-
   const filteredLogs = useMemo(() => {
     return activeLogs.filter((log) => {
       const matchQuery =
