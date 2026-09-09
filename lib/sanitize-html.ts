@@ -1,10 +1,9 @@
-import DOMPurify from "isomorphic-dompurify"
+import sanitizeHtmlLib from "sanitize-html"
 
 export function sanitizeHtml(dirtyHtml: string | null | undefined): string {
   if (!dirtyHtml) return ""
-  return DOMPurify.sanitize(dirtyHtml, {
-    USE_PROFILES: { html: true },
-    ALLOWED_TAGS: [
+  return sanitizeHtmlLib(dirtyHtml, {
+    allowedTags: [
       "a",
       "b",
       "blockquote",
@@ -33,6 +32,10 @@ export function sanitizeHtml(dirtyHtml: string | null | undefined): string {
       "tr",
       "ul",
     ],
-    ALLOWED_ATTR: ["href", "target", "rel", "class"],
+    allowedAttributes: {
+      a: ["href", "target", "rel", "class"],
+      "*": ["class"],
+    },
+    allowedSchemes: ["http", "https", "mailto"],
   })
 }
