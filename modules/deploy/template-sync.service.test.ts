@@ -210,6 +210,30 @@ describe("template-sync.service", () => {
         organizationId: "org-1",
       })
     })
+
+    it("throws when template is not found", async () => {
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce(null)
+      expect(
+        syncStackFromParentTemplate({
+          templateId: "missing-template",
+          stackId: "stack-1",
+        })
+      ).rejects.toThrow("Template not found: missing-template")
+    })
+
+    it("throws when stack is not found", async () => {
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+        id: "tmpl-1",
+        slug: "tmpl-1",
+      })
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null)
+      expect(
+        syncStackFromParentTemplate({
+          templateId: "tmpl-1",
+          stackId: "missing-stack",
+        })
+      ).rejects.toThrow("Application stack not found: missing-stack")
+    })
   })
 
   describe("syncMultipleStacksFromParentTemplate", () => {

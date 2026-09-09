@@ -50,6 +50,7 @@ export interface TemplateInstallation {
   lastDeployedAt: string | null
   lastDeployStatus: string | null
   createdAt: string
+  updatedAt: string
   latestDeployment: {
     id: string
     status: string

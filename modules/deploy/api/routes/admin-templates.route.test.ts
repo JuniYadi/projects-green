@@ -481,6 +481,22 @@ describe("adminTemplateRoutes", () => {
       )
       expect(res.status).toBe(404)
     })
+
+    it("returns 401 when unauthenticated", async () => {
+      mockAuth.user = null
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/installations")
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 for non-super-admin user", async () => {
+      mockPlatformRole = "none"
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/installations")
+      )
+      expect(res.status).toBe(403)
+    })
   })
 
   describe("POST /admin/templates/:id/sync", () => {
@@ -527,6 +543,46 @@ describe("adminTemplateRoutes", () => {
         templateId: "tpl-1",
         stackIds: ["stack-1"],
       })
+    })
+
+    it("returns 401 when unauthenticated", async () => {
+      mockAuth.user = null
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stackIds: ["stack-1"] }),
+        })
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 for non-super-admin user", async () => {
+      mockPlatformRole = "none"
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stackIds: ["stack-1"] }),
+        })
+      )
+      expect(res.status).toBe(403)
+    })
+
+    it("returns 500 when syncMultipleStacksFromParentTemplate throws", async () => {
+      mockSyncMultipleStacksFromParentTemplate.mockRejectedValueOnce(
+        new Error("Database write failure")
+      )
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stackIds: ["stack-1"] }),
+        })
+      )
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toBe("Database write failure")
     })
   })
 })

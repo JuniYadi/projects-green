@@ -17,7 +17,11 @@ import {
 import { AppManifestBuilder } from "@/modules/gitops/builders"
 import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
 import * as jsYaml from "js-yaml"
-import { buildHelmValues } from "./helm-values.builder"
+import {
+  buildHelmValues,
+  type HelmValuesProbe,
+  type HelmValuesStorageMount,
+} from "./helm-values.builder"
 import {
   commitHelmValuesAndAdvanceToDeploying,
   loadPersistedEdgePolicy,
@@ -492,6 +496,165 @@ export const getStackAdditionalPorts = (
       typeof (entry as Record<string, unknown>).name === "string"
   )
 }
+
+export interface ResolvedStackProbes {
+  livenessProbe: HelmValuesProbe | null
+  readinessProbe: HelmValuesProbe | null
+  startupProbe: HelmValuesProbe | null
+}
+
+export function resolveStackProbes(params: {
+  stackMeta: Record<string, unknown> | null
+  blueprintRuntime: Record<string, unknown> | null
+  runtimePort: number
+}): ResolvedStackProbes {
+  const userHealthCheck = params.stackMeta?.healthCheckPath
+  const healthCheckPath =
+    typeof userHealthCheck === "string"
+      ? userHealthCheck.trim() || null
+      : userHealthCheck === null
+        ? null
+        : typeof params.blueprintRuntime?.healthCheckPath === "string"
+          ? params.blueprintRuntime.healthCheckPath.trim() || null
+          : null
+
+  const rawLiveness =
+    params.blueprintRuntime?.livenessProbe &&
+    typeof params.blueprintRuntime.livenessProbe === "object"
+      ? (params.blueprintRuntime.livenessProbe as Record<string, unknown>)
+      : null
+  const rawReadiness =
+    params.blueprintRuntime?.readinessProbe &&
+    typeof params.blueprintRuntime.readinessProbe === "object"
+      ? (params.blueprintRuntime.readinessProbe as Record<string, unknown>)
+      : null
+  const rawStartup =
+    params.blueprintRuntime?.startupProbe &&
+    typeof params.blueprintRuntime.startupProbe === "object"
+      ? (params.blueprintRuntime.startupProbe as Record<string, unknown>)
+      : null
+
+  const livenessProbe: HelmValuesProbe | null = rawLiveness?.path
+    ? {
+        path: String(rawLiveness.path),
+        port:
+          typeof rawLiveness.port === "number"
+            ? rawLiveness.port
+            : params.runtimePort,
+        initialDelaySeconds:
+          typeof rawLiveness.initialDelaySeconds === "number"
+            ? rawLiveness.initialDelaySeconds
+            : 30,
+        periodSeconds:
+          typeof rawLiveness.periodSeconds === "number"
+            ? rawLiveness.periodSeconds
+            : 10,
+        timeoutSeconds:
+          typeof rawLiveness.timeoutSeconds === "number"
+            ? rawLiveness.timeoutSeconds
+            : 5,
+        failureThreshold:
+          typeof rawLiveness.failureThreshold === "number"
+            ? rawLiveness.failureThreshold
+            : 3,
+      }
+    : healthCheckPath
+      ? {
+          path: healthCheckPath,
+          port: params.runtimePort,
+        }
+      : null
+
+  const readinessProbe: HelmValuesProbe | null = rawReadiness?.path
+    ? {
+        path: String(rawReadiness.path),
+        port:
+          typeof rawReadiness.port === "number"
+            ? rawReadiness.port
+            : params.runtimePort,
+        initialDelaySeconds:
+          typeof rawReadiness.initialDelaySeconds === "number"
+            ? rawReadiness.initialDelaySeconds
+            : 10,
+        periodSeconds:
+          typeof rawReadiness.periodSeconds === "number"
+            ? rawReadiness.periodSeconds
+            : 5,
+        timeoutSeconds:
+          typeof rawReadiness.timeoutSeconds === "number"
+            ? rawReadiness.timeoutSeconds
+            : 3,
+        failureThreshold:
+          typeof rawReadiness.failureThreshold === "number"
+            ? rawReadiness.failureThreshold
+            : 3,
+      }
+    : null
+
+  const startupProbe: HelmValuesProbe | null = rawStartup?.path
+    ? {
+        path: String(rawStartup.path),
+        port:
+          typeof rawStartup.port === "number"
+            ? rawStartup.port
+            : params.runtimePort,
+        initialDelaySeconds:
+          typeof rawStartup.initialDelaySeconds === "number"
+            ? rawStartup.initialDelaySeconds
+            : 10,
+        periodSeconds:
+          typeof rawStartup.periodSeconds === "number"
+            ? rawStartup.periodSeconds
+            : 5,
+        timeoutSeconds:
+          typeof rawStartup.timeoutSeconds === "number"
+            ? rawStartup.timeoutSeconds
+            : 3,
+        failureThreshold:
+          typeof rawStartup.failureThreshold === "number"
+            ? rawStartup.failureThreshold
+            : 30,
+      }
+    : null
+
+  return { livenessProbe, readinessProbe, startupProbe }
+}
+
+export function resolveStorageMounts(
+  rawMounts: unknown
+): HelmValuesStorageMount[] | undefined {
+  if (!Array.isArray(rawMounts)) return undefined
+  const parsed: HelmValuesStorageMount[] = []
+  for (const m of rawMounts) {
+    if (
+      typeof m === "object" &&
+      m !== null &&
+      typeof (m as Record<string, unknown>).name === "string" &&
+      typeof (m as Record<string, unknown>).mountPath === "string"
+    ) {
+      const rec = m as Record<string, unknown>
+      parsed.push({
+        name: rec.name as string,
+        mountPath: rec.mountPath as string,
+        type:
+          rec.type === "configmap" ||
+          rec.type === "secret" ||
+          rec.type === "pvc" ||
+          rec.type === "emptyDir"
+            ? rec.type
+            : undefined,
+        subPath: typeof rec.subPath === "string" ? rec.subPath : undefined,
+        readOnly: typeof rec.readOnly === "boolean" ? rec.readOnly : undefined,
+        sizeGb: typeof rec.sizeGb === "number" ? rec.sizeGb : undefined,
+        sourceName:
+          typeof rec.sourceName === "string" ? rec.sourceName : undefined,
+        defaultMode:
+          typeof rec.defaultMode === "number" ? rec.defaultMode : undefined,
+      })
+    }
+  }
+  return parsed.length > 0 ? parsed : undefined
+}
 export async function resolveTemplateImageReference(stack: {
   id: string
   slug: string
@@ -615,9 +778,7 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
             storageClass: cluster.storageClass,
             accessMode: "ReadWriteOnce",
             fsGroup: resolvedFsGroup,
-            mounts: Array.isArray(blueprintStorage.mounts)
-              ? (blueprintStorage.mounts as never)
-              : undefined,
+            mounts: resolveStorageMounts(blueprintStorage.mounts),
           }
         : null
     const runtimePort =
@@ -628,112 +789,11 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
         ? blueprintRuntime.defaultPort
         : 80)
 
-    const userHealthCheck = stackMeta?.healthCheckPath
-    const healthCheckPath =
-      typeof userHealthCheck === "string"
-        ? userHealthCheck.trim() || null
-        : userHealthCheck === null
-          ? null
-          : typeof blueprintRuntime?.healthCheckPath === "string"
-            ? blueprintRuntime.healthCheckPath.trim() || null
-            : null
-
-    const rawLiveness =
-      blueprintRuntime?.livenessProbe &&
-      typeof blueprintRuntime.livenessProbe === "object"
-        ? (blueprintRuntime.livenessProbe as Record<string, unknown>)
-        : null
-    const rawReadiness =
-      blueprintRuntime?.readinessProbe &&
-      typeof blueprintRuntime.readinessProbe === "object"
-        ? (blueprintRuntime.readinessProbe as Record<string, unknown>)
-        : null
-    const rawStartup =
-      blueprintRuntime?.startupProbe &&
-      typeof blueprintRuntime.startupProbe === "object"
-        ? (blueprintRuntime.startupProbe as Record<string, unknown>)
-        : null
-
-    const livenessProbe = rawLiveness?.path
-      ? {
-          path: String(rawLiveness.path),
-          port:
-            typeof rawLiveness.port === "number"
-              ? rawLiveness.port
-              : runtimePort,
-          initialDelaySeconds:
-            typeof rawLiveness.initialDelaySeconds === "number"
-              ? rawLiveness.initialDelaySeconds
-              : 30,
-          periodSeconds:
-            typeof rawLiveness.periodSeconds === "number"
-              ? rawLiveness.periodSeconds
-              : 10,
-          timeoutSeconds:
-            typeof rawLiveness.timeoutSeconds === "number"
-              ? rawLiveness.timeoutSeconds
-              : 5,
-          failureThreshold:
-            typeof rawLiveness.failureThreshold === "number"
-              ? rawLiveness.failureThreshold
-              : 3,
-        }
-      : healthCheckPath
-        ? {
-            path: healthCheckPath,
-            port: runtimePort,
-          }
-        : null
-
-    const readinessProbe = rawReadiness?.path
-      ? {
-          path: String(rawReadiness.path),
-          port:
-            typeof rawReadiness.port === "number"
-              ? rawReadiness.port
-              : runtimePort,
-          initialDelaySeconds:
-            typeof rawReadiness.initialDelaySeconds === "number"
-              ? rawReadiness.initialDelaySeconds
-              : 10,
-          periodSeconds:
-            typeof rawReadiness.periodSeconds === "number"
-              ? rawReadiness.periodSeconds
-              : 5,
-          timeoutSeconds:
-            typeof rawReadiness.timeoutSeconds === "number"
-              ? rawReadiness.timeoutSeconds
-              : 3,
-          failureThreshold:
-            typeof rawReadiness.failureThreshold === "number"
-              ? rawReadiness.failureThreshold
-              : 3,
-        }
-      : null
-
-    const startupProbe = rawStartup?.path
-      ? {
-          path: String(rawStartup.path),
-          port:
-            typeof rawStartup.port === "number" ? rawStartup.port : runtimePort,
-          initialDelaySeconds:
-            typeof rawStartup.initialDelaySeconds === "number"
-              ? rawStartup.initialDelaySeconds
-              : 10,
-          periodSeconds:
-            typeof rawStartup.periodSeconds === "number"
-              ? rawStartup.periodSeconds
-              : 5,
-          timeoutSeconds:
-            typeof rawStartup.timeoutSeconds === "number"
-              ? rawStartup.timeoutSeconds
-              : 3,
-          failureThreshold:
-            typeof rawStartup.failureThreshold === "number"
-              ? rawStartup.failureThreshold
-              : 30,
-        }
-      : null
+    const { livenessProbe, readinessProbe, startupProbe } = resolveStackProbes({
+      stackMeta,
+      blueprintRuntime,
+      runtimePort,
+    })
     const command = Array.isArray(blueprintRuntime?.command)
       ? (blueprintRuntime.command as string[])
       : undefined

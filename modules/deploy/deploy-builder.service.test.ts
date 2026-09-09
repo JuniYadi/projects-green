@@ -143,7 +143,8 @@ mock.module("@/modules/deploy/cluster-integration.service", () => ({
   resolveClusterIntegration: mockResolveClusterIntegration,
 }))
 
-const { processQueuedDeployment } = await import("./deploy-builder.service")
+const { processQueuedDeployment, resolveStackProbes, resolveStorageMounts } =
+  await import("./deploy-builder.service")
 
 describe("processQueuedDeployment", () => {
   let originalEagerFlag: string | undefined
@@ -646,5 +647,162 @@ describe("processQueuedDeployment", () => {
     expect(filesArg[0]?.content).toContain(
       "podSecurityContext:\n  fsGroup: 10000"
     )
+  })
+})
+
+describe("resolveStackProbes", () => {
+  it("resolves all three probes when explicitly configured in blueprint", () => {
+    const result = resolveStackProbes({
+      stackMeta: null,
+      blueprintRuntime: {
+        livenessProbe: {
+          path: "/live",
+          port: 8081,
+          initialDelaySeconds: 45,
+          periodSeconds: 15,
+          timeoutSeconds: 8,
+          failureThreshold: 5,
+        },
+        readinessProbe: {
+          path: "/ready",
+          port: 8082,
+          initialDelaySeconds: 15,
+          periodSeconds: 6,
+          timeoutSeconds: 4,
+          failureThreshold: 4,
+        },
+        startupProbe: {
+          path: "/start",
+          port: 8083,
+          initialDelaySeconds: 20,
+          periodSeconds: 10,
+          timeoutSeconds: 5,
+          failureThreshold: 25,
+        },
+      },
+      runtimePort: 8080,
+    })
+
+    expect(result.livenessProbe).toEqual({
+      path: "/live",
+      port: 8081,
+      initialDelaySeconds: 45,
+      periodSeconds: 15,
+      timeoutSeconds: 8,
+      failureThreshold: 5,
+    })
+    expect(result.readinessProbe).toEqual({
+      path: "/ready",
+      port: 8082,
+      initialDelaySeconds: 15,
+      periodSeconds: 6,
+      timeoutSeconds: 4,
+      failureThreshold: 4,
+    })
+    expect(result.startupProbe).toEqual({
+      path: "/start",
+      port: 8083,
+      initialDelaySeconds: 20,
+      periodSeconds: 10,
+      timeoutSeconds: 5,
+      failureThreshold: 25,
+    })
+  })
+
+  it("falls back to healthCheckPath for liveness when probes not configured", () => {
+    const result = resolveStackProbes({
+      stackMeta: null,
+      blueprintRuntime: {
+        healthCheckPath: "/healthz",
+      },
+      runtimePort: 3000,
+    })
+
+    expect(result.livenessProbe).toEqual({
+      path: "/healthz",
+      port: 3000,
+    })
+    expect(result.readinessProbe).toBeNull()
+    expect(result.startupProbe).toBeNull()
+  })
+
+  it("respects user override healthCheckPath in stackMeta", () => {
+    const result = resolveStackProbes({
+      stackMeta: { healthCheckPath: "/custom-health" },
+      blueprintRuntime: { healthCheckPath: "/ignored" },
+      runtimePort: 8080,
+    })
+
+    expect(result.livenessProbe?.path).toBe("/custom-health")
+  })
+
+  it("returns null probes when no health check is configured", () => {
+    const result = resolveStackProbes({
+      stackMeta: null,
+      blueprintRuntime: null,
+      runtimePort: 8080,
+    })
+
+    expect(result.livenessProbe).toBeNull()
+    expect(result.readinessProbe).toBeNull()
+    expect(result.startupProbe).toBeNull()
+  })
+})
+
+describe("resolveStorageMounts", () => {
+  it("returns undefined for non-array inputs", () => {
+    expect(resolveStorageMounts(null)).toBeUndefined()
+    expect(resolveStorageMounts(undefined)).toBeUndefined()
+    expect(resolveStorageMounts("invalid")).toBeUndefined()
+    expect(resolveStorageMounts([])).toBeUndefined()
+  })
+
+  it("parses valid mount records and filters out invalid ones", () => {
+    const mounts = [
+      {
+        name: "config-vol",
+        mountPath: "/etc/config",
+        type: "configmap",
+        sourceName: "my-cm",
+        readOnly: true,
+      },
+      {
+        name: "secret-vol",
+        mountPath: "/etc/secret",
+        type: "secret",
+        defaultMode: 420,
+      },
+      {
+        name: "pvc-vol",
+        mountPath: "/var/data",
+        type: "pvc",
+        sizeGb: 20,
+      },
+      {
+        name: "scratch-vol",
+        mountPath: "/tmp",
+        type: "emptyDir",
+      },
+      {
+        // Invalid - missing mountPath
+        name: "broken",
+      },
+    ]
+
+    const result = resolveStorageMounts(mounts)
+    expect(result).toHaveLength(4)
+    expect(result?.[0]).toEqual({
+      name: "config-vol",
+      mountPath: "/etc/config",
+      type: "configmap",
+      sourceName: "my-cm",
+      readOnly: true,
+      subPath: undefined,
+      sizeGb: undefined,
+      defaultMode: undefined,
+    })
+    expect(result?.[1].type).toBe("secret")
+    expect(result?.[2].sizeGb).toBe(20)
+    expect(result?.[3].type).toBe("emptyDir")
   })
 })
