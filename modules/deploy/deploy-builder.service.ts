@@ -470,7 +470,7 @@ const getStackImageRepository = (
   return typeof value === "string" && value.length > 0 ? value : null
 }
 
-const getStackDeploymentType = (
+export const getStackDeploymentType = (
   metadataJson: Prisma.JsonValue | null
 ): "deployment" | "statefulset" | undefined => {
   if (!metadataJson || typeof metadataJson !== "object") return undefined
@@ -478,7 +478,7 @@ const getStackDeploymentType = (
   return value === "deployment" || value === "statefulset" ? value : undefined
 }
 
-const getStackAdditionalPorts = (
+export const getStackAdditionalPorts = (
   metadataJson: Prisma.JsonValue | null
 ): Array<{ port: number; name: string }> | undefined => {
   if (!metadataJson || typeof metadataJson !== "object") return undefined
@@ -492,7 +492,7 @@ const getStackAdditionalPorts = (
       typeof (entry as Record<string, unknown>).name === "string"
   )
 }
-async function resolveTemplateImageReference(stack: {
+export async function resolveTemplateImageReference(stack: {
   id: string
   slug: string
   metadataJson: Prisma.JsonValue | null

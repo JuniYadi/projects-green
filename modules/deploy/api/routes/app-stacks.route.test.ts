@@ -53,6 +53,15 @@ const mockQueryAppLogs = mock(async () => ({
 mock.module("../../opensearch/opensearch-query.service", () => ({
   queryAppLogs: mockQueryAppLogs,
 }))
+const mockSyncStackConfiguration = mock(async () => ({
+  ok: true,
+  commitSha: "commit-sha-1",
+  message: "Configuration synced successfully",
+}))
+
+mock.module("../../sync-stack.service", () => ({
+  syncStackConfiguration: mockSyncStackConfiguration,
+}))
 
 const {
   appStacksRoutes,
@@ -920,7 +929,40 @@ describe("appStacksRoutes", () => {
   })
 
   describe("POST /deploy/apps/:slug/sync", () => {
-    it("updates updatedAt timestamp and returns 200", async () => {
+    beforeEach(() => {
+      mockSyncStackConfiguration.mockClear()
+    })
+
+    it("regenerates Helm and value yaml via syncStackConfiguration and returns 200 with commitSha", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "console-next-app",
+        organizationId: "org-1",
+      } as never)
+
+      mockSyncStackConfiguration.mockResolvedValueOnce({
+        ok: true,
+        commitSha: "commit-sha-1",
+        message: "Configuration synced successfully",
+      })
+
+      const res = await post("/deploy/apps/console-next-app/sync")
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        ok: boolean
+        commitSha: string | null
+        message: string
+      }
+      expect(body.ok).toBe(true)
+      expect(body.commitSha).toBe("commit-sha-1")
+      expect(body.message).toBe("Configuration synced successfully")
+      expect(mockSyncStackConfiguration).toHaveBeenCalledWith({
+        slug: "console-next-app",
+        organizationId: "org-1",
+      })
+    })
+
+    it("falls back to updating updatedAt timestamp when syncStackConfiguration throws", async () => {
       mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
         id: "stack-1",
         slug: "console-next-app",
@@ -930,10 +972,19 @@ describe("appStacksRoutes", () => {
         id: "stack-1",
       } as never)
 
+      mockSyncStackConfiguration.mockRejectedValueOnce(
+        new Error("GitOps repo not configured")
+      )
+
       const res = await post("/deploy/apps/console-next-app/sync")
       expect(res.status).toBe(200)
-      const body = (await res.json()) as { ok: boolean; message: string }
+      const body = (await res.json()) as {
+        ok: boolean
+        commitSha: string | null
+        message: string
+      }
       expect(body.ok).toBe(true)
+      expect(body.commitSha).toBeNull()
       expect(body.message).toBe("Configuration synced successfully")
       expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith({
         where: { id: "stack-1" },

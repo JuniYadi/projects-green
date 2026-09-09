@@ -457,7 +457,13 @@ export class HelmValuesBuilder {
     const memory = input.memory ?? 1024
     const port = input.containerPort ?? input.servicePort ?? 80
 
-    this.app({ name: input.slug })
+    const resolvedAppName = /^[0-9]/.test(input.slug)
+      ? `app-${input.slug}`
+      : input.slug
+    this.app({ name: resolvedAppName })
+    if (/^[0-9]/.test(input.slug)) {
+      this.setRaw("fullnameOverride", `app-${input.slug}-deploy`)
+    }
     this.image({
       repository: input.imageRepository,
       tag: input.imageTag,

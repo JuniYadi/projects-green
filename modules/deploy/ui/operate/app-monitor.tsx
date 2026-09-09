@@ -74,6 +74,43 @@ export function AppMonitor({
 
   return (
     <div className="space-y-6">
+      {hideSummaryHeader && deployment?.status === "failed" ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="flex items-center gap-1.5 font-semibold text-destructive">
+                <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
+                Deployment Failed
+              </p>
+              <p className="text-foreground">
+                {deployment.failureReason ||
+                  "The deployment encountered an unexpected error during build or cluster synchronization."}
+              </p>
+              {deployment.failureReason?.includes("REGISTRY") ? (
+                <p className="pt-1 text-muted-foreground">
+                  💡 <strong>Action Required:</strong> {tMonitor.registryHint}
+                </p>
+              ) : deployment.failureReason?.includes("timed out") ? (
+                <p className="pt-1 text-muted-foreground">
+                  💡 <strong>Action Required:</strong> {tMonitor.timeoutHint}
+                </p>
+              ) : null}
+            </div>
+            {onRetry ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRetry}
+                className="shrink-0"
+              >
+                <ArrowClockwise className="mr-1.5 h-3.5 w-3.5" />
+                Retry Deploy
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       {!hideSummaryHeader && (
         <Card>
           <CardHeader>

@@ -401,13 +401,14 @@ export function DeployStepTimeline({
     },
     [deployId]
   )
+
   const handleStepToggle = (stepId: string, open: boolean) => {
     if (open) {
       setOpenStep(stepId)
       setLogsError(null)
       if (!stepLogs[stepId]) void fetchStepLogs(stepId)
     } else {
-      setOpenStep(null)
+      setOpenStep("")
     }
   }
 
@@ -495,6 +496,11 @@ export function DeployStepTimeline({
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {statusText(uiState, t)}
+                      {uiState === "failed" && fetchedStatus?.failureReason && (
+                        <span className="ml-1 font-normal text-destructive">
+                          &bull; {fetchedStatus.failureReason}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
