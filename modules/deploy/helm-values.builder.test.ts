@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { buildHelmValues } from "./helm-values.builder"
+import { buildHelmValues, Helm } from "./helm-values.builder"
 
 describe("buildHelmValues", () => {
   it("renders image and replicaCount with default resources", () => {
@@ -337,5 +337,107 @@ describe("buildHelmValues", () => {
       },
     })
     expect(fromStorage.podSecurityContext).toEqual({ fsGroup: 20000 })
+  })
+})
+
+describe("Helm fluent builder", () => {
+  it("chains Helm.values() methods to produce valid configuration", () => {
+    const values = Helm.values()
+      .app({ name: "my-app", version: "2.12.4" })
+      .image({ repository: "docker.io/n8nio/n8n", tag: "latest" })
+      .replicas(2)
+      .deploymentType("deployment")
+      .resources({
+        requests: { cpu: "250m", memory: "512Mi" },
+        limits: { cpu: "1000m", memory: "2048Mi" },
+      })
+      .service({ port: 5678, targetPort: 5678 })
+      .env([
+        { name: "NODE_ENV", value: "production" },
+        { name: "N8N_ENCRYPTION_KEY", value: "secret123" },
+      ])
+      .externalSecret({
+        vaultPath: "tenants/org/stacks/app/prod/app-env",
+        autoEnvFrom: true,
+        refreshInterval: "24h",
+      })
+      .simpleIngress({
+        domain: "app.example.com",
+        tls: true,
+        certIssuer: "production",
+      })
+      .simpleStorage({
+        enabled: true,
+        path: "/data",
+        size: "20Gi",
+        storageClass: "fast-ssd",
+      })
+      .reloader(true)
+      .logging(true)
+      .podAnnotations({
+        "reloader.stakater.com/auto": "true",
+      })
+      .build()
+
+    expect(values.app).toEqual({ name: "my-app", version: "2.12.4" })
+    expect(values.image).toEqual({
+      repository: "docker.io/n8nio/n8n",
+      tag: "latest",
+    })
+    expect(values.replicaCount).toBe(2)
+    expect(values.deploymentType).toBe("deployment")
+    expect(values.externalSecret).toEqual({
+      enabled: true,
+      secretStoreRef: { kind: "ClusterSecretStore", name: "vault-backend" },
+      dataFrom: [{ extract: { key: "tenants/org/stacks/app/prod/app-env" } }],
+      autoEnvFrom: true,
+      refreshInterval: "24h",
+    })
+    expect(values.reloader).toEqual({ enabled: true })
+    expect(values.logging).toEqual({ enabled: true })
+    expect(values.podAnnotations).toEqual({
+      "reloader.stakater.com/auto": "true",
+    })
+    expect(values.simpleStorage).toEqual([
+      {
+        name: "data",
+        path: "/data",
+        size: "20Gi",
+        accessMode: "ReadWriteOnce",
+        accessModes: ["ReadWriteOnce"],
+        class: "fast-ssd",
+        storageClassName: "fast-ssd",
+      },
+    ])
+  })
+
+  it("renders ArgoCD Helm Application manifest via Helm.chart() with 2.12.4 default", () => {
+    const yaml = Helm.chart()
+      .appName("test-app")
+      .gitopsRepoUrl("https://github.com/pfnapp/gitops.git")
+      .branch("main")
+      .valueFilePath("services-yaml/test-app/value.yml")
+      .namespace("app-test")
+      .toYaml()
+
+    expect(yaml).toContain("name: test-app")
+    expect(yaml).toContain("targetRevision: 2.12.4")
+    expect(yaml).toContain("repoURL: https://pfnapp.github.io/charts")
+  })
+  it("fromInput automatically populates podAnnotations and logging when enabled", () => {
+    const values = buildHelmValues({
+      slug: "logging-test",
+      imageRepository: "nginx",
+      imageTag: "latest",
+      env: [],
+      reloader: true,
+      logging: true,
+    })
+
+    expect(values.logging).toEqual({ enabled: true })
+    expect(values.reloader).toEqual({ enabled: true })
+    expect(values.podAnnotations).toEqual({
+      "reloader.stakater.com/auto": "true",
+    })
   })
 })

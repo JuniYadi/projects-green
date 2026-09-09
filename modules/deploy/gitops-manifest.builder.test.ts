@@ -188,7 +188,7 @@ describe("gitops-manifest.builder", () => {
       const helmConfig = helmSource?.["helm"] as Record<string, unknown>
       expect(helmSource?.["repoURL"]).toBe("https://pfnapp.github.io/charts")
       expect(helmSource?.["chart"]).toBe("deploy")
-      expect(helmSource?.["targetRevision"]).toBe("2.10.0")
+      expect(helmSource?.["targetRevision"]).toBe("2.12.4")
       expect(helmConfig?.["valueFiles"]).toEqual([
         "$repoValue/services-yaml/app-hermes-swift-pulsar/hermes-swift-pulsar/value.yml",
       ])
@@ -202,6 +202,22 @@ describe("gitops-manifest.builder", () => {
 
       expect(destination["namespace"]).toBe("app-hermes-swift-pulsar")
       expect(automated["selfHeal"]).toBe(true)
+    })
+    it("supports custom chartVersion and chartRepoUrl", () => {
+      const yaml = buildHelmApplicationManifest({
+        appName: "custom-app",
+        gitopsRepoUrl: "https://github.com/pfnapp/sgp-argocd-prod.git",
+        branch: "main",
+        valueFilePath: "services-yaml/app/custom/value.yml",
+        namespace: "app-custom",
+        chartVersion: "2.12.4",
+        chartRepoUrl: "https://custom-charts.example.com",
+      })
+      const parsed = jsYaml.load(yaml) as Record<string, unknown>
+      const spec = parsed["spec"] as Record<string, unknown>
+      const sources = spec["sources"] as Array<Record<string, unknown>>
+      expect(sources[0]?.["targetRevision"]).toBe("2.12.4")
+      expect(sources[0]?.["repoURL"]).toBe("https://custom-charts.example.com")
     })
   })
 })
