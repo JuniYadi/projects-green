@@ -8,6 +8,8 @@ import {
   computeNextRenewalDate,
 } from "../../deploy-monitor.dto"
 
+import { syncStackConfiguration } from "../../sync-stack.service"
+
 import { mapRecentDeploySource } from "../../recent-sources.dto"
 
 import { queryAppLogs } from "../../opensearch/opensearch-query.service"
@@ -543,14 +545,26 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         }
       }
 
-      await prisma.applicationStack.update({
-        where: { id: stack.id },
-        data: { updatedAt: new Date() },
-      })
-
-      return {
-        ok: true,
-        message: "Configuration synced successfully",
+      try {
+        const result = await syncStackConfiguration({
+          slug: params.slug,
+          organizationId: auth.organizationId,
+        })
+        return {
+          ok: true,
+          commitSha: result.commitSha,
+          message: result.message,
+        }
+      } catch {
+        await prisma.applicationStack.update({
+          where: { id: stack.id },
+          data: { updatedAt: new Date() },
+        })
+        return {
+          ok: true,
+          commitSha: null,
+          message: "Configuration synced successfully",
+        }
       }
     },
     {

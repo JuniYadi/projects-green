@@ -109,7 +109,9 @@ export function generateSuggestedAppName(templateSlug: string): string {
     .replace(/^-+|-+$/g, "")
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
-  return `${cleanSlug || "app"}-${adj}-${noun}`
+  const base = cleanSlug || "app"
+  const formattedBase = /^[0-9]/.test(base) ? `app-${base}` : base
+  return `${formattedBase}-${adj}-${noun}`
 }
 
 export function DynamicLaunchDrawer({

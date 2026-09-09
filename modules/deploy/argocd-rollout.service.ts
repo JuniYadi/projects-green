@@ -9,6 +9,22 @@ import { checkIngressReadiness } from "./ingress-readiness.service"
 export type ArgoCdApplicationStatus = {
   syncStatus: string | null
   healthStatus: string | null
+  operationPhase?: string | null
+  operationMessage?: string | null
+  syncError?: string | null
+}
+
+export function extractArgoCdErrorMessage(
+  rawMessage: string | null | undefined
+): string {
+  if (!rawMessage) return "Cluster synchronization failed"
+  const match = rawMessage.match(/reason:\s*([\s\S]+)$/i)
+  if (match && match[1]) {
+    const reason = match[1].trim().replace(/\s+/g, " ")
+    return reason.length > 300 ? `${reason.slice(0, 297)}...` : reason
+  }
+  const clean = rawMessage.trim().replace(/\s+/g, " ")
+  return clean.length > 300 ? `${clean.slice(0, 297)}...` : clean
 }
 
 export async function getArgoCdApplicationStatus(
@@ -40,12 +56,27 @@ export async function getArgoCdApplicationStatus(
     status?: {
       sync?: { status?: string }
       health?: { status?: string }
+      operationState?: {
+        phase?: string
+        message?: string
+      }
+      conditions?: Array<{ type?: string; message?: string }>
     }
   }
+
+  const opState = data.status?.operationState
+  const syncErrorCondition = data.status?.conditions?.find(
+    (c) => c.type === "SyncError"
+  )
 
   return {
     syncStatus: data.status?.sync?.status ?? null,
     healthStatus: data.status?.health?.status ?? null,
+    ...(opState?.phase ? { operationPhase: opState.phase } : {}),
+    ...(opState?.message ? { operationMessage: opState.message } : {}),
+    ...(syncErrorCondition?.message
+      ? { syncError: syncErrorCondition.message }
+      : {}),
   }
 }
 
@@ -82,7 +113,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
       })
       await tx.applicationStack.update({
         where: { id: deployment.stackId },
-        data: { lastDeployStatus: "FAILED" },
+        data: { status: "FAILED", lastDeployStatus: "FAILED" },
       })
       await recordDeployEventOnce(
         {
@@ -126,6 +157,48 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
       err
     )
     return { completed: false, status: null }
+  }
+
+  if (status.operationPhase === "Failed" || status.operationPhase === "Error") {
+    const errorMsg = extractArgoCdErrorMessage(
+      status.operationMessage || status.syncError
+    )
+    await prisma.$transaction(async (tx) => {
+      await tx.applicationDeployment.update({
+        where: { id: deployment.id },
+        data: {
+          status: "FAILED",
+          failureReason: errorMsg,
+          completedAt: new Date(),
+        },
+      })
+      await tx.applicationStack.update({
+        where: { id: deployment.stackId },
+        data: { status: "FAILED", lastDeployStatus: "FAILED" },
+      })
+      await recordDeployEventOnce(
+        {
+          deploymentId: deployment.id,
+          type: "DEPLOY_FAILED",
+          message: errorMsg,
+          metadata: {
+            operationPhase: status.operationPhase,
+            syncStatus: status.syncStatus,
+          },
+        },
+        tx
+      )
+      await recordDeployLog(
+        {
+          deploymentId: deployment.id,
+          scope: "deploy",
+          status: "FAILED",
+          message: errorMsg,
+        },
+        tx
+      )
+    })
+    return { completed: true, status }
   }
 
   if (status.syncStatus === "Synced" && !deployment.argocdSynced) {

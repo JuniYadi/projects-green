@@ -45,7 +45,7 @@ mock.module("./deploy-event.service", () => ({
   recordDeployEventOnce: recordEvent,
   recordDeployLog: mock(async () => undefined),
 }))
-let resolveClusterIntegrationMock = async (_id: string, type: string) => {
+const defaultClusterIntegrationMock = async (_id: string, type: string) => {
   if (type === "ARGOCD") {
     return {
       apiUrl: "https://argocd.example.com",
@@ -59,7 +59,11 @@ let resolveClusterIntegrationMock = async (_id: string, type: string) => {
   }
   throw new Error("missing " + type)
 }
+const RealClusterIntegrationService =
+  await import("@/modules/deploy/cluster-integration.service")
+let resolveClusterIntegrationMock = defaultClusterIntegrationMock
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
+  ...RealClusterIntegrationService,
   resolveClusterIntegration: mock((id: string, type: string) =>
     resolveClusterIntegrationMock(id, type)
   ),
@@ -124,6 +128,7 @@ describe("argocd-rollout.service", () => {
     checkIngressReadinessMock.mockImplementation((deploymentId: string) =>
       ingressReadinessImpl(deploymentId)
     )
+    resolveClusterIntegrationMock = defaultClusterIntegrationMock
   })
 
   it("returns Synced + Healthy completion with POD_READY + DEPLOY_COMPLETED", async () => {
@@ -354,6 +359,56 @@ describe("argocd-rollout.service", () => {
       expect.objectContaining({
         where: { id: "stack-1" },
         data: expect.objectContaining({
+          lastDeployStatus: "FAILED",
+        }),
+      })
+    )
+    restoreFetch()
+  })
+
+  it("marks deployment as FAILED fast when ArgoCD operationState is Failed", async () => {
+    setupFetch({
+      ok: true,
+      body: {
+        status: {
+          sync: { status: "OutOfSync" },
+          health: { status: "Progressing" },
+          operationState: {
+            phase: "Failed",
+            message:
+              'one or more tasks failed, reason: Service "bad-name" is invalid: metadata.name: invalid',
+          },
+        },
+      },
+    })
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValue({
+      id: "deploy-sync-err",
+      stackId: "stack-1",
+      status: "DEPLOYING",
+      argocdSynced: false,
+      completedAt: null,
+      startedAt: new Date(),
+      createdAt: new Date(),
+      stack: { id: "stack-1", slug: "app-test" },
+    })
+
+    const result = await pollDeploymentRollout("deploy-sync-err")
+    expect(result.completed).toBe(true)
+    expect(mockTx.applicationDeployment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "deploy-sync-err" },
+        data: expect.objectContaining({
+          status: "FAILED",
+          failureReason:
+            'Service "bad-name" is invalid: metadata.name: invalid',
+        }),
+      })
+    )
+    expect(mockTx.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack-1" },
+        data: expect.objectContaining({
+          status: "FAILED",
           lastDeployStatus: "FAILED",
         }),
       })

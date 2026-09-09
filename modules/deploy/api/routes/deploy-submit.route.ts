@@ -52,12 +52,16 @@ interface BlueprintRuntimeConfig {
  */
 
 const slugify = (value: string): string => {
-  const slug = value
+  let slug = value
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .replace(/-{2,}/g, "-")
-  return slug || "app"
+  if (!slug) return "app"
+  if (/^[0-9]/.test(slug)) {
+    slug = `app-${slug}`
+  }
+  return slug
 }
 
 const envVarSchema = t.Object({

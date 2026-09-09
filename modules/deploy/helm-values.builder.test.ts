@@ -246,6 +246,16 @@ describe("buildHelmValues", () => {
     expect("simpleIngress" in out).toBe(false)
     expect("simpleStorage" in out).toBe(false)
   })
+  it("prefixes app.name with app- and sets fullnameOverride when slug starts with a number for RFC 1035 compliance", () => {
+    const out = buildHelmValues({
+      slug: "9router-daring-pulsar",
+      imageRepository: "ghcr.io/decolua/9router",
+      imageTag: "latest",
+      env: [],
+    })
+    expect(out.app).toEqual({ name: "app-9router-daring-pulsar" })
+    expect(out.fullnameOverride).toBe("app-9router-daring-pulsar-deploy")
+  })
 
   it("renders simpleStorage with path, size, and accessMode when storage is enabled", () => {
     const out = buildHelmValues({
