@@ -1058,7 +1058,7 @@ export default function TemplateBuilderPage() {
                       key={item.id}
                       className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-4"
                     >
-                      <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="grid gap-3 sm:grid-cols-4">
                         <div className="space-y-1">
                           <Label className="text-xs">Variable Key</Label>
                           <Input
@@ -1080,6 +1080,25 @@ export default function TemplateBuilderPage() {
                           />
                         </div>
                         <div className="space-y-1">
+                          <Label className="text-xs">Data Type</Label>
+                          <Select
+                            value={item.dataType || "string"}
+                            onValueChange={(val) =>
+                              updateEnvVar(item.id, "dataType", val)
+                            }
+                          >
+                            <SelectTrigger className="h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="string">string</SelectItem>
+                              <SelectItem value="number">number</SelectItem>
+                              <SelectItem value="boolean">boolean</SelectItem>
+                              <SelectItem value="select">select</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
                           <Label className="text-xs">Default Value</Label>
                           <Input
                             placeholder="e.g. production"
@@ -1095,8 +1114,65 @@ export default function TemplateBuilderPage() {
                         </div>
                       </div>
 
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-xs text-muted-foreground">
+                            Description (Helper text)
+                          </Label>
+                          <Input
+                            placeholder="e.g. Description or instructions for users"
+                            value={item.description || ""}
+                            onChange={(e) =>
+                              updateEnvVar(
+                                item.id,
+                                "description",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Random Hex Length
+                          </Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            placeholder="e.g. 32 (auto-generate token)"
+                            value={item.generateRandomHex ?? ""}
+                            onChange={(e) => {
+                              const n = parseInt(e.target.value, 10)
+                              updateEnvVar(
+                                item.id,
+                                "generateRandomHex",
+                                isNaN(n) || n <= 0 ? undefined : n
+                              )
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {item.dataType === "select" && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Options (Comma-separated)
+                          </Label>
+                          <Input
+                            placeholder="e.g. dev, staging, prod"
+                            value={item.options?.join(", ") || ""}
+                            onChange={(e) => {
+                              const opts = e.target.value
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean)
+                              updateEnvVar(item.id, "options", opts)
+                            }}
+                          />
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
-                        <div className="flex items-center gap-6">
+                        <div className="flex flex-wrap items-center gap-6">
                           <div className="flex items-center gap-2">
                             <Switch
                               id={`required-${item.id}`}
@@ -1128,8 +1204,39 @@ export default function TemplateBuilderPage() {
                               Store as Secret (Vault)
                             </Label>
                           </div>
-                        </div>
 
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id={`fixed-${item.id}`}
+                              checked={Boolean(item.isFixed)}
+                              onCheckedChange={(val) =>
+                                updateEnvVar(item.id, "isFixed", val)
+                              }
+                            />
+                            <Label
+                              htmlFor={`fixed-${item.id}`}
+                              className="cursor-pointer text-xs"
+                            >
+                              Fixed (Locked)
+                            </Label>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id={`hidden-${item.id}`}
+                              checked={Boolean(item.isHidden)}
+                              onCheckedChange={(val) =>
+                                updateEnvVar(item.id, "isHidden", val)
+                              }
+                            />
+                            <Label
+                              htmlFor={`hidden-${item.id}`}
+                              className="cursor-pointer text-xs"
+                            >
+                              Hidden
+                            </Label>
+                          </div>
+                        </div>
                         <Button
                           variant="ghost"
                           size="sm"
