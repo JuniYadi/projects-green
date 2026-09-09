@@ -26,15 +26,12 @@ coverage:
 flags:
   full:
     carryforward: true
-    carryforward_behavior: classic
   logic:
     carryforward: true
-    carryforward_behavior: classic
   changed:
     carryforward: false
   unit:
     carryforward: true
-    carryforward_behavior: subset
 ignore:
   - "**/*.test.ts"
   - "**/*.test.tsx"
