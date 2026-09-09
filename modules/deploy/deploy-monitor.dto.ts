@@ -346,6 +346,11 @@ export type StackSummaryDTO = {
   sourceType?: string | null
   templateId?: string | null
   templateName?: string | null
+  templateUpdate?: {
+    installedVersion: string
+    latestVersion: string
+    hasUpdate: boolean
+  } | null
   port?: number | null
   cpu?: number | null
   memory?: number | null
@@ -406,7 +411,7 @@ export const toStackSummaryDTO = (stack: {
   metadataJson: unknown
   sourceType?: string | null
   templateId?: string | null
-  template?: { name?: string | null } | null
+  template?: { name?: string | null; version?: string | null } | null
   envVarsJson?: unknown
   cpu?: number | null
   memory?: number | null
@@ -439,6 +444,17 @@ export const toStackSummaryDTO = (stack: {
         : typeof meta.servicePort === "number"
           ? meta.servicePort
           : null
+  let templateUpdate: StackSummaryDTO["templateUpdate"] = null
+  if (stack.template) {
+    const installedVersion =
+      (meta.templateVersion as string | undefined) ?? "1.0.0"
+    const latestVersion = stack.template.version ?? installedVersion
+    templateUpdate = {
+      installedVersion,
+      latestVersion,
+      hasUpdate: installedVersion !== latestVersion,
+    }
+  }
   return {
     id: stack.id,
     name: stack.name,
@@ -460,6 +476,7 @@ export const toStackSummaryDTO = (stack: {
     templateName:
       stack.template?.name ?? (meta.templateName as string | undefined) ?? null,
     port: resolvedPort,
+    templateUpdate,
     cpu: stack.cpu ?? (typeof meta.cpu === "number" ? meta.cpu : null),
     memory:
       stack.memory ?? (typeof meta.memory === "number" ? meta.memory : null),

@@ -137,6 +137,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       name: string
     }> | null = null
     let resolvedDbTemplateId: string | null = null
+    let dbTemplateVersion: string | null = null
     let resolvedTemplateDefaultPort: number | null = null
     if (sourceType === "MANAGED_TEMPLATE") {
       managedTemplate = MANAGED_APP_TEMPLATES.find(
@@ -173,6 +174,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           dbTemplateDeploymentType = blueprint?.runtime?.deploymentType ?? null
           dbTemplateAdditionalPorts =
             blueprint?.runtime?.additionalPorts ?? null
+          dbTemplateVersion = dbTemplate.version ?? "1.0.0"
           if (!template) {
             template = {
               id: dbTemplate.id as (typeof DEPLOY_TEMPLATES)[number]["id"],
@@ -343,6 +345,10 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         templateSlug:
           sourceType === "TEMPLATE" || sourceType === "MANAGED_TEMPLATE"
             ? body.templateId
+            : null,
+        templateVersion:
+          sourceType === "TEMPLATE" || sourceType === "MANAGED_TEMPLATE"
+            ? (dbTemplateVersion ?? "1.0.0")
             : null,
       })
     } catch (error) {

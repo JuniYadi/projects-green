@@ -9,6 +9,7 @@ import {
 } from "../../deploy-monitor.dto"
 
 import { syncStackConfiguration } from "../../sync-stack.service"
+import { syncStackFromParentTemplate } from "../../template-sync.service"
 
 import { mapRecentDeploySource } from "../../recent-sources.dto"
 
@@ -565,6 +566,83 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           ok: true,
           commitSha: null,
           message: "Configuration synced successfully",
+        }
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+      }),
+    }
+  )
+
+  .post(
+    "/:slug/upgrade-template",
+    async ({ params, set }) => {
+      const auth = await withAuth({ ensureSignedIn: true })
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
+      const stack = await prisma.applicationStack.findUnique({
+        where: {
+          organizationId_slug: {
+            organizationId: auth.organizationId,
+            slug: params.slug,
+          },
+        },
+        include: { template: true },
+      })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application not found",
+        }
+      }
+
+      const templateId =
+        stack.templateId ??
+        ((stack.metadataJson as Record<string, unknown> | null)?.templateId as
+          string | undefined)
+      if (!templateId || typeof templateId !== "string") {
+        set.status = 400
+        return {
+          ok: false,
+          error: "NOT_A_TEMPLATE_APP",
+          message: "This application was not deployed from a template",
+        }
+      }
+
+      try {
+        const result = await syncStackFromParentTemplate({
+          templateId,
+          stackId: stack.id,
+        })
+        return {
+          ok: true,
+          commitSha: result.commitSha,
+          message: "Template updated successfully",
+        }
+      } catch (err) {
+        set.status = 500
+        return {
+          ok: false,
+          error: "UPGRADE_FAILED",
+          message:
+            err instanceof Error ? err.message : "Failed to upgrade template",
         }
       }
     },

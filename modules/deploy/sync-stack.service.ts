@@ -22,6 +22,8 @@ import {
   resolveTemplateImageReference,
   getStackDeploymentType,
   getStackAdditionalPorts,
+  resolveStackProbes,
+  resolveStorageMounts,
 } from "./deploy-builder.service"
 
 export async function syncStackConfiguration(params: {
@@ -155,6 +157,7 @@ export async function syncStackConfiguration(params: {
           storageClass: cluster.storageClass,
           accessMode: "ReadWriteOnce",
           fsGroup: resolvedFsGroup,
+          mounts: resolveStorageMounts(blueprintStorage.mounts),
         }
       : null
 
@@ -166,16 +169,11 @@ export async function syncStackConfiguration(params: {
       ? blueprintRuntime.defaultPort
       : 80)
 
-  const userHealthCheck = stackMeta?.healthCheckPath
-  const healthCheckPath =
-    typeof userHealthCheck === "string"
-      ? userHealthCheck.trim() || null
-      : userHealthCheck === null
-        ? null
-        : typeof blueprintRuntime?.healthCheckPath === "string"
-          ? blueprintRuntime.healthCheckPath.trim() || null
-          : null
-
+  const { livenessProbe, readinessProbe, startupProbe } = resolveStackProbes({
+    stackMeta,
+    blueprintRuntime,
+    runtimePort,
+  })
   const command = Array.isArray(blueprintRuntime?.command)
     ? (blueprintRuntime.command as string[])
     : undefined
@@ -203,12 +201,9 @@ export async function syncStackConfiguration(params: {
     logging: true,
     runAsNonRoot: blueprintRuntime?.runAsNonRoot !== false,
     fsGroup: resolvedFsGroup,
-    livenessProbe: healthCheckPath
-      ? {
-          path: healthCheckPath,
-          port: runtimePort,
-        }
-      : null,
+    livenessProbe,
+    readinessProbe,
+    startupProbe,
   })
 
   const {

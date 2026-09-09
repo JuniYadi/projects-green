@@ -43,6 +43,13 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 mock.module("@/lib/platform-role", () => ({
   getPlatformRoleForUser: mock(async () => mockPlatformRole),
 }))
+const mockListTemplateInstallations = mock()
+const mockSyncMultipleStacksFromParentTemplate = mock()
+mock.module("@/modules/deploy/template-sync.service", () => ({
+  listTemplateInstallations: mockListTemplateInstallations,
+  syncMultipleStacksFromParentTemplate:
+    mockSyncMultipleStacksFromParentTemplate,
+}))
 
 const mockTemplates: MockTemplate[] = []
 
@@ -418,6 +425,177 @@ describe("adminTemplateRoutes", () => {
         })
       )
       expect(res.status).toBe(200)
+    })
+  })
+
+  describe("GET /admin/templates/:id/installations", () => {
+    it("returns installations data for super admin", async () => {
+      mockListTemplateInstallations.mockResolvedValueOnce({
+        template: {
+          id: "tpl-1",
+          slug: "tpl-one",
+          name: "Template One",
+          targetDeploymentType: "statefulset",
+        },
+        totalInstallations: 1,
+        alignedInstallations: 0,
+        outdatedInstallations: 1,
+        installations: [
+          {
+            id: "stack-1",
+            name: "App One",
+            slug: "app-one",
+            organizationId: "org-1",
+            status: "READY",
+            currentDeploymentType: "deployment",
+            targetDeploymentType: "statefulset",
+            isAligned: false,
+            lastDeployedAt: null,
+            lastDeployStatus: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            latestDeployment: null,
+          },
+        ],
+      })
+
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/installations")
+      )
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.totalInstallations).toBe(1)
+      expect(data.outdatedInstallations).toBe(1)
+      expect(data.installations[0].currentDeploymentType).toBe("deployment")
+    })
+
+    it("returns 404 when template is not found", async () => {
+      mockListTemplateInstallations.mockRejectedValueOnce(
+        new Error("Template not found: tpl-nonexistent")
+      )
+
+      const res = await adminTemplateRoutes.handle(
+        new Request(
+          "http://localhost/admin/templates/tpl-nonexistent/installations"
+        )
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it("returns 500 when listTemplateInstallations throws unexpected error", async () => {
+      mockListTemplateInstallations.mockRejectedValueOnce(
+        new Error("Database connection pool timeout")
+      )
+
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/installations")
+      )
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toBe("Database connection pool timeout")
+    })
+
+    it("returns 401 when unauthenticated", async () => {
+      mockAuth.user = null
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/installations")
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 for non-super-admin user", async () => {
+      mockPlatformRole = "none"
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/installations")
+      )
+      expect(res.status).toBe(403)
+    })
+  })
+
+  describe("POST /admin/templates/:id/sync", () => {
+    it("returns 400 when stackIds is empty", async () => {
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stackIds: [] }),
+        })
+      )
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toContain("stackIds")
+    })
+
+    it("syncs specified stack IDs and returns summary", async () => {
+      mockSyncMultipleStacksFromParentTemplate.mockResolvedValueOnce({
+        total: 1,
+        succeeded: 1,
+        failed: 0,
+        results: [
+          {
+            stackId: "stack-1",
+            slug: "app-one",
+            ok: true,
+            commitSha: "sha-12345",
+          },
+        ],
+      })
+
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stackIds: ["stack-1"] }),
+        })
+      )
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.total).toBe(1)
+      expect(data.succeeded).toBe(1)
+      expect(mockSyncMultipleStacksFromParentTemplate).toHaveBeenCalledWith({
+        templateId: "tpl-1",
+        stackIds: ["stack-1"],
+      })
+    })
+
+    it("returns 401 when unauthenticated", async () => {
+      mockAuth.user = null
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stackIds: ["stack-1"] }),
+        })
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 for non-super-admin user", async () => {
+      mockPlatformRole = "none"
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stackIds: ["stack-1"] }),
+        })
+      )
+      expect(res.status).toBe(403)
+    })
+
+    it("returns 500 when syncMultipleStacksFromParentTemplate throws", async () => {
+      mockSyncMultipleStacksFromParentTemplate.mockRejectedValueOnce(
+        new Error("Database write failure")
+      )
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stackIds: ["stack-1"] }),
+        })
+      )
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toBe("Database write failure")
     })
   })
 })

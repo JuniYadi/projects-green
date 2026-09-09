@@ -62,6 +62,18 @@ const mockSyncStackConfiguration = mock(async () => ({
 mock.module("../../sync-stack.service", () => ({
   syncStackConfiguration: mockSyncStackConfiguration,
 }))
+const mockSyncStackFromParentTemplate = mock(async () => ({
+  ok: true,
+  stackId: "stack-1",
+  slug: "console-next-app",
+  commitSha: "commit-sha-template-upgrade",
+  message: "Template updated successfully",
+}))
+mock.module("../../template-sync.service", () => ({
+  syncStackFromParentTemplate: mockSyncStackFromParentTemplate,
+  listTemplateInstallations: mock(),
+  syncMultipleStacksFromParentTemplate: mock(),
+}))
 
 const {
   appStacksRoutes,
@@ -1011,6 +1023,104 @@ describe("appStacksRoutes", () => {
       } as never)
       const res = await post("/deploy/apps/console-next-app/sync")
       expect(res.status).toBe(403)
+    })
+  })
+
+  describe("POST /deploy/apps/:slug/upgrade-template", () => {
+    beforeEach(() => {
+      mockSyncStackFromParentTemplate.mockClear()
+    })
+
+    it("upgrades stack to latest template version and returns 200 with commitSha", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "console-next-app",
+        organizationId: "org-1",
+        templateId: "tmpl-hermes",
+        template: {
+          id: "tmpl-hermes",
+          version: "1.1.0",
+        },
+      } as never)
+
+      const res = await post("/deploy/apps/console-next-app/upgrade-template")
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        ok: boolean
+        commitSha: string | null
+        message: string
+      }
+      expect(body.ok).toBe(true)
+      expect(body.commitSha).toBe("commit-sha-template-upgrade")
+      expect(mockSyncStackFromParentTemplate).toHaveBeenCalledWith({
+        templateId: "tmpl-hermes",
+        stackId: "stack-1",
+      })
+    })
+
+    it("returns 400 when application was not deployed from a template", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "console-next-app",
+        organizationId: "org-1",
+        templateId: null,
+        metadataJson: {},
+      } as never)
+
+      const res = await post("/deploy/apps/console-next-app/upgrade-template")
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as { error: string }
+      expect(body.error).toBe("NOT_A_TEMPLATE_APP")
+    })
+
+    it("returns 401 when unauthenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({
+        user: null,
+        organizationId: null,
+      } as never)
+
+      const res = await post("/deploy/apps/console-next-app/upgrade-template")
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 when user has no organizationId", async () => {
+      mockWithAuth.mockResolvedValueOnce({
+        user: { id: "user-1" },
+        organizationId: null,
+      } as never)
+
+      const res = await post("/deploy/apps/console-next-app/upgrade-template")
+      expect(res.status).toBe(403)
+    })
+
+    it("returns 404 when stack is not found", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null)
+
+      const res = await post("/deploy/apps/console-next-app/upgrade-template")
+      expect(res.status).toBe(404)
+    })
+
+    it("returns 500 when syncStackFromParentTemplate throws", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "console-next-app",
+        organizationId: "org-1",
+        templateId: "tmpl-hermes",
+        template: {
+          id: "tmpl-hermes",
+          version: "1.1.0",
+        },
+      } as never)
+
+      mockSyncStackFromParentTemplate.mockRejectedValueOnce(
+        new Error("GitOps sync crashed")
+      )
+
+      const res = await post("/deploy/apps/console-next-app/upgrade-template")
+      expect(res.status).toBe(500)
+      const body = (await res.json()) as { error: string; message: string }
+      expect(body.error).toBe("UPGRADE_FAILED")
+      expect(body.message).toBe("GitOps sync crashed")
     })
   })
 

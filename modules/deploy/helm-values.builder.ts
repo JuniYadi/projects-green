@@ -27,6 +27,18 @@ export type HelmValuesProbe = {
   successThreshold?: number
 }
 
+export type HelmValuesStorageMount = {
+  type?: "pvc" | "configmap" | "secret" | "emptyDir"
+  name: string
+  mountPath: string
+  subPath?: string
+  readOnly?: boolean
+  size?: string
+  sizeGb?: number
+  sourceName?: string
+  defaultMode?: number
+}
+
 export type HelmValuesStorage = {
   enabled: boolean
   name?: string
@@ -36,6 +48,7 @@ export type HelmValuesStorage = {
   storageClass?: string
   accessMode?: string
   fsGroup?: number | null
+  mounts?: HelmValuesStorageMount[]
 }
 
 export type HelmValuesHAProxyConfig = {
@@ -311,10 +324,12 @@ export class HelmValuesBuilder {
     if (params.enabled !== false) {
       const storagePath = params.path ?? params.mountPath
       const accessMode = params.accessMode ?? "ReadWriteOnce"
-      this.values.simpleStorage = [
-        {
+      const storageEntries: Array<Record<string, unknown>> = []
+
+      if (storagePath) {
+        storageEntries.push({
           name: params.name ?? "data",
-          ...(storagePath ? { path: storagePath } : {}),
+          path: storagePath,
           size: params.size ?? "10Gi",
           accessMode,
           accessModes: [accessMode],
@@ -324,8 +339,84 @@ export class HelmValuesBuilder {
                 storageClassName: params.storageClass,
               }
             : {}),
-        },
-      ]
+        })
+      }
+
+      if (Array.isArray(params.mounts)) {
+        const volumes: Array<Record<string, unknown>> = []
+        const volumeMounts: Array<Record<string, unknown>> = []
+
+        for (const m of params.mounts) {
+          const mountType = m.type ?? "pvc"
+          if (mountType === "pvc") {
+            storageEntries.push({
+              name: m.name,
+              path: m.mountPath,
+              size: m.size ?? (m.sizeGb ? `${m.sizeGb}Gi` : "5Gi"),
+              accessMode,
+              accessModes: [accessMode],
+              ...(params.storageClass
+                ? {
+                    class: params.storageClass,
+                    storageClassName: params.storageClass,
+                  }
+                : {}),
+            })
+          } else if (mountType === "configmap") {
+            volumes.push({
+              name: m.name,
+              configMap: {
+                name: m.sourceName || m.name,
+                ...(m.defaultMode !== undefined
+                  ? { defaultMode: m.defaultMode }
+                  : {}),
+              },
+            })
+            volumeMounts.push({
+              name: m.name,
+              mountPath: m.mountPath,
+              ...(m.subPath ? { subPath: m.subPath } : {}),
+              readOnly: m.readOnly ?? false,
+            })
+          } else if (mountType === "secret") {
+            volumes.push({
+              name: m.name,
+              secret: {
+                secretName: m.sourceName || m.name,
+                ...(m.defaultMode !== undefined
+                  ? { defaultMode: m.defaultMode }
+                  : {}),
+              },
+            })
+            volumeMounts.push({
+              name: m.name,
+              mountPath: m.mountPath,
+              ...(m.subPath ? { subPath: m.subPath } : {}),
+              readOnly: m.readOnly ?? false,
+            })
+          } else if (mountType === "emptyDir") {
+            volumes.push({
+              name: m.name,
+              emptyDir: {},
+            })
+            volumeMounts.push({
+              name: m.name,
+              mountPath: m.mountPath,
+              ...(m.subPath ? { subPath: m.subPath } : {}),
+              readOnly: m.readOnly ?? false,
+            })
+          }
+        }
+
+        if (volumes.length > 0) {
+          this.values.volumes = volumes
+          this.values.volumeMounts = volumeMounts
+        }
+      }
+
+      if (storageEntries.length > 0) {
+        this.values.simpleStorage = storageEntries
+      }
     }
     return this
   }
