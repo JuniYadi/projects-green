@@ -1070,7 +1070,7 @@ describe("templatesRoutes", () => {
     })
 
     it("returns 404 when the template does not exist", async () => {
-      mockTemplateFindUnique.mockResolvedValueOnce(null)
+      mockTemplateFindUnique.mockResolvedValueOnce(null as never)
       const res = await createTestApp().handle(
         new Request("http://localhost/templates/missing")
       )
@@ -1115,7 +1115,7 @@ describe("templatesRoutes", () => {
     })
 
     it("returns 404 when deleting a missing template", async () => {
-      mockTemplateFindUnique.mockResolvedValueOnce(null)
+      mockTemplateFindUnique.mockResolvedValueOnce(null as never)
       const res = await createTestApp().handle(
         new Request("http://localhost/templates/missing", { method: "DELETE" })
       )
@@ -1171,7 +1171,7 @@ describe("templatesRoutes", () => {
     })
 
     it("returns 404 for a missing template", async () => {
-      mockTemplateFindUnique.mockResolvedValueOnce(null)
+      mockTemplateFindUnique.mockResolvedValueOnce(null as never)
       const res = await createTestApp().handle(
         new Request("http://localhost/templates/missing/sync", {
           method: "POST",
