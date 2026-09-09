@@ -52,6 +52,14 @@ export default async function RootLayout({
         jetbrainsMonoHeading.variable
       )}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var _n;Object.defineProperty(window,'next',{configurable:true,enumerable:true,get:function(){return _n},set:function(v){if(v&&typeof v==='object'){try{delete v.version}catch(e){}}_n=v}})}catch(e){}",
+          }}
+        />
+      </head>
       <body suppressHydrationWarning>
         <AuthKitProvider>
           <QueryProvider>
