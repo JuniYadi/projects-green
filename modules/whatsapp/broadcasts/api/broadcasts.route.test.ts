@@ -685,7 +685,7 @@ describe("broadcastsRoutes POST /", () => {
 
 describe("broadcastsRoutes GET /", () => {
   it("returns 401 when unauthenticated", async () => {
-    mockResolveAuthContext.mockResolvedValueOnce(null)
+    mockResolveAuthContext.mockResolvedValueOnce(null as never)
     const res = await createTestApp().handle(
       new Request("http://localhost/broadcasts")
     )
@@ -710,8 +710,8 @@ describe("broadcastsRoutes GET /", () => {
     mockResolveAuthContext.mockResolvedValueOnce({
       ...authContext,
       platformRole: "super_admin",
-      organizationId: null,
-    })
+      organizationId: undefined,
+    } as never)
     mockCampaignFindMany.mockResolvedValueOnce([campaign()])
     mockCount.mockResolvedValueOnce(1)
     const res = await createTestApp().handle(
@@ -726,7 +726,7 @@ describe("broadcastsRoutes GET /", () => {
 
 describe("broadcastsRoutes GET /summary", () => {
   it("returns 401 when unauthenticated", async () => {
-    mockResolveAuthContext.mockResolvedValueOnce(null)
+    mockResolveAuthContext.mockResolvedValueOnce(null as never)
     const res = await createTestApp().handle(
       new Request("http://localhost/broadcasts/summary")
     )
@@ -736,8 +736,8 @@ describe("broadcastsRoutes GET /summary", () => {
   it("returns 400 when org missing for non-super_admin", async () => {
     mockResolveAuthContext.mockResolvedValueOnce({
       ...authContext,
-      organizationId: null,
-    })
+      organizationId: undefined,
+    } as never)
     const res = await createTestApp().handle(
       new Request("http://localhost/broadcasts/summary")
     )
@@ -766,8 +766,8 @@ describe("broadcastsRoutes GET /summary", () => {
     mockResolveAuthContext.mockResolvedValueOnce({
       ...authContext,
       platformRole: "super_admin",
-      organizationId: null,
-    })
+      organizationId: undefined,
+    } as never)
     mockCount.mockResolvedValue(0)
     mockAggregate.mockResolvedValue({ _sum: { sent: 0, failed: 0 } })
     await createTestApp().handle(
@@ -781,7 +781,7 @@ describe("broadcastsRoutes GET /summary", () => {
 
 describe("broadcastsRoutes GET /:id", () => {
   it("returns 401 when unauthenticated", async () => {
-    mockResolveAuthContext.mockResolvedValueOnce(null)
+    mockResolveAuthContext.mockResolvedValueOnce(null as never)
     const res = await createTestApp().handle(
       new Request("http://localhost/broadcasts/camp-123")
     )
@@ -822,7 +822,7 @@ describe("broadcastsRoutes GET /:id", () => {
 
 describe("broadcastsRoutes PATCH /:id", () => {
   it("returns 401 when unauthenticated", async () => {
-    mockResolveAuthContext.mockResolvedValueOnce(null)
+    mockResolveAuthContext.mockResolvedValueOnce(null as never)
     const res = await createTestApp().handle(
       new Request("http://localhost/broadcasts/camp-123", {
         method: "PATCH",
@@ -900,7 +900,7 @@ describe("broadcastsRoutes PATCH /:id", () => {
 
 describe("broadcastsRoutes DELETE /:id", () => {
   it("returns 401 when unauthenticated", async () => {
-    mockResolveAuthContext.mockResolvedValueOnce(null)
+    mockResolveAuthContext.mockResolvedValueOnce(null as never)
     const res = await createTestApp().handle(
       new Request("http://localhost/broadcasts/camp-123", { method: "DELETE" })
     )
@@ -940,7 +940,7 @@ describe("broadcastsRoutes DELETE /:id", () => {
 
 describe("broadcastsRoutes POST /preview", () => {
   it("returns 401 when unauthenticated", async () => {
-    mockResolveAuthContext.mockResolvedValueOnce(null)
+    mockResolveAuthContext.mockResolvedValueOnce(null as never)
     const res = await createTestApp().handle(
       new Request("http://localhost/broadcasts/preview", {
         method: "POST",
@@ -975,8 +975,8 @@ describe("broadcastsRoutes POST /preview", () => {
   it("returns 400 when BAD_REQUEST from no org", async () => {
     mockResolveAuthContext.mockResolvedValueOnce({
       ...authContext,
-      organizationId: null,
-    })
+      organizationId: undefined,
+    } as never)
     const res = await createTestApp().handle(
       new Request("http://localhost/broadcasts/preview", {
         method: "POST",

@@ -52,7 +52,7 @@ const mockVerifyUserIntentAndSafety = mock(async () => ({
   isPromptInjection: false,
   isAbusiveOrToxic: false,
   isPfnDomainRelated: true,
-  refusalMessage: null,
+  refusalMessage: null as string | null,
 }))
 const mockCreateAiLanguageModel = mock(() => ({}) as never)
 const mockExecuteAgentPTool = mock(async () => ({ success: true, data: {} }))

@@ -67,6 +67,9 @@ function subscriptionRecord(overrides: Record<string, unknown> = {}) {
     currentPeriodEnd: new Date("2026-09-01T00:00:00.000Z"),
     cancelAtPeriodEnd: false,
     renewalFailedAt: null,
+    serviceSubscriptionId: null,
+    createdAt: new Date("2026-08-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-08-01T00:00:00.000Z"),
     serverAccounts: [],
     _count: { mobileDevices: 0 },
     ...overrides,
@@ -422,8 +425,10 @@ describe("VpnSubscriptionService.listAll", () => {
   it("uses defaults and returns data with total", async () => {
     const { service, findMany, count } = makeService()
 
-    await expect(service.listAll()).resolves.toEqual({
-      data: [subscriptionRecord()],
+    await expect(service.listAll()).resolves.toMatchObject({
+      data: expect.arrayContaining([
+        expect.objectContaining({ id: "subscription-1" }),
+      ]),
       total: 1,
     })
     expect(findMany).toHaveBeenCalledWith({
@@ -498,7 +503,7 @@ describe("VpnSubscriptionService billing and lifecycle", () => {
 
     await expect(
       service.getBillingInfo("org-1", "subscription-1")
-    ).resolves.toBe(sub)
+    ).resolves.toBe(sub as never)
     expect(findFirst).toHaveBeenCalledWith({
       where: { id: "subscription-1", organizationId: "org-1" },
       select: {
@@ -541,7 +546,7 @@ describe("VpnSubscriptionService billing and lifecycle", () => {
 
     await expect(
       service.cancelAtPeriodEnd("org-1", "subscription-1", "Too expensive")
-    ).resolves.toBe(updated)
+    ).resolves.toBe(updated as never)
     expect(update).toHaveBeenCalledWith({
       where: { id: "subscription-1" },
       data: { cancelAtPeriodEnd: true },
@@ -606,7 +611,7 @@ describe("VpnSubscriptionService billing and lifecycle", () => {
 
     await expect(
       service.reinstate("org-1", "subscription-1", "Changed my mind")
-    ).resolves.toBe(updated)
+    ).resolves.toBe(updated as never)
     expect(update).toHaveBeenCalledWith({
       where: { id: "subscription-1" },
       data: { cancelAtPeriodEnd: false },

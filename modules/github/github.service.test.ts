@@ -944,7 +944,10 @@ describe("githubRepositoryService", () => {
     })
 
     await expect(
-      service.listRepositoriesForActor({ userId: "user_1" }, {})
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: null },
+        {}
+      )
     ).resolves.toEqual({ items: [], nextCursor: null })
 
     const scopedService = createGithubRepositoryService({
@@ -963,7 +966,7 @@ describe("githubRepositoryService", () => {
 
     await expect(
       scopedService.listRepositoriesForActor(
-        { userId: "user_1" },
+        { userId: "user_1", organizationId: null },
         { ownerId: "missing-owner" }
       )
     ).resolves.toEqual({ items: [], nextCursor: null })
@@ -996,7 +999,7 @@ describe("githubRepositoryService", () => {
 
     await expect(
       service.listRepositoriesForActor(
-        { userId: "user_1" },
+        { userId: "user_1", organizationId: null },
         { limit: 1, cursor: "  " }
       )
     ).resolves.toEqual({ items: [repository], nextCursor: null })
@@ -1034,7 +1037,7 @@ describe("githubRepositoryService", () => {
         organizationId: null,
         installation,
         repositories: [],
-        prismaClient,
+        prismaClient: prismaClient as never,
       })
     ).rejects.toBe(upsertError)
 
@@ -1069,7 +1072,7 @@ describe("githubRepositoryService", () => {
             private: false,
           },
         ],
-        prismaClient: syncClient,
+        prismaClient: syncClient as never,
       })
     ).rejects.toBe(repositoryError)
   })
@@ -1090,7 +1093,10 @@ describe("githubRepositoryService", () => {
     })
 
     await expect(
-      service.listRepositoriesForActor({ userId: "user_1" }, {})
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: null },
+        {}
+      )
     ).rejects.toThrow(GithubReconnectRequiredError)
   })
 
