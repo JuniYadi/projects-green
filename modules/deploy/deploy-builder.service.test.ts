@@ -747,6 +747,21 @@ describe("resolveStackProbes", () => {
     expect(result.readinessProbe).toBeNull()
     expect(result.startupProbe).toBeNull()
   })
+
+  it("omits startupProbe and readinessProbe when livenessProbe is null or empty", () => {
+    const result = resolveStackProbes({
+      stackMeta: null,
+      blueprintRuntime: {
+        readinessProbe: { path: "/ready" },
+        startupProbe: { path: "/startup" },
+      },
+      runtimePort: 8080,
+    })
+
+    expect(result.livenessProbe).toBeNull()
+    expect(result.readinessProbe).toBeNull()
+    expect(result.startupProbe).toBeNull()
+  })
 })
 
 describe("resolveStorageMounts", () => {

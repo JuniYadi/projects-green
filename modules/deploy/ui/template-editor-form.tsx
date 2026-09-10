@@ -126,7 +126,9 @@ export function TemplateEditorForm({
     initialData?.blueprintJson?.runtime?.defaultPort || 80
   )
   const [healthCheckPath, setHealthCheckPath] = useState(
-    initialData?.blueprintJson?.runtime?.healthCheckPath || ""
+    initialData?.blueprintJson?.runtime?.healthCheckPath ||
+      initialData?.blueprintJson?.runtime?.livenessProbe?.path ||
+      ""
   )
   const [startupProbePath, setStartupProbePath] = useState(
     initialData?.blueprintJson?.runtime?.startupProbe?.path || ""
@@ -210,38 +212,39 @@ export function TemplateEditorForm({
 
   const constructBlueprint = (): AppTemplateBlueprint => {
     const hasStorageOrMounts = storageEnabled || mounts.length > 0
+    const trimmedHealthCheck = healthCheckPath.trim()
     return {
       version: "1.0.0",
       runtime: {
         image: runtimeImage,
         defaultPort,
-        healthCheckPath: healthCheckPath || undefined,
-        ...(healthCheckPath
+        healthCheckPath: trimmedHealthCheck || undefined,
+        ...(trimmedHealthCheck
           ? {
               livenessProbe: {
-                path: healthCheckPath.trim(),
+                path: trimmedHealthCheck,
                 initialDelaySeconds: 30,
                 periodSeconds: 10,
               },
-            }
-          : {}),
-        ...(readinessProbePath.trim()
-          ? {
-              readinessProbe: {
-                path: readinessProbePath.trim(),
-                initialDelaySeconds: readinessProbeDelay,
-                periodSeconds: 5,
-              },
-            }
-          : {}),
-        ...(startupProbePath.trim()
-          ? {
-              startupProbe: {
-                path: startupProbePath.trim(),
-                initialDelaySeconds: startupProbeDelay,
-                periodSeconds: 5,
-                failureThreshold: startupProbeThreshold,
-              },
+              ...(readinessProbePath.trim()
+                ? {
+                    readinessProbe: {
+                      path: readinessProbePath.trim(),
+                      initialDelaySeconds: readinessProbeDelay,
+                      periodSeconds: 5,
+                    },
+                  }
+                : {}),
+              ...(startupProbePath.trim()
+                ? {
+                    startupProbe: {
+                      path: startupProbePath.trim(),
+                      initialDelaySeconds: startupProbeDelay,
+                      periodSeconds: 5,
+                      failureThreshold: startupProbeThreshold,
+                    },
+                  }
+                : {}),
             }
           : {}),
         runAsNonRoot,
@@ -459,6 +462,8 @@ export function TemplateEditorForm({
         if (bp.runtime.defaultPort) setDefaultPort(bp.runtime.defaultPort)
         if (bp.runtime.healthCheckPath !== undefined)
           setHealthCheckPath(bp.runtime.healthCheckPath)
+        else if (bp.runtime.livenessProbe?.path)
+          setHealthCheckPath(bp.runtime.livenessProbe.path)
         if (bp.runtime.runAsNonRoot !== undefined)
           setRunAsNonRoot(bp.runtime.runAsNonRoot)
         if (bp.runtime.deploymentType)
@@ -688,15 +693,13 @@ export function TemplateEditorForm({
         className="space-y-4"
       >
         <TabsList
-          className={`grid w-full ${!isNew && initialData?.id ? "grid-cols-6" : "grid-cols-5"}`}
+          className={`grid w-full ${!isNew && initialData?.id ? "grid-cols-4" : "grid-cols-3"}`}
         >
-          <TabsTrigger value="general">1. General</TabsTrigger>
-          <TabsTrigger value="runtime">2. Runtime & Specs</TabsTrigger>
-          <TabsTrigger value="dependencies">3. Dependencies</TabsTrigger>
-          <TabsTrigger value="env">4. Env Schema</TabsTrigger>
-          <TabsTrigger value="documentation">5. Readme & Docs</TabsTrigger>
+          <TabsTrigger value="general">1. General & Docs</TabsTrigger>
+          <TabsTrigger value="runtime">2. Runtime & Services</TabsTrigger>
+          <TabsTrigger value="env">3. Env Schema</TabsTrigger>
           {!isNew && initialData?.id && (
-            <TabsTrigger value="installations">6. Installations</TabsTrigger>
+            <TabsTrigger value="installations">4. Installations</TabsTrigger>
           )}
         </TabsList>
 
@@ -910,6 +913,25 @@ export function TemplateEditorForm({
               </CardContent>
             </Card>
           </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Template Documentation (Markdown)
+              </CardTitle>
+              <CardDescription>
+                Full readme and deployment manual shown in template detail view
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                rows={12}
+                value={readmeMarkdown}
+                onChange={(e) => setReadmeMarkdown(e.target.value)}
+                placeholder="# Getting Started with this Stack..."
+                className="font-mono text-xs"
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Tab 2: Runtime & Compute Specs */}
@@ -948,120 +970,144 @@ export function TemplateEditorForm({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="runtime-health">
-                      Liveness Probe Path (Optional)
+                    <Label htmlFor="runtime-deployment-type">
+                      Workload Type
                     </Label>
-                    <Input
-                      id="runtime-health"
-                      value={healthCheckPath}
-                      onChange={(e) => setHealthCheckPath(e.target.value)}
-                      placeholder="e.g. /healthz (leave empty for none)"
-                    />
+                    <Select
+                      value={deploymentType}
+                      onValueChange={(v: "deployment" | "statefulset") =>
+                        setDeploymentType(v)
+                      }
+                    >
+                      <SelectTrigger id="runtime-deployment-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="deployment">Deployment</SelectItem>
+                        <SelectItem value="statefulset">StatefulSet</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="space-y-3 rounded-lg border p-3">
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium">
-                      Kubernetes Probes (Startup & Readiness)
+                      Health Checks &amp; Kubernetes Probes
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      By default, probes are disabled so complex templates
-                      don&apos;t fail during first-time setup or migrations.
+                      Probes are disabled when Liveness path is empty to prevent
+                      boot-loops during setup and sync drift.
                     </p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 pt-1">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="startup-probe" className="text-xs">
-                        Startup Probe Path
-                      </Label>
-                      <Input
-                        id="startup-probe"
-                        value={startupProbePath}
-                        onChange={(e) => setStartupProbePath(e.target.value)}
-                        placeholder="e.g. /health/startup (or empty)"
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="startup-delay" className="text-xs">
-                        Startup Delay (s)
-                      </Label>
-                      <Input
-                        id="startup-delay"
-                        type="number"
-                        value={startupProbeDelay}
-                        onChange={(e) =>
-                          setStartupProbeDelay(parseInt(e.target.value) || 10)
-                        }
-                        placeholder="10"
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="startup-threshold" className="text-xs">
-                        Startup Threshold
-                      </Label>
-                      <Input
-                        id="startup-threshold"
-                        type="number"
-                        value={startupProbeThreshold}
-                        onChange={(e) =>
-                          setStartupProbeThreshold(
-                            parseInt(e.target.value) || 30
-                          )
-                        }
-                        placeholder="30"
-                        className="h-8 text-xs"
-                      />
-                    </div>
+                  <div className="space-y-1.5 pt-1">
+                    <Label htmlFor="runtime-health" className="text-xs">
+                      Liveness Probe Path (Primary Health Check)
+                    </Label>
+                    <Input
+                      id="runtime-health"
+                      value={healthCheckPath}
+                      onChange={(e) => setHealthCheckPath(e.target.value)}
+                      placeholder="e.g. /healthz (leave empty to disable all probes)"
+                      className="h-8 text-xs"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="readiness-probe" className="text-xs">
-                        Readiness Probe Path
-                      </Label>
-                      <Input
-                        id="readiness-probe"
-                        value={readinessProbePath}
-                        onChange={(e) => setReadinessProbePath(e.target.value)}
-                        placeholder="e.g. /health/ready (or empty)"
-                        className="h-8 text-xs"
-                      />
+
+                  {healthCheckPath.trim() ? (
+                    <div className="space-y-3 border-t pt-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="startup-probe" className="text-xs">
+                            Startup Probe Path
+                          </Label>
+                          <Input
+                            id="startup-probe"
+                            value={startupProbePath}
+                            onChange={(e) =>
+                              setStartupProbePath(e.target.value)
+                            }
+                            placeholder="e.g. /health/startup (optional)"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="startup-delay" className="text-xs">
+                            Startup Delay (s)
+                          </Label>
+                          <Input
+                            id="startup-delay"
+                            type="number"
+                            value={startupProbeDelay}
+                            onChange={(e) =>
+                              setStartupProbeDelay(
+                                parseInt(e.target.value) || 10
+                              )
+                            }
+                            placeholder="10"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label
+                            htmlFor="startup-threshold"
+                            className="text-xs"
+                          >
+                            Startup Threshold
+                          </Label>
+                          <Input
+                            id="startup-threshold"
+                            type="number"
+                            value={startupProbeThreshold}
+                            onChange={(e) =>
+                              setStartupProbeThreshold(
+                                parseInt(e.target.value) || 30
+                              )
+                            }
+                            placeholder="30"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="readiness-probe" className="text-xs">
+                            Readiness Probe Path
+                          </Label>
+                          <Input
+                            id="readiness-probe"
+                            value={readinessProbePath}
+                            onChange={(e) =>
+                              setReadinessProbePath(e.target.value)
+                            }
+                            placeholder="e.g. /health/ready (optional)"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="readiness-delay" className="text-xs">
+                            Readiness Initial Delay (s)
+                          </Label>
+                          <Input
+                            id="readiness-delay"
+                            type="number"
+                            value={readinessProbeDelay}
+                            onChange={(e) =>
+                              setReadinessProbeDelay(
+                                parseInt(e.target.value) || 10
+                              )
+                            }
+                            placeholder="10"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="readiness-delay" className="text-xs">
-                        Readiness Initial Delay (s)
-                      </Label>
-                      <Input
-                        id="readiness-delay"
-                        type="number"
-                        value={readinessProbeDelay}
-                        onChange={(e) =>
-                          setReadinessProbeDelay(parseInt(e.target.value) || 10)
-                        }
-                        placeholder="10"
-                        className="h-8 text-xs"
-                      />
+                  ) : (
+                    <div className="rounded border border-dashed border-muted p-2 text-center text-[11px] text-muted-foreground">
+                      Startup &amp; Readiness probes are inactive while Liveness
+                      Probe path is empty.
                     </div>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="runtime-deployment-type">Workload Type</Label>
-                  <Select
-                    value={deploymentType}
-                    onValueChange={(v: "deployment" | "statefulset") =>
-                      setDeploymentType(v)
-                    }
-                  >
-                    <SelectTrigger id="runtime-deployment-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="deployment">Deployment</SelectItem>
-                      <SelectItem value="statefulset">StatefulSet</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  )}
                 </div>
                 <div className="space-y-2 rounded-lg border p-3">
                   <div className="flex items-center justify-between">
@@ -1388,10 +1434,6 @@ export function TemplateEditorForm({
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        {/* Tab 3: Dependencies */}
-        <TabsContent value="dependencies" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -1454,7 +1496,7 @@ export function TemplateEditorForm({
           </Card>
         </TabsContent>
 
-        {/* Tab 4: Env Schema Builder */}
+        {/* Tab 3: Env Schema Builder */}
         <TabsContent value="env" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -1694,29 +1736,6 @@ export function TemplateEditorForm({
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab 3: Documentation */}
-        <TabsContent value="documentation" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Template Documentation (Markdown)
-              </CardTitle>
-              <CardDescription>
-                Full readme and deployment manual shown in template detail view
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                rows={14}
-                value={readmeMarkdown}
-                onChange={(e) => setReadmeMarkdown(e.target.value)}
-                placeholder="# Getting Started with this Stack..."
-                className="font-mono text-xs"
-              />
             </CardContent>
           </Card>
         </TabsContent>

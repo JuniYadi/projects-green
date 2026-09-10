@@ -211,6 +211,51 @@ describe("template-sync.service", () => {
       })
     })
 
+    it("clears health check and probe metadata when template runtime has no health check or probes", async () => {
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+        id: "tmpl-9router",
+        slug: "9router",
+        blueprintJson: {
+          version: "1.0.0",
+          runtime: {
+            image: "registry.pfnapp.com/ninerouter:latest",
+            defaultPort: 8080,
+            deploymentType: "deployment",
+          },
+        },
+      })
+
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "9router-daring-pulsar",
+        organizationId: "org-1",
+        metadataJson: {
+          deploymentType: "deployment",
+          healthCheckPath: "/old-healthz",
+          livenessProbe: { path: "/old-healthz" },
+          readinessProbe: { path: "/old-ready" },
+          startupProbe: { path: "/old-startup" },
+        },
+        envVarsJson: [],
+      })
+
+      mockPrisma.applicationStack.update.mockResolvedValueOnce({
+        id: "stack-1",
+      })
+
+      const result = await syncStackFromParentTemplate({
+        templateId: "tmpl-9router",
+        stackId: "stack-1",
+      })
+
+      expect(result.ok).toBe(true)
+      const updateCall = mockPrisma.applicationStack.update.mock.calls[0][0]
+      expect(updateCall.data.metadataJson.healthCheckPath).toBeNull()
+      expect(updateCall.data.metadataJson.livenessProbe).toBeUndefined()
+      expect(updateCall.data.metadataJson.readinessProbe).toBeUndefined()
+      expect(updateCall.data.metadataJson.startupProbe).toBeUndefined()
+    })
+
     it("throws when template is not found", async () => {
       mockPrisma.appTemplate.findFirst.mockResolvedValueOnce(null)
       expect(
