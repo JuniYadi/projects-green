@@ -101,7 +101,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
         appName: device.whatsappMetaApp.name,
         callbackUrl: `${getEmailBaseUrl()}${device.whatsappMetaApp.callbackPath}`,
         deviceId: device.id,
-        apiBasePath: "/api/whatsapp/devices",
+        apiBasePath: "/api/admin/devices",
         syncState:
           (features.metaWebhook as MetaWebhookSyncState | null) ?? null,
       }
