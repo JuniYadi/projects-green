@@ -1,11 +1,13 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach, mock, setSystemTime } from "bun:test"
 import { Elysia } from "elysia"
 import {
   classifyWhatsappRouteTier,
   evaluateWhatsappRateLimit,
   resetWhatsappRateLimitStore,
+  setTestingRedisClient,
   whatsappRateLimitPlugin,
   WHATSAPP_RATE_LIMIT_TIERS,
+  type RedisClient,
 } from "./whatsapp-rate-limit.guard"
 
 describe("classifyWhatsappRouteTier", () => {
@@ -104,9 +106,18 @@ describe("classifyWhatsappRouteTier", () => {
       "standard"
     )
   })
+
+  it("handles paths with trailing slashes and normalized formats", () => {
+    expect(classifyWhatsappRouteTier("/whatsapp/messages/", "POST", true)).toBe(
+      "messaging"
+    )
+    expect(classifyWhatsappRouteTier("/whatsapp/webhooks/", "POST", true)).toBe(
+      "exempt"
+    )
+  })
 })
 
-describe("evaluateWhatsappRateLimit", () => {
+describe("evaluateWhatsappRateLimit (In-Memory Engine)", () => {
   beforeEach(() => {
     resetWhatsappRateLimitStore()
   })
@@ -157,6 +168,132 @@ describe("evaluateWhatsappRateLimit", () => {
     expect(WHATSAPP_RATE_LIMIT_TIERS.standard.max).toBe(60)
     expect(WHATSAPP_RATE_LIMIT_TIERS.heavy.max).toBe(30)
     expect(WHATSAPP_RATE_LIMIT_TIERS.anonymous.max).toBe(15)
+  })
+
+  it("cleans up expired timestamps and triggers periodic memory cleanup", async () => {
+    const custom = { windowMs: 50, max: 10, name: "Short" }
+
+    // First request
+    await evaluateWhatsappRateLimit("exp-1", "standard", custom)
+    // Advance system time deterministically past expiration
+    setSystemTime(new Date(Date.now() + 100))
+    const res = await evaluateWhatsappRateLimit("exp-1", "standard", custom)
+    expect(res.allowed).toBe(true)
+    expect(res.remaining).toBe(9)
+
+    // Run 100 requests to trigger cleanupCounter % 100 === 0
+    for (let i = 0; i < 105; i++) {
+      await evaluateWhatsappRateLimit(`cleanup-${i}`, "standard", custom)
+    }
+  })
+})
+
+describe("evaluateWhatsappRateLimit (Redis Engine & Fallback)", () => {
+  beforeEach(() => {
+    resetWhatsappRateLimitStore()
+  })
+
+  it("evaluates rate limits using Redis pipeline when Redis is ready", async () => {
+    const mockZremrangebyscore = mock(() => {})
+    const mockZcard = mock(() => {})
+    const mockZadd = mock(() => {})
+    const mockPexpire = mock(() => {})
+    const mockZrem = mock(async () => 1)
+
+    const mockPipeline = {
+      zremrangebyscore: mockZremrangebyscore,
+      zcard: mockZcard,
+      zadd: mockZadd,
+      pexpire: mockPexpire,
+      exec: mock(async () => [
+        [null, 0],
+        [null, 5], // currentCount = 5
+        [null, 1],
+        [null, 1],
+      ]),
+    }
+
+    const mockRedis = {
+      status: "ready",
+      pipeline: () => mockPipeline,
+      zrem: mockZrem,
+    } as unknown as RedisClient
+    setTestingRedisClient(mockRedis)
+
+    const custom = { windowMs: 60_000, max: 10, name: "RedisTest" }
+    const result = await evaluateWhatsappRateLimit(
+      "redis-key",
+      "standard",
+      custom
+    )
+
+    expect(result.allowed).toBe(true)
+    expect(result.remaining).toBe(4) // 10 - 5 - 1 = 4
+    expect(result.limit).toBe(10)
+    expect(result.tier).toBe("standard")
+  })
+
+  it("blocks requests and rolls back member when Redis count exceeds max", async () => {
+    const mockZrem = mock(async () => 1)
+    const mockPipeline = {
+      zremrangebyscore: mock(() => {}),
+      zcard: mock(() => {}),
+      zadd: mock(() => {}),
+      pexpire: mock(() => {}),
+      exec: mock(async () => [
+        [null, 0],
+        [null, 10], // currentCount = 10 (at or over capacity of max 10)
+        [null, 1],
+        [null, 1],
+      ]),
+    }
+
+    const mockRedis = {
+      status: "ready",
+      pipeline: () => mockPipeline,
+      zrem: mockZrem,
+    } as unknown as RedisClient
+    setTestingRedisClient(mockRedis)
+
+    const custom = { windowMs: 60_000, max: 10, name: "RedisOver" }
+    const result = await evaluateWhatsappRateLimit(
+      "redis-over",
+      "standard",
+      custom
+    )
+
+    expect(result.allowed).toBe(false)
+    expect(result.remaining).toBe(0)
+    expect(mockZrem).toHaveBeenCalled()
+  })
+
+  it("falls back to in-memory store when Redis pipeline execution throws", async () => {
+    const mockPipeline = {
+      zremrangebyscore: mock(() => {}),
+      zcard: mock(() => {}),
+      zadd: mock(() => {}),
+      pexpire: mock(() => {}),
+      exec: mock(async () => {
+        throw new Error("Redis connection dropped")
+      }),
+    }
+
+    const mockRedis = {
+      status: "ready",
+      pipeline: () => mockPipeline,
+      zrem: mock(async () => 1),
+    } as unknown as RedisClient
+    setTestingRedisClient(mockRedis)
+
+    const custom = { windowMs: 60_000, max: 5, name: "RedisErr" }
+    const result = await evaluateWhatsappRateLimit(
+      "redis-err",
+      "standard",
+      custom
+    )
+
+    expect(result.allowed).toBe(true)
+    expect(result.remaining).toBe(4) // Succeeded via in-memory fallback
   })
 })
 

@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { getClientIp } from "@/lib/rate-limit"
 import { redis } from "@/lib/redis"
+export type RedisClient = typeof redis
 
 export type WhatsappRateLimitTier =
   "messaging" | "standard" | "heavy" | "anonymous"
@@ -49,10 +50,18 @@ export type RateLimitEvaluationResult = {
 // In-memory fallback sliding window store
 const memoryStore = new Map<string, number[]>()
 let cleanupCounter = 0
+let testingRedisClient: typeof redis | null | undefined = undefined
+
+export function setTestingRedisClient(
+  client: typeof redis | null | undefined
+): void {
+  testingRedisClient = client
+}
 
 export function resetWhatsappRateLimitStore(): void {
   memoryStore.clear()
   cleanupCounter = 0
+  testingRedisClient = undefined
 }
 
 /**
@@ -69,14 +78,17 @@ export async function evaluateWhatsappRateLimit(
   const now = Date.now()
   const windowStart = now - windowMs
 
+  const activeRedis =
+    testingRedisClient !== undefined ? testingRedisClient : redis
+
   // 1. Try Redis sliding-window if available
-  if (redis && redis.status === "ready") {
+  if (activeRedis && activeRedis.status === "ready") {
     try {
       const redisKey = `ratelimit:wa:${key}`
       const member = `${now}:${Math.random().toString(36).slice(2, 8)}`
 
       // Sliding window using Redis multi/pipeline
-      const pipeline = redis.pipeline()
+      const pipeline = activeRedis.pipeline()
       pipeline.zremrangebyscore(redisKey, 0, windowStart)
       pipeline.zcard(redisKey)
       pipeline.zadd(redisKey, now, member)
@@ -87,7 +99,7 @@ export async function evaluateWhatsappRateLimit(
 
       if (currentCount >= max) {
         // Rollback this request member so we don't inflate counts
-        await redis.zrem(redisKey, member).catch(() => {})
+        await activeRedis.zrem(redisKey, member).catch(() => {})
         return {
           allowed: false,
           remaining: 0,
