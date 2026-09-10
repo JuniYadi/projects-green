@@ -76,6 +76,7 @@ function formatRelativeTime(dateString: string | Date): string {
   if (diffHours < 22) return `${diffHours} hours ago`
   if (diffHours < 36) return "1 day ago"
   const diffDays = Math.floor(diffHours / 24)
+  if (diffDays <= 1) return "1 day ago"
   if (diffDays < 30) return `${diffDays} days ago`
   const diffMonths = Math.floor(diffDays / 30)
   if (diffMonths < 12) return `${diffMonths} months ago`

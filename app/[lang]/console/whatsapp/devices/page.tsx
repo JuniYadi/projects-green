@@ -441,9 +441,35 @@ export default function WhatsAppDevicesPage() {
         }
         if (device.status === "NON_ACTIVE") {
           return (
-            <span className="text-xs text-muted-foreground">
-              {messages.console.whatsapp.devices.notifyAdmin}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                {messages.console.whatsapp.devices.notifyAdmin}
+              </span>
+              <Button asChild variant="outline" size="sm">
+                <Link
+                  href={localizePathname({
+                    pathname: "/console/whatsapp/devices/" + device.id,
+                    locale,
+                  })}
+                >
+                  {messages.console.whatsapp.devices.manage}
+                </Link>
+              </Button>
+            </div>
+          )
+        }
+        if (device.id) {
+          return (
+            <Button asChild variant="outline" size="sm">
+              <Link
+                href={localizePathname({
+                  pathname: "/console/whatsapp/devices/" + device.id,
+                  locale,
+                })}
+              >
+                {messages.console.whatsapp.devices.manage}
+              </Link>
+            </Button>
           )
         }
         return <span className="text-muted-foreground">—</span>

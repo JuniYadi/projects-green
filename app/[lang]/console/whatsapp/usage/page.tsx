@@ -320,8 +320,8 @@ export default function WhatsAppUsagePage() {
             <h1 className="text-2xl font-semibold">{t.usage.heading}</h1>
             <p className="text-sm text-muted-foreground">
               {locale === "id"
-                ? "Analisis volume trafik pesan dan pemantauan kapasitas kuota masing-masing nomor perangkat."
-                : "Message volume traffic analysis and quota capacity control per device number."}
+                ? "Pantau volume pesan dan sisa kuota bulanan per nomor perangkat."
+                : "Track message volume and remaining monthly quota per device number."}
             </p>
           </div>
           <Button variant="outline" size="sm" asChild className="gap-1.5">
@@ -612,7 +612,8 @@ export default function WhatsAppUsagePage() {
                       </p>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      {dev.messageCount} pesan terkirim
+                      {dev.messageCount}{" "}
+                      {locale === "id" ? "pesan terkirim" : "messages sent"}
                     </p>
                   </div>
 
@@ -623,11 +624,11 @@ export default function WhatsAppUsagePage() {
                         {usedQuota.toLocaleString()} /{" "}
                         {totalQuota.toLocaleString()}{" "}
                         <span className="text-muted-foreground">
-                          ({locale === "id" ? "Sisa" : "Remaining"}:{" "}
+                          ({locale === "id" ? "Sisa Kuota" : "Remaining Quota"}:{" "}
                           <strong className="text-foreground">
                             {remainingQuota.toLocaleString()}
                           </strong>{" "}
-                          pesan)
+                          {locale === "id" ? "kredit" : "credits"})
                         </span>
                       </span>
                       <span className="text-xs font-medium">
