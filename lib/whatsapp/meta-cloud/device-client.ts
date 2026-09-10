@@ -328,6 +328,23 @@ export class WhatsAppDeviceClient {
     return this.httpClient.request("LIST_TEMPLATES", endpoint.toString(), "GET")
   }
 
+  async deleteTemplate(
+    name: string,
+    hsmId?: string
+  ): Promise<{ success: boolean }> {
+    const endpoint = new URL(ENDPOINTS.TEMPLATES(this.wabaId))
+    endpoint.searchParams.set("name", name)
+    if (hsmId) {
+      endpoint.searchParams.set("hsm_id", hsmId)
+    }
+
+    return this.httpClient.request<{ success: boolean }>(
+      "DELETE_TEMPLATE",
+      endpoint.toString(),
+      "DELETE"
+    )
+  }
+
   async refreshToken(): Promise<void> {
     // Stub as requested
     return

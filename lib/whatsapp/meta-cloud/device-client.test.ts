@@ -515,3 +515,22 @@ describe("WhatsAppDeviceClient media methods", () => {
     })
   })
 })
+
+describe("WhatsAppDeviceClient template methods", () => {
+  beforeEach(() => {
+    mockRequest.mockClear()
+  })
+
+  it("deleteTemplate sends DELETE to templates endpoint with name and optional hsm_id", async () => {
+    mockRequest.mockResolvedValueOnce({ success: true })
+    const client = createClient()
+
+    const res = await client.deleteTemplate("my_template", "hsm_123")
+    expect(res.success).toBe(true)
+    expect(mockRequest).toHaveBeenCalledWith(
+      "DELETE_TEMPLATE",
+      expect.stringContaining("name=my_template&hsm_id=hsm_123"),
+      "DELETE"
+    )
+  })
+})

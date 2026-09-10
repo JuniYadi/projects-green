@@ -17,11 +17,7 @@ const supportedCategories = new Set<string>(
 )
 
 export type TemplateStatusUpdateResult =
-  | "updated"
-  | "duplicate"
-  | "stale"
-  | "unmatched"
-  | "unsupported_event"
+  "updated" | "duplicate" | "stale" | "unmatched" | "unsupported_event"
 
 function possibleSlugsFor(name: string): string[] {
   return Array.from(new Set([formatTemplateSlug(name), name].filter(Boolean)))
@@ -80,6 +76,100 @@ export async function processTemplateStatusUpdate(
   deviceId: string,
   update: TemplateStatusUpdate
 ): Promise<TemplateStatusUpdateResult> {
+  const normalizedEvent = update.event?.toUpperCase()
+
+  if (normalizedEvent === "DELETED") {
+    const template = await prisma.whatsappTemplate.findFirst({
+      where: {
+        organizationId,
+        whatsappDeviceId: deviceId,
+        slug: { in: possibleSlugsFor(update.templateName) },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    })
+
+    if (!template) {
+      await auditResult({
+        organizationId,
+        deviceId,
+        update,
+        result: "unmatched",
+      })
+      return "unmatched"
+    }
+
+    await prisma.whatsappTemplate.delete({
+      where: { id: template.id },
+    })
+
+    await logWhatsappAuditEvent({
+      action: "TEMPLATE_DELETED",
+      status: "OK",
+      organizationId,
+      deviceId,
+      message: `Template deleted via Meta webhook: ${template.name}`,
+      details: {
+        templateId: update.templateId,
+        templateName: update.templateName,
+        source: "META_WEBHOOK",
+        event: update.event,
+      },
+    })
+
+    return "updated"
+  }
+
+  if (normalizedEvent === "PENDING_DELETION") {
+    const template = await prisma.whatsappTemplate.findFirst({
+      where: {
+        organizationId,
+        whatsappDeviceId: deviceId,
+        slug: { in: possibleSlugsFor(update.templateName) },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    })
+
+    if (!template) {
+      await auditResult({
+        organizationId,
+        deviceId,
+        update,
+        result: "unmatched",
+      })
+      return "unmatched"
+    }
+
+    await prisma.whatsappTemplate.update({
+      where: { id: template.id },
+      data: {
+        syncStatus: WhatsappTemplateSyncStatus.NOT_IN_META,
+        lastSyncedAt: new Date(),
+      },
+    })
+
+    await logWhatsappAuditEvent({
+      action: "TEMPLATE_UPDATED",
+      status: "OK",
+      organizationId,
+      deviceId,
+      message: `Template pending deletion via Meta webhook: ${template.name}`,
+      details: {
+        templateId: update.templateId,
+        templateName: update.templateName,
+        source: "META_WEBHOOK",
+        event: update.event,
+      },
+    })
+
+    return "updated"
+  }
+
   const metaStatus = toMetaStatus(update.event)
   if (!metaStatus) {
     await auditResult({
@@ -90,7 +180,6 @@ export async function processTemplateStatusUpdate(
     })
     return "unsupported_event"
   }
-
   const template = await prisma.whatsappTemplate.findFirst({
     where: {
       organizationId,

@@ -167,6 +167,12 @@ export default function ConsoleTemplateDetailPage() {
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         templateName={template?.name ?? "this template"}
+        isApproved={
+          template?.metaStatus === "APPROVED" ||
+          template?.languages?.some(
+            (l) => l.metaStatus === "APPROVED" || l.isApproved
+          )
+        }
         deleting={deleting}
         onConfirm={() => void handleDelete()}
       />
