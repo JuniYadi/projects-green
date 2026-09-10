@@ -28,6 +28,21 @@ const mockRecordMetaRefreshUnavailable = mock(async () => {})
 const mockUpdateProfile = mock(async () => ({}))
 const mockUploadProfilePicture = mock(async () => ({}))
 const mockGetPlatformRoleForUser = mock(async () => "none")
+const mockSyncMetaWebhookSubscription = mock(async () => ({
+  active: true,
+  status: "SUBSCRIBED" as const,
+  metaAppId: "meta-app-1",
+  metaAppName: "Test Meta App",
+  tokenSource: "INHERITED_META_APP" as const,
+  effectiveVersion: "v24.0",
+  subscribedApps: [{ id: "meta-app-1", name: "Test Meta App" }],
+  lastCheckedAt: "2026-09-10T00:00:00.000Z",
+  warning: null,
+}))
+
+mock.module("../services/meta-webhook-sync.service", () => ({
+  syncMetaWebhookSubscription: mockSyncMetaWebhookSubscription,
+}))
 
 mock.module("../business-profile.service", () => ({
   getProfile: mockGetProfile,
@@ -41,14 +56,12 @@ mock.module("../business-profile.service", () => ({
   ProfileNotFoundError: class ProfileNotFoundError extends Error {},
 }))
 const TEST_APP_KEY = Buffer.alloc(32, 5).toString("base64")
-const mockWithAuth = mock(
-  async (): Promise<any> => ({
-    user: { id: "user_1", email: "admin@example.com" },
-    organizationId: "org_1",
-    role: "admin",
-    roles: ["admin"],
-  })
-)
+const mockWithAuth = mock(async (): Promise<any> => ({
+  user: { id: "user_1", email: "admin@example.com" },
+  organizationId: "org_1",
+  role: "admin",
+  roles: ["admin"],
+}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -134,10 +147,20 @@ describe("devices routes", () => {
     mockFindMany.mockClear()
     mockUpdate.mockClear()
     mockEnqueueWhatsAppTemplateSync.mockClear()
-    mockWithAuth.mockClear()
     mockSyncTemplatesFromMeta.mockClear()
+    mockSyncMetaWebhookSubscription.mockClear()
+    mockSyncMetaWebhookSubscription.mockImplementation(async () => ({
+      active: true,
+      status: "SUBSCRIBED" as const,
+      metaAppId: "meta-app-1",
+      metaAppName: "Test Meta App",
+      tokenSource: "INHERITED_META_APP" as const,
+      effectiveVersion: "v24.0",
+      subscribedApps: [{ id: "meta-app-1", name: "Test Meta App" }],
+      lastCheckedAt: "2026-09-10T00:00:00.000Z",
+      warning: null,
+    }))
     mockGetPlatformRoleForUser.mockClear()
-    mockGetPlatformRoleForUser.mockImplementation(async () => "none")
     mockSyncTemplatesFromMeta.mockImplementation(async () => ({
       syncedCount: 2,
       totalMetaCount: 2,
@@ -406,6 +429,144 @@ describe("devices routes", () => {
     expect(response.status).toBe(403)
     const payload = (await response.json()) as { ok: boolean; error: string }
     expect(payload.error).toBe("FORBIDDEN")
+  })
+
+  // ── Webhook sync ─────────────────────────────────────────────────────────
+
+  it("returns 401 when unauthorized for webhook sync", async () => {
+    mockWithAuth.mockImplementationOnce(async () => ({ user: null }))
+    setMockAuthContext(null)
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-webhook", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(401)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+    }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("UNAUTHORIZED")
+  })
+
+  it("returns 404 when syncing webhook for missing device", async () => {
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_missing/sync-webhook", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(404)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+    }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("NOT_FOUND")
+    expect(mockSyncMetaWebhookSubscription).not.toHaveBeenCalled()
+  })
+
+  it("returns 403 when syncing webhook for a device in another org", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_other", organizationId: "org_other" })
+    )
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_other/sync-webhook", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+    }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("FORBIDDEN")
+    expect(mockSyncMetaWebhookSubscription).not.toHaveBeenCalled()
+  })
+
+  it("returns the webhook sync result for an own-org device", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_1", organizationId: "org_1" })
+    )
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-webhook", {
+        method: "POST",
+      })
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      data: { status: string; active: boolean }
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.ok).toBe(true)
+    expect(payload.data.status).toBe("SUBSCRIBED")
+    expect(payload.data.active).toBe(true)
+    expect(mockSyncMetaWebhookSubscription).toHaveBeenCalledWith("dev_1")
+  })
+
+  it("returns the sync error message when webhook sync fails", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_1", organizationId: "org_1" })
+    )
+    mockSyncMetaWebhookSubscription.mockImplementationOnce(async () => {
+      throw new Error("Meta API unavailable")
+    })
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-webhook", {
+        method: "POST",
+      })
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+
+    expect(response.status).toBe(500)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("SYNC_FAILED")
+    expect(payload.message).toBe("Meta API unavailable")
+  })
+
+  it("returns a fallback message for a non-Error webhook sync failure", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_1", organizationId: "org_1" })
+    )
+    mockSyncMetaWebhookSubscription.mockImplementationOnce(async () => {
+      throw "sync failed"
+    })
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-webhook", {
+        method: "POST",
+      })
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+
+    expect(response.status).toBe(500)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("SYNC_FAILED")
+    expect(payload.message).toBe("Failed to sync webhook")
   })
 
   // ── Template sync ──────────────────────────────────────────────────────────
