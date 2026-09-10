@@ -10,8 +10,8 @@ import {
   mockPlatformRole,
   mockIsAdmin,
   testIsAdmin,
-  type PlatformAccessRole,
 } from "@/test/helpers/test-auth"
+import type { PlatformAccessRole } from "@/lib/platform-role"
 
 const mockFindUnique = mock()
 const mockUpdate = mock()
