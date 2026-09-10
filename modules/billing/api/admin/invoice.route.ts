@@ -4,15 +4,17 @@ import { z } from "zod"
 import { Prisma } from "@prisma/client"
 import type { BillingInvoiceStatus } from "@prisma/client"
 import Decimal = Prisma.Decimal
-
-import { prisma } from "@/lib/prisma"
-import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { getPlatformRoleForUser } from "@/lib/platform-role"
-import type { PlatformAccessRole } from "@/lib/platform-role"
+import {
+  getPlatformRoleForUser,
+  type PlatformAccessRole,
+} from "@/lib/platform-role"
+import { resolveAdminActor } from "@/modules/admin/api/admin.guards"
 import {
   invoiceEmailService,
   type InvoiceEmailService,
 } from "@/modules/invoices/email.service"
+import { fieldErrorMapFromIssues } from "@/lib/validation"
+import { prisma } from "@/lib/prisma"
 import type {
   InvoiceListItem,
   InvoiceStatus,
@@ -66,10 +68,7 @@ const defaultDeps: AdminInvoiceRouteDeps = {
     return billingAccount?.organizationId ?? null
   },
   resolveInvoiceRecipients: resolveInvoiceEmailRecipients,
-  isAdmin: (actor) => {
-    if (actor.platformRole === "super_admin") return true
-    return actor.tenantRole === "admin" || actor.tenantRole === "owner"
-  },
+  isAdmin: (actor) => resolveAdminActor(actor.platformRole, actor.tenantRole),
 }
 
 const invoiceParamsSchema = z.object({
@@ -271,10 +270,22 @@ export const createAdminInvoiceRoutes = (
         try {
           const invoice = await prisma.billingInvoice.findUnique({
             where: { id },
+            include: { billingAccount: { select: { organizationId: true } } },
           })
 
           if (!invoice) {
             return toNotFound(set, "Invoice not found.")
+          }
+
+          if (
+            actor.platformRole !== "super_admin" &&
+            invoice.billingAccount &&
+            invoice.billingAccount.organizationId !== auth.organizationId
+          ) {
+            return toForbidden(
+              set,
+              "Cannot update invoices belonging to another organization."
+            )
           }
 
           // Validate status transitions

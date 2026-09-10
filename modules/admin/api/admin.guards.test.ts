@@ -1,8 +1,15 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 
+import {
+  requireScopedTenantAdmin,
+  scopedTenantAdminGuard,
+} from "./admin.guards"
+
 type MockAuthValue = {
   user: { id: string; email: string } | null
+  organizationId?: string | null
+  role?: string | null
 }
 
 let mockAuthValue: MockAuthValue = { user: null }
@@ -193,6 +200,104 @@ describe("adminGuards", () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.public).toBe(true)
+    })
+  })
+
+  describe("requireScopedTenantAdmin", () => {
+    it("returns 401 when unauthenticated", async () => {
+      mockAuthValue = { user: null }
+      const set: { status?: number } = {}
+      const result = await requireScopedTenantAdmin(set)
+      expect(set.status).toBe(401)
+      expect(result.ok).toBe(false)
+    })
+
+    it("allows super_admin unconditionally without org context", async () => {
+      mockAuthValue = { user: { id: "u_super", email: "super@test.com" } }
+      mockPlatformRole = "SUPER_ADMIN"
+      const set: { status?: number } = {}
+      const result = await requireScopedTenantAdmin(set)
+      expect(result.ok).toBe(true)
+      expect(result.isSuperAdmin).toBe(true)
+    })
+
+    it("allows super_admin with requested targetOrgId", async () => {
+      mockAuthValue = { user: { id: "u_super", email: "super@test.com" } }
+      mockPlatformRole = "SUPER_ADMIN"
+      const set: { status?: number } = {}
+      const result = await requireScopedTenantAdmin(set, {
+        targetOrgId: "org_any",
+      })
+      expect(result.ok).toBe(true)
+      expect(result.organizationId).toBe("org_any")
+    })
+
+    it("returns 403 when non-super_admin lacks organizationId", async () => {
+      mockAuthValue = {
+        user: { id: "u_tenant", email: "tenant@test.com" },
+        role: "admin",
+      }
+      mockPlatformRole = "NONE"
+      const set: { status?: number } = {}
+      const result = await requireScopedTenantAdmin(set)
+      expect(set.status).toBe(403)
+      expect(result.ok).toBe(false)
+      expect(result.policyCode).toBe("ORGANIZATION_CONTEXT_REQUIRED")
+    })
+
+    it("returns 403 when non-super_admin has member role", async () => {
+      mockAuthValue = {
+        user: { id: "u_tenant", email: "tenant@test.com" },
+        organizationId: "org_1",
+        role: "member",
+      }
+      mockPlatformRole = "NONE"
+      const set: { status?: number } = {}
+      const result = await requireScopedTenantAdmin(set)
+      expect(set.status).toBe(403)
+      expect(result.ok).toBe(false)
+      expect(result.policyCode).toBe("ADMIN_ROLE_REQUIRED")
+    })
+
+    it("allows tenant admin within their own organization", async () => {
+      mockAuthValue = {
+        user: { id: "u_tenant", email: "tenant@test.com" },
+        organizationId: "org_1",
+        role: "admin",
+      }
+      mockPlatformRole = "NONE"
+      const set: { status?: number } = {}
+      const result = await requireScopedTenantAdmin(set, {
+        targetOrgId: "org_1",
+      })
+      expect(result.ok).toBe(true)
+      expect(result.isSuperAdmin).toBe(false)
+      expect(result.organizationId).toBe("org_1")
+    })
+
+    it("blocks tenant admin when targetOrgId differs from session organizationId", async () => {
+      mockAuthValue = {
+        user: { id: "u_tenant", email: "tenant@test.com" },
+        organizationId: "org_1",
+        role: "admin",
+      }
+      mockPlatformRole = "NONE"
+      const set: { status?: number } = {}
+      const result = await requireScopedTenantAdmin(set, {
+        targetOrgId: "org_victim",
+      })
+      expect(set.status).toBe(403)
+      expect(result.ok).toBe(false)
+      expect(result.policyCode).toBe("CROSS_TENANT_ACCESS_DENIED")
+    })
+
+    it("scopedTenantAdminGuard plugin rejects unauthorized callers", async () => {
+      mockAuthValue = { user: null }
+      const app = new Elysia()
+        .use(scopedTenantAdminGuard)
+        .get("/admin/scoped", () => ({ ok: true }))
+      const res = await app.handle(new Request("http://localhost/admin/scoped"))
+      expect(res.status).toBe(401)
     })
   })
 })

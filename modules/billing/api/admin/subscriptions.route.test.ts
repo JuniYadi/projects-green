@@ -475,7 +475,7 @@ describe("AdminSubscriptionRoute", () => {
 
     it("allows update when default isAdmin with org role owner", async () => {
       mockFindUnique
-        .mockResolvedValueOnce({ id: "sub-2" })
+        .mockResolvedValueOnce({ id: "sub-2", organizationId: "org-1" })
         .mockResolvedValueOnce({
           id: "sub-2",
           planId: "plan-1",

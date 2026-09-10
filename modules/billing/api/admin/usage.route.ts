@@ -4,8 +4,11 @@ import { z } from "zod"
 import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
-import { getPlatformRoleForUser } from "@/lib/platform-role"
-import type { PlatformAccessRole } from "@/lib/platform-role"
+import {
+  getPlatformRoleForUser,
+  type PlatformAccessRole,
+} from "@/lib/platform-role"
+import { resolveAdminActor } from "@/modules/admin/api/admin.guards"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -33,10 +36,7 @@ type AdminUsageRouteDeps = {
 const defaultDeps: AdminUsageRouteDeps = {
   authenticate: () => withAuth(),
   getPlatformRole: getPlatformRoleForUser,
-  isAdmin: (actor) => {
-    if (actor.platformRole === "super_admin") return true
-    return actor.orgRole === "admin" || actor.orgRole === "owner"
-  },
+  isAdmin: (actor) => resolveAdminActor(actor.platformRole, actor.orgRole),
 }
 
 const querySchema = z.object({

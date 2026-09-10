@@ -4,8 +4,11 @@ import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
-import { getPlatformRoleForUser } from "@/lib/platform-role"
-import type { PlatformAccessRole } from "@/lib/platform-role"
+import {
+  getPlatformRoleForUser,
+  type PlatformAccessRole,
+} from "@/lib/platform-role"
+import { resolveAdminActor } from "@/modules/admin/api/admin.guards"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -33,12 +36,7 @@ type AdminMembersRouteDeps = {
 const defaultDeps: AdminMembersRouteDeps = {
   authenticate: () => withAuth(),
   getPlatformRole: getPlatformRoleForUser,
-  isAdmin: (actor) => {
-    // super_admin from AuthPlatformUserRole table bypasses auth.role entirely
-    if (actor.platformRole === "super_admin") return true
-    // tenant-level admin/owner check requires auth.role to be present
-    return actor.orgRole === "admin" || actor.orgRole === "owner"
-  },
+  isAdmin: (actor) => resolveAdminActor(actor.platformRole, actor.orgRole),
 }
 
 const toUnauthorized = (set: RouteSet) => {
@@ -169,10 +167,17 @@ export const createAdminMembersRoutes = (
         try {
           // Get all billing accounts with their organizations
           // Super_admin sees all; admins see only their org via billing account
+          if (actor.platformRole !== "super_admin" && !auth.organizationId) {
+            return toForbidden(
+              set,
+              "Organization context required for tenant administrators."
+            )
+          }
+
           const billingAccountWhere = orgId
             ? { organizationId: orgId }
-            : actor.platformRole !== "super_admin" && auth.organizationId
-              ? { organizationId: auth.organizationId }
+            : actor.platformRole !== "super_admin"
+              ? { organizationId: auth.organizationId! }
               : undefined
 
           const billingAccountsWithOrg = await prisma.billingAccount.findMany({
@@ -305,10 +310,16 @@ export const createAdminMembersRoutes = (
         }
 
         try {
-          // Find billing account by organization ID, scoped to caller's org for non-super_admin
+          if (actor.platformRole !== "super_admin" && !auth.organizationId) {
+            return toForbidden(
+              set,
+              "Organization context required for tenant administrators."
+            )
+          }
+
           const billingAccountWhere: Prisma.BillingAccountWhereInput =
-            actor.platformRole !== "super_admin" && auth.organizationId
-              ? { organizationId: auth.organizationId }
+            actor.platformRole !== "super_admin"
+              ? { organizationId: auth.organizationId! }
               : { organizationId: userId }
           const billingAccount = await prisma.billingAccount.findFirst({
             where: billingAccountWhere,
