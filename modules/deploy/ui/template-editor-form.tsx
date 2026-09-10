@@ -44,7 +44,14 @@ import {
   Database,
   HardDrive,
   Key,
+  Copy,
+  Lock,
+  PushPin,
+  EyeSlash,
+  Eye,
 } from "@phosphor-icons/react"
+import { renderMarkdownFallback } from "@/lib/markdown"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   AlertDialog,
@@ -101,6 +108,7 @@ export function TemplateEditorForm({
   const [readmeMarkdown, setReadmeMarkdown] = useState(
     initialData?.readmeMarkdown || ""
   )
+  const [readmeTab, setReadmeTab] = useState<"write" | "preview">("write")
   const [iconUrl, setIconUrl] = useState(initialData?.iconUrl || "")
   const [websiteUrl, setWebsiteUrl] = useState(initialData?.websiteUrl || "")
   const [documentationUrl, setDocumentationUrl] = useState(
@@ -590,11 +598,34 @@ export function TemplateEditorForm({
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {isNew
-                ? "Author first-party stack or community blueprint with full configuration specs."
-                : `ID: ${initialData?.id} · Version: ${version}`}
-            </p>
+            {isNew ? (
+              <p className="text-xs text-muted-foreground">
+                Author first-party stack or community blueprint with full
+                configuration specs.
+              </p>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-medium">Version {version}</span>
+                <span>•</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (initialData?.id) {
+                      navigator.clipboard.writeText(initialData.id)
+                      toast.success("Template ID copied to clipboard")
+                    }
+                  }}
+                  className="inline-flex cursor-pointer items-center gap-1 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                  title="Click to copy full ID"
+                >
+                  <Copy className="size-3" />
+                  <span>
+                    ID:{" "}
+                    {initialData?.id ? `${initialData.id.slice(0, 12)}...` : ""}
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -695,11 +726,11 @@ export function TemplateEditorForm({
         <TabsList
           className={`grid w-full ${!isNew && initialData?.id ? "grid-cols-4" : "grid-cols-3"}`}
         >
-          <TabsTrigger value="general">1. General & Docs</TabsTrigger>
-          <TabsTrigger value="runtime">2. Runtime & Services</TabsTrigger>
-          <TabsTrigger value="env">3. Env Schema</TabsTrigger>
+          <TabsTrigger value="general">General &amp; Docs</TabsTrigger>
+          <TabsTrigger value="runtime">Runtime &amp; Services</TabsTrigger>
+          <TabsTrigger value="env">Env Schema</TabsTrigger>
           {!isNew && initialData?.id && (
-            <TabsTrigger value="installations">4. Installations</TabsTrigger>
+            <TabsTrigger value="installations">Installations</TabsTrigger>
           )}
         </TabsList>
 
@@ -790,10 +821,10 @@ export function TemplateEditorForm({
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
-                  Governance & Classification
+                  Catalog &amp; Pricing
                 </CardTitle>
                 <CardDescription>
-                  Category, visibility, and commercial terms
+                  Marketplace catalog, category, and commercial terms
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -871,6 +902,8 @@ export function TemplateEditorForm({
                       <Input
                         id="template-price"
                         type="number"
+                        min={0}
+                        step="0.01"
                         value={priceMonthly}
                         onChange={(e) => setPriceMonthly(e.target.value)}
                         placeholder="0.00"
@@ -914,22 +947,63 @@ export function TemplateEditorForm({
             </Card>
           </div>
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Template Documentation (Markdown)
-              </CardTitle>
-              <CardDescription>
-                Full readme and deployment manual shown in template detail view
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-base">
+                  Template Documentation (Markdown)
+                </CardTitle>
+                <CardDescription>
+                  Full readme and deployment manual shown in template detail
+                  view
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 text-xs">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={readmeTab === "write" ? "secondary" : "ghost"}
+                  onClick={() => setReadmeTab("write")}
+                  className="h-7 px-2.5 text-xs"
+                >
+                  Write
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={readmeTab === "preview" ? "secondary" : "ghost"}
+                  onClick={() => setReadmeTab("preview")}
+                  className="h-7 px-2.5 text-xs"
+                >
+                  Preview
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <Textarea
-                rows={12}
-                value={readmeMarkdown}
-                onChange={(e) => setReadmeMarkdown(e.target.value)}
-                placeholder="# Getting Started with this Stack..."
-                className="font-mono text-xs"
-              />
+              {readmeTab === "write" ? (
+                <Textarea
+                  rows={12}
+                  value={readmeMarkdown}
+                  onChange={(e) => setReadmeMarkdown(e.target.value)}
+                  placeholder="# Getting Started with this Stack..."
+                  className="font-mono text-xs"
+                />
+              ) : (
+                <div className="prose prose-sm max-h-[380px] min-h-[240px] max-w-none overflow-y-auto rounded-md border p-4 text-foreground dark:prose-invert">
+                  {readmeMarkdown.trim() ? (
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(
+                          renderMarkdownFallback(readmeMarkdown)
+                        ),
+                      }}
+                    />
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">
+                      No documentation written yet.
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -993,22 +1067,22 @@ export function TemplateEditorForm({
                 <div className="space-y-3 rounded-lg border p-3">
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium">
-                      Health Checks &amp; Kubernetes Probes
+                      Health Checks &amp; Container Probes
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Probes are disabled when Liveness path is empty to prevent
-                      boot-loops during setup and sync drift.
+                      Configure health endpoints to monitor container status and
+                      prevent boot loops.
                     </p>
                   </div>
                   <div className="space-y-1.5 pt-1">
                     <Label htmlFor="runtime-health" className="text-xs">
-                      Liveness Probe Path (Primary Health Check)
+                      Liveness Probe Path (Health Check Endpoint)
                     </Label>
                     <Input
                       id="runtime-health"
                       value={healthCheckPath}
                       onChange={(e) => setHealthCheckPath(e.target.value)}
-                      placeholder="e.g. /healthz (leave empty to disable all probes)"
+                      placeholder="e.g. /healthz or /api/ping (leave empty to disable all probes)"
                       className="h-8 text-xs"
                     />
                   </div>
@@ -1192,14 +1266,16 @@ export function TemplateEditorForm({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="res-cpu">Default CPU</Label>
+                      <Label htmlFor="res-cpu">Default CPU (mCPU)</Label>
                       <span className="text-[11px] text-muted-foreground">
-                        {(defaultCpu / 1000).toFixed(2)} vCPU
+                        = {(defaultCpu / 1000).toFixed(2)} vCPU (1000m = 1 vCPU)
                       </span>
                     </div>
                     <Input
                       id="res-cpu"
                       type="number"
+                      min={50}
+                      step={50}
                       value={defaultCpu}
                       onChange={(e) =>
                         setDefaultCpu(parseInt(e.target.value) || 500)
@@ -1209,8 +1285,9 @@ export function TemplateEditorForm({
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="res-mem">Default Memory</Label>
+                      <Label htmlFor="res-mem">Default Memory (MB)</Label>
                       <span className="text-[11px] text-muted-foreground">
+                        ={" "}
                         {defaultMemory >= 1024
                           ? `${(defaultMemory / 1024).toFixed(1)} GB`
                           : `${defaultMemory} MB`}
@@ -1219,6 +1296,8 @@ export function TemplateEditorForm({
                     <Input
                       id="res-mem"
                       type="number"
+                      min={64}
+                      step={64}
                       value={defaultMemory}
                       onChange={(e) =>
                         setDefaultMemory(parseInt(e.target.value) || 512)
@@ -1275,11 +1354,14 @@ export function TemplateEditorForm({
                   <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
                     <Warning className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                     <div className="space-y-1">
-                      <p className="font-semibold">Autoscaling Advisory:</p>
+                      <p className="font-semibold">
+                        Single-Node Storage Constraint:
+                      </p>
                       <p className="text-[11px] leading-relaxed">
-                        Workloads with persistent storage (RWO) cannot be scaled
-                        horizontally across multiple nodes. Maximum replicas is
-                        locked to 1 to prevent volume multi-attach errors.
+                        Workloads with dedicated persistent storage (RWO) cannot
+                        be scaled horizontally across multiple nodes (maximum
+                        replicas is locked to 1) to prevent volume attachment
+                        conflicts.
                       </p>
                     </div>
                   </div>
@@ -1617,7 +1699,7 @@ export function TemplateEditorForm({
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <div className="space-y-1 lg:col-span-2">
                           <Label className="text-xs font-medium text-muted-foreground">
-                            Description (Helper text shown to user)
+                            Description (User Helper Text)
                           </Label>
                           <Input
                             value={item.description || ""}
@@ -1645,7 +1727,7 @@ export function TemplateEditorForm({
                                   isNaN(num) || num <= 0 ? undefined : num,
                               })
                             }}
-                            placeholder="e.g. 32 (auto-generates hex token)"
+                            placeholder="Length in chars (e.g. 32)"
                             className="h-8 font-mono text-xs"
                           />
                         </div>
@@ -1696,7 +1778,10 @@ export function TemplateEditorForm({
                               })
                             }
                           />
-                          <span className="font-medium">Secret 🔒</span>
+                          <span className="flex items-center gap-1 font-medium">
+                            <Lock className="size-3.5 text-muted-foreground" />
+                            Secret
+                          </span>
                           <span className="text-[11px] text-muted-foreground">
                             (Masked input)
                           </span>
@@ -1711,7 +1796,10 @@ export function TemplateEditorForm({
                               })
                             }
                           />
-                          <span className="font-medium">Fixed 📌</span>
+                          <span className="flex items-center gap-1 font-medium">
+                            <PushPin className="size-3.5 text-muted-foreground" />
+                            Fixed
+                          </span>
                           <span className="text-[11px] text-muted-foreground">
                             (Locked for tenant)
                           </span>
@@ -1726,7 +1814,10 @@ export function TemplateEditorForm({
                               })
                             }
                           />
-                          <span className="font-medium">Hidden 👁️‍🗨️</span>
+                          <span className="flex items-center gap-1 font-medium">
+                            <EyeSlash className="size-3.5 text-muted-foreground" />
+                            Hidden
+                          </span>
                           <span className="text-[11px] text-muted-foreground">
                             (Hidden in deploy drawer)
                           </span>
@@ -1734,6 +1825,98 @@ export function TemplateEditorForm({
                       </div>
                     </div>
                   ))}
+
+                  {envSchema.length > 0 && (
+                    <div className="mt-6 rounded-lg border border-border bg-muted/20 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Eye className="size-4 text-primary" />
+                        <span className="text-xs font-semibold tracking-wider text-foreground uppercase">
+                          Deploy Drawer Preview
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          — Live preview of how tenants will see these inputs
+                          during deployment
+                        </span>
+                      </div>
+
+                      <div className="space-y-3 rounded-md border bg-card p-4">
+                        {envSchema.map((item, idx) => {
+                          if (item.isHidden) {
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between rounded border border-dashed border-muted bg-muted/30 p-2 text-xs text-muted-foreground"
+                              >
+                                <span className="font-mono">
+                                  {item.key || `VAR_${idx + 1}`}
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-[11px] italic">
+                                  <EyeSlash className="size-3" /> Hidden from
+                                  tenant
+                                </span>
+                              </div>
+                            )
+                          }
+
+                          return (
+                            <div key={idx} className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <Label className="flex items-center gap-1 text-xs font-medium">
+                                  {item.label ||
+                                    item.key ||
+                                    `Variable ${idx + 1}`}
+                                  {item.required && (
+                                    <span className="text-destructive">*</span>
+                                  )}
+                                </Label>
+                                <div className="flex items-center gap-1.5">
+                                  {item.isFixed && (
+                                    <Badge
+                                      variant="outline"
+                                      className="h-4 gap-0.5 px-1 text-[10px] text-muted-foreground"
+                                    >
+                                      <PushPin className="size-2.5" /> Locked
+                                    </Badge>
+                                  )}
+                                  {item.isSecret && (
+                                    <Badge
+                                      variant="outline"
+                                      className="h-4 gap-0.5 px-1 text-[10px] text-amber-600 dark:text-amber-400"
+                                    >
+                                      <Lock className="size-2.5" /> Secret
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              {item.description && (
+                                <p className="text-[11px] text-muted-foreground">
+                                  {item.description}
+                                </p>
+                              )}
+                              <Input
+                                disabled={item.isFixed}
+                                type={item.isSecret ? "password" : "text"}
+                                value={
+                                  item.isSecret && item.defaultValue
+                                    ? "••••••••"
+                                    : item.defaultValue || ""
+                                }
+                                readOnly
+                                placeholder={
+                                  item.defaultValue
+                                    ? undefined
+                                    : item.isSecret
+                                      ? "Enter secret value..."
+                                      : "Enter value..."
+                                }
+                                className="h-8 bg-background/80 text-xs"
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

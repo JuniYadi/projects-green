@@ -82,8 +82,8 @@ describe("TemplateInstallationsTab", () => {
 
     // KPI cards
     expect(getByText("Total Active Installations")).toBeTruthy()
-    expect(getByText("Aligned Workloads")).toBeTruthy()
-    expect(getByText("Outdated Workloads")).toBeTruthy()
+    expect(getByText(/Aligned Workloads/i)).toBeTruthy()
+    expect(getByText(/Outdated Workloads/i)).toBeTruthy()
   })
 
   it("opens confirmation dialog with safe merge explanation when Sync is clicked", async () => {

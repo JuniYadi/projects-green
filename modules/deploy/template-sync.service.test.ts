@@ -15,6 +15,17 @@ const mockPrisma = {
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
+const mockGetCachedOrganizations = mock(async (orgIds: string[]) => {
+  const map = new Map<string, { id: string; name: string }>()
+  for (const id of orgIds) {
+    map.set(id, { id, name: `Acme Org for ${id}` })
+  }
+  return map
+})
+
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganizations: mockGetCachedOrganizations,
+}))
 
 const mockSyncStackConfiguration = mock(async () => ({
   ok: true,
