@@ -344,7 +344,7 @@ describe("support ticket routes", () => {
     expect(payload).toBeDefined()
   })
 
-  it("converts markdown to unescaped HTML on preview", async () => {
+  it("converts markdown to sanitized HTML on preview", async () => {
     const app = createApp({})
 
     const response = await app.handle(
@@ -354,7 +354,8 @@ describe("support ticket routes", () => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          markdown: "# Udah masuk\n\n- ok 1",
+          markdown:
+            "# Udah masuk\n\n- ok 1\n\n<script>alert('xss')</script><img src=x onerror=alert(1)>",
         }),
       })
     )
@@ -364,6 +365,8 @@ describe("support ticket routes", () => {
     expect(json.ok).toBe(true)
     expect(json.html).toContain("<h1>Udah masuk</h1>")
     expect(json.html).toContain("<li>ok 1</li>")
+    expect(json.html).not.toContain("<script>")
+    expect(json.html).not.toContain("onerror")
   })
 
   it("returns thread by ticket id", async () => {

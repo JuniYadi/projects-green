@@ -32,6 +32,7 @@ import { SECURE_ONLY_REPLY_BODY } from "@/modules/support-tickets/support-ticket
 import { getCachedOrganizations, getCachedUsers } from "@/lib/workos-directory"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { sanitizeHtml } from "@/lib/sanitize-html"
+import { toSupportTicketDTO } from "@/modules/support-tickets/support-ticket.dto"
 
 type SupportTicketAuthContext = {
   organizationId?: string | null
@@ -468,7 +469,7 @@ export const createSupportTicketRoutes = (
 
           return {
             ok: true as const,
-            ticket,
+            ticket: toSupportTicketDTO(ticket),
           }
         }
       ),
@@ -480,10 +481,11 @@ export const createSupportTicketRoutes = (
       "/preview",
       createRouteHandler(dependencies, async ({ body }) => {
         const payload = z.object({ markdown: z.string() }).parse(body)
-        const html =
+        const rawHtml =
           typeof Bun !== "undefined"
             ? Bun.markdown.html(payload.markdown, { tagFilter: true })
             : payload.markdown
+        const html = sanitizeHtml(rawHtml)
         return {
           ok: true as const,
           html,

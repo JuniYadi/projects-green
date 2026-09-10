@@ -8,6 +8,22 @@ export type SshCommandResult = {
   exitCode: number
 }
 
+/**
+ * Escape a single shell argument safely for POSIX shells.
+ * Wraps string in single quotes and escapes embedded single quotes.
+ */
+export function escapeShellArg(arg: string): string {
+  if (arg === "") return "''"
+  if (/^[A-Za-z0-9_./:=-]+$/.test(arg)) {
+    return arg
+  }
+  return `'${arg.replace(/'/g, "'\\''")}'`
+}
+
+export function buildSafeShellCommand(remoteArgs: string[]): string {
+  return remoteArgs.map(escapeShellArg).join(" ")
+}
+
 /** SSH-layer error classification for better error messages. */
 export type SshErrorType =
   | { type: "timeout"; host: string }
@@ -106,7 +122,7 @@ export class VpnServerSshExecutor {
     visited.add(host)
 
     const privateKey = decryptSshPrivateKey(target.encryptedPrivateKey)
-    const command = remoteArgs.join(" ")
+    const command = buildSafeShellCommand(remoteArgs)
 
     return new Promise<SshCommandResult>((resolve) => {
       const client = new Client()
