@@ -5,7 +5,7 @@ import { redis } from "@/lib/redis"
 export type RedisClient = typeof redis
 
 export type WhatsappRateLimitTier =
-  "messaging" | "standard" | "heavy" | "anonymous"
+  "messaging" | "standard" | "heavy" | "anonymous" | "read"
 
 export type RateLimitTierConfig = {
   windowMs: number
@@ -17,6 +17,11 @@ export const WHATSAPP_RATE_LIMIT_TIERS: Record<
   WhatsappRateLimitTier,
   RateLimitTierConfig
 > = {
+  read: {
+    windowMs: 60_000,
+    max: 300,
+    name: "WhatsApp Read Operations",
+  },
   messaging: {
     windowMs: 60_000,
     max: 120,
@@ -185,10 +190,11 @@ export function classifyWhatsappRouteTier(
   method: string,
   hasOrgAuth: boolean
 ): WhatsappRateLimitTier | "exempt" {
-  // Normalize path without trailing slash
-  const normalized =
-    path.endsWith("/") && path.length > 1 ? path.slice(0, -1) : path
-
+  // Normalize path by stripping /api prefix (if present) and trailing slash
+  let normalized = path.replace(/^\/api(?=\/|$)/, "")
+  if (normalized.endsWith("/") && normalized.length > 1) {
+    normalized = normalized.slice(0, -1)
+  }
   // 1. Exempt routes (Webhooks from Meta, internal health/status)
   if (
     normalized.startsWith("/whatsapp/webhooks") ||
@@ -231,8 +237,12 @@ export function classifyWhatsappRouteTier(
   ) {
     return "messaging"
   }
+  // 5. Read-only Tier (300 RPM)
+  if (upperMethod === "GET" || upperMethod === "HEAD") {
+    return "read"
+  }
 
-  // 5. Standard CRUD Tier (60 RPM)
+  // 6. Standard CRUD Tier (60 RPM)
   return "standard"
 }
 

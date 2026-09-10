@@ -86,24 +86,39 @@ describe("classifyWhatsappRouteTier", () => {
     ).toBe("heavy")
   })
 
-  it("classifies standard CRUD requests as standard tier (60 RPM)", () => {
-    expect(classifyWhatsappRouteTier("/whatsapp/contacts", "GET", true)).toBe(
-      "standard"
-    )
+  it("classifies standard mutating CRUD requests as standard tier (60 RPM)", () => {
     expect(classifyWhatsappRouteTier("/whatsapp/contacts", "POST", true)).toBe(
       "standard"
     )
     expect(
-      classifyWhatsappRouteTier("/whatsapp/conversations", "GET", true)
+      classifyWhatsappRouteTier("/whatsapp/contacts/1", "PATCH", true)
     ).toBe("standard")
-    expect(classifyWhatsappRouteTier("/whatsapp/devices", "GET", true)).toBe(
+    expect(
+      classifyWhatsappRouteTier("/whatsapp/contacts/1", "DELETE", true)
+    ).toBe("standard")
+    expect(classifyWhatsappRouteTier("/whatsapp/catalogs", "POST", true)).toBe(
       "standard"
+    )
+  })
+
+  it("classifies read-only GET requests as read tier (300 RPM)", () => {
+    expect(classifyWhatsappRouteTier("/whatsapp/contacts", "GET", true)).toBe(
+      "read"
+    )
+    expect(
+      classifyWhatsappRouteTier("/whatsapp/conversations", "GET", true)
+    ).toBe("read")
+    expect(classifyWhatsappRouteTier("/whatsapp/devices", "GET", true)).toBe(
+      "read"
     )
     expect(classifyWhatsappRouteTier("/whatsapp/messages", "GET", true)).toBe(
-      "standard"
+      "read"
     )
     expect(classifyWhatsappRouteTier("/whatsapp/templates", "GET", true)).toBe(
-      "standard"
+      "read"
+    )
+    expect(classifyWhatsappRouteTier("/whatsapp/messages", "HEAD", true)).toBe(
+      "read"
     )
   })
 
@@ -114,6 +129,27 @@ describe("classifyWhatsappRouteTier", () => {
     expect(classifyWhatsappRouteTier("/whatsapp/webhooks/", "POST", true)).toBe(
       "exempt"
     )
+  })
+
+  it("handles /api prefix identically to unprefixed paths", () => {
+    expect(
+      classifyWhatsappRouteTier("/api/whatsapp/messages", "POST", true)
+    ).toBe("messaging")
+    expect(
+      classifyWhatsappRouteTier("/api/whatsapp/contacts", "GET", true)
+    ).toBe("read")
+    expect(
+      classifyWhatsappRouteTier("/api/whatsapp/webhooks", "POST", false)
+    ).toBe("exempt")
+    expect(
+      classifyWhatsappRouteTier("/api/whatsapp/meta-webhook/key", "POST", false)
+    ).toBe("exempt")
+    expect(
+      classifyWhatsappRouteTier("/api/whatsapp/media/upload", "POST", true)
+    ).toBe("heavy")
+    expect(
+      classifyWhatsappRouteTier("/api/whatsapp/contacts", "POST", true)
+    ).toBe("standard")
   })
 })
 
@@ -164,6 +200,7 @@ describe("evaluateWhatsappRateLimit (In-Memory Engine)", () => {
   })
 
   it("has correct configuration values matching specifications", () => {
+    expect(WHATSAPP_RATE_LIMIT_TIERS.read.max).toBe(300)
     expect(WHATSAPP_RATE_LIMIT_TIERS.messaging.max).toBe(120)
     expect(WHATSAPP_RATE_LIMIT_TIERS.standard.max).toBe(60)
     expect(WHATSAPP_RATE_LIMIT_TIERS.heavy.max).toBe(30)
