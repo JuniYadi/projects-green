@@ -62,7 +62,7 @@ describe("TemplateEditorForm", () => {
           isFeatured: false,
           currency: "USD",
           installCount: 10,
-          reviewedBy: null,
+          reviewNotes: null,
           verifiedAt: null,
           priceMonthly: "0",
           blueprintJson: {
