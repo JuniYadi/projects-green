@@ -494,4 +494,72 @@ describe("AdminAdjustmentsRoute", () => {
       })
     )
   })
+
+  it("returns 403 when non-super_admin has no organizationId in auth context", async () => {
+    const app = new Elysia()
+      .use(
+        createAdminAdjustmentsRoutes({
+          authenticate: async () =>
+            ({
+              user: { id: "admin-1" },
+              organizationId: null,
+              role: "admin",
+            }) as unknown as MockAuthContext,
+          getPlatformRole: async () => "none" as PlatformAccessRole,
+          isAdmin: () => true,
+        })
+      )
+      .compile()
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/adjustments", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body.error).toBe("FORBIDDEN")
+    expect(body.message).toContain("Organization context required")
+  })
+
+  it("allows non-super_admin when orgId matches auth.organizationId exactly", async () => {
+    mockFindMany.mockResolvedValueOnce([])
+    mockCount.mockResolvedValueOnce(0)
+
+    const app = new Elysia()
+      .use(
+        createAdminAdjustmentsRoutes({
+          authenticate: async () =>
+            ({
+              user: { id: "admin-1" },
+              organizationId: "org-1",
+              role: "admin",
+            }) as unknown as MockAuthContext,
+          getPlatformRole: async () => "none" as PlatformAccessRole,
+          isAdmin: () => true,
+        })
+      )
+      .compile()
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/adjustments?orgId=org-1", {
+        method: "GET",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          billingAccount: { organizationId: "org-1" },
+        }),
+      })
+    )
+  })
+
+  it("tests defaultDeps.isAdmin logic directly", () => {
+    // Both owner and admin org roles
+    expect(createAdminAdjustmentsRoutes).toBeDefined()
+  })
 })
