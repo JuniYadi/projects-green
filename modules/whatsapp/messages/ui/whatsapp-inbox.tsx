@@ -748,7 +748,7 @@ function MessageBubble({
 
           {message.waMessageId && (
             <div
-              className={`absolute top-1/2 -translate-y-1/2 ${
+              className={`absolute top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 ${
                 isInbox ? "-right-7" : "-left-7"
               }`}
             >

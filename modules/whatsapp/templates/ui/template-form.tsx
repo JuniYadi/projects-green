@@ -627,10 +627,24 @@ export function TemplateForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="slug">
-                    <WhatsAppText id="s243" />{" "}
-                    <span className="text-destructive">*</span>
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="slug">
+                      <WhatsAppText id="s243" />{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    {!approvedTemplateLocked && name && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSlug(formatTemplateSlug(name))
+                          setSlugManuallyEdited(false)
+                        }}
+                        className="text-[11px] text-primary hover:underline"
+                      >
+                        {isEnUi ? "Sync with name" : "Samakan dengan nama"}
+                      </button>
+                    )}
+                  </div>
                   <Input
                     id="slug"
                     value={slug}

@@ -73,13 +73,16 @@ type BroadcastRecipientInput = CreateBroadcastInput["recipients"][number]
 const THROTTLE_PER_MINUTES = 60
 const FALLBACK_THROTTLE_MAX_MESSAGES = 40
 
-function formatDuration(minutes: number): string {
+function formatDuration(minutes: number, isId = true): string {
   if (minutes < 60) {
-    return `~${minutes} menit`
+    return isId ? `~${minutes} menit` : `~${minutes} mins`
   }
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
-  return rest > 0 ? `~${hours} jam ${rest} menit` : `~${hours} jam`
+  if (isId) {
+    return rest > 0 ? `~${hours} jam ${rest} menit` : `~${hours} jam`
+  }
+  return rest > 0 ? `~${hours} hrs ${rest} mins` : `~${hours} hrs`
 }
 
 function withFallbackVariableValues({
@@ -988,7 +991,7 @@ export default function NewWhatsAppBroadcastPage() {
                       onChange={(event) =>
                         setManualRecipients(event.target.value)
                       }
-                      placeholder={"6281234567890\n6289876543210"}
+                      placeholder={"6281234567890,\n6289876543210"}
                     />
                     <p className="text-xs text-muted-foreground">
                       <WhatsAppText id="s330" locale={locale} />
@@ -1344,10 +1347,11 @@ export default function NewWhatsAppBroadcastPage() {
                   <WhatsAppText id="s113" locale={locale} />
                 </span>
                 <span>
-                  {isPreflightCurrent &&
-                  serverPreflight.selection.deviceId === deviceId
+                  {isPreflightCurrent && selectedDevice?.phoneNumber
                     ? selectedDevice?.phoneNumber
-                    : "Belum tervalidasi"}
+                    : locale === "id"
+                      ? "Belum tervalidasi"
+                      : "Not validated"}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
@@ -1380,9 +1384,13 @@ export default function NewWhatsAppBroadcastPage() {
                     : totalRecipients}{" "}
                   ({" "}
                   {recipientTab === "manual"
-                    ? "ketik/paste"
+                    ? locale === "id"
+                      ? "ketik/paste"
+                      : "manual input"
                     : recipientTab === "contacts"
-                      ? "daftar kontak"
+                      ? locale === "id"
+                        ? "daftar kontak"
+                        : "contact list"
                       : csvFileName || "CSV"}
                   )
                 </span>
@@ -1394,8 +1402,12 @@ export default function NewWhatsAppBroadcastPage() {
                 <span>
                   {isPreflightCurrent &&
                   serverPreflight.dispatchMode === "MANUAL_DISPATCH"
-                    ? "Buat antrean, kirim manual"
-                    : "Belum tervalidasi"}
+                    ? locale === "id"
+                      ? "Buat antrean, kirim manual"
+                      : "Queue & send manually"
+                    : locale === "id"
+                      ? "Belum tervalidasi"
+                      : "Not validated"}
                 </span>
               </div>
               {placeholders.length > 0 ? (
@@ -1413,13 +1425,23 @@ export default function NewWhatsAppBroadcastPage() {
                 <span>
                   {isPreflightCurrent
                     ? needsMultiDayAck && !acknowledgeMultiDay
-                      ? "Perlu konfirmasi multi-hari"
-                      : "Lulus"
+                      ? locale === "id"
+                        ? "Perlu konfirmasi multi-hari"
+                        : "Multi-day confirmation needed"
+                      : locale === "id"
+                        ? "Lulus"
+                        : "Passed"
                     : isPreflightErrorCurrent
-                      ? "Gagal"
+                      ? locale === "id"
+                        ? "Gagal"
+                        : "Failed"
                       : localPreflightErrors.length === 0
-                        ? "Memvalidasi server…"
-                        : "Menunggu data valid"}
+                        ? locale === "id"
+                          ? "Memvalidasi server…"
+                          : "Validating with server…"
+                        : locale === "id"
+                          ? "Menunggu data valid"
+                          : "Awaiting valid data"}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
@@ -1428,7 +1450,7 @@ export default function NewWhatsAppBroadcastPage() {
                 </span>
                 <span>
                   {totalRecipients > 0 && capacity
-                    ? formatDuration(estimatedMinutes)
+                    ? formatDuration(estimatedMinutes, locale === "id")
                     : "—"}
                 </span>
               </div>
@@ -1447,7 +1469,7 @@ export default function NewWhatsAppBroadcastPage() {
                 </span>
                 <span>
                   {capacity
-                    ? `${capacity.dailyUsed + Math.min(totalRecipients, capacity.remainingToday)} / ${capacity.dailyLimit} kuota harian terpakai`
+                    ? `${capacity.dailyUsed + Math.min(totalRecipients, capacity.remainingToday)} / ${capacity.dailyLimit} ${locale === "id" ? "kuota harian terpakai" : "daily quota used"}`
                     : "—"}
                 </span>
               </div>
@@ -1642,7 +1664,9 @@ export default function NewWhatsAppBroadcastPage() {
                     htmlFor="multi-day-ack"
                     className="text-sm font-normal"
                   >
-                    Saya memahami dan menyetujui pengiriman multi-hari ini.
+                    {locale === "id"
+                      ? "Saya memahami dan menyetujui pengiriman multi-hari ini."
+                      : "I understand and agree to this multi-day broadcast dispatch."}
                   </Label>
                 </div>
               </Alert>
@@ -1658,7 +1682,13 @@ export default function NewWhatsAppBroadcastPage() {
                 <WhatsAppText id="s354" locale={locale} />
               </Button>
               <Button type="submit" disabled={!canSubmit}>
-                {isSubmitting ? "Membuat broadcast…" : "Buat Broadcast"}
+                {isSubmitting
+                  ? locale === "id"
+                    ? "Membuat broadcast…"
+                    : "Creating broadcast…"
+                  : locale === "id"
+                    ? "Buat Broadcast"
+                    : "Create Broadcast"}
               </Button>
             </div>
           </CardContent>

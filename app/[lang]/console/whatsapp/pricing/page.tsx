@@ -168,9 +168,9 @@ export default function WhatsAppPricingPage() {
   const [selectedTier, setSelectedTier] = React.useState<
     "BASE" | "TIER_1" | "TIER_2" | "TIER_3" | null
   >(null)
-  const [marketingVolume, setMarketingVolume] = React.useState(2500)
-  const [utilityVolume, setUtilityVolume] = React.useState(1000)
-  const [authVolume, setAuthVolume] = React.useState(500)
+  const [marketingVolume, setMarketingVolume] = React.useState(1000)
+  const [utilityVolume, setUtilityVolume] = React.useState(500)
+  const [authVolume, setAuthVolume] = React.useState(200)
   const onboarding = useWhatsAppOnboarding({ locale })
 
   React.useEffect(() => {
@@ -374,10 +374,10 @@ export default function WhatsAppPricingPage() {
                   </span>
                   {(
                     [
-                      { id: "BASE", label: "BASE" },
-                      { id: "TIER_1", label: "TIER 1" },
-                      { id: "TIER_2", label: "TIER 2" },
-                      { id: "TIER_3", label: "TIER 3" },
+                      { id: "BASE", label: "BASE", subtitle: "< 50k" },
+                      { id: "TIER_1", label: "TIER 1", subtitle: "50k-100k" },
+                      { id: "TIER_2", label: "TIER 2", subtitle: "100k-250k" },
+                      { id: "TIER_3", label: "TIER 3", subtitle: "> 250k" },
                     ] as const
                   ).map((tier) => (
                     <button
@@ -395,6 +395,9 @@ export default function WhatsAppPricingPage() {
                       {tier.id === "TIER_3" && (
                         <span className="ml-1 text-[10px] opacity-80">★</span>
                       )}
+                      <span className="block text-[9px] font-normal opacity-75">
+                        {tier.subtitle}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -540,6 +543,42 @@ export default function WhatsAppPricingPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* How WhatsApp Billing Works (2-step explainer card) */}
+          <div className="rounded-lg border bg-card p-4 text-xs shadow-xs">
+            <h4 className="mb-2.5 flex items-center gap-2 text-sm font-semibold">
+              <Sparkle className="size-4 text-primary" />
+              {isIndonesian
+                ? "Cara Kerja Penagihan WhatsApp: Bebas Tagihan Ganda"
+                : "How WhatsApp Billing Works: Zero Double Charges"}
+            </h4>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                  {isIndonesian
+                    ? "1. Kuota Paket Bulanan (Kredit)"
+                    : "1. Monthly Plan Quota (Credits)"}
+                </span>
+                <p className="mt-1 leading-relaxed text-muted-foreground">
+                  {isIndonesian
+                    ? "Setiap pesan terkirim memotong saldo kuota paket perangkat Anda terlebih dahulu. Selama jatah kuota bulanan masih ada, Anda tidak dikenakan biaya tambahan sepeser pun."
+                    : "Each sent message deducts from your device's plan quota allowance first. As long as monthly quota remains, you are never charged any extra cash fee."}
+                </p>
+              </div>
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                <span className="font-semibold text-amber-700 dark:text-amber-400">
+                  {isIndonesian
+                    ? "2. Pemakaian Tambahan / Overage (PAYG)"
+                    : "2. Pay-As-You-Go Overage (PAYG)"}
+                </span>
+                <p className="mt-1 leading-relaxed text-muted-foreground">
+                  {isIndonesian
+                    ? "Hanya jika kuota bulanan perangkat benar-benar habis (0), tarif per-pesan di bawah dipotong dari saldo dompet prabayar Anda. Tidak ada pemotongan ganda."
+                    : "Only when your device's monthly quota is completely exhausted (0) will the per-message rates below apply from your prepaid wallet. You are never double-billed."}
+                </p>
+              </div>
+            </div>
+          </div>
           {/* Dynamic Status Alert Banner */}
           {(() => {
             const targetDevices =
@@ -741,8 +780,8 @@ export default function WhatsAppPricingPage() {
                                   </span>
                                   <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
                                     {isIndonesian
-                                      ? "Jatah Kuota Paket"
-                                      : "In-Quota Allowance"}
+                                      ? "Selama Kuota Ada"
+                                      : "While Quota Remains"}
                                   </div>
                                 </th>
                                 <th
@@ -765,6 +804,9 @@ export default function WhatsAppPricingPage() {
                                         : "(Active)"
                                       : ""}
                                   </span>
+                                  <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                                    {isIndonesian ? "Tarif PAYG" : "PAYG Rate"}
+                                  </div>
                                 </th>
                                 <th
                                   scope="col"
@@ -787,6 +829,9 @@ export default function WhatsAppPricingPage() {
                                         : "(Active)"
                                       : ""}
                                   </span>
+                                  <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                                    {isIndonesian ? "Tarif PAYG" : "PAYG Rate"}
+                                  </div>
                                 </th>
                                 <th
                                   scope="col"
@@ -809,6 +854,9 @@ export default function WhatsAppPricingPage() {
                                         : "(Active)"
                                       : ""}
                                   </span>
+                                  <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                                    {isIndonesian ? "Tarif PAYG" : "PAYG Rate"}
+                                  </div>
                                 </th>
                                 <th
                                   scope="col"
@@ -837,6 +885,9 @@ export default function WhatsAppPricingPage() {
                                           : "(Promo)"
                                         : ""}
                                   </span>
+                                  <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                                    {isIndonesian ? "Tarif PAYG" : "PAYG Rate"}
+                                  </div>
                                 </th>
                               </tr>
                             </thead>
