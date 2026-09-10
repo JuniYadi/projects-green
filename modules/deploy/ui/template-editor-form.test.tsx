@@ -13,6 +13,16 @@ mock.module("next/navigation", () => ({
   }),
   useParams: () => ({ lang: "en", id: "tmpl-1" }),
 }))
+interface SavePayload {
+  blueprintJson?: {
+    runtime?: {
+      healthCheckPath?: string
+      livenessProbe?: { path: string }
+      readinessProbe?: { path: string }
+      startupProbe?: { path: string }
+    }
+  }
+}
 
 describe("TemplateEditorForm", () => {
   beforeEach(() => {
@@ -61,6 +71,10 @@ describe("TemplateEditorForm", () => {
               image: "ghcr.io/decolua/9router:latest",
               defaultPort: 20128,
             },
+            resources: {
+              defaultCpu: 500,
+              defaultMemory: 512,
+            },
           },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -78,7 +92,7 @@ describe("TemplateEditorForm", () => {
   })
 
   it("omits all probes from saved blueprint when liveness probe is empty", async () => {
-    const onSave = mock(async () => {})
+    const onSave = mock(async (_payload: SavePayload) => {})
     const { getByTestId, getByText } = render(
       <TemplateEditorForm isNew={true} onSave={onSave} />
     )
@@ -97,15 +111,15 @@ describe("TemplateEditorForm", () => {
       expect(onSave).toHaveBeenCalledTimes(1)
     })
 
-    const payload = onSave.mock.calls[0][0]
-    expect(payload.blueprintJson?.runtime?.healthCheckPath).toBeUndefined()
-    expect(payload.blueprintJson?.runtime?.livenessProbe).toBeUndefined()
-    expect(payload.blueprintJson?.runtime?.readinessProbe).toBeUndefined()
-    expect(payload.blueprintJson?.runtime?.startupProbe).toBeUndefined()
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.runtime?.healthCheckPath).toBeUndefined()
+    expect(payload?.blueprintJson?.runtime?.livenessProbe).toBeUndefined()
+    expect(payload?.blueprintJson?.runtime?.readinessProbe).toBeUndefined()
+    expect(payload?.blueprintJson?.runtime?.startupProbe).toBeUndefined()
   })
 
   it("includes liveness and startup probes when liveness probe is filled", async () => {
-    const onSave = mock(async () => {})
+    const onSave = mock(async (_payload: SavePayload) => {})
     const { getByTestId, getByText, getByLabelText } = render(
       <TemplateEditorForm isNew={true} onSave={onSave} />
     )
@@ -132,10 +146,12 @@ describe("TemplateEditorForm", () => {
       expect(onSave).toHaveBeenCalledTimes(1)
     })
 
-    const payload = onSave.mock.calls[0][0]
-    expect(payload.blueprintJson?.runtime?.healthCheckPath).toBe("/healthz")
-    expect(payload.blueprintJson?.runtime?.livenessProbe?.path).toBe("/healthz")
-    expect(payload.blueprintJson?.runtime?.startupProbe?.path).toBe(
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.runtime?.healthCheckPath).toBe("/healthz")
+    expect(payload?.blueprintJson?.runtime?.livenessProbe?.path).toBe(
+      "/healthz"
+    )
+    expect(payload?.blueprintJson?.runtime?.startupProbe?.path).toBe(
       "/health/startup"
     )
   })
