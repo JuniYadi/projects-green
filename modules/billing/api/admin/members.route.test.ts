@@ -690,5 +690,55 @@ describe("AdminMembersRoute", () => {
       expect(body.ok).toBe(true)
       expect(body.member.organizationId).toBe("org_other")
     })
+
+    it("returns 403 when non-super_admin lists members without org context", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1", email: "admin@test.com" },
+                organizationId: null,
+                role: "admin",
+              }) as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/members")
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 403 when non-super_admin views member detail without org context", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminMembersRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1", email: "admin@test.com" },
+                organizationId: null,
+                role: "admin",
+              }) as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/members/org-1")
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
   })
 })

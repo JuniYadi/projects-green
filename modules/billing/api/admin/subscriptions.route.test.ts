@@ -1622,5 +1622,157 @@ describe("AdminSubscriptionRoute", () => {
       expect(response.status).toBe(500)
       expect((await response.json()).error).toBe("INTERNAL_SERVER_ERROR")
     })
+
+    it("returns 403 when non-super_admin attempts cross-org subscription creation", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as unknown as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-victim",
+            pricingId: "pricing-vpn",
+          }),
+        })
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 403 when non-super_admin lists subscriptions without org context", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: null,
+                role: "admin",
+              }) as unknown as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions")
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 403 when non-super_admin tries to query another organizationId in list", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as unknown as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request(
+          "http://localhost/admin/subscriptions?organizationId=org-victim"
+        )
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 403 when non-super_admin modifies subscription belonging to another org", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "sub-1",
+        organizationId: "org-victim",
+        status: "ACTIVE",
+      })
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as unknown as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions/sub-1", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ status: "SUSPENDED" }),
+        })
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 403 when non-super_admin renews subscription belonging to another org", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "sub-1",
+        organizationId: "org-victim",
+        status: "ACTIVE",
+      })
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                role: "admin",
+              }) as unknown as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions/sub-1/renew", {
+          method: "POST",
+        })
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
   })
 })
