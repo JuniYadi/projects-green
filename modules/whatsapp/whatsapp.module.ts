@@ -20,6 +20,7 @@ import { webhooksRoutes } from "@/modules/whatsapp/webhooks/api/webhooks.route"
 import { usersRoutes } from "@/modules/whatsapp/users/api/users.route"
 import { usageRoutes } from "@/modules/whatsapp/usage/api/usage.route"
 import { rateLimitRoutes } from "@/modules/whatsapp/rate-limit/api/rate-limit.route"
+import { whatsappRateLimitPlugin } from "@/modules/whatsapp/rate-limit/whatsapp-rate-limit.guard"
 import {
   createWhatsappAuditRoutes,
   consoleWhatsappAuditRoutes,
@@ -32,6 +33,7 @@ import { onboardingRoutes } from "@/modules/whatsapp/onboarding/api/onboarding.r
 import { whatsappWorkflowRoutes } from "@/modules/whatsapp/workflow/workflow.routes"
 
 export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
+  .use(whatsappRateLimitPlugin)
   .use(whatsappWorkflowRoutes)
   .use(devicesRoutes)
   .use(businessProfileRoutes)
