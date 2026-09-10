@@ -1,17 +1,20 @@
 import { triggerJenkinsJob } from "./jenkins.service"
 import { prisma } from "@/lib/prisma"
-import type { Prisma } from "@prisma/client"
+import type { GithubRepositoryConnection } from "@prisma/client"
 
 export interface JenkinsVersionUpdatePayload {
   version: string
   application_stack: string
 }
 
-export interface ApplicationStack {
-  id: string
+export type JenkinsRepositoryStack = Omit<
+  Pick<
+    GithubRepositoryConnection,
+    "id" | "repoName" | "fullName" | "buildConfigJson"
+  >,
+  "repoName"
+> & {
   repoName: string | null
-  fullName: string
-  buildConfigJson: Prisma.JsonValue
 }
 
 export class JenkinsWebhookHandler {
@@ -36,7 +39,7 @@ export class JenkinsWebhookHandler {
    */
   async resolveApplicationStack(
     identifier: string
-  ): Promise<ApplicationStack | null> {
+  ): Promise<JenkinsRepositoryStack | null> {
     const app = await prisma.githubRepositoryConnection.findFirst({
       where: {
         OR: [{ repoName: identifier }, { fullName: { contains: identifier } }],
@@ -55,7 +58,7 @@ export class JenkinsWebhookHandler {
   /**
    * Resolve Jenkins job name from stack config, with fallback naming convention
    */
-  getJenkinsJobName(stack: ApplicationStack): string {
+  getJenkinsJobName(stack: JenkinsRepositoryStack): string {
     const config = stack.buildConfigJson as Record<string, unknown> | null
     if (config?.jenkinsJobName && typeof config.jenkinsJobName === "string") {
       return config.jenkinsJobName
@@ -66,7 +69,7 @@ export class JenkinsWebhookHandler {
   /**
    * Trigger Jenkins build for a version update on the given application stack
    */
-  async syncVersion(stack: ApplicationStack, version: string) {
+  async syncVersion(stack: JenkinsRepositoryStack, version: string) {
     const jobName = this.getJenkinsJobName(stack)
 
     await this.triggerJob(jobName, {

@@ -11,6 +11,7 @@ import {
   mockIsAdmin,
   testIsAdmin,
 } from "@/test/helpers/test-auth"
+import type { PlatformAccessRole } from "@/lib/platform-role"
 
 const mockFindUnique = mock()
 const mockUpdate = mock()
@@ -620,6 +621,41 @@ describe("AdminInvoiceRoute", () => {
       const body = await res.json()
       expect(body.ok).toBe(true)
       expect(body.invoice.status).toBe("PAID")
+    })
+
+    it("returns 403 when non-super_admin attempts to update invoice belonging to another organization", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "inv-1",
+        status: "DRAFT",
+        billingAccount: { organizationId: "org-victim" },
+      })
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "admin-1" },
+                organizationId: "org-1",
+                tenantRole: "admin",
+              }) as MockAuthContext,
+            getPlatformRole: async () => "none" as PlatformAccessRole,
+            isAdmin: () => true,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "ISSUED" }),
+        })
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
     })
   })
 })

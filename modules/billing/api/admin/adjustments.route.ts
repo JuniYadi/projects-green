@@ -4,9 +4,12 @@ import { Prisma } from "@prisma/client"
 import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
+import {
+  getPlatformRoleForUser,
+  type PlatformAccessRole,
+} from "@/lib/platform-role"
+import { resolveAdminActor } from "@/modules/admin/api/admin.guards"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { getPlatformRoleForUser } from "@/lib/platform-role"
-import type { PlatformAccessRole } from "@/lib/platform-role"
 
 const listQuerySchema = z.object({
   type: z.enum(["CREDIT", "DEBIT", "WRITEOFF"]).optional(),
@@ -43,10 +46,7 @@ type AdminAdjustmentsRouteDeps = {
 const defaultDeps: AdminAdjustmentsRouteDeps = {
   authenticate: () => withAuth(),
   getPlatformRole: getPlatformRoleForUser,
-  isAdmin: (actor) => {
-    if (actor.platformRole === "super_admin") return true
-    return actor.orgRole === "admin" || actor.orgRole === "owner"
-  },
+  isAdmin: (actor) => resolveAdminActor(actor.platformRole, actor.orgRole),
 }
 
 const toUnauthorized = (set: RouteSet) => {

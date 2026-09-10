@@ -1,16 +1,19 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
-import { z } from "zod"
 import { Prisma } from "@prisma/client"
+import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
-import { fieldErrorMapFromIssues } from "@/lib/validation"
-import { getPlatformRoleForUser } from "@/lib/platform-role"
-import type { PlatformAccessRole } from "@/lib/platform-role"
 import {
-  adminSubscriptionUpdateSchema,
+  getPlatformRoleForUser,
+  type PlatformAccessRole,
+} from "@/lib/platform-role"
+import { resolveAdminActor } from "@/modules/admin/api/admin.guards"
+import {
   adminSubscriptionCreateSchema,
+  adminSubscriptionUpdateSchema,
 } from "../billing.schemas"
+import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
   adminSubscriptionInclude,
   toAdminSubscriptionDTO,
@@ -45,10 +48,7 @@ type AdminSubscriptionRouteDeps = {
 const defaultDeps: AdminSubscriptionRouteDeps = {
   authenticate: () => withAuth(),
   getPlatformRole: getPlatformRoleForUser,
-  isAdmin: (actor) => {
-    if (actor.platformRole === "super_admin") return true
-    return actor.orgRole === "admin" || actor.orgRole === "owner"
-  },
+  isAdmin: (actor) => resolveAdminActor(actor.platformRole, actor.orgRole),
 }
 
 const toUnauthorized = (set: RouteSet) => {
@@ -150,12 +150,24 @@ export const createAdminSubscriptionRoutes = (
         try {
           const where: Prisma.ServiceSubscriptionWhereInput = {}
 
-          if (actor.platformRole !== "super_admin" && auth.organizationId) {
+          if (actor.platformRole !== "super_admin") {
+            if (!auth.organizationId) {
+              return toForbidden(
+                set,
+                "Organization context required for tenant administrators."
+              )
+            }
+            if (organizationId && organizationId !== auth.organizationId) {
+              return toForbidden(
+                set,
+                "Cannot view subscriptions for another organization."
+              )
+            }
             where.organizationId = auth.organizationId
+          } else if (organizationId) {
+            where.organizationId = organizationId
           }
           if (status) where.status = status
-          if (organizationId) where.organizationId = organizationId
-
           const [subscriptions, total] = await Promise.all([
             prisma.serviceSubscription.findMany({
               where,
@@ -217,6 +229,16 @@ export const createAdminSubscriptionRoutes = (
           allocatedConfig,
           metadata,
         } = parsed.data
+
+        if (
+          actor.platformRole !== "super_admin" &&
+          organizationId !== auth.organizationId
+        ) {
+          return toForbidden(
+            set,
+            "Cannot create subscriptions for another organization."
+          )
+        }
 
         try {
           const pricing = await prisma.servicePricing.findUnique({
@@ -403,6 +425,16 @@ export const createAdminSubscriptionRoutes = (
 
           if (!existing) {
             return toNotFound(set, "Subscription not found.")
+          }
+
+          if (
+            actor.platformRole !== "super_admin" &&
+            existing.organizationId !== auth.organizationId
+          ) {
+            return toForbidden(
+              set,
+              "Cannot modify subscriptions belonging to another organization."
+            )
           }
 
           // Validate pricing belongs to plan if both are being updated
@@ -617,6 +649,16 @@ export const createAdminSubscriptionRoutes = (
           })
           if (!existing) {
             return toNotFound(set, "Subscription not found.")
+          }
+
+          if (
+            actor.platformRole !== "super_admin" &&
+            existing.organizationId !== auth.organizationId
+          ) {
+            return toForbidden(
+              set,
+              "Cannot renew subscriptions belonging to another organization."
+            )
           }
           let service = deps.orderService
           if (!service) {
