@@ -123,6 +123,7 @@ describe("Meta app schemas", () => {
       metaAppId: "123456789",
       appSecret: "app-secret",
       verifyToken: "verify-token",
+      defaultVersion: "v24.0",
       active: true,
     })
     expect(updateMetaAppSchema.parse({ active: false })).toEqual({
@@ -189,6 +190,8 @@ describe("MetaAppsService", () => {
       metaAppId: "123456789",
       webhookKey: appRecord.webhookKey,
       active: true,
+      defaultVersion: "v24.0",
+      hasSystemToken: false,
       ...timestamps,
       callbackPath: `/api/whatsapp/meta-webhook/${appRecord.webhookKey}`,
     })
@@ -208,6 +211,7 @@ describe("MetaAppsService", () => {
             "metaAppId",
             "appSecret",
             "verifyToken",
+            "defaultVersion",
             "active",
           ],
         },

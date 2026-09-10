@@ -4,6 +4,7 @@ const mockPrisma = {
   whatsappTemplate: {
     findFirst: mock(),
     update: mock(),
+    delete: mock(),
   },
   whatsappTemplateLanguage: {
     updateMany: mock(),
@@ -32,12 +33,13 @@ const approvedUpdate = {
 beforeEach(() => {
   mockPrisma.whatsappTemplate.findFirst.mockReset()
   mockPrisma.whatsappTemplate.update.mockReset()
-  mockPrisma.whatsappTemplateLanguage.updateMany.mockReset()
+  mockPrisma.whatsappTemplate.delete.mockReset()
   mockLogAudit.mockReset()
 
   mockPrisma.whatsappTemplate.findFirst.mockResolvedValue(null)
   mockPrisma.whatsappTemplate.update.mockResolvedValue({})
-  mockPrisma.whatsappTemplateLanguage.updateMany.mockResolvedValue({ count: 1 })
+  mockPrisma.whatsappTemplate.update.mockResolvedValue({})
+  mockPrisma.whatsappTemplate.delete.mockResolvedValue({})
   mockLogAudit.mockResolvedValue(undefined)
 })
 
@@ -160,5 +162,53 @@ describe("processTemplateStatusUpdate", () => {
     ).resolves.toBe("stale")
 
     expect(mockPrisma.whatsappTemplate.update).not.toHaveBeenCalled()
+  })
+
+  it("deletes the local template when event is DELETED", async () => {
+    mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
+      id: "template-del-1",
+      name: "To be deleted",
+    })
+
+    const result = await processTemplateStatusUpdate("org-1", "device-1", {
+      templateId: "123",
+      templateName: "to_be_deleted",
+      event: "DELETED",
+    })
+
+    expect(result).toBe("updated")
+    expect(mockPrisma.whatsappTemplate.delete).toHaveBeenCalledWith({
+      where: { id: "template-del-1" },
+    })
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "TEMPLATE_DELETED",
+        organizationId: "org-1",
+        deviceId: "device-1",
+      })
+    )
+  })
+
+  it("marks template NOT_IN_META when event is PENDING_DELETION", async () => {
+    mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
+      id: "template-pend-1",
+      name: "Pending deletion",
+    })
+
+    const result = await processTemplateStatusUpdate("org-1", "device-1", {
+      templateId: "123",
+      templateName: "pending_deletion",
+      event: "PENDING_DELETION",
+    })
+
+    expect(result).toBe("updated")
+    expect(mockPrisma.whatsappTemplate.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "template-pend-1" },
+        data: expect.objectContaining({
+          syncStatus: "NOT_IN_META",
+        }),
+      })
+    )
   })
 })

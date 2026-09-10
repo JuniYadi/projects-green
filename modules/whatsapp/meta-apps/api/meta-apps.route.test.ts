@@ -3,6 +3,7 @@ import { Elysia } from "elysia"
 import type { MetaAppsService } from "../meta-apps.service"
 
 // Mock leaf infrastructure before importing route (the production singleton imports these).
+mock.module("server-only", () => ({}))
 mock.module("@/lib/prisma", () => ({ prisma: {} }))
 mock.module("@/lib/whatsapp/crypto", () => ({
   encryptWithAppKey: mock(async (value: string) => `encrypted:${value}`),
@@ -152,7 +153,7 @@ describe("admin MetaApp routes", () => {
     expect(response.status).toBe(201)
     expect(body).toEqual({ ok: true, data: appRecord })
     expect(mockCreate).toHaveBeenCalledWith(
-      { ...input, name: "Primary" },
+      { ...input, name: "Primary", defaultVersion: "v24.0" },
       "admin-1"
     )
     expect(JSON.stringify(body)).not.toContain("secret-value")

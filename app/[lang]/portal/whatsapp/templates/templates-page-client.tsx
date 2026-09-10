@@ -852,6 +852,7 @@ export function TemplatesPageClient({
             if (!open) setTemplateToDelete(null)
           }}
           templateName={templateToDelete?.name ?? "this template"}
+          isApproved={templateToDelete?.metaStatus === "APPROVED"}
           deleting={deleting}
           onConfirm={async () => {
             if (!templateToDelete) return

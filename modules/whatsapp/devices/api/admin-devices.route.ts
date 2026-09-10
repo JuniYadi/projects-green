@@ -40,6 +40,7 @@ import {
   type WhatsappAuditAction,
   type WhatsappAuditEventStatus,
 } from "@/modules/whatsapp/audit/whatsapp-audit.service"
+import { syncMetaWebhookSubscription } from "../services/meta-webhook-sync.service"
 
 const MAX_BALANCE = new Decimal("999999999.99")
 
@@ -476,6 +477,33 @@ export const createAdminDevicesRoutes = (
 
         console.error("[AdminDevices] Delete error:", error)
         return toServerError(set, "Unable to delete device.")
+      }
+    })
+    .post("/:id/sync-webhook", async ({ params: { id }, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
+
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+        select: { id: true, organizationId: true, phoneNumber: true },
+      })
+
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      }
+
+      try {
+        const result = await syncMetaWebhookSubscription(id)
+        return { ok: true, data: result }
+      } catch (err) {
+        set.status = 500
+        return {
+          ok: false,
+          error: "SYNC_FAILED",
+          message:
+            err instanceof Error ? err.message : "Failed to sync webhook",
+        }
       }
     })
     .post("/:id/sync-templates", async ({ params: { id }, set }: any) => {

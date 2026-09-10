@@ -54,6 +54,23 @@ const mockTransaction = mock<(...args: any[]) => any>(
 
 const mockLogAudit = mock<(...args: any[]) => any>(async () => {})
 const mockEnqueueTemplateSync = mock<(...args: any[]) => any>(async () => {})
+const mockSyncMetaWebhookSubscription = mock<(...args: any[]) => any>(
+  async () => ({
+    active: true,
+    status: "SUBSCRIBED",
+    metaAppId: "meta-app-1",
+    metaAppName: "Test Meta App",
+    tokenSource: "INHERITED_META_APP",
+    effectiveVersion: "v24.0",
+    subscribedApps: [{ id: "meta-app-1", name: "Test Meta App" }],
+    lastCheckedAt: "2026-09-10T00:00:00.000Z",
+    warning: null,
+  })
+)
+
+mock.module("../services/meta-webhook-sync.service", () => ({
+  syncMetaWebhookSubscription: mockSyncMetaWebhookSubscription,
+}))
 
 mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
   logWhatsappAuditEvent: mockLogAudit,
@@ -157,6 +174,18 @@ describe("Admin Devices Routes", () => {
   beforeEach(() => {
     mockFindMany.mockImplementation(async () => [])
     mockEnqueueTemplateSync.mockClear()
+    mockSyncMetaWebhookSubscription.mockClear()
+    mockSyncMetaWebhookSubscription.mockImplementation(async () => ({
+      active: true,
+      status: "SUBSCRIBED",
+      metaAppId: "meta-app-1",
+      metaAppName: "Test Meta App",
+      tokenSource: "INHERITED_META_APP",
+      effectiveVersion: "v24.0",
+      subscribedApps: [{ id: "meta-app-1", name: "Test Meta App" }],
+      lastCheckedAt: "2026-09-10T00:00:00.000Z",
+      warning: null,
+    }))
     mockCount.mockImplementation(async () => 0)
     mockFindUnique.mockImplementation(async () => null)
     mockUpdate.mockImplementation(async () => ({}))
@@ -781,6 +810,108 @@ describe("Admin Devices Routes", () => {
       expect(res.status).toBe(200)
       expect(body.ok).toBe(true)
       expect(body.message).toBe("Device deleted.")
+    })
+  })
+
+  // ─── POST /:id/sync-webhook ─────────────────────────────────────────────
+
+  describe("POST /:id/sync-webhook", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-webhook`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not super admin", async () => {
+      const app = createTestApp(forbiddenContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-webhook`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 404 when device not found", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/missing/sync-webhook`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+      expect(mockSyncMetaWebhookSubscription).not.toHaveBeenCalled()
+    })
+
+    it("returns the webhook sync result for an existing device", async () => {
+      mockFindUnique.mockImplementationOnce(async () => ({
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+      }))
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-webhook`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data.status).toBe("SUBSCRIBED")
+      expect(body.data.active).toBe(true)
+      expect(mockSyncMetaWebhookSubscription).toHaveBeenCalledWith("dev-1")
+    })
+
+    it("returns the sync error message when webhook sync fails", async () => {
+      mockFindUnique.mockImplementationOnce(async () => ({
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+      }))
+      mockSyncMetaWebhookSubscription.mockImplementationOnce(async () => {
+        throw new Error("Meta API unavailable")
+      })
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-webhook`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(500)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("SYNC_FAILED")
+      expect(body.message).toBe("Meta API unavailable")
+    })
+
+    it("returns a fallback message for a non-Error sync failure", async () => {
+      mockFindUnique.mockImplementationOnce(async () => ({
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+      }))
+      mockSyncMetaWebhookSubscription.mockImplementationOnce(async () => {
+        throw "sync failed"
+      })
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-webhook`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(500)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("SYNC_FAILED")
+      expect(body.message).toBe("Failed to sync webhook")
     })
   })
 

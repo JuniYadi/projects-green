@@ -90,9 +90,11 @@ export function StepWhatsappIds({ data, updateData, errors }: Props) {
           id="wa-version"
           value={data.whatsappVersion}
           onChange={(e) => updateData({ whatsappVersion: e.target.value })}
-          placeholder="v24.0"
+          placeholder="v24.0 (leave blank to inherit from Meta App)"
         />
-        <p className="text-xs text-muted-foreground">Default: v24.0</p>
+        <p className="text-xs text-muted-foreground">
+          Default: inherited from linked Meta App (e.g. v24.0)
+        </p>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="callback">Callback URL</Label>

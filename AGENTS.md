@@ -47,6 +47,10 @@
 - Console pages under `app/[lang]/console/**` use the shared console spacing (`flex flex-1 flex-col gap-6 p-6 pt-0`) and shared table patterns unless product design requires otherwise.
 - UI Color Hierarchy (60-30-10 Rule): Reserve primary green strictly for primary actions (CTA) and semantic success icons. Use neutral card surfaces (`bg-card`/`bg-background` + `border-border`) and muted text (`text-muted-foreground`) for cards, badges, and secondary elements to prevent green washout.
 - Vault docs are the product/domain source of truth. If vault docs conflict with code, update code or flag the mismatch; do not duplicate domain docs in the repository.
+- Portal vs. Console Routing & API Boundaries:
+  - `/portal/**` is strictly the Super Admin platform workspace. It calls `/api/admin/**` endpoints (protected by `requireSuperAdmin` / `platformRole === "super_admin"`).
+  - `/console/**` is strictly the Tenant / Organization member workspace. It calls tenant-scoped API endpoints (e.g. `/api/whatsapp/**`, `/api/billing/**`, `/api/**`) scoped to `auth.organizationId`.
+  - NEVER swap or invert these paths: Console users accessing `/api/admin/**` will be rejected with 403 Forbidden.
 
 ## Project map
 

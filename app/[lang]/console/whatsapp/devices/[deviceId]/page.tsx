@@ -60,6 +60,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import type { MetaWebhookSyncState } from "@/modules/whatsapp/webhooks/ui/meta-webhook-card"
 import { TabsDeviceDetail } from "@/modules/whatsapp/webhooks/ui/tabs-device-detail"
 import { type DeviceDetail } from "@/modules/whatsapp/devices/devices.schemas"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
@@ -1357,6 +1358,18 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
     </div>
   )
 
+  const features = (device.features as Record<string, unknown> | null) ?? {}
+  const metaWebhook = device.whatsappMetaApp
+    ? {
+        appName: device.whatsappMetaApp.name,
+        callbackUrl: device.whatsappMetaApp.callbackPath,
+        deviceId: device.id,
+        apiBasePath: "/api/whatsapp/devices",
+        syncState:
+          (features.metaWebhook as MetaWebhookSyncState | null) ?? null,
+      }
+    : null
+
   return (
     <TabsDeviceDetail
       device={{
@@ -1374,6 +1387,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       messageJourneyBasePath="/console/whatsapp/messages"
       overviewChildren={overviewContent}
       actions={actionButtons}
+      metaWebhook={metaWebhook}
     />
   )
 }

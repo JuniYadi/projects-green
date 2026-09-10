@@ -84,10 +84,20 @@ const mockDeviceFindFirst = mock(async (): Promise<any> => ({
   organizationId: "org-1",
   status: "ACTIVE",
 }))
-
 const mockCreateMetaTemplate = mock(async () => ({
   id: "meta-tpl-1",
   status: "PENDING",
+}))
+const mockDeleteMetaTemplate = mock(async () => ({
+  success: true,
+}))
+const mockDeviceFindUnique = mock(async (): Promise<any> => ({
+  id: "dev-1",
+  tokenEncrypted: "encrypted-token",
+  whatsappBusinessAccountId: "waba-1",
+  whatsappPhoneId: "phone-1",
+  organizationId: "org-1",
+  status: "ACTIVE",
 }))
 
 mock.module("@/lib/prisma", () => ({
@@ -102,6 +112,7 @@ mock.module("@/lib/prisma", () => ({
     },
     whatsappDevice: {
       findFirst: mockDeviceFindFirst,
+      findUnique: mockDeviceFindUnique,
     },
     serviceSubscription: {
       findFirst: mockSubscriptionFindFirst,
@@ -116,6 +127,7 @@ mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   WhatsAppDeviceClient: {
     fromDevice: mock(async () => ({
       createTemplate: mockCreateMetaTemplate,
+      deleteTemplate: mockDeleteMetaTemplate,
     })),
   },
 }))
@@ -1158,6 +1170,128 @@ describe("templatesRoutes", () => {
           organizationId: "org-1",
         })
       )
+    })
+
+    it("calls Meta deleteTemplate when template is linked to a device", async () => {
+      mockDeleteMetaTemplate.mockClear()
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        slug: "my_template",
+        name: "My Template",
+        whatsappDeviceId: "dev-1",
+      } as unknown as MockTemplate)
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        id: "dev-1",
+        tokenEncrypted: "encrypted-token",
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(mockDeleteMetaTemplate).toHaveBeenCalledWith("my_template")
+      expect(mockTemplateDelete).toHaveBeenCalledWith({
+        where: { id: "tpl-approved" },
+      })
+    })
+
+    it("deletes template using inherited token from whatsappMetaApp when device has no token", async () => {
+      mockDeleteMetaTemplate.mockClear()
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        slug: "inherited_template",
+        name: "Inherited Template",
+        whatsappDeviceId: "dev-inherited",
+      } as unknown as MockTemplate)
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        id: "dev-inherited",
+        tokenEncrypted: null,
+        token: null,
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+        whatsappMetaApp: {
+          metaAppId: "meta-app-1",
+          systemTokenEncrypted: "sys-token-enc",
+          defaultVersion: "v24.0",
+        },
+      })
+
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(mockDeleteMetaTemplate).toHaveBeenCalledWith("inherited_template")
+      expect(mockTemplateDelete).toHaveBeenCalledWith({
+        where: { id: "tpl-approved" },
+      })
+    })
+
+    it("proceeds with local deletion if Meta returns 404 (already deleted in Meta)", async () => {
+      const { MetaCloudError } =
+        await import("@/lib/whatsapp/meta-cloud/errors")
+      mockDeleteMetaTemplate.mockRejectedValueOnce(
+        new MetaCloudError("Template does not exist", { httpStatus: 404 })
+      )
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        slug: "already_deleted",
+        whatsappDeviceId: "dev-1",
+      } as unknown as MockTemplate)
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        id: "dev-1",
+        tokenEncrypted: "encrypted-token",
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(mockTemplateDelete).toHaveBeenCalledWith({
+        where: { id: "tpl-approved" },
+      })
+    })
+
+    it("returns 502 and preserves local template if Meta deletion fails with non-404 error", async () => {
+      const { MetaCloudError } =
+        await import("@/lib/whatsapp/meta-cloud/errors")
+      mockTemplateDelete.mockClear()
+      mockDeleteMetaTemplate.mockRejectedValueOnce(
+        new MetaCloudError("Meta permission denied", {
+          httpStatus: 403,
+          code: 200,
+        })
+      )
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        slug: "failing_template",
+        whatsappDeviceId: "dev-1",
+      } as unknown as MockTemplate)
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        id: "dev-1",
+        tokenEncrypted: "encrypted-token",
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(502)
+      const body = await res.json()
+      expect(body.error).toBe("META_DELETION_FAILED")
+      expect(mockTemplateDelete).not.toHaveBeenCalled()
     })
   })
 

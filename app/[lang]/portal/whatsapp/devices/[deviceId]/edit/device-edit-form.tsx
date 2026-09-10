@@ -343,8 +343,11 @@ export function DeviceEditForm({
               onChange={(event) =>
                 updateForm({ whatsappVersion: event.target.value })
               }
-              placeholder="v24.0"
+              placeholder="v24.0 (leave blank to inherit from Meta App)"
             />
+            <p className="text-[11px] text-muted-foreground">
+              Leave blank to inherit default version from linked Meta App.
+            </p>
           </div>
 
           <div className="grid gap-2 md:col-span-2">
@@ -365,9 +368,14 @@ export function DeviceEditForm({
               id="token"
               value={form.token}
               onChange={(event) => updateForm({ token: event.target.value })}
-              placeholder="Leave empty to keep the current encrypted token"
+              placeholder="Leave empty to inherit Master Token from Meta App (or keep current token)"
               className="min-h-24 font-mono"
             />
+            <p className="text-[11px] text-muted-foreground">
+              Leave blank to inherit default System User token from linked Meta
+              App (or keep existing token). Enter a new token to override for
+              this device.
+            </p>
           </div>
         </CardContent>
       </Card>

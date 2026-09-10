@@ -1,3 +1,5 @@
+import { resolveDecryptedDeviceMetaToken } from "@/modules/whatsapp/meta-apps/services/meta-credentials-resolver.service"
+import { syncMetaWebhookSubscription } from "./services/meta-webhook-sync.service"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { MetaCloudHttpClient } from "@/lib/whatsapp/meta-cloud/client"
@@ -38,7 +40,16 @@ export class ProfileNotFoundError extends Error {
 async function getDeviceById(deviceId: string, organizationId?: string) {
   const device = await prisma.whatsappDevice.findUnique({
     where: { id: deviceId },
-    include: { whatsappMetaApp: { select: { metaAppId: true } } },
+    include: {
+      whatsappMetaApp: {
+        select: {
+          metaAppId: true,
+          name: true,
+          systemTokenEncrypted: true,
+          defaultVersion: true,
+        },
+      },
+    },
   })
   if (!device) throw new DeviceNotFoundError(deviceId)
   if (organizationId && device.organizationId !== organizationId) {
@@ -102,23 +113,14 @@ export async function syncDeviceFromMeta(
     throw new Error("Device has no WhatsApp Business Account ID configured.")
   }
 
-  const rawToken = device.tokenEncrypted ?? device.token ?? ""
-  let accessToken = rawToken
-  if (device.tokenEncrypted) {
-    const parts = device.tokenEncrypted.split(".")
-    const decryptable =
-      device.tokenIv && parts.length === 2
-        ? `${parts[0]}.${device.tokenIv}.${parts[1]}`
-        : device.tokenEncrypted
-    const { decryptWhatsAppToken } = await import("@/lib/whatsapp/crypto")
-    accessToken = await decryptWhatsAppToken(decryptable)
-  }
+  const resolved = await resolveDecryptedDeviceMetaToken(device)
+  const accessToken = resolved.token
 
   const fields =
     "account_mode,certificate,code_verification_status,conversational_automation,display_phone_number,eligibility_for_api_business_global_search,health_status,id,is_official_business_account,is_on_biz_app,is_pin_enabled,is_preverified_number,last_onboarded_time,messaging_limit_tier,name_status,new_certificate,new_display_name,new_name_status,official_business_account,platform_type,quality_score,search_visibility,status,throughput,verified_name,whatsapp_business_manager_messaging_limit,whatsapp_business_profile.limit(10){about,address,description,email,messaging_product,profile_picture_url,vertical,websites}"
 
   const url = new URL(ENDPOINTS.WABA_PHONE_NUMBERS(wabaId))
-  const version = device.whatsappVersion || "v22.0"
+  const version = resolved.version
   url.pathname = `/${version}/${wabaId}/phone_numbers`
   url.searchParams.set("fields", fields)
 
@@ -226,6 +228,12 @@ export async function syncDeviceFromMeta(
       lastHeartbeatAt: new Date(),
     },
   })
+  await syncMetaWebhookSubscription(deviceId).catch((syncErr) =>
+    console.warn(
+      `[syncDeviceFromMeta] Webhook sync failed for ${deviceId}:`,
+      syncErr
+    )
+  )
 
   return mergedProfile as BusinessProfileFields
 }

@@ -7,10 +7,12 @@ export type WhatsappMetaAppDTO = Pick<
   | "metaAppId"
   | "webhookKey"
   | "active"
+  | "defaultVersion"
   | "createdAt"
   | "updatedAt"
 > & {
   callbackPath: string
+  hasSystemToken: boolean
 }
 
 export function toWhatsappMetaAppDTO(
@@ -21,6 +23,8 @@ export function toWhatsappMetaAppDTO(
     | "metaAppId"
     | "webhookKey"
     | "active"
+    | "defaultVersion"
+    | "systemTokenEncrypted"
     | "createdAt"
     | "updatedAt"
   >
@@ -31,6 +35,8 @@ export function toWhatsappMetaAppDTO(
     metaAppId: app.metaAppId,
     webhookKey: app.webhookKey,
     active: app.active,
+    defaultVersion: app.defaultVersion || "v24.0",
+    hasSystemToken: Boolean(app.systemTokenEncrypted),
     createdAt: app.createdAt,
     updatedAt: app.updatedAt,
     callbackPath: `/api/whatsapp/meta-webhook/${app.webhookKey}`,

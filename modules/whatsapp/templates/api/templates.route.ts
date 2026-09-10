@@ -1135,6 +1135,56 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           message: "Access denied.",
         }
       }
+      // Delete from Meta Cloud API if template is linked to a device with credentials
+      if (template.whatsappDeviceId) {
+        const device = await prisma.whatsappDevice.findUnique({
+          where: { id: template.whatsappDeviceId },
+          include: { whatsappMetaApp: true },
+        })
+
+        if (
+          device &&
+          device.whatsappBusinessAccountId &&
+          device.whatsappPhoneId
+        ) {
+          try {
+            const metaClient = await WhatsAppDeviceClient.fromDevice({
+              tokenEncrypted: device.tokenEncrypted,
+              token: device.token,
+              tokenIv: device.tokenIv,
+              whatsappVersion: device.whatsappVersion,
+              phoneNumberId: device.whatsappPhoneId,
+              wabaId: device.whatsappBusinessAccountId,
+              whatsappMetaApp: device.whatsappMetaApp,
+              organizationId: template.organizationId,
+            })
+            await metaClient.deleteTemplate(template.slug || template.name)
+          } catch (metaErr: unknown) {
+            const isNotFound =
+              metaErr instanceof MetaCloudError &&
+              (metaErr.httpStatus === 404 ||
+                metaErr.code === 100 ||
+                metaErr.message?.toLowerCase().includes("does not exist") ||
+                metaErr.message?.toLowerCase().includes("not found"))
+
+            if (!isNotFound) {
+              console.error(
+                "[templatesRoute] Meta template deletion failed:",
+                metaErr
+              )
+              set.status = 502
+              return {
+                ok: false,
+                error: "META_DELETION_FAILED",
+                message:
+                  metaErr instanceof Error
+                    ? metaErr.message
+                    : "Failed to delete template from Meta WhatsApp Business Account.",
+              }
+            }
+          }
+        }
+      }
 
       await prisma.whatsappTemplate.delete({
         where: { id: params.id },
