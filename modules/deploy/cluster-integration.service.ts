@@ -9,6 +9,7 @@ import {
 import { prisma } from "@/lib/prisma"
 import { VaultClient } from "@/lib/vault/vault-client"
 import { redis } from "@/lib/redis"
+import { logger } from "@/lib/logger"
 
 const CLUSTER_INTEGRATION_KEY_SALT = "app-hosting-cluster-integration"
 const CLUSTER_INTEGRATION_KEY_INFO_PREFIX = "app-hosting-integration-v"
@@ -542,23 +543,32 @@ async function resolveClusterIntegrationForCluster<
 
   let secrets: Record<string, unknown> = {}
   const vaultPath = typeof meta.vaultPath === "string" ? meta.vaultPath : null
-
   if (vaultPath) {
+    const vaultVersion =
+      typeof meta.vaultVersion === "number" ? meta.vaultVersion : undefined
     try {
-      const vaultVersion =
-        typeof meta.vaultVersion === "number" ? meta.vaultVersion : undefined
       const vaultData = await client.readKV(vaultPath, vaultVersion)
       if (vaultData && typeof vaultData === "object") {
         secrets = vaultData
       }
     } catch (vaultError) {
-      console.warn(
-        `[Vault] Failed to read cluster integration secrets from ${vaultPath}, falling back to DB:`,
-        vaultError
+      logger.warn(
+        {
+          event: "CLUSTER_SECRET_VAULT_FALLBACK",
+          clusterId: cluster.id,
+          clusterCode: cluster.code,
+          integrationType: type,
+          vaultPath,
+          vaultVersion,
+          reason:
+            vaultError instanceof Error
+              ? vaultError.message
+              : String(vaultError),
+        },
+        `[Vault] Failed to read cluster integration secrets from ${vaultPath}, falling back to DB`
       )
     }
   }
-
   // Gracefully fallback to legacy DB decryption if secrets were not retrieved from Vault
   if (Object.keys(secrets).length === 0 && integration.secretCiphertext) {
     secrets = decryptClusterIntegrationSecrets(

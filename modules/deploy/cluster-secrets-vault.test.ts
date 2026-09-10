@@ -32,6 +32,13 @@ const mockPrismaClient = {
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrismaClient,
 }))
+mock.module("@/lib/redis", () => ({
+  redis: {
+    get: mock(() => Promise.resolve(null)),
+    set: mock(() => Promise.resolve("OK")),
+    del: mock(() => Promise.resolve(1)),
+  },
+}))
 
 const mockVaultWriteKV = mock()
 const mockVaultReadKV = mock()
