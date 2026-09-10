@@ -510,10 +510,10 @@ export function resolveStackProbes(params: {
 }): ResolvedStackProbes {
   const userHealthCheck = params.stackMeta?.healthCheckPath
   const healthCheckPath =
-    typeof userHealthCheck === "string"
-      ? userHealthCheck.trim() || null
-      : userHealthCheck === null
-        ? null
+    userHealthCheck === null || userHealthCheck === ""
+      ? null
+      : typeof userHealthCheck === "string"
+        ? userHealthCheck.trim() || null
         : typeof params.blueprintRuntime?.healthCheckPath === "string"
           ? params.blueprintRuntime.healthCheckPath.trim() || null
           : null
@@ -565,57 +565,59 @@ export function resolveStackProbes(params: {
         }
       : null
 
-  const readinessProbe: HelmValuesProbe | null = rawReadiness?.path
-    ? {
-        path: String(rawReadiness.path),
-        port:
-          typeof rawReadiness.port === "number"
-            ? rawReadiness.port
-            : params.runtimePort,
-        initialDelaySeconds:
-          typeof rawReadiness.initialDelaySeconds === "number"
-            ? rawReadiness.initialDelaySeconds
-            : 10,
-        periodSeconds:
-          typeof rawReadiness.periodSeconds === "number"
-            ? rawReadiness.periodSeconds
-            : 5,
-        timeoutSeconds:
-          typeof rawReadiness.timeoutSeconds === "number"
-            ? rawReadiness.timeoutSeconds
-            : 3,
-        failureThreshold:
-          typeof rawReadiness.failureThreshold === "number"
-            ? rawReadiness.failureThreshold
-            : 3,
-      }
-    : null
+  const readinessProbe: HelmValuesProbe | null =
+    livenessProbe && rawReadiness?.path
+      ? {
+          path: String(rawReadiness.path),
+          port:
+            typeof rawReadiness.port === "number"
+              ? rawReadiness.port
+              : params.runtimePort,
+          initialDelaySeconds:
+            typeof rawReadiness.initialDelaySeconds === "number"
+              ? rawReadiness.initialDelaySeconds
+              : 10,
+          periodSeconds:
+            typeof rawReadiness.periodSeconds === "number"
+              ? rawReadiness.periodSeconds
+              : 5,
+          timeoutSeconds:
+            typeof rawReadiness.timeoutSeconds === "number"
+              ? rawReadiness.timeoutSeconds
+              : 3,
+          failureThreshold:
+            typeof rawReadiness.failureThreshold === "number"
+              ? rawReadiness.failureThreshold
+              : 3,
+        }
+      : null
 
-  const startupProbe: HelmValuesProbe | null = rawStartup?.path
-    ? {
-        path: String(rawStartup.path),
-        port:
-          typeof rawStartup.port === "number"
-            ? rawStartup.port
-            : params.runtimePort,
-        initialDelaySeconds:
-          typeof rawStartup.initialDelaySeconds === "number"
-            ? rawStartup.initialDelaySeconds
-            : 10,
-        periodSeconds:
-          typeof rawStartup.periodSeconds === "number"
-            ? rawStartup.periodSeconds
-            : 5,
-        timeoutSeconds:
-          typeof rawStartup.timeoutSeconds === "number"
-            ? rawStartup.timeoutSeconds
-            : 3,
-        failureThreshold:
-          typeof rawStartup.failureThreshold === "number"
-            ? rawStartup.failureThreshold
-            : 30,
-      }
-    : null
+  const startupProbe: HelmValuesProbe | null =
+    livenessProbe && rawStartup?.path
+      ? {
+          path: String(rawStartup.path),
+          port:
+            typeof rawStartup.port === "number"
+              ? rawStartup.port
+              : params.runtimePort,
+          initialDelaySeconds:
+            typeof rawStartup.initialDelaySeconds === "number"
+              ? rawStartup.initialDelaySeconds
+              : 10,
+          periodSeconds:
+            typeof rawStartup.periodSeconds === "number"
+              ? rawStartup.periodSeconds
+              : 5,
+          timeoutSeconds:
+            typeof rawStartup.timeoutSeconds === "number"
+              ? rawStartup.timeoutSeconds
+              : 3,
+          failureThreshold:
+            typeof rawStartup.failureThreshold === "number"
+              ? rawStartup.failureThreshold
+              : 30,
+        }
+      : null
 
   return { livenessProbe, readinessProbe, startupProbe }
 }

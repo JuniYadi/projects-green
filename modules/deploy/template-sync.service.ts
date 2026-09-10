@@ -193,19 +193,28 @@ export async function syncStackFromParentTemplate(params: {
       updatedMetadata.defaultPort = bp.runtime.defaultPort
     }
     if (bp.runtime.healthCheckPath !== undefined) {
-      updatedMetadata.healthCheckPath = bp.runtime.healthCheckPath
+      updatedMetadata.healthCheckPath =
+        bp.runtime.healthCheckPath?.trim() || null
+    } else {
+      updatedMetadata.healthCheckPath = null
     }
     if (bp.runtime.image && !meta.imageRepository) {
       updatedMetadata.imageRepository = bp.runtime.image
     }
     if (bp.runtime.livenessProbe !== undefined) {
       updatedMetadata.livenessProbe = bp.runtime.livenessProbe
+    } else {
+      delete updatedMetadata.livenessProbe
     }
     if (bp.runtime.readinessProbe !== undefined) {
       updatedMetadata.readinessProbe = bp.runtime.readinessProbe
+    } else {
+      delete updatedMetadata.readinessProbe
     }
     if (bp.runtime.startupProbe !== undefined) {
       updatedMetadata.startupProbe = bp.runtime.startupProbe
+    } else {
+      delete updatedMetadata.startupProbe
     }
   }
   if (bp?.scaling) {
