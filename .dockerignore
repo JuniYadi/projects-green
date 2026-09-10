@@ -42,9 +42,15 @@ components.json
 # Tests
 test
 __tests__
+**/__tests__
+**/__fixtures__
 *.test.ts
 *.test.tsx
 *.spec.ts
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
 jest.config.*
 vitest.config.*
 
@@ -52,6 +58,7 @@ vitest.config.*
 graphify-out
 playwright-report
 *.tsbuildinfo
+**/*.tsbuildinfo
 .worktrees
 .agents
 .codex
@@ -64,6 +71,10 @@ e2e
 .DS_Store
 Thumbs.db
 *.log
+**/*.log
 npm-debug.log*
+**/npm-debug.log*
 yarn-debug.log*
+**/yarn-debug.log*
 yarn-error.log*
+**/yarn-error.log*
