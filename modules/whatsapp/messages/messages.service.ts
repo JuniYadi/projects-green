@@ -44,12 +44,7 @@ export type SendMessageResult = {
 }
 
 export type SendMessageType =
-  | "text"
-  | "image"
-  | "document"
-  | "audio"
-  | "location"
-  | "interactive"
+  "text" | "image" | "document" | "audio" | "location" | "interactive"
 
 export type SendTemplateMessageOptions = {
   organizationId: string
@@ -157,9 +152,11 @@ export const messageService: MessageService = {
     const device = deviceId
       ? await prisma.whatsappDevice.findFirst({
           where: { id: deviceId, organizationId },
+          include: { whatsappMetaApp: true },
         })
       : await prisma.whatsappDevice.findFirst({
           where: { organizationId },
+          include: { whatsappMetaApp: true },
         })
 
     if (!device) {
@@ -260,9 +257,13 @@ export const messageService: MessageService = {
 
     // Create device client
     const client = await WhatsAppDeviceClient.fromDevice({
-      accessToken: device.tokenEncrypted ?? "",
+      tokenEncrypted: device.tokenEncrypted,
+      token: device.token,
+      tokenIv: device.tokenIv,
+      whatsappVersion: device.whatsappVersion,
       phoneNumberId: device.whatsappPhoneId ?? "",
       wabaId: device.whatsappBusinessAccountId ?? "",
+      whatsappMetaApp: device.whatsappMetaApp,
       organizationId,
     })
 
@@ -596,19 +597,14 @@ export const messageService: MessageService = {
     const device = deviceId
       ? await prisma.whatsappDevice.findFirst({
           where: { id: deviceId, organizationId },
+          include: { whatsappMetaApp: true },
         })
-      : await prisma.whatsappDevice.findFirst({ where: { organizationId } })
+      : await prisma.whatsappDevice.findFirst({
+          where: { organizationId },
+          include: { whatsappMetaApp: true },
+        })
     if (!device) {
       throw new Error("WhatsApp device not found")
-    }
-
-    // Validate destination country is supported in pricing table
-    const destinationCheck = await isDestinationCountrySupported(phoneNumber)
-    if (!destinationCheck.supported) {
-      throw new UnsupportedDestinationCountryError(
-        destinationCheck.country,
-        phoneNumber
-      )
     }
 
     // Billing checks (same as sendMessage)
@@ -692,12 +688,15 @@ export const messageService: MessageService = {
 
     // Create device client and send template message
     const client = await WhatsAppDeviceClient.fromDevice({
-      accessToken: device.tokenEncrypted ?? "",
+      tokenEncrypted: device.tokenEncrypted,
+      token: device.token,
+      tokenIv: device.tokenIv,
+      whatsappVersion: device.whatsappVersion,
       phoneNumberId: device.whatsappPhoneId ?? "",
       wabaId: device.whatsappBusinessAccountId ?? "",
+      whatsappMetaApp: device.whatsappMetaApp,
       organizationId,
     })
-
     let waMessageId: string | undefined
     let sendFailure: string | null = null
     try {

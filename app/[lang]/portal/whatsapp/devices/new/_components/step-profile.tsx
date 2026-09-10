@@ -224,14 +224,20 @@ export function StepProfile({ data, updateData, errors }: Props) {
 
       {/* Token */}
       <div className="grid gap-2">
-        <Label htmlFor="token">Device Token</Label>
+        <Label htmlFor="token">
+          Device Token (Optional if Meta App has master token)
+        </Label>
         <Input
           id="token"
           value={data.token}
           onChange={(e) => updateData({ token: e.target.value })}
-          placeholder="WhatsApp access token"
+          placeholder="Leave blank to inherit from Meta App (or fill to override)"
           aria-invalid={!!errors.token}
         />
+        <p className="text-[11px] text-muted-foreground">
+          Leave empty to inherit the default System User token from your
+          selected Meta App.
+        </p>
         {errors.token && (
           <p className="text-xs text-destructive">{errors.token}</p>
         )}

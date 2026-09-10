@@ -41,8 +41,9 @@ type MetaAppRow = {
   active: boolean
   callbackPath: string
   deviceCount: number
+  defaultVersion?: string
+  hasSystemToken?: boolean
 }
-
 type ListResponse = { ok: boolean; data?: MetaAppRow[]; message?: string }
 type MutationResponse = { ok: boolean; data?: MetaAppRow; message?: string }
 
@@ -51,6 +52,8 @@ type CreateForm = {
   metaAppId: string
   appSecret: string
   verifyToken: string
+  systemToken: string
+  defaultVersion: string
 }
 
 const emptyCreateForm: CreateForm = {
@@ -58,8 +61,9 @@ const emptyCreateForm: CreateForm = {
   metaAppId: "",
   appSecret: "",
   verifyToken: "",
+  systemToken: "",
+  defaultVersion: "v24.0",
 }
-
 type RotateForm = { appSecret: string; verifyToken: string }
 const emptyRotateForm: RotateForm = { appSecret: "", verifyToken: "" }
 
@@ -86,8 +90,9 @@ export function WhatsappMetaAppInventory({
   const [editTarget, setEditTarget] = React.useState<MetaAppRow | null>(null)
   const [editName, setEditName] = React.useState("")
   const [editActive, setEditActive] = React.useState(true)
+  const [editDefaultVersion, setEditDefaultVersion] = React.useState("v24.0")
+  const [editSystemToken, setEditSystemToken] = React.useState("")
   const [savingEdit, setSavingEdit] = React.useState(false)
-
   const [rotateTarget, setRotateTarget] = React.useState<MetaAppRow | null>(
     null
   )
@@ -184,22 +189,35 @@ export function WhatsappMetaAppInventory({
       setCreating(false)
     }
   }
-
   const openEdit = (row: MetaAppRow) => {
     setEditTarget(row)
     setEditName(row.name)
     setEditActive(row.active)
+    setEditDefaultVersion(row.defaultVersion || "v24.0")
+    setEditSystemToken("")
   }
 
   const submitEdit = async () => {
     if (!editTarget) return
+    if (!editName.trim()) {
+      setError("Meta App name is required.")
+      return
+    }
     setSavingEdit(true)
     setError(null)
     try {
+      const payload: Record<string, unknown> = {
+        name: editName.trim(),
+        active: editActive,
+        defaultVersion: editDefaultVersion.trim() || undefined,
+      }
+      if (editSystemToken.trim()) {
+        payload.systemToken = editSystemToken.trim()
+      }
       const response = await fetch(`${API_BASE}/${editTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName, active: editActive }),
+        body: JSON.stringify(payload),
       })
       const body = (await response.json()) as MutationResponse
       if (!response.ok || !body.ok) {
@@ -373,6 +391,44 @@ export function WhatsappMetaAppInventory({
                   }
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="meta-app-default-version">
+                  Default Graph API Version
+                </Label>
+                <Input
+                  id="meta-app-default-version"
+                  value={createForm.defaultVersion}
+                  onChange={(event) =>
+                    setCreateForm({
+                      ...createForm,
+                      defaultVersion: event.target.value,
+                    })
+                  }
+                  placeholder="v24.0"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="meta-app-system-token">
+                  Master System User Token (Optional)
+                </Label>
+                <Input
+                  id="meta-app-system-token"
+                  type="password"
+                  autoComplete="off"
+                  value={createForm.systemToken}
+                  onChange={(event) =>
+                    setCreateForm({
+                      ...createForm,
+                      systemToken: event.target.value,
+                    })
+                  }
+                  placeholder="Shared token inherited by attached devices"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Devices without their own token will inherit this master
+                  token.
+                </p>
+              </div>
             </div>
             <DialogFooter>
               <Button
@@ -415,8 +471,8 @@ export function WhatsappMetaAppInventory({
             </p>
           ) : rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No Meta Apps yet. Create one to start receiving inbound
-              WhatsApp events.
+              No Meta Apps yet. Create one to start receiving inbound WhatsApp
+              events.
             </p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
@@ -425,6 +481,8 @@ export function WhatsappMetaAppInventory({
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Meta App ID</TableHead>
+                    <TableHead>Version</TableHead>
+                    <TableHead>Master Token</TableHead>
                     <TableHead>Callback URL</TableHead>
                     <TableHead>Devices</TableHead>
                     <TableHead>Status</TableHead>
@@ -441,6 +499,24 @@ export function WhatsappMetaAppInventory({
                         </TableCell>
                         <TableCell className="font-mono text-xs">
                           {row.metaAppId}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className="font-mono text-xs"
+                          >
+                            {row.defaultVersion || "v24.0"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              row.hasSystemToken ? "outline" : "secondary"
+                            }
+                            className="text-xs"
+                          >
+                            {row.hasSystemToken ? "Configured" : "Not Set"}
+                          </Badge>
                         </TableCell>
                         <TableCell className="max-w-64">
                           <div className="flex items-center gap-2">
@@ -533,6 +609,33 @@ export function WhatsappMetaAppInventory({
                 onChange={(event) => setEditName(event.target.value)}
               />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-meta-app-default-version">
+                Default Graph API Version
+              </Label>
+              <Input
+                id="edit-meta-app-default-version"
+                value={editDefaultVersion}
+                onChange={(event) => setEditDefaultVersion(event.target.value)}
+                placeholder="v24.0"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-meta-app-system-token">
+                Master System User Token (Optional)
+              </Label>
+              <Input
+                id="edit-meta-app-system-token"
+                type="password"
+                autoComplete="off"
+                value={editSystemToken}
+                onChange={(event) => setEditSystemToken(event.target.value)}
+                placeholder="Leave blank to keep current master token"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Leave blank to keep existing master token.
+              </p>
+            </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="edit-meta-app-active">Active</Label>
               <Switch
@@ -565,8 +668,8 @@ export function WhatsappMetaAppInventory({
               Rotate credentials for {rotateTarget?.name}
             </DialogTitle>
             <DialogDescription>
-              Enter new values for both fields. The previous secret and
-              verify token stop working immediately.
+              Enter new values for both fields. The previous secret and verify
+              token stop working immediately.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

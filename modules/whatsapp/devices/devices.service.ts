@@ -38,6 +38,7 @@ import {
 } from "./devices.schemas"
 import { toMetaAppMetadata } from "./devices.dto"
 
+import { syncMetaWebhookSubscription } from "./services/meta-webhook-sync.service"
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
 // NOTE: Use unknown for Prisma Decimal fields, convert with Number() in mapper
@@ -227,6 +228,11 @@ export const createDeviceService = (
           },
         })
       })
+      if (input.whatsappBusinessAccountId) {
+        syncMetaWebhookSubscription(device.id).catch((err) =>
+          console.warn(`[devicesService.create] Webhook sync failed:`, err)
+        )
+      }
       return _toDeviceDetail(device as PrismaDeviceFields)
     },
 
@@ -307,6 +313,15 @@ export const createDeviceService = (
           },
         })
       })
+      if (
+        input.token !== undefined ||
+        input.whatsappBusinessAccountId !== undefined ||
+        input.whatsappMetaAppId !== undefined
+      ) {
+        syncMetaWebhookSubscription(id).catch((err) =>
+          console.warn(`[devicesService.update] Webhook sync failed:`, err)
+        )
+      }
       return _toDeviceDetail(updated as PrismaDeviceFields)
     },
 

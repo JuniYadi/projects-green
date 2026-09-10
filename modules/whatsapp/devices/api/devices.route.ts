@@ -20,6 +20,7 @@ import { updateDeviceSchema } from "../devices.schemas"
 import { checkDeviceHealth } from "@/lib/queue/whatsapp-health"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 import { generateWebhookSigningSecret } from "../devices.service"
+import { syncMetaWebhookSubscription } from "../services/meta-webhook-sync.service"
 
 type RouteSet = {
   status?: number | string
@@ -398,6 +399,52 @@ export const devicesRoutes = new Elysia({
         summary: "Reconnect WhatsApp Device",
         description:
           "Manually re-activates an offline device connection state.",
+        tags: ["WhatsApp Devices"],
+      },
+    }
+  )
+  .post(
+    "/:id/sync-webhook",
+    async ({ request, params: { id }, set }: any) => {
+      const whatsappAuth = await resolveDeviceAuth(request)
+      if (!whatsappAuth) return toUnauthorized(set)
+
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+        select: { id: true, organizationId: true },
+      })
+
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      }
+
+      if (
+        whatsappAuth.platformRole !== "super_admin" &&
+        device.organizationId !== whatsappAuth.organizationId
+      ) {
+        return toForbidden(set)
+      }
+
+      try {
+        const result = await syncMetaWebhookSubscription(id)
+        return { ok: true, data: result }
+      } catch (err) {
+        set.status = 500
+        return {
+          ok: false,
+          error: "SYNC_FAILED",
+          message:
+            err instanceof Error ? err.message : "Failed to sync webhook",
+        }
+      }
+    },
+    {
+      params: t.Object({ id: t.String() }),
+      detail: {
+        summary: "Sync WhatsApp Webhook Subscription",
+        description:
+          "Verifies and syncs WABA webhook subscription against the linked Meta App.",
         tags: ["WhatsApp Devices"],
       },
     }

@@ -19,6 +19,7 @@ import {
 import { DeviceActions } from "./device-actions"
 import { QuotaBalanceCard } from "./quota-balance-card"
 import { TabsDeviceDetail } from "@/modules/whatsapp/webhooks/ui/tabs-device-detail"
+import type { MetaWebhookSyncState } from "@/modules/whatsapp/webhooks/ui/meta-webhook-card"
 
 type DeviceDetailPageProps = {
   params: Promise<{
@@ -93,10 +94,15 @@ export default async function PortalWhatsAppDeviceDetailPage({
 
   device = toDeviceDetail(deviceRecord)
 
+  const features =
+    (deviceRecord.features as Record<string, unknown> | null) ?? {}
   const metaWebhook = device.whatsappMetaApp
     ? {
         appName: device.whatsappMetaApp.name,
         callbackUrl: `${getEmailBaseUrl()}${device.whatsappMetaApp.callbackPath}`,
+        deviceId: device.id,
+        syncState:
+          (features.metaWebhook as MetaWebhookSyncState | null) ?? null,
       }
     : null
 

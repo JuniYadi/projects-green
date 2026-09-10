@@ -2131,6 +2131,10 @@ model WhatsappMetaApp {
   appSecretEncrypted   String
   /// Ciphertext only; never persist plaintext webhook verify token.
   verifyTokenEncrypted String
+  /// Ciphertext master System User token; never persist plaintext token.
+  systemTokenEncrypted String?
+  /// Default Meta Graph API version for devices linked to this Meta App.
+  defaultVersion       String   @default("v24.0")
   webhookKey           String   @unique
   active               Boolean  @default(true)
   createdAt            DateTime @default(now())
@@ -2162,7 +2166,7 @@ model WhatsappDevice {
   whatsappPhoneId           String?
   whatsappMetaAppId         String?
   whatsappApplicationId     String?
-  whatsappVersion           String               @default("v24.0")
+  whatsappVersion           String?              @default("v24.0")
   whatsappProfile           Json?
   features                  Json?
   callbackUrl               String?

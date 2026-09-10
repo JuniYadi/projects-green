@@ -59,9 +59,10 @@ const META_APP_AUDIT_FIELDS = [
   "metaAppId",
   "appSecret",
   "verifyToken",
+  "systemToken",
+  "defaultVersion",
   "active",
 ] as const
-
 type MetaAppAuditField = (typeof META_APP_AUDIT_FIELDS)[number]
 
 function getChangedFields(
@@ -78,10 +79,14 @@ export class MetaAppsService {
     actorId: string
   ): Promise<WhatsappMetaAppDTO> {
     const data = createMetaAppSchema.parse(input)
-    const [appSecretEncrypted, verifyTokenEncrypted] = await Promise.all([
-      encryptWithAppKey(data.appSecret),
-      encryptWithAppKey(data.verifyToken),
-    ])
+    const [appSecretEncrypted, verifyTokenEncrypted, systemTokenEncrypted] =
+      await Promise.all([
+        encryptWithAppKey(data.appSecret),
+        encryptWithAppKey(data.verifyToken),
+        data.systemToken
+          ? encryptWithAppKey(data.systemToken)
+          : Promise.resolve(null),
+      ])
 
     const app = await this.database.whatsappMetaApp.create({
       data: {
@@ -89,6 +94,8 @@ export class MetaAppsService {
         metaAppId: data.metaAppId,
         appSecretEncrypted,
         verifyTokenEncrypted,
+        systemTokenEncrypted,
+        defaultVersion: data.defaultVersion || "v24.0",
         webhookKey: randomBytes(32).toString("base64url"),
         active: data.active,
       },
@@ -146,7 +153,14 @@ export class MetaAppsService {
         data.verifyToken
       )
     }
-
+    if (data.defaultVersion !== undefined) {
+      updateData.defaultVersion = data.defaultVersion
+    }
+    if (data.systemToken !== undefined) {
+      updateData.systemTokenEncrypted = data.systemToken
+        ? await encryptWithAppKey(data.systemToken)
+        : null
+    }
     const app =
       data.active === false
         ? await this.withNoDevicesLock(id, (tx) =>
@@ -157,7 +171,9 @@ export class MetaAppsService {
             data: updateData,
           })
     const credentialsChanged =
-      data.appSecret !== undefined || data.verifyToken !== undefined
+      data.appSecret !== undefined ||
+      data.verifyToken !== undefined ||
+      data.systemToken !== undefined
     await logWhatsappAuditEvent({
       action: credentialsChanged
         ? "META_APP_CREDENTIALS_ROTATED"

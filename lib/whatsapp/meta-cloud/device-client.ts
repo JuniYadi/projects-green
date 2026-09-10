@@ -21,6 +21,7 @@ import type {
   AnalyticsDataItem,
 } from "./types/analytics"
 
+import { resolveDecryptedDeviceMetaToken } from "@/modules/whatsapp/meta-apps/services/meta-credentials-resolver.service"
 function getProviderMessageId(result: unknown): string {
   const messageId = (result as { messages?: Array<{ id?: unknown }> })
     ?.messages?.[0]?.id
@@ -60,18 +61,44 @@ export class WhatsAppDeviceClient {
   }
 
   static async fromDevice(device: {
-    accessToken: string
+    accessToken?: string | null
+    tokenEncrypted?: string | null
+    token?: string | null
+    tokenIv?: string | null
+    whatsappVersion?: string | null
     phoneNumberId: string
     wabaId: string
     metaAppId?: string
     organizationId?: string
+    whatsappMetaApp?: {
+      metaAppId?: string | null
+      name?: string | null
+      systemTokenEncrypted?: string | null
+      defaultVersion?: string | null
+    } | null
   }) {
-    const token = await decryptWhatsAppToken(device.accessToken)
+    let token = ""
+    if (device.accessToken) {
+      token = await decryptWhatsAppToken(device.accessToken)
+    } else {
+      const resolved = await resolveDecryptedDeviceMetaToken({
+        token: device.token,
+        tokenEncrypted: device.tokenEncrypted,
+        tokenIv: device.tokenIv,
+        whatsappVersion: device.whatsappVersion,
+        whatsappBusinessAccountId: device.wabaId,
+        whatsappPhoneId: device.phoneNumberId,
+        whatsappMetaApp: device.whatsappMetaApp,
+      })
+      token = resolved.token
+    }
+
     return new WhatsAppDeviceClient({
       accessToken: token,
       phoneNumberId: device.phoneNumberId,
       wabaId: device.wabaId,
-      metaAppId: device.metaAppId,
+      metaAppId:
+        device.metaAppId ?? device.whatsappMetaApp?.metaAppId ?? undefined,
       organizationId: device.organizationId,
     })
   }

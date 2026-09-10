@@ -8,6 +8,8 @@ export const createMetaAppSchema = z
     metaAppId: boundedText(128),
     appSecret: boundedText(512),
     verifyToken: boundedText(512),
+    systemToken: boundedText(2048).optional(),
+    defaultVersion: boundedText(32).default("v24.0"),
     active: z.boolean().default(true),
   })
   .strict()
@@ -18,6 +20,8 @@ export const updateMetaAppSchema = z
     metaAppId: boundedText(128).optional(),
     appSecret: boundedText(512).optional(),
     verifyToken: boundedText(512).optional(),
+    systemToken: boundedText(2048).optional().nullable(),
+    defaultVersion: boundedText(32).optional(),
     active: z.boolean().optional(),
   })
   .strict()
