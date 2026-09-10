@@ -35,10 +35,10 @@ describe("TemplateEditorForm", () => {
       <TemplateEditorForm isNew onSave={onSave} />
     )
 
-    expect(getByText("1. General & Docs")).toBeTruthy()
-    expect(getByText("2. Runtime & Services")).toBeTruthy()
-    expect(getByText("3. Env Schema")).toBeTruthy()
-    expect(queryByText("4. Installations")).toBeNull()
+    expect(getByText("General & Docs")).toBeTruthy()
+    expect(getByText("Runtime & Services")).toBeTruthy()
+    expect(getByText("Env Schema")).toBeTruthy()
+    expect(queryByText("Installations")).toBeNull()
     expect(queryByText("5. Readme & Docs")).toBeNull()
     expect(queryByText("6. Installations")).toBeNull()
   })
@@ -83,10 +83,10 @@ describe("TemplateEditorForm", () => {
       />
     )
 
-    expect(getByText("1. General & Docs")).toBeTruthy()
-    expect(getByText("2. Runtime & Services")).toBeTruthy()
-    expect(getByText("3. Env Schema")).toBeTruthy()
-    expect(getByText("4. Installations")).toBeTruthy()
+    expect(getByText("General & Docs")).toBeTruthy()
+    expect(getByText("Runtime & Services")).toBeTruthy()
+    expect(getByText("Env Schema")).toBeTruthy()
+    expect(getByText("Installations")).toBeTruthy()
     expect(queryByText("5. Readme & Docs")).toBeNull()
     expect(queryByText("6. Installations")).toBeNull()
   })
@@ -129,7 +129,7 @@ describe("TemplateEditorForm", () => {
     await user.type(getByTestId("template-desc-input"), "App with probes")
 
     // Switch to Runtime tab
-    await user.click(getByText("2. Runtime & Services"))
+    await user.click(getByText("Runtime & Services"))
 
     // Set liveness probe
     const healthInput = getByLabelText(/Liveness Probe Path/i)

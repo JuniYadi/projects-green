@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import { getCachedOrganizations } from "@/lib/workos-directory"
 import { syncStackConfiguration } from "./sync-stack.service"
 import type { AppTemplateBlueprint } from "./blueprint/app-template-blueprint.schema"
-
 export interface TemplateInstallationItem {
   id: string
   name: string
   slug: string
   organizationId: string
+  organizationName?: string | null
   status: string
   currentDeploymentType: "deployment" | "statefulset"
   targetDeploymentType: "deployment" | "statefulset"
@@ -76,6 +77,14 @@ export async function listTemplateInstallations(
     orderBy: { createdAt: "desc" },
   })
 
+  const orgIds = Array.from(
+    new Set(stacks.map((s) => s.organizationId).filter(Boolean))
+  )
+  const orgMap =
+    orgIds.length > 0
+      ? await getCachedOrganizations(orgIds).catch(() => new Map())
+      : new Map()
+
   const installations: TemplateInstallationItem[] = stacks.map((stack) => {
     const meta = (stack.metadataJson as Record<string, unknown>) ?? {}
     const currentDeploymentType =
@@ -95,6 +104,7 @@ export async function listTemplateInstallations(
       name: stack.name,
       slug: stack.slug,
       organizationId: stack.organizationId,
+      organizationName: orgMap.get(stack.organizationId)?.name ?? null,
       status: stack.status,
       currentDeploymentType,
       targetDeploymentType,

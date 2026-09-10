@@ -43,6 +43,7 @@ export interface TemplateInstallation {
   name: string
   slug: string
   organizationId: string
+  organizationName?: string | null
   status: string
   currentDeploymentType: "deployment" | "statefulset"
   targetDeploymentType: "deployment" | "statefulset"
@@ -219,14 +220,14 @@ export function TemplateInstallationsTab({
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1.5 text-xs font-medium">
               <CheckCircle className="size-3.5 text-emerald-500" />
-              Aligned Workloads
+              Aligned Workloads (Up-to-Date)
             </CardDescription>
             <CardTitle className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {isLoading ? "..." : alignedCount}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Workload matches current ({targetDeploymentType})
+            Up-to-date with template ({targetDeploymentType})
           </CardContent>
         </Card>
 
@@ -234,14 +235,14 @@ export function TemplateInstallationsTab({
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1.5 text-xs font-medium">
               <Warning className="size-3.5 text-amber-500" />
-              Outdated Workloads
+              Outdated Workloads (Needs Sync)
             </CardDescription>
             <CardTitle className="text-2xl font-bold text-amber-600 dark:text-amber-400">
               {isLoading ? "..." : outdatedCount}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Different controller kind than template
+            Needs sync to latest template configuration
           </CardContent>
         </Card>
       </div>
@@ -372,15 +373,24 @@ export function TemplateInstallationsTab({
                           <span className="font-semibold text-foreground">
                             {stack.name}
                           </span>
-                          <span className="font-mono text-[11px] text-muted-foreground">
-                            {stack.slug}
-                          </span>
+                          {stack.slug && stack.slug !== stack.name && (
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              {stack.slug}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {stack.organizationId}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">
+                            {stack.organizationName || stack.organizationId}
+                          </span>
+                          {stack.organizationName && (
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {stack.organizationId}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {stack.isAligned ? (
