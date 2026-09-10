@@ -9,6 +9,7 @@ import {
   type PlatformAccessRole,
 } from "@/lib/platform-role"
 import { resolveAdminActor } from "@/modules/admin/api/admin.guards"
+import { fieldErrorMapFromIssues } from "@/lib/validation"
 
 const listQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),

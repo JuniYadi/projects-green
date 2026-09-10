@@ -7,10 +7,15 @@ export interface JenkinsVersionUpdatePayload {
   application_stack: string
 }
 
-export type JenkinsRepositoryStack = Pick<
-  GithubRepositoryConnection,
-  "id" | "repoName" | "fullName" | "buildConfigJson"
->
+export type JenkinsRepositoryStack = Omit<
+  Pick<
+    GithubRepositoryConnection,
+    "id" | "repoName" | "fullName" | "buildConfigJson"
+  >,
+  "repoName"
+> & {
+  repoName: string | null
+}
 
 export class JenkinsWebhookHandler {
   constructor(private readonly triggerJob = triggerJenkinsJob) {}
