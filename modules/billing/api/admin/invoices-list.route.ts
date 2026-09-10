@@ -145,12 +145,28 @@ export const createAdminInvoicesListRoutes = (
     const skip = (page - 1) * limit
 
     try {
+      if (platformRole !== "super_admin") {
+        if (!auth.organizationId) {
+          return toForbidden(
+            set,
+            "Organization context required for tenant administrators."
+          )
+        }
+        if (organizationId && organizationId !== auth.organizationId) {
+          return toForbidden(
+            set,
+            "Cannot view invoices for another organization."
+          )
+        }
+      }
+
       const where: Prisma.BillingInvoiceWhereInput = {}
       if (status) where.status = status
       if (organizationId) {
         where.billingAccount = { organizationId }
+      } else if (platformRole !== "super_admin" && auth.organizationId) {
+        where.billingAccount = { organizationId: auth.organizationId }
       }
-
       const [invoices, total] = await Promise.all([
         prisma.billingInvoice.findMany({
           where,

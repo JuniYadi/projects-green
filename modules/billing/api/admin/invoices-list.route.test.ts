@@ -172,6 +172,48 @@ describe("AdminInvoicesListRoute", () => {
       )
     })
 
+    it("forbids tenant admin from viewing other organization invoices", async () => {
+      const app = new Elysia().use(
+        createAdminInvoicesListRoutes({
+          authenticate: async () =>
+            ({
+              user: { id: "user-1", email: "admin@tenant1.com" },
+              organizationId: "org-1",
+              role: "admin",
+            }) as MockAuthContext,
+          getPlatformRole: mockPlatformRoleNone,
+          isAdmin: () => true,
+        })
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices?organizationId=org-2")
+      )
+
+      expect(response.status).toBe(403)
+    })
+
+    it("requires organizationId for tenant admin when viewing invoices", async () => {
+      const app = new Elysia().use(
+        createAdminInvoicesListRoutes({
+          authenticate: async () =>
+            ({
+              user: { id: "user-1", email: "admin@tenant1.com" },
+              organizationId: null,
+              role: "admin",
+            }) as MockAuthContext,
+          getPlatformRole: mockPlatformRoleNone,
+          isAdmin: () => true,
+        })
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices")
+      )
+
+      expect(response.status).toBe(403)
+    })
+
     it("returns 500 on database error", async () => {
       mockFindMany.mockRejectedValueOnce(
         new Error("Database connection failed")

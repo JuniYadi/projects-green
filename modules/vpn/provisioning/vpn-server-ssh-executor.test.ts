@@ -1,7 +1,12 @@
 import { describe, expect, it } from "bun:test"
 
 import type { SshCommandResult } from "./vpn-server-ssh-executor"
-import { classifySshError, formatSshError } from "./vpn-server-ssh-executor"
+import {
+  classifySshError,
+  formatSshError,
+  escapeShellArg,
+  buildSafeShellCommand,
+} from "./vpn-server-ssh-executor"
 
 const host = "vpn.example.com"
 
@@ -118,5 +123,39 @@ describe("formatSshError", () => {
     )
     expect(msg).toContain("restart server")
     expect(msg).toContain("weird stuff")
+  })
+})
+
+describe("escapeShellArg & buildSafeShellCommand", () => {
+  it("leaves safe alphanumeric and path characters untouched", () => {
+    expect(escapeShellArg("docker")).toBe("docker")
+    expect(escapeShellArg("/usr/local/bin/script.sh")).toBe(
+      "/usr/local/bin/script.sh"
+    )
+    expect(escapeShellArg("--filter=name=test")).toBe("--filter=name=test")
+    expect(escapeShellArg("client-1_safe.ovpn")).toBe("client-1_safe.ovpn")
+  })
+
+  it("escapes empty string", () => {
+    expect(escapeShellArg("")).toBe("''")
+  })
+
+  it("escapes strings with spaces, semicolons, quotes, and metacharacters", () => {
+    expect(escapeShellArg("hello world")).toBe("'hello world'")
+    expect(escapeShellArg("rm -rf /; echo evil")).toBe("'rm -rf /; echo evil'")
+    expect(escapeShellArg("it's cool")).toBe("'it'\\''s cool'")
+    expect(escapeShellArg("$(whoami)`id`")).toBe("'$(whoami)`id`'")
+  })
+
+  it("assembles safe shell commands properly", () => {
+    const cmd = buildSafeShellCommand([
+      "docker",
+      "exec",
+      "my container",
+      "sh",
+      "-c",
+      "echo $TEST; ls",
+    ])
+    expect(cmd).toBe("docker exec 'my container' sh -c 'echo $TEST; ls'")
   })
 })

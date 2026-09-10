@@ -5,6 +5,7 @@ import { useState, useRef, useImperativeHandle } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 type MarkdownEditorProps = {
   id?: string
@@ -267,7 +268,7 @@ export const MarkdownEditor = React.forwardRef<
                   className="space-y-3 text-sm text-white/80 [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-white/15 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-white/95 [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-white/95 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-neutral-900/80 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
                   dangerouslySetInnerHTML={{
                     __html:
-                      previewHtml ||
+                      sanitizeHtml(previewHtml) ||
                       "<p class='text-muted-foreground italic text-xs'>Nothing to preview</p>",
                   }}
                 />

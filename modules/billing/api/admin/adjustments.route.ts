@@ -136,8 +136,16 @@ export const createAdminAdjustmentsRoutes = (
             const { type, startDate, endDate, page, limit, orgId } =
               parsedQuery.data
 
-            if (orgId && actor.platformRole !== "super_admin") {
-              return toForbidden(set, "Cannot filter by orgId")
+            if (actor.platformRole !== "super_admin") {
+              if (!auth.organizationId) {
+                return toForbidden(
+                  set,
+                  "Organization context required for tenant administrators."
+                )
+              }
+              if (orgId && orgId !== auth.organizationId) {
+                return toForbidden(set, "Cannot filter by orgId")
+              }
             }
 
             const skip = (page - 1) * limit

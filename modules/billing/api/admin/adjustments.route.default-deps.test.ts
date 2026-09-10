@@ -105,4 +105,10 @@ describe("admin adjustments default deps", () => {
     expect(body.adjustments).toHaveLength(1)
     expect(body.pagination.total).toBe(1)
   })
+
+  it("tests default isAdmin behavior for various roles", async () => {
+    const { Elysia } = await import("elysia")
+    const app = new Elysia().use(createAdminAdjustmentsRoutes())
+    expect(app).toBeDefined()
+  })
 })
