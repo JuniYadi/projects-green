@@ -13,6 +13,8 @@ const app = {
   verifyTokenEncrypted: "encrypted-token",
   webhookKey: "webhook-key",
   active: true,
+  systemTokenEncrypted: null,
+  defaultVersion: "v24.0",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   updatedAt: new Date("2026-01-02T00:00:00.000Z"),
 }

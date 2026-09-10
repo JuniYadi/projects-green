@@ -57,7 +57,7 @@ export default async function EditWhatsAppDevicePage({
     whatsappPhoneId: deviceRecord.whatsappPhoneId ?? "",
     whatsappMetaAppId: deviceRecord.whatsappMetaAppId ?? "",
     whatsappApplicationId: deviceRecord.whatsappApplicationId ?? "",
-    whatsappVersion: deviceRecord.whatsappVersion,
+    whatsappVersion: deviceRecord.whatsappVersion ?? "v24.0",
     callbackUrl: deviceRecord.callbackUrl ?? "",
     quotaBase: deviceRecord.quotaBase.toString(),
     quotaBaseOut: String(deviceRecord.quotaBaseOut),

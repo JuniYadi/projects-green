@@ -420,10 +420,11 @@ export const devicesRoutes = new Elysia({
       }
 
       if (
-        whatsappAuth.platformRole !== "super_admin" &&
+        !isSuperAdmin(whatsappAuth) &&
         device.organizationId !== whatsappAuth.organizationId
       ) {
-        return toForbidden(set)
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
       }
 
       try {
