@@ -30,6 +30,34 @@ export type MetaWebhookFeatureData = {
 const META_GRAPH_BASE_URL =
   process.env.graphApiBaseUrl || "https://graph.facebook.com"
 
+function extractSubscribedApps(data: unknown): MetaWebhookSubscribedApp[] {
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("data" in data) ||
+    !Array.isArray(data.data)
+  ) {
+    return []
+  }
+  return data.data.map((item: unknown) => {
+    if (!item || typeof item !== "object") return { id: "" }
+    const waData =
+      "whatsapp_business_api_data" in item &&
+      item.whatsapp_business_api_data &&
+      typeof item.whatsapp_business_api_data === "object"
+        ? (item.whatsapp_business_api_data as Record<string, unknown>)
+        : undefined
+    const id =
+      (waData && "id" in waData && String(waData.id)) ||
+      ("id" in item && String(item.id)) ||
+      ""
+    const name =
+      waData && "name" in waData && typeof waData.name === "string"
+        ? waData.name
+        : undefined
+    return { id, name }
+  })
+}
 export async function syncMetaWebhookSubscription(
   deviceId: string
 ): Promise<MetaWebhookFeatureData> {
@@ -157,26 +185,21 @@ export async function syncMetaWebhookSubscription(
     }
 
     let getData = await getRes.json()
-    let subscribedApps: MetaWebhookSubscribedApp[] = (getData.data || []).map(
-      (item: Record<string, unknown>) => {
-        const waData = item.whatsapp_business_api_data as
-          Record<string, unknown> | undefined
-        return {
-          id: String(waData?.id || item.id || ""),
-          name: waData?.name ? String(waData.name) : undefined,
-        }
-      }
-    )
-
+    let subscribedApps = extractSubscribedApps(getData)
     let isSubscribed = subscribedApps.some((app) => app.id === targetMetaAppId)
 
     // 2. If not subscribed, attempt auto-subscription
     if (!isSubscribed) {
       const postUrl = `${META_GRAPH_BASE_URL}/${version}/${wabaId}/subscribed_apps`
-      await fetch(postUrl, {
+      const postRes = await fetch(postUrl, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       })
+      if (!postRes.ok) {
+        console.warn(
+          `[meta-webhook-sync] Auto-subscribe POST returned status ${postRes.status}`
+        )
+      }
 
       // Re-check subscriptions after POST
       getRes = await fetch(getUrl, {
@@ -184,16 +207,7 @@ export async function syncMetaWebhookSubscription(
       })
       if (getRes.ok) {
         getData = await getRes.json()
-        subscribedApps = (getData.data || []).map(
-          (item: Record<string, unknown>) => {
-            const waData = item.whatsapp_business_api_data as
-              Record<string, unknown> | undefined
-            return {
-              id: String(waData?.id || item.id || ""),
-              name: waData?.name ? String(waData.name) : undefined,
-            }
-          }
-        )
+        subscribedApps = extractSubscribedApps(getData)
         isSubscribed = subscribedApps.some((app) => app.id === targetMetaAppId)
       }
     }

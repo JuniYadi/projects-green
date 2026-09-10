@@ -31,12 +31,14 @@ export type MetaWebhookInfo = {
   appName: string
   callbackUrl: string
   deviceId?: string
+  apiBasePath?: string
   syncState?: MetaWebhookSyncState | null
 }
 
 type MetaWebhookCardProps = {
   metaWebhook: MetaWebhookInfo | null
   deviceId?: string
+  apiBasePath?: string
 }
 function MetaWebhookRow({
   label,
@@ -56,8 +58,11 @@ function MetaWebhookRow({
 export function MetaWebhookCard({
   metaWebhook,
   deviceId: propDeviceId,
+  apiBasePath: propApiBasePath,
 }: MetaWebhookCardProps) {
   const deviceId = propDeviceId || metaWebhook?.deviceId
+  const apiBasePath =
+    propApiBasePath || metaWebhook?.apiBasePath || "/api/whatsapp/devices"
   const [syncStateOverride, setSyncStateOverride] =
     React.useState<MetaWebhookSyncState | null>(null)
   const [syncing, setSyncing] = React.useState(false)
@@ -68,7 +73,7 @@ export function MetaWebhookCard({
     if (!deviceId) return
     setSyncing(true)
     try {
-      const res = await fetch(`/api/admin/devices/${deviceId}/sync-webhook`, {
+      const res = await fetch(`${apiBasePath}/${deviceId}/sync-webhook`, {
         method: "POST",
       })
       const data = await res.json()

@@ -1364,6 +1364,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         appName: device.whatsappMetaApp.name,
         callbackUrl: device.whatsappMetaApp.callbackPath,
         deviceId: device.id,
+        apiBasePath: "/api/whatsapp/devices",
         syncState:
           (features.metaWebhook as MetaWebhookSyncState | null) ?? null,
       }

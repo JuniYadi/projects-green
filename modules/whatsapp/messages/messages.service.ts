@@ -607,6 +607,15 @@ export const messageService: MessageService = {
       throw new Error("WhatsApp device not found")
     }
 
+    // Validate destination country is supported in pricing table
+    const destinationCheck = await isDestinationCountrySupported(phoneNumber)
+    if (!destinationCheck.supported) {
+      throw new UnsupportedDestinationCountryError(
+        destinationCheck.country,
+        phoneNumber
+      )
+    }
+
     // Billing checks (same as sendMessage)
     const balanceGate = new BalanceGateService(prisma)
     const quotaGate = new QuotaGateService(prisma)

@@ -1199,6 +1199,39 @@ describe("templatesRoutes", () => {
       })
     })
 
+    it("deletes template using inherited token from whatsappMetaApp when device has no token", async () => {
+      mockDeleteMetaTemplate.mockClear()
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        slug: "inherited_template",
+        name: "Inherited Template",
+        whatsappDeviceId: "dev-inherited",
+      } as unknown as MockTemplate)
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        id: "dev-inherited",
+        tokenEncrypted: null,
+        token: null,
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+        whatsappMetaApp: {
+          metaAppId: "meta-app-1",
+          systemTokenEncrypted: "sys-token-enc",
+          defaultVersion: "v24.0",
+        },
+      })
+
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(mockDeleteMetaTemplate).toHaveBeenCalledWith("inherited_template")
+      expect(mockTemplateDelete).toHaveBeenCalledWith({
+        where: { id: "tpl-approved" },
+      })
+    })
+
     it("proceeds with local deletion if Meta returns 404 (already deleted in Meta)", async () => {
       const { MetaCloudError } =
         await import("@/lib/whatsapp/meta-cloud/errors")

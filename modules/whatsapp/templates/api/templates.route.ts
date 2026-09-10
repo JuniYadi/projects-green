@@ -1139,58 +1139,47 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       if (template.whatsappDeviceId) {
         const device = await prisma.whatsappDevice.findUnique({
           where: { id: template.whatsappDeviceId },
-          select: {
-            id: true,
-            token: true,
-            tokenEncrypted: true,
-            tokenIv: true,
-            whatsappPhoneId: true,
-            whatsappBusinessAccountId: true,
-          },
+          include: { whatsappMetaApp: true },
         })
 
-        if (device) {
-          const encryptedParts = device.tokenEncrypted?.split(".") ?? []
-          const accessToken =
-            device.tokenEncrypted &&
-            device.tokenIv &&
-            encryptedParts.length === 2
-              ? `${encryptedParts[0]}.${device.tokenIv}.${encryptedParts[1]}`
-              : (device.tokenEncrypted ?? device.token)
-          const phoneNumberId = device.whatsappPhoneId
-          const wabaId = device.whatsappBusinessAccountId
+        if (
+          device &&
+          device.whatsappBusinessAccountId &&
+          device.whatsappPhoneId
+        ) {
+          try {
+            const metaClient = await WhatsAppDeviceClient.fromDevice({
+              tokenEncrypted: device.tokenEncrypted,
+              token: device.token,
+              tokenIv: device.tokenIv,
+              whatsappVersion: device.whatsappVersion,
+              phoneNumberId: device.whatsappPhoneId,
+              wabaId: device.whatsappBusinessAccountId,
+              whatsappMetaApp: device.whatsappMetaApp,
+              organizationId: template.organizationId,
+            })
+            await metaClient.deleteTemplate(template.slug || template.name)
+          } catch (metaErr: unknown) {
+            const isNotFound =
+              metaErr instanceof MetaCloudError &&
+              (metaErr.httpStatus === 404 ||
+                metaErr.code === 100 ||
+                metaErr.message?.toLowerCase().includes("does not exist") ||
+                metaErr.message?.toLowerCase().includes("not found"))
 
-          if (accessToken && phoneNumberId && wabaId) {
-            try {
-              const metaClient = await WhatsAppDeviceClient.fromDevice({
-                accessToken,
-                phoneNumberId,
-                wabaId,
-                organizationId: template.organizationId,
-              })
-              await metaClient.deleteTemplate(template.slug || template.name)
-            } catch (metaErr: unknown) {
-              const isNotFound =
-                metaErr instanceof MetaCloudError &&
-                (metaErr.httpStatus === 404 ||
-                  metaErr.code === 100 ||
-                  metaErr.message?.toLowerCase().includes("does not exist") ||
-                  metaErr.message?.toLowerCase().includes("not found"))
-
-              if (!isNotFound) {
-                console.error(
-                  "[templatesRoute] Meta template deletion failed:",
-                  metaErr
-                )
-                set.status = 502
-                return {
-                  ok: false,
-                  error: "META_DELETION_FAILED",
-                  message:
-                    metaErr instanceof Error
-                      ? metaErr.message
-                      : "Failed to delete template from Meta WhatsApp Business Account.",
-                }
+            if (!isNotFound) {
+              console.error(
+                "[templatesRoute] Meta template deletion failed:",
+                metaErr
+              )
+              set.status = 502
+              return {
+                ok: false,
+                error: "META_DELETION_FAILED",
+                message:
+                  metaErr instanceof Error
+                    ? metaErr.message
+                    : "Failed to delete template from Meta WhatsApp Business Account.",
               }
             }
           }
