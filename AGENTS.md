@@ -48,7 +48,8 @@
 - UI Color Hierarchy (60-30-10 Rule): Reserve primary green strictly for primary actions (CTA) and semantic success icons. Use neutral card surfaces (`bg-card`/`bg-background` + `border-border`) and muted text (`text-muted-foreground`) for cards, badges, and secondary elements to prevent green washout.
 - Diagrams in vault docs/PRDs: never paste hand-drawn ASCII art into a note.
   Write the ASCII source, convert it with the vault's `Meta/Scripts/asciibob.sh`
-  (needs `brew install svgbob`), and embed `![[<name>.svg]]`. One diagram per
+  (needs svgbob: `brew install svgbob`, or `cargo install svgbob_cli` on Linux),
+  and embed `![[<name>.svg]]`. One diagram per
   SVG file — the script rejects oversized or multi-diagram input. Procedure and
   svgbob gotchas: `Skill - Diagram in PRD` in the vault.
 - Vault docs are the product/domain source of truth. If vault docs conflict with code, update code or flag the mismatch; do not duplicate domain docs in the repository.
