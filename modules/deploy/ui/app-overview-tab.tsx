@@ -25,6 +25,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ClusterTelemetryCards } from "@/modules/deploy/ui/cluster-telemetry-cards"
+import { resolveContainerLimits } from "@/modules/deploy/deploy.constants"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
 import type { ClusterTelemetrySummary } from "@/modules/deploy/telemetry.types"
 
@@ -75,6 +76,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     copied: "Tersalin",
     usageTitle: "Pemakaian resource",
     usageDesc: "Ringkasan 1 jam terakhir — detail ada di tab Grafik lengkap",
+    limitLabel: "Batas maksimum",
   },
   en: {
     statusTitle: "Application status",
@@ -111,6 +113,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     copied: "Copied",
     usageTitle: "Resource usage",
     usageDesc: "Last hour at a glance — full detail lives in Full charts",
+    limitLabel: "Hard limit",
   },
 }
 
@@ -240,6 +243,7 @@ function CopyableRow({
 export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
   const t = COPY[locale.startsWith("id") ? "id" : "en"]
   const targetDomain = stack.customDomain || stack.subdomain
+  const limits = resolveContainerLimits(stack.cpu, stack.memory)
 
   const { data: telemetry, isLoading: healthLoading } =
     useQuery<ClusterTelemetrySummary>({
@@ -533,13 +537,19 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                 <span className="text-muted-foreground">
                   Allocated Resources
                 </span>
-                <span className="font-medium text-foreground">
+                <span className="text-right font-medium text-foreground">
                   {stack.cpu
                     ? stack.cpu >= 100
                       ? `${stack.cpu / 1000} vCPU`
                       : `${stack.cpu} vCPU`
                     : "0.5 vCPU"}{" "}
                   • {stack.memory ? `${stack.memory} MB RAM` : "512 MB RAM"}
+                  {/* Same ceiling the Helm builder writes and telemetry charts
+                      against, so the two cards can no longer disagree. */}
+                  <span className="block text-[11px] font-normal text-muted-foreground">
+                    {t.limitLabel}: {limits.cpuMillicores / 1000} vCPU •{" "}
+                    {limits.memoryMi / 1024} GB
+                  </span>
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
