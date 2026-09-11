@@ -1,22 +1,10 @@
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
+import {
+  extractPhoneVariants,
+  isPotentialPhoneNumber,
+} from "@/modules/whatsapp/messages/phone-number"
 import type { AgentPTool } from "../../types"
-
-function isPotentialPhoneNumber(val: string): boolean {
-  return (
-    /^\+?[\d\s\-()]+$/.test(val.trim()) && val.replace(/\D/g, "").length >= 7
-  )
-}
-
-function extractPhoneVariants(raw: string): string[] {
-  const trimmed = raw.trim()
-  const normalized = normalizeIndonesianPhoneNumber(trimmed)
-  const digits = trimmed.replace(/\D/g, "")
-  return Array.from(
-    new Set([trimmed, normalized, digits, `+${digits}`].filter(Boolean))
-  ) as string[]
-}
 
 const inputSchema = z.object({
   deviceId: z.string().min(1).optional(),

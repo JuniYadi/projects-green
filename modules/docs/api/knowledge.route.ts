@@ -169,7 +169,7 @@ const toValidationError = (
   }
 }
 
-const streamKnowledgeAnswerDefault = async function* (input: {
+export const streamKnowledgeAnswerDefault = async function* (input: {
   messages: KnowledgeChatRequest["messages"]
   docs: Awaited<ReturnType<typeof searchKnowledgeDocsService>>
   auth?: KnowledgeAuthContext

@@ -327,6 +327,27 @@ export function normalizeIndonesianPhoneNumber(input: string): string | null {
 }
 
 /**
+ * Check if a string looks like a potential phone number rather than an entity ID.
+ */
+export function isPotentialPhoneNumber(val: string): boolean {
+  return (
+    /^\+?[\d\s\-()]+$/.test(val.trim()) && val.replace(/\D/g, "").length >= 7
+  )
+}
+
+/**
+ * Extract phone variants (raw, normalized E.164, digits only, +digits) for flexible DB lookup.
+ */
+export function extractPhoneVariants(raw: string): string[] {
+  const trimmed = raw.trim()
+  const normalized = normalizeIndonesianPhoneNumber(trimmed)
+  const digits = trimmed.replace(/\D/g, "")
+  return Array.from(
+    new Set([trimmed, normalized, digits, `+${digits}`].filter(Boolean))
+  ) as string[]
+}
+
+/**
  * Format phone number cleanly for Indonesian display: `+62 812-3456-7890`
  */
 export function formatIndonesianPhone(
