@@ -13,6 +13,7 @@ import {
   ChartBar,
   GearSix,
   ArrowsClockwise,
+  TerminalWindow,
 } from "@phosphor-icons/react"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
@@ -31,7 +32,13 @@ import {
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
 
 export type WorkspaceTabKey =
-  "overview" | "deployments" | "logs" | "metrics" | "traffic" | "settings"
+  | "overview"
+  | "deployments"
+  | "logs"
+  | "terminal"
+  | "metrics"
+  | "traffic"
+  | "settings"
 export type AppWorkspaceHeaderProps = {
   apps?: StackSummaryDTO[]
   selectedApp: StackSummaryDTO
@@ -74,6 +81,11 @@ export function AppWorkspaceHeader({
       icon: <ListMagnifyingGlass size={15} />,
     },
     { key: "logs", label: "Logs", icon: <ListMagnifyingGlass size={15} /> },
+    {
+      key: "terminal",
+      label: "Terminal",
+      icon: <TerminalWindow size={15} />,
+    },
     { key: "metrics", label: "Metrics", icon: <ChartLine size={15} /> },
     { key: "traffic", label: "Traffic", icon: <ChartBar size={15} /> },
     { key: "settings", label: "Settings", icon: <GearSix size={15} /> },
@@ -217,7 +229,7 @@ export function AppWorkspaceHeader({
         </div>
       </div>
 
-      {/* 5 Unified Workspace Tabs */}
+      {/* Unified Workspace Tabs */}
       <div className="flex border-b border-border">
         <nav
           className="-mb-px flex space-x-6 overflow-x-auto"
