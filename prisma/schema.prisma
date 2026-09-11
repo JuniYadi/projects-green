@@ -470,13 +470,36 @@ model ApplicationStack {
   cluster              AppHostingCluster?          @relation(fields: [clusterId], references: [id], onDelete: SetNull)
   domains              ApplicationDomain[]
   managedStock         AppManagedStock?
-  template             AppTemplate?                @relation(fields: [templateId], references: [id])
+  template             AppTemplate?                    @relation(fields: [templateId], references: [id])
+  trafficSnapshots     AppHostingDailyTrafficSnapshot[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@index([repositoryConnectionId])
   @@index([status])
   @@index([clusterId])
+}
+
+model AppHostingDailyTrafficSnapshot {
+  id              String           @id @default(cuid())
+  stackId         String
+  date            DateTime         @db.Date
+  totalRequests   Int              @default(0)
+  successCount    Int              @default(0)
+  errorCount      Int              @default(0)
+  totalBytes      BigInt           @default(0)
+  avgLatencyMs    Int              @default(0)
+  hourlyTrendJson Json             @default("[]")
+  topPathsJson    Json             @default("[]")
+  errorPathsJson  Json             @default("[]")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  stack           ApplicationStack @relation(fields: [stackId], references: [id], onDelete: Cascade)
+
+  @@unique([stackId, date])
+  @@index([stackId, date])
+  @@map("AppHostingDailyTrafficSnapshot")
 }
 
 model AppTemplate {

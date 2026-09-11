@@ -58,6 +58,7 @@ import { AppMonitor } from "@/modules/deploy/ui/operate/app-monitor"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
 import { TabMetrics } from "@/modules/deploy/ui/operate/tab-metrics"
 import { TabEnv } from "@/modules/deploy/ui/operate/tab-env"
+import { TabTraffic } from "@/modules/deploy/ui/operate/tab-traffic"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
 import { TabScaling } from "@/modules/deploy/ui/operate/tab-scaling"
 import { TabMounts } from "@/modules/deploy/ui/operate/tab-mounts"
@@ -501,6 +502,11 @@ export default function PlatformInstanceWorkspacePage() {
               memLimit="512MB"
               locale={locale}
             />
+          )}
+
+          {/* TAB 5: TRAFFIC */}
+          {activeWorkspaceTab === "traffic" && (
+            <TabTraffic appSlug={slug} locale={locale} />
           )}
 
           {/* TAB 5: SETTINGS */}

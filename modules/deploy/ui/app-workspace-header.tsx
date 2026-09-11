@@ -10,6 +10,7 @@ import {
   Gauge,
   ListMagnifyingGlass,
   ChartLine,
+  ChartBar,
   GearSix,
   ArrowsClockwise,
 } from "@phosphor-icons/react"
@@ -30,8 +31,7 @@ import {
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
 
 export type WorkspaceTabKey =
-  "overview" | "deployments" | "logs" | "metrics" | "settings"
-
+  "overview" | "deployments" | "logs" | "metrics" | "traffic" | "settings"
 export type AppWorkspaceHeaderProps = {
   apps?: StackSummaryDTO[]
   selectedApp: StackSummaryDTO
@@ -75,6 +75,7 @@ export function AppWorkspaceHeader({
     },
     { key: "logs", label: "Logs", icon: <ListMagnifyingGlass size={15} /> },
     { key: "metrics", label: "Metrics", icon: <ChartLine size={15} /> },
+    { key: "traffic", label: "Traffic", icon: <ChartBar size={15} /> },
     { key: "settings", label: "Settings", icon: <GearSix size={15} /> },
   ]
 

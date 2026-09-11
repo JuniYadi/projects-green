@@ -179,6 +179,17 @@ export const CRON_JOB_DEFINITIONS: CronDefinitionConfig[] = [
     timeoutSeconds: 3600,
     gracePeriodMins: 120,
   },
+  {
+    code: "app-hosting-daily-traffic-snapshot",
+    name: "App Hosting Daily Traffic Snapshot",
+    description:
+      "Aggregates OpenSearch ingress traffic for yesterday (UTC) and persists snapshots to database",
+    category: "system",
+    cronExpression: "0 1 * * *",
+    timezone: "UTC",
+    timeoutSeconds: 1800,
+    gracePeriodMins: 30,
+  },
 ]
 
 /**
