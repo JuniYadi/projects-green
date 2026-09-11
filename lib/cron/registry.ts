@@ -190,6 +190,17 @@ export const CRON_JOB_DEFINITIONS: CronDefinitionConfig[] = [
     timeoutSeconds: 1800,
     gracePeriodMins: 30,
   },
+  {
+    code: "app-hosting-hourly-log-rollup",
+    name: "App Hosting Hourly Log Health Rollup",
+    description:
+      "Aggregates hourly application container logs and updates daily health snapshots",
+    category: "system",
+    cronExpression: "5 * * * *",
+    timezone: "UTC",
+    timeoutSeconds: 900,
+    gracePeriodMins: 15,
+  },
 ]
 
 /**

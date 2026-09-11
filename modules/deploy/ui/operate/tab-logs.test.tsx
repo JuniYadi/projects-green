@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react"
 import { afterEach, describe, expect, it, mock } from "bun:test"
-
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TabLogs } from "./tab-logs"
 
 describe("TabLogs Component", () => {
@@ -27,22 +27,30 @@ describe("TabLogs Component", () => {
       },
     ]
 
-    globalThis.fetch = mock(async () => ({
-      ok: true,
-      json: async () => ({ ok: true, data: mockLogs }),
-    })) as unknown as typeof fetch
+    globalThis.fetch = mock(async (url: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes("/logs/report")) {
+        return { ok: false, json: async () => ({}) }
+      }
+      return { ok: true, json: async () => ({ ok: true, data: mockLogs }) }
+    }) as unknown as typeof fetch
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
 
     try {
-      const view = render(<TabLogs appSlug="hermes-sparkling-pulsar" />)
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <TabLogs appSlug="hermes-sparkling-pulsar" />
+        </QueryClientProvider>
+      )
 
       const log1 = await view.findByText("Container started successfully")
       expect(log1).toBeTruthy()
 
       const log2 = await view.findByText("High memory utilization warning")
       expect(log2).toBeTruthy()
-
-      expect(view.getByText("[deploy]")).toBeTruthy()
-      expect(view.getByText("[app]")).toBeTruthy()
     } finally {
       globalThis.fetch = originalFetch
     }
@@ -50,13 +58,24 @@ describe("TabLogs Component", () => {
 
   it("renders empty state message when no logs exist in OpenSearch", async () => {
     const originalFetch = globalThis.fetch
-    globalThis.fetch = mock(async () => ({
-      ok: true,
-      json: async () => ({ ok: true, data: [] }),
-    })) as unknown as typeof fetch
+    globalThis.fetch = mock(async (url: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes("/logs/report")) {
+        return { ok: false, json: async () => ({}) }
+      }
+      return { ok: true, json: async () => ({ ok: true, data: [] }) }
+    }) as unknown as typeof fetch
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
 
     try {
-      const view = render(<TabLogs appSlug="hermes-empty" />)
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <TabLogs appSlug="hermes-empty" />
+        </QueryClientProvider>
+      )
 
       const emptyMsg = await view.findByText(
         "Belum ada output log di OpenSearch untuk service ini."

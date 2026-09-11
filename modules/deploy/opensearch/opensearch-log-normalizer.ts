@@ -53,11 +53,24 @@ function resolveLevel(
     return "ERROR"
   }
 
-  // Infer from message keywords
+  // Fastify/Pino res.statusCode or status
+  const rawStatus =
+    (src.res &&
+      typeof src.res === "object" &&
+      (src.res as Record<string, unknown>).statusCode) ??
+    src.statusCode ??
+    src.status
+  if (typeof rawStatus === "number") {
+    if (rawStatus >= 500) return "ERROR"
+    if (rawStatus >= 400) return "WARN"
+  }
+
+  // Infer from message keywords (including Laravel, NestJS, Python trace)
   if (
-    /(?:\[|\b)(?:ERROR|CRIT|CRITICAL|FATAL|FAIL|FAILED|EXCEPTION)(?:\]|\b)/i.test(
+    /(?:\[|\b)(?:EMERGENCY|ALERT|CRIT|CRITICAL|ERROR|FATAL|FAIL|FAILED|EXCEPTION|TRACEBACK)(?:\]|\b)/i.test(
       cleanMessage
-    )
+    ) ||
+    cleanMessage.startsWith("Traceback (most recent call last):")
   ) {
     return "ERROR"
   }
@@ -65,7 +78,6 @@ function resolveLevel(
   if (/(?:\[|\b)(?:WARN|WARNING)(?:\]|\b)/i.test(cleanMessage)) {
     return "WARN"
   }
-
   return "INFO"
 }
 
@@ -145,16 +157,39 @@ function resolveSource(src: Record<string, unknown>): string {
 function resolveMessage(src: Record<string, unknown>): string {
   const rawMsg = src.message ?? src.msg ?? src.log
 
-  if (typeof rawMsg === "string") {
+  if (typeof rawMsg === "string" && rawMsg.trim().length > 0) {
+    // If Fastify/Pino request summary, format nicely
+    if (
+      rawMsg === "request completed" &&
+      src.req &&
+      typeof src.req === "object"
+    ) {
+      const req = src.req as Record<string, unknown>
+      const res = (
+        src.res && typeof src.res === "object" ? src.res : {}
+      ) as Record<string, unknown>
+      const method = req.method ?? "HTTP"
+      const url = req.url ?? "/"
+      const status = res.statusCode ?? 200
+      const time = src.responseTime ? ` in ${src.responseTime}ms` : ""
+      return `${method} ${url} ${status}${time}`
+    }
     return stripAnsi(rawMsg).trim()
   }
 
+  // Fallback if message is an object or error object
   if (rawMsg !== null && typeof rawMsg === "object") {
     try {
       return JSON.stringify(rawMsg)
     } catch {
       return String(rawMsg)
     }
+  }
+
+  // Fallback if only req/res exists without message/msg
+  if (src.req && typeof src.req === "object") {
+    const req = src.req as Record<string, unknown>
+    return `${req.method ?? "GET"} ${req.url ?? "/"}`
   }
 
   if (rawMsg !== undefined && rawMsg !== null) {
