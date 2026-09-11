@@ -173,5 +173,58 @@ describe("app-traffic.route", () => {
         status: "2xx",
       })
     })
+
+    it("guards against non-numeric limit parameter gracefully", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        slug: "my-app",
+      })
+      mockGetLiveTrafficLogs.mockResolvedValueOnce({
+        logs: [],
+        total: 0,
+      })
+
+      const res = await appTrafficRoutes.handle(
+        new Request(
+          "http://localhost/deploy/apps/my-app/traffic/logs?limit=invalid_abc"
+        )
+      )
+      expect(res.status).toBe(200)
+      expect(mockGetLiveTrafficLogs).toHaveBeenCalledWith("my-app", {
+        limit: 25,
+        since: undefined,
+        status: undefined,
+      })
+    })
+
+    it("returns 500 when service throws an error", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        slug: "my-app",
+      })
+      mockGetLiveTrafficLogs.mockRejectedValueOnce(new Error("Service failure"))
+
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/logs")
+      )
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toBe("TRAFFIC_LOGS_FAILED")
+    })
+
+    it("returns 500 when report service throws an error", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        slug: "my-app",
+      })
+      mockGetAppTrafficReport.mockRejectedValueOnce(new Error("DB failure"))
+
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/report")
+      )
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toBe("TRAFFIC_REPORT_FAILED")
+    })
   })
 })

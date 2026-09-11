@@ -119,7 +119,8 @@ export const appTrafficRoutes = new Elysia({ prefix: "/deploy/apps" })
         }
       }
 
-      const limit = query?.limit ? parseInt(query.limit, 10) : 25
+      const parsedLimit = query?.limit ? parseInt(query.limit, 10) : 25
+      const limit = Number.isFinite(parsedLimit) ? parsedLimit : 25
       const status = query?.status as "all" | "2xx" | "4xx" | "5xx" | undefined
 
       try {

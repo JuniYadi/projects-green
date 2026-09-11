@@ -323,5 +323,104 @@ describe("opensearch-traffic.service", () => {
         clientIp: "1.2.3.4",
       })
     })
+    it("filters logs by status 4xx and 5xx correctly", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+
+      const mockClient = {
+        search: mock(async () => ({
+          body: { hits: { total: 0, hits: [] } },
+        })),
+      }
+
+      await getLiveTrafficLogs(
+        "my-app",
+        { limit: 10, status: "4xx", since: "2026-09-11T00:00:00Z" },
+        mockClient as unknown as import("@opensearch-project/opensearch").Client
+      )
+      await getLiveTrafficLogs(
+        "my-app",
+        { limit: 10, status: "5xx" },
+        mockClient as unknown as import("@opensearch-project/opensearch").Client
+      )
+      expect(mockClient.search).toHaveBeenCalledTimes(2)
+    })
+
+    it("handles OpenSearch search error gracefully by returning empty list", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+      const mockClient = {
+        search: mock(async () => {
+          throw new Error("Cluster unreachable")
+        }),
+      }
+      const res = await getLiveTrafficLogs(
+        "my-app",
+        {},
+        mockClient as unknown as import("@opensearch-project/opensearch").Client
+      )
+      expect(res.logs).toEqual([])
+      expect(res.total).toBe(0)
+    })
+  })
+
+  describe("saveDailyTrafficSnapshot and processDailyTrafficSnapshotsJob", () => {
+    it("saves snapshot to database via upsert", async () => {
+      const { saveDailyTrafficSnapshot } =
+        await import("./opensearch-traffic.service")
+      await saveDailyTrafficSnapshot({
+        stackId: "st_123",
+        date: new Date(Date.UTC(2026, 8, 10)),
+        totalRequests: 50,
+        successCount: 48,
+        errorCount: 2,
+        totalBytes: BigInt(5000),
+        avgLatencyMs: 25,
+        hourlyTrend: [],
+        topPaths: [],
+        errorPaths: [],
+      })
+      expect(
+        mockPrisma.appHostingDailyTrafficSnapshot.upsert
+      ).toHaveBeenCalled()
+    })
+
+    it("processes all running stacks in daily cron job", async () => {
+      const { processDailyTrafficSnapshotsJob } =
+        await import("./opensearch-traffic.service")
+      mockPrisma.applicationStack.findMany.mockResolvedValue([
+        { id: "st_1", slug: "app-1" },
+        { id: "st_2", slug: "app-2" },
+      ])
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_1",
+        slug: "app-1",
+        name: "App 1",
+        organizationId: "org_1",
+        clusterId: "cl_1",
+        cluster: { code: "sgp" },
+      })
+
+      const mockClient = {
+        search: mock(async () => ({
+          body: {
+            aggregations: {
+              status_codes: { buckets: [] },
+            },
+          },
+        })),
+      }
+
+      const summary = await processDailyTrafficSnapshotsJob(
+        new Date("2026-09-10")
+      )
+      expect(summary.processed).toBeGreaterThanOrEqual(1)
+    })
   })
 })

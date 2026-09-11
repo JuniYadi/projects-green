@@ -108,10 +108,29 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   targetDate: Date,
   injectedClient?: Client
 ): Promise<DailySnapshotComputeResult> {
-  const { client: resolvedClient, stack } =
-    await resolveOpenSearchForStack(stackIdOrSlug)
-  const client = injectedClient ?? resolvedClient
+  let client: Client
+  let stackSlug: string
+  let stackId: string
 
+  if (injectedClient) {
+    const s = await prisma.applicationStack.findFirst({
+      where: { OR: [{ id: stackIdOrSlug }, { slug: stackIdOrSlug }] },
+      select: { id: true, slug: true },
+    })
+    if (!s) {
+      throw new Error(
+        `ApplicationStack not found for identifier: ${stackIdOrSlug}`
+      )
+    }
+    client = injectedClient
+    stackSlug = s.slug
+    stackId = s.id
+  } else {
+    const resolved = await resolveOpenSearchForStack(stackIdOrSlug)
+    client = resolved.client
+    stackSlug = resolved.stack.slug
+    stackId = resolved.stack.id
+  }
   const startOfDay = new Date(
     Date.UTC(
       targetDate.getUTCFullYear(),
@@ -135,7 +154,7 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     )
   )
 
-  const backendPrefix = `app-${stack.slug}_svc_`
+  const backendPrefix = `app-${stackSlug}_svc_`
 
   const queryPayload: Record<string, unknown> = {
     size: 0,
@@ -311,8 +330,8 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     logger.warn(
       {
         event: "TRAFFIC_SNAPSHOT_COMPUTE_FAILED",
-        stackId: stack.id,
-        slug: stack.slug,
+        stackId,
+        slug: stackSlug,
         targetDate: startOfDay.toISOString(),
         error: error instanceof Error ? error.message : String(error),
       },
@@ -321,7 +340,7 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   }
 
   return {
-    stackId: stack.id,
+    stackId,
     date: startOfDay,
     totalRequests,
     successCount,
