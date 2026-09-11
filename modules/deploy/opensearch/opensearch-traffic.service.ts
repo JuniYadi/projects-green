@@ -1,5 +1,6 @@
 import { Client } from "@opensearch-project/opensearch"
 import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
 import { logger } from "@/lib/logger"
 import { resolveClusterIntegrationByClusterCode } from "../cluster-integration.service"
 import type {
@@ -136,7 +137,7 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
 
   const backendPrefix = `app-${stack.slug}_svc_`
 
-  const queryPayload = {
+  const queryPayload: Record<string, unknown> = {
     size: 0,
     query: {
       bool: {
@@ -215,9 +216,13 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     []
   const topPaths: TrafficPathCount[] = []
   const errorPaths: TrafficErrorPath[] = []
-
   try {
-    const response = await client.search({
+    const rawClient = client as unknown as {
+      search: (
+        params: Record<string, unknown>
+      ) => Promise<Record<string, unknown>>
+    }
+    const response = await rawClient.search({
       index: "haproxy-controller-*",
       body: queryPayload,
     })
@@ -823,18 +828,25 @@ export async function getLiveTrafficLogs(
     filterClauses.push({ range: { http_status: { gte: 500, lt: 600 } } })
   }
 
-  try {
-    const res = await client.search({
-      index: "haproxy-controller-*",
-      body: {
-        size: limit,
-        query: {
-          bool: {
-            filter: filterClauses,
-          },
-        },
-        sort: [{ "@timestamp": { order: "desc" } }],
+  const searchPayload: Record<string, unknown> = {
+    size: limit,
+    query: {
+      bool: {
+        filter: filterClauses,
       },
+    },
+    sort: [{ "@timestamp": { order: "desc" } }],
+  }
+
+  try {
+    const rawClient = client as unknown as {
+      search: (
+        params: Record<string, unknown>
+      ) => Promise<Record<string, unknown>>
+    }
+    const res = await rawClient.search({
+      index: "haproxy-controller-*",
+      body: searchPayload,
     })
     const rawRes = res as unknown as {
       body?: {
