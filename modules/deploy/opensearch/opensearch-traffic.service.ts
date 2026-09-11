@@ -209,7 +209,7 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   let totalRequests = 0
   let successCount = 0
   let errorCount = 0
-  let totalBytes = 0n
+  let totalBytes = BigInt(0)
   let avgLatencyMs = 0
   const hourlyTrend: Array<{ hour: number; requests: number; errors: number }> =
     []
@@ -217,28 +217,7 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   const errorPaths: TrafficErrorPath[] = []
 
   try {
-    const response = await client.search<{
-      status_codes?: { buckets: Array<{ key: number; doc_count: number }> }
-      avg_latency?: { value: number | null }
-      total_bytes?: { value: number | null }
-      hourly_trend?: {
-        buckets: Array<{
-          key_as_string: string
-          doc_count: number
-          errors?: { doc_count: number }
-        }>
-      }
-      top_paths?: { buckets: Array<{ key: string; doc_count: number }> }
-      error_paths?: {
-        paths?: {
-          buckets: Array<{
-            key: string
-            doc_count: number
-            sample_status?: { buckets: Array<{ key: number }> }
-          }>
-        }
-      }
-    }>({
+    const response = await client.search({
       index: "haproxy-controller-*",
       body: queryPayload,
     })
@@ -370,8 +349,8 @@ export async function saveDailyTrafficSnapshot(
       totalBytes: snapshot.totalBytes,
       avgLatencyMs: snapshot.avgLatencyMs,
       hourlyTrendJson: snapshot.hourlyTrend,
-      topPathsJson: snapshot.topPaths,
-      errorPathsJson: snapshot.errorPaths,
+      topPathsJson: snapshot.topPaths as unknown as Prisma.InputJsonValue,
+      errorPathsJson: snapshot.errorPaths as unknown as Prisma.InputJsonValue,
     },
     create: {
       stackId: snapshot.stackId,
@@ -382,8 +361,8 @@ export async function saveDailyTrafficSnapshot(
       totalBytes: snapshot.totalBytes,
       avgLatencyMs: snapshot.avgLatencyMs,
       hourlyTrendJson: snapshot.hourlyTrend,
-      topPathsJson: snapshot.topPaths,
-      errorPathsJson: snapshot.errorPaths,
+      topPathsJson: snapshot.topPaths as unknown as Prisma.InputJsonValue,
+      errorPathsJson: snapshot.errorPaths as unknown as Prisma.InputJsonValue,
     },
   })
 }
@@ -553,8 +532,9 @@ export async function getAppTrafficReport(
       totalBytes: Number(snapshot.totalBytes),
       totalBytesFormatted: formatBytes(snapshot.totalBytes),
       trend,
-      topPages: (snapshot.topPathsJson as TrafficPathCount[]) ?? [],
-      troubledPages: (snapshot.errorPathsJson as TrafficErrorPath[]) ?? [],
+      topPages: (snapshot.topPathsJson as unknown as TrafficPathCount[]) ?? [],
+      troubledPages:
+        (snapshot.errorPathsJson as unknown as TrafficErrorPath[]) ?? [],
     }
   }
 
@@ -596,7 +576,7 @@ export async function getAppTrafficReport(
     let totalRequests = 0
     let totalSuccess = 0
     let totalErrors = 0
-    let totalBytesBig = 0n
+    let totalBytesBig = BigInt(0)
     let latencySum = 0
     let latencyCount = 0
 
@@ -625,12 +605,14 @@ export async function getAppTrafficReport(
           latencyCount += snap.totalRequests
         }
 
-        const topPaths = (snap.topPathsJson as TrafficPathCount[]) ?? []
+        const topPaths =
+          (snap.topPathsJson as unknown as TrafficPathCount[]) ?? []
         for (const p of topPaths) {
           pathViews.set(p.path, (pathViews.get(p.path) ?? 0) + p.views)
         }
 
-        const errPaths = (snap.errorPathsJson as TrafficErrorPath[]) ?? []
+        const errPaths =
+          (snap.errorPathsJson as unknown as TrafficErrorPath[]) ?? []
         for (const e of errPaths) {
           const cur = errorMap.get(e.path)
           errorMap.set(e.path, {
@@ -707,12 +689,12 @@ export async function getAppTrafficReport(
   const monthBuckets = Array.from({ length: 12 }, () => ({
     requests: 0,
     errors: 0,
-    bytes: 0n,
+    bytes: BigInt(0),
   }))
 
   let totalRequests = 0
   let totalSuccess = 0
-  let totalBytesBig = 0n
+  let totalBytesBig = BigInt(0)
   let latencySum = 0
   let latencyCount = 0
 
@@ -734,12 +716,13 @@ export async function getAppTrafficReport(
       latencyCount += snap.totalRequests
     }
 
-    const topPaths = (snap.topPathsJson as TrafficPathCount[]) ?? []
+    const topPaths = (snap.topPathsJson as unknown as TrafficPathCount[]) ?? []
     for (const p of topPaths) {
       pathViews.set(p.path, (pathViews.get(p.path) ?? 0) + p.views)
     }
 
-    const errPaths = (snap.errorPathsJson as TrafficErrorPath[]) ?? []
+    const errPaths =
+      (snap.errorPathsJson as unknown as TrafficErrorPath[]) ?? []
     for (const e of errPaths) {
       const cur = errorMap.get(e.path)
       errorMap.set(e.path, {
@@ -841,15 +824,7 @@ export async function getLiveTrafficLogs(
   }
 
   try {
-    const res = await client.search<{
-      "@timestamp": string
-      http_method: string
-      http_path: string
-      http_status: number
-      bytes_read: number
-      response_time_ms: number
-      client_ip: string
-    }>({
+    const res = await client.search({
       index: "haproxy-controller-*",
       body: {
         size: limit,

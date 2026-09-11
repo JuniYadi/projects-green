@@ -45,7 +45,7 @@ describe("opensearch-traffic.service", () => {
       expect(formatBytes(0)).toBe("0 B")
       expect(formatBytes(1024)).toBe("1.0 KB")
       expect(formatBytes(1048576)).toBe("1.0 MB")
-      expect(formatBytes(1073741824n)).toBe("1.0 GB")
+      expect(formatBytes(BigInt(1073741824))).toBe("1.0 GB")
     })
   })
 
@@ -111,6 +111,14 @@ describe("opensearch-traffic.service", () => {
         new Date("2026-09-10T12:00:00Z"),
         mockClient as unknown as import("@opensearch-project/opensearch").Client
       )
+
+      expect(result.stackId).toBe("st_123")
+      expect(result.totalRequests).toBe(107)
+      expect(result.successCount).toBe(100)
+      expect(result.errorCount).toBe(7)
+      expect(result.avgLatencyMs).toBe(45)
+      expect(result.totalBytes).toBe(BigInt(204800))
+      expect(result.hourlyTrend.length).toBe(2)
       expect(result.topPaths).toEqual([{ path: "/home", views: 80 }])
       expect(result.errorPaths).toEqual([
         { path: "/missing", errors: 5, sampleStatus: 404 },
@@ -133,7 +141,7 @@ describe("opensearch-traffic.service", () => {
         totalRequests: 1000,
         successCount: 990,
         errorCount: 10,
-        totalBytes: 5000000n,
+        totalBytes: BigInt(5000000),
         avgLatencyMs: 30,
         hourlyTrendJson: [
           { hour: 0, requests: 50, errors: 0 },
@@ -175,7 +183,7 @@ describe("opensearch-traffic.service", () => {
           totalRequests: 100,
           successCount: 95,
           errorCount: 5,
-          totalBytes: 100000n,
+          totalBytes: BigInt(100000),
           avgLatencyMs: 20,
           topPathsJson: [{ path: "/page1", views: 50 }],
           errorPathsJson: [],
@@ -187,7 +195,7 @@ describe("opensearch-traffic.service", () => {
           totalRequests: 200,
           successCount: 190,
           errorCount: 10,
-          totalBytes: 200000n,
+          totalBytes: BigInt(200000),
           avgLatencyMs: 40,
           topPathsJson: [
             { path: "/page1", views: 80 },
@@ -227,7 +235,7 @@ describe("opensearch-traffic.service", () => {
           totalRequests: 1000,
           successCount: 990,
           errorCount: 10,
-          totalBytes: 5000000n,
+          totalBytes: BigInt(5000000),
           avgLatencyMs: 25,
           topPathsJson: [{ path: "/v1", views: 400 }],
           errorPathsJson: [],
@@ -239,7 +247,7 @@ describe("opensearch-traffic.service", () => {
           totalRequests: 2000,
           successCount: 1960,
           errorCount: 40,
-          totalBytes: 10000000n,
+          totalBytes: BigInt(10000000),
           avgLatencyMs: 30,
           topPathsJson: [{ path: "/v1", views: 800 }],
           errorPathsJson: [],
