@@ -22,6 +22,7 @@ type TabEnvProps = {
   setEnvVars: React.Dispatch<
     React.SetStateAction<Record<K8sEnvironmentId, OperateEnvVar[]>>
   >
+  onPersist?: (rows: OperateEnvVar[]) => Promise<void>
   stackId?: string
   sharedSecretOptions?: SharedSecretOption[]
 }
@@ -77,6 +78,7 @@ export function TabEnv({
   selectedEnv,
   envVars,
   setEnvVars,
+  onPersist,
   stackId,
   sharedSecretOptions = [],
 }: TabEnvProps) {
@@ -86,10 +88,12 @@ export function TabEnv({
   )
 
   const handleEnvVarsChange = (rows: EnvVar[]) => {
+    const nextRows = toOperateEnvVars(rows)
     setEnvVars((current) => ({
       ...current,
-      [selectedEnv]: toOperateEnvVars(rows),
+      [selectedEnv]: nextRows,
     }))
+    void onPersist?.(nextRows)
   }
 
   return (

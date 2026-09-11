@@ -3410,18 +3410,21 @@ model AppHostingClusterEndpoint {
 }
 
 model ApplicationDomain {
-  id                  String                         @id @default(cuid())
-  stackId             String
-  clusterId           String
-  hostname            String                         @unique
-  kind                ApplicationDomainKind
-  isPrimary           Boolean                        @default(false)
-  dnsStatus           ApplicationDomainDnsStatus     @default(PENDING)
-  expectedCnameTarget String
-  verifiedAt          DateTime?
-  allowlistMode       ApplicationDomainAllowlistMode @default(OPEN)
-  createdAt           DateTime                       @default(now())
-  updatedAt           DateTime                       @updatedAt
+  id                    String                         @id @default(cuid())
+  stackId               String
+  clusterId             String
+  hostname              String                         @unique
+  kind                  ApplicationDomainKind
+  isPrimary             Boolean                        @default(false)
+  dnsStatus             ApplicationDomainDnsStatus     @default(PENDING)
+  expectedCnameTarget   String
+  verifiedAt            DateTime?
+  dnsLastCheckedAt      DateTime?
+  dnsVerificationReason String?
+  dnsResolverEvidenceJson Json?
+  allowlistMode         ApplicationDomainAllowlistMode @default(OPEN)
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
 
   stack            ApplicationStack                  @relation(fields: [stackId], references: [id], onDelete: Cascade)
   cluster          AppHostingCluster                 @relation(fields: [clusterId], references: [id], onDelete: Restrict)

@@ -55,6 +55,16 @@ export type ApplicationDomainAllowlistEntryDTO = {
   updatedAt: Date
 }
 
+export type DnsResolverEvidenceDTO = {
+  provider: "google" | "cloudflare" | "node"
+  recordType: "CNAME" | "A" | "AAAA"
+  outcome: "MATCH" | "MISMATCH" | "MISSING" | "ERROR"
+  answers: string[]
+  ttl: number | null
+  latencyMs: number | null
+  errorCode?: string
+}
+
 export type ApplicationDomainDTO = {
   id: string
   stackId: string
@@ -66,6 +76,9 @@ export type ApplicationDomainDTO = {
   dnsStatus: ApplicationDomainDnsStatus
   expectedCnameTarget: string
   verifiedAt: Date | null
+  dnsLastCheckedAt?: Date | null
+  dnsVerificationReason?: string | null
+  dnsResolverEvidence?: DnsResolverEvidenceDTO[]
   allowlistMode: ApplicationDomainAllowlistMode
   endpoint: AppHostingClusterEndpointDTO
   certificate: ApplicationDomainCertificateDTO | null

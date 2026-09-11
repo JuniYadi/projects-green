@@ -10,10 +10,7 @@ export type K8sEnvironment = {
 }
 
 export type AppStatusType =
-  | "healthy"
-  | "degraded"
-  | "inaccessible"
-  | "deploying"
+  "healthy" | "degraded" | "inaccessible" | "deploying"
 
 export type CustomDomain = {
   id: string
@@ -59,6 +56,16 @@ export type DomainAllowlistEntryDTO = {
   position?: number
 }
 
+export type DnsResolverEvidence = {
+  provider: "google" | "cloudflare" | "node"
+  recordType: "CNAME" | "A" | "AAAA"
+  outcome: "MATCH" | "MISMATCH" | "MISSING" | "ERROR"
+  answers: string[]
+  ttl?: number | null
+  latencyMs?: number | null
+  errorCode?: string
+}
+
 export type TenantDomainDTO = {
   id: string
   hostname: string
@@ -67,6 +74,10 @@ export type TenantDomainDTO = {
   cluster: DomainClusterDTO | null
   dnsStatus: string
   expectedCnameTarget: string | null
+  verifiedAt?: string | Date | null
+  dnsLastCheckedAt?: string | Date | null
+  dnsVerificationReason?: string | null
+  dnsResolverEvidence?: DnsResolverEvidence[]
   endpoint: DomainEndpointDTO | null
   certificate: DomainCertificateDTO | null
   allowlistMode: DomainAllowlistMode
@@ -94,10 +105,11 @@ export type VolumeMount = {
   id: string
   name: string
   mountPath: string
-  sourceType: "secret" | "configmap"
+  sourceType: "secret" | "configmap" | "pvc" | "emptyDir"
   fileMode: string
   readOnly: boolean
   contentSummary: string
+  content?: string
 }
 
 export type LogMessage = {

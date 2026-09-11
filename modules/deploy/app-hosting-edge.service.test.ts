@@ -8,6 +8,14 @@ mock.module("node:dns", () => ({
   promises: { resolveCname, resolve4, resolve6 },
 }))
 
+const verifyDnsTarget = mock(async () => ({
+  status: "VERIFIED",
+  reason: "Two independent DNS sources matched the target.",
+  checkedAt: new Date(),
+  evidence: [],
+  positiveSources: ["google", "cloudflare"],
+}))
+mock.module("./dns-verification.service", () => ({ verifyDnsTarget }))
 class FakeX509Certificate {
   validTo = "2099-01-01T00:00:00.000Z"
   fingerprint256 = "fingerprint"
@@ -206,6 +214,14 @@ describe("app hosting edge service", () => {
     resolve4.mockResolvedValue(["203.0.113.10"])
     resolve6.mockReset()
     resolve6.mockResolvedValue(["2001:db8::10"])
+    verifyDnsTarget.mockReset()
+    verifyDnsTarget.mockResolvedValue({
+      status: "VERIFIED",
+      reason: "Two independent DNS sources matched the target.",
+      checkedAt: new Date(),
+      evidence: [],
+      positiveSources: ["google", "cloudflare"],
+    })
   })
   const seedDomain = (overrides: Record<string, unknown> = {}) => {
     const row = {
@@ -364,6 +380,13 @@ describe("app hosting edge service", () => {
   })
 
   it("marks DNS verification failed when all DNS strategies fail", async () => {
+    verifyDnsTarget.mockResolvedValueOnce({
+      status: "FAILED",
+      reason: "DNS records were found but did not match the target.",
+      checkedAt: new Date(),
+      evidence: [],
+      positiveSources: [],
+    })
     resolveCname.mockRejectedValueOnce(new Error("no cname"))
     resolve4.mockRejectedValueOnce(new Error("no ipv4"))
     resolve6.mockRejectedValueOnce(new Error("no ipv6"))

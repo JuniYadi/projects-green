@@ -11,7 +11,29 @@ import type {
   ApplicationDomainDTO,
   AppHostingClusterEndpointDTO,
   AppHostingClusterSummaryDTO,
+  DnsResolverEvidenceDTO,
 } from "./app-hosting-edge.types"
+
+const toDnsResolverEvidence = (value: unknown): DnsResolverEvidenceDTO[] => {
+  if (!Array.isArray(value)) return []
+  return value.filter((entry): entry is DnsResolverEvidenceDTO => {
+    if (typeof entry !== "object" || entry === null) return false
+    const item = entry as Record<string, unknown>
+    return (
+      (item.provider === "google" ||
+        item.provider === "cloudflare" ||
+        item.provider === "node") &&
+      (item.recordType === "CNAME" ||
+        item.recordType === "A" ||
+        item.recordType === "AAAA") &&
+      (item.outcome === "MATCH" ||
+        item.outcome === "MISMATCH" ||
+        item.outcome === "MISSING" ||
+        item.outcome === "ERROR") &&
+      Array.isArray(item.answers)
+    )
+  })
+}
 
 export const toAppHostingClusterEndpointDTO = (
   endpoint: Pick<
@@ -98,6 +120,9 @@ type DomainWithRelations = Pick<
   | "dnsStatus"
   | "expectedCnameTarget"
   | "verifiedAt"
+  | "dnsLastCheckedAt"
+  | "dnsVerificationReason"
+  | "dnsResolverEvidenceJson"
   | "allowlistMode"
   | "createdAt"
   | "updatedAt"
@@ -136,6 +161,9 @@ export const toApplicationDomainDTO = (
   dnsStatus: domain.dnsStatus,
   expectedCnameTarget: domain.expectedCnameTarget,
   verifiedAt: domain.verifiedAt,
+  dnsLastCheckedAt: domain.dnsLastCheckedAt,
+  dnsVerificationReason: domain.dnsVerificationReason,
+  dnsResolverEvidence: toDnsResolverEvidence(domain.dnsResolverEvidenceJson),
   allowlistMode: domain.allowlistMode,
   endpoint: toAppHostingClusterEndpointDTO(endpoint),
   certificate: toApplicationDomainCertificateDTO(domain.certificate ?? null),

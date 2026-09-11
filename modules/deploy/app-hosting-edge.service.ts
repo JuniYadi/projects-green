@@ -1,6 +1,6 @@
 import { createHash, createPrivateKey, X509Certificate } from "node:crypto"
 import { isIP } from "node:net"
-import { promises as dns } from "node:dns"
+import { verifyDnsTarget } from "./dns-verification.service"
 import { prisma } from "@/lib/prisma"
 import {
   encrypt,
@@ -348,35 +348,35 @@ export async function verifyDomain(
   input: DomainForStackInput
 ): Promise<ApplicationDomainDTO> {
   const { domain, endpoint } = await findDomain(input)
-  const hostname = String(domain.hostname)
-  let verified = false
-  try {
-    const cname = await dns.resolveCname(hostname)
-    verified = cname.some(
-      (value) => normalizeHostname(value) === String(domain.expectedCnameTarget)
-    )
-  } catch {
-    try {
-      const addresses = [
-        ...(await dns.resolve4(hostname)),
-        ...(await dns.resolve6(hostname)),
-      ]
-      const expected = new Set(
-        [...endpoint.ipv4Addresses, ...endpoint.ipv6Addresses].map((value) =>
-          value.toLowerCase()
-        )
-      )
-      verified = addresses.some((value) => expected.has(value.toLowerCase()))
-    } catch {
-      verified = false
-    }
-  }
-
+  const result = await verifyDnsTarget({
+    hostname: String(domain.hostname),
+    expectedCnameTarget: String(domain.expectedCnameTarget),
+    expectedIpv4Addresses: endpoint.ipv4Addresses,
+    expectedIpv6Addresses: endpoint.ipv6Addresses,
+  })
+  const dnsStatus = result.status === "INCONCLUSIVE" ? "PENDING" : result.status
   const updated = (await db.applicationDomain.update({
     where: { id: input.domainId },
     data: {
-      dnsStatus: verified ? "VERIFIED" : "FAILED",
-      verifiedAt: verified ? new Date() : null,
+      dnsStatus,
+      verifiedAt: dnsStatus === "VERIFIED" ? result.checkedAt : null,
+      dnsLastCheckedAt: result.checkedAt,
+      dnsVerificationReason: result.reason,
+      dnsResolverEvidenceJson: result.evidence.map((item) => ({
+        provider: item.source,
+        recordType: item.recordType,
+        outcome:
+          item.outcome === "positive"
+            ? "MATCH"
+            : item.outcome === "missing"
+              ? "MISSING"
+              : item.outcome === "mismatch"
+                ? "MISMATCH"
+                : "ERROR",
+        answers: item.values,
+        ttl: item.ttl,
+        latencyMs: item.latencyMs,
+      })),
     },
     include: { certificate: true, allowlistEntries: true },
   })) as Record<string, unknown>
