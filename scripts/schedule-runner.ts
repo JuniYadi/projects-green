@@ -125,6 +125,13 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     buildJobId: (d) => `daily-cleanup-${d.toISOString().slice(0, 10)}`,
   },
   {
+    name: "app-hosting-daily-traffic-snapshot",
+    queueName: "app-hosting-traffic-snapshot",
+    jobName: "process-daily-traffic-snapshot",
+    expression: "0 1 * * *",
+    buildJobId: (d) => `traffic-snapshot-${d.toISOString().slice(0, 10)}`,
+  },
+  {
     name: "invoice-status-transitions",
     queueName: BILLING_INVOICE_STATUS_QUEUE,
     jobName: BILLING_INVOICE_STATUS_JOB,

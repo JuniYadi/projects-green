@@ -185,6 +185,7 @@ export interface WhatsAppInboxProps {
   isAdminMode?: boolean
   basePath?: string
   showOnboardingHud?: boolean
+  className?: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -812,6 +813,7 @@ export function WhatsAppInbox({
   isAdminMode = false,
   basePath,
   showOnboardingHud = !isAdminMode,
+  className,
 }: WhatsAppInboxProps) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
@@ -1087,6 +1089,7 @@ export function WhatsAppInbox({
   })
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  const messagesContainerRef = React.useRef<HTMLDivElement>(null)
 
   const loadConversationForPhone = React.useCallback(
     async (phone: string, conversationsCache: ConversationListItem[]) => {
@@ -1352,7 +1355,15 @@ export function WhatsAppInbox({
 
   React.useEffect(() => {
     if (orderedMessages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" })
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop =
+          messagesContainerRef.current.scrollHeight
+      } else {
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "auto",
+          block: "end",
+        })
+      }
     }
   }, [orderedMessages])
 
@@ -1722,7 +1733,13 @@ export function WhatsAppInbox({
   }
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col gap-6 p-6 pt-0">
+    <div
+      className={cn(
+        "flex min-h-0 flex-1 flex-col gap-4 overflow-hidden lg:h-[calc(100dvh-6.5rem)] lg:max-h-[calc(100dvh-6.5rem)]",
+        isAdminMode ? "px-6 pb-6" : "",
+        className
+      )}
+    >
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-4">
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">
@@ -2657,7 +2674,10 @@ export function WhatsAppInbox({
 
           {/* Messages Area */}
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#efeae2]/30 dark:bg-[#0b141a]/40">
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pr-2">
+            <div
+              ref={messagesContainerRef}
+              className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pr-2"
+            >
               {activeLoading && (
                 <div className="flex flex-1 flex-col justify-end gap-3">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -2990,6 +3010,6 @@ export function WhatsAppInbox({
       </Dialog>
 
       {showOnboardingHud && <FlightHudWidget onboarding={onboarding} />}
-    </main>
+    </div>
   )
 }
