@@ -269,4 +269,65 @@ describe("opensearch-log-normalizer", () => {
     })
     expect(fromCircular.message).toContain("[object Object]")
   })
+
+  it("formats Fastify/Pino request completed with method, url, status, and latency", () => {
+    const hit = {
+      _id: "doc-fastify",
+      _source: {
+        msg: "request completed",
+        req: { method: "GET", url: "/wallet/balance" },
+        res: { statusCode: 200 },
+        responseTime: 85,
+      },
+    }
+    const result = normalizeOpenSearchLogDoc(hit)
+    expect(result.message).toBe("GET /wallet/balance 200 in 85ms")
+    expect(result.level).toBe("INFO")
+  })
+
+  it("infers ERROR level from HTTP status 500 in res.statusCode", () => {
+    const hit = {
+      _id: "doc-500",
+      _source: {
+        msg: "server error occurred",
+        res: { statusCode: 500 },
+      },
+    }
+    const result = normalizeOpenSearchLogDoc(hit)
+    expect(result.level).toBe("ERROR")
+  })
+
+  it("infers WARN level from HTTP status 404 in res.statusCode", () => {
+    const hit = {
+      _id: "doc-404",
+      _source: {
+        msg: "route not found",
+        res: { statusCode: 404 },
+      },
+    }
+    const result = normalizeOpenSearchLogDoc(hit)
+    expect(result.level).toBe("WARN")
+  })
+
+  it("handles object message by stringifying it", () => {
+    const hit = {
+      _id: "doc-obj",
+      _source: {
+        message: { error: "Crash", code: 1 },
+      },
+    }
+    const result = normalizeOpenSearchLogDoc(hit)
+    expect(result.message).toBe('{"error":"Crash","code":1}')
+  })
+
+  it("falls back to req method and url when message is absent", () => {
+    const hit = {
+      _id: "doc-req-only",
+      _source: {
+        req: { method: "POST", url: "/submit" },
+      },
+    }
+    const result = normalizeOpenSearchLogDoc(hit)
+    expect(result.message).toBe("POST /submit")
+  })
 })

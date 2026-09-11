@@ -177,6 +177,121 @@ describe("opensearch-log-health.service", () => {
       expect(report.trend).toHaveLength(24)
       expect(report.topErrors).toHaveLength(1)
     })
+    it("returns empty daily report when snapshot is absent", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_1",
+        slug: "my-app",
+        name: "My App",
+      })
+      mockPrisma.appHostingDailyLogSnapshot.findUnique.mockResolvedValue(null)
+
+      const report = await getAppLogReport("my-app", { granularity: "daily" })
+      expect(report.granularity).toBe("daily")
+      expect(report.totalLogs).toBe(0)
+      expect(report.healthScore).toBe(100)
+      expect(report.trend).toHaveLength(24)
+    })
+
+    it("returns monthly rolled up report across daily snapshots", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_1",
+        slug: "my-app",
+        name: "My App",
+      })
+      mockPrisma.appHostingDailyLogSnapshot.findMany.mockResolvedValue([
+        {
+          id: "snap_1",
+          stackId: "st_1",
+          date: new Date(Date.UTC(2026, 8, 1)),
+          totalLogs: 100,
+          infoCount: 90,
+          warnCount: 5,
+          errorCount: 5,
+          topErrorsJson: [
+            {
+              signature: "TypeError",
+              count: 5,
+              sampleMessage: "TypeError: null",
+            },
+          ],
+        },
+        {
+          id: "snap_2",
+          stackId: "st_1",
+          date: new Date(Date.UTC(2026, 8, 2)),
+          totalLogs: 200,
+          infoCount: 190,
+          warnCount: 5,
+          errorCount: 5,
+          topErrorsJson: [
+            {
+              signature: "TypeError",
+              count: 2,
+              sampleMessage: "TypeError: null",
+            },
+          ],
+        },
+      ])
+
+      const report = await getAppLogReport("my-app", {
+        granularity: "monthly",
+        month: "2026-09",
+      })
+      expect(report.granularity).toBe("monthly")
+      expect(report.totalLogs).toBe(300)
+      expect(report.errorCount).toBe(10)
+      expect(report.topErrors).toHaveLength(1)
+      expect(report.topErrors[0].count).toBe(7)
+    })
+
+    it("returns yearly rolled up report across monthly buckets", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_1",
+        slug: "my-app",
+        name: "My App",
+      })
+      mockPrisma.appHostingDailyLogSnapshot.findMany.mockResolvedValue([
+        {
+          id: "snap_1",
+          stackId: "st_1",
+          date: new Date(Date.UTC(2026, 0, 15)),
+          totalLogs: 1000,
+          infoCount: 950,
+          warnCount: 30,
+          errorCount: 20,
+          topErrorsJson: [
+            { signature: "ConnError", count: 20, sampleMessage: "ConnError" },
+          ],
+        },
+        {
+          id: "snap_2",
+          stackId: "st_1",
+          date: new Date(Date.UTC(2026, 1, 10)),
+          totalLogs: 2000,
+          infoCount: 1900,
+          warnCount: 50,
+          errorCount: 50,
+          topErrorsJson: [
+            { signature: "ConnError", count: 10, sampleMessage: "ConnError" },
+          ],
+        },
+      ])
+
+      const report = await getAppLogReport("my-app", {
+        granularity: "yearly",
+        year: "2026",
+      })
+      expect(report.granularity).toBe("yearly")
+      expect(report.totalLogs).toBe(3000)
+      expect(report.trend).toHaveLength(12)
+      expect(report.trend[0].info).toBe(950)
+      expect(report.trend[1].info).toBe(1900)
+    })
+
+    it("throws error when application stack is not found", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue(null)
+      expect(getAppLogReport("non-existent", {})).rejects.toThrow("not found")
+    })
   })
 
   describe("getAppLogErrorsDrilldown", () => {
@@ -212,6 +327,33 @@ describe("opensearch-log-health.service", () => {
       expect(res.errors).toHaveLength(2)
       expect(res.errors[0].signature).toBe("DB Connection Timeout after 30s")
       expect(res.errors[0].count).toBe(14)
+    })
+  })
+
+  describe("processHourlyLogRollupJob", () => {
+    it("processes all running stacks in hourly cron job", async () => {
+      const { processHourlyLogRollupJob } =
+        await import("./opensearch-log-health.service")
+      mockPrisma.applicationStack.findMany.mockResolvedValue([
+        { id: "st_1", slug: "app-1" },
+      ])
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_1",
+        slug: "app-1",
+        name: "App 1",
+      })
+      const mockClient = {
+        search: mock(async () => ({
+          body: {
+            hits: { total: 0 },
+            aggregations: {},
+          },
+        })),
+      }
+      const summary = await processHourlyLogRollupJob(
+        new Date("2026-09-11T12:00:00Z")
+      )
+      expect(summary.processed).toBeGreaterThanOrEqual(1)
     })
   })
 })
