@@ -41,6 +41,11 @@ export type KnowledgeCitation = {
 export type KnowledgeChatRequest = {
   messages: KnowledgeChatMessage[]
   routePath: string
+  context?: {
+    entityType?: string
+    entityId?: string
+    entityName?: string
+  }
 }
 
 export type KnowledgeChatStreamFrame =

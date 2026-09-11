@@ -350,5 +350,37 @@ describe("ThunderAiHelpDrawer", () => {
       })
       expect(view.getByDisplayValue("Legacy prompt")).toBeTruthy()
     })
+
+    it("includes entity context in POST body on agent_p_trigger with autoSend", async () => {
+      await renderDrawer("kb=1", "/en/console/whatsapp")
+
+      await act(async () => {
+        window.dispatchEvent(
+          new CustomEvent("agent_p_trigger", {
+            detail: {
+              prompt: "Rangkum percakapan",
+              autoSend: true,
+              context: {
+                entityType: "whatsapp_conversation",
+                entityId: "conv-999",
+                entityName: "+6285161432124",
+              },
+            },
+          })
+        )
+        // Allow setTimeout in handleTrigger to fire
+        const { promise, resolve } = Promise.withResolvers<void>()
+        setTimeout(resolve, 150)
+        await promise
+      })
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/knowledge/chat",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"entityId":"conv-999"'),
+        })
+      )
+    })
   })
 })

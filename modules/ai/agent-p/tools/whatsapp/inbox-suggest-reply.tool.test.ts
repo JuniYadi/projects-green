@@ -60,4 +60,25 @@ describe("inboxSuggestReplyTool", () => {
       )
     ).rejects.toThrow("CONVERSATION_NOT_FOUND")
   })
+  it("suggests a contextual reply using phoneNumber", async () => {
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValueOnce({
+      id: "conv-phone",
+      contactPhone: "+6285161432124",
+      whatsappMessages: [{ body: "Mau tanya paket internet" }],
+    })
+
+    const result = await inboxSuggestReplyTool.execute(
+      { phoneNumber: "+6285161432124", tone: "friendly" },
+      context
+    )
+    expect(result.conversationId).toBe("conv-phone")
+    expect(result.phoneNumber).toBe("+6285161432124")
+    expect(result.suggestedReply).toContain("Mau tanya paket internet")
+  })
+
+  it("throws when neither conversationId nor phoneNumber is provided", async () => {
+    await expect(
+      inboxSuggestReplyTool.execute({ tone: "friendly" }, context)
+    ).rejects.toThrow("CONVERSATION_OR_PHONE_REQUIRED")
+  })
 })

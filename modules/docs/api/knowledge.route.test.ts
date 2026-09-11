@@ -244,6 +244,37 @@ describe("knowledgeRoutes - Authentication & Streaming", () => {
     expect(mockUpsertSession).toHaveBeenCalledTimes(1)
     expect(mockCreateManyChatMessages).toHaveBeenCalledTimes(1)
   })
+  it("passes active entity context to streamKnowledgeAnswer", async () => {
+    const response = await createApp().handle(
+      new Request("http://localhost/knowledge/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId: "sess_with_ctx",
+          routePath: "/console/whatsapp/messages",
+          messages: [{ role: "user", content: "Rangkum percakapan ini" }],
+          context: {
+            entityType: "whatsapp_conversation",
+            entityId: "conv-123",
+            entityName: "+6285161432124",
+          },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockStreamKnowledgeAnswer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: {
+          entityType: "whatsapp_conversation",
+          entityId: "conv-123",
+          entityName: "+6285161432124",
+        },
+      })
+    )
+  })
 
   it("returns strict fallback when no relevant knowledge context and unauthenticated", async () => {
     mockSearchKnowledgeDocs.mockResolvedValueOnce([] as KnowledgeDocMatch[])

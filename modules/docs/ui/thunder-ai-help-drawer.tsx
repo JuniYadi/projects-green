@@ -447,6 +447,10 @@ export function ThunderAiHelpDrawer() {
   const [isSending, setIsSending] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
   const [activeEntity, setActiveEntity] = useState<ActiveEntityContext>()
+  const activeEntityRef = useRef<ActiveEntityContext | undefined>(activeEntity)
+  useEffect(() => {
+    activeEntityRef.current = activeEntity
+  }, [activeEntity])
   const [openCitations, setOpenCitations] = useState<Record<string, boolean>>(
     {}
   )
@@ -654,6 +658,16 @@ export function ThunderAiHelpDrawer() {
             { role: "user", content: trimmedInput },
           ],
           routePath,
+          context:
+            (activeEntityRef.current ?? activeEntity)
+              ? {
+                  entityType: (activeEntityRef.current ?? activeEntity)
+                    ?.entityType,
+                  entityId: (activeEntityRef.current ?? activeEntity)?.entityId,
+                  entityName: (activeEntityRef.current ?? activeEntity)
+                    ?.entityName,
+                }
+              : undefined,
         }),
       })
 
@@ -823,7 +837,9 @@ export function ThunderAiHelpDrawer() {
 
       // If triggered with a new entity context or autoSend, clear previous chat immediately
       if (contextPayload) {
-        setActiveEntity(contextPayload as ActiveEntityContext)
+        const nextEntity = contextPayload as ActiveEntityContext
+        activeEntityRef.current = nextEntity
+        setActiveEntity(nextEntity)
         if (detail?.autoSend) {
           setMessages([])
           setChatError(null)
