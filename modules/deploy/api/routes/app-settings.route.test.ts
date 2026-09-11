@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 const authState: {
-  user: { id: string } | null
+  user: { id: string; email?: string } | null
   organizationId: string | null
+  role?: string | null
+  roles?: string[] | null
 } = {
   user: { id: "user-1" },
   organizationId: "org-1",
+  role: null,
+  roles: null,
 }
+
+let mockPlatformRole: "none" | "super_admin" = "super_admin"
 
 const stack: {
   id: string
@@ -67,7 +73,7 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
   withAuth: mock(async () => authState),
 }))
 mock.module("@/lib/platform-role", () => ({
-  getPlatformRoleForUser: mock(async () => "super_admin"),
+  getPlatformRoleForUser: mock(async () => mockPlatformRole),
 }))
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -103,6 +109,9 @@ describe("appSettingsRoutes", () => {
   beforeEach(() => {
     authState.user = { id: "user-1" }
     authState.organizationId = "org-1"
+    authState.role = null
+    authState.roles = null
+    mockPlatformRole = "super_admin"
     stack.envVarsJson = [
       {
         key: "PUBLIC_URL",
@@ -285,5 +294,202 @@ describe("appSettingsRoutes", () => {
     expect(
       (saved.data.metadataJson.storage as Record<string, unknown>).version
     ).toBe(1)
+  })
+  it("rejects requests without an organization", async () => {
+    authState.organizationId = null
+    const response = await request("/deploy/apps/demo/settings")
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "FORBIDDEN",
+      message: "Organization required",
+    })
+  })
+
+  it("denies manager actions to non-manager users", async () => {
+    mockPlatformRole = "none"
+    authState.role = "member"
+    const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
+      environmentId: "dev",
+      variables: [],
+    })
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "FORBIDDEN",
+      message: "Forbidden",
+    })
+  })
+
+  it("returns not found when GET has no matching stack", async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const response = await request("/deploy/apps/missing/settings")
+    expect(response.status).toBe(404)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "NOT_FOUND",
+      message: "Application not found",
+    })
+  })
+
+  it("returns not found when env PATCH has no matching stack", async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const response = await json("/deploy/apps/missing/settings/env", "PATCH", {
+      environmentId: "dev",
+      variables: [],
+    })
+    expect(response.status).toBe(404)
+    expect((await response.json()).message).toBe("Application not found")
+  })
+
+  it("returns not found when mount PATCH has no matching stack", async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const response = await json(
+      "/deploy/apps/missing/settings/mounts",
+      "PATCH",
+      { environmentId: "dev", mounts: [] }
+    )
+    expect(response.status).toBe(404)
+    expect((await response.json()).message).toBe("Application not found")
+  })
+
+  it("returns not found when mount DELETE has no matching stack", async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const response = await request(
+      "/deploy/apps/missing/settings/mounts/mount-dev?environmentId=dev",
+      { method: "DELETE" }
+    )
+    expect(response.status).toBe(404)
+    expect((await response.json()).message).toBe("Application not found")
+  })
+
+  it("rejects invalid environment variable keys", async () => {
+    const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
+      environmentId: "dev",
+      variables: [{ key: "bad-key", value: "value" }],
+    })
+    expect(response.status).toBe(422)
+    expect((await response.json()).message).toContain(
+      "Invalid environment variable key"
+    )
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it("rejects invalid environments for settings updates", async () => {
+    const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
+      environmentId: "qa",
+      variables: [],
+    })
+    expect(response.status).toBe(422)
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it("rejects invalid mount paths and environments", async () => {
+    const invalidPath = await json(
+      "/deploy/apps/demo/settings/mounts",
+      "PATCH",
+      {
+        environmentId: "dev",
+        mounts: [{ type: "pvc", name: "data", mountPath: "relative" }],
+      }
+    )
+    expect(invalidPath.status).toBe(422)
+    expect((await invalidPath.json()).message).toBe(
+      "Mount path must be absolute"
+    )
+
+    const invalidEnvironment = await json(
+      "/deploy/apps/demo/settings/mounts",
+      "PATCH",
+      { environmentId: "qa", mounts: [] }
+    )
+    expect(invalidEnvironment.status).toBe(422)
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it("rejects DELETE without an environment and for a missing mount", async () => {
+    const missingEnvironment = await request(
+      "/deploy/apps/demo/settings/mounts/mount-dev",
+      { method: "DELETE" }
+    )
+    expect(missingEnvironment.status).toBe(422)
+
+    const missingMount = await request(
+      "/deploy/apps/demo/settings/mounts/unknown?environmentId=dev",
+      { method: "DELETE" }
+    )
+    expect(missingMount.status).toBe(404)
+    expect((await missingMount.json()).message).toBe("Mount not found")
+  })
+
+  it("parses JSON-string and non-array settings safely", async () => {
+    stack.envVarsJson = JSON.stringify([{ key: "PUBLIC_URL", value: "ok" }])
+    stack.metadataJson = {
+      storage: { mounts: { dev: JSON.stringify([]), staging: {}, prod: [] } },
+    }
+    const response = await request("/deploy/apps/demo/settings")
+    expect(response.status).toBe(200)
+    expect((await response.json()).data).toEqual({
+      envVars: [
+        {
+          id: "PUBLIC_URL",
+          key: "PUBLIC_URL",
+          type: "plain",
+          scope: "runtime",
+          masked: false,
+          isStoredSecret: false,
+          value: "ok",
+        },
+      ],
+      mounts: { dev: [], staging: [], prod: [] },
+    })
+  })
+
+  it("preserves encrypted mount metadata when content is omitted", async () => {
+    const encrypted = JSON.stringify({
+      encrypted: "cipher:keep",
+      iv: "iv",
+      tag: "tag",
+    })
+    stack.metadataJson = {
+      storage: {
+        mounts: {
+          dev: [
+            {
+              id: "mount-dev",
+              type: "secret",
+              name: "data",
+              mountPath: "/data",
+              readOnly: false,
+              contentEncrypted: encrypted,
+              contentSummary: "[REDACTED] bytes=4",
+            },
+          ],
+          staging: [],
+          prod: [],
+        },
+      },
+    }
+    const response = await json("/deploy/apps/demo/settings/mounts", "PATCH", {
+      environmentId: "dev",
+      mounts: [
+        {
+          id: "mount-dev",
+          type: "secret",
+          name: "renamed",
+          mountPath: "/renamed",
+        },
+      ],
+    })
+    expect(response.status).toBe(200)
+    const saved = mockUpdate.mock.calls.at(-1)?.[0] as {
+      data: { metadataJson: { storage: { mounts: { dev: unknown[] } } } }
+    }
+    const mount = saved.data.metadataJson.storage.mounts.dev[0] as Record<
+      string,
+      unknown
+    >
+    expect(mount.contentEncrypted).toBe(encrypted)
+    expect(mount.contentSummary).toBe("[REDACTED] bytes=4")
   })
 })

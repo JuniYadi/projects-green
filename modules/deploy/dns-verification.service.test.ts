@@ -97,6 +97,75 @@ describe("verifyDnsTarget", () => {
     ).toBe(true)
   })
 
+  it("verifies matching records from injected Google and Cloudflare DoH", async () => {
+    const requests: string[] = []
+    const fetchImpl = (async (url: RequestInfo | URL) => {
+      const requestUrl = new URL(url.toString())
+      requests.push(requestUrl.toString())
+      const type = requestUrl.searchParams.get("type")
+      const answer =
+        type === "CNAME" ? [{ type: 5, data: "origin.example.net." }] : []
+      return new Response(JSON.stringify({ Answer: answer }), {
+        status: 200,
+        headers: { "content-type": "application/dns-json" },
+      })
+    }) as unknown as typeof fetch
+
+    const result = await verifyDnsTarget(input, { fetch: fetchImpl })
+
+    expect(result.status).toBe("VERIFIED")
+    expect(result.positiveSources).toEqual(["google", "cloudflare"])
+    expect(requests.sort()).toEqual([
+      "https://cloudflare-dns.com/dns-query?name=app.example.com&type=A",
+      "https://cloudflare-dns.com/dns-query?name=app.example.com&type=AAAA",
+      "https://cloudflare-dns.com/dns-query?name=app.example.com&type=CNAME",
+      "https://dns.google/resolve?name=app.example.com&type=A",
+      "https://dns.google/resolve?name=app.example.com&type=AAAA",
+      "https://dns.google/resolve?name=app.example.com&type=CNAME",
+    ])
+  })
+
+  it("keeps DoH HTTP failures pending with resolver error evidence", async () => {
+    const result = await verifyDnsTarget(input, {
+      fetch: (async () =>
+        new Response("unavailable", {
+          status: 503,
+        })) as unknown as typeof fetch,
+      node: {
+        resolveCname: async () => [],
+        resolve4: async () => [],
+        resolve6: async () => [],
+      },
+    })
+    expect(result.reason).toContain("failed")
+    expect(
+      result.evidence.filter((item) => item.outcome === "error")
+    ).toHaveLength(6)
+    expect(
+      new Set(
+        result.evidence
+          .filter((item) => item.outcome === "error")
+          .map((item) => item.source)
+      )
+    ).toEqual(new Set(["google", "cloudflare"]))
+  })
+
+  it("treats malformed DoH answer payloads as pending missing records", async () => {
+    const result = await verifyDnsTarget(input, {
+      fetch: (async () =>
+        new Response(JSON.stringify({ Answer: "not-an-array" }), {
+          status: 200,
+        })) as unknown as typeof fetch,
+    })
+
+    expect(result.status).toBe("PENDING")
+    expect(result.reason).toContain("not published")
+    expect(result.evidence.every((item) => item.outcome === "missing")).toBe(
+      true
+    )
+    expect(result.evidence).toHaveLength(6)
+  })
+
   it("normalizes hostname, target, and answer case and trailing dots", async () => {
     let seen = ""
     const result = await verifyDnsTarget(
