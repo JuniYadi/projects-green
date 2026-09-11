@@ -1,13 +1,21 @@
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
+import {
+  extractPhoneVariants,
+  isPotentialPhoneNumber,
+} from "@/modules/whatsapp/messages/phone-number"
 import type { AgentPTool } from "../../types"
 
 const inputSchema = z.object({
   conversationId: z.string().min(1).optional(),
-  limit: z.number().int().min(1).max(100).default(20),
+  phoneNumber: z.string().min(1).optional(),
+  deviceId: z.string().min(1).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
 })
 const outputSchema = z.object({
   conversationId: z.string().optional(),
+  phoneNumber: z.string().optional(),
+  deviceId: z.string().optional(),
   messages: z.array(
     z.object({
       direction: z.string(),
@@ -23,22 +31,41 @@ export const inboxSummarizeTool: AgentPTool<
   z.infer<typeof outputSchema>
 > = {
   name: "whatsapp.inbox.summarize",
-  description: "Summarize recent WhatsApp inbox messages for this organization",
+  description:
+    "Summarize recent WhatsApp inbox messages for this organization by conversationId, phoneNumber, or deviceId",
   inputSchema,
   outputSchema,
   async execute(input, ctx) {
+    const phoneCandidates = [
+      ...(input.phoneNumber && isPotentialPhoneNumber(input.phoneNumber)
+        ? extractPhoneVariants(input.phoneNumber)
+        : []),
+      ...(input.conversationId && isPotentialPhoneNumber(input.conversationId)
+        ? extractPhoneVariants(input.conversationId)
+        : []),
+    ]
+
+    const orConditions = [
+      ...(input.conversationId ? [{ id: input.conversationId }] : []),
+      ...(phoneCandidates.length > 0
+        ? [{ contactPhone: { in: phoneCandidates } }]
+        : []),
+    ]
+
     const where = {
       organizationId: ctx.session.organizationId,
-      ...(input.conversationId ? { id: input.conversationId } : {}),
+      ...(input.deviceId ? { whatsappDeviceId: input.deviceId } : {}),
+      ...(orConditions.length > 0 ? { OR: orConditions } : {}),
     }
+    const limit = input.limit ?? 20
     const conversations = await prisma.whatsappConversation.findMany({
       where,
-      take: input.limit,
+      take: limit,
       orderBy: { lastMessageAt: "desc" },
       include: {
         whatsappMessages: {
           orderBy: { createdAt: "desc" },
-          take: input.limit,
+          take: limit,
           include: {
             statusHistory: {
               orderBy: { createdAt: "desc" },
@@ -91,8 +118,11 @@ export const inboxSummarizeTool: AgentPTool<
       summary = parts.join(" ")
     }
 
+    const firstConv = conversations[0]
     return {
-      conversationId: input.conversationId,
+      conversationId: firstConv?.id ?? input.conversationId,
+      phoneNumber: firstConv?.contactPhone ?? input.phoneNumber,
+      deviceId: firstConv?.whatsappDeviceId ?? input.deviceId,
       messages,
       summary,
     }

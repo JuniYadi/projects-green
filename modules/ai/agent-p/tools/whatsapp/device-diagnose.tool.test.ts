@@ -66,4 +66,26 @@ describe("deviceDiagnoseTool", () => {
       deviceDiagnoseTool.execute({ deviceId: "dev-none" }, context)
     ).rejects.toThrow("DEVICE_NOT_FOUND")
   })
+  it("diagnoses a device using phoneNumber", async () => {
+    mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
+      id: "dev-phone-1",
+      status: "ACTIVE",
+      phoneNumber: "+6283138855774",
+      lastHeartbeatAt: new Date("2026-09-11T05:00:00Z"),
+    })
+
+    const result = await deviceDiagnoseTool.execute(
+      { phoneNumber: "+6283138855774" },
+      context
+    )
+    expect(result.deviceId).toBe("dev-phone-1")
+    expect(result.phoneNumber).toBe("+6283138855774")
+    expect(result.connected).toBe(true)
+  })
+
+  it("throws when neither deviceId nor phoneNumber is provided", async () => {
+    await expect(deviceDiagnoseTool.execute({}, context)).rejects.toThrow(
+      "DEVICE_ID_OR_PHONE_REQUIRED"
+    )
+  })
 })

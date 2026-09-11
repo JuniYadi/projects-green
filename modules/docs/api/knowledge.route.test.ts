@@ -57,10 +57,32 @@ const mockVerifyUserIntentAndSafety = mock(async () => ({
 const mockCreateAiLanguageModel = mock(() => ({}) as never)
 const mockExecuteAgentPTool = mock(async () => ({ success: true, data: {} }))
 const mockToAiTools = mock(() => ({}))
-const mockStreamText = mock(() => ({
-  fullStream: (async function* () {})(),
-  textStream: (async function* () {})(),
-}))
+type MockStreamTextOptions = {
+  system?: string
+  tools?: Record<string, unknown>
+  messages?: Array<{ content?: unknown }>
+}
+
+type MockStreamTextResult = {
+  fullStream?: AsyncGenerator<
+    {
+      type: string
+      text?: string
+      toolName?: string
+      output?: unknown
+    },
+    void,
+    unknown
+  >
+  textStream?: AsyncGenerator<string, void, unknown>
+}
+
+const mockStreamText = mock(
+  (_options: MockStreamTextOptions = {}): MockStreamTextResult => ({
+    fullStream: (async function* () {})(),
+    textStream: (async function* () {})(),
+  })
+)
 
 mock.module("@/modules/ai/agent-p/intent-gate", () => ({
   verifyUserIntentAndSafety: mockVerifyUserIntentAndSafety,
@@ -79,7 +101,7 @@ mock.module("ai", () => ({
   embed: mock(async () => ({ embedding: [] })),
 }))
 
-const { createKnowledgeRoutes } =
+const { createKnowledgeRoutes, streamKnowledgeAnswerDefault } =
   await import("@/modules/docs/api/knowledge.route")
 type KnowledgeAuthContext =
   import("@/modules/docs/api/knowledge.route").KnowledgeAuthContext
@@ -243,6 +265,37 @@ describe("knowledgeRoutes - Authentication & Streaming", () => {
     // Verify Prisma audit calls
     expect(mockUpsertSession).toHaveBeenCalledTimes(1)
     expect(mockCreateManyChatMessages).toHaveBeenCalledTimes(1)
+  })
+  it("passes active entity context to streamKnowledgeAnswer", async () => {
+    const response = await createApp().handle(
+      new Request("http://localhost/knowledge/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId: "sess_with_ctx",
+          routePath: "/console/whatsapp/messages",
+          messages: [{ role: "user", content: "Rangkum percakapan ini" }],
+          context: {
+            entityType: "whatsapp_conversation",
+            entityId: "conv-123",
+            entityName: "+6285161432124",
+          },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockStreamKnowledgeAnswer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: {
+          entityType: "whatsapp_conversation",
+          entityId: "conv-123",
+          entityName: "+6285161432124",
+        },
+      })
+    )
   })
 
   it("returns strict fallback when no relevant knowledge context and unauthenticated", async () => {
@@ -629,5 +682,118 @@ describe("knowledgeRoutes - Streaming Response", () => {
     expect((done as Record<string, unknown>).citations).toBeDefined()
     expect(mockUpsertSession).toHaveBeenCalled()
     expect(mockCreateManyChatMessages).toHaveBeenCalled()
+  })
+})
+
+describe("streamKnowledgeAnswerDefault", () => {
+  it("throws an error when AI_API_KEY is not configured", async () => {
+    const originalKey = process.env.AI_API_KEY
+    delete process.env.AI_API_KEY
+
+    try {
+      const generator = streamKnowledgeAnswerDefault({
+        messages: [{ role: "user", content: "test" }],
+        docs: [],
+      })
+      await expect(generator.next()).rejects.toThrow(
+        "AI_API_KEY is not configured"
+      )
+    } finally {
+      if (originalKey) {
+        process.env.AI_API_KEY = originalKey
+      }
+    }
+  })
+
+  it("yields deltas and executes tools with active context", async () => {
+    process.env.AI_API_KEY = "test-ai-key"
+    mockToAiTools.mockReturnValueOnce({
+      whatsapp_inbox_summarize: {} as never,
+    })
+
+    mockStreamText.mockImplementationOnce(
+      (options: MockStreamTextOptions = {}) => {
+        expect(options.system).toContain("CURRENT ACTIVE CONTEXT")
+        expect(options.system).toContain("whatsapp_conversation")
+        expect(options.system).toContain("conv-active-1")
+        expect(options.system).toContain("+6285161432124")
+        return {
+          fullStream: (async function* () {
+            yield { type: "text-delta", text: "Analyzing messages: " }
+            yield {
+              type: "tool-result",
+              toolName: "whatsapp_inbox_summarize",
+              output: { summary: "11 messages" },
+            }
+          })(),
+        }
+      }
+    )
+
+    mockStreamText.mockImplementationOnce(
+      (options: MockStreamTextOptions = {}) => {
+        expect(
+          options.messages?.some(
+            (m) =>
+              typeof m.content === "string" &&
+              m.content.includes("Tool execution results:")
+          )
+        ).toBe(true)
+        return {
+          textStream: (async function* () {
+            yield "Summary completed."
+          })(),
+        }
+      }
+    )
+
+    const generator = streamKnowledgeAnswerDefault({
+      messages: [{ role: "user", content: "Tolong rangkum pesan ini" }],
+      docs: [],
+      auth: {
+        organizationId: "org-1",
+        user: { id: "user-1", email: "test@example.com" },
+      },
+      context: {
+        entityType: "whatsapp_conversation",
+        entityId: "conv-active-1",
+        entityName: "+6285161432124",
+      },
+    })
+
+    const chunks: string[] = []
+    for await (const chunk of generator) {
+      chunks.push(chunk)
+    }
+
+    expect(chunks).toEqual(["Analyzing messages: ", "Summary completed."])
+  })
+
+  it("yields deltas without tools or context when unauthenticated", async () => {
+    process.env.AI_API_KEY = "test-ai-key"
+
+    mockStreamText.mockImplementationOnce(
+      (options: MockStreamTextOptions = {}) => {
+        expect(options.system).not.toContain("CURRENT ACTIVE CONTEXT")
+        expect(options.tools).toBeUndefined()
+        return {
+          fullStream: (async function* () {
+            yield { type: "text-delta", text: "Hello without context" }
+          })(),
+        }
+      }
+    )
+
+    const generator = streamKnowledgeAnswerDefault({
+      messages: [{ role: "user", content: "General question" }],
+      docs: [],
+    })
+
+    const chunks: string[] = []
+    for await (const chunk of generator) {
+      chunks.push(chunk)
+    }
+
+    expect(chunks).toEqual(["Hello without context"])
   })
 })

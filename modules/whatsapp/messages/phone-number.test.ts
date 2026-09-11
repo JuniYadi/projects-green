@@ -4,6 +4,8 @@ import {
   detectCountryFromPhone,
   normalizeIndonesianPhoneNumber,
   formatIndonesianPhone,
+  isPotentialPhoneNumber,
+  extractPhoneVariants,
 } from "./phone-number"
 
 describe("e164PhoneRegex", () => {
@@ -61,6 +63,29 @@ describe("normalizeIndonesianPhoneNumber", () => {
 
   it("rejects too-long E.164 (over 15 digits)", () => {
     expect(normalizeIndonesianPhoneNumber("+1234567890123456")).toBe(null)
+  })
+})
+
+describe("isPotentialPhoneNumber", () => {
+  it("identifies phone strings with digits and symbols", () => {
+    expect(isPotentialPhoneNumber("+6285161432124")).toBe(true)
+    expect(isPotentialPhoneNumber("0851-6143-2124")).toBe(true)
+    expect(isPotentialPhoneNumber("6285161432124")).toBe(true)
+  })
+
+  it("rejects CUIDs and short numbers", () => {
+    expect(isPotentialPhoneNumber("cmt9j0vnk0035013yrq27w9ye")).toBe(false)
+    expect(isPotentialPhoneNumber("123")).toBe(false)
+    expect(isPotentialPhoneNumber("abc")).toBe(false)
+  })
+})
+
+describe("extractPhoneVariants", () => {
+  it("extracts unique variants from indonesian phone number", () => {
+    const variants = extractPhoneVariants("085161432124")
+    expect(variants).toContain("+6285161432124")
+    expect(variants).toContain("085161432124")
+    expect(variants).toContain("085161432124".replace(/\D/g, ""))
   })
 })
 

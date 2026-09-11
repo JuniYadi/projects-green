@@ -59,4 +59,56 @@ describe("inboxSummarizeTool", () => {
     expect(result.messages).toEqual([])
     expect(result.summary).toBe("Tidak ada riwayat pesan percakapan.")
   })
+  it("resolves conversation when phone number is provided", async () => {
+    mockPrisma.whatsappConversation.findMany.mockResolvedValueOnce([
+      {
+        id: "conv-phone-1",
+        contactPhone: "+6285161432124",
+        whatsappDeviceId: "dev-active",
+        whatsappMessages: [
+          {
+            direction: "INBOUND",
+            body: "Halo kak mau tanya promo",
+            statusHistory: [{ status: "READ" }],
+            createdAt: new Date("2026-09-02T10:00:00Z"),
+          },
+        ],
+      },
+    ])
+
+    const result = await inboxSummarizeTool.execute(
+      { phoneNumber: "+6285161432124", deviceId: "dev-active" },
+      context
+    )
+    expect(result.conversationId).toBe("conv-phone-1")
+    expect(result.phoneNumber).toBe("+6285161432124")
+    expect(result.deviceId).toBe("dev-active")
+    expect(result.messages.length).toBe(1)
+    expect(result.summary).toContain("Halo kak mau tanya promo")
+  })
+
+  it("resolves conversation when phone number is passed in conversationId field", async () => {
+    mockPrisma.whatsappConversation.findMany.mockResolvedValueOnce([
+      {
+        id: "conv-cuid-1",
+        contactPhone: "+6285161432124",
+        whatsappMessages: [
+          {
+            direction: "OUTBOUND",
+            body: "OTP anda adalah 123456",
+            statusHistory: [{ status: "SENT" }],
+            createdAt: new Date("2026-09-02T10:00:00Z"),
+          },
+        ],
+      },
+    ])
+
+    const result = await inboxSummarizeTool.execute(
+      { conversationId: "6285161432124" },
+      context
+    )
+    expect(result.conversationId).toBe("conv-cuid-1")
+    expect(result.phoneNumber).toBe("+6285161432124")
+    expect(result.summary).toContain("OTP anda adalah 123456")
+  })
 })
