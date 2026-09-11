@@ -27,6 +27,15 @@ mock.module("@/modules/deploy/prometheus-telemetry.service", () => ({
   fetchNamespaceTelemetry: mockFetchNamespaceTelemetry,
 }))
 
+const mockFindFirst = mock(
+  async (): Promise<{ cpu: number | null; memory: number | null } | null> =>
+    null
+)
+
+mock.module("@/lib/prisma", () => ({
+  prisma: { applicationStack: { findFirst: mockFindFirst } },
+}))
+
 // Dynamic import required so mock.module registrations take effect prior to module evaluation.
 const { appTelemetryRoutes } = await import("./app-telemetry.route")
 const { deployRoutes } = await import("../deploy.route")
@@ -35,6 +44,8 @@ describe("appTelemetryRoutes", () => {
   beforeEach(() => {
     mockWithAuth.mockClear()
     mockFetchNamespaceTelemetry.mockClear()
+    mockFindFirst.mockClear()
+    mockFindFirst.mockResolvedValue(null)
     mockWithAuth.mockResolvedValue({
       user: {
         id: "user-123",
@@ -127,6 +138,26 @@ describe("appTelemetryRoutes", () => {
       clusterCode: "sgp",
     })
   })
+  it("reports the app's configured limits instead of the cluster placeholder", async () => {
+    mockFindFirst.mockResolvedValueOnce({ cpu: 1000, memory: 2048 })
+
+    const response = await appTelemetryRoutes.handle(
+      new Request("http://localhost/deploy/telemetry?appSlug=my-app")
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockFindFirst).toHaveBeenCalledWith({
+      where: { slug: "my-app", organizationId: "org-1" },
+      select: { cpu: true, memory: true },
+    })
+    // Same floors the Helm builder applies: request 2048Mi -> limit 4096Mi.
+    expect(mockFetchNamespaceTelemetry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limitsFallback: { cpuCores: 1, memoryBytes: 4096 * 1024 * 1024 },
+      })
+    )
+  })
+
   it("supports fast ranges 5m, 15m, and 30m in query", async () => {
     for (const fastRange of ["5m", "15m", "30m"] as const) {
       mockFetchNamespaceTelemetry.mockClear()
