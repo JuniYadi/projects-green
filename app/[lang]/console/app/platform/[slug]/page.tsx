@@ -57,6 +57,7 @@ import { AppOverviewTab } from "@/modules/deploy/ui/app-overview-tab"
 import { TemplateUpdateBanner } from "@/modules/deploy/ui/template-update-banner"
 import { AppMonitor } from "@/modules/deploy/ui/operate/app-monitor"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
+import { TabTerminal } from "@/modules/deploy/ui/operate/tab-terminal"
 import { TabMetrics } from "@/modules/deploy/ui/operate/tab-metrics"
 import { TabEnv } from "@/modules/deploy/ui/operate/tab-env"
 import { TabTraffic } from "@/modules/deploy/ui/operate/tab-traffic"
@@ -700,6 +701,15 @@ export default function PlatformInstanceWorkspacePage() {
           {/* TAB 1: OVERVIEW */}
           {activeWorkspaceTab === "overview" && (
             <AppOverviewTab stack={overview.stack} locale={locale} />
+          )}
+
+          {/* TAB: TERMINAL */}
+          {activeWorkspaceTab === "terminal" && (
+            <TabTerminal
+              stackId={overview.stack.id}
+              slug={overview.stack.slug}
+              locale={locale}
+            />
           )}
 
           {/* TAB 2: DEPLOYMENTS */}
