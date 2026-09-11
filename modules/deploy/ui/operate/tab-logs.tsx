@@ -51,7 +51,7 @@ export function TabLogs({
       targetYear,
     ],
     queryFn: async () => {
-      if (!appSlug) return null
+      if (!appSlug) throw new Error("Missing appSlug")
       const p = new URLSearchParams()
       p.set("granularity", granularity)
       if (granularity === "daily" && targetDate) p.set("date", targetDate)
@@ -60,7 +60,7 @@ export function TabLogs({
       const res = await fetch(
         `/api/deploy/apps/${encodeURIComponent(appSlug)}/logs/report?${p.toString()}`
       )
-      if (!res.ok) return null
+      if (!res.ok) throw new Error("Failed to fetch log health report")
       const json = await res.json()
       return json.data as AppLogReportDTO
     },
