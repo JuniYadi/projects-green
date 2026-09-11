@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import * as realCrypto from "node:crypto"
 
+import type { DnsVerificationResult } from "./dns-verification.service"
+import type { DnsResolverEvidenceDTO } from "./app-hosting-edge.types"
+
 const resolveCname = mock(async () => ["EDGE.EXAMPLE.NET."])
 const resolve4 = mock(async () => ["203.0.113.10"])
 const resolve6 = mock(async () => ["2001:db8::10"])
@@ -8,6 +11,14 @@ mock.module("node:dns", () => ({
   promises: { resolveCname, resolve4, resolve6 },
 }))
 
+const verifyDnsTarget = mock(async (): Promise<DnsVerificationResult> => ({
+  status: "VERIFIED",
+  reason: "Two independent DNS sources matched the target.",
+  checkedAt: new Date(),
+  evidence: [],
+  positiveSources: ["google", "cloudflare"],
+}))
+mock.module("./dns-verification.service", () => ({ verifyDnsTarget }))
 class FakeX509Certificate {
   validTo = "2099-01-01T00:00:00.000Z"
   fingerprint256 = "fingerprint"
@@ -206,6 +217,14 @@ describe("app hosting edge service", () => {
     resolve4.mockResolvedValue(["203.0.113.10"])
     resolve6.mockReset()
     resolve6.mockResolvedValue(["2001:db8::10"])
+    verifyDnsTarget.mockReset()
+    verifyDnsTarget.mockResolvedValue({
+      status: "VERIFIED",
+      reason: "Two independent DNS sources matched the target.",
+      checkedAt: new Date(),
+      evidence: [],
+      positiveSources: ["google", "cloudflare"],
+    })
   })
   const seedDomain = (overrides: Record<string, unknown> = {}) => {
     const row = {
@@ -364,6 +383,13 @@ describe("app hosting edge service", () => {
   })
 
   it("marks DNS verification failed when all DNS strategies fail", async () => {
+    verifyDnsTarget.mockResolvedValueOnce({
+      status: "FAILED",
+      reason: "DNS records were found but did not match the target.",
+      checkedAt: new Date(),
+      evidence: [],
+      positiveSources: [],
+    })
     resolveCname.mockRejectedValueOnce(new Error("no cname"))
     resolve4.mockRejectedValueOnce(new Error("no ipv4"))
     resolve6.mockRejectedValueOnce(new Error("no ipv6"))
@@ -604,6 +630,192 @@ describe("app hosting edge service", () => {
     expect(dto.certificate).toMatchObject({ secretName: "tls-secret" })
     expect(dto.certificate).not.toHaveProperty("certificateCiphertext")
     expect(toApplicationDomainCertificateDTO(null)).toBeNull()
+  })
+  it("filters invalid resolver evidence and handles missing cluster relations", () => {
+    const now = new Date("2026-02-01T00:00:00.000Z")
+    const dto = toApplicationDomainDTO(
+      {
+        id: "domain-1",
+        stackId: "stack-1",
+        clusterId: "cluster-eu",
+        hostname: "secure.example.com",
+        kind: "CUSTOM",
+        isPrimary: false,
+        dnsStatus: "PENDING",
+        expectedCnameTarget: "edge.example.net",
+        verifiedAt: null,
+        dnsLastCheckedAt: now,
+        dnsVerificationReason: "pending",
+        dnsResolverEvidenceJson: [
+          {
+            provider: "google",
+            recordType: "CNAME",
+            outcome: "MATCH",
+            answers: ["edge.example.net"],
+          },
+          {
+            provider: "invalid",
+            recordType: "A",
+            outcome: "MATCH",
+            answers: [],
+          },
+          {
+            provider: "node",
+            recordType: "TXT",
+            outcome: "MATCH",
+            answers: [],
+          },
+          { provider: "node", recordType: "AAAA", outcome: "ERROR" },
+          null,
+        ],
+        allowlistMode: "OPEN",
+        createdAt: now,
+        updatedAt: now,
+        cluster: { id: "cluster-eu", code: "EU", name: "Europe", region: null },
+      } as never,
+      endpoint
+    )
+    expect(dto.cluster).toEqual({
+      id: "cluster-eu",
+      code: "EU",
+      name: "Europe",
+      region: "",
+    })
+    const resolverEvidence = dto.dnsResolverEvidence ?? []
+    expect(resolverEvidence).toHaveLength(1)
+    expect(resolverEvidence[0]).toMatchObject({
+      provider: "google",
+      recordType: "CNAME",
+      outcome: "MATCH",
+      answers: ["edge.example.net"],
+    })
+    expect(dto.certificate).toBeNull()
+    expect(dto.allowlistEntries).toEqual([])
+
+    const withoutRelations = toApplicationDomainDTO(
+      {
+        id: "domain-2",
+        stackId: "stack-1",
+        clusterId: null,
+        hostname: "other.example.com",
+        kind: "CUSTOM",
+        isPrimary: false,
+        dnsStatus: "PENDING",
+        expectedCnameTarget: "edge.example.net",
+        verifiedAt: null,
+        dnsLastCheckedAt: null,
+        dnsVerificationReason: null,
+        dnsResolverEvidenceJson: null,
+        allowlistMode: "OPEN",
+        createdAt: now,
+        updatedAt: now,
+        cluster: null,
+      } as never,
+      endpoint
+    )
+    expect(withoutRelations.cluster).toBeNull()
+    expect(withoutRelations.certificate).toBeNull()
+    expect(withoutRelations.allowlistEntries).toEqual([])
+    expect(withoutRelations.dnsResolverEvidence).toEqual([])
+  })
+
+  it("persists and returns DTO-safe outcomes for each DNS resolver evidence result", async () => {
+    const checkedAt = new Date("2026-03-01T00:00:00.000Z")
+    verifyDnsTarget.mockResolvedValueOnce({
+      status: "VERIFIED",
+      reason: "Resolver checks completed.",
+      checkedAt,
+      evidence: [
+        {
+          source: "google",
+          recordType: "CNAME",
+          outcome: "positive",
+          values: ["edge.example.net"],
+          ttl: 300,
+          latencyMs: 12,
+        },
+        {
+          source: "cloudflare",
+          recordType: "A",
+          outcome: "missing",
+          values: [],
+          ttl: null,
+          latencyMs: 20,
+        },
+        {
+          source: "node",
+          recordType: "AAAA",
+          outcome: "mismatch",
+          values: ["2001:db8::99"],
+          ttl: 60,
+          latencyMs: 8,
+        },
+        {
+          source: "google",
+          recordType: "A",
+          outcome: "error",
+          values: [],
+          ttl: null,
+          latencyMs: null,
+        },
+      ],
+      positiveSources: ["google"],
+    })
+    seedDomain()
+
+    const result = await verifyDomain({
+      organizationId: "org-1",
+      slug: "demo",
+      domainId: "domain-1",
+    })
+    const evidence: DnsResolverEvidenceDTO[] = [
+      {
+        provider: "google",
+        recordType: "CNAME",
+        outcome: "MATCH",
+        answers: ["edge.example.net"],
+        ttl: 300,
+        latencyMs: 12,
+      },
+      {
+        provider: "cloudflare",
+        recordType: "A",
+        outcome: "MISSING",
+        answers: [],
+        ttl: null,
+        latencyMs: 20,
+      },
+      {
+        provider: "node",
+        recordType: "AAAA",
+        outcome: "MISMATCH",
+        answers: ["2001:db8::99"],
+        ttl: 60,
+        latencyMs: 8,
+      },
+      {
+        provider: "google",
+        recordType: "A",
+        outcome: "ERROR",
+        answers: [],
+        ttl: null,
+        latencyMs: null,
+      },
+    ]
+    expect(result.dnsStatus).toBe("VERIFIED")
+    expect(result.verifiedAt).toEqual(checkedAt)
+    expect(result.dnsResolverEvidence).toEqual(evidence)
+    expect(mockPrisma.applicationDomain.update).toHaveBeenCalledWith({
+      where: { id: "domain-1" },
+      data: {
+        dnsStatus: "VERIFIED",
+        verifiedAt: checkedAt,
+        dnsLastCheckedAt: checkedAt,
+        dnsVerificationReason: "Resolver checks completed.",
+        dnsResolverEvidenceJson: evidence,
+      },
+      include: { certificate: true, allowlistEntries: true },
+    })
   })
 
   it("creates a managed hostname and binds the resolved cluster", async () => {

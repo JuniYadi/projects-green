@@ -26,9 +26,23 @@ type TabMountsProps = {
   setMounts: React.Dispatch<
     React.SetStateAction<Record<K8sEnvironmentId, VolumeMount[]>>
   >
+  onAddMount?: (
+    environmentId: K8sEnvironmentId,
+    mount: VolumeMount
+  ) => Promise<void>
+  onDeleteMount?: (
+    environmentId: K8sEnvironmentId,
+    mountId: string
+  ) => Promise<void>
 }
 
-export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
+export function TabMounts({
+  selectedEnv,
+  mounts,
+  setMounts,
+  onAddMount,
+  onDeleteMount,
+}: TabMountsProps) {
   const [newMountName, setNewMountName] = useState("")
   const [newMountPath, setNewMountPath] = useState("")
   const [newMountReadOnly, setNewMountReadOnly] = useState(true)
@@ -45,7 +59,7 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
     return `[REDACTED] type=${extension} bytes=${bytes.length} fingerprint=${hash.toString(16)}`
   }
 
-  const handleAddMount = (e: React.FormEvent) => {
+  const handleAddMount = async (e: React.FormEvent) => {
     e.preventDefault()
     setMountError("")
     const mountContent = mountContentInputRef.current?.value ?? ""
@@ -90,24 +104,45 @@ export function TabMounts({ selectedEnv, mounts, setMounts }: TabMountsProps) {
       fileMode: "0400",
       readOnly: newMountReadOnly,
       contentSummary: buildContentSummary(mountContent, newMountPath.trim()),
+      content: mountContent,
     }
 
-    setMounts((prev) => ({
-      ...prev,
-      [selectedEnv]: [...prev[selectedEnv], newObj],
-    }))
-    setNewMountName("")
-    setNewMountPath("")
-    if (mountContentInputRef.current) {
-      mountContentInputRef.current.value = ""
+    try {
+      if (onAddMount) {
+        await onAddMount(selectedEnv, newObj)
+      } else {
+        setMounts((prev) => ({
+          ...prev,
+          [selectedEnv]: [...prev[selectedEnv], newObj],
+        }))
+      }
+      setNewMountName("")
+      setNewMountPath("")
+      if (mountContentInputRef.current) {
+        mountContentInputRef.current.value = ""
+      }
+    } catch (error) {
+      setMountError(
+        error instanceof Error ? error.message : "Unable to add mount"
+      )
     }
   }
 
-  const handleDeleteMount = (id: string) => {
-    setMounts((prev) => ({
-      ...prev,
-      [selectedEnv]: prev[selectedEnv].filter((m) => m.id !== id),
-    }))
+  const handleDeleteMount = async (id: string) => {
+    try {
+      if (onDeleteMount) {
+        await onDeleteMount(selectedEnv, id)
+      } else {
+        setMounts((prev) => ({
+          ...prev,
+          [selectedEnv]: prev[selectedEnv].filter((m) => m.id !== id),
+        }))
+      }
+    } catch (error) {
+      setMountError(
+        error instanceof Error ? error.message : "Unable to delete mount"
+      )
+    }
   }
 
   return (

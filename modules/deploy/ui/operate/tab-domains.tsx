@@ -85,6 +85,26 @@ const certificateLabel = (domain: TenantDomainDTO) => {
     : ""
   return `${certificate.source || "Unknown source"} · ${status}${expiry}`
 }
+const dnsCheckLabel = (domain: TenantDomainDTO) => {
+  if (!domain.dnsLastCheckedAt) return "Not checked yet"
+  const checkedAt = new Date(domain.dnsLastCheckedAt)
+  return Number.isNaN(checkedAt.getTime())
+    ? "Checked"
+    : `Checked ${checkedAt.toLocaleString()}`
+}
+
+const dnsEvidenceLabel = (domain: TenantDomainDTO) => {
+  const evidence = domain.dnsResolverEvidence ?? []
+  if (evidence.length === 0) return null
+  const providers = new Set(
+    evidence
+      .filter((item) => item.outcome === "MATCH")
+      .map((item) => item.provider)
+  )
+  return providers.size > 0
+    ? `Matched by ${Array.from(providers).join(" + ")}`
+    : "No resolver matched the target"
+}
 
 export function TabDomains({
   selectedEnv = "prod",
@@ -287,6 +307,19 @@ export function TabDomains({
               DNS
             </p>
             <p className="text-xs text-foreground">{domain.dnsStatus}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {dnsCheckLabel(domain)}
+            </p>
+            {domain.dnsVerificationReason && (
+              <p className="text-[10px] text-muted-foreground">
+                {domain.dnsVerificationReason}
+              </p>
+            )}
+            {dnsEvidenceLabel(domain) && (
+              <p className="text-[10px] text-muted-foreground">
+                {dnsEvidenceLabel(domain)}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">

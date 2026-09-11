@@ -45,6 +45,7 @@ import type {
   EnvVar,
   VolumeMount,
   TenantDomainDTO,
+  DomainAllowlistMode,
   LogMessage,
 } from "@/modules/deploy/operate.types"
 import type { DeployLogScope } from "@/modules/deploy/deploy.types"
@@ -71,6 +72,193 @@ type HistoryMeta = {
   total: number
   totalPages: number
 }
+type SettingsApiPayload<T = unknown> = {
+  ok?: boolean
+  data?: T
+  message?: string
+}
+
+type SettingsMethod = (
+  options?: unknown
+) => Promise<{ data?: SettingsApiPayload<unknown> }>
+
+type SettingsRouteClient = {
+  get: SettingsMethod
+  patch: SettingsMethod
+  delete: SettingsMethod
+  post: SettingsMethod
+  put: SettingsMethod
+}
+
+type DomainActionClient = SettingsRouteClient & {
+  verify: SettingsRouteClient
+  certificate: SettingsRouteClient
+  allowlist: SettingsRouteClient & {
+    entries: MountRouteClient
+  }
+}
+
+type DomainRouteClient = SettingsRouteClient & {
+  [key: string]: DomainActionClient
+}
+
+type MountRouteClient = SettingsRouteClient & {
+  [key: string]: SettingsRouteClient
+}
+
+type AppSettingsClient = SettingsRouteClient & {
+  settings: {
+    get: SettingsMethod
+    env: SettingsRouteClient
+    mounts: MountRouteClient
+  }
+  domains: DomainRouteClient
+}
+
+const getAppClient = (slug: string): AppSettingsClient =>
+  (eden.api.deploy.apps as unknown as Record<string, AppSettingsClient>)[slug]
+
+const emptyEnvVars = (): Record<K8sEnvironmentId, EnvVar[]> => ({
+  dev: [],
+  staging: [],
+  prod: [],
+})
+
+const emptyMounts = (): Record<K8sEnvironmentId, VolumeMount[]> => ({
+  dev: [],
+  staging: [],
+  prod: [],
+})
+
+const asEnvironmentRecord = <T,>(
+  value: unknown,
+  fallback: Record<K8sEnvironmentId, T[]>
+): Record<K8sEnvironmentId, T[]> => {
+  if (!value || typeof value !== "object") return fallback
+  const source = value as Record<string, unknown>
+  return {
+    dev: Array.isArray(source.dev) ? (source.dev as T[]) : [],
+    staging: Array.isArray(source.staging) ? (source.staging as T[]) : [],
+    prod: Array.isArray(source.prod) ? (source.prod as T[]) : [],
+  }
+}
+
+const readSettingsData = (payload: SettingsApiPayload<unknown>) => {
+  const data = payload.data
+  if (!data || typeof data !== "object") {
+    return { envVars: emptyEnvVars(), mounts: emptyMounts() }
+  }
+  const settings = data as { envVars?: unknown; mounts?: unknown }
+  const rawEnvVars = Array.isArray(settings.envVars)
+    ? { ...emptyEnvVars(), prod: settings.envVars }
+    : asEnvironmentRecord<unknown>(settings.envVars, emptyEnvVars())
+  const normalizeEnvVar = (raw: unknown): EnvVar => {
+    const item = raw && typeof raw === "object" ? raw : {}
+    const value = item as Record<string, unknown>
+    const type =
+      value.type === "plain" ||
+      value.type === "secret" ||
+      value.type === "secret_ref" ||
+      value.type === "secret_shared_ref"
+        ? value.type
+        : undefined
+    const source =
+      value.source === "vault" || value.source === "managed_service"
+        ? value.source
+        : undefined
+    const secret =
+      value.masked === true ||
+      value.isStoredSecret === true ||
+      type === "secret" ||
+      type === "secret_ref" ||
+      type === "secret_shared_ref"
+    return {
+      id: String(value.id ?? value.key ?? "env-var"),
+      key: String(value.key ?? ""),
+      value: typeof value.value === "string" ? value.value : "",
+      isSecret: secret,
+      updatedAt: String(value.lastUpdatedAt ?? value.updatedAt ?? ""),
+      ...(type ? { type } : {}),
+      scope:
+        value.scope === "all" ||
+        value.scope === "build" ||
+        value.scope === "runtime"
+          ? value.scope
+          : "runtime",
+      masked: secret,
+      ...(source ? { source } : {}),
+      ...(typeof value.serviceCredentialId === "string"
+        ? { serviceCredentialId: value.serviceCredentialId }
+        : {}),
+      ...(typeof value.vaultPath === "string"
+        ? { vaultPath: value.vaultPath }
+        : {}),
+      ...(typeof value.vaultKey === "string"
+        ? { vaultKey: value.vaultKey }
+        : {}),
+      ...(typeof value.referenceLabel === "string"
+        ? { referenceLabel: value.referenceLabel }
+        : {}),
+    }
+  }
+  const envVars = Object.fromEntries(
+    (Object.keys(rawEnvVars) as K8sEnvironmentId[]).map((environmentId) => [
+      environmentId,
+      rawEnvVars[environmentId].map(normalizeEnvVar),
+    ])
+  ) as Record<K8sEnvironmentId, EnvVar[]>
+  const rawMounts = asEnvironmentRecord<Record<string, unknown>>(
+    settings.mounts,
+    emptyMounts()
+  )
+  const mounts = Object.fromEntries(
+    (Object.keys(rawMounts) as K8sEnvironmentId[]).map((environmentId) => [
+      environmentId,
+      rawMounts[environmentId].map((raw) => ({
+        id: String(raw.id ?? `mount-${environmentId}`),
+        name: String(raw.name ?? "mount"),
+        mountPath: String(raw.mountPath ?? "/data"),
+        sourceType:
+          raw.type === "configmap" ||
+          raw.type === "pvc" ||
+          raw.type === "emptyDir"
+            ? raw.type
+            : "secret",
+        fileMode: String(raw.defaultMode ?? "0400"),
+        readOnly: raw.readOnly !== false,
+        contentSummary: String(raw.contentSummary ?? "[REDACTED]"),
+      })),
+    ])
+  ) as Record<K8sEnvironmentId, VolumeMount[]>
+  return { envVars, mounts }
+}
+const toPersistedMount = (mount: VolumeMount) => ({
+  id: mount.id,
+  type: mount.sourceType,
+  name: mount.name,
+  mountPath: mount.mountPath,
+  readOnly: mount.readOnly,
+  ...(mount.fileMode
+    ? { defaultMode: Number.parseInt(mount.fileMode, 8) }
+    : {}),
+  ...(mount.content !== undefined ? { content: mount.content } : {}),
+})
+const toPersistedEnvVar = (row: EnvVar) => ({
+  id: row.id,
+  key: row.key,
+  value: row.value,
+  type: row.type,
+  scope: row.scope,
+  masked: row.masked,
+  isStoredSecret: row.isStoredSecret,
+  ...(row.source ? { source: row.source } : {}),
+  ...(row.serviceCredentialId
+    ? { serviceCredentialId: row.serviceCredentialId }
+    : {}),
+  ...(row.vaultPath ? { vaultPath: row.vaultPath } : {}),
+  ...(row.vaultKey ? { vaultKey: row.vaultKey } : {}),
+  ...(row.referenceLabel ? { referenceLabel: row.referenceLabel } : {}),
+})
 
 export type SettingsSubTab =
   "env" | "domains" | "scaling" | "mounts" | "build" | "danger"
@@ -112,6 +300,7 @@ export default function PlatformInstanceWorkspacePage() {
 
   const locale = resolveLocaleOrDefault(params?.lang)
   const slug = params?.slug ?? ""
+  const selectedEnv: K8sEnvironmentId = "prod"
   const messages = getMessages(locale)
   const tDeployments = messages.console.app.deployments
 
@@ -152,25 +341,16 @@ export default function PlatformInstanceWorkspacePage() {
 
   // Logs state
   const [logs, setLogs] = useState<LogMessage[]>([])
-
-  // Settings / Env state
-  const [selectedEnv] = useState<K8sEnvironmentId>("prod")
-  const [envVars, setEnvVars] = useState<Record<K8sEnvironmentId, EnvVar[]>>({
-    dev: [],
-    staging: [],
-    prod: [],
-  })
-  const [domains] = useState<TenantDomainDTO[]>([])
-  const [domainsLoading] = useState(false)
-  const [domainsError] = useState<string | null>(null)
+  const [envVars, setEnvVars] =
+    useState<Record<K8sEnvironmentId, EnvVar[]>>(emptyEnvVars)
+  const [domains, setDomains] = useState<TenantDomainDTO[]>([])
+  const [domainsLoading, setDomainsLoading] = useState(false)
+  const [domainsError, setDomainsError] = useState<string | null>(null)
   const [replicas, setReplicas] = useState(1)
-  const [mounts, setMounts] = useState<Record<K8sEnvironmentId, VolumeMount[]>>(
-    {
-      dev: [],
-      staging: [],
-      prod: [],
-    }
-  )
+  const [mounts, setMounts] =
+    useState<Record<K8sEnvironmentId, VolumeMount[]>>(emptyMounts)
+  const [settingsLoading, setSettingsLoading] = useState(false)
+  const [settingsError, setSettingsError] = useState<string | null>(null)
   // Load apps list for switcher
   useEffect(() => {
     let cancelled = false
@@ -249,6 +429,62 @@ export default function PlatformInstanceWorkspacePage() {
       cancelled = true
     }
   }, [slug, activeWorkspaceTab, historyPage])
+  useEffect(() => {
+    if (!slug || !overview) return
+    let cancelled = false
+
+    const loadSettings = async () => {
+      setSettingsLoading(true)
+      setSettingsError(null)
+      setDomainsLoading(true)
+      setDomainsError(null)
+      try {
+        const [{ data: settingsPayload }, { data: domainsPayload }] =
+          await Promise.all([
+            getAppClient(slug).settings.get(),
+            getAppClient(slug).domains.get(),
+          ])
+        if (!settingsPayload?.ok) {
+          throw new Error(
+            settingsPayload?.message ?? "Unable to load application settings."
+          )
+        }
+        if (!domainsPayload?.ok) {
+          throw new Error(domainsPayload?.message ?? "Unable to load domains.")
+        }
+        if (cancelled) return
+        const settings = readSettingsData(settingsPayload)
+        setEnvVars(settings.envVars)
+        setMounts(settings.mounts)
+        const domainData = domainsPayload.data
+        setDomains(
+          Array.isArray(domainData)
+            ? (domainData as TenantDomainDTO[])
+            : domainData &&
+                typeof domainData === "object" &&
+                Array.isArray((domainData as { domains?: unknown }).domains)
+              ? (domainData as { domains: TenantDomainDTO[] }).domains
+              : []
+        )
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : String(err)
+          setSettingsError(message)
+          setDomainsError(message)
+        }
+      } finally {
+        if (!cancelled) {
+          setSettingsLoading(false)
+          setDomainsLoading(false)
+        }
+      }
+    }
+
+    void loadSettings()
+    return () => {
+      cancelled = true
+    }
+  }, [slug, overview])
 
   const handleSync = async () => {
     if (!slug) return
@@ -290,15 +526,135 @@ export default function PlatformInstanceWorkspacePage() {
       }
     : (overview?.latestDeployment ?? null)
 
+  const refreshSettings = async () => {
+    const { data: payload } = await getAppClient(slug).settings.get()
+    if (!payload?.ok) {
+      throw new Error(
+        payload?.message ?? "Unable to load application settings."
+      )
+    }
+    const settings = readSettingsData(payload)
+    setEnvVars(settings.envVars)
+    setMounts(settings.mounts)
+    setSettingsError(null)
+  }
+
+  const persistEnvVars = async (rows: EnvVar[]) => {
+    const { data: payload } = await getAppClient(slug).settings.env.patch({
+      environmentId: selectedEnv,
+      variables: rows.map(toPersistedEnvVar),
+    })
+    if (!payload?.ok) {
+      throw new Error(
+        payload?.message ?? "Unable to save environment variables."
+      )
+    }
+    await refreshSettings()
+  }
+
+  const persistMountAdd = async (
+    environmentId: K8sEnvironmentId,
+    mount: VolumeMount
+  ) => {
+    const { data: payload } = await getAppClient(slug).settings.mounts.patch({
+      environmentId,
+      mounts: [
+        ...mounts[environmentId].map(toPersistedMount),
+        toPersistedMount(mount),
+      ],
+    })
+    if (!payload?.ok) {
+      throw new Error(payload?.message ?? "Unable to save mounts.")
+    }
+    await refreshSettings()
+  }
+
+  const persistMountDelete = async (
+    environmentId: K8sEnvironmentId,
+    mountId: string
+  ) => {
+    const { data: payload } = await getAppClient(slug).settings.mounts[
+      mountId
+    ].delete({
+      $query: { environmentId },
+    })
+    if (!payload?.ok) {
+      throw new Error(payload?.message ?? "Unable to delete mount.")
+    }
+    await refreshSettings()
+  }
+
+  const refreshDomains = async () => {
+    const { data: payload } = await getAppClient(slug).domains.get()
+    if (!payload?.ok) {
+      throw new Error(payload?.message ?? "Unable to load domains.")
+    }
+    const data = payload.data
+    setDomains(
+      Array.isArray(data)
+        ? (data as TenantDomainDTO[])
+        : data &&
+            typeof data === "object" &&
+            Array.isArray((data as { domains?: unknown }).domains)
+          ? (data as { domains: TenantDomainDTO[] }).domains
+          : []
+    )
+    setDomainsError(null)
+  }
+
+  const refreshAfterDomainMutation = async (
+    action: () => Promise<{ data?: SettingsApiPayload<unknown> }>
+  ) => {
+    const { data: payload } = await action()
+    if (!payload?.ok) {
+      throw new Error(payload?.message ?? "Unable to update domain settings.")
+    }
+    await refreshDomains()
+  }
+
   const domainCallbacks = {
-    onAddDomain: async () => undefined,
-    onDeleteDomain: async () => undefined,
-    onVerifyDomain: async () => undefined,
-    onUploadCertificate: async () => undefined,
-    onUpdateAllowlist: async () => undefined,
-    onAddAllowlistEntry: async () => undefined,
-    onDeleteAllowlistEntry: async () => undefined,
-    onRetry: async () => undefined,
+    onAddDomain: (hostname: string) =>
+      refreshAfterDomainMutation(() =>
+        getAppClient(slug).domains.post({ hostname, kind: "CUSTOM" })
+      ),
+    onDeleteDomain: (domainId: string) =>
+      refreshAfterDomainMutation(() =>
+        getAppClient(slug).domains[domainId].delete()
+      ),
+    onVerifyDomain: (domainId: string) =>
+      refreshAfterDomainMutation(() =>
+        getAppClient(slug).domains[domainId].verify.post({})
+      ),
+    onUploadCertificate: (
+      domainId: string,
+      input: { certificatePem: string; privateKeyPem: string; chainPem: string }
+    ) =>
+      refreshAfterDomainMutation(() =>
+        getAppClient(slug).domains[domainId].certificate.put({
+          certificate: input.certificatePem,
+          privateKey: input.privateKeyPem,
+          chain: input.chainPem || undefined,
+        })
+      ),
+    onUpdateAllowlist: (domainId: string, mode: DomainAllowlistMode) =>
+      refreshAfterDomainMutation(() =>
+        getAppClient(slug).domains[domainId].allowlist.put({ mode })
+      ),
+    onAddAllowlistEntry: (
+      domainId: string,
+      input: { cidr: string; label?: string }
+    ) =>
+      refreshAfterDomainMutation(() =>
+        getAppClient(slug).domains[domainId].allowlist.entries.post({
+          cidr: input.cidr,
+          description: input.label,
+        })
+      ),
+    onDeleteAllowlistEntry: (domainId: string, entryId: string) =>
+      refreshAfterDomainMutation(() =>
+        getAppClient(slug).domains[domainId].allowlist.entries[entryId].delete()
+      ),
+    onRetry: refreshDomains,
   }
 
   return (
@@ -654,36 +1010,78 @@ export default function PlatformInstanceWorkspacePage() {
 
               {/* Right Column: Settings Content */}
               <div className="min-w-0 lg:col-span-9">
-                {settingsSubTab === "env" && (
-                  <TabEnv
-                    selectedEnv={selectedEnv}
-                    envVars={envVars}
-                    setEnvVars={setEnvVars}
-                    stackId={overview.stack.id}
-                  />
-                )}
-                {settingsSubTab === "domains" && (
-                  <TabDomains
-                    stackSlug={overview.stack.slug}
-                    apiDomains={domains}
-                    api={domainCallbacks}
-                    domainsLoading={domainsLoading}
-                    domainsError={domainsError}
-                  />
-                )}
-                {settingsSubTab === "scaling" && (
-                  <TabScaling replicas={replicas} setReplicas={setReplicas} />
-                )}
-                {settingsSubTab === "mounts" && (
-                  <TabMounts
-                    selectedEnv={selectedEnv}
-                    mounts={mounts}
-                    setMounts={setMounts}
-                  />
-                )}
-                {settingsSubTab === "build" && <TabBuild />}
-                {settingsSubTab === "danger" && (
-                  <TabDanger stack={overview.stack} />
+                {settingsLoading ? (
+                  <div className="rounded-xl border border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+                    Loading application settings…
+                  </div>
+                ) : settingsError ? (
+                  <div
+                    className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive"
+                    role="alert"
+                  >
+                    <p className="font-semibold">
+                      Failed to load application settings
+                    </p>
+                    <p className="mt-1 text-xs">{settingsError}</p>
+                    <Button
+                      className="mt-4"
+                      variant="outline"
+                      onClick={() => void refreshSettings()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {settingsSubTab === "env" && (
+                      <TabEnv
+                        selectedEnv={selectedEnv}
+                        envVars={envVars}
+                        setEnvVars={setEnvVars}
+                        onPersist={async (rows) => {
+                          try {
+                            await persistEnvVars(rows)
+                          } catch (error) {
+                            const message =
+                              error instanceof Error
+                                ? error.message
+                                : String(error)
+                            setSettingsError(message)
+                            toast.error(message)
+                          }
+                        }}
+                        stackId={overview.stack.id}
+                      />
+                    )}
+                    {settingsSubTab === "domains" && (
+                      <TabDomains
+                        stackSlug={overview.stack.slug}
+                        apiDomains={domains}
+                        api={domainCallbacks}
+                        domainsLoading={domainsLoading}
+                        domainsError={domainsError}
+                      />
+                    )}
+                    {settingsSubTab === "scaling" && (
+                      <TabScaling
+                        replicas={replicas}
+                        setReplicas={setReplicas}
+                      />
+                    )}
+                    {settingsSubTab === "mounts" && (
+                      <TabMounts
+                        selectedEnv={selectedEnv}
+                        mounts={mounts}
+                        setMounts={setMounts}
+                        onAddMount={persistMountAdd}
+                        onDeleteMount={persistMountDelete}
+                      />
+                    )}
+                    {settingsSubTab === "build" && <TabBuild />}
+                    {settingsSubTab === "danger" && (
+                      <TabDanger stack={overview.stack} />
+                    )}
+                  </>
                 )}
               </div>
             </div>

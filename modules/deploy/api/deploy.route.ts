@@ -11,6 +11,7 @@ import { aiDeploymentSessionRoutes } from "@/modules/deploy/api/routes/ai-deploy
 import { aiDeploymentSessionDecisionRoutes } from "@/modules/deploy/api/routes/ai-deployment-session-decisions.route"
 import { deploySubmitRoutes } from "@/modules/deploy/api/routes/deploy-submit.route"
 import { deployTriggerRoutes } from "@/modules/deploy/api/routes/deploy-trigger.route"
+import { appSettingsRoutes } from "@/modules/deploy/api/routes/app-settings.route"
 import { environmentVariablesRoutes } from "@/modules/deploy/api/routes/environment-variables.route"
 import { monitoringRoutes } from "@/modules/deploy/api/routes/monitoring.route"
 import { opensearchLogsRoutes } from "@/modules/deploy/api/routes/opensearch-logs.route"
@@ -37,6 +38,7 @@ export const deployRoutes = new Elysia()
   .use(deployPipelineRoutes)
   .use(environmentVariablesRoutes)
   .use(monitoringRoutes)
+  .use(appSettingsRoutes)
   .use(opensearchLogsRoutes)
   .use(deployJenkinsWebhookRoutes)
   .use(deployJenkinsImageReadyRoutes)
