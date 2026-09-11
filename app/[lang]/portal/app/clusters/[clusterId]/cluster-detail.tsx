@@ -274,8 +274,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const [logLevelFilter, setLogLevelFilter] = useState<string>("ALL")
   const [logComponentFilter, setLogComponentFilter] = useState<string>("ALL")
   const [isTestingAll, setIsTestingAll] = useState(false)
-  const [syncingArgo, setSyncingArgo] = useState(false)
-  const [argoSyncMessage, setArgoSyncMessage] = useState<string | null>(null)
 
   const handleTestAllIntegrations = async () => {
     if (!cluster || cluster.integrations.length === 0) return
@@ -288,19 +286,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     } finally {
       setIsTestingAll(false)
     }
-  }
-
-  const handleTriggerArgoSync = () => {
-    setSyncingArgo(true)
-    setArgoSyncMessage(null)
-    setTimeout(() => {
-      setSyncingArgo(false)
-      setArgoSyncMessage(
-        "Argo CD sync triggered for all applications targeting this cluster"
-      )
-      toast.success("Argo CD sync initiated")
-      setTimeout(() => setArgoSyncMessage(null), 5000)
-    }, 800)
   }
 
   const copyLogsToClipboard = (text: string) => {
@@ -1637,8 +1622,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   <CardTitle className="text-base font-semibold">
                     OpenSearch Cluster Log Stream
                   </CardTitle>
-                  <Badge variant="success" className="text-xs">
-                    Ingesting
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/40 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400"
+                  >
+                    Synthetic Sample Stream
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -1679,6 +1667,15 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+                <WarningCircle size={16} className="shrink-0 text-amber-500" />
+                <span>
+                  Sample log stream for cluster {cluster.code}. For live
+                  production search, open the OpenSearch Dashboards endpoint
+                  directly or ingest via OpenSearch queue.
+                </span>
+              </div>
+
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative min-w-[200px] flex-1">
                   <MagnifyingGlass
@@ -1696,39 +1693,60 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   <Label className="text-xs whitespace-nowrap text-muted-foreground">
                     Level:
                   </Label>
-                  <select
-                    aria-label="Log level"
+                  <Select
                     value={logLevelFilter}
-                    onChange={(e) => setLogLevelFilter(e.target.value)}
-                    className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                    onValueChange={setLogLevelFilter}
                   >
-                    <option value="ALL">All Levels</option>
-                    <option value="INFO">INFO</option>
-                    <option value="WARN">WARN</option>
-                    <option value="ERROR">ERROR</option>
-                  </select>
+                    <SelectTrigger
+                      aria-label="Log level"
+                      className="h-9 w-[110px] text-xs"
+                    >
+                      <SelectValue placeholder="All Levels" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Levels</SelectItem>
+                      <SelectItem value="INFO">INFO</SelectItem>
+                      <SelectItem value="WARN">WARN</SelectItem>
+                      <SelectItem value="ERROR">ERROR</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex items-center gap-2">
                   <Label className="text-xs whitespace-nowrap text-muted-foreground">
                     Service:
                   </Label>
-                  <select
-                    aria-label="Log service"
+                  <Select
                     value={logComponentFilter}
-                    onChange={(e) => setLogComponentFilter(e.target.value)}
-                    className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                    onValueChange={setLogComponentFilter}
                   >
-                    <option value="ALL">All Services</option>
-                    <option value="kubelet">kubelet</option>
-                    <option value="argocd-server">argocd-server</option>
-                    <option value="jenkins-agent">jenkins-agent</option>
-                    <option value="ingress-nginx">ingress-nginx</option>
-                    <option value="openebs-provisioner">
-                      openebs-provisioner
-                    </option>
-                    <option value="prometheus">prometheus</option>
-                    <option value="vault-agent">vault-agent</option>
-                  </select>
+                    <SelectTrigger
+                      aria-label="Log service"
+                      className="h-9 w-[170px] text-xs"
+                    >
+                      <SelectValue placeholder="All Services" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Services</SelectItem>
+                      <SelectItem value="kubelet">kubelet</SelectItem>
+                      <SelectItem value="argocd-server">
+                        argocd-server
+                      </SelectItem>
+                      <SelectItem value="jenkins-agent">
+                        jenkins-agent
+                      </SelectItem>
+                      <SelectItem value="ingress-nginx">
+                        ingress-nginx
+                      </SelectItem>
+                      <SelectItem value="container-registry">
+                        container-registry
+                      </SelectItem>
+                      <SelectItem value="openebs-provisioner">
+                        openebs-provisioner
+                      </SelectItem>
+                      <SelectItem value="prometheus">prometheus</SelectItem>
+                      <SelectItem value="vault-agent">vault-agent</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -1739,8 +1757,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     <span className="inline-block size-2.5 rounded-full bg-yellow-500/80" />
                     <span className="inline-block size-2.5 rounded-full bg-green-500/80" />
                     <span className="ml-2 text-[11px] font-semibold text-zinc-300">
-                      CLUSTER {cluster.code.toUpperCase()} • OPENSEARCH LIVE
-                      BUFFER
+                      CLUSTER {cluster.code.toUpperCase()} • OPENSEARCH
+                      SYNTHETIC BUFFER
                     </span>
                   </div>
                   <span className="text-[11px]">
@@ -1802,8 +1820,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   <CardTitle className="text-base font-semibold">
                     Argo CD GitOps Rollout
                   </CardTitle>
-                  <Badge variant="success" className="text-xs">
-                    Synced
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/40 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400"
+                  >
+                    Sample Rollout Overview
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -1812,40 +1833,39 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {argocdUrl && (
-                  <Button asChild size="sm" variant="outline" className="gap-1">
+                {argocdUrl ? (
+                  <Button asChild size="sm" className="gap-1">
                     <a
                       href={argocdUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Open Argo CD <ArrowSquareOut size={13} />
+                      <ArrowsClockwise size={14} className="mr-1.5" />
+                      Open in Argo CD <ArrowSquareOut size={13} />
                     </a>
                   </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                    title="Argo CD API URL not configured"
+                  >
+                    <ArrowsClockwise size={14} className="mr-1.5" />
+                    Managed by Argo CD Controller
+                  </Button>
                 )}
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleTriggerArgoSync}
-                  disabled={syncingArgo}
-                >
-                  <ArrowsClockwise
-                    size={14}
-                    className={cn("mr-1.5", syncingArgo && "animate-spin")}
-                  />
-                  {syncingArgo ? "Syncing..." : "Sync All Applications"}
-                </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {argoSyncMessage && (
-                <div
-                  className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400"
-                  role="status"
-                >
-                  ✓ {argoSyncMessage}
-                </div>
-              )}
+              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+                <WarningCircle size={16} className="shrink-0 text-amber-500" />
+                <span>
+                  Sample application rollout overview. Live reconciliation and
+                  synchronization are continuously executed by the Argo CD
+                  Application controller.
+                </span>
+              </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-1 rounded-lg border border-border p-3">
@@ -1964,15 +1984,21 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                         <Badge variant="success" className="text-[10px]">
                           {app.health}
                         </Badge>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="xs"
-                          onClick={() => {
-                            toast.success(`Sync triggered for ${app.name}`)
-                          }}
-                        >
-                          Sync
+                        <Button asChild variant="outline" size="xs">
+                          <a
+                            href={
+                              argocdUrl ||
+                              localizePathname({
+                                pathname: "/portal/app/deployments",
+                                locale,
+                              })
+                            }
+                            target={argocdUrl ? "_blank" : undefined}
+                            rel={argocdUrl ? "noopener noreferrer" : undefined}
+                          >
+                            Details
+                            <ArrowSquareOut size={11} className="ml-1" />
+                          </a>
                         </Button>
                       </div>
                     </div>
@@ -1995,8 +2021,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   <CardTitle className="text-base font-semibold">
                     Jenkins CI/CD Automation
                   </CardTitle>
-                  <Badge variant="success" className="text-xs">
-                    Runner Ready
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/40 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400"
+                  >
+                    Sample Pipeline History
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -2035,6 +2064,14 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+                <WarningCircle size={16} className="shrink-0 text-amber-500" />
+                <span>
+                  Sample pipeline build execution history. Real-time build jobs,
+                  webhooks, and console streams are managed through the
+                  connected Jenkins server.
+                </span>
+              </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-1 rounded-lg border border-border p-3">
                   <span className="text-xs font-medium text-muted-foreground">
@@ -2163,8 +2200,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   <CardTitle className="text-base font-semibold">
                     Prometheus Observability & Metrics
                   </CardTitle>
-                  <Badge variant="success" className="text-xs">
-                    Scraping Active
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/40 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400"
+                  >
+                    Estimated Quotas & Telemetry
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -2203,6 +2243,14 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+                <WarningCircle size={16} className="shrink-0 text-amber-500" />
+                <span>
+                  Estimated cluster resource quotas and capacity allocations.
+                  Real-time metric time-series and alert thresholds are scraped
+                  by the Prometheus server.
+                </span>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1 rounded-lg border border-border p-3">
                   <span className="text-xs font-medium text-muted-foreground">

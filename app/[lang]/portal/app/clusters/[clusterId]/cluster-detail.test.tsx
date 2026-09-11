@@ -560,7 +560,7 @@ describe("ClusterDetail", () => {
     )
   })
 
-  it("switches to GitOps tab and triggers cluster sync", async () => {
+  it("switches to GitOps tab and renders rollout overview", async () => {
     const view = render(<ClusterDetail clusterId="cl_1" />)
 
     await waitFor(
@@ -573,20 +573,8 @@ describe("ClusterDetail", () => {
     await waitFor(
       () => {
         expect(view.getByText(/Argo CD GitOps Rollout/i)).toBeTruthy()
-        expect(
-          view.getByRole("button", { name: /sync all applications/i })
-        ).toBeTruthy()
-      },
-      { timeout: 5000 }
-    )
-
-    fireEvent.click(
-      view.getByRole("button", { name: /sync all applications/i })
-    )
-
-    await waitFor(
-      () => {
-        expect(view.getByText(/Argo CD sync triggered/i)).toBeTruthy()
+        expect(view.getByText(/Application Stacks on Cluster/i)).toBeTruthy()
+        expect(view.getByText(/Managed by Argo CD Controller/i)).toBeTruthy()
       },
       { timeout: 5000 }
     )
