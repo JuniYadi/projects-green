@@ -156,8 +156,8 @@ export function AppWorkspaceHeader({
 
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>
-                {selectedApp.templateId
-                  ? `${selectedApp.templateId.charAt(0).toUpperCase() + selectedApp.templateId.slice(1)} (Template)`
+                {selectedApp.templateName
+                  ? `${selectedApp.templateName} (Template)`
                   : (selectedApp.framework ?? "Custom Workload")}
               </span>
               <span>&bull;</span>
