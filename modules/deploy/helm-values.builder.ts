@@ -1,4 +1,5 @@
 import { buildHelmApplicationManifest } from "./gitops-manifest.builder"
+import { resolveContainerLimits } from "./deploy.constants"
 import * as jsYaml from "js-yaml"
 
 export type HelmValuesEnvEntry = {
@@ -577,11 +578,12 @@ export class HelmValuesBuilder {
         name: p.name,
       })),
     ])
+    const limits = resolveContainerLimits(cpu, memory)
     this.resources({
       requests: { cpu: `${cpu}m`, memory: `${memory}Mi` },
       limits: {
-        cpu: `${Math.max(cpu, 1000)}m`,
-        memory: `${Math.max(memory, 4096)}Mi`,
+        cpu: `${limits.cpuMillicores}m`,
+        memory: `${limits.memoryMi}Mi`,
       },
     })
 
