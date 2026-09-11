@@ -37,7 +37,7 @@ const pod = (over: Partial<PodMetricSummary> = {}): PodMetricSummary => ({
 
 const summary = (
   pods: PodMetricSummary[],
-  healthyServers?: number
+  ingress?: { healthyServers: number; trafficRps?: number }
 ): ClusterTelemetrySummary =>
   ({
     clusterId: "sgp",
@@ -55,14 +55,20 @@ const summary = (
       totalTxBytes: 0,
     },
     pods,
-    ...(healthyServers === undefined
+    ...(ingress === undefined
       ? {}
-      : { ingress: { healthyServers } as ClusterTelemetrySummary["ingress"] }),
+      : {
+          ingress: {
+            healthyServers: ingress.healthyServers,
+            trafficRps: ingress.trafficRps ?? 0,
+            activeSessions: 0,
+          } as ClusterTelemetrySummary["ingress"],
+        }),
   }) as ClusterTelemetrySummary
 
 describe("resolveHealthVerdict", () => {
   it("reports healthy when the pod runs, is ready and never restarted", () => {
-    const v = resolveHealthVerdict(summary([pod()], 1), t)
+    const v = resolveHealthVerdict(summary([pod()], { healthyServers: 1 }), t)
     expect(v.tone).toBe("healthy")
     expect(v.headline).toBe("running")
   })
@@ -87,19 +93,35 @@ describe("resolveHealthVerdict", () => {
     )
   })
 
-  it("flags a healthy pod with no ingress backend as unreachable", () => {
-    const v = resolveHealthVerdict(summary([pod()], 0), t)
+  it("flags an unreachable app only when the ingress has traffic it cannot serve", () => {
+    const v = resolveHealthVerdict(
+      summary([pod()], { healthyServers: 0, trafficRps: 4 }),
+      t
+    )
     expect(v.headline).toBe("unreachable")
   })
 
+  it("does not cry outage on an idle app whose backend gauge reports zero", () => {
+    // `healthyServers` folds a missing metric into 0; with no traffic that is
+    // silence, not an outage, and the ready pod wins.
+    const v = resolveHealthVerdict(
+      summary([pod()], { healthyServers: 0, trafficRps: 0 }),
+      t
+    )
+    expect(v.tone).toBe("healthy")
+  })
+
   it("surfaces restarts once the pod is otherwise healthy", () => {
-    const v = resolveHealthVerdict(summary([pod({ restarts: 3 })], 1), t)
+    const v = resolveHealthVerdict(
+      summary([pod({ restarts: 3 })], { healthyServers: 1 }),
+      t
+    )
     expect(v.headline).toBe("restarting")
   })
 
   it("prefers a real outage over a softer restart warning", () => {
     const v = resolveHealthVerdict(
-      summary([pod({ status: "Failed", restarts: 9 })], 0),
+      summary([pod({ status: "Failed", restarts: 9 })], { healthyServers: 0 }),
       t
     )
     expect(v.tone).toBe("down")
