@@ -502,8 +502,158 @@ describe("ClusterDetail", () => {
     await waitFor(
       () => {
         expect(
-          view.getByText(/Successfully reached Jenkins server/)
+          view.getAllByText(/Successfully reached Jenkins server/)[0]
         ).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+  })
+  it("renders tabs for Overview, Logs, GitOps, CI/CD, Metrics, and Settings", async () => {
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => {
+        expect(view.getByRole("tab", { name: /overview/i })).toBeTruthy()
+        expect(view.getByRole("tab", { name: /logs/i })).toBeTruthy()
+        expect(view.getByRole("tab", { name: /gitops/i })).toBeTruthy()
+        expect(view.getByRole("tab", { name: /ci\/cd/i })).toBeTruthy()
+        expect(view.getByRole("tab", { name: /metrics/i })).toBeTruthy()
+        expect(view.getByRole("tab", { name: /settings/i })).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+
+    expect(view.getByText("Cluster Integration Matrix")).toBeTruthy()
+  })
+
+  it("switches to Logs tab and filters cluster logs", async () => {
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => expect(view.getByRole("tab", { name: /logs/i })).toBeTruthy(),
+      { timeout: 5000 }
+    )
+
+    fireEvent.click(view.getByRole("tab", { name: /logs/i }))
+
+    await waitFor(
+      () => {
+        expect(view.getByText(/OpenSearch Cluster Log Stream/i)).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+
+    const searchInput = view.getByPlaceholderText(/filter cluster logs/i)
+    expect(searchInput).toBeTruthy()
+
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: "argocd" } })
+    })
+
+    await waitFor(
+      () => {
+        expect(
+          view.getByText(/application controller verified cluster/i)
+        ).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it("switches to GitOps tab and triggers cluster sync", async () => {
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => expect(view.getByRole("tab", { name: /gitops/i })).toBeTruthy(),
+      { timeout: 5000 }
+    )
+
+    fireEvent.click(view.getByRole("tab", { name: /gitops/i }))
+
+    await waitFor(
+      () => {
+        expect(view.getByText(/Argo CD GitOps Rollout/i)).toBeTruthy()
+        expect(
+          view.getByRole("button", { name: /sync all applications/i })
+        ).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+
+    fireEvent.click(
+      view.getByRole("button", { name: /sync all applications/i })
+    )
+
+    await waitFor(
+      () => {
+        expect(view.getByText(/Argo CD sync triggered/i)).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it("switches to CI/CD tab and renders pipeline jobs", async () => {
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => expect(view.getByRole("tab", { name: /ci\/cd/i })).toBeTruthy(),
+      { timeout: 5000 }
+    )
+
+    fireEvent.click(view.getByRole("tab", { name: /ci\/cd/i }))
+
+    await waitFor(
+      () => {
+        expect(view.getByText(/Jenkins CI\/CD Automation/i)).toBeTruthy()
+        expect(
+          view.getByText(/Recent Pipeline Executions on Cluster/i)
+        ).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it("switches to Metrics tab and renders Prometheus telemetry cards", async () => {
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => expect(view.getByRole("tab", { name: /metrics/i })).toBeTruthy(),
+      { timeout: 5000 }
+    )
+
+    fireEvent.click(view.getByRole("tab", { name: /metrics/i }))
+
+    await waitFor(
+      () => {
+        expect(
+          view.getByText(/Prometheus Observability & Metrics/i)
+        ).toBeTruthy()
+        expect(view.getByText("Node Pool Health")).toBeTruthy()
+        expect(view.getByText("Pod Allocation")).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+  })
+
+  it("executes Test All Integrations from the header", async () => {
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => {
+        expect(
+          view.getByRole("button", { name: /test all integrations/i })
+        ).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+
+    fireEvent.click(
+      view.getByRole("button", { name: /test all integrations/i })
+    )
+
+    await waitFor(
+      () => {
+        expect(mockTestIntegration).toHaveBeenCalled()
       },
       { timeout: 5000 }
     )
