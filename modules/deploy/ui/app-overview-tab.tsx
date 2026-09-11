@@ -159,7 +159,14 @@ export function resolveHealthVerdict(
     return { tone: "warning", headline: t.notReady, detail: t.notReadyDetail }
   }
 
-  if (telemetry.ingress && telemetry.ingress.healthyServers === 0) {
+  // `healthyServers` folds "metric absent" into 0, so an idle app reads as
+  // having no backend. Only call it unreachable when the ingress is actually
+  // seeing traffic it cannot serve — otherwise the ready pod is the truth.
+  const ingress = telemetry.ingress
+  const ingressBusy = ingress
+    ? ingress.trafficRps > 0 || ingress.activeSessions > 0
+    : false
+  if (ingress && ingress.healthyServers === 0 && ingressBusy) {
     return {
       tone: "warning",
       headline: t.unreachable,
