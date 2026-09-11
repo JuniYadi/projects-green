@@ -257,8 +257,8 @@ describe("opensearch-query.service", () => {
       },
     ])
 
-    // Contains source, level, and range filters
-    expect(query.bool.filter).toHaveLength(3)
+    // Contains pod isolation, source, level, and range filters
+    expect(query.bool.filter).toHaveLength(4)
   })
 
   it("supports WARN, INFO, and ALL level filters and clamps lower-bound limit", async () => {

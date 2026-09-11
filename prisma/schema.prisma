@@ -472,6 +472,7 @@ model ApplicationStack {
   managedStock         AppManagedStock?
   template             AppTemplate?                    @relation(fields: [templateId], references: [id])
   trafficSnapshots     AppHostingDailyTrafficSnapshot[]
+  logSnapshots         AppHostingDailyLogSnapshot[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -500,6 +501,27 @@ model AppHostingDailyTrafficSnapshot {
   @@unique([stackId, date])
   @@index([stackId, date])
   @@map("AppHostingDailyTrafficSnapshot")
+}
+
+model AppHostingDailyLogSnapshot {
+  id              String           @id @default(cuid())
+  stackId         String
+  date            DateTime         @db.Date
+  totalLogs       Int              @default(0)
+  infoCount       Int              @default(0)
+  warnCount       Int              @default(0)
+  errorCount      Int              @default(0)
+  healthScore     Int              @default(100)
+  hourlyTrendJson Json             @default("[]")
+  topErrorsJson   Json             @default("[]")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  stack           ApplicationStack @relation(fields: [stackId], references: [id], onDelete: Cascade)
+
+  @@unique([stackId, date])
+  @@index([stackId, date])
+  @@map("AppHostingDailyLogSnapshot")
 }
 
 model AppTemplate {

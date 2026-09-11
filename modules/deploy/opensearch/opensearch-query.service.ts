@@ -122,27 +122,34 @@ function buildSearchQuery(
   const must: Record<string, unknown>[] = []
   const filter: Record<string, unknown>[] = []
 
+  // Always enforce pod/stack isolation filter so apps sharing a namespace don't mix logs
+  filter.push({
+    bool: {
+      should: [
+        { wildcard: { "kubernetes.pod_name.keyword": `*${params.slug}*` } },
+        { wildcard: { "kubernetes.pod_name": `*${params.slug}*` } },
+        {
+          term: {
+            "kubernetes.labels.app\\.kubernetes\\.io/instance.keyword":
+              params.slug,
+          },
+        },
+        {
+          term: {
+            "kubernetes.labels.app\\.kubernetes\\.io/name.keyword": params.slug,
+          },
+        },
+      ],
+      minimum_should_match: 1,
+    },
+  })
+
   if (namespaceFilters && namespaceFilters.length > 0) {
     filter.push({
       bool: {
-        should: [
-          ...namespaceFilters.map((ns) => ({
-            term: { "kubernetes.namespace_name.keyword": ns },
-          })),
-          {
-            term: {
-              "kubernetes.labels.app\\.kubernetes\\.io/instance.keyword":
-                params.slug,
-            },
-          },
-          {
-            term: {
-              "kubernetes.labels.app\\.kubernetes\\.io/name.keyword":
-                params.slug,
-            },
-          },
-          { wildcard: { "kubernetes.pod_name.keyword": `*${params.slug}*` } },
-        ],
+        should: namespaceFilters.map((ns) => ({
+          term: { "kubernetes.namespace_name.keyword": ns },
+        })),
         minimum_should_match: 1,
       },
     })
