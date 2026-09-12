@@ -17,7 +17,7 @@ mock.module("next/navigation", () => ({
   useRouter: () => ({ push: mock() }),
 }))
 
-const { BillingSubscriptionsPage } = await import("./page")
+const { BillingSubscriptionsPage } = await import("./page-client")
 
 const baseSubscription = {
   id: "sub_1",
