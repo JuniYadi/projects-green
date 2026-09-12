@@ -64,6 +64,12 @@ export type FetchNamespaceTelemetryOptions = {
   fetchFn?: typeof fetch
   appSlug?: string
   view?: "all" | "compute" | "ingress"
+  /**
+   * Limits to report when Prometheus has no `kube_pod_container_resource_limits`
+   * series. App-scoped callers pass the stack's configured limits so the UI
+   * never shows the cluster-wide placeholder as if it were the app's ceiling.
+   */
+  limitsFallback?: { cpuCores: number; memoryBytes: number }
 }
 
 function parseToUnixSeconds(val: number | string): number {
@@ -587,12 +593,12 @@ export async function fetchNamespaceTelemetry(
   const cpuLimitCores =
     instantCpuLimit && instantCpuLimit > 0
       ? Number(instantCpuLimit.toFixed(2))
-      : FALLBACK_CPU_LIMIT_CORES
+      : (opts.limitsFallback?.cpuCores ?? FALLBACK_CPU_LIMIT_CORES)
 
   const memoryLimitBytes =
     instantMemLimit && instantMemLimit > 0
       ? Math.round(instantMemLimit)
-      : FALLBACK_MEMORY_LIMIT_BYTES
+      : (opts.limitsFallback?.memoryBytes ?? FALLBACK_MEMORY_LIMIT_BYTES)
 
   const returnedTimestamps = new Set<number>()
   for (const t of cpuUsageMap.keys()) returnedTimestamps.add(t)

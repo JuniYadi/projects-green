@@ -48,6 +48,7 @@ export type ClusterTelemetryCardsProps = {
   compact?: boolean
   showPodBreakdown?: boolean
   className?: string
+  locale?: string
 }
 
 export function ClusterTelemetryCards({
@@ -59,7 +60,26 @@ export function ClusterTelemetryCards({
   compact = false,
   showPodBreakdown = false,
   className,
+  locale = "en",
 }: ClusterTelemetryCardsProps = {}) {
+  const isId = locale.startsWith("id")
+  const compactCopy = isId
+    ? {
+        cpu: "Alokasi CPU",
+        ram: "Alokasi RAM",
+        network: "Trafik jaringan",
+        replicas: (n: number) => `${n} instance dipantau`,
+        restarts: (n: number) => `${n} restart`,
+        window: "Rentang",
+      }
+    : {
+        cpu: "CPU Allocation",
+        ram: "RAM Allocation",
+        network: "Network I/O",
+        replicas: (n: number) => `${n} replica monitored`,
+        restarts: (n: number) => `${n} restarts`,
+        window: "Window",
+      }
   const [mountTime] = useState(() => Date.now())
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
     type: "preset",
@@ -320,7 +340,7 @@ export function ClusterTelemetryCards({
             <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
               <div className="min-w-[130px] space-y-0.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  <Cpu size={14} className="text-primary" /> CPU Allocation
+                  <Cpu size={14} className="text-primary" /> {compactCopy.cpu}
                 </div>
                 <div className="font-mono text-[11px] text-muted-foreground">
                   <span className="font-bold text-foreground">
@@ -348,8 +368,8 @@ export function ClusterTelemetryCards({
             <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
               <div className="min-w-[130px] space-y-0.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  <HardDrive size={14} className="text-primary" /> RAM
-                  Allocation
+                  <HardDrive size={14} className="text-primary" />{" "}
+                  {compactCopy.ram}
                 </div>
                 <div className="font-mono text-[11px] text-muted-foreground">
                   <span className="font-bold text-foreground">
@@ -377,8 +397,8 @@ export function ClusterTelemetryCards({
             <div className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
               <div className="min-w-[130px] space-y-0.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  <ArrowsLeftRight size={14} className="text-primary" /> Network
-                  I/O
+                  <ArrowsLeftRight size={14} className="text-primary" />{" "}
+                  {compactCopy.network}
                 </div>
                 <div className="font-mono text-[11px] text-muted-foreground">
                   Rx{" "}
@@ -403,11 +423,11 @@ export function ClusterTelemetryCards({
 
             <div className="flex items-center justify-between pt-1 text-[10px] text-muted-foreground">
               <span>
-                {telemetry.pods?.length ?? 1} replica monitored &bull; 0
-                restarts
+                {compactCopy.replicas(telemetry.pods?.length ?? 1)} &bull;{" "}
+                {compactCopy.restarts(0)}
               </span>
               <span>
-                Window:{" "}
+                {compactCopy.window}:{" "}
                 {timeSelection.type === "preset"
                   ? timeSelection.preset
                   : "custom"}

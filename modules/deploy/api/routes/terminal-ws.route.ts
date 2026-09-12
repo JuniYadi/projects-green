@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import { formatTenantNamespace } from "@/modules/deploy/prometheus-telemetry.service"
 import {
   buildKubeExecUrl,
   decodeKubeFrame,
@@ -164,7 +165,10 @@ export async function executeTerminalSession(
 
     if (state.clientClosed) return
 
-    const namespace = `app-${stack.slug}`
+    // Tenant namespaces are derived from the organization id (org_X -> app-x),
+    // the same rule telemetry and pod status use. Deriving from the slug
+    // targeted a namespace that never exists.
+    const namespace = formatTenantNamespace(stack.organizationId)
     const creds = await resolveStackExecCredentials(stackId)
     const execUrl = buildKubeExecUrl(creds.url, namespace, pod, container, [
       "/bin/sh",

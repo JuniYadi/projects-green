@@ -1,6 +1,8 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { fetchNamespaceTelemetry } from "@/modules/deploy/prometheus-telemetry.service"
+import { prisma } from "@/lib/prisma"
+import { resolveContainerLimits } from "@/modules/deploy/deploy.constants"
 import type { PredefinedTimeRange } from "@/lib/time-range"
 
 export const appTelemetryRoutes = new Elysia({
@@ -25,6 +27,18 @@ export const appTelemetryRoutes = new Elysia({
           ? "custom"
           : "1h"
       const clusterCode = query.cluster ?? "sgp"
+      // An app's limit is known from its plan even when Prometheus has no
+      // limit series; without it the service reports a cluster-wide
+      // 2 vCPU / 8 GB placeholder as if it were this app's ceiling.
+      const stack = query.appSlug
+        ? await prisma.applicationStack.findFirst({
+            where: { slug: query.appSlug, organizationId: auth.organizationId },
+            select: { cpu: true, memory: true },
+          })
+        : null
+      const limits = stack
+        ? resolveContainerLimits(stack.cpu, stack.memory)
+        : null
       const data = await fetchNamespaceTelemetry({
         organizationId: auth.organizationId,
         timeRange,
@@ -35,6 +49,14 @@ export const appTelemetryRoutes = new Elysia({
         ...(query.appSlug !== undefined ? { appSlug: query.appSlug } : {}),
         ...(query.view !== undefined
           ? { view: query.view as "all" | "compute" | "ingress" }
+          : {}),
+        ...(limits
+          ? {
+              limitsFallback: {
+                cpuCores: limits.cpuMillicores / 1000,
+                memoryBytes: limits.memoryMi * 1024 * 1024,
+              },
+            }
           : {}),
       })
       return { ok: true, data }

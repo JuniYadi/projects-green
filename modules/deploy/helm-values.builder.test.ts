@@ -17,14 +17,14 @@ describe("buildHelmValues", () => {
     expect(out.replicaCount).toBe(1)
     expect(out.resources).toEqual({
       requests: { cpu: "500m", memory: "1024Mi" },
-      limits: { cpu: "1000m", memory: "4096Mi" },
+      limits: { cpu: "500m", memory: "1024Mi" },
     })
     expect(out.env).toBeUndefined()
     expect(out.externalSecret).toBeUndefined()
     expect(out.simpleIngress).toBeUndefined()
   })
 
-  it("uses provided cpu/memory and applies resource floors", () => {
+  it("uses provided cpu/memory for both requests and limits", () => {
     const out = buildHelmValues({
       slug: "app-test",
       imageRepository: "r",
@@ -35,7 +35,7 @@ describe("buildHelmValues", () => {
     })
     expect(out.resources).toEqual({
       requests: { cpu: "100m", memory: "256Mi" },
-      limits: { cpu: "1000m", memory: "4096Mi" },
+      limits: { cpu: "100m", memory: "256Mi" },
     })
   })
 

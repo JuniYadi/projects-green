@@ -401,3 +401,20 @@ export const parseStepQueryValue = (
   const matched = DEPLOY_STEP_ORDER.find((step) => step === canonicalStep)
   return matched ?? "source"
 }
+
+/**
+ * Container limits the Helm builder applies to a stack: same as the plan's
+ * request, so a stack never bursts past what its plan pays for (Guaranteed
+ * QoS). Shared so telemetry and the console report the ceiling the pod
+ * actually runs with. Falls back to the builder's own defaults when a stack
+ * has no plan values yet.
+ */
+export function resolveContainerLimits(
+  cpuMillicores: number | null | undefined,
+  memoryMi: number | null | undefined
+): { cpuMillicores: number; memoryMi: number } {
+  return {
+    cpuMillicores: cpuMillicores ?? 500,
+    memoryMi: memoryMi ?? 1024,
+  }
+}
