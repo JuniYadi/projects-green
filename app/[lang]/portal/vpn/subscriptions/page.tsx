@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { SubscriptionsTable } from "../_components/subscriptions-table"
+
+export const metadata: Metadata = { title: "VPN Service Operations" }
 
 export default async function VpnSubscriptionsPage() {
   return (
