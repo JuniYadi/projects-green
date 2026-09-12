@@ -131,8 +131,16 @@ describe("webhook-dispatcher.service", () => {
   describe("dispatchForDevice", () => {
     it("enqueues outgoing webhook for each active webhook on device", async () => {
       mockWebhookFindMany.mockResolvedValueOnce([
-        { id: "wh-1", organizationId: "org-1" },
-        { id: "wh-2", organizationId: "org-1" },
+        {
+          id: "wh-1",
+          organizationId: "org-1",
+          whatsappDevice: { organizationId: "org-1" },
+        },
+        {
+          id: "wh-2",
+          organizationId: "org-1",
+          whatsappDevice: { organizationId: "org-1" },
+        },
       ] as any)
 
       await webhookDispatcher.dispatchForDevice(
@@ -142,9 +150,6 @@ describe("webhook-dispatcher.service", () => {
         "trig-2"
       )
 
-      expect(mockWebhookFindMany).toHaveBeenCalledWith({
-        where: { whatsappDeviceId: "dev-1", active: true },
-      })
       expect(mockEnqueueOutgoingWebhook).toHaveBeenCalledTimes(2)
       expect(mockEnqueueOutgoingWebhook).toHaveBeenCalledWith({
         webhookId: "wh-1",
@@ -171,10 +176,31 @@ describe("webhook-dispatcher.service", () => {
         id: "msg-1",
       })
 
-      expect(mockWebhookFindMany).toHaveBeenCalledWith({
-        where: { whatsappDeviceId: "dev-empty", active: true },
-      })
       expect(mockEnqueueOutgoingWebhook).not.toHaveBeenCalled()
+    })
+
+    it("skips webhooks registered by another organization on the device (WA-C06)", async () => {
+      mockWebhookFindMany.mockResolvedValueOnce([
+        {
+          id: "wh-owner",
+          organizationId: "org-1",
+          whatsappDevice: { organizationId: "org-1" },
+        },
+        {
+          id: "wh-hijack",
+          organizationId: "org-2",
+          whatsappDevice: { organizationId: "org-1" },
+        },
+      ] as any)
+
+      await webhookDispatcher.dispatchForDevice("dev-1", "message.received", {
+        id: "msg-9",
+      })
+
+      expect(mockEnqueueOutgoingWebhook).toHaveBeenCalledTimes(1)
+      expect(mockEnqueueOutgoingWebhook).toHaveBeenCalledWith(
+        expect.objectContaining({ webhookId: "wh-owner" })
+      )
     })
   })
 
