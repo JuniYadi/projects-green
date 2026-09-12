@@ -683,6 +683,8 @@ function LogsView({
           </div>
           <div className="grid gap-2 md:grid-cols-4">
             <select
+              id="cluster-log-source"
+              name="clusterLogSource"
               aria-label={messages.logs.sourceLabel}
               value={controls.logSource}
               onChange={(event) =>
@@ -699,6 +701,8 @@ function LogsView({
               <option value="all">{messages.logs.sourceAll}</option>
             </select>
             <select
+              id="cluster-log-range"
+              name="clusterLogRange"
               aria-label={messages.logs.timeLabel}
               value={controls.logRange}
               onChange={(event) =>
@@ -712,6 +716,8 @@ function LogsView({
               <option value="all">{messages.logs.timeAll}</option>
             </select>
             <select
+              id="cluster-log-level"
+              name="clusterLogLevel"
               aria-label={messages.logs.levelLabel}
               value={controls.logLevel}
               onChange={(event) =>
@@ -726,6 +732,8 @@ function LogsView({
               <option value="ERROR">ERROR</option>
             </select>
             <select
+              id="cluster-log-service"
+              name="clusterLogService"
               aria-label={messages.logs.serviceLabel}
               value={controls.logService}
               onChange={(event) =>
@@ -742,6 +750,8 @@ function LogsView({
             </select>
           </div>
           <Input
+            id="cluster-log-search"
+            name="clusterLogSearch"
             aria-label={messages.logs.searchPlaceholder}
             placeholder={messages.logs.searchPlaceholder}
             value={controls.logQuery}
@@ -1118,7 +1128,8 @@ function MetricTile({
       <p className="mt-2 text-xl font-semibold">
         {formatMetric(metric.value, metric.unit)}
         {metric.capacity !== null && (
-          <span className="ml-1 text-sm font-normal text-muted-foreground">
+          <span className="text-sm font-normal text-muted-foreground">
+            {" "}
             {fill(messages.metrics.ofCapacity, {
               capacity: formatMetric(metric.capacity, metric.unit),
             })}
@@ -1176,6 +1187,8 @@ function MetricsView({
             </p>
           </div>
           <select
+            id="cluster-metrics-range"
+            name="clusterMetricsRange"
             aria-label={messages.metrics.rangeLabel}
             value={controls.metricsRange}
             onChange={(event) =>
