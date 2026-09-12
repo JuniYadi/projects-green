@@ -1,6 +1,9 @@
 import { Elysia, t } from "elysia"
 
-import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import {
+  resolveAuthContext,
+  type ResolvedAuth,
+} from "@/lib/auth/resolve-proxy-auth"
 import {
   listWhatsAppUsers,
   getWhatsAppUser,
@@ -47,6 +50,22 @@ type UpdateUserResponse = {
   user: WhatsAppUser
 }
 
+const forbidden = (set: { status?: number | string }, message: string) => {
+  set.status = 403
+  return { ok: false as const, error: "FORBIDDEN" as const, message }
+}
+
+// Seats are managed from a WorkOS session only; org API keys never touch them.
+const canManageMembers = (auth: ResolvedAuth) =>
+  auth.type === "workos" &&
+  (auth.platformRole === "super_admin" ||
+    auth.orgRole === "admin" ||
+    auth.orgRole === "owner")
+
+const isOwner = (auth: ResolvedAuth) =>
+  auth.type === "workos" &&
+  (auth.platformRole === "super_admin" || auth.orgRole === "owner")
+
 export const usersRoutes = new Elysia({ prefix: "/users" })
 
   /**
@@ -91,6 +110,9 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
           error: "UNAUTHORIZED" as const,
           message: "Auth required.",
         }
+      }
+      if (!canManageMembers(auth)) {
+        return forbidden(set, "Admin or owner role required.")
       }
       if (!auth.organizationId) {
         set.status = 400
@@ -172,6 +194,9 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
           message: "Auth required.",
         }
       }
+      if (!canManageMembers(auth)) {
+        return forbidden(set, "Admin or owner role required.")
+      }
       const user = await getWhatsAppUser(id)
 
       if (!user) {
@@ -195,7 +220,15 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         }
       }
 
-      const updated = await updateWhatsAppUserRole(id, (body as any).role)
+      const role = (body as any).role
+      if ((role === "owner" || user.role === "owner") && !isOwner(auth)) {
+        return forbidden(
+          set,
+          "Only an owner can grant or change the owner role."
+        )
+      }
+
+      const updated = await updateWhatsAppUserRole(id, role)
 
       return { ok: true as const, user: updated } satisfies UpdateUserResponse
     },
@@ -215,6 +248,9 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         error: "UNAUTHORIZED" as const,
         message: "Auth required.",
       }
+    }
+    if (!canManageMembers(auth)) {
+      return forbidden(set, "Admin or owner role required.")
     }
     const user = await getWhatsAppUser(id)
 
@@ -237,6 +273,10 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         error: "FORBIDDEN" as const,
         message: "Access denied.",
       }
+    }
+
+    if (user.role === "owner" && !isOwner(auth)) {
+      return forbidden(set, "Only an owner can remove an owner.")
     }
 
     await removeWhatsAppUser(id)

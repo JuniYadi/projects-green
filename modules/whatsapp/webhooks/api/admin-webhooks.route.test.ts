@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { createAdminWebhooksRoutes } from "./admin-webhooks.route"
 
 const mockListWebhookEvents = mock(() =>
   Promise.resolve({
@@ -34,6 +33,9 @@ const mockWebhookDelete = mock(() => Promise.resolve({}))
 const mockWebhookCount = mock(() => Promise.resolve(0))
 const mockDeadLetterCount = mock(() => Promise.resolve(0))
 const mockDeliveryLogFindUnique = mock(() => Promise.resolve(null))
+const mockDeviceFindUnique = mock(() =>
+  Promise.resolve(null as { organizationId: string } | null)
+)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -44,6 +46,9 @@ mock.module("@/lib/prisma", () => ({
       update: mockWebhookUpdate,
       delete: mockWebhookDelete,
       count: mockWebhookCount,
+    },
+    whatsappDevice: {
+      findUnique: mockDeviceFindUnique,
     },
     whatsappWebhookDeadLetter: {
       count: mockDeadLetterCount,
@@ -81,6 +86,9 @@ const mockRequireSuperAdmin = mock((set: { status?: number | string }) => {
 mock.module("@/modules/admin/api/admin.guards", () => ({
   requireSuperAdmin: mockRequireSuperAdmin,
 }))
+
+// Imported after mocks so the real admin guards (WorkOS AuthKit) never load.
+const { createAdminWebhooksRoutes } = await import("./admin-webhooks.route")
 
 describe("admin-webhooks.route", () => {
   let app: { handle: (req: Request) => Promise<Response> }
@@ -246,6 +254,7 @@ describe("admin-webhooks.route", () => {
     })
 
     it("creates webhook", async () => {
+      mockDeviceFindUnique.mockResolvedValueOnce({ organizationId: "org-1" })
       mockWebhookCreate.mockResolvedValueOnce({
         id: "wh-created",
         webhookUrl: "https://example.com/hook",
@@ -257,6 +266,7 @@ describe("admin-webhooks.route", () => {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             organizationId: "org-1",
+            whatsappDeviceId: "dev-1",
             webhookUrl: "https://example.com/hook",
           }),
         })
@@ -268,6 +278,71 @@ describe("admin-webhooks.route", () => {
         ok: true,
         data: { id: "wh-created", webhookUrl: "https://example.com/hook" },
       })
+    })
+
+    describe("device ownership (WA-C06 follow-up)", () => {
+      beforeEach(() => {
+        mockDeviceFindUnique.mockClear()
+      })
+
+      const postWebhook = (body: Record<string, unknown>) =>
+        app.handle(
+          new Request("http://localhost/admin/whatsapp/webhooks", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body),
+          })
+        )
+
+      it("takes the organization from the device, not the request", async () => {
+        mockDeviceFindUnique.mockResolvedValueOnce({ organizationId: "org-1" })
+
+        await postWebhook({
+          organizationId: "org-2",
+          whatsappDeviceId: "dev-1",
+          webhookUrl: "https://example.com/hook",
+        })
+
+        expect(mockWebhookCreate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              organizationId: "org-1",
+              whatsappDeviceId: "dev-1",
+            }),
+          })
+        )
+      })
+
+      it("returns 404 when the device does not exist", async () => {
+        const res = await postWebhook({
+          organizationId: "org-1",
+          whatsappDeviceId: "dev-missing",
+          webhookUrl: "https://example.com/hook",
+        })
+
+        expect(res.status).toBe(404)
+        expect(mockWebhookCreate).not.toHaveBeenCalled()
+      })
+
+      it.each([{ organizationId: "org-2" }, { whatsappDeviceId: "dev-2" }])(
+        "rejects moving a webhook with %o",
+        async (change) => {
+          mockWebhookFindUnique.mockResolvedValueOnce({
+            id: "wh-1",
+          } as unknown as never)
+
+          const res = await app.handle(
+            new Request("http://localhost/admin/whatsapp/webhooks/wh-1", {
+              method: "PATCH",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(change),
+            })
+          )
+
+          expect(res.status).toBe(400)
+          expect(mockWebhookUpdate).not.toHaveBeenCalled()
+        }
+      )
     })
 
     it("updates and deletes webhook", async () => {

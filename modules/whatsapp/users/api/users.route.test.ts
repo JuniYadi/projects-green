@@ -165,6 +165,154 @@ describe("whatsapp users.route", () => {
     })
   })
 
+  describe("member management authorization (WA-C01)", () => {
+    const patchRole = (role: string) =>
+      app.handle(
+        new Request("http://localhost/users/mem-1", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ role }),
+        })
+      )
+
+    it("rejects a member promoting a membership to owner", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+        userId: "member-1",
+        orgRole: "member",
+      }
+
+      const res = await patchRole("owner")
+
+      expect(res.status).toBe(403)
+      expect(mockUpdateWhatsAppUserRole).not.toHaveBeenCalled()
+    })
+
+    it("rejects an admin granting the owner role", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+        userId: "admin-1",
+        orgRole: "admin",
+      }
+      mockGetWhatsAppUser.mockResolvedValueOnce({
+        id: "mem-1",
+        organizationId: "org-1",
+        role: "member",
+      } as unknown as never)
+
+      const res = await patchRole("owner")
+
+      expect(res.status).toBe(403)
+      expect(mockUpdateWhatsAppUserRole).not.toHaveBeenCalled()
+    })
+
+    it("rejects an admin demoting an owner", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+        userId: "admin-1",
+        orgRole: "admin",
+      }
+      mockGetWhatsAppUser.mockResolvedValueOnce({
+        id: "mem-1",
+        organizationId: "org-1",
+        role: "owner",
+      } as unknown as never)
+
+      const res = await patchRole("member")
+
+      expect(res.status).toBe(403)
+      expect(mockUpdateWhatsAppUserRole).not.toHaveBeenCalled()
+    })
+
+    it("lets an owner grant the owner role", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+        userId: "owner-1",
+        orgRole: "owner",
+      }
+      mockGetWhatsAppUser.mockResolvedValueOnce({
+        id: "mem-1",
+        organizationId: "org-1",
+        role: "admin",
+      } as unknown as never)
+
+      const res = await patchRole("owner")
+
+      expect(res.status).toBe(200)
+      expect(mockUpdateWhatsAppUserRole).toHaveBeenCalledWith("mem-1", "owner")
+    })
+
+    it("rejects an organization API key changing roles", async () => {
+      mockAuthContext.current = { organizationId: "org-1", type: "platform" }
+
+      const res = await patchRole("admin")
+
+      expect(res.status).toBe(403)
+      expect(mockUpdateWhatsAppUserRole).not.toHaveBeenCalled()
+    })
+
+    it("rejects a member inviting users", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+        userId: "member-1",
+        orgRole: "member",
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/users", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: "x@example.com", role: "admin" }),
+        })
+      )
+
+      expect(res.status).toBe(403)
+      expect(mockInviteWhatsAppUser).not.toHaveBeenCalled()
+    })
+
+    it("rejects a member removing users", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+        userId: "member-1",
+        orgRole: "member",
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/users/mem-1", { method: "DELETE" })
+      )
+
+      expect(res.status).toBe(403)
+      expect(mockRemoveWhatsAppUser).not.toHaveBeenCalled()
+    })
+
+    it("rejects an admin removing an owner", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+        userId: "admin-1",
+        orgRole: "admin",
+      }
+      mockGetWhatsAppUser.mockResolvedValueOnce({
+        id: "mem-1",
+        organizationId: "org-1",
+        role: "owner",
+      } as unknown as never)
+
+      const res = await app.handle(
+        new Request("http://localhost/users/mem-1", { method: "DELETE" })
+      )
+
+      expect(res.status).toBe(403)
+      expect(mockRemoveWhatsAppUser).not.toHaveBeenCalled()
+    })
+  })
+
   describe("DELETE /users/:id", () => {
     it("removes user membership", async () => {
       mockAuthContext.current = {

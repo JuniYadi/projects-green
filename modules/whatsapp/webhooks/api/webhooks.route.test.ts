@@ -455,11 +455,79 @@ describe("webhooks.route", () => {
       expect(data.data).toHaveLength(1)
     })
 
+    it("scopes a tenant to its own organization even when another is requested (WA-C05)", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+        platformRole: "none",
+      }
+
+      await app.handle(
+        new Request("http://localhost/webhooks?organizationId=org-2")
+      )
+
+      expect(mockWebhookFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { organizationId: "org-1" } })
+      )
+    })
+
+    it("scopes an organization API key to its own organization (WA-C05)", async () => {
+      mockAuthContext.current = { organizationId: "org-3", type: "platform" }
+
+      await app.handle(new Request("http://localhost/webhooks"))
+
+      expect(mockWebhookFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { organizationId: "org-3" } })
+      )
+    })
+
+    it("rejects listing webhooks without an organization (WA-C05)", async () => {
+      mockAuthContext.current = {
+        organizationId: null,
+        type: "workos",
+        platformRole: "none",
+      }
+
+      const res = await app.handle(new Request("http://localhost/webhooks"))
+
+      expect(res.status).toBe(403)
+      expect(mockWebhookFindMany).not.toHaveBeenCalled()
+    })
+
+    it("rejects registering a webhook on another organization's device (WA-C06)", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/webhooks", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            deviceId: "device-of-org-2",
+            webhookUrl: "https://attacker.example/hook",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(404)
+      expect(mockDeviceFindFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "device-of-org-2", organizationId: "org-1" },
+        })
+      )
+      expect(mockWebhookCreate).not.toHaveBeenCalled()
+    })
+
     it("creates new webhook config", async () => {
       mockAuthContext.current = {
         organizationId: "org-1",
         type: "workos",
       }
+      mockDeviceFindFirst.mockResolvedValueOnce({
+        id: "dev-1",
+      } as unknown as never)
       mockWebhookCreate.mockResolvedValueOnce({
         id: "wh-new",
         webhookUrl: "https://example.com/endpoint",

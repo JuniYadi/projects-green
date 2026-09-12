@@ -188,6 +188,39 @@ describe("Usage Routes", () => {
 
   // ── GET /usage/overview ──────────────────────────────────────────────────
 
+  describe("tenant isolation (WA-C03)", () => {
+    it.each([
+      "/usage/overview",
+      "/usage/daily",
+      "/usage/monthly",
+      "/usage/cost?period=2026-09",
+      "/usage/cost-breakdown",
+      "/usage/ledger",
+    ])(
+      "returns 403 for %s when the session has no organization",
+      async (path) => {
+        setMockAuthContext({
+          type: "workos",
+          userId: "user-new",
+          email: "new@example.com",
+          organizationId: null,
+          orgRole: null,
+          platformRole: "none",
+        } as never)
+
+        const res = await createTestApp().handle(
+          new Request(`http://localhost${path}`)
+        )
+
+        expect(res.status).toBe(403)
+        expect(mockFindMany).not.toHaveBeenCalled()
+        expect(mockFindManyDevices).not.toHaveBeenCalled()
+        expect(mockFindManyWhatsappLedger).not.toHaveBeenCalled()
+        expect(mockFindManyAdjustments).not.toHaveBeenCalled()
+      }
+    )
+  })
+
   describe("GET /usage/overview", () => {
     it("returns overview with monthly, today, cost, devices", async () => {
       let callIndex = 0
