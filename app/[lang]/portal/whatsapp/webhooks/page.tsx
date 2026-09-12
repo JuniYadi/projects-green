@@ -1,4 +1,5 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import Link from "next/link"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -22,6 +23,8 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+
+export const metadata: Metadata = { title: "WhatsApp Webhooks" }
 
 type WebhooksPageProps = {
   params: Promise<{
