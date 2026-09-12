@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { VpnDevicesTable } from "../_components/vpn-devices-table"
+
+export const metadata: Metadata = { title: "VPN Devices" }
 
 export default function PortalVpnDevicesPage() {
   return (
