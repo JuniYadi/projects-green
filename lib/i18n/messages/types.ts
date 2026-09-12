@@ -1978,6 +1978,7 @@ export type AppMessages = {
           collapse: string
           empty: string
           noTimestamp: string
+          loadMore: string
         }
         deployments: {
           heading: string

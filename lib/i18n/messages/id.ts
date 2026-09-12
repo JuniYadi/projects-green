@@ -2189,6 +2189,7 @@ export const idMessages: AppMessages = {
           collapse: "Tutup baris",
           empty: "Tidak ada log untuk sumber dan filter yang dipilih.",
           noTimestamp: "tanpa waktu",
+          loadMore: "Muat {count} lagi",
         },
         deployments: {
           heading: "Status aplikasi Argo CD",

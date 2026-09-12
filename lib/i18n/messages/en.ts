@@ -2169,6 +2169,7 @@ export const enMessages: AppMessages = {
           collapse: "Collapse row",
           empty: "No logs found for the selected source and filters.",
           noTimestamp: "no timestamp",
+          loadMore: "Load {count} more",
         },
         deployments: {
           heading: "Argo CD application state",
