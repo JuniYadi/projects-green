@@ -1,5 +1,10 @@
 import { existsSync, readFileSync } from "node:fs"
 import { resolveClusterIntegration } from "@/modules/deploy/cluster-integration.service"
+import {
+  toTerminalTargetDTO,
+  type KubeExecPod,
+  type TerminalTargetDTO,
+} from "@/modules/deploy/terminal-target.dto"
 
 export type KubeExecChannel = 0 | 1 | 2 | 3 | 4
 
@@ -122,4 +127,72 @@ export async function resolveStackExecCredentials(stackId: string): Promise<{
     token,
     caCert,
   }
+}
+
+export type StackExecCredentials = Awaited<
+  ReturnType<typeof resolveStackExecCredentials>
+>
+
+type BunFetchInit = RequestInit & { tls?: { ca?: string[] } }
+
+// The `deploy` chart labels pods with app.kubernetes.io/instance=<release>,
+// and the ArgoCD release name is the stack slug (unique per org), so this
+// selector never matches a sibling app that merely shares a name prefix.
+export async function listStackExecTargets({
+  namespace,
+  slug,
+  creds,
+}: {
+  namespace: string
+  slug: string
+  creds: StackExecCredentials
+}): Promise<TerminalTargetDTO[]> {
+  const selector = encodeURIComponent(`app.kubernetes.io/instance=${slug}`)
+  const url = `${creds.url.replace(/\/+$/, "")}/api/v1/namespaces/${encodeURIComponent(namespace)}/pods?labelSelector=${selector}`
+  const init: BunFetchInit = {
+    headers: {
+      Authorization: `Bearer ${creds.token}`,
+      Accept: "application/json",
+    },
+    ...(creds.caCert ? { tls: { ca: [creds.caCert] } } : {}),
+  }
+  const res = await fetch(url, init)
+  if (!res.ok) {
+    throw new Error(`Failed to list app pods (HTTP ${res.status})`)
+  }
+  const body = (await res.json()) as { items?: KubeExecPod[] }
+
+  return (body.items ?? [])
+    .filter(
+      (pod) =>
+        pod.metadata?.name &&
+        pod.status?.phase === "Running" &&
+        !pod.metadata.deletionTimestamp
+    )
+    .sort(
+      (a, b) =>
+        (a.metadata?.creationTimestamp ?? "").localeCompare(
+          b.metadata?.creationTimestamp ?? ""
+        ) || (a.metadata?.name ?? "").localeCompare(b.metadata?.name ?? "")
+    )
+    .map(toTerminalTargetDTO)
+}
+
+export type ExecTargetSelection = { pod: string; container: string }
+
+export function pickExecTarget(
+  targets: TerminalTargetDTO[],
+  pod?: string,
+  container?: string
+): ExecTargetSelection | { error: string } {
+  const target = pod
+    ? targets.find((candidate) => candidate.pod === pod)
+    : (targets.find((candidate) => candidate.ready) ?? targets[0])
+  if (!target) {
+    return { error: pod ? "Pod is not part of this app" : "No running pod" }
+  }
+  if (container && !target.containers.includes(container)) {
+    return { error: "Container is not part of this pod" }
+  }
+  return { pod: target.pod, container: container ?? target.defaultContainer }
 }
