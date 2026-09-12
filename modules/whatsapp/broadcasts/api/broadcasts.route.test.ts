@@ -724,6 +724,43 @@ describe("broadcastsRoutes GET /", () => {
   })
 })
 
+describe("broadcastsRoutes GET / tenant isolation (WA-C04)", () => {
+  it("scopes an organization API key to its own organization", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      type: "platform",
+      keyId: "key-1",
+      keyName: "Integration",
+      organizationId: "org-2",
+      environment: "LIVE",
+      scopes: [],
+      source: "api_key",
+    } as never)
+    mockCampaignFindMany.mockResolvedValueOnce([])
+
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts")
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockCampaignFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { organizationId: "org-2" } })
+    )
+  })
+
+  it("rejects a session without an organization", async () => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      ...authContext,
+      organizationId: null,
+    } as never)
+
+    const res = await createTestApp().handle(
+      new Request("http://localhost/broadcasts")
+    )
+
+    expect(res.status).toBe(403)
+  })
+})
+
 describe("broadcastsRoutes GET /summary", () => {
   it("returns 401 when unauthenticated", async () => {
     mockResolveAuthContext.mockResolvedValueOnce(null as never)
