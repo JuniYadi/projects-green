@@ -32,6 +32,13 @@
     Target them via `bun run test:changed -- --test <path>` or `--allow-unmapped`.
 - Run global `bun run test` and `bun run test:coverage` ONLY for an explicit
   user request or high-blast-radius changes (shared test setup, test engine).
+- Type-error backlog — `./check.sh` is the ONE exception to the no-full-typecheck
+  rule above. Run it ONLY when a full typecheck already failed somewhere else:
+  `pre-push` rejected the push, CI Typecheck is red, or the user asks. Never
+  during iterative edits, and never for a single error already visible in
+  diagnostics — fix that one directly instead of paying for a codex round.
+  It needs a clean working tree, fixes one error per round, and commits each
+  verified fix itself.
 
 ## Local hard rules
 - NEVER use `git add -f` / `git commit -f` to force-stage gitignored files or directories. Strict adherence to `.gitignore` is mandatory.
