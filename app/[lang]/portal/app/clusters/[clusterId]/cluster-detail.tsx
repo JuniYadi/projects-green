@@ -299,15 +299,21 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const [integrationToDelete, setIntegrationToDelete] =
     useState<ClusterIntegration | null>(null)
 
-  // The tab lives in the URL so a tab is linkable and survives a reload.
-  const tabParam = searchParams.get("tab")
-  const activeTab = (OPERATION_TAB_VALUES as readonly string[]).includes(
+  // The tab lives in the URL so it is linkable and survives a reload; state
+  // mirrors it so the switch renders without waiting on a navigation.
+  const tabParam = searchParams?.get("tab") ?? null
+  const urlTab = (OPERATION_TAB_VALUES as readonly string[]).includes(
     tabParam ?? ""
   )
     ? (tabParam as string)
-    : "health"
+    : null
+  const [activeTab, setActiveTabState] = useState<string>(urlTab ?? "health")
+  useEffect(() => {
+    if (urlTab) setActiveTabState(urlTab)
+  }, [urlTab])
   const setActiveTab = (tab: string) => {
-    const next = new URLSearchParams(searchParams.toString())
+    setActiveTabState(tab)
+    const next = new URLSearchParams(searchParams?.toString() ?? "")
     next.set("tab", tab)
     router.replace(`?${next.toString()}`, { scroll: false })
   }
