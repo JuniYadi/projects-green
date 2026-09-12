@@ -413,6 +413,7 @@ export default function SettingsPage() {
             api={domainApi ?? undefined}
             domainsLoading={domainsLoading}
             domainsError={domainsError}
+            messages={messages.console.app.settings.domainsPanel}
           />
         )
       case "env":

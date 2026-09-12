@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "typescript-lsp@skills-dir": true
+  }
+}

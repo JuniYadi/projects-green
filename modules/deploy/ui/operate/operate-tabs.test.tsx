@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import { useState } from "react"
+import { enMessages } from "@/lib/i18n/messages/en"
 import { INITIAL_LOGS } from "@/modules/deploy/operate.mock"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
 import { TabEnv } from "@/modules/deploy/ui/operate/tab-env"
@@ -56,14 +58,23 @@ function DomainsHarness() {
       stackSlug="shop"
       apiDomains={[tenantDomain]}
       api={domainCallbacks}
+      messages={enMessages.console.app.settings.domainsPanel}
     />
   )
 }
 function LogsHarness({ diagnosticMode }: { diagnosticMode: string }) {
   const [logs, setLogs] = useState(INITIAL_LOGS)
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      })
+  )
 
   return (
-    <TabLogs logs={logs} setLogs={setLogs} diagnosticMode={diagnosticMode} />
+    <QueryClientProvider client={queryClient}>
+      <TabLogs logs={logs} setLogs={setLogs} diagnosticMode={diagnosticMode} />
+    </QueryClientProvider>
   )
 }
 
@@ -146,7 +157,7 @@ describe("Operate tabs coverage", () => {
   it("loads DNS targets and calls persisted domain operations", async () => {
     const view = render(<DomainsHarness />)
 
-    expect(view.getByText("CUSTOM")).toBeTruthy()
+    expect(view.getByText("Custom")).toBeTruthy()
     expect(view.getByText("us-east")).toBeTruthy()
     expect(view.getByText("shop.edge.example")).toBeTruthy()
     expect(view.getByText("203.0.113.10")).toBeTruthy()

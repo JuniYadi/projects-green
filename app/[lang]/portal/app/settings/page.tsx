@@ -218,6 +218,7 @@ export default function PortalSettingsPage() {
             selectedEnv={selectedEnv}
             domains={domains}
             setDomains={setDomains}
+            messages={messages.console.app.settings.domainsPanel}
           />
         )
       case "danger":

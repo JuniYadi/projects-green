@@ -50,7 +50,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "modules/admin/api/admin.schema.ts",
       "modules/admin/api/routes/admin-app-hosting-clusters",
       "app/[lang]/console/app/",
-      "app/[lang]/console/marketplace/",
+      "app/[lang]/portal/app/settings/page.tsx",
       "app/[lang]/portal/app/clusters/",
       "app/[lang]/portal/marketplace/",
       "app/api/deploy/",

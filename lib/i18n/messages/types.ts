@@ -2030,6 +2030,74 @@ export type AppMessages = {
           build: string
           danger: string
         }
+        domainsPanel: {
+          cardTitle: string
+          cardDescription: string
+          domainLabel: string
+          tlsLabel: string
+          actionsLabel: string
+          addPlaceholder: string
+          addButton: string
+          retry: string
+          saveError: string
+          loading: string
+          empty: string
+          legacyEmpty: string
+          primaryBadge: string
+          kindManaged: string
+          kindCustom: string
+          clusterNotAssigned: string
+          managedStatusLabel: string
+          managedStatusText: string
+          dnsLabel: string
+          notCheckedYet: string
+          checkedFallback: string
+          checkedAt: string
+          matchedBy: string
+          noResolverMatch: string
+          certificateHeading: string
+          notConfigured: string
+          certificateUnknownStatus: string
+          certificateExpiresPrefix: string
+          unknownSource: string
+          verify: string
+          deleteAria: string
+          dnsTargetsLabel: string
+          dnsTargetsEmpty: string
+          dnsTargetsHint: string
+          copyAria: string
+          certificateHint: string
+          certificatePemLabel: string
+          privateKeyPemLabel: string
+          chainPemLabel: string
+          pemPlaceholder: string
+          saveCertificate: string
+          allowlistLabel: string
+          allowlistTooltipAria: string
+          allowlistTooltipContent: string
+          allowlistOpen: string
+          allowlistRestricted: string
+          cidrPlaceholder: string
+          addEntry: string
+          removeEntry: string
+          dnsConfigTitle: string
+          dnsConfigDescription: string
+          primaryUrlTitle: string
+          primaryUrlDescription: string
+          stackLabel: string
+          regionLabel: string
+          proxyTitle: string
+          proxyDescription: string
+          trustHeadersLabel: string
+          trustHeadersHintPrefix: string
+          trustHeadersHintSuffix: string
+          ipResolutionTitle: string
+          ipResolutionBody1: string
+          ipResolutionBody2Prefix: string
+          ipResolutionBody2Suffix: string
+          trustActive: string
+          trustInactive: string
+        }
       }
     }
     whatsappWorkflows: {
