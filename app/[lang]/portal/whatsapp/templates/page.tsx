@@ -1,4 +1,5 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import {
@@ -9,6 +10,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { TemplatesPageClient } from "./templates-page-client"
+
+export const metadata: Metadata = { title: "Templates" }
 
 type Props = {
   params: Promise<{ lang: string }>
