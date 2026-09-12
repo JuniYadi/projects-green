@@ -41,6 +41,7 @@ import {
   updateClusterStatus,
   upsertClusterIntegration,
   getExistingClusterIntegrationConfig,
+  recordClusterIntegrationTest,
   updateClusterIntegrationStatus,
   deleteClusterIntegration,
   exportClusterIntegrations,
@@ -391,30 +392,37 @@ export const createAdminAppHostingClusterRoutes = (
           const inputMeta = (body?.metaJson ?? {}) as Record<string, unknown>
           const inputSecrets = (body?.secrets ?? {}) as Record<string, unknown>
 
-          const existing = await getExistingClusterIntegrationConfig(
-            params.id,
-            params.type
-          )
+          try {
+            // Reading the stored config can throw on a key-version mismatch,
+            // which outside this block escapes as a raw Elysia 500.
+            const existing = await getExistingClusterIntegrationConfig(
+              params.id,
+              params.type
+            )
 
-          const meta = {
-            ...(existing?.meta ?? {}),
-            ...inputMeta,
-          }
-          const secrets = {
-            ...(existing?.secrets ?? {}),
-          }
-          for (const [k, v] of Object.entries(inputSecrets)) {
-            if (v !== undefined && v !== "") {
-              secrets[k] = v
+            const meta = {
+              ...(existing?.meta ?? {}),
+              ...inputMeta,
             }
-          }
+            const secrets = {
+              ...(existing?.secrets ?? {}),
+            }
+            for (const [k, v] of Object.entries(inputSecrets)) {
+              if (v !== undefined && v !== "") {
+                secrets[k] = v
+              }
+            }
 
-          const result = await testIntegrationConnection(
-            params.type,
-            meta,
-            secrets
-          )
-          return { ok: true as const, data: result }
+            const result = await testIntegrationConnection(
+              params.type,
+              meta,
+              secrets
+            )
+            await recordClusterIntegrationTest(params.id, params.type, result)
+            return { ok: true as const, data: result }
+          } catch (error) {
+            return clusterError(set, error)
+          }
         },
         { body: upsertIntegrationBodySchema }
       )
