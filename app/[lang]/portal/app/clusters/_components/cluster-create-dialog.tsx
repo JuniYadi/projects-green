@@ -108,14 +108,12 @@ export function ClusterCreateDialog({
       })
 
       if (!payload || !payload.ok) {
-        throw new Error(payload?.message ?? messages.loadRegionsError)
+        throw new Error(payload?.message ?? messages.createFailed)
       }
 
       onCreated()
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : messages.loadRegionsError
-      )
+      setError(cause instanceof Error ? cause.message : messages.createFailed)
     } finally {
       setSubmitting(false)
     }

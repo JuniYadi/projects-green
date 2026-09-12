@@ -2140,6 +2140,7 @@ export const enMessages: AppMessages = {
         create: "Create Cluster",
         creating: "Creating…",
         loadRegionsError: "Failed to load regions.",
+        createFailed: "Failed to create cluster.",
       },
       adminDeployments: {
         heading: "Deployments Monitor",

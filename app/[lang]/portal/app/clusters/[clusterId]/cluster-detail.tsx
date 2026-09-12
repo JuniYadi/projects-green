@@ -1636,6 +1636,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   <textarea
                     id="cluster-notes"
                     name="cluster.metadata.notes"
+                    value={clusterMetadata.notes ?? ""}
                     onChange={(event) =>
                       setClusterMetadata((prev: ClusterMetadataInput) => ({
                         ...prev,

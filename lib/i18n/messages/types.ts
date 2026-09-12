@@ -1943,6 +1943,7 @@ export type AppMessages = {
         create: string
         creating: string
         loadRegionsError: string
+        createFailed: string
       }
       adminDeployments: {
         heading: string

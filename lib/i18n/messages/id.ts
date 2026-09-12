@@ -2159,6 +2159,7 @@ export const idMessages: AppMessages = {
         create: "Buat Cluster",
         creating: "Membuat…",
         loadRegionsError: "Gagal memuat region.",
+        createFailed: "Gagal membuat cluster.",
       },
       adminDeployments: {
         heading: "Monitor Deployment",
