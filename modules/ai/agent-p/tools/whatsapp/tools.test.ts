@@ -91,7 +91,9 @@ describe("WhatsApp Agent P tools", () => {
       })
     )
     expect(result).toEqual({
-      conversationId: undefined,
+      conversationId: "conversation-1",
+      phoneNumber: undefined,
+      deviceId: undefined,
       messages: [
         {
           direction: "IN",
@@ -122,7 +124,10 @@ describe("WhatsApp Agent P tools", () => {
     })
     expect(prismaMock.whatsappConversation.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { organizationId: "org-1", id: "conversation-1" },
+        where: expect.objectContaining({
+          organizationId: "org-1",
+          OR: [{ id: "conversation-1" }],
+        }),
       })
     )
   })
@@ -164,7 +169,10 @@ describe("WhatsApp Agent P tools", () => {
     ).rejects.toThrow("DEVICE_NOT_FOUND")
     expect(prismaMock.whatsappDevice.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { organizationId: "org-1", id: "other-device" },
+        where: expect.objectContaining({
+          organizationId: "org-1",
+          OR: [{ id: "other-device" }],
+        }),
       })
     )
   })
