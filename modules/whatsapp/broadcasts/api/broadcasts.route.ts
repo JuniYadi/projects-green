@@ -894,14 +894,22 @@ export const broadcastsRoutes = new Elysia({
           capacity: toDeviceBroadcastCapacityDTO(preflight.capacity),
         }
       }
-      // Update campaign status to processing
-      await prisma.whatsappBroadcastCampaign.update({
-        where: { id },
+      // Claim atomically so a double submit cannot enqueue the campaign twice.
+      const claimed = await prisma.whatsappBroadcastCampaign.updateMany({
+        where: { id, status: "QUEUED" },
         data: {
           status: "PROCESSING",
           startedAt: new Date(),
         },
       })
+      if (claimed.count === 0) {
+        set.status = 409
+        return {
+          ok: false,
+          error: "CONFLICT",
+          message: "Campaign is already processing or completed.",
+        }
+      }
 
       // Enqueue all recipients in bulk
       const queue = getWhatsAppBroadcastQueue()
