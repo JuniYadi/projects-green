@@ -3286,6 +3286,9 @@ model AppHostingClusterIntegration {
   secretPreview    String?
   isActive         Boolean                          @default(true)
   keyVersion       Int                              @default(1)
+  lastTestAt       DateTime?
+  lastTestOk       Boolean?
+  lastTestMessage  String?
   createdAt        DateTime                         @default(now())
   updatedAt        DateTime                         @updatedAt
 
