@@ -138,7 +138,7 @@ describe("appTelemetryRoutes", () => {
       clusterCode: "sgp",
     })
   })
-  it("reports the app's configured limits instead of the cluster placeholder", async () => {
+  it("reports the app's own plan limits instead of the cluster placeholder", async () => {
     mockFindFirst.mockResolvedValueOnce({ cpu: 1000, memory: 2048 })
 
     const response = await appTelemetryRoutes.handle(
@@ -150,10 +150,10 @@ describe("appTelemetryRoutes", () => {
       where: { slug: "my-app", organizationId: "org-1" },
       select: { cpu: true, memory: true },
     })
-    // Same floors the Helm builder applies: request 2048Mi -> limit 4096Mi.
+    // Same value the Helm builder applies: limit == the plan's own request.
     expect(mockFetchNamespaceTelemetry).toHaveBeenCalledWith(
       expect.objectContaining({
-        limitsFallback: { cpuCores: 1, memoryBytes: 4096 * 1024 * 1024 },
+        limitsFallback: { cpuCores: 1, memoryBytes: 2048 * 1024 * 1024 },
       })
     )
   })
