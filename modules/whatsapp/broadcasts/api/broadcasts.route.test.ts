@@ -106,6 +106,9 @@ const mockComputeRecommendedSchedule = mock<
 const mockValidateSchedule = mock<() => Promise<void>>(async () => {})
 
 const mockCampaignFindMany = mock<() => Promise<Campaign[]>>(async () => [])
+const mockCampaignUpdateMany = mock<() => Promise<{ count: number }>>(
+  async () => ({ count: 1 })
+)
 
 const mockPrisma = {
   whatsappBroadcastCampaign: {
@@ -114,6 +117,7 @@ const mockPrisma = {
     findMany: mockCampaignFindMany,
     findUnique: mockFindUnique,
     update: mockCampaignUpdate,
+    updateMany: mockCampaignUpdateMany,
     delete: mockCampaignDelete,
     create: mockCampaignCreate,
   },
@@ -299,6 +303,29 @@ describe("broadcastsRoutes listing and detail", () => {
 })
 
 describe("broadcastsRoutes /:id/send", () => {
+  beforeEach(() => {
+    mockCampaignUpdateMany.mockClear()
+  })
+
+  it("does not enqueue a campaign that another request already claimed (WA-C08)", async () => {
+    mockFindUnique.mockResolvedValueOnce(campaign())
+    mockCampaignUpdateMany.mockResolvedValueOnce({ count: 0 })
+
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123/send", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(409)
+    expect(mockCampaignUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "camp-123", status: WhatsappBroadcastStatus.QUEUED },
+      })
+    )
+    expect(mockAddBulk).not.toHaveBeenCalled()
+  })
+
   it("dispatches recipients in bulk with UUID v7 job IDs without colons", async () => {
     mockFindUnique.mockResolvedValueOnce(
       campaign({
@@ -321,7 +348,7 @@ describe("broadcastsRoutes /:id/send", () => {
       message: "Dispatched 2 recipients for broadcasting.",
     })
 
-    expect(mockCampaignUpdate).toHaveBeenCalledTimes(1)
+    expect(mockCampaignUpdateMany).toHaveBeenCalledTimes(1)
     expect(mockAddBulk).toHaveBeenCalledTimes(1)
 
     const [jobs] = mockAddBulk.mock.calls[0] ?? []
