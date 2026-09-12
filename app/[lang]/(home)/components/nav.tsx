@@ -134,6 +134,7 @@ export function HomeNav() {
 
         {/* Mobile toggle */}
         <button
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
           className="p-2 text-white/80 hover:text-white md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
         >
