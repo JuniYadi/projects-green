@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { RegionsTable } from "../_components/regions-table"
+
+export const metadata: Metadata = { title: "Regions" }
 
 export default async function VpnRegionsPage() {
   return (
