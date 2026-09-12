@@ -6,7 +6,7 @@ import type { Metadata } from "next"
 import { BillingAlertsForm } from "./billing-alerts-form"
 
 export const metadata: Metadata = {
-  title: "Billing Alerts | Console",
+  title: "Billing Alerts",
   description: "Configure billing alert preferences",
 }
 
