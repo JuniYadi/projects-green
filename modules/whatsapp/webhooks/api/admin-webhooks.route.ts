@@ -230,10 +230,27 @@ export const createAdminWebhooksRoutes = (
         const actor = await guard(set)
         if (isAdminError(actor)) return actor
 
+        // The owning org always comes from the device, so a webhook can never
+        // point at a device another organization owns.
+        const device = body.whatsappDeviceId
+          ? await prisma.whatsappDevice.findUnique({
+              where: { id: body.whatsappDeviceId },
+              select: { organizationId: true },
+            })
+          : null
+        if (!device) {
+          set.status = 404
+          return {
+            ok: false,
+            error: "NOT_FOUND",
+            message: "Device not found.",
+          }
+        }
+
         const webhook = await prisma.whatsappWebhook.create({
           data: {
             whatsappDeviceId: body.whatsappDeviceId,
-            organizationId: body.organizationId,
+            organizationId: device.organizationId,
             webhookUrl: body.webhookUrl,
             verifyToken: body.verifyToken,
             authType: body.authType ?? "none",
@@ -263,6 +280,20 @@ export const createAdminWebhooksRoutes = (
             ok: false,
             error: "NOT_FOUND",
             message: "Webhook not found.",
+          }
+        }
+
+        // Moving a webhook would skip the device ownership check done on create.
+        if (
+          body?.organizationId !== undefined ||
+          body?.whatsappDeviceId !== undefined
+        ) {
+          set.status = 400
+          return {
+            ok: false,
+            error: "BAD_REQUEST",
+            message:
+              "A webhook's organization and device cannot be changed. Create a new webhook instead.",
           }
         }
 
