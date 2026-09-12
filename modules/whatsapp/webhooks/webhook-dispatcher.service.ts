@@ -125,12 +125,17 @@ export const webhookDispatcher = {
   ): Promise<void> {
     const webhooks = await prisma.whatsappWebhook.findMany({
       where: { whatsappDeviceId: deviceId, active: true },
+      include: { whatsappDevice: { select: { organizationId: true } } },
     })
 
-    if (webhooks.length === 0) return
+    // Only the organization that owns the device may receive its events.
+    const owned = webhooks.filter(
+      (w) => w.organizationId === w.whatsappDevice?.organizationId
+    )
+    if (owned.length === 0) return
 
     await Promise.all(
-      webhooks.map((w) =>
+      owned.map((w) =>
         enqueueOutgoingWebhook({
           webhookId: w.id,
           organizationId: w.organizationId,
