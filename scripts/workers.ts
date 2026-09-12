@@ -63,6 +63,11 @@ import { invoiceEmailService } from "@/modules/invoices/email.service"
 import { OPENSEARCH_INGEST_QUEUE } from "@/lib/queue/opensearch-ingest"
 import { ingestLog } from "@/modules/deploy/opensearch/opensearch-log.service"
 import type { LogEntry } from "@/modules/deploy/opensearch"
+import {
+  APP_HOSTING_TRAFFIC_SNAPSHOT_QUEUE,
+  type AppHostingTrafficSnapshotJobData,
+} from "@/lib/queue/app-hosting-traffic-snapshot"
+import { processDailyTrafficSnapshotsJob } from "@/modules/deploy/opensearch/opensearch-traffic.service"
 
 // ── Quota Reconciliation ───────────────────────────────────────────────────
 import {
@@ -320,6 +325,14 @@ const opensearchWorker = new Worker<LogEntry>(
   { connection: redisConnection, prefix, concurrency: opensearchConcurrency }
 )
 allWorkers.push(opensearchWorker)
+
+// ── App Hosting Traffic Snapshot Worker ────────────────────────────────────
+const trafficSnapshotWorker = new Worker<AppHostingTrafficSnapshotJobData>(
+  APP_HOSTING_TRAFFIC_SNAPSHOT_QUEUE,
+  async () => processDailyTrafficSnapshotsJob(),
+  { connection: redisConnection, prefix, concurrency: 1 }
+)
+allWorkers.push(trafficSnapshotWorker)
 
 // ── Quota Reconciliation Worker ─────────────────────────────────────────────
 const quotaWorker = new Worker<QuotaReconciliationJobData>(

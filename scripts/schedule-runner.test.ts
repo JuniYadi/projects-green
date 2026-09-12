@@ -32,6 +32,7 @@ describe("schedule-runner", () => {
     expect(names).toContain("whatsapp-hourly-billing")
     expect(names).toContain("daily-count-cleanup")
     expect(names).toContain("monthly-billing-finalization")
+    expect(names).toContain("app-hosting-daily-traffic-snapshot")
   })
 
   test("every scheduled job has a cron definition", () => {

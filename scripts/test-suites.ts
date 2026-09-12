@@ -34,6 +34,14 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     smokeProjects: [],
   },
   {
+    name: "deploy-traffic",
+    sourcePrefixes: ["lib/queue/app-hosting-traffic-snapshot"],
+    testPrefixes: [
+      "modules/deploy/opensearch/opensearch-traffic.service.test.ts",
+    ],
+    smokeProjects: ["smoke-deploy"],
+  },
+  {
     name: "deploy",
     sourcePrefixes: [
       "lib/queue/deploy-pipeline",
