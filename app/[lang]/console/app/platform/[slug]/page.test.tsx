@@ -106,7 +106,7 @@ const {
   default: PlatformInstanceWorkspacePage,
   VALID_SETTINGS_SUBTABS,
   resolveSettingsSubTab,
-} = await import("./page")
+} = await import("./page-client")
 
 describe("PlatformInstanceWorkspacePage - SettingsSubTabs validation", () => {
   it("includes all expected subtabs in VALID_SETTINGS_SUBTABS", () => {
