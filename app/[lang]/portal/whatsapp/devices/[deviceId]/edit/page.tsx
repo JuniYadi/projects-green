@@ -1,10 +1,13 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
 import { DeviceEditForm, type DeviceEditInitialData } from "./device-edit-form"
+
+export const metadata: Metadata = { title: "Edit WhatsApp Device" }
 
 type EditDevicePageProps = {
   params: Promise<{
