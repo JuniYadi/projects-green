@@ -8,60 +8,62 @@ const mockDeploymentFindFirst = mock(async () => null)
 const mockStackFindMany = mock(async () => [
   { slug: "api", status: "RUNNING", updatedAt: new Date("2026-01-01") },
 ])
-const mockResolveClusterIntegrationByClusterCode = mock(
-  async (_clusterId: string, type: string) => {
-    const configs: Record<string, unknown> = {
-      KUBECONFIG: {
-        apiServerUrl: "https://k8s.test",
-        serviceAccountToken: "token",
-        caCertificate: null,
-        kubeconfig: null,
-        namespacePattern: "app-{slug}",
-        labelSelector: "app={slug}",
-      },
-      OPENSEARCH: {
-        endpoint: "https://search.test",
-        username: "user",
-        password: "password",
-        sslVerify: true,
-        timeout: 5,
-      },
-      ARGOCD: {
-        apiUrl: "https://argo.test",
-        token: "argo-token",
-        project: "default",
-        appNamespace: "argocd",
-        webhookSecret: null,
-        chartRepo: null,
-        chartVersion: null,
-      },
-      JENKINS: {
-        baseUrl: "https://jenkins.test",
-        username: "jenkins",
-        apiToken: "jenkins-token",
-        webhookToken: "webhook-token",
-        dslOwner: "pfnapp",
-        dslRepo: "Jenkins",
-        gitCredentialId: "github",
-        sharedLibraryName: null,
-        sharedLibraryBranch: null,
-      },
-      PROMETHEUS: {
-        endpoint: "https://prometheus.test",
-        username: "prometheus",
-        password: "prometheus-password",
-      },
-    }
-    return configs[type]
+const mockIntegrationFindFirst = mock(async () => null as unknown)
+const defaultIntegrationConfigs = async (_clusterId: string, type: string) => {
+  const configs: Record<string, unknown> = {
+    KUBECONFIG: {
+      apiServerUrl: "https://k8s.test",
+      serviceAccountToken: "token",
+      caCertificate: null,
+      kubeconfig: null,
+      namespacePattern: "app-{slug}",
+      labelSelector: "app={slug}",
+    },
+    OPENSEARCH: {
+      endpoint: "https://search.test",
+      username: "user",
+      password: "password",
+      sslVerify: true,
+      timeout: 5,
+    },
+    ARGOCD: {
+      apiUrl: "https://argo.test",
+      token: "argo-token",
+      project: "default",
+      appNamespace: "argocd",
+      webhookSecret: null,
+      chartRepo: null,
+      chartVersion: null,
+    },
+    JENKINS: {
+      baseUrl: "https://jenkins.test",
+      username: "jenkins",
+      apiToken: "jenkins-token",
+      webhookToken: "webhook-token",
+      dslOwner: "pfnapp",
+      dslRepo: "Jenkins",
+      gitCredentialId: "github",
+      sharedLibraryName: null,
+      sharedLibraryBranch: null,
+    },
+    PROMETHEUS: {
+      endpoint: "https://prometheus.test",
+      username: "prometheus",
+      password: "prometheus-password",
+    },
   }
+  return configs[type]
+}
+const mockResolveClusterIntegrationByClusterCode = mock(
+  defaultIntegrationConfigs
 )
 const mockJenkinsApiFetch = mock(async (path: string) => {
   if (path.startsWith("api/json")) {
     return {
       jobs: [
         {
-          name: "api-build",
-          url: "https://jenkins.test/job/api-build/",
+          name: "Jenkins-api-build",
+          url: "https://jenkins.test/job/Jenkins-api-build/",
           lastBuild: {
             number: 3,
             result: "SUCCESS",
@@ -78,7 +80,29 @@ const mockJenkinsApiFetch = mock(async (path: string) => {
           },
         },
         {
-          name: "worker-build",
+          // Multibranch/DSL jobs return branch as an array of objects.
+          name: "Jenkins-multibranch",
+          scm: {
+            userRemoteConfigs: [{ url: "git@github.com:pfnapp/Jenkins" }],
+          },
+          lastBuild: {
+            number: 7,
+            result: "SUCCESS",
+            building: false,
+            timestamp: 1767232800000,
+            duration: 4500,
+            actions: [
+              {
+                lastBuiltRevision: {
+                  SHA1: "deadbeefcafe",
+                  branch: [{}],
+                },
+              },
+            ],
+          },
+        },
+        {
+          name: "pfnapp-cakra-api",
           lastBuild: {
             number: 2,
             result: "FAILURE",
@@ -99,6 +123,7 @@ mock.module("@/lib/prisma", () => ({
     appHostingCluster: { findUnique: mockClusterFindUnique },
     applicationDeployment: { findFirst: mockDeploymentFindFirst },
     applicationStack: { findMany: mockStackFindMany },
+    appHostingClusterIntegration: { findFirst: mockIntegrationFindFirst },
   },
 }))
 mock.module("./cluster-integration.service", () => ({
@@ -181,7 +206,12 @@ describe("cluster operations service", () => {
     mockClusterFindUnique.mockClear()
     mockDeploymentFindFirst.mockClear()
     mockStackFindMany.mockClear()
+    mockIntegrationFindFirst.mockClear()
+    mockIntegrationFindFirst.mockResolvedValue(null as never)
     mockResolveClusterIntegrationByClusterCode.mockClear()
+    mockResolveClusterIntegrationByClusterCode.mockImplementation(
+      defaultIntegrationConfigs
+    )
     mockJenkinsApiFetch.mockClear()
     prometheusQueries.length = 0
     globalThis.fetch = mock(async (input) => {
@@ -224,17 +254,36 @@ describe("cluster operations service", () => {
     })
 
     const builds = await getClusterOperations("cl_1", "builds")
-    expect(builds).toMatchObject({ provider: { state: "live" } })
-    expect(
-      "builds" in builds &&
-        builds.builds.some(
-          (build) =>
-            build.job === "api-build" &&
-            build.status === "SUCCESS" &&
-            build.commit === "abc123" &&
-            build.branch === "main"
-        )
-    ).toBe(true)
+    expect(builds).toMatchObject({
+      provider: { state: "live" },
+      scope: "cluster",
+      scopeFilter: "pfnapp/Jenkins",
+    })
+    const buildRows = "builds" in builds ? builds.builds : []
+    expect(buildRows.map((build) => build.job)).toEqual([
+      "Jenkins-multibranch",
+      "Jenkins-api-build",
+    ])
+    expect(buildRows).toContainEqual(
+      expect.objectContaining({
+        job: "Jenkins-api-build",
+        status: "SUCCESS",
+        commit: "abc123",
+        branch: "main",
+        durationMs: 1200,
+      })
+    )
+    // branch: [{}] must never reach the DTO as an object.
+    const multibranch = buildRows.find(
+      (build) => build.job === "Jenkins-multibranch"
+    )
+    expect(multibranch?.branch).toBeNull()
+    expect(multibranch?.commit).toBe("deadbeefcafe")
+    for (const build of buildRows) {
+      expect(["string", "object"]).toContain(typeof build.branch)
+      if (build.branch !== null) expect(typeof build.branch).toBe("string")
+      if (build.commit !== null) expect(typeof build.commit).toBe("string")
+    }
 
     const metrics = await getClusterOperations("cl_1", "metrics")
     expect(metrics).toMatchObject({ provider: { state: "live" } })
@@ -248,7 +297,7 @@ describe("cluster operations service", () => {
 
   it("returns configuration-only states without fabricating provider data", async () => {
     mockResolveClusterIntegrationByClusterCode.mockRejectedValue(
-      new Error("Missing provider integration")
+      new Error("Missing OPENSEARCH integration for App Hosting cluster sgp")
     )
 
     const health = await getClusterOperations("cl_1", "health")
@@ -291,7 +340,9 @@ describe("cluster operations service", () => {
             timeout: 5,
           }
         }
-        throw new Error("Missing provider integration")
+        throw new Error(
+          "Missing OPENSEARCH integration for App Hosting cluster sgp"
+        )
       }
     )
     globalThis.fetch = mock(
@@ -311,7 +362,9 @@ describe("cluster operations service", () => {
             password: "prometheus-password",
           }
         }
-        throw new Error("Missing provider integration")
+        throw new Error(
+          "Missing OPENSEARCH integration for App Hosting cluster sgp"
+        )
       }
     )
     globalThis.fetch = mock(async () => {
@@ -324,5 +377,191 @@ describe("cluster operations service", () => {
     expect(
       "metrics" in unavailableMetrics ? unavailableMetrics.metrics[0] : null
     ).toMatchObject({ value: null })
+  })
+
+  it("labels numeric pino levels and never invents a timestamp", async () => {
+    globalThis.fetch = mock(async (input) => {
+      const url = String(input)
+      if (!url.includes("/_search")) return providerResponse(url)
+      return Response.json({
+        took: 3,
+        hits: {
+          total: { value: 10000, relation: "gte" },
+          hits: [
+            {
+              _id: "pino",
+              _source: {
+                "@timestamp": "2026-09-10T09:08:15.529Z",
+                level: 40,
+                message: "request completed",
+                kubernetes: {
+                  container_name: "deploy",
+                  namespace_name: "app-demo",
+                },
+              },
+            },
+            {
+              _id: "monolog",
+              _source: {
+                "@timestamp": "2026-09-10T09:08:16.000Z",
+                level: "500",
+                level_name: "CRITICAL",
+                message: "GET /api/user HTTP/1.1",
+              },
+            },
+            { _id: "undated", _source: { message: "no time on this one" } },
+          ],
+        },
+        aggregations: {
+          // container_name is keyword in most indices and text+.keyword in the
+          // rest, so both aggregations run and their keys merge.
+          servicesRaw: { buckets: [{ key: "deploy" }] },
+          servicesKeyword: { buckets: [{ key: "ingress" }, { key: "deploy" }] },
+        },
+      })
+    }) as unknown as typeof fetch
+
+    const logs = await getClusterOperations("cl_1", "logs", {
+      source: "application",
+    })
+    if (!("entries" in logs)) throw new Error("expected logs")
+    expect(logs.entries[0]).toMatchObject({
+      severity: "40",
+      severityLabel: "WARN",
+      service: "deploy",
+      namespace: "app-demo",
+    })
+    expect(logs.entries[1]).toMatchObject({
+      severity: "CRITICAL",
+      severityLabel: "ERROR",
+    })
+    // A document with no timestamp must surface as null, not as "now".
+    expect(logs.entries[2].timestamp).toBeNull()
+    expect(logs.services).toEqual(["deploy", "ingress"])
+    // 10,000 is the track_total_hits cap, not a count.
+    expect(logs.total).toBe(10000)
+    expect(logs.totalIsLowerBound).toBe(true)
+  })
+
+  it("maps HAProxy ingress documents that carry no message field", async () => {
+    let searchBody: Record<string, unknown> = {}
+    globalThis.fetch = mock(async (input, init) => {
+      const url = String(input)
+      if (!url.includes("/_search")) return providerResponse(url)
+      searchBody = JSON.parse(String((init as RequestInit)?.body ?? "{}"))
+      return Response.json({
+        took: 5,
+        hits: {
+          total: { value: 270, relation: "eq" },
+          hits: [
+            {
+              _id: "haproxy",
+              _source: {
+                "@timestamp": "2026-09-10T09:08:15.584Z",
+                client_ip: "182.3.36.220",
+                haproxy_host: "api.metagocoin.com",
+                haproxy_backend: "app-metagocoin-api_svc_http",
+                http_method: "GET",
+                http_path: "/dex-swap/quote",
+                http_query: "?code=GKC_USDT_BUY",
+                http_status: 503,
+                response_time_ms: 121,
+                kubernetes: {
+                  container_name: "kubernetes-ingress-controller",
+                  namespace_name: "haproxy-controller",
+                },
+              },
+            },
+          ],
+        },
+      })
+    }) as unknown as typeof fetch
+
+    const logs = await getClusterOperations("cl_1", "logs", {
+      source: "http",
+      level: "ERROR",
+    })
+    if (!("entries" in logs)) throw new Error("expected logs")
+    expect(logs.entries[0]).toMatchObject({
+      route: "GET /dex-swap/quote?code=GKC_USDT_BUY",
+      status: 503,
+      severityLabel: "ERROR",
+      service: "kubernetes-ingress-controller",
+    })
+    expect(logs.entries[0].message).toContain("182.3.36.220")
+    expect(logs.entries[0].message).not.toBe("")
+    expect(logs.totalIsLowerBound).toBe(false)
+    // level is long in some indices and keyword in others; only a lenient
+    // query_string matches both instead of dropping those shards.
+    expect(JSON.stringify(searchBody)).toContain('"lenient":true')
+    expect(searchBody.track_total_hits).toBe(10000)
+  })
+
+  it("does not report node counts from the portal's own cluster", async () => {
+    mockResolveClusterIntegrationByClusterCode.mockImplementation(
+      async (_clusterId, type) => {
+        if (type !== "KUBECONFIG") {
+          throw new Error(
+            `Missing ${type} integration for App Hosting cluster sgp`
+          )
+        }
+        return {
+          connectionMode: "INTERNAL",
+          apiServerUrl: "https://kubernetes.default.svc",
+          serviceAccountToken: "in-cluster-token",
+          caCertificate: null,
+          kubeconfig: null,
+          namespacePattern: "app-{slug}",
+          labelSelector: "app={slug}",
+          usesInClusterFallback: true,
+        }
+      }
+    )
+
+    const health = await getClusterOperations("cl_1", "health")
+    expect(health).toMatchObject({
+      status: "unknown",
+      nodes: { ready: null, total: null },
+      providers: {
+        kubernetes: {
+          state: "configuration_only",
+          source: "Portal's own cluster (in-cluster fallback)",
+        },
+      },
+    })
+    // Never "stale" for an observation taken just now.
+    expect("provider" in health && health.provider.state).not.toBe("stale")
+  })
+
+  it("separates a missing integration from an incomplete one", async () => {
+    mockResolveClusterIntegrationByClusterCode.mockImplementation(
+      async (_clusterId, type) => {
+        if (type === "JENKINS") {
+          throw new Error(
+            "Missing required cluster integration field: gitCredentialId"
+          )
+        }
+        throw new Error(
+          `Missing ${type} integration for App Hosting cluster sgp`
+        )
+      }
+    )
+    const health = await getClusterOperations("cl_1", "health")
+    if (!("providers" in health)) throw new Error("expected health")
+    expect(health.providers.jenkins.message).toBe(
+      "Integration exists but gitCredentialId is not set."
+    )
+    expect(health.providers.argocd.message).toBe(
+      "Integration is not configured."
+    )
+  })
+
+  it("404s on an unknown cluster for every view, not just health", async () => {
+    for (const view of ["logs", "deployments", "builds", "metrics"] as const) {
+      mockClusterFindUnique.mockResolvedValueOnce(null as never)
+      await expect(getClusterOperations("nope", view)).rejects.toThrow(
+        "Cluster nope not found"
+      )
+    }
   })
 })

@@ -44,6 +44,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
   {
     name: "deploy",
     sourcePrefixes: [
+      "lib/queue/app-hosting-log-rollup",
       "lib/queue/deploy-pipeline",
       "modules/deploy/",
       "modules/framework-detection/",

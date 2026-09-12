@@ -13,6 +13,13 @@ export type ClusterIntegrationAdminDTO = {
   metaJson: unknown
   secretPreview: string | null
   isActive: boolean
+  /**
+   * `isActive` is only a DB flag. These carry the last real probe, so the row
+   * can read "Active · unreachable 19:58" instead of implying reachability.
+   */
+  lastTestAt: string | null
+  lastTestOk: boolean | null
+  lastTestMessage: string | null
   createdAt: string
   updatedAt: string
 }
@@ -44,6 +51,9 @@ export function toClusterIntegrationDTO(
     metaJson: row.metaJson,
     secretPreview: row.secretPreview,
     isActive: row.isActive,
+    lastTestAt: row.lastTestAt?.toISOString() ?? null,
+    lastTestOk: row.lastTestOk,
+    lastTestMessage: row.lastTestMessage,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }

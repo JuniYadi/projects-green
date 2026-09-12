@@ -11,9 +11,12 @@ import { ClusterDetail } from "./cluster-detail"
 
 const mockPush = mock(() => {})
 
+const mockReplace = mock((_href: string, _options?: unknown) => {})
+const mockSearchParams = new URLSearchParams()
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useSearchParams: () => mockSearchParams,
 }))
 const mockGetCluster = mock(async (): Promise<unknown> => ({
   ok: true,
@@ -178,6 +181,12 @@ function responseForOperation(input: RequestInfo | URL) {
       data: {
         provider: providerState,
         status: "healthy",
+        verdict: {
+          headline: "Cluster is healthy",
+          detail: "Every configured provider answered.",
+          unaffected: null,
+          action: null,
+        },
         nodes: { ready: 2, total: 2 },
         workloads: { ready: 4, total: 4 },
         recentDeployment: null,
@@ -196,15 +205,18 @@ function responseForOperation(input: RequestInfo | URL) {
       ok: true,
       data: {
         provider: providerState,
-        source: "all",
-        indexPatterns: ["app-*", "haproxy-controller-*"],
+        source: "application",
+        indexPatterns: ["app-*"],
         total: 1,
+        totalIsLowerBound: false,
         tookMs: 3,
+        services: ["api"],
         entries: [
           {
             id: "log-1",
             timestamp: "2026-01-01T00:00:00.000Z",
-            severity: "INFO",
+            severity: "30",
+            severityLabel: "INFO",
             service: "api",
             namespace: "app-test",
             route: "/health",
@@ -240,6 +252,8 @@ function responseForOperation(input: RequestInfo | URL) {
       ok: true,
       data: {
         provider: providerState,
+        scope: "cluster",
+        scopeFilter: "pfnapp/Jenkins",
         builds: [
           {
             job: "api-build",
@@ -260,12 +274,31 @@ function responseForOperation(input: RequestInfo | URL) {
     data: {
       provider: providerState,
       range: "1h",
+      seriesFound: 1,
+      seriesTotal: 2,
       metrics: [
         {
           name: "cpu_usage",
           value: 1.2,
           unit: "cores",
           sampleAt: "2026-01-01T00:00:00.000Z",
+          capacity: 12,
+          series: [
+            [1767225600, 1.1],
+            [1767225660, 1.2],
+          ],
+          matchedQuery: "sum(rate(container_cpu_usage_seconds_total[5m]))",
+          missingSeries: [],
+        },
+        {
+          name: "request_rate",
+          value: null,
+          unit: "requests/s",
+          sampleAt: null,
+          capacity: null,
+          series: [],
+          matchedQuery: null,
+          missingSeries: ["http_requests_total"],
         },
       ],
     },
@@ -391,7 +424,7 @@ describe("ClusterDetail", () => {
     mockGetCluster.mockImplementationOnce(() => new Promise(() => {}))
 
     const view = render(<ClusterDetail clusterId="cl_1" />)
-    expect(view.getByText("Loading cluster...")).toBeTruthy()
+    expect(view.getByText("Loading cluster\u2026")).toBeTruthy()
   })
 
   it("shows error state", async () => {
@@ -471,7 +504,7 @@ describe("ClusterDetail", () => {
 
     await waitFor(
       () => {
-        expect(view.getByText(/Secret: \*\*\*\*/)).toBeTruthy()
+        expect(view.getByText("****")).toBeTruthy()
       },
       { timeout: 5000 }
     )
@@ -678,15 +711,22 @@ describe("ClusterDetail", () => {
 
     await waitFor(
       () => {
-        expect(view.getByText("Cluster logs")).toBeTruthy()
         expect(view.getByText("provider log")).toBeTruthy()
       },
       { timeout: 5000 }
     )
 
-    const sourceSelect = view.getByRole("combobox", { name: "Log source" })
-    fireEvent.change(sourceSelect, { target: { value: "application" } })
+    // The severity column shows the label, never the raw pino number.
+    expect(
+      view.getAllByText("INFO").some((node) => node.tagName === "TD")
+    ).toBe(true)
+    expect(view.queryByText("30")).toBeNull()
+    expect(view.getByText(/Showing 1 of 1 events in app-\*/)).toBeTruthy()
+
+    const sourceSelect = view.getByRole("combobox", { name: "Source" })
     expect((sourceSelect as HTMLSelectElement).value).toBe("application")
+    fireEvent.change(sourceSelect, { target: { value: "http" } })
+    expect((sourceSelect as HTMLSelectElement).value).toBe("http")
   })
 
   it("renders Argo CD deployment observations", async () => {
@@ -738,8 +778,13 @@ describe("ClusterDetail", () => {
 
     await waitFor(
       () => {
-        expect(view.getByText("Prometheus metrics")).toBeTruthy()
-        expect(view.getByText("1.20 cores")).toBeTruthy()
+        // A capacity reading carries its denominator.
+        expect(view.getByText(/1\.20 cores/)).toBeTruthy()
+        expect(view.getByText(/of 12\.00 cores/)).toBeTruthy()
+        // An empty tile names the series that is missing.
+        expect(
+          view.getByText("http_requests_total is not exported by this cluster")
+        ).toBeTruthy()
       },
       { timeout: 5000 }
     )

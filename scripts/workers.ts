@@ -68,6 +68,11 @@ import {
   type AppHostingTrafficSnapshotJobData,
 } from "@/lib/queue/app-hosting-traffic-snapshot"
 import { processDailyTrafficSnapshotsJob } from "@/modules/deploy/opensearch/opensearch-traffic.service"
+import {
+  APP_HOSTING_LOG_ROLLUP_QUEUE,
+  type AppHostingLogRollupJobData,
+} from "@/lib/queue/app-hosting-log-rollup"
+import { processHourlyLogRollupJob } from "@/modules/deploy/opensearch/opensearch-log-health.service"
 
 // ── Quota Reconciliation ───────────────────────────────────────────────────
 import {
@@ -333,6 +338,14 @@ const trafficSnapshotWorker = new Worker<AppHostingTrafficSnapshotJobData>(
   { connection: redisConnection, prefix, concurrency: 1 }
 )
 allWorkers.push(trafficSnapshotWorker)
+
+// ── App Hosting Hourly Log Rollup Worker ───────────────────────────────────
+const logRollupWorker = new Worker<AppHostingLogRollupJobData>(
+  APP_HOSTING_LOG_ROLLUP_QUEUE,
+  async () => processHourlyLogRollupJob(),
+  { connection: redisConnection, prefix, concurrency: 1 }
+)
+allWorkers.push(logRollupWorker)
 
 // ── Quota Reconciliation Worker ─────────────────────────────────────────────
 const quotaWorker = new Worker<QuotaReconciliationJobData>(

@@ -20,6 +20,10 @@ import {
   APP_HOSTING_TRAFFIC_SNAPSHOT_JOB,
   APP_HOSTING_TRAFFIC_SNAPSHOT_QUEUE,
 } from "@/lib/queue/app-hosting-traffic-snapshot"
+import {
+  APP_HOSTING_LOG_ROLLUP_JOB,
+  APP_HOSTING_LOG_ROLLUP_QUEUE,
+} from "@/lib/queue/app-hosting-log-rollup"
 import { WhatsAppHealthJob } from "@/lib/queue/whatsapp-health"
 export interface ScheduledJobDefinition {
   name: string
@@ -127,6 +131,15 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     jobName: BILLING_DAILY_RESET_JOB,
     expression: "0 0 * * *",
     buildJobId: (d) => `daily-cleanup-${d.toISOString().slice(0, 10)}`,
+  },
+  {
+    // Registered in lib/cron/registry.ts since #7xx but never scheduled, so
+    // AppHostingDailyLogSnapshot was only ever written by a manual run.
+    name: "app-hosting-hourly-log-rollup",
+    queueName: APP_HOSTING_LOG_ROLLUP_QUEUE,
+    jobName: APP_HOSTING_LOG_ROLLUP_JOB,
+    expression: "5 * * * *",
+    buildJobId: (d) => `log-rollup-${d.toISOString().slice(0, 13)}`,
   },
   {
     name: "app-hosting-daily-traffic-snapshot",

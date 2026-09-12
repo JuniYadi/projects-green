@@ -87,10 +87,14 @@ export type JenkinsClusterConfig = {
   baseUrl: string
   username: string
   apiToken: string
-  webhookToken: string
-  dslOwner: string
-  dslRepo: string
-  gitCredentialId: string
+  /**
+   * Only the seeding/webhook path needs these; reading builds needs just
+   * baseUrl/username/apiToken, so they must not make the whole config fail.
+   */
+  webhookToken: string | null
+  dslOwner: string | null
+  dslRepo: string | null
+  gitCredentialId: string | null
   sharedLibraryName: string | null
   sharedLibraryBranch: string | null
 }
@@ -129,6 +133,12 @@ export type KubeconfigClusterConfig = {
   kubeconfig: string | null
   namespacePattern: string
   labelSelector: string
+  /**
+   * `true` when apiServerUrl/token came from the pod's own service account
+   * rather than this cluster's row - the answers then describe the portal's
+   * cluster, whichever cluster was asked for.
+   */
+  usesInClusterFallback: boolean
 }
 
 export type PrometheusClusterConfig = {
@@ -189,15 +199,16 @@ export function decryptClusterIntegrationSecrets(
   }
 }
 
+/**
+ * A fixed mask, not a partial reveal: `ghp_`/`eyJh` prefixes name the
+ * credential type on screen and tell an admin nothing they need.
+ */
 export function maskClusterIntegrationSecret(
   secrets: Record<string, unknown>
 ): string | null {
   for (const value of Object.values(secrets)) {
     if (typeof value !== "string" || value.length === 0) continue
-    if (value.length <= 8) return `${value.slice(0, 1)}…`
-    const prefix = value.slice(0, 4)
-    const suffix = value.slice(-4)
-    return `${prefix}…${suffix}`
+    return "••••••••"
   }
   return null
 }
@@ -233,10 +244,10 @@ function buildJenkinsConfig(
     baseUrl: readString(meta, "baseUrl", true),
     username: readString(secrets, "username", true),
     apiToken: readString(secrets, "apiToken", true),
-    webhookToken: readString(secrets, "webhookToken", true),
-    dslOwner: readString(meta, "dslOwner", true),
-    dslRepo: readString(meta, "dslRepo", true),
-    gitCredentialId: readString(meta, "gitCredentialId", true),
+    webhookToken: readString(secrets, "webhookToken", false),
+    dslOwner: readString(meta, "dslOwner", false),
+    dslRepo: readString(meta, "dslRepo", false),
+    gitCredentialId: readString(meta, "gitCredentialId", false),
     sharedLibraryName: readString(meta, "sharedLibraryName", false),
     sharedLibraryBranch: readString(meta, "sharedLibraryBranch", false),
   }
@@ -318,6 +329,7 @@ function buildKubeconfigConfig(
   let apiServerUrl = readString(secrets, "apiServerUrl", false)
   let serviceAccountToken = readString(secrets, "serviceAccountToken", false)
   let caCertificate = readString(secrets, "caCertificate", false)
+  let usesInClusterFallback = false
 
   if (connectionMode === "INTERNAL") {
     if (!apiServerUrl) {
@@ -326,10 +338,12 @@ function buildKubeconfigConfig(
       apiServerUrl = host
         ? `https://${host}:${port}`
         : "https://kubernetes.default.svc"
+      usesInClusterFallback = true
     }
     if (!serviceAccountToken) {
       const inCluster = getInClusterServiceAccountCredentials()
       serviceAccountToken = inCluster.token
+      usesInClusterFallback = true
       if (!caCertificate) {
         caCertificate = inCluster.ca
       }
@@ -344,6 +358,7 @@ function buildKubeconfigConfig(
     kubeconfig: readString(secrets, "kubeconfig", false),
     namespacePattern: readString(meta, "namespacePattern", true),
     labelSelector: readString(meta, "labelSelector", true),
+    usesInClusterFallback,
   }
 }
 function buildPrometheusConfig(

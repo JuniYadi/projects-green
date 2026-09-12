@@ -1883,6 +1883,231 @@ export type AppMessages = {
           editSettings: string
         }
       }
+      clusters: {
+        tabs: {
+          health: string
+          logs: string
+          deployments: string
+          builds: string
+          metrics: string
+          settings: string
+        }
+        providerState: {
+          live: string
+          empty: string
+          stale: string
+          unavailable: string
+          forbidden: string
+          configurationOnly: string
+        }
+        providerNames: {
+          kubernetes: string
+          opensearch: string
+          argocd: string
+          jenkins: string
+          prometheus: string
+        }
+        providerPowers: {
+          kubernetes: string
+          opensearch: string
+          argocd: string
+          jenkins: string
+          prometheus: string
+        }
+        clusterStatus: {
+          active: string
+          planned: string
+          deprecated: string
+        }
+        common: {
+          loading: string
+          retry: string
+          refresh: string
+          source: string
+          observed: string
+          refreshDue: string
+          noDetail: string
+          unknown: string
+          none: string
+          copy: string
+          copied: string
+          export: string
+          view: string
+          connect: string
+        }
+        health: {
+          heading: string
+          nodesReady: string
+          workloadsReady: string
+          lastDeployment: string
+          needsKubernetes: string
+          providerTable: string
+          columnProvider: string
+          columnState: string
+          columnPowers: string
+          columnLastCheck: string
+          columnAction: string
+          verdictHealthy: string
+          seriesFound: string
+        }
+        logs: {
+          heading: string
+          sourceLabel: string
+          sourceAll: string
+          sourceApplication: string
+          sourceHttp: string
+          timeLabel: string
+          time1h: string
+          time6h: string
+          time24h: string
+          timeAll: string
+          levelLabel: string
+          levelAll: string
+          serviceLabel: string
+          serviceAll: string
+          searchPlaceholder: string
+          showing: string
+          showingAtLeast: string
+          columnTime: string
+          columnLevel: string
+          columnService: string
+          columnRoute: string
+          columnMessage: string
+          namespace: string
+          expand: string
+          collapse: string
+          empty: string
+          noTimestamp: string
+          loadMore: string
+        }
+        deployments: {
+          heading: string
+          columnApplication: string
+          columnSync: string
+          columnHealth: string
+          columnRevision: string
+          columnObserved: string
+          columnMessage: string
+          empty: string
+        }
+        builds: {
+          heading: string
+          headingUnfiltered: string
+          scopeFiltered: string
+          columnJob: string
+          columnStatus: string
+          columnBranch: string
+          columnStarted: string
+          columnDuration: string
+          columnArtifacts: string
+          empty: string
+        }
+        metrics: {
+          heading: string
+          groupTraffic: string
+          groupCapacity: string
+          rangeLabel: string
+          range1h: string
+          range6h: string
+          range24h: string
+          noSeries: string
+          notExported: string
+          setMetricNames: string
+          ofCapacity: string
+          sampledAt: string
+          window: string
+          names: {
+            requestRate: string
+            error4xxRate: string
+            error5xxRate: string
+            p95Latency: string
+            cpuUsage: string
+            memoryUsage: string
+            storageUtilization: string
+          }
+        }
+        settings: {
+          coreHeading: string
+          coreDescription: string
+          name: string
+          region: string
+          regionLoading: string
+          regionEmpty: string
+          regionPlaceholder: string
+          storageClass: string
+          storageClassPlaceholder: string
+          nodeSelectors: string
+          nodeSelectorsDescription: string
+          addLabel: string
+          noNodeSelectors: string
+          keyPlaceholder: string
+          valuePlaceholder: string
+          tolerations: string
+          tolerationsDescription: string
+          addToleration: string
+          noTolerations: string
+          notes: string
+          save: string
+          saving: string
+          endpointHeading: string
+          endpointDescription: string
+          endpointLoading: string
+          managedBaseDomain: string
+          cnameTarget: string
+          ipv4Addresses: string
+          ipv6Addresses: string
+          addressPlaceholder: string
+          endpointActive: string
+          saveEndpoint: string
+          savingEndpoint: string
+          integrationsHeading: string
+          exportConfig: string
+          exporting: string
+          importConfig: string
+          addIntegration: string
+          noIntegrations: string
+          secret: string
+          integrationActive: string
+          integrationInactive: string
+          lastTestNever: string
+          lastTestOk: string
+          lastTestFailed: string
+          test: string
+          testing: string
+          edit: string
+          deleteIntegration: string
+          deleteConfirm: string
+          dangerHeading: string
+          dangerDescription: string
+          deactivateHeading: string
+          activateHeading: string
+          deactivateDescription: string
+          deactivate: string
+          activate: string
+          deactivateDialogTitle: string
+          deactivateDialogBody: string
+          cancel: string
+          confirmDeactivation: string
+          deactivating: string
+          testAll: string
+          testingAll: string
+          testAllDone: string
+          setDefault: string
+          openArgo: string
+          openJenkins: string
+          openOpenSearch: string
+          importHeading: string
+          importHelp: string
+          applyImport: string
+          importing: string
+          loadingCluster: string
+          clusterMissing: string
+          statusUpdateFailed: string
+          toggleFailed: string
+          deleteFailed: string
+          exportFailed: string
+        }
+      }
       manage: {
         heading: string
         description: string
@@ -2307,6 +2532,7 @@ export type AppMessages = {
   }
 }
 
+export type ClusterMessages = AppMessages["console"]["app"]["clusters"]
 export type DeployWizardMessages = AppMessages["console"]["app"]["deployWizard"]
 export type TimelineMessages = AppMessages["console"]["app"]["timeline"]
 export type DeploymentsMessages = AppMessages["console"]["app"]["deployments"]

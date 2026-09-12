@@ -551,6 +551,30 @@ export async function importClusterIntegrations(
   }
 }
 
+/**
+ * Stores the outcome of a connection probe so the Settings row can separate
+ * "a row exists" (isActive) from "it answered" (lastTestOk).
+ */
+export async function recordClusterIntegrationTest(
+  clusterId: string,
+  type: AppHostingClusterIntegrationType,
+  result: { ok: boolean; message: string }
+): Promise<void> {
+  const integration = await prisma.appHostingClusterIntegration.findFirst({
+    where: { clusterId, type },
+    select: { id: true },
+  })
+  if (!integration) return
+  await prisma.appHostingClusterIntegration.update({
+    where: { id: integration.id },
+    data: {
+      lastTestAt: new Date(),
+      lastTestOk: result.ok,
+      lastTestMessage: result.message.slice(0, 500),
+    },
+  })
+}
+
 export async function updateClusterIntegrationStatus(
   clusterId: string,
   type: AppHostingClusterIntegrationType,
