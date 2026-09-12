@@ -3,9 +3,11 @@
 import { useState } from "react"
 import {
   ArrowsLeftRight,
+  CaretDown,
   Check,
   Copy,
   Globe,
+  Info,
   Trash,
   Wrench,
 } from "@phosphor-icons/react"
@@ -18,6 +20,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -27,6 +34,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 import type {
   CustomDomain,
   DomainAllowlistMode,
@@ -121,6 +135,7 @@ export function TabDomains({
   const items = apiMode ? apiDomains : []
   const [newDomain, setNewDomain] = useState("")
   const [trustProxy, setTrustProxy] = useState(false)
+  const [proxyOpen, setProxyOpen] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
@@ -236,19 +251,27 @@ export function TabDomains({
             No DNS target published.
           </p>
         ) : (
-          records.map((record, index) => (
-            <div
-              key={`${domain.id}-${record.type}-${record.value}-${index}`}
-              className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
-            >
-              <span className="font-bold text-emerald-400">{record.type}</span>
-              <span className="truncate text-foreground">{record.value}</span>
-              {renderCopyButton(
-                record.value,
-                `${domain.id}-${record.type}-${index}`
-              )}
-            </div>
-          ))
+          <>
+            <p className="text-[11px] text-muted-foreground">
+              Add these records at your domain registrar (GoDaddy, Cloudflare,
+              Namecheap, etc.), then click Verify above.
+            </p>
+            {records.map((record, index) => (
+              <div
+                key={`${domain.id}-${record.type}-${record.value}-${index}`}
+                className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
+              >
+                <span className="font-bold text-emerald-400">
+                  {record.type}
+                </span>
+                <span className="truncate text-foreground">{record.value}</span>
+                {renderCopyButton(
+                  record.value,
+                  `${domain.id}-${record.type}-${index}`
+                )}
+              </div>
+            ))}
+          </>
         )}
       </div>
     )
@@ -278,6 +301,7 @@ export function TabDomains({
       chainPem: "",
     }
     const allowlistEntry = allowlistInput[domain.id] ?? ""
+    const isManaged = domain.kind === "MANAGED"
     return (
       <div
         key={domain.id}
@@ -302,56 +326,72 @@ export function TabDomains({
                 : "Cluster not assigned"}
             </p>
           </div>
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-              DNS
-            </p>
-            <p className="text-xs text-foreground">{domain.dnsStatus}</p>
-            <p className="text-[10px] text-muted-foreground">
-              {dnsCheckLabel(domain)}
-            </p>
-            {domain.dnsVerificationReason && (
-              <p className="text-[10px] text-muted-foreground">
-                {domain.dnsVerificationReason}
+          {isManaged ? (
+            <div className="md:col-span-2">
+              <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                Status
               </p>
-            )}
-            {dnsEvidenceLabel(domain) && (
-              <p className="text-[10px] text-muted-foreground">
-                {dnsEvidenceLabel(domain)}
+              <p className="text-xs text-foreground">
+                Included by default and already reachable. You usually
+                don&apos;t need to manage DNS or SSL for it.
               </p>
-            )}
-          </div>
-          <div>
-            <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-              Certificate
-            </p>
-            <p className="text-xs text-foreground">
-              {certificateLabel(domain)}
-            </p>
-            {domain.certificate?.validationError && (
-              <p className="text-[11px] text-rose-400">
-                {domain.certificate.validationError}
-              </p>
-            )}
-          </div>
+            </div>
+          ) : (
+            <>
+              <div>
+                <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  DNS
+                </p>
+                <p className="text-xs text-foreground">{domain.dnsStatus}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {dnsCheckLabel(domain)}
+                </p>
+                {domain.dnsVerificationReason && (
+                  <p className="text-[10px] text-muted-foreground">
+                    {domain.dnsVerificationReason}
+                  </p>
+                )}
+                {dnsEvidenceLabel(domain) && (
+                  <p className="text-[10px] text-muted-foreground">
+                    {dnsEvidenceLabel(domain)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Certificate
+                </p>
+                <p className="text-xs text-foreground">
+                  {certificateLabel(domain)}
+                </p>
+                {domain.certificate?.validationError && (
+                  <p className="text-[11px] text-rose-400">
+                    {domain.certificate.validationError}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
           <div className="text-xs text-muted-foreground">
             <p>{displayValue(domain.endpoint?.managedBaseDomain)}</p>
             <p className="text-[11px]">{domain.cluster?.code || ""}</p>
           </div>
           <div className="flex gap-1 md:justify-end">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={busyKey !== null}
-              onClick={() =>
-                void runAction(`verify-${domain.id}`, () =>
-                  api!.onVerifyDomain(domain.id)
-                )
-              }
-            >
-              Verify
-            </Button>
+            {!isManaged && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busyKey !== null}
+                onClick={() =>
+                  void runAction(`verify-${domain.id}`, () =>
+                    api!.onVerifyDomain(domain.id)
+                  )
+                }
+              >
+                Verify
+              </Button>
+            )}
             <Button
               type="button"
               size="sm"
@@ -368,60 +408,87 @@ export function TabDomains({
             </Button>
           </div>
         </div>
-        {renderDns(domain)}
-        <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-3">
-          {(["certificatePem", "privateKeyPem", "chainPem"] as const).map(
-            (field) => (
-              <label
-                key={field}
-                className="space-y-1 text-[10px] font-semibold text-muted-foreground"
-              >
-                {field === "certificatePem"
-                  ? "Certificate PEM"
-                  : field === "privateKeyPem"
-                    ? "Private key PEM"
-                    : "Chain PEM"}
-                <textarea
-                  className="min-h-20 w-full rounded-md border border-border bg-background p-2 font-mono text-[10px] text-foreground"
-                  value={certificate[field]}
-                  onChange={(event) =>
-                    updateCertificateField(domain.id, field, event.target.value)
-                  }
-                  placeholder="Write-only secret material"
-                />
-              </label>
-            )
-          )}
-          <Button
-            type="button"
-            size="sm"
-            className="md:col-span-3 md:w-fit"
-            disabled={
-              busyKey !== null ||
-              !certificate.certificatePem ||
-              !certificate.privateKeyPem
-            }
-            onClick={() =>
-              void runAction(`certificate-${domain.id}`, async () => {
-                await api!.onUploadCertificate(domain.id, certificate)
-                setCertificateForm((previous) => ({
-                  ...previous,
-                  [domain.id]: {
-                    certificatePem: "",
-                    privateKeyPem: "",
-                    chainPem: "",
-                  },
-                }))
-              })
-            }
-          >
-            Save certificate
-          </Button>
-        </div>
+        {!isManaged && renderDns(domain)}
+        {!isManaged && (
+          <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-3">
+            <p className="text-[11px] text-muted-foreground md:col-span-3">
+              Only needed if you want to use your own SSL certificate for this
+              domain.
+            </p>
+            {(["certificatePem", "privateKeyPem", "chainPem"] as const).map(
+              (field) => (
+                <label
+                  key={field}
+                  className="space-y-1 text-[10px] font-semibold text-muted-foreground"
+                >
+                  {field === "certificatePem"
+                    ? "Certificate PEM"
+                    : field === "privateKeyPem"
+                      ? "Private key PEM"
+                      : "Chain PEM"}
+                  <textarea
+                    className="min-h-20 w-full rounded-md border border-border bg-background p-2 font-mono text-[10px] text-foreground"
+                    value={certificate[field]}
+                    onChange={(event) =>
+                      updateCertificateField(
+                        domain.id,
+                        field,
+                        event.target.value
+                      )
+                    }
+                    placeholder="Write-only secret material"
+                  />
+                </label>
+              )
+            )}
+            <Button
+              type="button"
+              size="sm"
+              className="md:col-span-3 md:w-fit"
+              disabled={
+                busyKey !== null ||
+                !certificate.certificatePem ||
+                !certificate.privateKeyPem
+              }
+              onClick={() =>
+                void runAction(`certificate-${domain.id}`, async () => {
+                  await api!.onUploadCertificate(domain.id, certificate)
+                  setCertificateForm((previous) => ({
+                    ...previous,
+                    [domain.id]: {
+                      certificatePem: "",
+                      privateKeyPem: "",
+                      chainPem: "",
+                    },
+                  }))
+                })
+              }
+            >
+              Save certificate
+            </Button>
+          </div>
+        )}
         <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold text-foreground">
+            <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
               Allowlist
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-hidden"
+                      aria-label="What does Allowlist do?"
+                    >
+                      <Info size={12} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px]">
+                    Open lets anyone reach this domain. Allowlist only blocks
+                    every visitor except the IP ranges you add below.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </span>
             <Select
               value={domain.allowlistMode}
@@ -519,8 +586,8 @@ export function TabDomains({
             Custom Domain Settings
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Bind domain endpoints to the application and manage DNS,
-            certificates, and allowlists.
+            Point a domain you own (e.g. shop.acme.com) to this app, or use the
+            free address included below.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -643,7 +710,7 @@ export function TabDomains({
               </form>
             </div>
           )}
-          {apiMode && (
+          {apiMode && items.some((domain) => domain.kind === "CUSTOM") && (
             <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4 text-xs">
               <span className="flex items-center gap-2 font-bold text-foreground">
                 <Wrench size={15} className="text-primary" /> DNS configuration
@@ -693,64 +760,82 @@ export function TabDomains({
         </Card>
       )}
       <Card size="sm" className="border-border bg-card shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-            <ArrowsLeftRight size={18} className="text-primary" /> Reverse Proxy
-            Ingress
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">
-            Trust proxy headers to capture authentic client metadata
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 text-xs leading-relaxed">
-          <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-muted/30 p-4">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground">
-                Trust Forwarded Headers
-              </span>
-              <Switch
-                checked={trustProxy}
-                onCheckedChange={setTrustProxy}
-                aria-label="Trust Forwarded Headers"
+        <Collapsible open={proxyOpen} onOpenChange={setProxyOpen}>
+          <CardHeader className="pb-2">
+            <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-left">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+                  <ArrowsLeftRight size={18} className="text-primary" /> Reverse
+                  Proxy Ingress
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Advanced — only relevant if you sit behind Cloudflare, an ALB,
+                  or another proxy
+                </CardDescription>
+              </div>
+              <CaretDown
+                size={16}
+                className={cn(
+                  "shrink-0 text-muted-foreground transition-transform",
+                  proxyOpen && "rotate-180"
+                )}
               />
-            </div>
-            <p className="text-[11px] leading-normal text-muted-foreground">
-              Configures nginx and the application setting{" "}
-              <code className="rounded border border-border/50 bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
-                TRUST_PROXIES=*
-              </code>
-              .
-            </p>
-          </div>
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="flex flex-col gap-4 text-xs leading-relaxed">
+              <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground">
+                    Trust Forwarded Headers
+                  </span>
+                  <Switch
+                    checked={trustProxy}
+                    onCheckedChange={setTrustProxy}
+                    aria-label="Trust Forwarded Headers"
+                  />
+                </div>
+                <p className="text-[11px] leading-normal text-muted-foreground">
+                  Configures nginx and the application setting{" "}
+                  <code className="rounded border border-border/50 bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
+                    TRUST_PROXIES=*
+                  </code>
+                  .
+                </p>
+              </div>
 
-          <div className="flex flex-col gap-2 border-l-2 border-blue-500/40 pl-3">
-            <h4 className="text-xs leading-tight font-bold text-foreground">
-              User IP Resolution
-            </h4>
-            <p className="text-[11px] leading-normal text-muted-foreground">
-              When deployed behind Cloudflare, an ALB, or an Ingress, client
-              requests can otherwise show internal cluster IPs in application
-              logs.
-            </p>
-            <p className="text-[11px] leading-normal font-medium text-muted-foreground">
-              Trusting forwarded headers lets the application read the
-              client&apos;s{" "}
-              <code className="font-mono text-foreground">X-Forwarded-For</code>{" "}
-              value.
-            </p>
-            {trustProxy ? (
-              <span className="text-[11px] font-semibold text-emerald-400">
-                Trust proxies is active. Real client IPs will be available to
-                application code.
-              </span>
-            ) : (
-              <span className="text-[11px] font-semibold text-amber-400">
-                Currently disabled. Client IP may register as an internal
-                cluster IP.
-              </span>
-            )}
-          </div>
-        </CardContent>
+              <div className="flex flex-col gap-2 border-l-2 border-blue-500/40 pl-3">
+                <h4 className="text-xs leading-tight font-bold text-foreground">
+                  User IP Resolution
+                </h4>
+                <p className="text-[11px] leading-normal text-muted-foreground">
+                  When deployed behind Cloudflare, an ALB, or an Ingress, client
+                  requests can otherwise show internal cluster IPs in
+                  application logs.
+                </p>
+                <p className="text-[11px] leading-normal font-medium text-muted-foreground">
+                  Trusting forwarded headers lets the application read the
+                  client&apos;s{" "}
+                  <code className="font-mono text-foreground">
+                    X-Forwarded-For
+                  </code>{" "}
+                  value.
+                </p>
+                {trustProxy ? (
+                  <span className="text-[11px] font-semibold text-emerald-400">
+                    Trust proxies is active. Real client IPs will be available
+                    to application code.
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Off by default. Turn this on only if you&apos;re behind a
+                    proxy and need real client IPs in your app.
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
     </div>
   )
