@@ -61,6 +61,7 @@ const clusterOperationsQuery = t.Optional(
     service: t.Optional(t.String()),
     from: t.Optional(t.String()),
     to: t.Optional(t.String()),
+    limit: t.Optional(t.Numeric({ minimum: 1, maximum: 500 })),
     range: t.Optional(
       t.Union([t.Literal("1h"), t.Literal("6h"), t.Literal("24h")])
     ),
