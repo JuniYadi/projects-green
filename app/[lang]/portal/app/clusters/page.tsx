@@ -1,15 +1,17 @@
 import type { Metadata } from "next"
 
-import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { ClusterList } from "./_components/cluster-list"
 
 export const metadata: Metadata = { title: "Cluster Inventory" }
 
-export default function ClusterListPage() {
-  const params = useParams<{ lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
+export default async function ClusterListPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>
+}) {
+  const locale = resolveLocaleOrDefault((await params).lang)
   const messages = getMessages(locale).console.app.clusterInventory
 
   return (
