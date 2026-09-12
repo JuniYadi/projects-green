@@ -106,6 +106,50 @@ describe("tokens.route", () => {
     })
   })
 
+  describe("GET /tokens tenant isolation (WA-C02)", () => {
+    it("scopes an organization API key to its own organization", async () => {
+      mockAuthContext.current = { type: "platform", organizationId: "org-2" }
+
+      const res = await app.handle(new Request("http://localhost/tokens"))
+
+      expect(res.status).toBe(200)
+      expect(mockFindMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-2" },
+        orderBy: { createdAt: "desc" },
+      })
+    })
+
+    it("rejects a session without an organization", async () => {
+      mockAuthContext.current = {
+        type: "workos",
+        userId: "user-1",
+        platformRole: "none",
+      }
+
+      const res = await app.handle(new Request("http://localhost/tokens"))
+
+      expect(res.status).toBe(403)
+      expect(mockFindMany).not.toHaveBeenCalled()
+    })
+
+    it("never returns the stored key secret", async () => {
+      mockAuthContext.current = {
+        type: "workos",
+        organizationId: "org-1",
+        userId: "user-1",
+        platformRole: "none",
+      }
+      mockFindMany.mockResolvedValueOnce([
+        { id: "tok-1", name: "Prod", key: "secret-value", environment: "LIVE" },
+      ] as unknown as never)
+
+      const res = await app.handle(new Request("http://localhost/tokens"))
+
+      expect(res.status).toBe(200)
+      expect(await res.text()).not.toContain("secret-value")
+    })
+  })
+
   describe("GET /tokens/:id", () => {
     it("returns 404 when token not found", async () => {
       mockAuthContext.current = {
