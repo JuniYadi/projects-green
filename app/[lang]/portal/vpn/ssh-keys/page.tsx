@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { SshKeysTable } from "../_components/ssh-keys-table"
+
+export const metadata: Metadata = { title: "SSH Keys" }
 
 export default async function VpnSshKeysPage() {
   return (

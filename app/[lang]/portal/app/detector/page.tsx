@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { DetectorTabs } from "./_components/detector-tabs"
+
+export const metadata: Metadata = { title: "Detector Control Center" }
 
 export default async function DetectorGovernancePage({
   searchParams,

@@ -19,7 +19,7 @@ import { formatBillingMoney } from "@/modules/billing/format-money"
 const CATALOG_CURRENCY = "IDR"
 
 export const metadata: Metadata = {
-  title: "WhatsApp Official API | PFNApp",
+  title: "WhatsApp Official API",
   description:
     "Connect your business to WhatsApp Official API with managed plans, clear quotas, and transparent pricing.",
 }

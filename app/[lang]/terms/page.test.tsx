@@ -23,11 +23,11 @@ describe("Terms of Service Page", () => {
     const enMeta = await generateTermsMetadata({
       params: Promise.resolve({ lang: "en" }),
     })
-    expect(enMeta.title).toBe("Terms of Service — PFNApp")
+    expect(enMeta.title).toBe("Terms of Service")
 
     const idMeta = await generateTermsMetadata({
       params: Promise.resolve({ lang: "id" }),
     })
-    expect(idMeta.title).toBe("Ketentuan Layanan — PFNApp")
+    expect(idMeta.title).toBe("Ketentuan Layanan")
   })
 })

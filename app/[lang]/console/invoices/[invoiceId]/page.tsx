@@ -1,8 +1,11 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { InvoiceDetailScreen } from "@/modules/invoices/ui/invoice-detail-screen"
+
+export const metadata: Metadata = { title: "Invoice Detail" }
 
 type InvoiceDetailPageProps = {
   params: Promise<{

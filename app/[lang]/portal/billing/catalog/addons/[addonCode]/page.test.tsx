@@ -47,7 +47,8 @@ mock.module("sonner", () => ({
   toast: { success: mock(), error: mock() },
 }))
 
-const { default: AddonEditorPage, decodeAddonDraft } = await import("./page")
+const { default: AddonEditorPage, decodeAddonDraft } =
+  await import("./page-client")
 
 describe.serial("AddonEditorPage local draft behavior", () => {
   beforeEach(() => {

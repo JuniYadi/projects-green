@@ -1,7 +1,10 @@
+import type { Metadata } from "next"
 import { Suspense } from "react"
 
 import { PaymentTabs } from "./payment-tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+
+export const metadata: Metadata = { title: "Payments" }
 
 export default async function BillingPaymentsPage({
   searchParams,

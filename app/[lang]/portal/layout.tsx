@@ -23,7 +23,7 @@ import { readFunctionalTestIdentity } from "@/lib/auth/functional-test-session"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "PFNApp Portal",
+  title: { absolute: "PFNApp Portal", template: "%s | PFNApp Portal" },
 }
 
 const ONBOARDING_PATH = "/onboarding/organization"

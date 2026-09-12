@@ -1,4 +1,5 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -20,6 +21,8 @@ import { DeviceActions } from "./device-actions"
 import { QuotaBalanceCard } from "./quota-balance-card"
 import { TabsDeviceDetail } from "@/modules/whatsapp/webhooks/ui/tabs-device-detail"
 import type { MetaWebhookSyncState } from "@/modules/whatsapp/webhooks/ui/meta-webhook-card"
+
+export const metadata: Metadata = { title: "Device Details" }
 
 type DeviceDetailPageProps = {
   params: Promise<{

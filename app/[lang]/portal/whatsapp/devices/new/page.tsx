@@ -1,5 +1,9 @@
+import type { Metadata } from "next"
+
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { DeviceCreateWizard } from "./_components/device-create-wizard"
+
+export const metadata: Metadata = { title: "Add WhatsApp Device" }
 
 type NewDevicePageProps = {
   params: Promise<{ lang: string }>

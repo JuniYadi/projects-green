@@ -1,5 +1,9 @@
+import type { Metadata } from "next"
+
 import { VerifyEmailForm } from "@/components/verify-email-form"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
+export const metadata: Metadata = { title: "Verify your email" }
 
 const getSafeNext = (next: string | undefined, fallbackPath: string) => {
   if (!next || !next.startsWith("/")) {

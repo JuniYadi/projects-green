@@ -16,7 +16,7 @@ export async function generateMetadata({
   const messages = getMessages(locale)
 
   return {
-    title: `${messages.legal.acceptableUse.title} — PFNApp`,
+    title: messages.legal.acceptableUse.title,
     description: messages.legal.acceptableUse.description,
     openGraph: {
       title: `${messages.legal.acceptableUse.title} — PFNApp`,

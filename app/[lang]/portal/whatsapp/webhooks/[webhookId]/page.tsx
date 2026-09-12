@@ -1,4 +1,5 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import Link from "next/link"
 
 import { prisma } from "@/lib/prisma"
@@ -15,6 +16,8 @@ import {
   DeliveryLogsSection,
   TestPingButton,
 } from "@/modules/whatsapp/webhooks/ui/portal-delivery-logs"
+
+export const metadata: Metadata = { title: "Webhook Details" }
 
 type WebhookDetailPageProps = {
   params: Promise<{

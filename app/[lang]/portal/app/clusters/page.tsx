@@ -1,9 +1,11 @@
-"use client"
+import type { Metadata } from "next"
 
 import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { ClusterList } from "./_components/cluster-list"
+
+export const metadata: Metadata = { title: "Cluster Inventory" }
 
 export default function ClusterListPage() {
   const params = useParams<{ lang?: string }>()

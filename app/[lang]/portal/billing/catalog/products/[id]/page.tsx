@@ -1,11 +1,5 @@
-"use client"
+import type { Metadata } from "next"
 
-import { useParams } from "next/navigation"
+export const metadata: Metadata = { title: "Product Details" }
 
-import { ProductEditor } from "@/components/billing/admin/catalog/product-editor"
-
-export default function ProductEditorRoute() {
-  const { id } = useParams<{ id: string }>()
-
-  return <ProductEditor productCode={id.toUpperCase()} isNew={false} />
-}
+export { default } from "./page-client"

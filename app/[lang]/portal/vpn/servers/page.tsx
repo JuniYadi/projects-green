@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { ServersTable } from "../_components/servers-table"
+
+export const metadata: Metadata = { title: "Servers" }
 
 export default async function VpnServersPage() {
   return (

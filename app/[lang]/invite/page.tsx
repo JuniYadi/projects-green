@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { withAuth } from "@workos-inc/authkit-nextjs"
@@ -15,6 +16,8 @@ import {
   getTenantOrganizationById,
 } from "@/modules/tenants/services/tenant-workos.service"
 import { APP_NAME } from "@/lib/app-config"
+
+export const metadata: Metadata = { title: "Invitation" }
 
 type InvitePageProps = {
   params: Promise<{ lang: string }>

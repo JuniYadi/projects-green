@@ -1,4 +1,5 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import Link from "next/link"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -36,6 +37,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+
+export const metadata: Metadata = { title: "WhatsApp Devices" }
 
 function QuotaUsageCell({ device }: { device: DeviceListItem }) {
   const total = device.quotaBase > 0 ? device.quotaBase : 1000

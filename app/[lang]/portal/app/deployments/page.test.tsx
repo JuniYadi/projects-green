@@ -81,7 +81,7 @@ mock.module("@/lib/eden", () => ({
 }))
 
 const { default: AdminDeploymentsPage, formatDeploymentDuration } =
-  await import("./page")
+  await import("./page-client")
 
 beforeEach(() => {
   mockGetDeployments.mockClear()

@@ -198,7 +198,7 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
   })
 
   it("renders truthful Meta display-name status states", async () => {
-    const { MetaNameStatusBadge } = await import("./page")
+    const { MetaNameStatusBadge } = await import("./page-client")
     const view = render(
       React.createElement(MetaNameStatusBadge, {
         nameStatus: null,

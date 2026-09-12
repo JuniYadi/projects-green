@@ -13,7 +13,10 @@ import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
-  title: "PFNApp — Full-Stack Cloud Platform",
+  title: {
+    default: "PFNApp — Full-Stack Cloud Platform",
+    template: "%s | PFNApp",
+  },
   description:
     "PFNApp gives developers one place to deploy applications, run services, and manage cloud infrastructure.",
   icons: {

@@ -48,12 +48,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!doc) {
     return {
-      title: "Document Not Found — PFNApp Docs",
+      title: "Document Not Found",
     }
   }
 
   return {
-    title: `${doc.title} — PFNApp Docs`,
+    title: doc.title,
     description: doc.purpose,
   }
 }

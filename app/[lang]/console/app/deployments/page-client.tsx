@@ -1,0 +1,638 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation"
+import { ArrowsClockwise } from "@phosphor-icons/react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import {
+  DEPLOY_STATUS_LABELS,
+  DEPLOY_STATUS_TONE as STATUS_TONE,
+} from "@/modules/deploy/deploy.constants"
+import type {
+  DeploymentHistoryDTO,
+  DeploymentStatusDTO,
+  StackSummaryDTO,
+} from "@/modules/deploy/deploy-monitor.dto"
+import type { DeployLogScope } from "@/modules/deploy/deploy.types"
+import { AppMonitor } from "@/modules/deploy/ui/operate/app-monitor"
+import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
+import { AppWorkspaceHeader } from "@/modules/deploy/ui/app-workspace-header"
+
+const APP_QUERY_KEY = "app"
+const PAGE_SIZE = 20
+
+type HistoryMeta = {
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+const findDefaultSlug = (
+  apps: StackSummaryDTO[],
+  preferred: string | null
+): string | null => {
+  if (preferred && apps.some((app) => app.slug === preferred)) return preferred
+  return apps[0]?.slug ?? null
+}
+
+const formatDuration = (durationMs: number | null): string => {
+  if (durationMs === null) return "—"
+  if (durationMs < 1000) return `${durationMs}ms`
+  const seconds = durationMs / 1000
+  if (seconds < 60) return `${Number(seconds.toFixed(1))}s`
+  const minutes = Math.floor(seconds / 60)
+  const remainder = Math.round(seconds % 60)
+  return `${minutes}m ${remainder}s`
+}
+
+const formatTime = (value: string | null, locale: string): string => {
+  if (!value) return "—"
+  return new Date(value).toLocaleString(locale)
+}
+
+const toDeploymentStatus = (
+  deployment: DeploymentHistoryDTO
+): DeploymentStatusDTO => ({
+  id: deployment.id,
+  status: deployment.status,
+  attempt: deployment.attempt,
+  manifestPushed: false,
+  argocdSynced: false,
+  failureReason: deployment.failureReason,
+  startedAt: deployment.startedAt,
+  completedAt: deployment.completedAt,
+})
+
+export default function DeploymentsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const tDeployments = messages.console.app.deployments
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const [apps, setApps] = useState<StackSummaryDTO[]>([])
+  const [appsLoading, setAppsLoading] = useState(true)
+  const [appsError, setAppsError] = useState<string | null>(null)
+  const [appsRetry, setAppsRetry] = useState(0)
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(() =>
+    searchParams.get(APP_QUERY_KEY)
+  )
+
+  useEffect(() => {
+    if (selectedSlug) {
+      router.replace(
+        `/${locale}/console/app/platform/${selectedSlug}?tab=deployments`
+      )
+    }
+  }, [locale, router, selectedSlug])
+
+  const [overview, setOverview] = useState<{
+    stack: StackSummaryDTO
+    latestDeployment: DeploymentStatusDTO | null
+  } | null>(null)
+  const [overviewLoading, setOverviewLoading] = useState(false)
+  const [overviewError, setOverviewError] = useState<string | null>(null)
+  const [overviewRetry, setOverviewRetry] = useState(0)
+  const [history, setHistory] = useState<DeploymentHistoryDTO[]>([])
+  const [historyMeta, setHistoryMeta] = useState<HistoryMeta | null>(null)
+  const [historyPage, setHistoryPage] = useState(1)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [historyRetry, setHistoryRetry] = useState(0)
+  const [selectedDeploymentId, setSelectedDeploymentId] = useState<
+    string | null
+  >(null)
+  const [logScope, setLogScope] = useState<DeployLogScope>("all")
+  const [retrying, setRetrying] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [retryError, setRetryError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const run = async () => {
+      setAppsLoading(true)
+      setAppsError(null)
+      try {
+        const { data: payload } = await eden.api.deploy.apps.get()
+        if (!payload || !payload.ok || !Array.isArray(payload.data)) {
+          throw new Error(payload?.message ?? "Unable to load applications.")
+        }
+        if (cancelled) return
+        setApps(payload.data)
+        setSelectedSlug(findDefaultSlug(payload.data, selectedSlug))
+      } catch (cause) {
+        if (cancelled) return
+        setApps([])
+        setAppsError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load applications."
+        )
+      } finally {
+        if (!cancelled) setAppsLoading(false)
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appsRetry])
+
+  useEffect(() => {
+    const current = searchParams.get(APP_QUERY_KEY)
+    if (current === selectedSlug) return
+    const next = new URLSearchParams(searchParams.toString())
+    if (selectedSlug) next.set(APP_QUERY_KEY, selectedSlug)
+    else next.delete(APP_QUERY_KEY)
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false })
+  }, [pathname, router, searchParams, selectedSlug])
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setHistoryPage(1)
+      setSelectedDeploymentId(null)
+      setHistory([])
+      setHistoryMeta(null)
+      setHistoryError(null)
+      setRetryError(null)
+    })
+  }, [selectedSlug])
+
+  useEffect(() => {
+    if (!selectedSlug) {
+      queueMicrotask(() => setOverview(null))
+      return
+    }
+
+    let cancelled = false
+    const run = async () => {
+      setOverviewLoading(true)
+      setOverviewError(null)
+      try {
+        const { data: payload } = await eden.api.deploy.apps[selectedSlug].get()
+        if (!payload || !payload.ok || !payload.data) {
+          throw new Error(
+            payload?.message ?? "Unable to load application state."
+          )
+        }
+        if (!cancelled) setOverview(payload.data)
+      } catch (cause) {
+        if (cancelled) return
+        setOverview(null)
+        setOverviewError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load application state."
+        )
+      } finally {
+        if (!cancelled) setOverviewLoading(false)
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [overviewRetry, selectedSlug])
+
+  useEffect(() => {
+    if (!selectedSlug) {
+      queueMicrotask(() => {
+        setHistory([])
+        setHistoryMeta(null)
+      })
+      return
+    }
+
+    let cancelled = false
+    const run = async () => {
+      setHistoryLoading(true)
+      setHistoryError(null)
+      try {
+        const { data: payload } = await eden.api.deploy.apps[
+          selectedSlug
+        ].history.get({ $query: { page: historyPage, pageSize: PAGE_SIZE } })
+        const historyData = payload?.data
+        if (!payload || !payload.ok || !Array.isArray(historyData)) {
+          throw new Error(
+            payload?.message ?? "Unable to load deployment history."
+          )
+        }
+        if (cancelled) return
+        setHistory(historyData)
+        setHistoryMeta(payload.meta ?? null)
+        setSelectedDeploymentId((current) =>
+          current && historyData.some((deployment) => deployment.id === current)
+            ? current
+            : (historyData[0]?.id ?? null)
+        )
+      } catch (cause) {
+        if (cancelled) return
+        setHistory([])
+        setHistoryMeta(null)
+        setHistoryError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load deployment history."
+        )
+      } finally {
+        if (!cancelled) setHistoryLoading(false)
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [historyPage, historyRetry, selectedSlug])
+
+  const selectedDeployment = history.find(
+    (deployment) => deployment.id === selectedDeploymentId
+  )
+  const selectedStatus = selectedDeployment
+    ? toDeploymentStatus(selectedDeployment)
+    : null
+
+  const handleRetry = async () => {
+    if (
+      !overview ||
+      !selectedDeployment ||
+      selectedDeployment.status !== "failed"
+    ) {
+      return
+    }
+    setRetrying(true)
+    setRetryError(null)
+    try {
+      const { data: payload } = await eden.api.deploy.trigger[
+        overview.stack.id
+      ].post({})
+      if (!payload || !payload.ok) {
+        throw new Error(payload?.message ?? "Unable to retry deployment.")
+      }
+      const deploymentId = payload.data?.deploymentId
+      if (typeof deploymentId === "string")
+        setSelectedDeploymentId(deploymentId)
+      setOverviewRetry((value) => value + 1)
+      setHistoryRetry((value) => value + 1)
+    } catch (cause) {
+      setRetryError(
+        cause instanceof Error ? cause.message : "Unable to retry deployment."
+      )
+    } finally {
+      setRetrying(false)
+    }
+  }
+
+  const handleSync = async (force = false) => {
+    if (!overview) return
+    setSyncing(true)
+    setRetryError(null)
+    try {
+      const { data: payload } = await eden.api.deploy.trigger[
+        overview.stack.id
+      ].post({ force })
+      if (!payload || !payload.ok) {
+        if (
+          !force &&
+          (payload?.error === "STACK_DEPLOY_IN_PROGRESS" ||
+            payload?.message?.includes("already in progress"))
+        ) {
+          const confirmForce = window.confirm(
+            "A deployment is currently in progress for this stack. Do you want to cancel it and force sync a new deployment?"
+          )
+          if (confirmForce) {
+            await handleSync(true)
+            return
+          }
+        }
+        throw new Error(payload?.message ?? "Unable to sync deployment.")
+      }
+      toast.success("Deployment configuration synced & triggered")
+      const deploymentId = payload.data?.deploymentId
+      if (typeof deploymentId === "string") {
+        setSelectedDeploymentId(deploymentId)
+      }
+      setOverviewRetry((value) => value + 1)
+      setHistoryRetry((value) => value + 1)
+    } catch (cause) {
+      const message =
+        cause instanceof Error ? cause.message : "Unable to sync deployment."
+      setRetryError(message)
+      toast.error(message)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const handleAppsRetry = () => setAppsRetry((value) => value + 1)
+  const handleHistoryRetry = () => setHistoryRetry((value) => value + 1)
+  const totalPages = historyMeta?.totalPages ?? 0
+  const targetDomain = overview?.stack.customDomain || overview?.stack.subdomain
+  const currentApp =
+    overview?.stack ??
+    apps.find((app) => app.slug === selectedSlug) ??
+    apps[0] ??
+    null
+  return (
+    <LifecyclePageShell
+      title={tDeployments.heading}
+      description={tDeployments.description}
+    >
+      <div className="space-y-6">
+        {appsLoading ? (
+          <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+            {messages.console.app.manage.loadingApps}
+          </div>
+        ) : appsError ? (
+          <div
+            className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+            role="alert"
+          >
+            <span>{appsError}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAppsRetry}
+            >
+              {messages.console.app.manage.retry}
+            </Button>
+          </div>
+        ) : apps.length === 0 ? (
+          <div className="space-y-2 rounded-xl border border-dashed border-border bg-muted/10 p-8 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {messages.console.app.manage.noApps}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {messages.console.app.manage.noAppsDescription}
+            </p>
+          </div>
+        ) : (
+          <>
+            {currentApp ? (
+              <AppWorkspaceHeader
+                apps={apps}
+                selectedApp={currentApp}
+                activeTab="deployments"
+                locale={locale}
+                onSync={() => handleSync()}
+                isSyncing={syncing}
+              />
+            ) : null}
+
+            {overviewLoading ? (
+              <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+                {messages.console.app.manage.loadingAppState}
+              </div>
+            ) : overviewError ? (
+              <div
+                className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+                role="alert"
+              >
+                <span>{overviewError}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setOverviewRetry((value) => value + 1)}
+                >
+                  {messages.console.app.manage.retry}
+                </Button>
+              </div>
+            ) : overview ? (
+              <>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                    <div>
+                      <CardTitle>{tDeployments.historyTitle}</CardTitle>
+                      <CardDescription>
+                        {historyMeta
+                          ? `${historyMeta.total} ${tDeployments.table.attempt.toLowerCase()}${historyMeta.total === 1 || locale === "id" ? "" : "s"}`
+                          : tDeployments.historyDescription}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSync()}
+                      disabled={syncing}
+                      className="shrink-0 gap-1.5"
+                    >
+                      <ArrowsClockwise
+                        className={`size-3.5 ${syncing ? "animate-spin" : ""}`}
+                      />
+                      {syncing ? "Syncing..." : "Sync Config"}
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {historyLoading ? (
+                      <p className="text-sm text-muted-foreground">
+                        {tDeployments.loadingHistory}
+                      </p>
+                    ) : historyError ? (
+                      <div
+                        className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+                        role="alert"
+                      >
+                        <span>{historyError}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleHistoryRetry}
+                        >
+                          {messages.console.app.manage.retry}
+                        </Button>
+                      </div>
+                    ) : history.length === 0 ? (
+                      <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                        {tDeployments.noAttempts}
+                      </p>
+                    ) : (
+                      <>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>
+                                  {tDeployments.table.status}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.attempt}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.duration}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.commit}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.failure}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.started}
+                                </TableHead>
+                                <TableHead>
+                                  {tDeployments.table.completed}
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {history.map((deployment) => (
+                                <TableRow
+                                  key={deployment.id}
+                                  data-state={
+                                    deployment.id === selectedDeploymentId
+                                      ? "selected"
+                                      : undefined
+                                  }
+                                  tabIndex={0}
+                                  onClick={() =>
+                                    setSelectedDeploymentId(deployment.id)
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (
+                                      event.key === "Enter" ||
+                                      event.key === " "
+                                    ) {
+                                      event.preventDefault()
+                                      setSelectedDeploymentId(deployment.id)
+                                    }
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  <TableCell>
+                                    <span
+                                      className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_TONE[deployment.status] ?? STATUS_TONE.idle}`}
+                                    >
+                                      {DEPLOY_STATUS_LABELS[
+                                        deployment.status
+                                      ] ?? deployment.status}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>#{deployment.attempt}</TableCell>
+                                  <TableCell>
+                                    {formatDuration(deployment.durationMs)}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {deployment.commitSha
+                                      ? deployment.commitSha.slice(0, 7)
+                                      : "—"}
+                                  </TableCell>
+                                  <TableCell>
+                                    {deployment.failureReason ?? "—"}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatTime(deployment.startedAt, locale)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatTime(deployment.completedAt, locale)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        {totalPages > 1 ? (
+                          <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+                            <span>
+                              Page {historyMeta?.page ?? historyPage} of{" "}
+                              {totalPages}
+                            </span>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={historyPage <= 1}
+                                onClick={() =>
+                                  setHistoryPage((page) =>
+                                    Math.max(1, page - 1)
+                                  )
+                                }
+                              >
+                                Previous
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={historyPage >= totalPages}
+                                onClick={() =>
+                                  setHistoryPage((page) =>
+                                    Math.min(totalPages, page + 1)
+                                  )
+                                }
+                              >
+                                Next
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {retryError ? (
+                  <div
+                    className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    {retryError}
+                  </div>
+                ) : null}
+
+                <AppMonitor
+                  stack={overview.stack}
+                  deployment={selectedStatus}
+                  logScope={logScope}
+                  onLogScopeChange={setLogScope}
+                  liveDomain={targetDomain ?? undefined}
+                  onRetry={
+                    selectedDeployment?.status === "failed" && !retrying
+                      ? handleRetry
+                      : undefined
+                  }
+                  locale={locale}
+                />
+              </>
+            ) : null}
+          </>
+        )}
+      </div>
+    </LifecyclePageShell>
+  )
+}

@@ -25,11 +25,11 @@ describe("Privacy Policy Page", () => {
     const enMeta = await generatePrivacyMetadata({
       params: Promise.resolve({ lang: "en" }),
     })
-    expect(enMeta.title).toBe("Privacy Policy — PFNApp")
+    expect(enMeta.title).toBe("Privacy Policy")
 
     const idMeta = await generatePrivacyMetadata({
       params: Promise.resolve({ lang: "id" }),
     })
-    expect(idMeta.title).toBe("Kebijakan Privasi — PFNApp")
+    expect(idMeta.title).toBe("Kebijakan Privasi")
   })
 })

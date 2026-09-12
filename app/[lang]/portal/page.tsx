@@ -1,6 +1,10 @@
+import type { Metadata } from "next"
+
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { DailyOperationsView } from "@/modules/portal/daily-operations/ui/daily-operations-view"
 import { dailyOperationsService } from "@/modules/portal/daily-operations/daily-operations.service"
+
+export const metadata: Metadata = { title: "Dashboard" }
 
 export default async function PortalPage({
   params,

@@ -12,7 +12,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const locale = resolveLocaleOrDefault((await params).lang)
   const t = getMessages(locale).console.billing.paymentMethods
-  return { title: `${t.heading} | Console`, description: t.description }
+  return { title: t.heading, description: t.description }
 }
 
 export default async function PaymentMethodsPage({

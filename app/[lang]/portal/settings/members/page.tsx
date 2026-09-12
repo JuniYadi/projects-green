@@ -1,7 +1,10 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { MembersList } from "./members-list"
+
+export const metadata: Metadata = { title: "Members" }
 
 export default async function MembersPage({
   params,

@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { AuditLogsTable } from "../_components/audit-logs-table"
+
+export const metadata: Metadata = { title: "Audit Logs" }
 
 export default async function VpnAuditLogsPage() {
   return (

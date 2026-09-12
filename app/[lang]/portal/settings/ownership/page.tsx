@@ -1,7 +1,10 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { OwnershipView } from "./ownership-view"
+
+export const metadata: Metadata = { title: "Ownership" }
 
 export default async function OwnershipPage({
   params,

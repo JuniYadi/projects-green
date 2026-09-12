@@ -1,9 +1,12 @@
+import type { Metadata } from "next"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PlatformStatsCards } from "./overview/platform-stats-cards"
 import { OrgSummaryTable } from "./overview/org-summary-table"
 import { PlatformUsageTrend } from "./overview/platform-usage-trend"
 import { AllOrgsInvoicesFeed } from "./overview/all-orgs-invoices-feed"
+
+export const metadata: Metadata = { title: "Billing Overview" }
 
 export default async function PortalBillingPage() {
   return (
