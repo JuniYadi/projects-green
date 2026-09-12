@@ -148,6 +148,7 @@ const mockPrisma = {
         id: "webhook-1",
         organizationId: "org-1",
         whatsappDeviceId: "device-1",
+        whatsappDevice: { organizationId: "org-1" },
       },
     ]),
   },
