@@ -3,7 +3,8 @@ preload = ["./test/register.ts"]
 coverageReporter = ["lcov"]
 coverageDir = "coverage"
 coverageSkipTestFiles = true
-coverageThreshold = { lines = 0.85, functions = 0.85 }
+# No coverageThreshold: Codecov enforces 85% (codecov.yml). Bun's threshold
+# was never applied under --isolate, but --parallel enforces it on every run.
 coveragePathIgnorePatterns = [
   "**/*.tsx",
   "**/*.test.ts",
