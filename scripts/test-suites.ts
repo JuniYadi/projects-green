@@ -51,7 +51,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "modules/admin/api/admin.schema.ts",
       "modules/admin/api/routes/admin-app-hosting-clusters",
       "app/[lang]/console/app/",
-      "app/[lang]/portal/app/settings/page.tsx",
+      "app/[lang]/portal/app/settings/page",
       "app/[lang]/portal/app/clusters/",
       "app/[lang]/portal/marketplace/",
       "app/api/deploy/",
@@ -108,7 +108,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     sourcePrefixes: [
       "app/[lang]/console/whatsapp/api-keys/",
       "app/[lang]/portal/whatsapp/api-keys/",
-      "app/[lang]/portal/whatsapp/page.tsx",
+      "app/[lang]/portal/whatsapp/page",
       "modules/admin/api/admin.route.ts",
       "modules/whatsapp/api/organization-api-key-hono.ts",
       "modules/whatsapp/organization-api-keys/",
