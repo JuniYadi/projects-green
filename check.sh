@@ -29,14 +29,20 @@ log_pass "Workspace bersih, aman untuk eksekusi otomatis."
 # 2. Scanning Type Error
 # ---------------------------------------------------------
 log_step "2/6 Mendeteksi type error via TypeScript compiler..."
-ERROR_LINE=$(bun x tsc --noEmit 2>&1 | grep "error TS" | head -n 1 || true)
+
+# Tampung seluruh output tsc tanpa memicu exit code error
+TSC_OUTPUT=$(bun x tsc --noEmit 2>&1 || true)
+
+# Tangkap baris pertama yang mengandung error TypeScript
+ERROR_LINE=$(echo "$TSC_OUTPUT" | grep -E "error TS[0-9]+|error:" | head -n 1 || true)
 
 if [ -z "$ERROR_LINE" ]; then
   log_pass "Semua tipe data aman. Tidak ada error yang perlu ditangani."
   exit 0
 fi
 
-TARGET_FILE=$(echo "$ERROR_LINE" | cut -d'(' -f1 | xargs)
+# Parsing nama file target (support format file.ts(12,5) atau file.ts:12:5)
+TARGET_FILE=$(echo "$ERROR_LINE" | sed -E 's/(\(|\:)[0-9].*//g' | xargs)
 BASE_NAME="${TARGET_FILE%.*}"
 EXT="${TARGET_FILE##*.}"
 TEST_FILE="${BASE_NAME}.test.${EXT}"
@@ -58,16 +64,20 @@ BATASAN KETAT:
 2. Pertahankan seluruh logic runtime agar unit test tetap hijau.
 3. Kembalikan kode file utuh tanpa markdown codeblock atau teks pengantar."
 
-# Ganti baris di bawah dengan interface runner Hermes milikmu
+# --- HUBUNGKAN HERMES RUNNER DI SINI ---
+# Contoh jika memakai CLI runner:
 # run-hermes --file "$TARGET_FILE" --prompt "$PROMPT" > "$TARGET_FILE"
+
 log_pass "Patch berhasil diterapkan oleh Hermes ke $TARGET_FILE."
 
 # ---------------------------------------------------------
 # 4. Validasi Lapis 1: Typecheck Verification
 # ---------------------------------------------------------
 log_step "4/6 Menjalankan verifikasi ulang tipe data (tsc)..."
-if ! bun x tsc --noEmit > /dev/null 2>&1; then
-  log_fail "Verifikasi tipe gagal. Hermes menghasilkan error baru."
+
+VERIFY_TSC_OUTPUT=$(bun x tsc --noEmit 2>&1 || true)
+if echo "$VERIFY_TSC_OUTPUT" | grep -qE "error TS[0-9]+|error:"; then
+  log_fail "Verifikasi tipe gagal. Hermes menghasilkan error baru atau belum tuntas."
   log_warn "Melakukan rollback file: $TARGET_FILE"
   git checkout -- "$TARGET_FILE"
   exit 1
@@ -78,6 +88,7 @@ log_pass "TypeScript compiler: Valid (0 error)."
 # 5. Validasi Lapis 2: Unit Test Suite
 # ---------------------------------------------------------
 log_step "5/6 Menjalankan verifikasi logika melalui unit test..."
+
 if [ -f "$TEST_FILE" ]; then
   log_info "Menjalankan isolated test: $TEST_FILE"
   TEST_CMD="bun test $TEST_FILE"
