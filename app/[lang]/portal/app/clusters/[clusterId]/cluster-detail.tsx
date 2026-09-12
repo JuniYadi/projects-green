@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react"
 
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -76,6 +77,9 @@ type ClusterIntegration = {
   metaJson: unknown
   secretPreview: string | null
   isActive: boolean
+  lastTestAt: string | null
+  lastTestOk: boolean | null
+  lastTestMessage: string | null
   createdAt: string
   updatedAt: string
 }
@@ -133,11 +137,29 @@ const STATUS_VARIANT: Record<
   DEPRECATED: "destructive",
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  ACTIVE: "Active",
-  PLANNED: "Planned",
-  DEPRECATED: "Deprecated",
+const STATUS_LABEL_KEY: Record<string, "active" | "planned" | "deprecated"> = {
+  ACTIVE: "active",
+  PLANNED: "planned",
+  DEPRECATED: "deprecated",
 }
+
+const interpolate = (
+  template: string,
+  values: Record<string, string | number>
+) =>
+  Object.entries(values).reduce(
+    (text, [token, value]) => text.replaceAll(`{${token}}`, String(value)),
+    template
+  )
+
+const OPERATION_TAB_VALUES = [
+  "health",
+  "logs",
+  "deployments",
+  "builds",
+  "metrics",
+  "settings",
+] as const
 
 type ClusterDetailProps = {
   clusterId: string
@@ -190,7 +212,9 @@ function getSecretsSchema(type: string) {
 export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).console.app.clusters
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [cluster, setCluster] = useState<ClusterAdminDTO | null>(null)
   const [loading, setLoading] = useState(true)
@@ -271,8 +295,22 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const [importError, setImportError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [activeTab, setActiveTab] = useState<string>("health")
   const [isTestingAll, setIsTestingAll] = useState(false)
+  const [integrationToDelete, setIntegrationToDelete] =
+    useState<ClusterIntegration | null>(null)
+
+  // The tab lives in the URL so a tab is linkable and survives a reload.
+  const tabParam = searchParams.get("tab")
+  const activeTab = (OPERATION_TAB_VALUES as readonly string[]).includes(
+    tabParam ?? ""
+  )
+    ? (tabParam as string)
+    : "health"
+  const setActiveTab = (tab: string) => {
+    const next = new URLSearchParams(searchParams.toString())
+    next.set("tab", tab)
+    router.replace(`?${next.toString()}`, { scroll: false })
+  }
 
   const handleTestAllIntegrations = async () => {
     if (!cluster || cluster.integrations.length === 0) return
@@ -281,7 +319,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       await Promise.allSettled(
         cluster.integrations.map((item) => handleIntegrationTest(item.type))
       )
-      toast.success("All integration connection tests completed")
+      toast.success(messages.settings.testAllDone)
+      setRetry((value) => value + 1)
     } finally {
       setIsTestingAll(false)
     }
@@ -423,7 +462,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
 
       setRetry((v) => v + 1)
     } catch (cause) {
-      alert(cause instanceof Error ? cause.message : "Failed to update status.")
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : messages.settings.statusUpdateFailed
+      )
     } finally {
       setStatusSaving(false)
     }
@@ -569,6 +612,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       metaJson: { ...defaults },
       secretPreview: null,
       isActive: true,
+      lastTestAt: null,
+      lastTestOk: null,
+      lastTestMessage: null,
       createdAt: now,
       updatedAt: now,
     })
@@ -700,8 +746,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       )
     } catch (cause) {
       console.error("Failed to toggle integration status:", cause)
-      alert(
-        cause instanceof Error ? cause.message : "Failed to toggle integration."
+      toast.error(
+        cause instanceof Error ? cause.message : messages.settings.toggleFailed
       )
     }
   }
@@ -745,11 +791,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   }
 
   const handleIntegrationDelete = async (integration: ClusterIntegration) => {
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete the ${INTEGRATION_TYPE_LABELS[integration.type] ?? integration.type} integration?`
-    )
-    if (!confirmDelete) return
-
     try {
       const { data: payload } =
         await eden.api.admin["app-hosting"].clusters[clusterId].integrations[
@@ -770,9 +811,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       )
     } catch (cause) {
       console.error("Failed to delete integration:", cause)
-      alert(
-        cause instanceof Error ? cause.message : "Unable to delete integration."
+      toast.error(
+        cause instanceof Error ? cause.message : messages.settings.deleteFailed
       )
+    } finally {
+      setIntegrationToDelete(null)
     }
   }
 
@@ -804,10 +847,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       downloadAnchor.remove()
     } catch (cause) {
       console.error("Failed to export integrations:", cause)
-      alert(
-        cause instanceof Error
-          ? cause.message
-          : "Unable to export integrations."
+      toast.error(
+        cause instanceof Error ? cause.message : messages.settings.exportFailed
       )
     } finally {
       setExporting(false)
@@ -890,7 +931,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   if (loading) {
     return (
       <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-        Loading cluster...
+        {messages.settings.loadingCluster}
       </div>
     )
   }
@@ -908,13 +949,31 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           size="sm"
           onClick={() => setRetry((v) => v + 1)}
         >
-          Retry
+          {messages.common.retry}
         </Button>
       </div>
     )
   }
 
-  if (!cluster) return null
+  if (!cluster) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+        <span>{messages.settings.clusterMissing}</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            router.push(
+              localizePathname({ pathname: "/portal/app/clusters", locale })
+            )
+          }
+        >
+          {messages.tabs.settings}
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -936,7 +995,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-semibold">{cluster.name}</h2>
               <Badge variant={STATUS_VARIANT[cluster.status] ?? "outline"}>
-                {STATUS_LABEL[cluster.status] ?? cluster.status}
+                {messages.clusterStatus[STATUS_LABEL_KEY[cluster.status]] ??
+                  cluster.status}
               </Badge>
               {cluster.isDefault && <Badge variant="success">Default</Badge>}
             </div>
@@ -960,27 +1020,29 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 size={14}
                 className={cn("mr-1.5", isTestingAll && "animate-spin")}
               />
-              {isTestingAll ? "Testing All..." : "Test All Integrations"}
+              {isTestingAll
+                ? messages.settings.testingAll
+                : messages.settings.testAll}
             </Button>
           )}
           {argocdUrl && (
             <Button asChild size="sm" variant="outline" className="gap-1">
               <a href={argocdUrl} target="_blank" rel="noopener noreferrer">
-                Open Argo CD <ArrowSquareOut size={13} />
+                {messages.settings.openArgo} <ArrowSquareOut size={13} />
               </a>
             </Button>
           )}
           {jenkinsUrl && (
             <Button asChild size="sm" variant="outline" className="gap-1">
               <a href={jenkinsUrl} target="_blank" rel="noopener noreferrer">
-                Open Jenkins <ArrowSquareOut size={13} />
+                {messages.settings.openJenkins} <ArrowSquareOut size={13} />
               </a>
             </Button>
           )}
           {opensearchUrl && (
             <Button asChild size="sm" variant="outline" className="gap-1">
               <a href={opensearchUrl} target="_blank" rel="noopener noreferrer">
-                Open OpenSearch <ArrowSquareOut size={13} />
+                {messages.settings.openOpenSearch} <ArrowSquareOut size={13} />
               </a>
             </Button>
           )}
@@ -992,7 +1054,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               onClick={() => void handleStatusChange("ACTIVE", true)}
               disabled={statusSaving}
             >
-              Set as Default
+              {messages.settings.setDefault}
             </Button>
           )}
         </div>
@@ -1003,7 +1065,12 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <ClusterOperationsTabs clusterId={clusterId} activeTab={activeTab} />
+        <ClusterOperationsTabs
+          clusterId={clusterId}
+          activeTab={activeTab}
+          messages={messages}
+          onTabChange={setActiveTab}
+        />
 
         <TabsContent
           value="settings"
@@ -1012,10 +1079,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         >
           <Card>
             <CardHeader>
-              <CardTitle>Cluster & Scheduling Settings</CardTitle>
+              <CardTitle>{messages.settings.coreHeading}</CardTitle>
               <p className="text-xs text-muted-foreground">
-                Core configuration and default pod scheduling parameters for
-                this cluster.
+                {messages.settings.coreDescription}
               </p>
             </CardHeader>
             <CardContent>
@@ -1034,7 +1100,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                       htmlFor="cluster-name"
                       className="text-xs font-medium"
                     >
-                      Name
+                      {messages.settings.name}
                     </Label>
                     <Input
                       id="cluster-name"
@@ -1048,7 +1114,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                       htmlFor="cluster-region"
                       className="text-xs font-medium"
                     >
-                      Region
+                      {messages.settings.region}
                     </Label>
                     <Select
                       value={selectedRegionId}
@@ -1066,10 +1132,10 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                         <SelectValue
                           placeholder={
                             regionsLoading
-                              ? "Loading..."
+                              ? messages.settings.regionLoading
                               : regions.length === 0
-                                ? "No regions"
-                                : "Select region"
+                                ? messages.settings.regionEmpty
+                                : messages.settings.regionPlaceholder
                           }
                         />
                       </SelectTrigger>
@@ -1092,7 +1158,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                       htmlFor="cluster-storage-class"
                       className="text-xs font-medium"
                     >
-                      Storage Class
+                      {messages.settings.storageClass}
                     </Label>
                     <Input
                       id="cluster-storage-class"
@@ -1103,7 +1169,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           storageClass: event.target.value || undefined,
                         }))
                       }
-                      placeholder="e.g. openebs-lvmpv"
+                      placeholder={messages.settings.storageClassPlaceholder}
                       className="h-8 font-mono text-xs"
                     />
                     {metadataFieldErrors.storageClass && (
@@ -1122,10 +1188,10 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="text-xs font-semibold">
-                            Node Selectors
+                            {messages.settings.nodeSelectors}
                           </Label>
                           <p className="text-[11px] text-muted-foreground">
-                            Target node labels for pod placement.
+                            {messages.settings.nodeSelectorsDescription}
                           </p>
                         </div>
                         <Button
@@ -1146,14 +1212,14 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                             )
                           }}
                         >
-                          + Add Label
+                          {messages.settings.addLabel}
                         </Button>
                       </div>
 
                       {Object.entries(clusterMetadata.nodeSelector ?? {})
                         .length === 0 ? (
                         <div className="rounded-lg border border-dashed border-border/80 p-2.5 text-center text-xs text-muted-foreground">
-                          No node selectors (default scheduling)
+                          {messages.settings.noNodeSelectors}
                         </div>
                       ) : (
                         <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
@@ -1165,7 +1231,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                               className="flex items-center gap-1.5"
                             >
                               <Input
-                                placeholder="Key"
+                                placeholder={messages.settings.keyPlaceholder}
                                 value={key}
                                 onChange={(e) => {
                                   const newKey = e.target.value
@@ -1193,7 +1259,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                 :
                               </span>
                               <Input
-                                placeholder="Value"
+                                placeholder={messages.settings.valuePlaceholder}
                                 value={val}
                                 onChange={(e) => {
                                   const current = {
@@ -1245,10 +1311,10 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="text-xs font-semibold">
-                            Tolerations
+                            {messages.settings.tolerations}
                           </Label>
                           <p className="text-[11px] text-muted-foreground">
-                            Node taint tolerances for pods.
+                            {messages.settings.tolerationsDescription}
                           </p>
                         </div>
                         <Button
@@ -1274,13 +1340,13 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                             )
                           }}
                         >
-                          + Add Toleration
+                          {messages.settings.addToleration}
                         </Button>
                       </div>
 
                       {(clusterMetadata.tolerations ?? []).length === 0 ? (
                         <div className="rounded-lg border border-dashed border-border/80 p-2.5 text-center text-xs text-muted-foreground">
-                          No tolerations configured
+                          {messages.settings.noTolerations}
                         </div>
                       ) : (
                         <div className="max-h-[180px] space-y-1.5 overflow-y-auto pr-1">
@@ -1444,7 +1510,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cluster-notes">Notes</Label>
+                  <Label htmlFor="cluster-notes">
+                    {messages.settings.notes}
+                  </Label>
                   <textarea
                     id="cluster-notes"
                     value={clusterMetadata.notes ?? ""}
@@ -1465,7 +1533,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   <Button type="submit" size="sm" disabled={metadataSaving}>
-                    {metadataSaving ? "Saving..." : "Save Settings"}
+                    {metadataSaving
+                      ? messages.settings.saving
+                      : messages.settings.save}
                   </Button>
                 </div>
               </form>
@@ -1473,10 +1543,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Edge Endpoint</CardTitle>
+              <CardTitle>{messages.settings.endpointHeading}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Region-specific routing for {cluster.region}. This configuration
-                is separate from cluster integrations.
+                {interpolate(messages.settings.endpointDescription, {
+                  region: cluster.region,
+                })}
               </p>
             </CardHeader>
             <CardContent>
@@ -1498,7 +1569,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               )}
               {endpointLoading ? (
                 <p className="text-sm text-muted-foreground">
-                  Loading edge endpoint...
+                  {messages.settings.endpointLoading}
                 </p>
               ) : (
                 <form onSubmit={handleEndpointSave} className="space-y-4">
@@ -1509,7 +1580,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           htmlFor="endpoint-managed-base-domain"
                           className="text-xs font-medium"
                         >
-                          Managed Base Domain
+                          {messages.settings.managedBaseDomain}
                         </Label>
                         {endpoint.managedBaseDomain && (
                           <button
@@ -1564,7 +1635,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           htmlFor="endpoint-cname-target"
                           className="text-xs font-medium"
                         >
-                          CNAME Target
+                          {messages.settings.cnameTarget}
                         </Label>
                         {endpoint.cnameTarget && (
                           <button
@@ -1612,7 +1683,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="endpoint-ipv4-addresses">
-                        IPv4 Addresses
+                        {messages.settings.ipv4Addresses}
                       </Label>
                       <textarea
                         id="endpoint-ipv4-addresses"
@@ -1639,7 +1710,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="endpoint-ipv6-addresses">
-                        IPv6 Addresses
+                        {messages.settings.ipv6Addresses}
                       </Label>
                       <textarea
                         id="endpoint-ipv6-addresses"
@@ -1681,7 +1752,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                         }))
                       }
                     />
-                    <span>Endpoint Active</span>
+                    <span>{messages.settings.endpointActive}</span>
                   </label>
                   {endpointFieldErrors.isActive && (
                     <p className="text-xs text-destructive">
@@ -1689,7 +1760,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     </p>
                   )}
                   <Button type="submit" size="sm" disabled={endpointSaving}>
-                    {endpointSaving ? "Saving..." : "Save Endpoint"}
+                    {endpointSaving
+                      ? messages.settings.savingEndpoint
+                      : messages.settings.saveEndpoint}
                   </Button>
                 </form>
               )}
@@ -1697,7 +1770,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <CardTitle>Integrations</CardTitle>
+              <CardTitle>{messages.settings.integrationsHeading}</CardTitle>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -1708,7 +1781,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   title="Export all configured integrations as JSON with Vault references"
                 >
                   <DownloadSimple size={14} className="mr-1" />
-                  {exporting ? "Exporting..." : "Export Config"}
+                  {exporting
+                    ? messages.settings.exporting
+                    : messages.settings.exportConfig}
                 </Button>
                 <Button
                   type="button"
@@ -1721,7 +1796,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   title="Bulk import integrations via JSON"
                 >
                   <UploadSimple size={14} className="mr-1" />
-                  Import Config
+                  {messages.settings.importConfig}
                 </Button>
                 {availableIntegrationTypes.length > 0 && (
                   <>
@@ -1747,7 +1822,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                       size="sm"
                       onClick={handleIntegrationCreate}
                     >
-                      Add integration
+                      {messages.settings.addIntegration}
                     </Button>
                   </>
                 )}
@@ -1756,7 +1831,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
             <CardContent>
               {cluster.integrations.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No integrations configured for this cluster.
+                  {messages.settings.noIntegrations}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -1766,15 +1841,41 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                       className="flex items-center justify-between rounded-lg border border-border p-4"
                     >
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm font-medium">
                             {INTEGRATION_TYPE_LABELS[integration.type] ??
                               integration.type}
                           </span>
+                          {/* isActive is a DB flag; the probe is the reachability. */}
+                          <span className="text-xs text-muted-foreground">
+                            {integration.isActive
+                              ? messages.settings.integrationActive
+                              : messages.settings.integrationInactive}
+                            {" · "}
+                            {integration.lastTestAt
+                              ? interpolate(
+                                  integration.lastTestOk
+                                    ? messages.settings.lastTestOk
+                                    : messages.settings.lastTestFailed,
+                                  {
+                                    time: new Date(
+                                      integration.lastTestAt
+                                    ).toLocaleTimeString(),
+                                  }
+                                )
+                              : messages.settings.lastTestNever}
+                          </span>
                         </div>
                         {integration.secretPreview && (
                           <p className="text-xs text-muted-foreground">
-                            Secret: {integration.secretPreview}
+                            {messages.settings.secret}:{" "}
+                            <span className="font-mono">
+                              {integration.secretPreview}
+                            </span>{" "}
+                            ·{" "}
+                            {new Date(
+                              integration.updatedAt
+                            ).toLocaleDateString()}
                           </p>
                         )}
                         {integrationTestResults[integration.type] && (
@@ -1816,8 +1917,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                         >
                           <Pulse size={14} className="mr-1" />
                           {testingIntegrationType === integration.type
-                            ? "Testing..."
-                            : "Test"}
+                            ? messages.settings.testing
+                            : messages.settings.test}
                         </Button>
                         <Button
                           type="button"
@@ -1826,7 +1927,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           onClick={() => handleIntegrationEdit(integration)}
                         >
                           <Pencil size={14} className="mr-1" />
-                          Edit
+                          {messages.settings.edit}
                         </Button>
                         <Button
                           type="button"
@@ -1845,17 +1946,17 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           }
                         >
                           <Power size={14} className="mr-1" />
-                          {integration.isActive ? "Active" : "Inactive"}
+                          {integration.isActive
+                            ? messages.settings.integrationActive
+                            : messages.settings.integrationInactive}
                         </Button>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon-xs"
                           className="text-destructive hover:bg-destructive/10"
-                          onClick={() =>
-                            void handleIntegrationDelete(integration)
-                          }
-                          title="Delete integration"
+                          onClick={() => setIntegrationToDelete(integration)}
+                          title={messages.settings.deleteIntegration}
                         >
                           <Trash size={14} />
                         </Button>
@@ -1868,22 +1969,22 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           </Card>
           <Card className="border-destructive/30">
             <CardHeader>
-              <CardTitle className="text-destructive">Danger zone</CardTitle>
+              <CardTitle className="text-destructive">
+                {messages.settings.dangerHeading}
+              </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Changing cluster availability affects future deployment routing.
-                Existing workloads are not silently deleted.
+                {messages.settings.dangerDescription}
               </p>
             </CardHeader>
             <CardContent className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">
                   {cluster.status === "ACTIVE"
-                    ? "Deactivate this cluster"
-                    : "Activate this cluster"}
+                    ? messages.settings.deactivateHeading
+                    : messages.settings.activateHeading}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  The current provider observations remain visible after the
-                  status change.
+                  {messages.settings.deactivateDescription}
                 </p>
               </div>
               <Button
@@ -1901,8 +2002,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 }}
               >
                 {cluster.status === "ACTIVE"
-                  ? "Deactivate Cluster"
-                  : "Activate Cluster"}
+                  ? messages.settings.deactivate
+                  : messages.settings.activate}
               </Button>
             </CardContent>
           </Card>
@@ -1933,7 +2034,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           <div className="w-full max-w-2xl space-y-4 rounded-xl border border-border bg-background p-6 shadow-lg">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">
-                Import Integrations (JSON)
+                {messages.settings.importHeading}
               </h3>
               <Button
                 type="button"
@@ -1987,7 +2088,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 onClick={handleImportJson}
                 disabled={importing || !importJsonText.trim()}
               >
-                {importing ? "Importing..." : "Apply Import"}
+                {importing
+                  ? messages.settings.importing
+                  : messages.settings.applyImport}
               </Button>
             </div>
           </div>
@@ -1999,16 +2102,18 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate {cluster.name}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {interpolate(messages.settings.deactivateDialogTitle, {
+                name: cluster.name,
+              })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the cluster from active deployment routing. Existing
-              workloads are not deleted, but new deployments cannot target this
-              cluster while it is deprecated.
+              {messages.settings.deactivateDialogBody}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={statusSaving}>
-              Cancel
+              {messages.settings.cancel}
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
@@ -2021,7 +2126,45 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 ).finally(() => setDeactivateDialogOpen(false))
               }}
             >
-              {statusSaving ? "Deactivating…" : "Confirm deactivation"}
+              {statusSaving
+                ? messages.settings.deactivating
+                : messages.settings.confirmDeactivation}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={integrationToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setIntegrationToDelete(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {messages.settings.deleteIntegration}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {interpolate(messages.settings.deleteConfirm, {
+                type: integrationToDelete
+                  ? (INTEGRATION_TYPE_LABELS[integrationToDelete.type] ??
+                    integrationToDelete.type)
+                  : "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{messages.settings.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(event) => {
+                event.preventDefault()
+                if (integrationToDelete) {
+                  void handleIntegrationDelete(integrationToDelete)
+                }
+              }}
+            >
+              {messages.settings.deleteIntegration}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
