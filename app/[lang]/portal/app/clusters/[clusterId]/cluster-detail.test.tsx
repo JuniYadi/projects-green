@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import {
   act,
   cleanup,
@@ -49,6 +49,11 @@ const mockTestIntegration = mock(async (_body: unknown): Promise<unknown> => ({
     },
   },
 }))
+const mockGetOperations = mock(async (view: string, _query: unknown) => ({
+  data: await responseForOperation(
+    `http://localhost/api/admin/app-hosting/clusters/cl_1/operations/${view}`
+  ).json(),
+}))
 mock.module("@/lib/eden", () => ({
   eden: {
     api: {
@@ -65,6 +70,15 @@ mock.module("@/lib/eden", () => ({
                 get: mockGetEndpoint,
                 put: mockPutEndpoint,
               },
+              operations: new Proxy(
+                {},
+                {
+                  get: (_target, view) => ({
+                    get: (options: unknown) =>
+                      mockGetOperations(String(view), options),
+                  }),
+                }
+              ),
               integrations: {
                 JENKINS: {
                   test: { post: mockTestIntegration },
@@ -136,6 +150,9 @@ function responseForClusterOrEndpoint(
   endpoint = MOCK_ENDPOINT
 ) {
   const url = String(input)
+  if (url.includes("/operations/")) {
+    return responseForOperation(input)
+  }
   if (url.endsWith("/regions")) {
     return Response.json({ ok: true, data: MOCK_REGIONS })
   }
@@ -143,6 +160,125 @@ function responseForClusterOrEndpoint(
     ? Response.json({ ok: true, data: endpoint })
     : Response.json({ ok: true, data: MOCK_CLUSTER })
 }
+
+const providerState = {
+  state: "live",
+  source: "test provider",
+  observedAt: "2026-01-01T00:00:00.000Z",
+  staleAfter: "2026-01-01T00:05:00.000Z",
+  message: null,
+  retryable: true,
+} as const
+
+function responseForOperation(input: RequestInfo | URL) {
+  const view = String(input).split("/operations/")[1]?.split("?")[0]
+  if (view === "health") {
+    return Response.json({
+      ok: true,
+      data: {
+        provider: providerState,
+        status: "healthy",
+        nodes: { ready: 2, total: 2 },
+        workloads: { ready: 4, total: 4 },
+        recentDeployment: null,
+        providers: {
+          kubernetes: providerState,
+          opensearch: providerState,
+          argocd: providerState,
+          jenkins: providerState,
+          prometheus: providerState,
+        },
+      },
+    })
+  }
+  if (view === "logs") {
+    return Response.json({
+      ok: true,
+      data: {
+        provider: providerState,
+        source: "all",
+        indexPatterns: ["app-*", "haproxy-controller-*"],
+        total: 1,
+        tookMs: 3,
+        entries: [
+          {
+            id: "log-1",
+            timestamp: "2026-01-01T00:00:00.000Z",
+            severity: "INFO",
+            service: "api",
+            namespace: "app-test",
+            route: "/health",
+            status: 200,
+            message: "provider log",
+          },
+        ],
+      },
+    })
+  }
+  if (view === "deployments") {
+    return Response.json({
+      ok: true,
+      data: {
+        provider: providerState,
+        deployments: [
+          {
+            application: "api",
+            syncState: "Synced",
+            health: "Healthy",
+            revision: "abc123",
+            author: null,
+            message: null,
+            observedAt: "2026-01-01T00:00:00.000Z",
+            failureReason: null,
+          },
+        ],
+      },
+    })
+  }
+  if (view === "builds") {
+    return Response.json({
+      ok: true,
+      data: {
+        provider: providerState,
+        builds: [
+          {
+            job: "api-build",
+            status: "SUCCESS",
+            branch: "main",
+            commit: "abc123",
+            durationMs: 1200,
+            startedAt: "2026-01-01T00:00:00.000Z",
+            artifactCount: 1,
+            url: null,
+          },
+        ],
+      },
+    })
+  }
+  return Response.json({
+    ok: true,
+    data: {
+      provider: providerState,
+      range: "1h",
+      metrics: [
+        {
+          name: "cpu_usage",
+          value: 1.2,
+          unit: "cores",
+          sampleAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    },
+  })
+}
+
+beforeEach(() => {
+  globalThis.fetch = mock(async (input) =>
+    String(input).includes("/operations/")
+      ? responseForOperation(input)
+      : responseForClusterOrEndpoint(input)
+  ) as unknown as typeof fetch
+})
 describe("ClusterDetail endpoint", () => {
   it("loads the region-specific edge endpoint configuration", async () => {
     globalThis.fetch = mock(async (input) =>
@@ -508,116 +644,102 @@ describe("ClusterDetail", () => {
       { timeout: 5000 }
     )
   })
-  it("renders tabs for Overview, Logs, GitOps, CI/CD, Metrics, and Settings", async () => {
+  it("renders the truthful operation tabs", async () => {
     const view = render(<ClusterDetail clusterId="cl_1" />)
 
     await waitFor(
       () => {
-        expect(view.getByRole("tab", { name: /overview/i })).toBeTruthy()
-        expect(view.getByRole("tab", { name: /logs/i })).toBeTruthy()
-        expect(view.getByRole("tab", { name: /gitops/i })).toBeTruthy()
-        expect(view.getByRole("tab", { name: /ci\/cd/i })).toBeTruthy()
-        expect(view.getByRole("tab", { name: /metrics/i })).toBeTruthy()
-        expect(view.getByRole("tab", { name: /settings/i })).toBeTruthy()
-      },
-      { timeout: 5000 }
-    )
-
-    expect(view.getByText("Cluster Integration Matrix")).toBeTruthy()
-  })
-
-  it("switches to Logs tab and filters cluster logs", async () => {
-    const view = render(<ClusterDetail clusterId="cl_1" />)
-
-    await waitFor(
-      () => expect(view.getByRole("tab", { name: /logs/i })).toBeTruthy(),
-      { timeout: 5000 }
-    )
-
-    fireEvent.click(view.getByRole("tab", { name: /logs/i }))
-
-    await waitFor(
-      () => {
-        expect(view.getByText(/OpenSearch Cluster Log Stream/i)).toBeTruthy()
-      },
-      { timeout: 5000 }
-    )
-
-    const searchInput = view.getByPlaceholderText(/filter cluster logs/i)
-    expect(searchInput).toBeTruthy()
-
-    act(() => {
-      fireEvent.change(searchInput, { target: { value: "argocd" } })
-    })
-
-    await waitFor(
-      () => {
-        expect(
-          view.getByText(/application controller verified cluster/i)
-        ).toBeTruthy()
+        for (const label of [
+          "Health",
+          "Logs",
+          "Deployments",
+          "Builds",
+          "Metrics",
+          "Settings",
+        ]) {
+          expect(view.getByRole("tab", { name: label })).toBeTruthy()
+        }
       },
       { timeout: 5000 }
     )
   })
 
-  it("switches to GitOps tab and renders rollout overview", async () => {
+  it("loads provider-backed logs and exposes source selection", async () => {
     const view = render(<ClusterDetail clusterId="cl_1" />)
 
     await waitFor(
-      () => expect(view.getByRole("tab", { name: /gitops/i })).toBeTruthy(),
+      () => expect(view.getByRole("tab", { name: "Logs" })).toBeTruthy(),
       { timeout: 5000 }
     )
-
-    fireEvent.click(view.getByRole("tab", { name: /gitops/i }))
+    const logsTab = view.getByRole("tab", { name: "Logs" })
+    fireEvent.pointerDown(logsTab)
+    fireEvent.click(logsTab)
+    fireEvent.mouseDown(logsTab)
 
     await waitFor(
       () => {
-        expect(view.getByText(/Argo CD GitOps Rollout/i)).toBeTruthy()
-        expect(view.getByText(/Application Stacks on Cluster/i)).toBeTruthy()
-        expect(view.getByText(/Managed by Argo CD Controller/i)).toBeTruthy()
+        expect(view.getByText("Cluster logs")).toBeTruthy()
+        expect(view.getByText("provider log")).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+
+    const sourceSelect = view.getByRole("combobox", { name: "Log source" })
+    fireEvent.change(sourceSelect, { target: { value: "application" } })
+    expect((sourceSelect as HTMLSelectElement).value).toBe("application")
+  })
+
+  it("renders Argo CD deployment observations", async () => {
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+    const deploymentsTab = await waitFor(() =>
+      view.getByRole("tab", { name: "Deployments" })
+    )
+    fireEvent.pointerDown(deploymentsTab)
+    fireEvent.mouseDown(deploymentsTab)
+    fireEvent.click(deploymentsTab)
+
+    await waitFor(
+      () => {
+        expect(view.getByText("Argo CD application state")).toBeTruthy()
+        expect(view.getByText("api")).toBeTruthy()
+        expect(view.getByText("Synced")).toBeTruthy()
       },
       { timeout: 5000 }
     )
   })
 
-  it("switches to CI/CD tab and renders pipeline jobs", async () => {
+  it("renders Jenkins build observations", async () => {
     const view = render(<ClusterDetail clusterId="cl_1" />)
-
-    await waitFor(
-      () => expect(view.getByRole("tab", { name: /ci\/cd/i })).toBeTruthy(),
-      { timeout: 5000 }
+    const buildsTab = await waitFor(() =>
+      view.getByRole("tab", { name: "Builds" })
     )
-
-    fireEvent.click(view.getByRole("tab", { name: /ci\/cd/i }))
+    fireEvent.pointerDown(buildsTab)
+    fireEvent.mouseDown(buildsTab)
+    fireEvent.click(buildsTab)
 
     await waitFor(
       () => {
-        expect(view.getByText(/Jenkins CI\/CD Automation/i)).toBeTruthy()
-        expect(
-          view.getByText(/Recent Pipeline Executions on Cluster/i)
-        ).toBeTruthy()
+        expect(view.getByText("Jenkins builds")).toBeTruthy()
+        expect(view.getByText("api-build")).toBeTruthy()
+        expect(view.getByText("SUCCESS")).toBeTruthy()
       },
       { timeout: 5000 }
     )
   })
 
-  it("switches to Metrics tab and renders Prometheus telemetry cards", async () => {
+  it("renders Prometheus metric observations", async () => {
     const view = render(<ClusterDetail clusterId="cl_1" />)
-
-    await waitFor(
-      () => expect(view.getByRole("tab", { name: /metrics/i })).toBeTruthy(),
-      { timeout: 5000 }
+    const metricsTab = await waitFor(() =>
+      view.getByRole("tab", { name: "Metrics" })
     )
-
-    fireEvent.click(view.getByRole("tab", { name: /metrics/i }))
+    fireEvent.pointerDown(metricsTab)
+    fireEvent.mouseDown(metricsTab)
+    fireEvent.click(metricsTab)
 
     await waitFor(
       () => {
-        expect(
-          view.getByText(/Prometheus Observability & Metrics/i)
-        ).toBeTruthy()
-        expect(view.getByText("Node Pool Health")).toBeTruthy()
-        expect(view.getByText("Pod Allocation")).toBeTruthy()
+        expect(view.getByText("Prometheus metrics")).toBeTruthy()
+        expect(view.getByText("1.20 cores")).toBeTruthy()
       },
       { timeout: 5000 }
     )
