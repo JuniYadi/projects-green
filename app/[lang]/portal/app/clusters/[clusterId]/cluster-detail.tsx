@@ -1363,7 +1363,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                 className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 p-1.5"
                               >
                                 <Input
-                                  placeholder="Key"
+                                  placeholder={messages.settings.keyPlaceholder}
                                   value={tol.key}
                                   onChange={(e) => {
                                     const current = [
@@ -1419,7 +1419,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                   </SelectContent>
                                 </Select>
                                 <Input
-                                  placeholder="Value"
+                                  placeholder={
+                                    messages.settings.valuePlaceholder
+                                  }
                                   value={tol.value ?? ""}
                                   disabled={tol.operator === "Exists"}
                                   onChange={(e) => {
@@ -1602,12 +1604,14 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                             {copiedField === "baseDomain" ? (
                               <>
                                 <Check size={12} className="text-emerald-500" />
-                                <span className="text-emerald-500">Copied</span>
+                                <span className="text-emerald-500">
+                                  {messages.common.copied}
+                                </span>
                               </>
                             ) : (
                               <>
                                 <Copy size={12} />
-                                <span>Copy</span>
+                                <span>{messages.common.copy}</span>
                               </>
                             )}
                           </button>
@@ -1654,12 +1658,14 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                             {copiedField === "cname" ? (
                               <>
                                 <Check size={12} className="text-emerald-500" />
-                                <span className="text-emerald-500">Copied</span>
+                                <span className="text-emerald-500">
+                                  {messages.common.copied}
+                                </span>
                               </>
                             ) : (
                               <>
                                 <Copy size={12} />
-                                <span>Copy</span>
+                                <span>{messages.common.copy}</span>
                               </>
                             )}
                           </button>
