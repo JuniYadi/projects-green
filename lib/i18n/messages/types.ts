@@ -1883,6 +1883,119 @@ export type AppMessages = {
           editSettings: string
         }
       }
+      adminOverview: {
+        heading: string
+        description: string
+        clustersHeading: string
+        clustersDescription: string
+        clustersAction: string
+        templatesHeading: string
+        templatesDescription: string
+        templatesAction: string
+        deploymentsHeading: string
+        deploymentsDescription: string
+        deploymentsAction: string
+      }
+      clusterInventory: {
+        heading: string
+        description: string
+        loading: string
+        loadError: string
+        retry: string
+        countOne: string
+        countMany: string
+        createCluster: string
+        empty: string
+        emptyDescription: string
+        setupNeeded: string
+        setupLink: string
+        tableName: string
+        tableCode: string
+        tableRegion: string
+        tableRouting: string
+        tableConfiguration: string
+        tableDefault: string
+        tableActions: string
+        enabled: string
+        planned: string
+        disabled: string
+        configurationSummary: string
+        defaultLabel: string
+        view: string
+      }
+      clusterCreate: {
+        heading: string
+        description: string
+        code: string
+        codePlaceholder: string
+        name: string
+        namePlaceholder: string
+        region: string
+        regionLoading: string
+        regionEmpty: string
+        regionPlaceholder: string
+        status: string
+        planned: string
+        enabled: string
+        defaultCluster: string
+        selectRegionError: string
+        cancel: string
+        create: string
+        creating: string
+        loadRegionsError: string
+        createFailed: string
+      }
+      adminDeployments: {
+        heading: string
+        description: string
+        refresh: string
+        filters: string
+        filterDescription: string
+        organizationId: string
+        organizationPlaceholder: string
+        search: string
+        searchPlaceholder: string
+        apply: string
+        reset: string
+        status: string
+        statuses: {
+          all: string
+          running: string
+          building: string
+          deploying: string
+          queued: string
+          failed: string
+          stopped: string
+        }
+        tableOrganization: string
+        tableAppStack: string
+        tableStatus: string
+        tableCommit: string
+        tableDuration: string
+        tableCreated: string
+        tableAction: string
+        loading: string
+        empty: string
+        sync: string
+        details: string
+        deploymentDetails: string
+        detailsDescription: string
+        deploymentId: string
+        organization: string
+        stack: string
+        failureReason: string
+        trigger: string
+        eventsCount: string
+        openConsole: string
+        syncing: string
+        syncConfig: string
+        inProgress: string
+        notAvailable: string
+        syncConflict: string
+        syncSuccess: string
+        syncFailed: string
+        loadFailed: string
+      }
       clusters: {
         tabs: {
           health: string
@@ -1934,6 +2047,7 @@ export type AppMessages = {
           export: string
           view: string
           connect: string
+          configure: string
         }
         health: {
           heading: string
@@ -1947,6 +2061,20 @@ export type AppMessages = {
           columnPowers: string
           columnLastCheck: string
           columnAction: string
+          unknownHeading: string
+          unknownDescription: string
+          configureIntegrations: string
+          unverifiedHeading: string
+          unverifiedDescription: string
+          liveSummary: string
+          reviewKubernetes: string
+          healthyHeading: string
+          healthyDescription: string
+          providerUnavailable: string
+          providerForbidden: string
+          providerStale: string
+          nodesOrWorkloadsNotReady: string
+          technicalDetail: string
           verdictHealthy: string
           seriesFound: string
         }
@@ -2042,6 +2170,10 @@ export type AppMessages = {
           noNodeSelectors: string
           keyPlaceholder: string
           valuePlaceholder: string
+          operator: string
+          effect: string
+          trueValue: string
+          falseValue: string
           tolerations: string
           tolerationsDescription: string
           addToleration: string
@@ -2057,6 +2189,9 @@ export type AppMessages = {
           ipv4Addresses: string
           ipv6Addresses: string
           addressPlaceholder: string
+          managedBaseDomainPlaceholder: string
+          cnameTargetPlaceholder: string
+          integrationApiUrlPlaceholder: string
           endpointActive: string
           saveEndpoint: string
           savingEndpoint: string
@@ -2069,10 +2204,6 @@ export type AppMessages = {
           secret: string
           integrationActive: string
           integrationInactive: string
-          lastTestNever: string
-          lastTestOk: string
-          lastTestFailed: string
-          test: string
           testing: string
           edit: string
           deleteIntegration: string
@@ -2102,6 +2233,59 @@ export type AppMessages = {
           importing: string
           loadingCluster: string
           clusterMissing: string
+          code: string
+          defaultLabel: string
+          back: string
+          testConfiguration: string
+          testConfigurationTitle: string
+          testPassed: string
+          testFailed: string
+          notTested: string
+          failedToLoadRegions: string
+          failedToLoadCluster: string
+          failedToLoadEndpoint: string
+          unableToLoadProviderData: string
+          nameRegionRequired: string
+          fixErrors: string
+          failedToUpdateCluster: string
+          failedToUpdateEndpoint: string
+          failedToUpdateIntegration: string
+          unknownIntegrationType: string
+          failedToRunProbe: string
+          connectionProbeFailed: string
+          exportTitle: string
+          importTitle: string
+          addIntegrationTitle: string
+          editIntegrationTitle: string
+          addIntegrationDescription: string
+          editIntegrationDescription: string
+          autoFillDefaults: string
+          autoFillDefaultsTitle: string
+          connectionModePlaceholder: string
+          internalMode: string
+          externalMode: string
+          internalModeTitle: string
+          internalModeBadge: string
+          internalModeDescription: string
+          externalModeTitle: string
+          externalModeBadge: string
+          externalModeDescription: string
+          externalModeSteps: string
+          secretPlaceholderInternal: string
+          secretPlaceholderExisting: string
+          saveIntegration: string
+          savingIntegration: string
+          close: string
+          removeRow: string
+          deleteIntegrationLabel: string
+          copy: string
+          copied: string
+          importFileLabel: string
+          importJsonLabel: string
+          importJsonPlaceholder: string
+          invalidJson: string
+          importValidation: string
+          failedToImport: string
           statusUpdateFailed: string
           toggleFailed: string
           deleteFailed: string
@@ -2536,3 +2720,5 @@ export type ClusterMessages = AppMessages["console"]["app"]["clusters"]
 export type DeployWizardMessages = AppMessages["console"]["app"]["deployWizard"]
 export type TimelineMessages = AppMessages["console"]["app"]["timeline"]
 export type DeploymentsMessages = AppMessages["console"]["app"]["deployments"]
+export type AdminDeploymentsMessages =
+  AppMessages["console"]["app"]["adminDeployments"]

@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react"
 
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -32,6 +35,10 @@ export function ClusterCreateDialog({
   onClose,
   onCreated,
 }: ClusterCreateDialogProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).console.app.clusterCreate
+
   const [code, setCode] = useState("")
   const [name, setName] = useState("")
   const [regions, setRegions] = useState<ServiceRegionOption[]>([])
@@ -51,20 +58,18 @@ export function ClusterCreateDialog({
           await eden.api.admin.regions.get()
         if (resError || !payload || !payload.ok) {
           const errPayload = (resError?.value || payload) as
-            | { message?: string }
-            | undefined
-          throw new Error(errPayload?.message || "Failed to load regions")
+            { message?: string } | undefined
+          throw new Error(errPayload?.message || messages.loadRegionsError)
         }
         if (cancelled) return
         const rawList = Array.isArray(payload.data)
           ? (payload.data as ServiceRegionOption[])
           : []
-        const activeRegions = rawList.filter((r) => r.isActive)
-        setRegions(activeRegions)
+        setRegions(rawList.filter((region) => region.isActive))
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Failed to load regions"
+            err instanceof Error ? err.message : messages.loadRegionsError
           )
         }
       } finally {
@@ -76,7 +81,7 @@ export function ClusterCreateDialog({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [messages.loadRegionsError])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,7 +90,7 @@ export function ClusterCreateDialog({
 
     const selectedRegion = regions.find((r) => r.id === selectedRegionId)
     if (!selectedRegion) {
-      setError("Please select a region.")
+      setError(messages.selectRegionError)
       setSubmitting(false)
       return
     }
@@ -103,24 +108,33 @@ export function ClusterCreateDialog({
       })
 
       if (!payload || !payload.ok) {
-        throw new Error(payload?.message ?? "Failed to create cluster.")
+        throw new Error(payload?.message ?? messages.createFailed)
       }
 
       onCreated()
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Failed to create cluster."
-      )
+      setError(cause instanceof Error ? cause.message : messages.createFailed)
     } finally {
       setSubmitting(false)
     }
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cluster-create-title"
+      aria-describedby="cluster-create-description"
+    >
       <div className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-lg">
-        <h2 className="text-lg font-semibold">Create Cluster</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Add a new hosting cluster to the inventory.
+        <h2 id="cluster-create-title" className="text-lg font-semibold">
+          {messages.heading}
+        </h2>
+        <p
+          id="cluster-create-description"
+          className="mt-1 text-sm text-muted-foreground"
+        >
+          {messages.description}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -134,42 +148,44 @@ export function ClusterCreateDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="cluster-code">Code</Label>
+            <Label htmlFor="cluster-code">{messages.code}</Label>
             <Input
               id="cluster-code"
+              name="cluster.code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="us-east-1"
+              placeholder={messages.codePlaceholder}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cluster-name">Name</Label>
+            <Label htmlFor="cluster-name">{messages.name}</Label>
             <Input
               id="cluster-name"
+              name="cluster.name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="US East"
+              placeholder={messages.namePlaceholder}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cluster-region">Region</Label>
+            <Label htmlFor="cluster-region">{messages.region}</Label>
             <Select
               value={selectedRegionId}
               onValueChange={setSelectedRegionId}
               disabled={regionsLoading || regions.length === 0}
             >
-              <SelectTrigger id="cluster-region">
+              <SelectTrigger id="cluster-region" name="cluster.region">
                 <SelectValue
                   placeholder={
                     regionsLoading
-                      ? "Loading regions..."
+                      ? messages.regionLoading
                       : regions.length === 0
-                        ? "No active regions available"
-                        : "Select a region"
+                        ? messages.regionEmpty
+                        : messages.regionPlaceholder
                   }
                 />
               </SelectTrigger>
@@ -185,17 +201,17 @@ export function ClusterCreateDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cluster-status">Status</Label>
+            <Label htmlFor="cluster-status">{messages.status}</Label>
             <Select
               value={status}
               onValueChange={(v) => setStatus(v as "PLANNED" | "ACTIVE")}
             >
-              <SelectTrigger id="cluster-status">
+              <SelectTrigger id="cluster-status" name="cluster.status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PLANNED">Planned</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="PLANNED">{messages.planned}</SelectItem>
+                <SelectItem value="ACTIVE">{messages.enabled}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -204,21 +220,22 @@ export function ClusterCreateDialog({
             <input
               type="checkbox"
               id="cluster-default"
+              name="cluster.isDefault"
               checked={isDefault}
               onChange={(e) => setIsDefault(e.target.checked)}
               className="h-4 w-4 rounded border-border"
             />
             <Label htmlFor="cluster-default" className="text-sm">
-              Set as default cluster
+              {messages.defaultCluster}
             </Label>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {messages.cancel}
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Creating..." : "Create Cluster"}
+              {submitting ? messages.creating : messages.create}
             </Button>
           </div>
         </form>

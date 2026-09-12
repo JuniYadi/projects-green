@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from "node:fs"
 export type IntegrationConnectionTestResult = {
   ok: boolean
   message: string
@@ -394,81 +393,35 @@ export async function testIntegrationConnection(
       case "KUBECONFIG": {
         const connectionMode =
           meta.connectionMode === "EXTERNAL" ? "EXTERNAL" : "INTERNAL"
-        const explicitUrl =
+        const apiServerUrl =
           typeof secrets.apiServerUrl === "string" &&
           secrets.apiServerUrl.trim()
-            ? (secrets.apiServerUrl as string).replace(/\/+$/, "")
+            ? secrets.apiServerUrl.trim().replace(/\/+$/, "")
             : typeof meta.apiServerUrl === "string" && meta.apiServerUrl.trim()
-              ? (meta.apiServerUrl as string).replace(/\/+$/, "")
+              ? meta.apiServerUrl.trim().replace(/\/+$/, "")
               : ""
-
-        let caCert: string | undefined =
+        const caCertificate =
           typeof secrets.caCertificate === "string" &&
           secrets.caCertificate.trim()
             ? secrets.caCertificate
             : typeof meta.caCertificate === "string" &&
                 meta.caCertificate.trim()
-              ? (meta.caCertificate as string)
+              ? meta.caCertificate
               : undefined
-
-        let token: string | undefined =
+        const serviceAccountToken =
           typeof secrets.serviceAccountToken === "string" &&
           secrets.serviceAccountToken.trim()
             ? secrets.serviceAccountToken
             : undefined
 
-        if (connectionMode === "INTERNAL") {
-          if (!caCert) {
-            try {
-              if (
-                existsSync(
-                  "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-                )
-              ) {
-                caCert = readFileSync(
-                  "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
-                  "utf8"
-                )
-              }
-            } catch {}
-          }
-          if (!token) {
-            try {
-              if (
-                existsSync(
-                  "/var/run/secrets/kubernetes.io/serviceaccount/token"
-                )
-              ) {
-                token = readFileSync(
-                  "/var/run/secrets/kubernetes.io/serviceaccount/token",
-                  "utf8"
-                ).trim()
-              }
-            } catch {}
-          }
-
-          if (!explicitUrl) {
-            const isInsideK8s =
-              Boolean(process.env.KUBERNETES_SERVICE_HOST) ||
-              existsSync("/var/run/secrets/kubernetes.io/serviceaccount/token")
-            if (!isInsideK8s) {
-              return {
-                ok: true,
-                message:
-                  "In-cluster ServiceAccount mode configured (runtime will connect via pod ServiceAccount)",
-                durationMs: Date.now() - start,
-              }
-            }
+        if (connectionMode === "INTERNAL" && !apiServerUrl) {
+          return {
+            ok: true,
+            message:
+              "Kubernetes configuration is valid; target health requires an explicit API server URL.",
+            durationMs: Date.now() - start,
           }
         }
-
-        const apiServerUrl =
-          explicitUrl ||
-          (connectionMode === "INTERNAL"
-            ? process.env.KUBERNETES_SERVICE_HOST
-              ? `https://${process.env.KUBERNETES_SERVICE_HOST}:${process.env.KUBERNETES_SERVICE_PORT || 443}`
-              : "https://kubernetes.default.svc"
-            : "")
 
         if (!apiServerUrl) {
           return {
@@ -478,16 +431,17 @@ export async function testIntegrationConnection(
             durationMs: Date.now() - start,
           }
         }
+
         try {
           const headers: Record<string, string> = {
             Accept: "application/json",
           }
-          if (token) {
-            headers.Authorization = `Bearer ${token}`
+          if (serviceAccountToken) {
+            headers.Authorization = `Bearer ${serviceAccountToken}`
           }
           const fetchInit: RequestInit & { tls?: { ca?: string[] } } = {
             headers,
-            ...(caCert ? { tls: { ca: [caCert] } } : {}),
+            ...(caCertificate ? { tls: { ca: [caCertificate] } } : {}),
           }
           const res = await timedFetch(`${apiServerUrl}/livez`, fetchInit)
           const durationMs = Date.now() - start

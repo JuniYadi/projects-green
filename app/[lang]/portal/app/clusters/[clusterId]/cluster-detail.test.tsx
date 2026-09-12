@@ -10,11 +10,11 @@ import {
 import { ClusterDetail } from "./cluster-detail"
 
 const mockPush = mock(() => {})
-
 const mockReplace = mock((_href: string, _options?: unknown) => {})
 const mockSearchParams = new URLSearchParams()
+const mockLocale = { value: "en" }
 mock.module("next/navigation", () => ({
-  useParams: () => ({ lang: "en" }),
+  useParams: () => ({ lang: mockLocale.value }),
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
   useSearchParams: () => mockSearchParams,
 }))
@@ -172,31 +172,73 @@ const providerState = {
   message: null,
   retryable: true,
 } as const
+let healthScenario: "healthy" | "unknown" | "unverified" | "degraded" =
+  "healthy"
 
 function responseForOperation(input: RequestInfo | URL) {
   const view = String(input).split("/operations/")[1]?.split("?")[0]
   if (view === "health") {
+    const configOnlyProvider = {
+      ...providerState,
+      state: "configuration_only" as const,
+      observedAt: null,
+      staleAfter: null,
+      message: "Integration is not configured.",
+      retryable: false,
+    }
+    const unavailableProvider = {
+      ...providerState,
+      state: "unavailable" as const,
+      message: "Provider unavailable",
+    }
+    const providers =
+      healthScenario === "unknown"
+        ? {
+            kubernetes: configOnlyProvider,
+            opensearch: configOnlyProvider,
+            argocd: configOnlyProvider,
+            jenkins: configOnlyProvider,
+            prometheus: configOnlyProvider,
+          }
+        : healthScenario === "unverified"
+          ? {
+              kubernetes: configOnlyProvider,
+              opensearch: providerState,
+              argocd: providerState,
+              jenkins: providerState,
+              prometheus: providerState,
+            }
+          : healthScenario === "degraded"
+            ? {
+                kubernetes: configOnlyProvider,
+                opensearch: unavailableProvider,
+                argocd: configOnlyProvider,
+                jenkins: configOnlyProvider,
+                prometheus: configOnlyProvider,
+              }
+            : {
+                kubernetes: providerState,
+                opensearch: providerState,
+                argocd: providerState,
+                jenkins: providerState,
+                prometheus: providerState,
+              }
+    const status = healthScenario
     return Response.json({
       ok: true,
       data: {
         provider: providerState,
-        status: "healthy",
-        verdict: {
-          headline: "Cluster is healthy",
-          detail: "Every configured provider answered.",
-          unaffected: null,
-          action: null,
-        },
-        nodes: { ready: 2, total: 2 },
-        workloads: { ready: 4, total: 4 },
+        status,
+        nodes:
+          status === "healthy"
+            ? { ready: 2, total: 2 }
+            : { ready: null, total: null },
+        workloads:
+          status === "healthy"
+            ? { ready: 4, total: 4 }
+            : { ready: null, total: null },
         recentDeployment: null,
-        providers: {
-          kubernetes: providerState,
-          opensearch: providerState,
-          argocd: providerState,
-          jenkins: providerState,
-          prometheus: providerState,
-        },
+        providers,
       },
     })
   }
@@ -306,6 +348,10 @@ function responseForOperation(input: RequestInfo | URL) {
 }
 
 beforeEach(() => {
+  mockLocale.value = "en"
+  healthScenario = "healthy"
+  mockReplace.mockClear()
+  mockPush.mockClear()
   globalThis.fetch = mock(async (input) =>
     String(input).includes("/operations/")
       ? responseForOperation(input)
@@ -654,7 +700,7 @@ describe("ClusterDetail", () => {
     )
 
     const testButton = view.getAllByRole("button", {
-      name: /^test$/i,
+      name: /test configuration/i,
     })[0]!
     fireEvent.click(testButton)
 
@@ -811,6 +857,84 @@ describe("ClusterDetail", () => {
         expect(mockTestIntegration).toHaveBeenCalled()
       },
       { timeout: 5000 }
+    )
+  })
+  it("renders one onboarding card for unknown provider health", async () => {
+    healthScenario = "unknown"
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => expect(view.getByText("No provider connections yet")).toBeTruthy(),
+      { timeout: 5000 }
+    )
+    expect(
+      view.getByRole("button", { name: "Configure integrations" })
+    ).toBeTruthy()
+    expect(view.queryByText("Providers")).toBeNull()
+    expect(view.queryByText("Refresh data")).toBeNull()
+
+    fireEvent.click(
+      view.getByRole("button", { name: "Configure integrations" })
+    )
+    expect(mockReplace).toHaveBeenCalledWith("?tab=settings", { scroll: false })
+  })
+
+  it("keeps live capabilities visible when Kubernetes health is unverified", async () => {
+    healthScenario = "unverified"
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () =>
+        expect(view.getByText("Kubernetes health is unavailable")).toBeTruthy(),
+      { timeout: 5000 }
+    )
+    expect(view.getByText("4 of 5 provider connections are live.")).toBeTruthy()
+    expect(view.getByText(/Logs.*Deployments.*Builds.*Metrics/)).toBeTruthy()
+    expect(
+      view.getByRole("button", { name: "Review Kubernetes setup" })
+    ).toBeTruthy()
+  })
+
+  it("renders degraded diagnostics instead of onboarding for a zero-live outage", async () => {
+    healthScenario = "degraded"
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () => expect(view.getByText("OpenSearch is unavailable.")).toBeTruthy(),
+      { timeout: 5000 }
+    )
+    expect(view.queryByText("No provider connections yet")).toBeNull()
+  })
+
+  it("renders health guidance and settings labels in Indonesian", async () => {
+    mockLocale.value = "id"
+    healthScenario = "unverified"
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+
+    await waitFor(
+      () =>
+        expect(
+          view.getByText("Kesehatan Kubernetes belum tersedia")
+        ).toBeTruthy(),
+      { timeout: 5000 }
+    )
+    expect(view.getByText("4 dari 5 koneksi penyedia aktif.")).toBeTruthy()
+    expect(view.getByRole("tab", { name: "Pengaturan" })).toBeTruthy()
+  })
+
+  it("gives dynamic integration fields stable accessible identifiers", async () => {
+    const view = render(<ClusterDetail clusterId="cl_1" />)
+    await waitFor(() => expect(view.getByText("Jenkins")).toBeTruthy(), {
+      timeout: 5000,
+    })
+
+    fireEvent.click(view.getAllByRole("button", { name: /edit/i })[0]!)
+    const webhookToken = await waitFor(() =>
+      view.getByLabelText(/webhook token/i)
+    )
+    expect(webhookToken.id).toBe("int-secret-webhookToken")
+    expect(webhookToken.getAttribute("name")).toBe(
+      "integration.secrets.webhookToken"
     )
   })
 })

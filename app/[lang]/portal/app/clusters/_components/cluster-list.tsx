@@ -6,6 +6,7 @@ import { Plus, Eye, Database } from "@phosphor-icons/react"
 
 import { eden } from "@/lib/eden"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -51,15 +52,10 @@ const STATUS_VARIANT: Record<
   DEPRECATED: "destructive",
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  ACTIVE: "Active",
-  PLANNED: "Planned",
-  DEPRECATED: "Deprecated",
-}
-
 export function ClusterList() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).console.app.clusterInventory
 
   const [clusters, setClusters] = useState<ClusterAdminDTO[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,23 +77,19 @@ export function ClusterList() {
           $query: { page: 1, limit: 20 },
         })
         if (!payload) {
-          throw new Error("Unable to load clusters.")
+          throw new Error(messages.loadError)
         }
         if (!payload.ok) {
           throw new Error(payload.message)
         }
         if (!Array.isArray(payload.data)) {
-          throw new Error("Unable to load clusters.")
+          throw new Error(messages.loadError)
         }
-
-        if (cancelled) return
         setClusters(payload.data)
       } catch (cause) {
         if (cancelled) return
         setClusters([])
-        setError(
-          cause instanceof Error ? cause.message : "Unable to load clusters."
-        )
+        setError(cause instanceof Error ? cause.message : messages.loadError)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -107,7 +99,7 @@ export function ClusterList() {
     return () => {
       cancelled = true
     }
-  }, [retry])
+  }, [messages.loadError, retry])
 
   const handleRetry = () => setRetry((v) => v + 1)
   const handleCreated = () => {
@@ -118,7 +110,7 @@ export function ClusterList() {
   if (loading) {
     return (
       <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-        Loading clusters...
+        {messages.loading}
       </div>
     )
   }
@@ -131,30 +123,45 @@ export function ClusterList() {
       >
         <span>{error}</span>
         <Button type="button" variant="outline" size="sm" onClick={handleRetry}>
-          Retry
+          {messages.retry}
         </Button>
       </div>
     )
+  }
+
+  const lifecycleLabels = {
+    ACTIVE: messages.enabled,
+    PLANNED: messages.planned,
+    DEPRECATED: messages.disabled,
   }
 
   return (
     <>
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {clusters.length} cluster{clusters.length !== 1 ? "s" : ""}
+          {clusters.length === 1
+            ? messages.countOne
+            : messages.countMany.replace("{count}", String(clusters.length))}
         </p>
         <Button type="button" size="sm" onClick={() => setShowCreate(true)}>
           <Plus size={14} className="mr-1" />
-          Create Cluster
+          {messages.createCluster}
         </Button>
       </div>
 
       {clusters.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-border bg-muted/10 p-12 text-center">
           <Database size={40} className="text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            No clusters configured yet.
-          </p>
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{messages.empty}</p>
+            <p className="text-xs text-muted-foreground">
+              {messages.emptyDescription}
+            </p>
+          </div>
+          <Button type="button" size="sm" onClick={() => setShowCreate(true)}>
+            <Plus size={14} className="mr-1" />
+            {messages.createCluster}
+          </Button>
         </div>
       ) : (
         <div className="rounded-xl border border-border">
@@ -162,59 +169,79 @@ export function ClusterList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Integrations</TableHead>
-                  <TableHead>Default</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{messages.tableName}</TableHead>
+                  <TableHead>{messages.tableCode}</TableHead>
+                  <TableHead>{messages.tableRegion}</TableHead>
+                  <TableHead>{messages.tableRouting}</TableHead>
+                  <TableHead>{messages.tableConfiguration}</TableHead>
+                  <TableHead>{messages.tableDefault}</TableHead>
+                  <TableHead>{messages.tableActions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clusters.map((cluster) => (
-                  <TableRow key={cluster.id}>
-                    <TableCell className="font-medium">
-                      {cluster.name}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {cluster.code}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {cluster.region}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={STATUS_VARIANT[cluster.status] ?? "outline"}
-                      >
-                        {STATUS_LABEL[cluster.status] ?? cluster.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {cluster.integrations.length}
-                    </TableCell>
-                    <TableCell>
-                      {cluster.isDefault ? (
-                        <Badge variant="success">Default</Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button asChild variant="outline" size="xs">
-                        <Link
-                          href={localizePathname({
-                            pathname: `/portal/app/clusters/${cluster.id}`,
-                            locale,
-                          })}
+                {clusters.map((cluster) => {
+                  const configured = cluster.integrations.length
+                  const enabled = cluster.integrations.filter(
+                    (integration) => integration.isActive
+                  ).length
+                  const detailPath = localizePathname({
+                    pathname: `/portal/app/clusters/${cluster.id}`,
+                    locale,
+                  })
+                  return (
+                    <TableRow key={cluster.id}>
+                      <TableCell className="font-medium">
+                        {cluster.name}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {cluster.code}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {cluster.region}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={STATUS_VARIANT[cluster.status] ?? "outline"}
                         >
-                          <Eye size={14} className="mr-1" />
-                          View
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {lifecycleLabels[cluster.status] ?? cluster.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {configured === 0 ? (
+                          <Link
+                            className="font-medium text-amber-600 hover:underline dark:text-amber-400"
+                            href={`${detailPath}?tab=settings`}
+                          >
+                            {messages.setupNeeded}
+                          </Link>
+                        ) : (
+                          messages.configurationSummary
+                            .replace("{active}", String(enabled))
+                            .replace("{configured}", String(configured))
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {cluster.isDefault ? (
+                          <Badge variant="success">
+                            {messages.defaultLabel}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button asChild variant="outline" size="xs">
+                          <Link href={detailPath}>
+                            <Eye size={14} className="mr-1" />
+                            {messages.view}
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>

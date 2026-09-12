@@ -237,6 +237,7 @@ describe("cluster operations service", () => {
         prometheus: { state: "live" },
       },
     })
+    expect(health).not.toHaveProperty("verdict")
 
     const logs = await getClusterOperations("cl_1", "logs", {
       source: "application",
@@ -309,6 +310,7 @@ describe("cluster operations service", () => {
         opensearch: { state: "configuration_only" },
       },
     })
+    expect(health).not.toHaveProperty("verdict")
 
     const logs = await getClusterOperations("cl_1", "logs")
     expect(logs).toMatchObject({
@@ -531,6 +533,41 @@ describe("cluster operations service", () => {
     })
     // Never "stale" for an observation taken just now.
     expect("provider" in health && health.provider.state).not.toBe("stale")
+  })
+
+  it("returns degraded when zero live providers report an outage", async () => {
+    mockResolveClusterIntegrationByClusterCode.mockRejectedValue(
+      new Error("provider unavailable")
+    )
+
+    const health = await getClusterOperations("cl_1", "health")
+    expect(health).toMatchObject({
+      status: "degraded",
+      nodes: { ready: null, total: null },
+      workloads: { ready: null, total: null },
+    })
+    expect(health).not.toHaveProperty("verdict")
+  })
+
+  it("returns degraded when zero live providers are forbidden", async () => {
+    mockResolveClusterIntegrationByClusterCode.mockImplementation(
+      async (_clusterId, type) => {
+        if (type === "OPENSEARCH")
+          return defaultIntegrationConfigs(_clusterId, type)
+        throw new Error(
+          `Missing ${type} integration for App Hosting cluster sgp`
+        )
+      }
+    )
+    globalThis.fetch = mock(
+      async () => new Response("forbidden", { status: 403 })
+    ) as unknown as typeof fetch
+
+    const health = await getClusterOperations("cl_1", "health")
+    expect(health).toMatchObject({
+      status: "degraded",
+      providers: { opensearch: { state: "forbidden" } },
+    })
   })
 
   it("separates a missing integration from an incomplete one", async () => {

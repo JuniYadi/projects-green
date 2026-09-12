@@ -627,6 +627,61 @@ describe("cluster-integration.service", () => {
     expect(config.password).toBe("prom-password-id")
   })
 
+  it("marks omitted INTERNAL target and token as in-cluster fallback", async () => {
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValue({
+      id: "cluster-sgp",
+      code: "sgp",
+      name: "Singapore Cluster",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-sgp",
+      type: "KUBECONFIG",
+      metaJson: {
+        connectionMode: "INTERNAL",
+        namespacePattern: "app-{slug}",
+        labelSelector: "app={slug}",
+      },
+      secretCiphertext: encryptClusterIntegrationSecrets({}),
+    })
+
+    const config = await resolveClusterIntegrationByClusterCode(
+      "sgp",
+      "KUBECONFIG"
+    )
+    expect(config.usesInClusterFallback).toBe(true)
+  })
+
+  it("does not mark an explicit INTERNAL target and token as fallback", async () => {
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValue({
+      id: "cluster-sgp",
+      code: "sgp",
+      name: "Singapore Cluster",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-sgp",
+      type: "KUBECONFIG",
+      metaJson: {
+        connectionMode: "INTERNAL",
+        namespacePattern: "app-{slug}",
+        labelSelector: "app={slug}",
+      },
+      secretCiphertext: encryptClusterIntegrationSecrets({
+        apiServerUrl: "https://k8s.example.com",
+        serviceAccountToken: "explicit-token",
+      }),
+    })
+
+    const config = await resolveClusterIntegrationByClusterCode(
+      "sgp",
+      "KUBECONFIG"
+    )
+    expect(config).toMatchObject({
+      apiServerUrl: "https://k8s.example.com",
+      serviceAccountToken: "explicit-token",
+      usesInClusterFallback: false,
+    })
+  })
+
   it("resolveClusterIntegrationByClusterCode throws when cluster is not found", async () => {
     mockPrisma.appHostingCluster.findUnique.mockResolvedValue(null)
 
