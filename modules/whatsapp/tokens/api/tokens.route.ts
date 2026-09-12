@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import { toWhatsappApiKeyDTO } from "@/modules/whatsapp/tokens/tokens.dto"
 
 const tokenBodySchema = t.Object({
   name: t.String(),
@@ -17,15 +18,24 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
+    const isSuperAdmin =
+      whatsappAuth.type === "workos" &&
+      whatsappAuth.platformRole === "super_admin"
+    if (!isSuperAdmin && !whatsappAuth.organizationId) {
+      set.status = 403
+      return {
+        ok: false,
+        error: "FORBIDDEN",
+        message: "No active organization found.",
+      }
+    }
     const tokens = await prisma.whatsappApiKey.findMany({
-      where:
-        whatsappAuth.type === "workos" &&
-        whatsappAuth.platformRole !== "super_admin"
-          ? { organizationId: whatsappAuth.organizationId! }
-          : {},
+      where: isSuperAdmin
+        ? {}
+        : { organizationId: whatsappAuth.organizationId! },
       orderBy: { createdAt: "desc" },
     })
-    return { ok: true, tokens }
+    return { ok: true, tokens: tokens.map(toWhatsappApiKeyDTO) }
   })
   .get(
     "/:id",
@@ -60,7 +70,7 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
         return { ok: false, error: "FORBIDDEN", message: "Access denied." }
       }
 
-      return { ok: true, token }
+      return { ok: true, token: toWhatsappApiKeyDTO(token) }
     }
   )
   .post(
@@ -88,7 +98,7 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
         },
       })
 
-      return { ok: true, token }
+      return { ok: true, token: toWhatsappApiKeyDTO(token) }
     },
     {
       body: tokenBodySchema,
@@ -134,7 +144,7 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
         data: body,
       })
 
-      return { ok: true, token: updated }
+      return { ok: true, token: toWhatsappApiKeyDTO(updated) }
     },
     {
       body: tokenUpdateSchema,
