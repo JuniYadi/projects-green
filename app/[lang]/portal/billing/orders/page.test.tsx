@@ -17,7 +17,7 @@ mock.module("@/lib/billing-client", () => ({
   fulfillAdminOrder: mockFulfillAdminOrder,
   billingPeriodLabel: (period: string) => period,
 }))
-const { BillingOrdersPage } = await import("./page")
+const { BillingOrdersPage } = await import("./page-client")
 
 const baseOrder = {
   id: "ord_1",
