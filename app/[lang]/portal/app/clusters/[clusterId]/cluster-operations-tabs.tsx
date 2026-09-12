@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ArrowsClockwise,
+  CaretDown,
+  CaretRight,
   Cpu,
   FileText,
   GitBranch,
@@ -16,21 +18,28 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
+import type { ClusterMessages } from "@/lib/i18n/messages/types"
 import type {
   ClusterBuildsDTO,
   ClusterDeploymentsDTO,
   ClusterHealthDTO,
   ClusterLogsDTO,
+  ClusterMetricDTO,
   ClusterMetricsDTO,
+  ClusterProviderKey,
   ClusterProviderStateDTO,
 } from "@/modules/deploy/cluster-operations.dto"
 
 type ClusterOperationsTabsProps = {
   clusterId: string
   activeTab: string
+  messages: ClusterMessages
+  onTabChange: (tab: string) => void
 }
 
 type OperationView = "health" | "logs" | "deployments" | "builds" | "metrics"
+
+type LogRange = "1h" | "6h" | "24h" | "all"
 
 type OperationData =
   | ClusterHealthDTO
@@ -41,24 +50,63 @@ type OperationData =
 
 const operationTabs: Array<{
   value: OperationView
-  label: string
+  labelKey: keyof ClusterMessages["tabs"]
   icon: typeof Cpu
 }> = [
-  { value: "health", label: "Health", icon: Cpu },
-  { value: "logs", label: "Logs", icon: FileText },
-  { value: "deployments", label: "Deployments", icon: GitBranch },
-  { value: "builds", label: "Builds", icon: TerminalWindow },
-  { value: "metrics", label: "Metrics", icon: Pulse },
+  { value: "health", labelKey: "health", icon: Cpu },
+  { value: "logs", labelKey: "logs", icon: FileText },
+  { value: "deployments", labelKey: "deployments", icon: GitBranch },
+  { value: "builds", labelKey: "builds", icon: TerminalWindow },
+  { value: "metrics", labelKey: "metrics", icon: Pulse },
 ]
 
-const stateLabel: Record<ClusterProviderStateDTO["state"], string> = {
-  live: "Live",
-  empty: "Empty",
-  stale: "Stale",
-  unavailable: "Unavailable",
-  forbidden: "Forbidden",
-  configuration_only: "Configuration only",
+const PROVIDER_ORDER: ClusterProviderKey[] = [
+  "kubernetes",
+  "opensearch",
+  "argocd",
+  "jenkins",
+  "prometheus",
+]
+
+const PROVIDER_TAB: Record<ClusterProviderKey, OperationView | "settings"> = {
+  kubernetes: "settings",
+  opensearch: "logs",
+  argocd: "deployments",
+  jenkins: "builds",
+  prometheus: "metrics",
 }
+
+const METRIC_NAME_KEY: Record<
+  string,
+  keyof ClusterMessages["metrics"]["names"]
+> = {
+  request_rate: "requestRate",
+  error_4xx_rate: "error4xxRate",
+  error_5xx_rate: "error5xxRate",
+  p95_latency: "p95Latency",
+  cpu_usage: "cpuUsage",
+  memory_usage: "memoryUsage",
+  storage_utilization: "storageUtilization",
+}
+
+const TRAFFIC_METRICS = [
+  "request_rate",
+  "error_4xx_rate",
+  "error_5xx_rate",
+  "p95_latency",
+]
+
+const RANGE_MINUTES: Record<"1h" | "6h" | "24h", number> = {
+  "1h": 60,
+  "6h": 360,
+  "24h": 1440,
+}
+
+const fill = (template: string, values: Record<string, string | number>) =>
+  Object.entries(values).reduce(
+    (text, [token, value]) => text.replaceAll(`{${token}}`, String(value)),
+    template
+  )
 
 const stateVariant = (
   state: ClusterProviderStateDTO["state"]
@@ -76,22 +124,38 @@ const stateVariant = (
   return "outline"
 }
 
-function ProviderStateBadge({ state }: { state: ClusterProviderStateDTO }) {
+const stateLabelOf = (
+  messages: ClusterMessages,
+  state: ClusterProviderStateDTO["state"]
+): string =>
+  state === "configuration_only"
+    ? messages.providerState.configurationOnly
+    : messages.providerState[state]
+
+function ProviderStateBadge({
+  state,
+  messages,
+}: {
+  state: ClusterProviderStateDTO
+  messages: ClusterMessages
+}) {
   return (
     <Badge variant={stateVariant(state.state)} className="text-[10px]">
-      {stateLabel[state.state]}
+      {stateLabelOf(messages, state.state)}
     </Badge>
   )
 }
 
 function ProviderStatePanel({
   state,
+  messages,
   onRetry,
 }: {
   state: ClusterProviderStateDTO
+  messages: ClusterMessages
   onRetry: () => void
 }) {
-  const message = state.message ?? "No additional provider details."
+  const message = state.message ?? messages.common.noDetail
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card/60 p-3 text-xs">
       <div className="flex min-w-0 items-start gap-2">
@@ -105,19 +169,23 @@ function ProviderStatePanel({
         />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <ProviderStateBadge state={state} />
+            <ProviderStateBadge state={state} messages={messages} />
             {state.source && (
               <span className="text-muted-foreground">
-                Source: {state.source}
+                {messages.common.source}: {state.source}
               </span>
             )}
           </div>
-          <p className="mt-1 text-muted-foreground">{message}</p>
+          {message && <p className="mt-1 text-muted-foreground">{message}</p>}
           {state.observedAt && (
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Observed {formatTimestamp(state.observedAt)}
+              {fill(messages.common.observed, {
+                time: formatTime(state.observedAt),
+              })}
               {state.staleAfter
-                ? ` · stale after ${formatTimestamp(state.staleAfter)}`
+                ? ` · ${fill(messages.common.refreshDue, {
+                    time: formatTime(state.staleAfter),
+                  })}`
                 : ""}
             </p>
           )}
@@ -126,7 +194,7 @@ function ProviderStatePanel({
       {state.retryable && state.state !== "live" && (
         <Button type="button" size="xs" variant="outline" onClick={onRetry}>
           <ArrowsClockwise size={13} className="mr-1" />
-          Retry
+          {messages.common.retry}
         </Button>
       )}
     </div>
@@ -137,6 +205,21 @@ const formatTimestamp = (value: string): string => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleString()
+}
+
+const formatTime = (value: string): string => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleTimeString()
+}
+
+const formatDuration = (ms: number | null): string => {
+  if (ms === null) return "—"
+  if (ms < 1000) return `${ms} ms`
+  const seconds = Math.round(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  return `${minutes}m ${seconds % 60}s`
 }
 
 const formatMetric = (value: number | null, unit: string): string => {
@@ -161,19 +244,23 @@ const formatMetric = (value: number | null, unit: string): string => {
 export function ClusterOperationsTabs({
   clusterId,
   activeTab,
+  messages,
+  onTabChange,
 }: ClusterOperationsTabsProps) {
   const [data, setData] = useState<OperationData | null>(null)
   const [dataView, setDataView] = useState<OperationView | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [retry, setRetry] = useState(0)
+  // Application is the only source with readable text on every document.
   const [logSource, setLogSource] = useState<"all" | "application" | "http">(
-    "all"
+    "application"
   )
   const [debouncedLogQuery, setDebouncedLogQuery] = useState("")
   const [logQuery, setLogQuery] = useState("")
   const [logLevel, setLogLevel] = useState("ALL")
   const [logService, setLogService] = useState("ALL")
+  const [logRange, setLogRange] = useState<LogRange>("1h")
   const [metricsRange, setMetricsRange] = useState<"1h" | "6h" | "24h">("1h")
   const view = operationTabs.some((tab) => tab.value === activeTab)
     ? (activeTab as OperationView)
@@ -200,6 +287,9 @@ export function ClusterOperationsTabs({
                 : {}),
               ...(logLevel !== "ALL" ? { level: logLevel } : {}),
               ...(logService !== "ALL" ? { service: logService } : {}),
+              ...(logRange !== "all"
+                ? { from: `now-${logRange}`, to: "now" }
+                : {}),
             }
           : view === "metrics"
             ? { range: metricsRange }
@@ -239,6 +329,7 @@ export function ClusterOperationsTabs({
     clusterId,
     logLevel,
     debouncedLogQuery,
+    logRange,
     logService,
     logSource,
     metricsRange,
@@ -249,20 +340,37 @@ export function ClusterOperationsTabs({
   const retryView = () => setRetry((value) => value + 1)
   const provider = data && "provider" in data ? data.provider : null
 
+  const controls: ViewControls = {
+    logSource,
+    logQuery,
+    logLevel,
+    logService,
+    logRange,
+    metricsRange,
+    onLogSourceChange: setLogSource,
+    onLogQueryChange: setLogQuery,
+    onLogLevelChange: setLogLevel,
+    onLogServiceChange: setLogService,
+    onLogRangeChange: setLogRange,
+    onMetricsRangeChange: setMetricsRange,
+    onRetry: retryView,
+    onTabChange,
+  }
+
   return (
     <>
       <TabsList className="flex h-auto flex-wrap gap-1 rounded-xl bg-muted/60 p-1">
-        {operationTabs.map(({ value, label, icon: Icon }) => (
+        {operationTabs.map(({ value, labelKey, icon: Icon }) => (
           <TabsTrigger
             key={value}
             value={value}
             className="gap-1.5 px-3 py-1.5"
           >
-            <Icon size={15} /> {label}
+            <Icon size={15} /> {messages.tabs[labelKey]}
           </TabsTrigger>
         ))}
         <TabsTrigger value="settings" className="gap-1.5 px-3 py-1.5">
-          Settings
+          {messages.tabs.settings}
         </TabsTrigger>
       </TabsList>
 
@@ -276,7 +384,7 @@ export function ClusterOperationsTabs({
           {loading && activeTab === value && (
             <Card>
               <CardContent className="p-6 text-sm text-muted-foreground">
-                Loading provider data…
+                {messages.common.loading}
               </CardContent>
             </Card>
           )}
@@ -292,7 +400,7 @@ export function ClusterOperationsTabs({
                 variant="outline"
                 onClick={retryView}
               >
-                Retry
+                {messages.common.retry}
               </Button>
             </div>
           )}
@@ -301,19 +409,7 @@ export function ClusterOperationsTabs({
             !error &&
             dataView === view &&
             data &&
-            renderView(view, data, {
-              logSource,
-              logQuery,
-              logLevel,
-              logService,
-              metricsRange,
-              onLogSourceChange: setLogSource,
-              onLogQueryChange: setLogQuery,
-              onLogLevelChange: setLogLevel,
-              onLogServiceChange: setLogService,
-              onMetricsRangeChange: setMetricsRange,
-              onRetry: retryView,
-            })}
+            renderView(view, data, messages, controls)}
           {activeTab === value &&
             !loading &&
             !error &&
@@ -321,7 +417,7 @@ export function ClusterOperationsTabs({
             provider === null && (
               <Card>
                 <CardContent className="p-6 text-sm text-muted-foreground">
-                  No provider data has been requested yet.
+                  {messages.common.loading}
                 </CardContent>
               </Card>
             )}
@@ -336,82 +432,217 @@ type ViewControls = {
   logQuery: string
   logLevel: string
   logService: string
+  logRange: LogRange
   metricsRange: "1h" | "6h" | "24h"
   onLogSourceChange: (value: "all" | "application" | "http") => void
   onLogQueryChange: (value: string) => void
   onLogLevelChange: (value: string) => void
   onLogServiceChange: (value: string) => void
+  onLogRangeChange: (value: LogRange) => void
   onMetricsRangeChange: (value: "1h" | "6h" | "24h") => void
   onRetry: () => void
+  onTabChange: (tab: string) => void
 }
 
 function renderView(
   view: OperationView,
   data: OperationData,
+  messages: ClusterMessages,
   controls: ViewControls
 ) {
   if (view === "health")
     return (
-      <HealthView data={data as ClusterHealthDTO} onRetry={controls.onRetry} />
+      <HealthView
+        data={data as ClusterHealthDTO}
+        messages={messages}
+        controls={controls}
+      />
     )
   if (view === "logs")
-    return <LogsView data={data as ClusterLogsDTO} controls={controls} />
+    return (
+      <LogsView
+        data={data as ClusterLogsDTO}
+        messages={messages}
+        controls={controls}
+      />
+    )
   if (view === "deployments")
     return (
       <DeploymentsView
         data={data as ClusterDeploymentsDTO}
+        messages={messages}
         onRetry={controls.onRetry}
       />
     )
   if (view === "builds")
     return (
-      <BuildsView data={data as ClusterBuildsDTO} onRetry={controls.onRetry} />
+      <BuildsView
+        data={data as ClusterBuildsDTO}
+        messages={messages}
+        onRetry={controls.onRetry}
+      />
     )
-  return <MetricsView data={data as ClusterMetricsDTO} controls={controls} />
+  return (
+    <MetricsView
+      data={data as ClusterMetricsDTO}
+      messages={messages}
+      controls={controls}
+    />
+  )
 }
 
 function HealthView({
   data,
-  onRetry,
+  messages,
+  controls,
 }: {
   data: ClusterHealthDTO
-  onRetry: () => void
+  messages: ClusterMessages
+  controls: ViewControls
 }) {
+  const needsKubernetes = data.providers.kubernetes.state !== "live"
   return (
     <>
-      <ProviderStatePanel state={data.provider} onRetry={onRetry} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Cluster status" value={data.status} />
+      <div
+        className={
+          data.status === "healthy"
+            ? "rounded-lg border border-border bg-card/60 p-4"
+            : "rounded-lg border border-amber-500/40 bg-amber-500/5 p-4"
+        }
+        role={data.status === "healthy" ? undefined : "status"}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-semibold">{data.verdict.headline}</p>
+            <p className="text-xs text-muted-foreground">
+              {data.verdict.detail}
+            </p>
+            {data.verdict.unaffected && (
+              <p className="text-xs text-muted-foreground">
+                {data.verdict.unaffected}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {data.verdict.action && (
+              <Button
+                type="button"
+                size="xs"
+                onClick={() =>
+                  controls.onTabChange(PROVIDER_TAB[data.verdict.action!])
+                }
+              >
+                {messages.common.connect}{" "}
+                {messages.providerNames[data.verdict.action]}
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              onClick={controls.onRetry}
+            >
+              <ArrowsClockwise size={13} className="mr-1" />
+              {messages.common.refresh}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard
-          label="Nodes ready"
-          value={formatCount(data.nodes.ready, data.nodes.total)}
+          label={messages.health.nodesReady}
+          value={
+            formatCount(data.nodes.ready, data.nodes.total) ??
+            messages.common.unknown
+          }
+          detail={needsKubernetes ? messages.health.needsKubernetes : undefined}
         />
         <MetricCard
-          label="Workloads ready"
-          value={formatCount(data.workloads.ready, data.workloads.total)}
+          label={messages.health.workloadsReady}
+          value={
+            formatCount(data.workloads.ready, data.workloads.total) ??
+            messages.common.unknown
+          }
+          detail={needsKubernetes ? messages.health.needsKubernetes : undefined}
         />
         <MetricCard
-          label="Recent deployment"
-          value={data.recentDeployment?.status ?? "—"}
+          label={messages.health.lastDeployment}
+          value={data.recentDeployment?.status ?? messages.common.none}
           detail={data.recentDeployment?.application}
         />
       </div>
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Provider observations</CardTitle>
+          <CardTitle className="text-base">
+            {messages.health.providerTable}
+          </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Object.entries(data.providers).map(([name, state]) => (
-            <div key={name} className="rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium capitalize">{name}</span>
-                <ProviderStateBadge state={state} />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {state.message ?? state.source ?? "No observation"}
+        <CardContent>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-muted/40 text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2">
+                    {messages.health.columnProvider}
+                  </th>
+                  <th className="px-3 py-2">{messages.health.columnState}</th>
+                  <th className="px-3 py-2">{messages.health.columnPowers}</th>
+                  <th className="px-3 py-2">
+                    {messages.health.columnLastCheck}
+                  </th>
+                  <th className="px-3 py-2">{messages.health.columnAction}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {PROVIDER_ORDER.map((key) => {
+                  const state = data.providers[key]
+                  const target = PROVIDER_TAB[key]
+                  return (
+                    <tr key={key}>
+                      <td className="px-3 py-2 font-medium">
+                        {messages.providerNames[key]}
+                      </td>
+                      <td className="px-3 py-2">
+                        <ProviderStateBadge state={state} messages={messages} />
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {messages.providerPowers[key]}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-muted-foreground">
+                        {state.observedAt
+                          ? formatTime(state.observedAt)
+                          : messages.common.none}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="outline"
+                          onClick={() => controls.onTabChange(target)}
+                        >
+                          {state.state === "live"
+                            ? messages.common.view
+                            : messages.common.connect}
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {PROVIDER_ORDER.filter((key) => data.providers[key].message).map(
+            (key) => (
+              <p key={key} className="mt-2 text-[11px] text-muted-foreground">
+                <span className="font-medium">
+                  {messages.providerNames[key]}:
+                </span>{" "}
+                {data.providers[key].message}
               </p>
-            </div>
-          ))}
+            )
+          )}
         </CardContent>
       </Card>
     </>
@@ -420,32 +651,39 @@ function HealthView({
 
 function LogsView({
   data,
+  messages,
   controls,
 }: {
   data: ClusterLogsDTO
+  messages: ClusterMessages
   controls: ViewControls
 }) {
-  const services = useMemo(
-    () =>
-      Array.from(
-        new Set(data.entries.map((entry) => entry.service).filter(Boolean))
-      ) as string[],
-    [data.entries]
-  )
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const countTemplate = data.totalIsLowerBound
+    ? messages.logs.showingAtLeast
+    : messages.logs.showing
   return (
     <>
-      <ProviderStatePanel state={data.provider} onRetry={controls.onRetry} />
+      <ProviderStatePanel
+        state={data.provider}
+        messages={messages}
+        onRetry={controls.onRetry}
+      />
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-base">Cluster logs</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                {data.indexPatterns.join(" + ")} · {data.total} matching events
-              </p>
-            </div>
+            <CardTitle className="text-base">{messages.logs.heading}</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {fill(countTemplate, {
+                shown: data.entries.length,
+                total: data.total.toLocaleString(),
+                pattern: data.indexPatterns.join(" + "),
+              })}
+            </p>
+          </div>
+          <div className="grid gap-2 md:grid-cols-4">
             <select
-              aria-label="Log source"
+              aria-label={messages.logs.sourceLabel}
               value={controls.logSource}
               onChange={(event) =>
                 controls.onLogSourceChange(
@@ -454,84 +692,147 @@ function LogsView({
               }
               className="h-9 rounded-md border border-input bg-background px-2 text-xs"
             >
-              <option value="all">All logs</option>
-              <option value="application">Application</option>
-              <option value="http">HTTP traffic</option>
+              <option value="application">
+                {messages.logs.sourceApplication}
+              </option>
+              <option value="http">{messages.logs.sourceHttp}</option>
+              <option value="all">{messages.logs.sourceAll}</option>
             </select>
-          </div>
-          <div className="grid gap-2 md:grid-cols-[1fr_auto_auto]">
-            <Input
-              aria-label="Log text filter"
-              placeholder="Search message, service, or route"
-              value={controls.logQuery}
-              onChange={(event) =>
-                controls.onLogQueryChange(event.target.value)
-              }
-            />
             <select
-              aria-label="Log severity"
+              aria-label={messages.logs.timeLabel}
+              value={controls.logRange}
+              onChange={(event) =>
+                controls.onLogRangeChange(event.target.value as LogRange)
+              }
+              className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+            >
+              <option value="1h">{messages.logs.time1h}</option>
+              <option value="6h">{messages.logs.time6h}</option>
+              <option value="24h">{messages.logs.time24h}</option>
+              <option value="all">{messages.logs.timeAll}</option>
+            </select>
+            <select
+              aria-label={messages.logs.levelLabel}
               value={controls.logLevel}
               onChange={(event) =>
                 controls.onLogLevelChange(event.target.value)
               }
               className="h-9 rounded-md border border-input bg-background px-2 text-xs"
             >
-              <option value="ALL">All severities</option>
+              <option value="ALL">{messages.logs.levelAll}</option>
+              <option value="DEBUG">DEBUG</option>
               <option value="INFO">INFO</option>
               <option value="WARN">WARN</option>
               <option value="ERROR">ERROR</option>
             </select>
             <select
-              aria-label="Log service"
+              aria-label={messages.logs.serviceLabel}
               value={controls.logService}
               onChange={(event) =>
                 controls.onLogServiceChange(event.target.value)
               }
               className="h-9 rounded-md border border-input bg-background px-2 text-xs"
             >
-              <option value="ALL">All services</option>
-              {services.map((service) => (
+              <option value="ALL">{messages.logs.serviceAll}</option>
+              {data.services.map((service) => (
                 <option key={service} value={service}>
                   {service}
                 </option>
               ))}
             </select>
           </div>
+          <Input
+            aria-label={messages.logs.searchPlaceholder}
+            placeholder={messages.logs.searchPlaceholder}
+            value={controls.logQuery}
+            onChange={(event) => controls.onLogQueryChange(event.target.value)}
+          />
         </CardHeader>
         <CardContent>
           {data.entries.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              No logs found for the selected source and filters.
+              {messages.logs.empty}
             </p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-left text-xs">
                 <thead className="bg-muted/40 text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2">Timestamp</th>
-                    <th className="px-3 py-2">Severity</th>
-                    <th className="px-3 py-2">Service</th>
-                    <th className="px-3 py-2">Route / status</th>
-                    <th className="px-3 py-2">Message</th>
+                    <th className="w-6 px-2 py-2" />
+                    <th className="px-3 py-2">{messages.logs.columnTime}</th>
+                    <th className="px-3 py-2">{messages.logs.columnLevel}</th>
+                    <th className="px-3 py-2">{messages.logs.columnService}</th>
+                    <th className="px-3 py-2">{messages.logs.columnRoute}</th>
+                    <th className="px-3 py-2">{messages.logs.columnMessage}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {data.entries.map((entry) => (
-                    <tr key={entry.id}>
-                      <td className="px-3 py-2 font-mono whitespace-nowrap text-muted-foreground">
-                        {formatTimestamp(entry.timestamp)}
-                      </td>
-                      <td className="px-3 py-2">{entry.severity ?? "—"}</td>
-                      <td className="px-3 py-2">{entry.service ?? "—"}</td>
-                      <td className="px-3 py-2">
-                        {entry.route ?? "—"}
-                        {entry.status ? ` · ${entry.status}` : ""}
-                      </td>
-                      <td className="max-w-xl px-3 py-2">
-                        {entry.message || "—"}
-                      </td>
-                    </tr>
-                  ))}
+                  {data.entries.map((entry) => {
+                    const open = expanded === entry.id
+                    return (
+                      <Fragment key={entry.id}>
+                        <tr
+                          className="cursor-pointer hover:bg-muted/30"
+                          onClick={() => setExpanded(open ? null : entry.id)}
+                        >
+                          <td className="px-2 py-2 text-muted-foreground">
+                            <span
+                              aria-label={
+                                open
+                                  ? messages.logs.collapse
+                                  : messages.logs.expand
+                              }
+                            >
+                              {open ? (
+                                <CaretDown size={12} />
+                              ) : (
+                                <CaretRight size={12} />
+                              )}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-mono whitespace-nowrap text-muted-foreground">
+                            {entry.timestamp
+                              ? formatTime(entry.timestamp)
+                              : messages.logs.noTimestamp}
+                          </td>
+                          <td className="px-3 py-2">
+                            {entry.severityLabel ?? messages.common.none}
+                          </td>
+                          <td className="px-3 py-2">
+                            {entry.service ?? messages.common.none}
+                          </td>
+                          <td className="px-3 py-2">
+                            {entry.route ?? messages.common.none}
+                            {entry.status ? ` · ${entry.status}` : ""}
+                          </td>
+                          <td className="max-w-xl truncate px-3 py-2">
+                            {entry.message || messages.common.none}
+                          </td>
+                        </tr>
+                        {open && (
+                          <tr className="bg-muted/20">
+                            <td />
+                            <td colSpan={5} className="px-3 py-3">
+                              <p className="text-[11px] text-muted-foreground">
+                                {entry.timestamp
+                                  ? formatTimestamp(entry.timestamp)
+                                  : messages.logs.noTimestamp}
+                                {entry.namespace
+                                  ? ` · ${messages.logs.namespace}: ${entry.namespace}`
+                                  : ""}
+                                {entry.severity
+                                  ? ` · ${messages.logs.columnLevel}: ${entry.severity}`
+                                  : ""}
+                              </p>
+                              <pre className="mt-2 max-h-64 overflow-auto font-mono text-[11px] whitespace-pre-wrap">
+                                {entry.message || messages.common.none}
+                              </pre>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -544,33 +845,54 @@ function LogsView({
 
 function DeploymentsView({
   data,
+  messages,
   onRetry,
 }: {
   data: ClusterDeploymentsDTO
+  messages: ClusterMessages
   onRetry: () => void
 }) {
   return (
     <>
-      <ProviderStatePanel state={data.provider} onRetry={onRetry} />
+      <ProviderStatePanel
+        state={data.provider}
+        messages={messages}
+        onRetry={onRetry}
+      />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Argo CD application state</CardTitle>
+          <CardTitle className="text-base">
+            {messages.deployments.heading}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {data.deployments.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No application deployments found.
+              {messages.deployments.empty}
             </p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-left text-xs">
                 <thead className="bg-muted/40 text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2">Application</th>
-                    <th className="px-3 py-2">Sync</th>
-                    <th className="px-3 py-2">Health</th>
-                    <th className="px-3 py-2">Revision</th>
-                    <th className="px-3 py-2">Message</th>
+                    <th className="px-3 py-2">
+                      {messages.deployments.columnApplication}
+                    </th>
+                    <th className="px-3 py-2">
+                      {messages.deployments.columnSync}
+                    </th>
+                    <th className="px-3 py-2">
+                      {messages.deployments.columnHealth}
+                    </th>
+                    <th className="px-3 py-2">
+                      {messages.deployments.columnRevision}
+                    </th>
+                    <th className="px-3 py-2">
+                      {messages.deployments.columnObserved}
+                    </th>
+                    <th className="px-3 py-2">
+                      {messages.deployments.columnMessage}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -580,14 +902,24 @@ function DeploymentsView({
                         {deployment.application}
                       </td>
                       <td className="px-3 py-2">
-                        {deployment.syncState ?? "—"}
+                        {deployment.syncState ?? messages.common.none}
                       </td>
-                      <td className="px-3 py-2">{deployment.health ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        {deployment.health ?? messages.common.none}
+                      </td>
                       <td className="px-3 py-2 font-mono">
-                        {deployment.revision ?? "—"}
+                        {deployment.revision?.slice(0, 10) ??
+                          messages.common.none}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
-                        {deployment.failureReason ?? deployment.message ?? "—"}
+                        {deployment.observedAt
+                          ? formatTimestamp(deployment.observedAt)
+                          : messages.common.none}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {deployment.failureReason ??
+                          deployment.message ??
+                          messages.common.none}
                       </td>
                     </tr>
                   ))}
@@ -603,31 +935,61 @@ function DeploymentsView({
 
 function BuildsView({
   data,
+  messages,
   onRetry,
 }: {
   data: ClusterBuildsDTO
+  messages: ClusterMessages
   onRetry: () => void
 }) {
   return (
     <>
-      <ProviderStatePanel state={data.provider} onRetry={onRetry} />
+      <ProviderStatePanel
+        state={data.provider}
+        messages={messages}
+        onRetry={onRetry}
+      />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Jenkins builds</CardTitle>
+          <CardTitle className="text-base">
+            {data.scope === "cluster"
+              ? messages.builds.heading
+              : messages.builds.headingUnfiltered}
+          </CardTitle>
+          {data.scopeFilter && (
+            <p className="text-xs text-muted-foreground">
+              {fill(messages.builds.scopeFiltered, {
+                filter: data.scopeFilter,
+              })}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           {data.builds.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No builds found.</p>
+            <p className="text-sm text-muted-foreground">
+              {messages.builds.empty}
+            </p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-left text-xs">
                 <thead className="bg-muted/40 text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2">Job</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Branch / commit</th>
-                    <th className="px-3 py-2">Started</th>
-                    <th className="px-3 py-2">Artifacts</th>
+                    <th className="px-3 py-2">{messages.builds.columnJob}</th>
+                    <th className="px-3 py-2">
+                      {messages.builds.columnStatus}
+                    </th>
+                    <th className="px-3 py-2">
+                      {messages.builds.columnBranch}
+                    </th>
+                    <th className="px-3 py-2">
+                      {messages.builds.columnStarted}
+                    </th>
+                    <th className="px-3 py-2">
+                      {messages.builds.columnDuration}
+                    </th>
+                    <th className="px-3 py-2">
+                      {messages.builds.columnArtifacts}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -649,16 +1011,19 @@ function BuildsView({
                       </td>
                       <td className="px-3 py-2">{build.status}</td>
                       <td className="px-3 py-2 font-mono">
-                        {build.branch ?? "—"}
-                        {build.commit ? ` · ${build.commit}` : ""}
+                        {build.branch ?? messages.common.none}
+                        {build.commit ? ` · ${build.commit.slice(0, 10)}` : ""}
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {build.startedAt
                           ? formatTimestamp(build.startedAt)
-                          : "—"}
+                          : messages.common.none}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {formatDuration(build.durationMs)}
                       </td>
                       <td className="px-3 py-2">
-                        {build.artifactCount ?? "—"}
+                        {build.artifactCount ?? messages.common.none}
                       </td>
                     </tr>
                   ))}
@@ -672,26 +1037,146 @@ function BuildsView({
   )
 }
 
+/** Inline sparkline; a chart library would be a lot of bytes for 60 points. */
+function Sparkline({ series }: { series: Array<[number, number]> }) {
+  if (series.length < 2) return null
+  const values = series.map(([, value]) => value)
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const span = max - min || 1
+  const points = series
+    .map(([, value], index) => {
+      const x = (index / (series.length - 1)) * 100
+      const y = 24 - ((value - min) / span) * 22
+      return `${x.toFixed(2)},${y.toFixed(2)}`
+    })
+    .join(" ")
+  return (
+    <svg
+      viewBox="0 0 100 24"
+      preserveAspectRatio="none"
+      className="mt-2 h-6 w-full text-muted-foreground"
+      aria-hidden="true"
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  )
+}
+
+function MetricTile({
+  metric,
+  messages,
+  range,
+  onConfigure,
+}: {
+  metric: ClusterMetricDTO
+  messages: ClusterMessages
+  range: "1h" | "6h" | "24h"
+  onConfigure: () => void
+}) {
+  const nameKey = METRIC_NAME_KEY[metric.name]
+  const label = nameKey
+    ? messages.metrics.names[nameKey]
+    : metric.name.replaceAll("_", " ")
+  if (metric.value === null) {
+    return (
+      <div className="rounded-lg border border-border p-4">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-2 text-xl font-semibold text-muted-foreground">
+          {messages.metrics.noSeries}
+        </p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {fill(messages.metrics.notExported, {
+            metric: metric.missingSeries[0] ?? metric.name,
+          })}
+        </p>
+        <Button
+          type="button"
+          size="xs"
+          variant="outline"
+          className="mt-2"
+          onClick={onConfigure}
+        >
+          {messages.metrics.setMetricNames}
+        </Button>
+      </div>
+    )
+  }
+  const percent =
+    metric.capacity && metric.capacity > 0
+      ? Math.round((metric.value / metric.capacity) * 100)
+      : null
+  return (
+    <div className="rounded-lg border border-border p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-2 text-xl font-semibold">
+        {formatMetric(metric.value, metric.unit)}
+        {metric.capacity !== null && (
+          <span className="ml-1 text-sm font-normal text-muted-foreground">
+            {fill(messages.metrics.ofCapacity, {
+              capacity: formatMetric(metric.capacity, metric.unit),
+            })}
+            {percent !== null ? ` · ${percent}%` : ""}
+          </span>
+        )}
+      </p>
+      <Sparkline series={metric.series} />
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        {fill(messages.metrics.window, { minutes: RANGE_MINUTES[range] })}
+        {metric.sampleAt
+          ? ` · ${fill(messages.metrics.sampledAt, {
+              time: formatTime(metric.sampleAt),
+            })}`
+          : ""}
+      </p>
+    </div>
+  )
+}
+
 function MetricsView({
   data,
+  messages,
   controls,
 }: {
   data: ClusterMetricsDTO
+  messages: ClusterMessages
   controls: ViewControls
 }) {
+  const traffic = data.metrics.filter((metric) =>
+    TRAFFIC_METRICS.includes(metric.name)
+  )
+  const capacity = data.metrics.filter(
+    (metric) => !TRAFFIC_METRICS.includes(metric.name)
+  )
+  const openSettings = () => controls.onTabChange("settings")
   return (
     <>
-      <ProviderStatePanel state={data.provider} onRetry={controls.onRetry} />
+      <ProviderStatePanel
+        state={data.provider}
+        messages={messages}
+        onRetry={controls.onRetry}
+      />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Prometheus metrics</CardTitle>
+            <CardTitle className="text-base">
+              {messages.metrics.heading}
+            </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Provider samples only; missing series remain unavailable.
+              {fill(messages.health.seriesFound, {
+                found: data.seriesFound,
+                total: data.seriesTotal,
+              })}
             </p>
           </div>
           <select
-            aria-label="Metrics time range"
+            aria-label={messages.metrics.rangeLabel}
             value={controls.metricsRange}
             onChange={(event) =>
               controls.onMetricsRangeChange(
@@ -700,30 +1185,44 @@ function MetricsView({
             }
             className="h-9 rounded-md border border-input bg-background px-2 text-xs"
           >
-            <option value="1h">Last hour</option>
-            <option value="6h">Last 6 hours</option>
-            <option value="24h">Last 24 hours</option>
+            <option value="1h">{messages.metrics.range1h}</option>
+            <option value="6h">{messages.metrics.range6h}</option>
+            <option value="24h">{messages.metrics.range24h}</option>
           </select>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.metrics.map((metric) => (
-            <div
-              key={metric.name}
-              className="rounded-lg border border-border p-4"
-            >
-              <p className="text-xs text-muted-foreground">
-                {metric.name.replaceAll("_", " ")}
-              </p>
-              <p className="mt-2 text-xl font-semibold">
-                {formatMetric(metric.value, metric.unit)}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {metric.sampleAt
-                  ? `Sample ${formatTimestamp(metric.sampleAt)}`
-                  : "No sample"}
-              </p>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <p className="text-sm font-medium">
+              {messages.metrics.groupTraffic}
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {traffic.map((metric) => (
+                <MetricTile
+                  key={metric.name}
+                  metric={metric}
+                  messages={messages}
+                  range={data.range}
+                  onConfigure={openSettings}
+                />
+              ))}
             </div>
-          ))}
+          </div>
+          <div className="space-y-3">
+            <p className="text-sm font-medium">
+              {messages.metrics.groupCapacity}
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {capacity.map((metric) => (
+                <MetricTile
+                  key={metric.name}
+                  metric={metric}
+                  messages={messages}
+                  range={data.range}
+                  onConfigure={openSettings}
+                />
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </>
@@ -752,7 +1251,10 @@ function MetricCard({
   )
 }
 
-function formatCount(ready: number | null, total: number | null): string {
-  if (ready === null || total === null) return "—"
+function formatCount(
+  ready: number | null,
+  total: number | null
+): string | null {
+  if (ready === null || total === null) return null
   return `${ready} / ${total}`
 }
