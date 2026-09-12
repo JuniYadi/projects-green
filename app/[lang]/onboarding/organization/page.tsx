@@ -1,8 +1,11 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { OrganizationOnboarding } from "@/modules/tenants/ui/organization-onboarding"
+
+export const metadata: Metadata = { title: "Set up your organization" }
 
 const getSafeNext = (next: string | undefined, fallbackPath: string) => {
   if (!next || !next.startsWith("/")) {
