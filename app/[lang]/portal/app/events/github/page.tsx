@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { GithubEventsTable } from "./_components/github-events-table"
+
+export const metadata: Metadata = { title: "GitHub Events" }
 
 export default function GithubEventsPage() {
   return (
