@@ -20,22 +20,35 @@ const toUnauthorized = (set: RouteSet) => {
   return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
 }
 
+const toForbidden = (set: RouteSet) => {
+  set.status = 403
+  return {
+    ok: false,
+    error: "FORBIDDEN",
+    message: "No active organization found.",
+  }
+}
+
 function getCurrentPeriod(): string {
   const now = new Date()
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
 }
 
+/**
+ * `undefined` = super admin querying every organization.
+ * `null` = caller has no organization and must not see any tenant's usage.
+ */
 function resolveTargetOrgId(
   auth: ResolvedAuth,
   queryOrgId?: string
-): string | undefined {
+): string | undefined | null {
   if (auth.type === "workos" && auth.platformRole === "super_admin") {
     if (queryOrgId && queryOrgId !== "all") {
       return queryOrgId
     }
     return undefined
   }
-  return auth.organizationId!
+  return auth.organizationId
 }
 
 export const usageRoutes = new Elysia({ prefix: "/usage" })
@@ -50,6 +63,7 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
         whatsappAuth,
         query?.organizationId
       )
+      if (targetOrgId === null) return toForbidden(set)
       const raw = await whatsappUsageService.getUsageOverview(targetOrgId)
 
       const overview: UsageOverviewDTO = {
@@ -92,6 +106,7 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
       }
 
       const targetOrgId = resolveTargetOrgId(whatsappAuth, organizationId)
+      if (targetOrgId === null) return toForbidden(set)
       const rows = await whatsappUsageService.getDailyCounts(targetOrgId, {
         from,
         to,
@@ -124,6 +139,7 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
       }
 
       const targetOrgId = resolveTargetOrgId(whatsappAuth, organizationId)
+      if (targetOrgId === null) return toForbidden(set)
       const rows = await whatsappUsageService.getMonthlyCounts(targetOrgId, {
         year: year ? Number(year) : undefined,
         month: month ? Number(month) : undefined,
@@ -162,6 +178,7 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
       }
 
       const targetOrgId = resolveTargetOrgId(whatsappAuth, organizationId)
+      if (targetOrgId === null) return toForbidden(set)
       const cost = await whatsappUsageService.getCostSummary(
         targetOrgId,
         period
@@ -201,6 +218,7 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
       }
 
       const targetOrgId = resolveTargetOrgId(whatsappAuth, organizationId)
+      if (targetOrgId === null) return toForbidden(set)
       const breakdown = await whatsappUsageService.getCostBreakdown(
         targetOrgId,
         targetPeriod,
@@ -247,6 +265,7 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
       }
 
       const targetOrgId = resolveTargetOrgId(whatsappAuth, organizationId)
+      if (targetOrgId === null) return toForbidden(set)
       const result = await whatsappUsageService.getLedgerEntries(targetOrgId, {
         deviceId,
         category,
