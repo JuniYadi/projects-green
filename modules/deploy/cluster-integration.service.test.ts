@@ -103,10 +103,14 @@ describe("cluster-integration.service", () => {
     )
   })
 
-  it("masks long token as prefix and suffix only", () => {
-    const mask = maskClusterIntegrationSecret({ token: "abcdefghijklmnop" })
-    expect(mask).toBe("abcd…mnop")
-    expect(mask).not.toContain("efghijkl")
+  it("masks a secret without leaking its type-identifying prefix", () => {
+    expect(maskClusterIntegrationSecret({ token: "abcdefghijklmnop" })).toBe(
+      "••••••••"
+    )
+    expect(maskClusterIntegrationSecret({ token: "ghp_secretvalue" })).toBe(
+      "••••••••"
+    )
+    expect(maskClusterIntegrationSecret({ token: "short" })).toBe("••••••••")
   })
 
   it("returns null mask when no string secrets exist", () => {
