@@ -30,6 +30,23 @@ describe("i18n messages", () => {
       Object.keys(enMessages.indonesianLocale).sort()
     )
   })
+
+  it("keeps cluster operations locale keys in parity", () => {
+    const en = enMessages.console.app.clusters
+    const id = idMessages.console.app.clusters
+    expect(Object.keys(id).sort()).toEqual(Object.keys(en).sort())
+    for (const group of Object.keys(en) as Array<keyof typeof en>) {
+      expect(Object.keys(id[group]).sort()).toEqual(
+        Object.keys(en[group]).sort()
+      )
+    }
+    expect(Object.keys(id.metrics.names).sort()).toEqual(
+      Object.keys(en.metrics.names).sort()
+    )
+    // Indonesian must be translated, not copied.
+    expect(id.tabs.health).toBe("Kesehatan")
+    expect(id.settings.dangerHeading).toBe("Zona berbahaya")
+  })
   it("contains matching WhatsApp workflow dictionary structure", () => {
     expect(enMessages.console.whatsappWorkflows).toBeDefined()
     expect(idMessages.console.whatsappWorkflows).toBeDefined()
