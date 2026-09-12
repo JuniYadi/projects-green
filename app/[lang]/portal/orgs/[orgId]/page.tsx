@@ -1,6 +1,9 @@
+import type { Metadata } from "next"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { OrgOverviewDashboard } from "./org-overview-dashboard"
+
+export const metadata: Metadata = { title: "Organization Details" }
 
 type PageProps = {
   params: Promise<{ lang: string; orgId: string }>
