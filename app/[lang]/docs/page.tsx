@@ -23,7 +23,7 @@ type Props = {
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Documentation & Knowledge Base — PFNApp",
+  title: "Documentation & Knowledge Base",
   description:
     "Explore developer guides, API references, and screenshot-guided tutorials for WhatsApp Business, App Hosting, and Cloud Services.",
 }
