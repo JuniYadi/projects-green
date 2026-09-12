@@ -79,6 +79,9 @@ const mockUpsertClusterIntegration = mock(
     metaJson: {},
     secretPreview: null,
     isActive: true,
+    lastTestAt: null,
+    lastTestOk: null,
+    lastTestMessage: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
@@ -91,6 +94,9 @@ const mockUpdateClusterIntegrationStatus = mock(
     metaJson: {},
     secretPreview: null,
     isActive: false,
+    lastTestAt: null,
+    lastTestOk: null,
+    lastTestMessage: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
@@ -134,6 +140,9 @@ const mockImportClusterIntegrations = mock(async () => ({
       },
       secretPreview: "t…k",
       isActive: true,
+      lastTestAt: null,
+      lastTestOk: null,
+      lastTestMessage: null,
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     },
@@ -145,6 +154,7 @@ const mockGetExistingClusterIntegrationConfig = mock(
     secrets: Record<string, unknown>
   } | null> => null
 )
+const mockRecordClusterIntegrationTest = mock(async () => undefined)
 const mockGetClusterOperations = mock(async () => ({
   provider: {
     state: "live",
@@ -200,6 +210,7 @@ mock.module("@/modules/deploy/cluster-management.service", () => ({
   updateClusterStatus: mockUpdateClusterStatus,
   upsertClusterIntegration: mockUpsertClusterIntegration,
   getExistingClusterIntegrationConfig: mockGetExistingClusterIntegrationConfig,
+  recordClusterIntegrationTest: mockRecordClusterIntegrationTest,
   updateClusterIntegrationStatus: mockUpdateClusterIntegrationStatus,
   deleteClusterIntegration: mockDeleteClusterIntegration,
   exportClusterIntegrations: mockExportClusterIntegrations,
@@ -659,6 +670,9 @@ describe("Admin App Hosting Clusters Routes", () => {
         metaJson: { url: "https://jenkins.example.com" },
         secretPreview: "abcd…efgh",
         isActive: true,
+        lastTestAt: null,
+        lastTestOk: null,
+        lastTestMessage: null,
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       })
@@ -783,6 +797,9 @@ describe("Admin App Hosting Clusters Routes", () => {
         },
         secretPreview: null,
         isActive: true,
+        lastTestAt: null,
+        lastTestOk: null,
+        lastTestMessage: null,
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       })
@@ -822,6 +839,9 @@ describe("Admin App Hosting Clusters Routes", () => {
         metaJson: { endpoint: "https://prometheus.example.com/metrics" },
         secretPreview: null,
         isActive: true,
+        lastTestAt: null,
+        lastTestOk: null,
+        lastTestMessage: null,
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       })
@@ -861,6 +881,9 @@ describe("Admin App Hosting Clusters Routes", () => {
         metaJson: {},
         secretPreview: null,
         isActive: false,
+        lastTestAt: null,
+        lastTestOk: null,
+        lastTestMessage: null,
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
       })
