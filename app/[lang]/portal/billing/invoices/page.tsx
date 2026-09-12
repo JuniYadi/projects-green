@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { InvoicesTable } from "@/app/[lang]/portal/invoices/invoices-table"
+
+export const metadata: Metadata = { title: "Invoices" }
 
 export default async function BillingInvoicesPage({
   params,
