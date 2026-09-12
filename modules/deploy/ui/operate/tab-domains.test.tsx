@@ -135,15 +135,15 @@ describe("TabDomains", () => {
     expect(html).not.toContain("border-white/[0.06]")
   })
 
-  it("renders Reverse Proxy Ingress card and toggles Trust Forwarded Headers switch", () => {
+  it("renders Reverse Proxy Ingress as a collapsed advanced section and toggles Trust Forwarded Headers switch", () => {
     const view = render(
       <TabDomains stackSlug="shop" apiDomains={[sampleDomain]} api={mockApi} />
     )
 
     expect(view.getByText("Reverse Proxy Ingress")).toBeDefined()
-    expect(
-      view.getByText("Trust proxy headers to capture authentic client metadata")
-    ).toBeDefined()
+    expect(view.queryByText("Trust Forwarded Headers")).toBeNull()
+
+    fireEvent.click(view.getByText("Reverse Proxy Ingress"))
 
     const trustProxySwitch = view.getByRole("switch", {
       name: "Trust Forwarded Headers",
@@ -151,7 +151,7 @@ describe("TabDomains", () => {
     expect(trustProxySwitch.getAttribute("aria-checked")).toBe("false")
     expect(
       view.getByText(
-        "Currently disabled. Client IP may register as an internal cluster IP."
+        "Off by default. Turn this on only if you're behind a proxy and need real client IPs in your app."
       )
     ).toBeDefined()
 
@@ -161,6 +161,31 @@ describe("TabDomains", () => {
       view.getByText(
         "Trust proxies is active. Real client IPs will be available to application code."
       )
+    ).toBeDefined()
+  })
+
+  it("shows the managed default domain as ready without exposing Verify/DNS-target/certificate-upload controls", () => {
+    const managedDomain: TenantDomainDTO = {
+      ...sampleDomain,
+      id: "dom-managed",
+      hostname: "shop.pfnapp.dev",
+      kind: "MANAGED",
+      dnsStatus: "PENDING",
+    }
+    const view = render(
+      <TabDomains stackSlug="shop" apiDomains={[managedDomain]} api={mockApi} />
+    )
+
+    expect(
+      view.getByText(
+        "Included by default and already reachable. You usually don't need to manage DNS or SSL for it."
+      )
+    ).toBeDefined()
+    expect(view.queryByText("Verify")).toBeNull()
+    expect(view.queryByText("DNS targets")).toBeNull()
+    expect(view.queryByText("Certificate PEM")).toBeNull()
+    expect(
+      view.getByLabelText(`Delete domain ${managedDomain.hostname}`)
     ).toBeDefined()
   })
 })
