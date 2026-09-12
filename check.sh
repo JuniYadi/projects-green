@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
-set -e
+# Auto-fix TypeScript errors, satu error per ronde:
+#   tsc -> codex memperbaiki error pertama -> verifikasi (jumlah error turun +
+#   unit test hijau) -> commit. Gagal verifikasi = rollback ronde itu.
+#
+# ponytail: satu error per ronde, tanpa batching/paralel — tsc di repo ini ~5s
+# jadi ronde itu murah. Batch kalau backlog error bikin ini kelamaan.
+#
+# Pakai: ./check.sh [max_rounds]   (default 10)
+set -euo pipefail
+
+MAX_ROUNDS="${1:-10}"
 
 # --- Visual Logger Helpers ---
 C_RESET="\033[0m"
@@ -15,101 +25,128 @@ log_pass() { echo -e "${C_GREEN}[PASS]${C_RESET}  $1"; }
 log_warn() { echo -e "${C_YELLOW}[WARN]${C_RESET}  $1"; }
 log_fail() { echo -e "${C_RED}[FAIL]${C_RESET}  $1"; }
 
+# Isi TSC_ERRORS (hanya baris "file(line,col): error TSxxxx") dan TSC_COUNT.
+# Baris error tanpa file (mis. tsconfig rusak) tidak punya target untuk
+# diperbaiki — dibedakan lewat exit code supaya tidak salah lapor "bersih".
+run_tsc() {
+	local status=0
+	TSC_OUT=$(bun x tsc --noEmit 2>&1) || status=$?
+	TSC_ERRORS=$(printf '%s\n' "$TSC_OUT" | grep -E '^[^[:space:]].*\([0-9]+,[0-9]+\): error TS[0-9]+' || true)
+	TSC_COUNT=$(printf '%s' "$TSC_ERRORS" | grep -c . || true)
+	if [ "$status" -ne 0 ] && [ "$TSC_COUNT" -eq 0 ]; then
+		log_fail "tsc gagal tanpa error per-file (exit $status). Perbaiki manual:"
+		printf '%s\n' "$TSC_OUT" | tail -n 20
+		exit 1
+	fi
+}
+
+rollback() {
+	log_warn "Rollback perubahan ronde ini..."
+	git checkout -- .
+	git clean -fdq # aman: working tree sudah dipastikan bersih sebelum mulai
+}
+
 # ---------------------------------------------------------
-# 1. Pengecekan Lingkungan Kerja
+# Prasyarat: working tree bersih
 # ---------------------------------------------------------
-log_step "1/6 Memeriksa status git working tree..."
+log_step "Memeriksa status git working tree..."
 if [ -n "$(git status --porcelain)" ]; then
-  log_fail "Working tree kotor. Selesaikan atau stash pekerjaan lokal terlebih dahulu."
-  exit 1
+	log_fail "Working tree kotor. Selesaikan atau stash pekerjaan lokal terlebih dahulu."
+	exit 1
 fi
 log_pass "Workspace bersih, aman untuk eksekusi otomatis."
 
-# ---------------------------------------------------------
-# 2. Scanning Type Error
-# ---------------------------------------------------------
-log_step "2/6 Mendeteksi type error via TypeScript compiler..."
+for ((round = 1; round <= MAX_ROUNDS; round++)); do
+	# -----------------------------------------------------
+	# 1. Scanning type error
+	# -----------------------------------------------------
+	log_step "Ronde $round/$MAX_ROUNDS — mendeteksi type error via tsc..."
+	run_tsc
+	if [ "$TSC_COUNT" -eq 0 ]; then
+		log_pass "Semua tipe data aman. Tidak ada error yang perlu ditangani."
+		exit 0
+	fi
 
-# Tampung seluruh output tsc tanpa memicu exit code error
-TSC_OUTPUT=$(bun x tsc --noEmit 2>&1 || true)
+	ERROR_LINE=$(printf '%s\n' "$TSC_ERRORS" | head -n 1)
+	TARGET_FILE="${ERROR_LINE%%(*}"
+	TEST_FILE="${TARGET_FILE%.*}.test.${TARGET_FILE##*.}"
 
-# Tangkap baris pertama yang mengandung error TypeScript
-ERROR_LINE=$(echo "$TSC_OUTPUT" | grep -E "error TS[0-9]+|error:" | head -n 1 || true)
+	log_warn "Sisa $TSC_COUNT error. Target ronde ini:"
+	log_info "File  : $TARGET_FILE"
+	log_info "Error : $ERROR_LINE"
 
-if [ -z "$ERROR_LINE" ]; then
-  log_pass "Semua tipe data aman. Tidak ada error yang perlu ditangani."
-  exit 0
-fi
-
-# Parsing nama file target (support format file.ts(12,5) atau file.ts:12:5)
-TARGET_FILE=$(echo "$ERROR_LINE" | sed -E 's/(\(|\:)[0-9].*//g' | xargs)
-BASE_NAME="${TARGET_FILE%.*}"
-EXT="${TARGET_FILE##*.}"
-TEST_FILE="${BASE_NAME}.test.${EXT}"
-
-log_warn "Ditemukan issue pada target:"
-log_info "File  : $TARGET_FILE"
-log_info "Error : $ERROR_LINE"
-
-# ---------------------------------------------------------
-# 3. Instruksi dan Eksekusi Hermes
-# ---------------------------------------------------------
-log_step "3/6 Mengirim konteks dan instruksi perbaikan ke Hermes..."
-
-PROMPT="Perbaiki error TypeScript berikut pada file $TARGET_FILE:
+	# -----------------------------------------------------
+	# 2. Eksekusi fixer (codex exec, proses terpisah)
+	# -----------------------------------------------------
+	log_step "Mengirim konteks dan instruksi perbaikan ke codex..."
+	FIX_LOG=$(mktemp)
+	if ! codex exec \
+		--skip-git-repo-check \
+		--dangerously-bypass-approvals-and-sandbox \
+		--disable in_app_browser \
+		"Perbaiki error TypeScript berikut dengan mengedit file $TARGET_FILE langsung di disk:
 $ERROR_LINE
 
 BATASAN KETAT:
 1. Dilarang memakai 'any', 'unknown', '@ts-ignore', atau '@ts-expect-error'.
 2. Pertahankan seluruh logic runtime agar unit test tetap hijau.
-3. Kembalikan kode file utuh tanpa markdown codeblock atau teks pengantar."
+3. Ubah seminimal mungkin — hanya yang dibutuhkan error di atas." \
+		>"$FIX_LOG" 2>&1; then
+		log_fail "codex exec gagal. 20 baris terakhir log ($FIX_LOG):"
+		tail -n 20 "$FIX_LOG"
+		rollback
+		exit 1
+	fi
 
-# --- HUBUNGKAN HERMES RUNNER DI SINI ---
-# Contoh jika memakai CLI runner:
-# run-hermes --file "$TARGET_FILE" --prompt "$PROMPT" > "$TARGET_FILE"
+	if [ -z "$(git status --porcelain)" ]; then
+		log_fail "codex tidak mengubah file apa pun. Error ini perlu ditangani manual."
+		exit 1
+	fi
+	log_info "File tersentuh: $(git status --porcelain | awk '{print $2}' | tr '\n' ' ')"
 
-log_pass "Patch berhasil diterapkan oleh Hermes ke $TARGET_FILE."
+	# -----------------------------------------------------
+	# 3. Validasi lapis 1: typecheck
+	# -----------------------------------------------------
+	log_step "Menjalankan verifikasi ulang tipe data (tsc)..."
+	BEFORE_COUNT="$TSC_COUNT"
+	run_tsc
+	if [ "$TSC_COUNT" -ge "$BEFORE_COUNT" ]; then
+		log_fail "Jumlah error tidak berkurang ($BEFORE_COUNT -> $TSC_COUNT). Patch ditolak."
+		printf '%s\n' "$TSC_ERRORS" | head -n 5
+		rollback
+		exit 1
+	fi
+	log_pass "TypeScript: $BEFORE_COUNT -> $TSC_COUNT error."
 
-# ---------------------------------------------------------
-# 4. Validasi Lapis 1: Typecheck Verification
-# ---------------------------------------------------------
-log_step "4/6 Menjalankan verifikasi ulang tipe data (tsc)..."
+	# -----------------------------------------------------
+	# 4. Validasi lapis 2: unit test
+	# -----------------------------------------------------
+	log_step "Menjalankan verifikasi logika melalui unit test..."
+	if [ -f "$TEST_FILE" ]; then
+		log_info "Menjalankan isolated test: $TEST_FILE"
+		TEST_CMD=(bun test "$TEST_FILE")
+	else
+		log_info "File test lokal tidak ditemukan. Menjalankan test suite proyek..."
+		TEST_CMD=(bun run test)
+	fi
 
-VERIFY_TSC_OUTPUT=$(bun x tsc --noEmit 2>&1 || true)
-if echo "$VERIFY_TSC_OUTPUT" | grep -qE "error TS[0-9]+|error:"; then
-  log_fail "Verifikasi tipe gagal. Hermes menghasilkan error baru atau belum tuntas."
-  log_warn "Melakukan rollback file: $TARGET_FILE"
-  git checkout -- "$TARGET_FILE"
-  exit 1
-fi
-log_pass "TypeScript compiler: Valid (0 error)."
+	TEST_LOG=$(mktemp)
+	if ! "${TEST_CMD[@]}" >"$TEST_LOG" 2>&1; then
+		log_fail "Unit test gagal! Logic terganggu oleh perubahan model."
+		tail -n 30 "$TEST_LOG"
+		rollback
+		exit 1
+	fi
+	log_pass "Seluruh assert unit test lolos tanpa regresi."
 
-# ---------------------------------------------------------
-# 5. Validasi Lapis 2: Unit Test Suite
-# ---------------------------------------------------------
-log_step "5/6 Menjalankan verifikasi logika melalui unit test..."
+	# -----------------------------------------------------
+	# 5. Simpan hasil ronde ini
+	# -----------------------------------------------------
+	log_step "Menyimpan hasil perbaikan yang telah terverifikasi..."
+	git add -A
+	git commit -q -m "fix(types): auto-resolved & verified for $TARGET_FILE"
+	log_pass "Ronde $round tersimpan ke riwayat git."
+done
 
-if [ -f "$TEST_FILE" ]; then
-  log_info "Menjalankan isolated test: $TEST_FILE"
-  TEST_CMD="bun test $TEST_FILE"
-else
-  log_info "File test lokal tidak ditemukan. Menjalankan test suite proyek..."
-  TEST_CMD="bun test"
-fi
-
-if ! $TEST_CMD > /dev/null 2>&1; then
-  log_fail "Unit test gagal! Logic terganggu oleh perubahan model."
-  log_warn "Membatalkan perubahan dan mengembalikan status commit awal..."
-  git checkout -- "$TARGET_FILE"
-  exit 1
-fi
-log_pass "Seluruh assert unit test lolos tanpa regresi."
-
-# ---------------------------------------------------------
-# 6. Finalisasi & Simpan Perubahan
-# ---------------------------------------------------------
-log_step "6/6 Menyimpan hasil perbaikan yang telah terverifikasi..."
-git add "$TARGET_FILE"
-git commit -m "fix(types): auto-resolved & verified via hermes for $TARGET_FILE" > /dev/null
-
-log_pass "Selesai. Patch telah tersimpan ke riwayat git secara aman."
+log_warn "Batas $MAX_ROUNDS ronde tercapai, masih ada $TSC_COUNT error tersisa."
+exit 1
