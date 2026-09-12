@@ -110,3 +110,5 @@ temp/
 # Graphify
 graphify-out/
 .mcp.json
+screenshot/
+screenshots/
