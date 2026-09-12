@@ -1,7 +1,10 @@
+import type { Metadata } from "next"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { OrgOverviewStatsCards } from "./org-overview-stats-cards"
 import { OrgSummaryTable } from "@/app/[lang]/portal/billing/overview/org-summary-table"
+
+export const metadata: Metadata = { title: "Organization Overview" }
 
 export default async function PortalOrgsPage() {
   return (
