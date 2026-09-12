@@ -1,7 +1,9 @@
+import type { Metadata } from "next"
+
 import { StorageAuditView } from "@/modules/storage/ui/portal/storage-audit-view"
 
-export const metadata = {
-  title: "Storage Audit & Governance | Super Admin Portal",
+export const metadata: Metadata = {
+  title: "Storage Audit & Governance",
   description:
     "Cross-tenant S3 storage utilization, presigned upload audit logs, and file management",
 }
