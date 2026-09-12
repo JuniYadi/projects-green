@@ -1,7 +1,11 @@
+import type { Metadata } from "next"
+
 import { Button } from "@/components/ui/button"
 import { ArrowLeftIcon } from "@/components/ui/phosphor-icons"
 import Link from "next/link"
 import { MembersTable } from "./members-table"
+
+export const metadata: Metadata = { title: "Organization Details" }
 
 export default async function OrganizationDetailPage({
   params,
