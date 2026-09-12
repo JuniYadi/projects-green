@@ -145,6 +145,21 @@ const mockGetExistingClusterIntegrationConfig = mock(
     secrets: Record<string, unknown>
   } | null> => null
 )
+const mockGetClusterOperations = mock(async () => ({
+  provider: {
+    state: "live",
+    source: "Kubernetes API",
+    observedAt: "2026-01-01T00:00:00.000Z",
+    staleAfter: "2026-01-01T00:05:00.000Z",
+    message: null,
+    retryable: true,
+  },
+  status: "healthy",
+  nodes: { ready: 2, total: 2 },
+  workloads: { ready: 4, total: 4 },
+  recentDeployment: null,
+  providers: {},
+}))
 
 const mockGetClusterEndpoint = mock(
   async (): Promise<AppHostingClusterEndpointDTO> => ({
@@ -175,6 +190,7 @@ class EdgeValidationError extends Error {}
 class MockClusterIntegrationValidationError extends Error {
   issues: never[] = []
 }
+class MockClusterOperationsNotFoundError extends Error {}
 
 mock.module("@/modules/deploy/cluster-management.service", () => ({
   listClusters: mockListClusters,
@@ -189,6 +205,10 @@ mock.module("@/modules/deploy/cluster-management.service", () => ({
   exportClusterIntegrations: mockExportClusterIntegrations,
   importClusterIntegrations: mockImportClusterIntegrations,
   ClusterIntegrationValidationError: MockClusterIntegrationValidationError,
+}))
+mock.module("@/modules/deploy/cluster-operations.service", () => ({
+  getClusterOperations: mockGetClusterOperations,
+  ClusterOperationsNotFoundError: MockClusterOperationsNotFoundError,
 }))
 mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
   getClusterEndpoint: mockGetClusterEndpoint,
@@ -267,6 +287,61 @@ describe("Admin App Hosting Clusters Routes", () => {
       const body = await res.json()
       expect(body.ok).toBe(false)
       expect(body.error).toBe("FORBIDDEN")
+    })
+  })
+
+  // ── GET /admin/app-hosting/clusters ────────────
+  describe("GET /admin/app-hosting/clusters/:id/operations/:view", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/operations/health`)
+      )
+      expect(res.status).toBe(401)
+    })
+    it("returns provider-backed operation data for a super admin", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/operations/health`)
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toMatchObject({
+        ok: true,
+        data: { status: "healthy", nodes: { ready: 2, total: 2 } },
+      })
+      expect(mockGetClusterOperations).toHaveBeenCalledWith(
+        "cl_1",
+        "health",
+        {}
+      )
+    })
+    it("returns 404 when the operations service cannot find the cluster", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      mockGetClusterOperations.mockRejectedValueOnce(
+        new MockClusterOperationsNotFoundError("Cluster missing not found")
+      )
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/missing/operations/health`)
+      )
+
+      expect(res.status).toBe(404)
+      expect(await res.json()).toMatchObject({
+        ok: false,
+        error: "NOT_FOUND",
+      })
     })
   })
 

@@ -1,4 +1,4 @@
-import { Elysia } from "elysia"
+import { Elysia, t } from "elysia"
 
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
@@ -26,6 +26,14 @@ import {
 } from "@/modules/deploy/app-hosting-edge.service"
 import { testIntegrationConnection } from "@/modules/deploy/cluster-integration-tester.service"
 import {
+  CLUSTER_OPERATION_VIEWS,
+  type ClusterOperationView,
+} from "@/modules/deploy/cluster-operations.dto"
+import {
+  ClusterOperationsNotFoundError,
+  getClusterOperations,
+} from "@/modules/deploy/cluster-operations.service"
+import {
   listClusters,
   getClusterById,
   createCluster,
@@ -42,6 +50,27 @@ import {
 
 type IntegrationType = (typeof INTEGRATION_TYPES)[number]
 
+const clusterOperationsQuery = t.Optional(
+  t.Object({
+    source: t.Optional(
+      t.Union([t.Literal("all"), t.Literal("application"), t.Literal("http")])
+    ),
+    q: t.Optional(t.String()),
+    level: t.Optional(t.String()),
+    service: t.Optional(t.String()),
+    from: t.Optional(t.String()),
+    to: t.Optional(t.String()),
+    range: t.Optional(
+      t.Union([t.Literal("1h"), t.Literal("6h"), t.Literal("24h")])
+    ),
+  })
+)
+
+const clusterOperationsParams = t.Object({
+  id: t.String(),
+  view: t.Union(CLUSTER_OPERATION_VIEWS.map((view) => t.Literal(view))),
+})
+
 function isIntegrationType(value: string): value is IntegrationType {
   return (INTEGRATION_TYPES as readonly string[]).includes(value)
 }
@@ -51,6 +80,10 @@ function clusterError(
   error: unknown
 ): AdminApiError {
   console.error("[admin-clusters] route error:", error)
+  if (error instanceof ClusterOperationsNotFoundError) {
+    set.status = 404
+    return { ok: false, error: "NOT_FOUND", message: error.message }
+  }
   if (error instanceof ClusterIntegrationValidationError) {
     set.status = 422
     return {
@@ -101,6 +134,27 @@ export const createAdminAppHostingClusterRoutes = (
   const { requireSuperAdmin: guard = requireSuperAdmin } = deps
   return (
     new Elysia()
+      .get(
+        "/admin/app-hosting/clusters/:id/operations/:view",
+        async ({ params, query, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
+
+          try {
+            const data = await getClusterOperations(
+              params.id,
+              params.view as ClusterOperationView,
+              query ?? {}
+            )
+            return { ok: true as const, data }
+          } catch (error) {
+            return clusterError(set, error)
+          }
+        },
+        { params: clusterOperationsParams, query: clusterOperationsQuery }
+      )
       // ── GET list ─────────────────────────────────
       .get(
         "/admin/app-hosting/clusters",
@@ -132,7 +186,6 @@ export const createAdminAppHostingClusterRoutes = (
         },
         { query: listClustersQuerySchema }
       )
-
       // ── GET/PUT edge endpoint ────────────────────
       .get(
         "/admin/app-hosting/clusters/:id/endpoint",
@@ -189,7 +242,6 @@ export const createAdminAppHostingClusterRoutes = (
           return clusterError(set, error)
         }
       })
-
       // ── POST create ──────────────────────────────
       .post(
         "/admin/app-hosting/clusters",
@@ -209,7 +261,6 @@ export const createAdminAppHostingClusterRoutes = (
         },
         { body: createClusterBodySchema }
       )
-
       // ── PATCH metadata ───────────────────────────
       .patch(
         "/admin/app-hosting/clusters/:id",
@@ -228,7 +279,6 @@ export const createAdminAppHostingClusterRoutes = (
         },
         { body: updateClusterBodySchema }
       )
-
       // ── PATCH status ─────────────────────────────
       .patch(
         "/admin/app-hosting/clusters/:id/status",
@@ -249,7 +299,6 @@ export const createAdminAppHostingClusterRoutes = (
         },
         { body: updateClusterStatusBodySchema }
       )
-
       // ── PUT integration upsert ───────────────────
       .put(
         "/admin/app-hosting/clusters/:id/integrations/:type",
@@ -369,7 +418,6 @@ export const createAdminAppHostingClusterRoutes = (
         },
         { body: upsertIntegrationBodySchema }
       )
-
       // ── PATCH integration status ─────────────────
       .patch(
         "/admin/app-hosting/clusters/:id/integrations/:type/status",
@@ -401,7 +449,6 @@ export const createAdminAppHostingClusterRoutes = (
         },
         { body: updateIntegrationStatusBodySchema }
       )
-
       // ── DELETE integration ───────────────────────
       .delete(
         "/admin/app-hosting/clusters/:id/integrations/:type",
@@ -431,7 +478,6 @@ export const createAdminAppHostingClusterRoutes = (
           }
         }
       )
-
       // ── GET export cluster integrations (JSON) ──
       .get(
         "/admin/app-hosting/clusters/:id/integrations/export",
@@ -449,7 +495,6 @@ export const createAdminAppHostingClusterRoutes = (
           }
         }
       )
-
       // ── POST import cluster integrations (JSON) ──
       .post(
         "/admin/app-hosting/clusters/:id/integrations/import",

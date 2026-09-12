@@ -18,30 +18,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import {
   ArrowLeft,
   ArrowSquareOut,
-  ArrowsClockwise,
   Check,
-  CheckCircle,
   Copy,
-  Cpu,
   DownloadSimple,
-  FileText,
-  Gear,
-  GitBranch,
-  HardDrives,
-  MagnifyingGlass,
   Pencil,
   Power,
   Pulse,
   Sparkle,
-  TerminalWindow,
   Trash,
   UploadSimple,
-  WarningCircle,
 } from "@phosphor-icons/react"
 
 import {
@@ -69,6 +59,17 @@ import {
   type ClusterMetadataInput,
   clusterIntegrationsImportSchema,
 } from "@/modules/deploy/cluster-integration.schema"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { ClusterOperationsTabs } from "./cluster-operations-tabs"
 type ClusterIntegration = {
   id: string
   type: string
@@ -230,6 +231,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const [endpointSaving, setEndpointSaving] = useState(false)
   const [endpointRetry, setEndpointRetry] = useState(0)
   const [statusSaving, setStatusSaving] = useState(false)
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false)
   const [clusterName, setClusterName] = useState("")
   const [clusterRegion, setClusterRegion] = useState("")
   const [selectedRegionId, setSelectedRegionId] = useState("")
@@ -269,10 +271,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const [importError, setImportError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [activeTab, setActiveTab] = useState<string>("overview")
-  const [logSearchQuery, setLogSearchQuery] = useState("")
-  const [logLevelFilter, setLogLevelFilter] = useState<string>("ALL")
-  const [logComponentFilter, setLogComponentFilter] = useState<string>("ALL")
+  const [activeTab, setActiveTab] = useState<string>("health")
   const [isTestingAll, setIsTestingAll] = useState(false)
 
   const handleTestAllIntegrations = async () => {
@@ -288,11 +287,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     }
   }
 
-  const copyLogsToClipboard = (text: string) => {
-    if (!text) return
-    void navigator.clipboard.writeText(text)
-    toast.success("Logs copied to clipboard")
-  }
   const copyToClipboard = (text: string, fieldKey: string) => {
     if (!text) return
     void navigator.clipboard.writeText(text)
@@ -875,11 +869,10 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     reader.readAsText(file)
   }
 
-  const getIntegration = (type: string) =>
-    cluster?.integrations.find((i) => i.type === type)
-
   const getIntegrationMeta = (type: string): Record<string, unknown> => {
-    const item = getIntegration(type)
+    const item = cluster?.integrations.find(
+      (integration) => integration.type === type
+    )
     if (!item || !item.metaJson || typeof item.metaJson !== "object") return {}
     return item.metaJson as Record<string, unknown>
   }
@@ -887,10 +880,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const jenkinsMeta = getIntegrationMeta("JENKINS")
   const argocdMeta = getIntegrationMeta("ARGOCD")
   const opensearchMeta = getIntegrationMeta("OPENSEARCH")
-  const prometheusMeta = getIntegrationMeta("PROMETHEUS")
-  const gitopsMeta = getIntegrationMeta("GITOPS")
-  const registryMeta = getIntegrationMeta("REGISTRY")
-  const kubeconfigMeta = getIntegrationMeta("KUBECONFIG")
 
   const jenkinsUrl =
     typeof jenkinsMeta.baseUrl === "string" ? jenkinsMeta.baseUrl : null
@@ -898,213 +887,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     typeof argocdMeta.apiUrl === "string" ? argocdMeta.apiUrl : null
   const opensearchUrl =
     typeof opensearchMeta.nodeUrl === "string" ? opensearchMeta.nodeUrl : null
-  const prometheusUrl =
-    typeof prometheusMeta.serverUrl === "string"
-      ? prometheusMeta.serverUrl
-      : null
-  const gitopsUrl =
-    typeof gitopsMeta.repo === "string"
-      ? `https://github.com/${gitopsMeta.repo}`
-      : null
-
-  const clusterLogs = useMemo(() => {
-    const cCode = cluster?.code ?? "cluster"
-    const storageClass = clusterMetadata.storageClass ?? "openebs-lvmpv"
-    const cname = endpoint.cnameTarget || "cname-sg.pfnapp.com"
-    const domain = endpoint.managedBaseDomain || "pfnapp.dev"
-    return [
-      {
-        id: "log-1",
-        timestamp: "10:42:01",
-        level: "INFO",
-        component: "kubelet",
-        message: `Node pool health check passed for ${cluster?.name ?? "cluster"}. 8 nodes reporting Ready with storageClass=${storageClass}.`,
-      },
-      {
-        id: "log-2",
-        timestamp: "10:42:08",
-        level: "INFO",
-        component: "argocd-server",
-        message: `Argo CD application controller verified cluster ${cCode}. Manifest git revision aligned with GitOps target.`,
-      },
-      {
-        id: "log-3",
-        timestamp: "10:42:15",
-        level: "INFO",
-        component: "ingress-nginx",
-        message: `Edge routing rules loaded for ${domain} -> ${cname}. TLS certificates verified and active.`,
-      },
-      {
-        id: "log-4",
-        timestamp: "10:42:24",
-        level: "INFO",
-        component: "jenkins-agent",
-        message: `Jenkins agent heartbeat OK. Dynamic build runner pool idle, awaiting webhook trigger.`,
-      },
-      {
-        id: "log-5",
-        timestamp: "10:42:32",
-        level: "WARN",
-        component: "openebs-provisioner",
-        message: `Storage volume pool utilization on ${storageClass} reached 28.4%. Threshold is normal (< 75%).`,
-      },
-      {
-        id: "log-6",
-        timestamp: "10:42:45",
-        level: "INFO",
-        component: "prometheus",
-        message: `Scrape interval completed (15s). 42 metrics targets in cluster ${cCode} returned HTTP 200.`,
-      },
-      {
-        id: "log-7",
-        timestamp: "10:42:50",
-        level: "INFO",
-        component: "container-registry",
-        message: `Image pull secrets validated for active namespaces on cluster ${cCode}.`,
-      },
-      {
-        id: "log-8",
-        timestamp: "10:43:02",
-        level: "INFO",
-        component: "vault-agent",
-        message: `Dynamic secrets lease renewed for cluster ${cluster?.id ?? "cluster"} integrations. Path: admin/clusters/${cluster?.code ?? "sgp"}.`,
-      },
-      {
-        id: "log-9",
-        timestamp: "10:43:18",
-        level: "ERROR",
-        component: "ingress-nginx",
-        message: `Upstream connection timeout on edge probe (attempt 1/3). Auto-recovered on retry.`,
-      },
-    ]
-  }, [
-    cluster?.code,
-    cluster?.name,
-    cluster?.id,
-    clusterMetadata.storageClass,
-    endpoint.cnameTarget,
-    endpoint.managedBaseDomain,
-  ])
-
-  const filteredLogs = useMemo(() => {
-    return clusterLogs.filter((log) => {
-      if (logLevelFilter !== "ALL" && log.level !== logLevelFilter) return false
-      if (logComponentFilter !== "ALL" && log.component !== logComponentFilter)
-        return false
-      if (
-        logSearchQuery.trim() &&
-        !log.message.toLowerCase().includes(logSearchQuery.toLowerCase()) &&
-        !log.component.toLowerCase().includes(logSearchQuery.toLowerCase())
-      ) {
-        return false
-      }
-      return true
-    })
-  }, [clusterLogs, logLevelFilter, logComponentFilter, logSearchQuery])
-
-  const ECOSYSTEM_PILLARS = [
-    {
-      type: "KUBECONFIG",
-      name: "Kubernetes Engine",
-      subtitle: "Control Plane & Scheduling",
-      icon: Cpu,
-      color: "text-blue-500",
-      description:
-        "Direct API server connectivity and pod scheduling control plane.",
-      configured: !!getIntegration("KUBECONFIG"),
-      metaPreview: kubeconfigMeta.apiServerUrl
-        ? String(kubeconfigMeta.apiServerUrl)
-        : "Standard In-Cluster / Token Auth",
-      tabTarget: "settings",
-    },
-    {
-      type: "ARGOCD",
-      name: "Argo CD",
-      subtitle: "Declarative GitOps Delivery",
-      icon: ArrowsClockwise,
-      color: "text-amber-500",
-      description:
-        "Automated application deployment and manifest state reconciliation.",
-      configured: !!getIntegration("ARGOCD"),
-      metaPreview:
-        argocdUrl ??
-        `App Namespace: ${String(argocdMeta.appNamespace ?? "argocd")}`,
-      externalUrl: argocdUrl,
-      tabTarget: "gitops",
-    },
-    {
-      type: "JENKINS",
-      name: "Jenkins CI/CD",
-      subtitle: "Build & Pipeline Automation",
-      icon: TerminalWindow,
-      color: "text-red-500",
-      description:
-        "Dynamic build runners and container image generation workflows.",
-      configured: !!getIntegration("JENKINS"),
-      metaPreview:
-        jenkinsUrl ??
-        (jenkinsMeta.dslRepo
-          ? `DSL: ${String(jenkinsMeta.dslOwner)}/${String(jenkinsMeta.dslRepo)}`
-          : "Standard CI runner"),
-      externalUrl: jenkinsUrl,
-      tabTarget: "cicd",
-    },
-    {
-      type: "OPENSEARCH",
-      name: "OpenSearch",
-      subtitle: "Cluster Logs & Analytics",
-      icon: FileText,
-      color: "text-emerald-500",
-      description: "Centralized logging and runtime error indexing.",
-      configured: !!getIntegration("OPENSEARCH"),
-      metaPreview:
-        opensearchUrl ?? `Index: logs-cluster-${cluster?.code ?? "sgp"}-*`,
-      externalUrl: opensearchUrl,
-      tabTarget: "logs",
-    },
-    {
-      type: "PROMETHEUS",
-      name: "Prometheus",
-      subtitle: "Metrics & Observability",
-      icon: Pulse,
-      color: "text-orange-500",
-      description:
-        "Real-time metrics, node-exporter scraping, and telemetry rules.",
-      configured: !!getIntegration("PROMETHEUS"),
-      metaPreview: prometheusUrl ?? "Scrape Interval: 15s (kube-state-metrics)",
-      externalUrl: prometheusUrl,
-      tabTarget: "metrics",
-    },
-    {
-      type: "GITOPS",
-      name: "GitOps Manifests",
-      subtitle: "Manifest Source of Truth",
-      icon: GitBranch,
-      color: "text-purple-500",
-      description:
-        "Git repository storing Helm values and application manifests.",
-      configured: !!getIntegration("GITOPS"),
-      metaPreview: gitopsMeta.repo
-        ? `${String(gitopsMeta.repo)} (${String(gitopsMeta.branch ?? "main")})`
-        : "Not configured",
-      externalUrl: gitopsUrl,
-      tabTarget: "gitops",
-    },
-    {
-      type: "REGISTRY",
-      name: "Container Registry",
-      subtitle: "Docker & OCI Artifacts",
-      icon: HardDrives,
-      color: "text-cyan-500",
-      description:
-        "Target registry for build artifacts and image pull secrets.",
-      configured: !!getIntegration("REGISTRY"),
-      metaPreview: registryMeta.serverUrl
-        ? String(registryMeta.serverUrl)
-        : "Standard Registry",
-      tabTarget: "settings",
-    },
-  ]
   if (loading) {
     return (
       <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
@@ -1213,64 +995,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               Set as Default
             </Button>
           )}
-          <Button
-            type="button"
-            size="sm"
-            variant={cluster.status === "ACTIVE" ? "destructive" : "default"}
-            onClick={() =>
-              void handleStatusChange(
-                cluster.status === "ACTIVE" ? "DEPRECATED" : "ACTIVE",
-                cluster.isDefault
-              )
-            }
-            disabled={statusSaving}
-          >
-            {cluster.status === "ACTIVE"
-              ? "Deactivate Cluster"
-              : "Activate Cluster"}
-          </Button>
         </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-card/50 p-2.5 text-xs">
-        <span className="mr-1 font-medium text-muted-foreground">
-          Ecosystem:
-        </span>
-        {ECOSYSTEM_PILLARS.map((pillar) => {
-          const testRes = integrationTestResults[pillar.type]
-          const isConfigured = pillar.configured
-          return (
-            <button
-              key={pillar.type}
-              type="button"
-              onClick={() => setActiveTab(pillar.tabTarget)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 transition-colors",
-                testRes
-                  ? testRes.ok
-                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "border-destructive/20 bg-destructive/10 text-destructive"
-                  : isConfigured
-                    ? "border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    : "border-transparent bg-muted/40 text-muted-foreground hover:bg-muted"
-              )}
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  testRes
-                    ? testRes.ok
-                      ? "bg-emerald-500"
-                      : "bg-destructive"
-                    : isConfigured
-                      ? "bg-emerald-500"
-                      : "bg-muted-foreground/40"
-                )}
-              />
-              <span className="font-medium">{pillar.name}</span>
-            </button>
-          )
-        })}
       </div>
 
       <Tabs
@@ -1278,1051 +1003,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="flex h-auto flex-wrap gap-1 rounded-xl bg-muted/60 p-1">
-          <TabsTrigger value="overview" className="gap-1.5 px-3 py-1.5">
-            <Cpu size={15} /> Overview & Health
-          </TabsTrigger>
-          <TabsTrigger value="logs" className="gap-1.5 px-3 py-1.5">
-            <FileText size={15} /> Logs (OpenSearch)
-          </TabsTrigger>
-          <TabsTrigger value="gitops" className="gap-1.5 px-3 py-1.5">
-            <GitBranch size={15} /> GitOps (Argo CD)
-          </TabsTrigger>
-          <TabsTrigger value="cicd" className="gap-1.5 px-3 py-1.5">
-            <TerminalWindow size={15} /> CI/CD (Jenkins)
-          </TabsTrigger>
-          <TabsTrigger value="metrics" className="gap-1.5 px-3 py-1.5">
-            <Pulse size={15} /> Metrics (Prometheus)
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1.5 px-3 py-1.5">
-            <Gear size={15} /> Settings & Vault
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent
-          value="overview"
-          forceMount
-          className="space-y-6 data-[state=inactive]:hidden"
-        >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Integration Health
-                </span>
-                <Pulse size={16} className="text-emerald-500" />
-              </div>
-              <div className="mt-2 text-2xl font-bold">
-                {cluster.integrations.length} / 7
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Connected infrastructure services
-              </p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Hosting Region
-                </span>
-                <Cpu size={16} className="text-blue-500" />
-              </div>
-              <div className="mt-2 truncate text-2xl font-bold">
-                {cluster.region}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Code: <span className="font-mono">{cluster.code}</span>
-              </p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Storage Engine
-                </span>
-                <HardDrives size={16} className="text-purple-500" />
-              </div>
-              <div className="mt-2 truncate font-mono text-xl font-bold">
-                {clusterMetadata.storageClass || "openebs-lvmpv"}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Persistent storage class
-              </p>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Edge Base Domain
-                </span>
-                <ArrowSquareOut size={16} className="text-amber-500" />
-              </div>
-              <div className="mt-2 truncate font-mono text-xl font-bold">
-                {endpoint.managedBaseDomain || "pfnapp.dev"}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Routing: {endpoint.cnameTarget || "cname-sg.pfnapp.com"}
-              </p>
-            </Card>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-semibold">
-                  Cluster Integration Matrix
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Real-time connectivity and operational hubs for container
-                  orchestration, build, and observability.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setActiveTab("settings")}
-              >
-                <Gear size={14} className="mr-1.5" />
-                Manage Secrets
-              </Button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {ECOSYSTEM_PILLARS.map((pillar) => {
-                const IconComponent = pillar.icon
-                const testRes = integrationTestResults[pillar.type]
-                const isTesting = testingIntegrationType === pillar.type
-                return (
-                  <Card
-                    key={pillar.type}
-                    className="flex flex-col justify-between border-border/80 transition-colors hover:border-border"
-                  >
-                    <CardHeader className="p-4 pb-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={cn(
-                              "rounded-lg bg-muted/60 p-2",
-                              pillar.color
-                            )}
-                          >
-                            <IconComponent size={20} />
-                          </div>
-                          <div>
-                            <CardTitle className="text-sm font-semibold">
-                              {pillar.name}
-                            </CardTitle>
-                            <p className="text-[11px] text-muted-foreground">
-                              {pillar.subtitle}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge
-                          variant={pillar.configured ? "success" : "outline"}
-                          className="text-[10px]"
-                        >
-                          {pillar.configured ? "Active" : "Not Configured"}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 p-4 pt-1">
-                      <p className="line-clamp-2 text-xs text-muted-foreground">
-                        {pillar.description}
-                      </p>
-                      <div className="truncate rounded-md border border-border/40 bg-muted/40 p-2 font-mono text-xs text-muted-foreground">
-                        {pillar.metaPreview}
-                      </div>
-
-                      {testRes && (
-                        <div
-                          className={cn(
-                            "flex items-start gap-1.5 rounded-md border p-2 text-xs",
-                            testRes.ok
-                              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                              : "border-destructive/20 bg-destructive/10 text-destructive"
-                          )}
-                        >
-                          {testRes.ok ? (
-                            <CheckCircle
-                              size={14}
-                              className="mt-0.5 shrink-0"
-                            />
-                          ) : (
-                            <WarningCircle
-                              size={14}
-                              className="mt-0.5 shrink-0"
-                            />
-                          )}
-                          <span className="truncate">{testRes.message}</span>
-                          {testRes.durationMs !== undefined && (
-                            <span className="ml-auto shrink-0 font-mono text-muted-foreground">
-                              {testRes.durationMs}ms
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2 pt-1">
-                        {pillar.configured ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="xs"
-                            disabled={isTesting}
-                            onClick={() =>
-                              void handleIntegrationTest(pillar.type)
-                            }
-                            title="Test connection using saved credentials"
-                          >
-                            <Pulse
-                              size={13}
-                              className={cn(
-                                "mr-1",
-                                isTesting && "animate-spin"
-                              )}
-                            />
-                            {isTesting ? "Testing..." : "Test Connection"}
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="xs"
-                            onClick={() => setActiveTab("settings")}
-                          >
-                            Set up
-                          </Button>
-                        )}
-
-                        {pillar.externalUrl && (
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="xs"
-                            className="gap-1 text-xs"
-                          >
-                            <a
-                              href={pillar.externalUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Launch <ArrowSquareOut size={12} />
-                            </a>
-                          </Button>
-                        )}
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="xs"
-                          className="ml-auto text-xs text-muted-foreground hover:text-foreground"
-                          onClick={() => setActiveTab(pillar.tabTarget)}
-                        >
-                          View Tab →
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          </div>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-sm font-semibold">
-                  Pod Placement & Scheduling Summary
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Configured node labels, taints, and volume storage parameters
-                  for pod deployment.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                onClick={() => setActiveTab("settings")}
-              >
-                Update Scheduling
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-2">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Node Selectors
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {Object.entries(clusterMetadata.nodeSelector ?? {})
-                      .length === 0 ? (
-                      <span className="text-xs text-muted-foreground">
-                        None
-                      </span>
-                    ) : (
-                      Object.entries(clusterMetadata.nodeSelector ?? {}).map(
-                        ([k, v]) => (
-                          <Badge
-                            key={k}
-                            variant="secondary"
-                            className="font-mono text-xs"
-                          >
-                            {k}={v}
-                          </Badge>
-                        )
-                      )
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Tolerations
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {(clusterMetadata.tolerations ?? []).length === 0 ? (
-                      <span className="text-xs text-muted-foreground">
-                        None
-                      </span>
-                    ) : (
-                      (clusterMetadata.tolerations ?? []).map((tol, idx) => (
-                        <Badge
-                          key={idx}
-                          variant="secondary"
-                          className="font-mono text-xs"
-                        >
-                          {tol.key}:{tol.effect}
-                        </Badge>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Edge Routing CNAME
-                  </span>
-                  <p className="font-mono text-xs text-foreground">
-                    {endpoint.cnameTarget || "cname-sg.pfnapp.com"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent
-          value="logs"
-          forceMount
-          className="space-y-6 data-[state=inactive]:hidden"
-        >
-          <Card>
-            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base font-semibold">
-                    OpenSearch Cluster Log Stream
-                  </CardTitle>
-                  <Badge
-                    variant="outline"
-                    className="border-amber-500/40 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400"
-                  >
-                    Synthetic Sample Stream
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Live audit and system logs aggregated from pod sandboxes,
-                  ingress, and Kubernetes system components.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {opensearchUrl && (
-                  <Button asChild size="sm" variant="outline" className="gap-1">
-                    <a
-                      href={opensearchUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      OpenSearch Dashboards <ArrowSquareOut size={13} />
-                    </a>
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    copyLogsToClipboard(
-                      filteredLogs
-                        .map(
-                          (l) =>
-                            `[${l.timestamp}] [${l.level}] [${l.component}] ${l.message}`
-                        )
-                        .join("\n")
-                    )
-                  }
-                >
-                  <Copy size={14} className="mr-1" />
-                  Copy Logs
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
-                <WarningCircle size={16} className="shrink-0 text-amber-500" />
-                <span>
-                  Sample log stream for cluster {cluster.code}. For live
-                  production search, open the OpenSearch Dashboards endpoint
-                  directly or ingest via OpenSearch queue.
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[200px] flex-1">
-                  <MagnifyingGlass
-                    size={15}
-                    className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input
-                    placeholder="Filter cluster logs (e.g. error, kubelet, nginx, pod)..."
-                    value={logSearchQuery}
-                    onChange={(e) => setLogSearchQuery(e.target.value)}
-                    className="h-9 pl-9 font-mono text-xs"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs whitespace-nowrap text-muted-foreground">
-                    Level:
-                  </Label>
-                  <Select
-                    value={logLevelFilter}
-                    onValueChange={setLogLevelFilter}
-                  >
-                    <SelectTrigger
-                      aria-label="Log level"
-                      className="h-9 w-[110px] text-xs"
-                    >
-                      <SelectValue placeholder="All Levels" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Levels</SelectItem>
-                      <SelectItem value="INFO">INFO</SelectItem>
-                      <SelectItem value="WARN">WARN</SelectItem>
-                      <SelectItem value="ERROR">ERROR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs whitespace-nowrap text-muted-foreground">
-                    Service:
-                  </Label>
-                  <Select
-                    value={logComponentFilter}
-                    onValueChange={setLogComponentFilter}
-                  >
-                    <SelectTrigger
-                      aria-label="Log service"
-                      className="h-9 w-[170px] text-xs"
-                    >
-                      <SelectValue placeholder="All Services" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Services</SelectItem>
-                      <SelectItem value="kubelet">kubelet</SelectItem>
-                      <SelectItem value="argocd-server">
-                        argocd-server
-                      </SelectItem>
-                      <SelectItem value="jenkins-agent">
-                        jenkins-agent
-                      </SelectItem>
-                      <SelectItem value="ingress-nginx">
-                        ingress-nginx
-                      </SelectItem>
-                      <SelectItem value="container-registry">
-                        container-registry
-                      </SelectItem>
-                      <SelectItem value="openebs-provisioner">
-                        openebs-provisioner
-                      </SelectItem>
-                      <SelectItem value="prometheus">prometheus</SelectItem>
-                      <SelectItem value="vault-agent">vault-agent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border bg-zinc-950 p-4 font-mono text-xs text-zinc-100 shadow-inner">
-                <div className="mb-3 flex items-center justify-between border-b border-zinc-800 pb-2 text-zinc-400">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block size-2.5 rounded-full bg-red-500/80" />
-                    <span className="inline-block size-2.5 rounded-full bg-yellow-500/80" />
-                    <span className="inline-block size-2.5 rounded-full bg-green-500/80" />
-                    <span className="ml-2 text-[11px] font-semibold text-zinc-300">
-                      CLUSTER {cluster.code.toUpperCase()} • OPENSEARCH
-                      SYNTHETIC BUFFER
-                    </span>
-                  </div>
-                  <span className="text-[11px]">
-                    Showing {filteredLogs.length} of {clusterLogs.length} events
-                  </span>
-                </div>
-
-                <div className="max-h-[420px] space-y-1.5 overflow-y-auto pr-2">
-                  {filteredLogs.length === 0 ? (
-                    <div className="py-8 text-center text-zinc-500">
-                      No log entries match the selected filter criteria.
-                    </div>
-                  ) : (
-                    filteredLogs.map((log) => (
-                      <div
-                        key={log.id}
-                        className="flex flex-col gap-2 rounded border-b border-zinc-900/60 px-1.5 py-0.5 transition-colors hover:bg-zinc-900/40 sm:flex-row sm:items-baseline"
-                      >
-                        <span className="shrink-0 text-zinc-500 select-none">
-                          {log.timestamp}
-                        </span>
-                        <span
-                          className={cn(
-                            "py-0.2 shrink-0 rounded px-1.5 text-[10px] font-bold",
-                            log.level === "INFO" &&
-                              "border border-blue-800/40 bg-blue-950/80 text-blue-400",
-                            log.level === "WARN" &&
-                              "border border-amber-800/40 bg-amber-950/80 text-amber-400",
-                            log.level === "ERROR" &&
-                              "border border-red-800/40 bg-red-950/80 text-red-400"
-                          )}
-                        >
-                          {log.level}
-                        </span>
-                        <span className="shrink-0 text-[11px] font-semibold text-zinc-400">
-                          [{log.component}]
-                        </span>
-                        <span className="break-all text-zinc-200">
-                          {log.message}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent
-          value="gitops"
-          forceMount
-          className="space-y-6 data-[state=inactive]:hidden"
-        >
-          <Card>
-            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base font-semibold">
-                    Argo CD GitOps Rollout
-                  </CardTitle>
-                  <Badge
-                    variant="outline"
-                    className="border-amber-500/40 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400"
-                  >
-                    Sample Rollout Overview
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Automated manifest synchronization from GitOps repository to
-                  cluster {cluster.name}.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {argocdUrl ? (
-                  <Button asChild size="sm" className="gap-1">
-                    <a
-                      href={argocdUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ArrowsClockwise size={14} className="mr-1.5" />
-                      Open in Argo CD <ArrowSquareOut size={13} />
-                    </a>
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled
-                    title="Argo CD API URL not configured"
-                  >
-                    <ArrowsClockwise size={14} className="mr-1.5" />
-                    Managed by Argo CD Controller
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
-                <WarningCircle size={16} className="shrink-0 text-amber-500" />
-                <span>
-                  Sample application rollout overview. Live reconciliation and
-                  synchronization are continuously executed by the Argo CD
-                  Application controller.
-                </span>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Target GitOps Repository
-                  </span>
-                  <p className="truncate font-mono text-xs font-semibold">
-                    {String(gitopsMeta.repo ?? "pfnapp/gitops-deployments")}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Branch: {String(gitopsMeta.branch ?? "main")}
-                  </p>
-                </div>
-
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Argo CD Server Endpoint
-                  </span>
-                  <p className="truncate font-mono text-xs font-semibold">
-                    {argocdUrl ?? "https://argocd.pfnapp.internal"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Namespace: {String(argocdMeta.appNamespace ?? "argocd")}
-                  </p>
-                </div>
-
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Sync Status
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="size-2 rounded-full bg-emerald-500" />
-                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      100% In-Sync (4 Applications)
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Auto-prune & self-heal enabled
-                  </p>
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-lg border border-border">
-                <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-semibold text-muted-foreground">
-                  <span>Application Stacks on Cluster</span>
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="xs"
-                    className="gap-1 text-xs"
-                  >
-                    <a
-                      href={localizePathname({
-                        pathname: "/portal/app/deployments",
-                        locale,
-                      })}
-                    >
-                      Manage Deployments <ArrowSquareOut size={12} />
-                    </a>
-                  </Button>
-                </div>
-                <div className="divide-y divide-border text-xs">
-                  {[
-                    {
-                      name: "web-frontend",
-                      path: "apps/web-frontend",
-                      rev: "main @ 4b91f0a",
-                      sync: "Synced",
-                      health: "Healthy",
-                      last: "2m ago",
-                    },
-                    {
-                      name: "api-backend",
-                      path: "apps/api-backend",
-                      rev: "main @ 4b91f0a",
-                      sync: "Synced",
-                      health: "Healthy",
-                      last: "4m ago",
-                    },
-                    {
-                      name: "redis-cluster",
-                      path: "apps/redis-cluster",
-                      rev: "main @ 1c04e28",
-                      sync: "Synced",
-                      health: "Healthy",
-                      last: "1h ago",
-                    },
-                    {
-                      name: "worker-queue",
-                      path: "apps/worker-queue",
-                      rev: "main @ 4b91f0a",
-                      sync: "Synced",
-                      health: "Healthy",
-                      last: "8m ago",
-                    },
-                  ].map((app) => (
-                    <div
-                      key={app.name}
-                      className="flex flex-wrap items-center justify-between gap-2 p-3 hover:bg-muted/20"
-                    >
-                      <div>
-                        <span className="font-semibold text-foreground">
-                          {app.name}
-                        </span>
-                        <span className="ml-2 font-mono text-[11px] text-muted-foreground">
-                          {app.path}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          {app.rev}
-                        </span>
-                        <Badge variant="success" className="text-[10px]">
-                          {app.sync}
-                        </Badge>
-                        <Badge variant="success" className="text-[10px]">
-                          {app.health}
-                        </Badge>
-                        <Button asChild variant="outline" size="xs">
-                          <a
-                            href={
-                              argocdUrl ||
-                              localizePathname({
-                                pathname: "/portal/app/deployments",
-                                locale,
-                              })
-                            }
-                            target={argocdUrl ? "_blank" : undefined}
-                            rel={argocdUrl ? "noopener noreferrer" : undefined}
-                          >
-                            Details
-                            <ArrowSquareOut size={11} className="ml-1" />
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent
-          value="cicd"
-          forceMount
-          className="space-y-6 data-[state=inactive]:hidden"
-        >
-          <Card>
-            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base font-semibold">
-                    Jenkins CI/CD Automation
-                  </CardTitle>
-                  <Badge
-                    variant="outline"
-                    className="border-amber-500/40 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400"
-                  >
-                    Sample Pipeline History
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Automated container build agents and dynamic pipeline jobs
-                  connected to cluster {cluster.name}.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {jenkinsUrl && (
-                  <Button asChild size="sm" variant="outline" className="gap-1">
-                    <a
-                      href={jenkinsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Open Jenkins Console <ArrowSquareOut size={13} />
-                    </a>
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={testingIntegrationType === "JENKINS"}
-                  onClick={() => void handleIntegrationTest("JENKINS")}
-                >
-                  <Pulse
-                    size={14}
-                    className={cn(
-                      "mr-1.5",
-                      testingIntegrationType === "JENKINS" && "animate-spin"
-                    )}
-                  />
-                  Test Webhook & Runner
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
-                <WarningCircle size={16} className="shrink-0 text-amber-500" />
-                <span>
-                  Sample pipeline build execution history. Real-time build jobs,
-                  webhooks, and console streams are managed through the
-                  connected Jenkins server.
-                </span>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Jenkins Master URL
-                  </span>
-                  <p className="truncate font-mono text-xs font-semibold">
-                    {jenkinsUrl ?? "https://jenkins.pfnapp.internal"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Credential ID:{" "}
-                    {String(jenkinsMeta.gitCredentialId ?? "git-creds")}
-                  </p>
-                </div>
-
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Pipeline DSL Repository
-                  </span>
-                  <p className="truncate font-mono text-xs font-semibold">
-                    {jenkinsMeta.dslRepo
-                      ? `${String(jenkinsMeta.dslOwner)}/${String(jenkinsMeta.dslRepo)}`
-                      : "pfnapp/jenkins-pipelines"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Library:{" "}
-                    {String(jenkinsMeta.sharedLibraryName ?? "pfn-shared-lib")}
-                  </p>
-                </div>
-
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Agent Capacity
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="size-2 rounded-full bg-emerald-500" />
-                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      3 Runners Online
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Auto-scaling agent pool active
-                  </p>
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-lg border border-border">
-                <div className="border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-semibold text-muted-foreground">
-                  Recent Pipeline Executions on Cluster
-                </div>
-                <div className="divide-y divide-border text-xs">
-                  {[
-                    {
-                      id: "#142",
-                      job: `deploy-cluster-${cluster.code}`,
-                      branch: "main @ 4b91f0a",
-                      trigger: "GitHub Webhook",
-                      status: "Success",
-                      duration: "45s",
-                      time: "10m ago",
-                    },
-                    {
-                      id: "#141",
-                      job: "helm-manifest-render",
-                      branch: "main @ 2e19c08",
-                      trigger: "GitOps Sync",
-                      status: "Success",
-                      duration: "18s",
-                      time: "1h ago",
-                    },
-                    {
-                      id: "#140",
-                      job: "cluster-health-check",
-                      branch: "cron-hourly",
-                      trigger: "Periodic Runner",
-                      status: "Success",
-                      duration: "12s",
-                      time: "2h ago",
-                    },
-                  ].map((run) => (
-                    <div
-                      key={run.id}
-                      className="flex flex-wrap items-center justify-between gap-2 p-3 hover:bg-muted/20"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-foreground">
-                          {run.id}
-                        </span>
-                        <span className="font-medium text-foreground">
-                          {run.job}
-                        </span>
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          ({run.branch})
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[11px] text-muted-foreground">
-                          {run.trigger}
-                        </span>
-                        <Badge variant="success" className="text-[10px]">
-                          {run.status}
-                        </Badge>
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          {run.duration}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {run.time}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent
-          value="metrics"
-          forceMount
-          className="space-y-6 data-[state=inactive]:hidden"
-        >
-          <Card>
-            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base font-semibold">
-                    Prometheus Observability & Metrics
-                  </CardTitle>
-                  <Badge
-                    variant="outline"
-                    className="border-amber-500/40 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400"
-                  >
-                    Estimated Quotas & Telemetry
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Real-time telemetry and resource quotas for nodes, pods, and
-                  storage on cluster {cluster.name}.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {prometheusUrl && (
-                  <Button asChild size="sm" variant="outline" className="gap-1">
-                    <a
-                      href={prometheusUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Open Prometheus Web <ArrowSquareOut size={13} />
-                    </a>
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={testingIntegrationType === "PROMETHEUS"}
-                  onClick={() => void handleIntegrationTest("PROMETHEUS")}
-                >
-                  <Pulse
-                    size={14}
-                    className={cn(
-                      "mr-1.5",
-                      testingIntegrationType === "PROMETHEUS" && "animate-spin"
-                    )}
-                  />
-                  Test Telemetry Endpoint
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-muted-foreground">
-                <WarningCircle size={16} className="shrink-0 text-amber-500" />
-                <span>
-                  Estimated cluster resource quotas and capacity allocations.
-                  Real-time metric time-series and alert thresholds are scraped
-                  by the Prometheus server.
-                </span>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Node Pool Health
-                  </span>
-                  <p className="text-xl font-bold text-foreground">
-                    8 / 8 Nodes Ready
-                  </p>
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
-                    100% capacity available
-                  </p>
-                </div>
-
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Pod Allocation
-                  </span>
-                  <p className="text-xl font-bold text-foreground">
-                    42 / 110 Pods
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    38.2% cluster pod capacity
-                  </p>
-                </div>
-
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    CPU Allocation
-                  </span>
-                  <p className="text-xl font-bold text-foreground">
-                    2.4 / 16 Cores
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    15.0% utilized
-                  </p>
-                </div>
-
-                <div className="space-y-1 rounded-lg border border-border p-3">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Memory Allocation
-                  </span>
-                  <p className="text-xl font-bold text-foreground">
-                    18.2 / 64 GB
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    28.4% utilized
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-4">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">
-                    OpenEBS Local PV Storage Utilization
-                  </span>
-                  <span className="font-mono text-muted-foreground">
-                    142 GB / 500 GB (28.4%)
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div className="h-full w-[28.4%] rounded-full bg-emerald-500" />
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Volume StorageClass:{" "}
-                  <span className="font-mono">
-                    {clusterMetadata.storageClass || "openebs-lvmpv"}
-                  </span>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <ClusterOperationsTabs clusterId={clusterId} activeTab={activeTab} />
 
         <TabsContent
           value="settings"
@@ -3185,6 +1866,46 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               )}
             </CardContent>
           </Card>
+          <Card className="border-destructive/30">
+            <CardHeader>
+              <CardTitle className="text-destructive">Danger zone</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Changing cluster availability affects future deployment routing.
+                Existing workloads are not silently deleted.
+              </p>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">
+                  {cluster.status === "ACTIVE"
+                    ? "Deactivate this cluster"
+                    : "Activate this cluster"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  The current provider observations remain visible after the
+                  status change.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant={
+                  cluster.status === "ACTIVE" ? "destructive" : "default"
+                }
+                disabled={statusSaving}
+                onClick={() => {
+                  if (cluster.status === "ACTIVE") {
+                    setDeactivateDialogOpen(true)
+                    return
+                  }
+                  void handleStatusChange("ACTIVE", cluster.isDefault)
+                }}
+              >
+                {cluster.status === "ACTIVE"
+                  ? "Deactivate Cluster"
+                  : "Activate Cluster"}
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -3272,6 +1993,39 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           </div>
         </div>
       )}
+      <AlertDialog
+        open={deactivateDialogOpen}
+        onOpenChange={setDeactivateDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate {cluster.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the cluster from active deployment routing. Existing
+              workloads are not deleted, but new deployments cannot target this
+              cluster while it is deprecated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={statusSaving}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={statusSaving}
+              onClick={(event) => {
+                event.preventDefault()
+                void handleStatusChange(
+                  "DEPRECATED",
+                  cluster.isDefault
+                ).finally(() => setDeactivateDialogOpen(false))
+              }}
+            >
+              {statusSaving ? "Deactivating…" : "Confirm deactivation"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
