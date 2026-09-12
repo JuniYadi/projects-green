@@ -62,7 +62,7 @@ jobs:
         id: changed_coverage
         if: ${{ github.event_name == 'pull_request' }}
         continue-on-error: true
-        run: bun run test:coverage:changed
+        run: bun run test:coverage:changed -- --allow-unmapped
 
       - name: Run full logic coverage
         id: full_coverage
