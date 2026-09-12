@@ -28,11 +28,11 @@ describe("Acceptable Use Policy Page", () => {
     const enMeta = await generateAupMetadata({
       params: Promise.resolve({ lang: "en" }),
     })
-    expect(enMeta.title).toBe("Acceptable Use Policy — PFNApp")
+    expect(enMeta.title).toBe("Acceptable Use Policy")
 
     const idMeta = await generateAupMetadata({
       params: Promise.resolve({ lang: "id" }),
     })
-    expect(idMeta.title).toBe("Kebijakan Penggunaan Wajar — PFNApp")
+    expect(idMeta.title).toBe("Kebijakan Penggunaan Wajar")
   })
 })
