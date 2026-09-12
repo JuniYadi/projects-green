@@ -8,6 +8,7 @@ import {
   type WhatsappOutgoingWebhookJobData,
 } from "@/lib/queue/whatsapp-webhook-outgoing"
 import { logger } from "@/lib/logger"
+import { assertPublicHttpUrl } from "@/lib/whatsapp/public-url"
 
 const redisConnection = getRedisConnection()
 
@@ -73,10 +74,13 @@ export async function processOutgoingWebhookJob(
   const startedAt = new Date()
 
   try {
+    await assertPublicHttpUrl(webhook.webhookUrl)
     const response = await fetch(webhook.webhookUrl, {
       method: "POST",
       headers,
       body,
+      // A redirect could point at an internal address the guard never saw.
+      redirect: "manual",
       signal: AbortSignal.timeout(10_000),
     })
 
