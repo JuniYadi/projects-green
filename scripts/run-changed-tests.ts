@@ -215,12 +215,13 @@ export const run = (): number => {
   const concurrency =
     process.env.TEST_CONCURRENCY?.trim() || (process.env.CI ? "4" : "2")
   const preload = import.meta.dir + "/../test/setup.ts"
+  // --parallel runs files in worker processes and implies --isolate.
+  // --max-concurrency only affects test.concurrent, so files ran serially.
   const args = [
     "test",
-    "--isolate",
+    `--parallel=${concurrency}`,
     "--preload",
     preload,
-    `--max-concurrency=${concurrency}`,
     ...(options.coverage ? ["--coverage", "--coverage-reporter=lcov"] : []),
     ...sorted,
   ]
