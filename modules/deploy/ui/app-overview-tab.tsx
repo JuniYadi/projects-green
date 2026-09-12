@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   ArrowSquareOut,
+  CaretDown,
   CheckCircle,
   Copy,
   ListMagnifyingGlass,
@@ -24,6 +25,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { ClusterTelemetryCards } from "@/modules/deploy/ui/cluster-telemetry-cards"
 import { resolveContainerLimits } from "@/modules/deploy/deploy.constants"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
@@ -52,7 +58,8 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     down: "Aplikasi tidak jalan",
     downDetail: "Tidak ada pod aktif. Cek log deploy terakhir.",
     unreachable: "Aplikasi jalan tapi tidak bisa diakses",
-    unreachableDetail: "Tidak ada backend sehat di ingress.",
+    unreachableDetail:
+      "Belum ada bagian aplikasi yang siap melayani pengunjung.",
     unknown: "Status belum bisa dibaca",
     unknownDetail: "Data monitoring belum masuk. Coba lagi sebentar lagi.",
     checking: "Mengecek status aplikasi…",
@@ -66,7 +73,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     publicIp: "IP publik",
     noPublicIp: "Tidak ada IP khusus",
     noPublicIpHint:
-      "Aplikasi dilayani lewat ingress bersama. Untuk domain sendiri, arahkan CNAME ke alamat publik di atas — jangan pakai A record.",
+      "Untuk pakai domain sendiri, buat DNS record tipe CNAME (bukan A) yang mengarah ke alamat publik di atas.",
     internalHost: "Alamat internal",
     podName: "Nama pod",
     namespace: "Namespace",
@@ -77,6 +84,27 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     usageTitle: "Pemakaian resource",
     usageDesc: "Ringkasan 1 jam terakhir — detail ada di tab Grafik lengkap",
     limitLabel: "Batas maksimum",
+    developerInfo: "Info developer",
+    showDeveloperInfo: "Lihat info developer",
+    hideDeveloperInfo: "Sembunyikan info developer",
+    subscriptionTitle: "Langganan & tagihan",
+    subscriptionDesc: "Paket aktif, jenis plan, dan siklus perpanjangan",
+    catalogPlan: "Plan",
+    priceCycle: "Harga & siklus",
+    billingStatus: "Status tagihan",
+    billingActive: "Aktif",
+    orderedOn: "Dipesan pada",
+    nextRenewal: "Perpanjangan berikutnya",
+    autoRenewMonthly: "Perpanjang otomatis tiap bulan",
+    platformSpecTitle: "Spesifikasi platform",
+    platformSpecDesc: "Jenis template, port layanan, dan alokasi resource",
+    templateEngine: "Template",
+    servicePort: "Port layanan",
+    allocatedResources: "Resource yang dialokasikan",
+    envSecrets: "Environment variable",
+    envSecretsFallback: "Sudah dikonfigurasi",
+    configStatus: "Status konfigurasi",
+    configSynced: "Tersinkron",
   },
   en: {
     statusTitle: "Application status",
@@ -89,7 +117,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     down: "Your app is not running",
     downDetail: "No active pod. Check the latest deploy logs.",
     unreachable: "Running but unreachable",
-    unreachableDetail: "No healthy backend registered at the ingress.",
+    unreachableDetail: "No part of your app is ready to serve visitors yet.",
     unknown: "Status not available",
     unknownDetail: "Monitoring data has not arrived yet. Try again shortly.",
     checking: "Checking application status…",
@@ -103,7 +131,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     publicIp: "Public IP",
     noPublicIp: "No dedicated IP",
     noPublicIpHint:
-      "The app is served through a shared ingress. For a custom domain, point a CNAME at the public address above — do not use an A record.",
+      "To use your own domain, create a CNAME record (not an A record) in your DNS settings, pointing to the public address above.",
     internalHost: "Internal address",
     podName: "Pod name",
     namespace: "Namespace",
@@ -114,6 +142,27 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     usageTitle: "Resource usage",
     usageDesc: "Last hour at a glance — full detail lives in Full charts",
     limitLabel: "Hard limit",
+    developerInfo: "Developer info",
+    showDeveloperInfo: "Show developer info",
+    hideDeveloperInfo: "Hide developer info",
+    subscriptionTitle: "Subscription & billing",
+    subscriptionDesc: "Active package, catalog plan, and renewal cycle",
+    catalogPlan: "Plan",
+    priceCycle: "Price & cycle",
+    billingStatus: "Billing status",
+    billingActive: "Active",
+    orderedOn: "Ordered on",
+    nextRenewal: "Next renewal",
+    autoRenewMonthly: "Auto-renews monthly",
+    platformSpecTitle: "Platform specification",
+    platformSpecDesc: "Template, service port, and allocated resources",
+    templateEngine: "Template",
+    servicePort: "Service port",
+    allocatedResources: "Allocated resources",
+    envSecrets: "Environment variables",
+    envSecretsFallback: "Already configured",
+    configStatus: "Configuration status",
+    configSynced: "Synced",
   },
 }
 
@@ -302,7 +351,7 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
         month: "short",
         day: "numeric",
       })
-    : "Auto-renews monthly"
+    : t.autoRenewMonthly
 
   return (
     <div className="space-y-6">
@@ -437,22 +486,35 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                 copiedLabel={t.copied}
               />
 
-              {pod ? (
-                <CopyableRow
-                  label={t.podName}
-                  value={pod.pod}
-                  copyLabel={t.copy}
-                  copiedLabel={t.copied}
-                />
-              ) : null}
+              {pod || telemetry?.namespace ? (
+                <Collapsible className="pt-1">
+                  <CollapsibleTrigger className="group flex w-full items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+                    <CaretDown
+                      size={11}
+                      className="transition-transform group-data-[state=open]:rotate-180"
+                    />
+                    {t.developerInfo}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-2">
+                    {pod ? (
+                      <CopyableRow
+                        label={t.podName}
+                        value={pod.pod}
+                        copyLabel={t.copy}
+                        copiedLabel={t.copied}
+                      />
+                    ) : null}
 
-              {telemetry?.namespace ? (
-                <CopyableRow
-                  label={t.namespace}
-                  value={telemetry.namespace}
-                  copyLabel={t.copy}
-                  copiedLabel={t.copied}
-                />
+                    {telemetry?.namespace ? (
+                      <CopyableRow
+                        label={t.namespace}
+                        value={telemetry.namespace}
+                        copyLabel={t.copy}
+                        copiedLabel={t.copied}
+                      />
+                    ) : null}
+                  </CollapsibleContent>
+                </Collapsible>
               ) : null}
             </CardContent>
           </Card>
@@ -461,15 +523,15 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
           <Card className="border-border bg-card shadow-xs">
             <CardHeader className="px-4 pt-3.5 pb-2">
               <CardTitle className="text-sm font-bold">
-                Subscription & Billing
+                {t.subscriptionTitle}
               </CardTitle>
               <CardDescription className="text-xs">
-                Active package, catalog plan, and renewal cycle
+                {t.subscriptionDesc}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 px-4 pt-0 pb-3.5 text-xs">
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Catalog Plan</span>
+                <span className="text-muted-foreground">{t.catalogPlan}</span>
                 <span className="font-semibold text-foreground">
                   {stack.catalogPlanName ??
                     (stack.resourcePlanId
@@ -478,26 +540,29 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Price & Cycle</span>
+                <span className="text-muted-foreground">{t.priceCycle}</span>
                 <span className="font-semibold text-foreground">
                   {formattedPrice}
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Billing Status</span>
+                <span className="text-muted-foreground">{t.billingStatus}</span>
                 <span className="inline-flex items-center gap-1.5 font-medium text-emerald-500">
                   <span className="size-1.5 rounded-full bg-emerald-500" />
-                  Active ({stack.billingState ?? "Good Standing"})
+                  {!stack.billingState ||
+                  stack.billingState.toUpperCase() === "ACTIVE"
+                    ? t.billingActive
+                    : `${t.billingActive} (${stack.billingState})`}
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Ordered On</span>
+                <span className="text-muted-foreground">{t.orderedOn}</span>
                 <span className="font-medium text-foreground">
                   {formattedOrdered}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-0.5">
-                <span className="text-muted-foreground">Next Renewal</span>
+                <span className="text-muted-foreground">{t.nextRenewal}</span>
                 <span className="font-medium text-foreground">
                   {formattedRenewal}
                 </span>
@@ -511,15 +576,17 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
           <Card className="border-border bg-card shadow-xs">
             <CardHeader className="px-4 pt-3.5 pb-2">
               <CardTitle className="text-sm font-bold">
-                Platform Specification
+                {t.platformSpecTitle}
               </CardTitle>
               <CardDescription className="text-xs">
-                Template engine, service port, and cluster routing
+                {t.platformSpecDesc}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 px-4 pt-0 pb-3.5 text-xs">
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Template / Engine</span>
+                <span className="text-muted-foreground">
+                  {t.templateEngine}
+                </span>
                 <span className="font-medium text-foreground">
                   {stack.templateName ??
                     stack.framework ??
@@ -528,14 +595,14 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Service Port</span>
+                <span className="text-muted-foreground">{t.servicePort}</span>
                 <span className="font-mono font-medium text-foreground">
                   {stack.port ? `Port ${stack.port}` : "Port 80/443"}
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
                 <span className="text-muted-foreground">
-                  Allocated Resources
+                  {t.allocatedResources}
                 </span>
                 <span className="text-right font-medium text-foreground">
                   {stack.cpu
@@ -553,20 +620,20 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">
-                  Environment Secrets
-                </span>
+                <span className="text-muted-foreground">{t.envSecrets}</span>
                 <span className="font-medium text-foreground">
                   {stack.envCount !== undefined
-                    ? `${stack.envCount} Variables (Vault)`
-                    : "Configured in Vault"}
+                    ? locale.startsWith("id")
+                      ? `${stack.envCount} variabel`
+                      : `${stack.envCount} ${stack.envCount === 1 ? "variable" : "variables"}`
+                    : t.envSecretsFallback}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-0.5">
-                <span className="text-muted-foreground">GitOps Status</span>
+                <span className="text-muted-foreground">{t.configStatus}</span>
                 <span className="inline-flex items-center gap-1 font-medium text-emerald-500">
                   <CheckCircle size={13} />
-                  ArgoCD Synced
+                  {t.configSynced}
                 </span>
               </div>
             </CardContent>
@@ -576,6 +643,7 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
           <ClusterTelemetryCards
             appSlug={stack.slug}
             title={t.usageTitle}
+            locale={locale}
             compact
           />
           <p className="px-1 text-[11px] text-muted-foreground">
