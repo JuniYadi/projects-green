@@ -2033,12 +2033,16 @@ export type AppMessages = {
         domainsPanel: {
           cardTitle: string
           cardDescription: string
+          domainLabel: string
+          tlsLabel: string
+          actionsLabel: string
           addPlaceholder: string
           addButton: string
           retry: string
           saveError: string
           loading: string
           empty: string
+          legacyEmpty: string
           primaryBadge: string
           kindManaged: string
           kindCustom: string

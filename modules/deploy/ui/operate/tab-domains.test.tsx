@@ -13,12 +13,16 @@ const domainsMessages: DomainsPanelMessages = {
   cardTitle: "Custom Domain Settings",
   cardDescription:
     "Point a domain you own (e.g. shop.acme.com) to this app, or use the free address included below.",
+  domainLabel: "Domain",
+  tlsLabel: "TLS",
+  actionsLabel: "Actions",
   addPlaceholder: "e.g. shop.acme.com",
   addButton: "Add Domain",
   retry: "Retry",
   saveError: "Unable to save domain settings.",
   loading: "Loading domains…",
   empty: "No domains mapped yet.",
+  legacyEmpty: "No custom domains mapped yet.",
   primaryBadge: "Primary",
   kindManaged: "Managed",
   kindCustom: "Custom",
@@ -261,6 +265,40 @@ describe("TabDomains", () => {
     const html = container.innerHTML
 
     expect(html).not.toContain("border-white/[0.06]")
+  })
+
+  it("localizes labels in legacy mode", () => {
+    const legacyDomains: Record<string, CustomDomain[]> = {
+      prod: [],
+    }
+    const setDomainsMock = mock(() => {})
+    const localizedMessages = {
+      ...domainsMessages,
+      domainLabel: "Domain (ID)",
+      dnsLabel: "DNS (ID)",
+      tlsLabel: "TLS (ID)",
+      actionsLabel: "Actions (ID)",
+      legacyEmpty: "No custom domains (ID).",
+      addPlaceholder: "placeholder (ID)",
+      addButton: "Add Domain (ID)",
+    }
+
+    const view = render(
+      <TabDomains
+        selectedEnv="prod"
+        domains={legacyDomains}
+        setDomains={setDomainsMock}
+        messages={localizedMessages}
+      />
+    )
+
+    expect(view.getByText("Domain (ID)")).toBeTruthy()
+    expect(view.getByText("DNS (ID)")).toBeTruthy()
+    expect(view.getByText("TLS (ID)")).toBeTruthy()
+    expect(view.getByText("Actions (ID)")).toBeTruthy()
+    expect(view.getByText("No custom domains (ID).")).toBeTruthy()
+    expect(view.getByPlaceholderText("placeholder (ID)")).toBeTruthy()
+    expect(view.getByRole("button", { name: "Add Domain (ID)" })).toBeTruthy()
   })
 
   it("renders Reverse Proxy Ingress as a collapsed advanced section and toggles Trust Forwarded Headers switch", () => {

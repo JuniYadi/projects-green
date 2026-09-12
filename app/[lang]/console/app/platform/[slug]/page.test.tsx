@@ -160,7 +160,7 @@ describe("PlatformInstanceWorkspacePage (/console/app/platform/[slug])", () => {
       expect(
         getByRole("navigation", { name: "Platform Settings" })
       ).toBeDefined()
-      expect(queryByText("Domains & SSL")).not.toBeNull()
+      expect(queryByText("Domains")).not.toBeNull()
       expect(queryByText("Scaling & Resources")).not.toBeNull()
       expect(queryByText("Danger Zone")).not.toBeNull()
       expect(queryByText("General Info")).toBeNull()

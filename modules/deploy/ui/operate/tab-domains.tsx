@@ -304,6 +304,7 @@ export function TabDomains({
     }
     const allowlistEntry = allowlistInput[domain.id] ?? ""
     const isManaged = domain.kind === "MANAGED"
+    const dnsEvidence = dnsEvidenceLabel(t, domain)
     return (
       <div
         key={domain.id}
@@ -350,9 +351,9 @@ export function TabDomains({
                     {domain.dnsVerificationReason}
                   </p>
                 )}
-                {dnsEvidenceLabel(t, domain) && (
+                {dnsEvidence && (
                   <p className="text-[10px] text-muted-foreground">
-                    {dnsEvidenceLabel(t, domain)}
+                    {dnsEvidence}
                   </p>
                 )}
               </div>
@@ -647,10 +648,10 @@ export function TabDomains({
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground">
-                    <th className="p-3">Domain</th>
-                    <th className="p-3">DNS</th>
-                    <th className="p-3">TLS</th>
-                    <th className="p-3 text-right">Actions</th>
+                    <th className="p-3">{t.domainLabel}</th>
+                    <th className="p-3">{t.dnsLabel}</th>
+                    <th className="p-3">{t.tlsLabel}</th>
+                    <th className="p-3 text-right">{t.actionsLabel}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -670,7 +671,10 @@ export function TabDomains({
                           type="button"
                           size="sm"
                           variant="ghost"
-                          aria-label={`Delete domain ${item.domain}`}
+                          aria-label={t.deleteAria.replace(
+                            "{hostname}",
+                            item.domain
+                          )}
                           onClick={() => removeLegacy(item.id)}
                         >
                           <Trash size={14} />
@@ -684,7 +688,7 @@ export function TabDomains({
                         colSpan={4}
                         className="p-8 text-center text-xs text-muted-foreground"
                       >
-                        No custom domains mapped yet.
+                        {t.legacyEmpty}
                       </td>
                     </tr>
                   )}
@@ -695,13 +699,13 @@ export function TabDomains({
                 className="flex gap-2 border-t border-border p-3"
               >
                 <Input
-                  placeholder="e.g. shop.acme.com"
+                  placeholder={t.addPlaceholder}
                   value={newDomain}
                   onChange={(event) => setNewDomain(event.target.value)}
                   className="h-9 text-xs"
                 />
                 <Button type="submit" size="sm">
-                  Add Domain
+                  {t.addButton}
                 </Button>
               </form>
             </div>
