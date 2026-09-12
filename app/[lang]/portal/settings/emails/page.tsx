@@ -1,8 +1,11 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getPlatformAccessForUser } from "@/lib/platform-role"
 import { EmailsView } from "./emails-view"
+
+export const metadata: Metadata = { title: "Email Templates" }
 
 export default async function EmailTemplatesPage({
   params,
