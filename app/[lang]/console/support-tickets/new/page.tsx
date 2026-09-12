@@ -1,8 +1,11 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { SupportTicketCreateScreen } from "@/app/[lang]/console/support-tickets/support-ticket-create-screen"
+
+export const metadata: Metadata = { title: "Open Support Ticket" }
 
 type SupportTicketCreatePageProps = {
   params: Promise<{
