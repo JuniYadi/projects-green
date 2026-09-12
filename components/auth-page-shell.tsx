@@ -14,8 +14,8 @@ type AuthPageShellProps = {
 
 const supportCards = [
   {
-    title: "Secure auth",
-    description: "WorkOS-backed access for every account.",
+    title: "Secure access",
+    description: "Protected access for every PFNApp account.",
   },
   {
     title: "Billing ready",

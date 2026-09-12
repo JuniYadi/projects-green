@@ -14,6 +14,11 @@ const navLinks = [
         desc: "Deploy with zero config",
       },
       {
+        label: "WhatsApp Official",
+        href: "/products/whatsapp-official",
+        desc: "Business messaging API",
+      },
+      {
         label: "Communication",
         href: "#communication",
         desc: "Email, SMS & push",
@@ -129,6 +134,7 @@ export function HomeNav() {
 
         {/* Mobile toggle */}
         <button
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
           className="p-2 text-white/80 hover:text-white md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
         >

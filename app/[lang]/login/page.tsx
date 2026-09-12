@@ -1,6 +1,12 @@
+import type { Metadata } from "next"
 import { AuthPageShell } from "@/components/auth-page-shell"
 import { LoginForm } from "@/components/login-form"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
+export const metadata: Metadata = {
+  title: "Sign in or create an account",
+  description: "Sign in to or create your PFNApp account.",
+}
 
 const getSafeNext = (next: string | undefined, fallbackPath: string) => {
   if (!next || !next.startsWith("/") || next.startsWith("//")) {
@@ -34,9 +40,9 @@ export default async function LoginPage({
 
   return (
     <AuthPageShell
-      badge="Console access"
-      panelTitle="Continue to PFNApp"
-      panelDescription="Sign in to manage the PFNApp console, or create a WorkOS account from this page if you are new."
+      badge="Account access"
+      panelTitle="Sign in or create an account"
+      panelDescription="Sign in to manage your PFNApp console. New here? Create your PFNApp account to get started."
     >
       <LoginForm nextPath={next} errorMessage={search?.error} />
     </AuthPageShell>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components"
 import { JetBrains_Mono, Space_Mono, Roboto } from "next/font/google"
 import { cookies } from "next/headers"
@@ -10,6 +11,16 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: "PFNApp — Full-Stack Cloud Platform",
+  description:
+    "PFNApp gives developers one place to deploy applications, run services, and manage cloud infrastructure.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
+}
 
 const jetbrainsMonoHeading = JetBrains_Mono({
   subsets: ["latin"],

@@ -478,8 +478,7 @@ export function LoginForm({
               </Button>
             ) : null}
             <FieldDescription className="text-center">
-              Need an account?{" "}
-              <a href={createAccountPath}>Create one with WorkOS</a>
+              New to PFNApp? <a href={createAccountPath}>Create your account</a>
             </FieldDescription>
           </Field>
         </FieldGroup>
