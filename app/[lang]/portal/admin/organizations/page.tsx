@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { OrganizationsTable } from "./organizations-table"
+
+export const metadata: Metadata = { title: "Organizations" }
 
 export default async function OrganizationsPage() {
   return (
