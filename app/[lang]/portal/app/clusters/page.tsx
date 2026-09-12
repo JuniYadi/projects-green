@@ -1,6 +1,8 @@
-"use client"
+import type { Metadata } from "next"
 
 import { ClusterList } from "./_components/cluster-list"
+
+export const metadata: Metadata = { title: "Cluster Inventory" }
 
 export default function ClusterListPage() {
   return (
