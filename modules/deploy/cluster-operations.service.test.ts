@@ -413,7 +413,10 @@ describe("cluster operations service", () => {
           ],
         },
         aggregations: {
-          services: { buckets: [{ key: "deploy" }, { key: "ingress" }] },
+          // container_name is keyword in most indices and text+.keyword in the
+          // rest, so both aggregations run and their keys merge.
+          servicesRaw: { buckets: [{ key: "deploy" }] },
+          servicesKeyword: { buckets: [{ key: "ingress" }, { key: "deploy" }] },
         },
       })
     }) as unknown as typeof fetch
