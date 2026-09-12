@@ -13,7 +13,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "PFNApp Documentation",
+  title: { absolute: "PFNApp Documentation", template: "%s | PFNApp Docs" },
 }
 
 type Props = {
