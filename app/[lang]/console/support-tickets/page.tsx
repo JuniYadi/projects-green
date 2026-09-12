@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { SupportTicketsConsole } from "@/app/[lang]/console/support-tickets/support-tickets-console"
+
+export const metadata: Metadata = { title: "Support Tickets" }
 
 type SupportTicketsPageProps = {
   params: Promise<{
