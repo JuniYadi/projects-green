@@ -1,21 +1,14 @@
-"use client"
-
-import * as React from "react"
-import { useParams, useRouter } from "next/navigation"
+import { redirect } from "next/navigation"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 
-export default function RedirectToAuditLogsTab() {
-  const params = useParams<{ lang?: string }>()
-  const router = useRouter()
+export default async function RedirectToAuditLogsTab(props: {
+  params: Promise<{ lang?: string }>
+}) {
+  const params = await props.params
   const locale = resolveLocaleOrDefault(params?.lang)
-
-  React.useEffect(() => {
-    const target = localizePathname({
-      pathname: "/console/whatsapp/logs",
-      locale,
-    })
-    router.replace(`${target}?tab=audit`)
-  }, [locale, router])
-
-  return null
+  const target = localizePathname({
+    pathname: "/console/whatsapp/logs",
+    locale,
+  })
+  redirect(`${target}?tab=audit`)
 }
