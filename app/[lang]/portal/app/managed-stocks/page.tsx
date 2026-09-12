@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { ManagedStocksList } from "@/components/deploy/managed-stocks-list"
 
 export const metadata: Metadata = {
-  title: "Managed DB Stocks | App Hosting Admin",
+  title: "Managed DB Stocks",
 }
 
 export default function ManagedStocksPage() {
