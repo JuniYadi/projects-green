@@ -80,6 +80,8 @@ for ((round = 1; round <= MAX_ROUNDS; round++)); do
 	# -----------------------------------------------------
 	log_step "Mengirim konteks dan instruksi perbaikan ke codex..."
 	FIX_LOG=$(mktemp)
+	# </dev/null wajib: tanpa itu codex exec menunggu stdin ("Reading additional
+	# input from stdin...") dan menggantung selamanya di 0% CPU.
 	if ! codex exec \
 		--skip-git-repo-check \
 		--dangerously-bypass-approvals-and-sandbox \
@@ -91,7 +93,7 @@ BATASAN KETAT:
 1. Dilarang memakai 'any', 'unknown', '@ts-ignore', atau '@ts-expect-error'.
 2. Pertahankan seluruh logic runtime agar unit test tetap hijau.
 3. Ubah seminimal mungkin — hanya yang dibutuhkan error di atas." \
-		>"$FIX_LOG" 2>&1; then
+		</dev/null >"$FIX_LOG" 2>&1; then
 		log_fail "codex exec gagal. 20 baris terakhir log ($FIX_LOG):"
 		tail -n 20 "$FIX_LOG"
 		rollback
