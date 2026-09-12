@@ -21,12 +21,13 @@ if (coverage) {
   mkdirSync(resolve(process.cwd(), "coverage"), { recursive: true })
 }
 
+// --parallel runs files in worker processes and implies --isolate.
+// --max-concurrency only affects test.concurrent, so files ran serially.
 const args = [
   "test",
-  "--isolate",
+  `--parallel=${concurrency}`,
   "--preload",
   preload,
-  `--max-concurrency=${concurrency}`,
   "--path-ignore-patterns=**/*.e2e.test.ts",
   "--path-ignore-patterns=**/e2e/**",
   "--path-ignore-patterns=**/integration/**",
