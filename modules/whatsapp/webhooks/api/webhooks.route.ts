@@ -140,12 +140,27 @@ export const webhooksRoutes = new Elysia({
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      const isSuperAdmin =
+        whatsappAuth.type === "workos" &&
+        whatsappAuth.platformRole === "super_admin"
+      if (!isSuperAdmin && !whatsappAuth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "No active organization found.",
+        }
+      }
       const page = Number(query.page) || 1
       const limit = Number(query.limit) || 20
       const skip = (page - 1) * limit
 
+      // Tenants only ever see their own webhooks; super admins may pick an org.
+      const organizationId = isSuperAdmin
+        ? query.organizationId
+        : whatsappAuth.organizationId
       const where: any = {}
-      if (query.organizationId) where.organizationId = query.organizationId
+      if (organizationId) where.organizationId = organizationId
       if (query.deviceId) where.whatsappDeviceId = query.deviceId
 
       const [data, total] = await Promise.all([
@@ -238,6 +253,17 @@ export const webhooksRoutes = new Elysia({
           error: "BAD_REQUEST",
           message: "Organization ID required.",
         }
+      }
+      const device = await prisma.whatsappDevice.findFirst({
+        where: {
+          id: body.deviceId,
+          organizationId: whatsappAuth.organizationId,
+        },
+        select: { id: true },
+      })
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
       }
       const webhook = await prisma.whatsappWebhook.create({
         data: {
