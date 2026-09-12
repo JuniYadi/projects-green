@@ -110,6 +110,61 @@ describe("AppTemplate Prisma Schema & Seed", () => {
     expect(apiServerKeyEnv?.isSecret).toBe(true)
   })
 
+  it("pins the 9router template to the Docker-verified decolua image and its secret contract", () => {
+    const ninerouter = OFFICIAL_APP_TEMPLATES.find((t) => t.slug === "9router")
+    expect(ninerouter).toBeDefined()
+    const runtime = ninerouter?.blueprint.runtime
+    expect(runtime?.image).toBe("docker.io/decolua/9router:0.5.75")
+    expect(runtime?.defaultPort).toBe(20128)
+    expect(runtime?.deploymentType).toBe("statefulset")
+
+    expect(ninerouter?.blueprint.storage?.mountPath).toBe("/app/data")
+    expect(ninerouter?.blueprint.scaling?.maxReplicas).toBe(1)
+    expect(ninerouter?.blueprint.scaling?.allowAutoscale).toBe(false)
+
+    expect(ninerouter?.blueprint.dependencies).toEqual([])
+
+    for (const key of [
+      "JWT_SECRET",
+      "API_KEY_SECRET",
+      "MACHINE_ID_SALT",
+      "INITIAL_PASSWORD",
+    ]) {
+      const env = ninerouter?.blueprint.envSchema?.find((e) => e.key === key)
+      expect(env?.isSecret).toBe(true)
+      expect(env?.required).toBe(true)
+      expect(env?.generateRandomHex).toBeGreaterThan(0)
+      expect(env?.defaultValue).toBeUndefined()
+    }
+
+    const requireApiKey = ninerouter?.blueprint.envSchema?.find(
+      (e) => e.key === "REQUIRE_API_KEY"
+    )
+    expect(requireApiKey?.defaultValue).toBe("true")
+  })
+
+  it("pins the n8n template to the Docker-verified image on a single-writer volume", () => {
+    const n8n = OFFICIAL_APP_TEMPLATES.find((t) => t.slug === "n8n")
+    expect(n8n).toBeDefined()
+    expect(n8n?.blueprint.runtime.image).toBe("docker.io/n8nio/n8n:2.38.7")
+    expect(n8n?.blueprint.runtime.deploymentType).toBe("statefulset")
+    expect(n8n?.blueprint.runtime.healthCheckPath).toBe("/healthz")
+    expect(n8n?.blueprint.storage?.mountPath).toBe("/home/node/.n8n")
+    expect(n8n?.blueprint.scaling?.maxReplicas).toBe(1)
+    expect(n8n?.blueprint.dependencies).toEqual([
+      { serviceType: "POSTGRESQL", alias: "db", envPrefix: "DB" },
+    ])
+
+    const dbType = n8n?.blueprint.envSchema?.find((e) => e.key === "DB_TYPE")
+    expect(dbType?.defaultValue).toBe("postgresdb")
+  })
+
+  it("never ships a bare :latest image tag in an official template", () => {
+    for (const template of OFFICIAL_APP_TEMPLATES) {
+      expect(template.blueprint.runtime.image).not.toEndWith(":latest")
+    }
+  })
+
   it("executes seedOfficialAppTemplates idempotently against mock Prisma delegate", async () => {
     const upserted: Array<{
       slug: string

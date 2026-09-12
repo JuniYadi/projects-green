@@ -50,9 +50,10 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
     blueprint: appTemplateBlueprintSchema.parse({
       version: "1.0.0",
       runtime: {
-        image: "docker.io/n8nio/n8n:latest",
+        image: "docker.io/n8nio/n8n:2.38.7",
         defaultPort: 5678,
         healthCheckPath: "/healthz",
+        deploymentType: "statefulset",
         runAsNonRoot: true,
       },
       resources: {
@@ -65,6 +66,12 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
         enabled: true,
         mountPath: "/home/node/.n8n",
         sizeGbDefault: 5,
+      },
+      scaling: {
+        allowAutoscale: false,
+        maxReplicas: 1,
+        advisoryNote:
+          "The n8n settings file lives on a single-writer RWO volume; replicas stay at 1 until queue mode and an RWX class are configured.",
       },
       dependencies: [
         {
@@ -90,6 +97,50 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
           required: true,
           isSecret: false,
           dataType: "number",
+        },
+        {
+          key: "DB_TYPE",
+          label: "Database Type",
+          description:
+            "n8n persists workflows and credentials in the claimed PostgreSQL stock, not in SQLite.",
+          defaultValue: "postgresdb",
+          required: true,
+          isSecret: false,
+          dataType: "string",
+          isFixed: true,
+          isHidden: true,
+        },
+        {
+          key: "N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS",
+          label: "Enforce Settings File Permissions",
+          description:
+            "Restricts the permissions of the settings file on the persistent volume.",
+          defaultValue: "true",
+          required: true,
+          isSecret: false,
+          dataType: "boolean",
+          isFixed: true,
+          isHidden: true,
+        },
+        {
+          key: "GENERIC_TIMEZONE",
+          label: "Timezone",
+          description:
+            "Timezone used by Schedule and Cron nodes, e.g. Asia/Jakarta.",
+          defaultValue: "UTC",
+          required: true,
+          isSecret: false,
+          dataType: "string",
+        },
+        {
+          key: "TZ",
+          label: "System Timezone",
+          description:
+            "Timezone of the container itself. Keep it aligned with the n8n timezone.",
+          defaultValue: "UTC",
+          required: true,
+          isSecret: false,
+          dataType: "string",
         },
       ],
     }),
@@ -220,10 +271,10 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
     blueprint: appTemplateBlueprintSchema.parse({
       version: "1.0.0",
       runtime: {
-        image: "registry.pfnapp.com/ninerouter:latest",
-        defaultPort: 8080,
-        healthCheckPath: "/health",
-        runAsNonRoot: true,
+        image: "docker.io/decolua/9router:0.5.75",
+        defaultPort: 20128,
+        deploymentType: "statefulset",
+        runAsNonRoot: false,
       },
       resources: {
         defaultCpu: 250,
@@ -231,22 +282,120 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
         minCpu: 100,
         minMemory: 128,
       },
-      dependencies: [
-        {
-          serviceType: "REDIS",
-          alias: "redis",
-          envPrefix: "REDIS",
-        },
-      ],
+      storage: {
+        enabled: true,
+        mountPath: "/app/data",
+        sizeGbDefault: 10,
+      },
+      scaling: {
+        allowAutoscale: false,
+        maxReplicas: 1,
+        advisoryNote:
+          "9router stores its state in SQLite on a single-writer RWO volume; replicas stay at 1.",
+      },
+      dependencies: [],
       envSchema: [
         {
-          key: "ROUTER_MASTER_KEY",
-          label: "Master API Key",
-          description: "Admin key for gateway configuration and key issuance",
+          key: "DATA_DIR",
+          label: "Data Directory",
+          description:
+            "Directory holding the SQLite database and its backups. Must match the mounted volume.",
+          defaultValue: "/app/data",
+          required: true,
+          isSecret: false,
+          dataType: "string",
+          isFixed: true,
+          isHidden: true,
+        },
+        {
+          key: "PORT",
+          label: "Port",
+          defaultValue: "20128",
+          required: true,
+          isSecret: false,
+          dataType: "number",
+          isFixed: true,
+          isHidden: true,
+        },
+        {
+          key: "HOSTNAME",
+          label: "Bind Host",
+          defaultValue: "0.0.0.0",
+          required: true,
+          isSecret: false,
+          dataType: "string",
+          isFixed: true,
+          isHidden: true,
+        },
+        {
+          key: "NODE_ENV",
+          label: "Node Environment",
+          defaultValue: "production",
+          required: true,
+          isSecret: false,
+          dataType: "string",
+          isFixed: true,
+          isHidden: true,
+        },
+        {
+          key: "JWT_SECRET",
+          label: "JWT Secret",
+          description:
+            "Signs dashboard sessions. Generated per instance; never reuse the upstream default.",
           required: true,
           isSecret: true,
           dataType: "string",
           generateRandomHex: 32,
+        },
+        {
+          key: "API_KEY_SECRET",
+          label: "API Key Secret",
+          description:
+            "HMAC secret for issued API keys. Generated per instance; never reuse the upstream default.",
+          required: true,
+          isSecret: true,
+          dataType: "string",
+          generateRandomHex: 32,
+        },
+        {
+          key: "MACHINE_ID_SALT",
+          label: "Machine ID Salt",
+          description:
+            "Salt for machine identity hashing. Generated per instance; never reuse the upstream default.",
+          required: true,
+          isSecret: true,
+          dataType: "string",
+          generateRandomHex: 32,
+        },
+        {
+          key: "INITIAL_PASSWORD",
+          label: "Initial Admin Password",
+          description:
+            "First-login password for the dashboard. Replaces the upstream default of 123456.",
+          required: true,
+          isSecret: true,
+          dataType: "string",
+          generateRandomHex: 8,
+        },
+        {
+          key: "REQUIRE_API_KEY",
+          label: "Require API Key",
+          description:
+            "Rejects unauthenticated inference calls. Keep enabled on any public ingress.",
+          defaultValue: "true",
+          required: true,
+          isSecret: false,
+          dataType: "boolean",
+        },
+        {
+          key: "AUTH_COOKIE_SECURE",
+          label: "Secure Auth Cookie",
+          description:
+            "Marks the session cookie secure. Keep enabled when serving over HTTPS.",
+          defaultValue: "true",
+          required: true,
+          isSecret: false,
+          dataType: "boolean",
         },
       ],
     }),

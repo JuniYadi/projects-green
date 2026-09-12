@@ -7,6 +7,7 @@ import {
   ChartBar,
   Database,
   FlowArrow as Workflow,
+  HardDrives,
   Robot,
   RocketLaunch,
   WarningCircle,
@@ -123,8 +124,17 @@ function TemplateCatalog({
               </CardHeader>
               <CardContent className="px-4 pb-3">
                 <Badge variant="outline" className="gap-1 text-[11px]">
-                  <Database className="size-3" />
-                  {template.engineType}
+                  {template.engineType ? (
+                    <>
+                      <Database className="size-3" />
+                      {template.engineType}
+                    </>
+                  ) : (
+                    <>
+                      <HardDrives className="size-3" />
+                      Persistent storage
+                    </>
+                  )}
                 </Badge>
               </CardContent>
               <CardFooter className="mt-auto p-4 pt-0">
@@ -161,7 +171,6 @@ type QuickDeployDialogProps = {
 
 const makeSubdomain = (template: ManagedAppTemplate) =>
   `${template.defaultSubdomain}-${Math.random().toString(36).slice(2, 7)}`
-
 
 function QuickDeployDialog({
   template,
@@ -365,8 +374,9 @@ function QuickDeployDialog({
               >
                 <WarningCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
                 <span>
-                  A managed {template.engineType} database slot will be
-                  allocated automatically.
+                  {template.engineType
+                    ? `A managed ${template.engineType} database slot will be allocated automatically.`
+                    : "This app keeps its data on its own persistent volume. No managed database slot is allocated."}
                 </span>
               </p>
             </div>

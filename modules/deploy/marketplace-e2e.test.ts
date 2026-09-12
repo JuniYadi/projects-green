@@ -461,7 +461,7 @@ describe("Marketplace & Auto-Provisioning End-to-End Lifecycle", () => {
     const n8nTemplate = (await n8nDetailResponse.json()) as MockAppTemplate
     expect(n8nTemplate.slug).toBe("n8n")
     expect(n8nTemplate.blueprintJson.runtime.image).toBe(
-      "docker.io/n8nio/n8n:latest"
+      "docker.io/n8nio/n8n:2.38.7"
     )
     expect(n8nTemplate.blueprintJson.dependencies).toEqual([
       { serviceType: "POSTGRESQL", alias: "db", envPrefix: "DB" },

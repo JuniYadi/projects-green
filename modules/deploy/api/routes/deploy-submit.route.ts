@@ -275,7 +275,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
 
     // If deploying a managed template with managed DB, claim stock first before creating stack to avoid orphaned stacks
     let claimedStock: AppManagedStock | undefined
-    if (managedTemplate) {
+    if (managedTemplate?.engineType) {
       try {
         claimedStock = await claimManagedStock({
           serviceType: managedTemplate.engineType,
