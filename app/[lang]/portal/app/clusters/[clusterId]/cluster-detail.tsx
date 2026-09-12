@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { ClusterMessages } from "@/lib/i18n/messages/types"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -348,14 +349,15 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         if (resError || !payload || !payload.ok) {
           const errPayload = (resError?.value || payload) as
             { message?: string } | undefined
-          throw new Error(errPayload?.message || "Failed to load regions")
+          throw new Error(
+            errPayload?.message || messages.settings.failedToLoadRegions
+          )
         }
         if (cancelled) return
         const rawList = Array.isArray(payload.data)
           ? (payload.data as ServiceRegionOption[])
           : []
-        const activeRegions = rawList.filter((r) => r.isActive)
-        setRegions(activeRegions)
+        setRegions(rawList.filter((region) => region.isActive))
       } catch (err) {
         console.error("Failed to load regions:", err)
       } finally {
@@ -367,7 +369,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [messages.settings.failedToLoadRegions])
 
   useEffect(() => {
     let cancelled = false
@@ -380,7 +382,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         const { data: payload } =
           await eden.api.admin["app-hosting"].clusters[clusterId].get()
         if (!payload || !payload.ok || !payload.data) {
-          throw new Error(payload?.message ?? "Unable to load cluster.")
+          throw new Error(
+            payload?.message ?? messages.settings.failedToLoadCluster
+          )
         }
         if (cancelled) return
         setCluster(payload.data)
@@ -394,7 +398,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         if (cancelled) return
         setCluster(null)
         setError(
-          cause instanceof Error ? cause.message : "Unable to load cluster."
+          cause instanceof Error
+            ? cause.message
+            : messages.settings.failedToLoadCluster
         )
       } finally {
         if (!cancelled) setLoading(false)
@@ -405,7 +411,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     return () => {
       cancelled = true
     }
-  }, [clusterId, retry])
+  }, [clusterId, messages.settings.failedToLoadCluster, retry])
+
   useEffect(() => {
     let cancelled = false
 
@@ -423,7 +430,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
             "message" in payload &&
             typeof payload.message === "string"
               ? payload.message
-              : "Unable to load edge endpoint."
+              : messages.settings.failedToLoadEndpoint
           throw new Error(message)
         }
 
@@ -434,7 +441,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         setEndpointError(
           cause instanceof Error
             ? cause.message
-            : "Unable to load edge endpoint."
+            : messages.settings.failedToLoadEndpoint
         )
       } finally {
         if (!cancelled) setEndpointLoading(false)
@@ -445,7 +452,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     return () => {
       cancelled = true
     }
-  }, [clusterId, endpointRetry])
+  }, [clusterId, endpointRetry, messages.settings.failedToLoadEndpoint])
 
   const handleStatusChange = async (
     newStatus: string,
@@ -463,7 +470,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       })
 
       if (!payload || !payload.ok) {
-        throw new Error(payload?.message ?? "Failed to update status.")
+        throw new Error(
+          payload?.message ?? messages.settings.statusUpdateFailed
+        )
       }
 
       setRetry((v) => v + 1)
@@ -493,14 +502,24 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           }
         }
         setMetadataFieldErrors(fieldErrors)
-        throw new Error("Please fix the errors below.")
+        return
       }
-      const selectedRegion = regions.find((r) => r.id === selectedRegionId)
+      const selectedRegion = regions.find(
+        (region) => region.id === selectedRegionId
+      )
       const finalRegionName = selectedRegion
         ? selectedRegion.name
         : clusterRegion.trim()
       if (!clusterName.trim() || !finalRegionName) {
-        throw new Error("Name and region are required.")
+        setMetadataFieldErrors({
+          ...(clusterName.trim()
+            ? {}
+            : { name: messages.settings.nameRegionRequired }),
+          ...(finalRegionName
+            ? {}
+            : { region: messages.settings.nameRegionRequired }),
+        })
+        return
       }
 
       const { data: payload } = await eden.api.admin["app-hosting"].clusters[
@@ -515,12 +534,16 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       })
 
       if (!payload || !payload.ok) {
-        throw new Error(payload?.message ?? "Failed to update cluster.")
+        throw new Error(
+          payload?.message ?? messages.settings.failedToUpdateCluster
+        )
       }
-      setRetry((v) => v + 1)
+      setRetry((value) => value + 1)
     } catch (cause) {
       setMetadataError(
-        cause instanceof Error ? cause.message : "Failed to update cluster."
+        cause instanceof Error
+          ? cause.message
+          : messages.settings.failedToUpdateCluster
       )
     } finally {
       setMetadataSaving(false)
@@ -570,15 +593,18 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         const errorSource = failure.fieldErrors || failure.fields
         if (errorSource) {
           const fieldErrors: FieldErrors = {}
-          for (const [key, messages] of Object.entries(errorSource)) {
+          for (const [key, fieldMessages] of Object.entries(errorSource)) {
             const field = key.replace(/^endpoint\./, "").replace(/\.\d+$/, "")
-            fieldErrors[field] = Array.isArray(messages)
-              ? messages[0]
-              : messages
+            fieldErrors[field] = Array.isArray(fieldMessages)
+              ? fieldMessages[0]
+              : fieldMessages
           }
           setEndpointFieldErrors(fieldErrors)
+          return
         }
-        setEndpointError(failure.message ?? "Failed to update edge endpoint.")
+        setEndpointError(
+          failure.message ?? messages.settings.failedToUpdateEndpoint
+        )
         return
       }
       if (isClusterEndpointDTO(response.data)) setEndpoint(response.data)
@@ -586,7 +612,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       setEndpointError(
         cause instanceof Error
           ? cause.message
-          : "Failed to update edge endpoint."
+          : messages.settings.failedToUpdateEndpoint
       )
     } finally {
       setEndpointSaving(false)
@@ -641,10 +667,14 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       const secretsSchema = getSecretsSchema(editingIntegration.type)
 
       if (!metaSchema) {
-        throw new Error(`Unknown integration type: ${editingIntegration.type}`)
+        throw new Error(
+          messages.settings.unknownIntegrationType.replace(
+            "{type}",
+            editingIntegration.type
+          )
+        )
       }
 
-      // Validate metadata fields
       const metaResult = metaSchema.safeParse(integrationMeta)
       if (!metaResult.success) {
         const fieldErrors: FieldErrors = {}
@@ -654,14 +684,16 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           }
         }
         setIntegrationFieldErrors(fieldErrors)
-        throw new Error("Please fix the errors below.")
+        return
       }
 
-      // Validate only supplied secret fields; backend merges them with stored secrets.
       if (Object.keys(integrationSecrets).length > 0) {
         if (!secretsSchema) {
           throw new Error(
-            `Unknown integration type: ${editingIntegration.type}`
+            messages.settings.unknownIntegrationType.replace(
+              "{type}",
+              editingIntegration.type
+            )
           )
         }
         const secretsResult = secretsSchema.safeParse(integrationSecrets)
@@ -673,11 +705,10 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
             }
           }
           setIntegrationFieldErrors(fieldErrors)
-          throw new Error("Please fix the errors below.")
+          return
         }
       }
 
-      // Build form state for formStateToPayload
       const formState: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(integrationMeta)) {
         if (value !== undefined && value !== null && value !== "") {
@@ -691,7 +722,6 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       }
 
       const payload = formStateToPayload(formState)
-
       const { data: response } =
         await eden.api.admin["app-hosting"].clusters[clusterId].integrations[
           editingIntegration.type
@@ -704,22 +734,29 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         }
         if (failure.fieldErrors) {
           const fieldErrors: FieldErrors = {}
-          for (const [key, messages] of Object.entries(failure.fieldErrors)) {
+          for (const [key, fieldMessages] of Object.entries(
+            failure.fieldErrors
+          )) {
             const field = key
               .replace(/^metaJson\./, "")
               .replace(/^secrets\./, "secret_")
-            fieldErrors[field] = messages[0]
+            fieldErrors[field] = fieldMessages[0]
           }
           setIntegrationFieldErrors(fieldErrors)
+          return
         }
-        throw new Error(failure.message ?? "Failed to update integration.")
+        throw new Error(
+          failure.message ?? messages.settings.failedToUpdateIntegration
+        )
       }
 
       setEditingIntegration(null)
-      setRetry((v) => v + 1)
+      setRetry((value) => value + 1)
     } catch (cause) {
       setIntegrationError(
-        cause instanceof Error ? cause.message : "Failed to update integration."
+        cause instanceof Error
+          ? cause.message
+          : messages.settings.failedToUpdateIntegration
       )
     } finally {
       setIntegrationSaving(false)
@@ -735,7 +772,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       })
 
       if (!payload || !payload.ok) {
-        throw new Error(payload?.message ?? "Failed to toggle integration.")
+        throw new Error(payload?.message ?? messages.settings.toggleFailed)
       }
 
       setCluster((previous) =>
@@ -779,7 +816,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       } else {
         setIntegrationTestResults((prev) => ({
           ...prev,
-          [type]: { ok: false, message: "Failed to run connection probe" },
+          [type]: { ok: false, message: messages.settings.failedToRunProbe },
         }))
       }
     } catch (err) {
@@ -788,7 +825,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         [type]: {
           ok: false,
           message:
-            err instanceof Error ? err.message : "Connection probe failed",
+            err instanceof Error
+              ? err.message
+              : messages.settings.connectionProbeFailed,
         },
       }))
     } finally {
@@ -803,7 +842,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           integration.type
         ].delete()
       if (!payload || !payload.ok) {
-        throw new Error(payload?.message ?? "Unable to delete integration.")
+        throw new Error(payload?.message ?? messages.settings.deleteFailed)
       }
       setCluster((previous) =>
         previous
@@ -836,7 +875,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         const errMsg =
           payload && !payload.ok && "message" in payload
             ? String(payload.message)
-            : "Unable to export integrations."
+            : messages.settings.exportFailed
         throw new Error(errMsg)
       }
       const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
@@ -867,7 +906,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     try {
       parsedJson = JSON.parse(importJsonText)
     } catch {
-      setImportError("Invalid JSON syntax. Please check the JSON format.")
+      setImportError(messages.settings.invalidJson)
       return
     }
 
@@ -889,7 +928,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         const errMsg =
           payload && !payload.ok && "message" in payload
             ? String(payload.message)
-            : "Unable to import integrations."
+            : messages.settings.failedToImport
         throw new Error(errMsg)
       }
       setImportJsonText("")
@@ -898,7 +937,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       setImportError(
         cause instanceof Error
           ? cause.message
-          : "Failed to import integrations."
+          : messages.settings.failedToImport
       )
     } finally {
       setImporting(false)
@@ -975,7 +1014,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
             )
           }
         >
-          {messages.tabs.settings}
+          {messages.settings.back}
         </Button>
       </div>
     )
@@ -989,6 +1028,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
             type="button"
             variant="ghost"
             size="icon-sm"
+            aria-label={messages.settings.back}
             onClick={() =>
               router.push(
                 localizePathname({ pathname: "/portal/app/clusters", locale })
@@ -1004,11 +1044,16 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 {messages.clusterStatus[STATUS_LABEL_KEY[cluster.status]] ??
                   cluster.status}
               </Badge>
-              {cluster.isDefault && <Badge variant="success">Default</Badge>}
+              {cluster.isDefault && (
+                <Badge variant="success">
+                  {messages.settings.defaultLabel}
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Code: <span className="font-mono">{cluster.code}</span> • Region:{" "}
-              {cluster.region}
+              {messages.settings.code}:{" "}
+              <span className="font-mono">{cluster.code}</span> •{" "}
+              {messages.settings.region}: {cluster.region}
             </p>
           </div>
         </div>
@@ -1020,7 +1065,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               variant="outline"
               onClick={handleTestAllIntegrations}
               disabled={isTestingAll}
-              title="Test connectivity across all configured cluster integrations"
+              title={messages.settings.testConfigurationTitle}
             >
               <Pulse
                 size={14}
@@ -1074,6 +1119,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         <ClusterOperationsTabs
           clusterId={clusterId}
           activeTab={activeTab}
+          locale={locale}
           messages={messages}
           onTabChange={setActiveTab}
         />
@@ -1110,10 +1156,16 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     </Label>
                     <Input
                       id="cluster-name"
+                      name="cluster.name"
                       value={clusterName}
                       onChange={(event) => setClusterName(event.target.value)}
                       className="h-8 text-xs"
                     />
+                    {metadataFieldErrors.name && (
+                      <p className="text-xs text-destructive">
+                        {metadataFieldErrors.name}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label
@@ -1133,6 +1185,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     >
                       <SelectTrigger
                         id="cluster-region"
+                        name="cluster.region"
                         className="h-8 text-xs"
                       >
                         <SelectValue
@@ -1158,6 +1211,11 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                         ))}
                       </SelectContent>
                     </Select>
+                    {metadataFieldErrors.region && (
+                      <p className="text-xs text-destructive">
+                        {metadataFieldErrors.region}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label
@@ -1168,6 +1226,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     </Label>
                     <Input
                       id="cluster-storage-class"
+                      name="cluster.metadata.storageClass"
                       value={clusterMetadata.storageClass ?? ""}
                       onChange={(event) =>
                         setClusterMetadata((prev: ClusterMetadataInput) => ({
@@ -1237,6 +1296,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                               className="flex items-center gap-1.5"
                             >
                               <Input
+                                id={`node-selector-key-${idx}`}
+                                name={`nodeSelector.${idx}.key`}
+                                aria-label={messages.settings.keyPlaceholder}
                                 placeholder={messages.settings.keyPlaceholder}
                                 value={key}
                                 onChange={(e) => {
@@ -1245,13 +1307,12 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                     clusterMetadata.nodeSelector ?? {}
                                   )
                                   const updated: Record<string, string> = {}
-                                  entries.forEach(([k, v], i) => {
-                                    if (i === idx) {
-                                      updated[newKey] = v
-                                    } else {
-                                      updated[k] = v
+                                  entries.forEach(
+                                    ([entryKey, entryValue], i) => {
+                                      updated[i === idx ? newKey : entryKey] =
+                                        entryValue
                                     }
-                                  })
+                                  )
                                   setClusterMetadata(
                                     (prev: ClusterMetadataInput) => ({
                                       ...prev,
@@ -1265,6 +1326,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                 :
                               </span>
                               <Input
+                                id={`node-selector-value-${idx}`}
+                                name={`nodeSelector.${idx}.value`}
+                                aria-label={messages.settings.valuePlaceholder}
                                 placeholder={messages.settings.valuePlaceholder}
                                 value={val}
                                 onChange={(e) => {
@@ -1285,6 +1349,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                 type="button"
                                 size="sm"
                                 variant="ghost"
+                                aria-label={messages.settings.removeRow}
                                 className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
                                 onClick={() => {
                                   const current = {
@@ -1362,7 +1427,16 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                 key={idx}
                                 className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 p-1.5"
                               >
+                                <Label
+                                  htmlFor={`toleration-${idx}-key`}
+                                  className="sr-only"
+                                >
+                                  {messages.settings.keyPlaceholder}
+                                </Label>
                                 <Input
+                                  id={`toleration-${idx}-key`}
+                                  name={`tolerations.${idx}.key`}
+                                  aria-label={messages.settings.keyPlaceholder}
                                   placeholder={messages.settings.keyPlaceholder}
                                   value={tol.key}
                                   onChange={(e) => {
@@ -1400,8 +1474,21 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                     )
                                   }}
                                 >
-                                  <SelectTrigger className="h-7 w-20 text-[11px]">
-                                    <SelectValue placeholder="Op" />
+                                  <Label
+                                    htmlFor={`toleration-${idx}-operator`}
+                                    className="sr-only"
+                                  >
+                                    {messages.settings.operator}
+                                  </Label>
+                                  <SelectTrigger
+                                    id={`toleration-${idx}-operator`}
+                                    name={`tolerations.${idx}.operator`}
+                                    aria-label={messages.settings.operator}
+                                    className="h-7 w-20 text-[11px]"
+                                  >
+                                    <SelectValue
+                                      placeholder={messages.settings.operator}
+                                    />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem
@@ -1418,7 +1505,18 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                     </SelectItem>
                                   </SelectContent>
                                 </Select>
+                                <Label
+                                  htmlFor={`toleration-${idx}-value`}
+                                  className="sr-only"
+                                >
+                                  {messages.settings.valuePlaceholder}
+                                </Label>
                                 <Input
+                                  id={`toleration-${idx}-value`}
+                                  name={`tolerations.${idx}.value`}
+                                  aria-label={
+                                    messages.settings.valuePlaceholder
+                                  }
                                   placeholder={
                                     messages.settings.valuePlaceholder
                                   }
@@ -1462,8 +1560,21 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                     )
                                   }}
                                 >
-                                  <SelectTrigger className="h-7 w-28 text-[11px]">
-                                    <SelectValue placeholder="Effect" />
+                                  <Label
+                                    htmlFor={`toleration-${idx}-effect`}
+                                    className="sr-only"
+                                  >
+                                    {messages.settings.effect}
+                                  </Label>
+                                  <SelectTrigger
+                                    id={`toleration-${idx}-effect`}
+                                    name={`tolerations.${idx}.effect`}
+                                    aria-label={messages.settings.effect}
+                                    className="h-7 w-28 text-[11px]"
+                                  >
+                                    <SelectValue
+                                      placeholder={messages.settings.effect}
+                                    />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem
@@ -1490,6 +1601,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                   type="button"
                                   size="sm"
                                   variant="ghost"
+                                  aria-label={messages.settings.removeRow}
                                   className="h-7 px-1.5 text-xs text-destructive hover:bg-destructive/10"
                                   onClick={() => {
                                     const current = [
@@ -1523,6 +1635,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   </Label>
                   <textarea
                     id="cluster-notes"
+                    name="cluster.metadata.notes"
                     value={clusterMetadata.notes ?? ""}
                     onChange={(event) =>
                       setClusterMetadata((prev: ClusterMetadataInput) => ({
@@ -1628,7 +1741,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           }))
                         }
                         className="font-mono text-xs"
-                        placeholder="e.g. pfnapp.dev"
+                        placeholder={
+                          messages.settings.managedBaseDomainPlaceholder
+                        }
                         aria-invalid={Boolean(
                           endpointFieldErrors.managedBaseDomain
                         )}
@@ -1682,7 +1797,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           }))
                         }
                         className="font-mono text-xs"
-                        placeholder="e.g. cname-sg.pfnapp.com"
+                        placeholder={messages.settings.cnameTargetPlaceholder}
                         aria-invalid={Boolean(endpointFieldErrors.cnameTarget)}
                       />
                       {endpointFieldErrors.cnameTarget && (
@@ -1709,7 +1824,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           }))
                         }
                         className="w-full rounded-xl border border-border bg-input/50 px-3 py-2 text-sm"
-                        placeholder="One address per line"
+                        placeholder={messages.settings.addressPlaceholder}
                         aria-invalid={Boolean(
                           endpointFieldErrors.ipv4Addresses
                         )}
@@ -1736,7 +1851,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           }))
                         }
                         className="w-full rounded-xl border border-border bg-input/50 px-3 py-2 text-sm"
-                        placeholder="One address per line"
+                        placeholder={messages.settings.addressPlaceholder}
                         aria-invalid={Boolean(
                           endpointFieldErrors.ipv6Addresses
                         )}
@@ -1790,7 +1905,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   size="sm"
                   onClick={handleExportJson}
                   disabled={exporting || cluster.integrations.length === 0}
-                  title="Export all configured integrations as JSON with Vault references"
+                  title={messages.settings.exportTitle}
                 >
                   <DownloadSimple size={14} className="mr-1" />
                   {exporting
@@ -1805,7 +1920,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     setImportError(null)
                     setIsImportModalOpen(true)
                   }}
-                  title="Bulk import integrations via JSON"
+                  title={messages.settings.importTitle}
                 >
                   <UploadSimple size={14} className="mr-1" />
                   {messages.settings.importConfig}
@@ -1813,7 +1928,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 {availableIntegrationTypes.length > 0 && (
                   <>
                     <select
-                      aria-label="Integration type"
+                      id="integration-type"
+                      name="integration.type"
+                      aria-label={messages.settings.addIntegration}
                       value={effectiveNewIntegrationType}
                       onChange={(event) =>
                         setSelectedIntegrationType(
@@ -1865,17 +1982,18 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                               : messages.settings.integrationInactive}
                             {" · "}
                             {integration.lastTestAt
-                              ? interpolate(
-                                  integration.lastTestOk
-                                    ? messages.settings.lastTestOk
-                                    : messages.settings.lastTestFailed,
-                                  {
-                                    time: new Date(
-                                      integration.lastTestAt
-                                    ).toLocaleTimeString(),
-                                  }
-                                )
-                              : messages.settings.lastTestNever}
+                              ? integration.lastTestOk
+                                ? messages.settings.testPassed
+                                : messages.settings.testFailed
+                              : messages.settings.notTested}
+                            {integration.lastTestAt && (
+                              <span>
+                                {" · "}
+                                {new Date(
+                                  integration.lastTestAt
+                                ).toLocaleTimeString(locale)}
+                              </span>
+                            )}
                           </span>
                         </div>
                         {integration.secretPreview && (
@@ -1925,12 +2043,12 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           onClick={() =>
                             void handleIntegrationTest(integration.type)
                           }
-                          title="Test connection using saved credentials"
+                          title={messages.settings.testConfigurationTitle}
                         >
                           <Pulse size={14} className="mr-1" />
                           {testingIntegrationType === integration.type
                             ? messages.settings.testing
-                            : messages.settings.test}
+                            : messages.settings.testConfiguration}
                         </Button>
                         <Button
                           type="button"
@@ -1953,8 +2071,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           onClick={() => handleIntegrationToggle(integration)}
                           title={
                             integration.isActive
-                              ? "Click to Deactivate"
-                              : "Click to Activate"
+                              ? messages.settings.deactivate
+                              : messages.settings.activate
                           }
                         >
                           <Power size={14} className="mr-1" />
@@ -1968,7 +2086,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                           size="icon-xs"
                           className="text-destructive hover:bg-destructive/10"
                           onClick={() => setIntegrationToDelete(integration)}
-                          title={messages.settings.deleteIntegration}
+                          title={messages.settings.deleteIntegrationLabel}
+                          aria-label={messages.settings.deleteIntegrationLabel}
                         >
                           <Trash size={14} />
                         </Button>
@@ -2026,6 +2145,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         <IntegrationEditModal
           integration={editingIntegration}
           meta={integrationMeta}
+          messages={messages}
           secrets={integrationSecrets}
           fieldErrors={integrationFieldErrors}
           formError={integrationError}
@@ -2042,45 +2162,66 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           role="dialog"
           aria-modal="true"
+          aria-labelledby="integration-import-title"
+          aria-describedby="integration-import-description"
         >
           <div className="w-full max-w-2xl space-y-4 rounded-xl border border-border bg-background p-6 shadow-lg">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">
+              <h3
+                id="integration-import-title"
+                className="text-lg font-semibold"
+              >
                 {messages.settings.importHeading}
               </h3>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
+                aria-label={messages.settings.close}
                 onClick={() => setIsImportModalOpen(false)}
               >
-                Cancel
+                {messages.settings.close}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Paste a valid JSON configuration or upload a JSON file. Supports
-              either plaintext <code>secrets</code> or pre-provisioned{" "}
-              <code>secretsRef</code> (e.g.{" "}
-              <code>vault:admin/clusters/...</code>).
+            <p
+              id="integration-import-description"
+              className="text-xs text-muted-foreground"
+            >
+              {messages.settings.importHelp}
             </p>
             {importError && (
-              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+              <div
+                className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
+                role="alert"
+              >
                 {importError}
               </div>
             )}
             <div>
+              <Label htmlFor="integration-import-file" className="sr-only">
+                {messages.settings.importFileLabel}
+              </Label>
               <input
+                id="integration-import-file"
+                name="integrationImportFile"
                 type="file"
                 accept=".json,application/json"
+                aria-label={messages.settings.importFileLabel}
                 onChange={handleFileUpload}
                 className="text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs file:font-medium hover:file:bg-muted"
               />
             </div>
             <div>
+              <Label htmlFor="integration-import-json" className="sr-only">
+                {messages.settings.importJsonLabel}
+              </Label>
               <textarea
+                id="integration-import-json"
+                name="integrationImportJson"
                 value={importJsonText}
                 onChange={(e) => setImportJsonText(e.target.value)}
-                placeholder={`{\n  "version": "1.0",\n  "integrations": [\n    {\n      "type": "ARGOCD",\n      "isActive": true,\n      "metadata": { ... },\n      "secrets": { ... }\n    }\n  ]\n}`}
+                placeholder={messages.settings.importJsonPlaceholder}
+                aria-label={messages.settings.importJsonLabel}
                 rows={12}
                 className="w-full rounded-md border border-input bg-muted/20 p-3 font-mono text-xs focus:ring-1 focus:ring-ring focus:outline-none"
               />
@@ -2092,7 +2233,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 size="sm"
                 onClick={() => setIsImportModalOpen(false)}
               >
-                Cancel
+                {messages.settings.cancel}
               </Button>
               <Button
                 type="button"
@@ -2214,6 +2355,7 @@ function getFieldType(schema: unknown): string {
 
 function IntegrationEditModal({
   integration,
+  messages,
   meta,
   secrets,
   fieldErrors,
@@ -2225,6 +2367,7 @@ function IntegrationEditModal({
   onCancel,
 }: {
   integration: ClusterIntegration
+  messages: ClusterMessages
   meta: Record<string, unknown>
   secrets: Record<string, unknown>
   fieldErrors: FieldErrors
@@ -2259,18 +2402,29 @@ function IntegrationEditModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="integration-edit-title"
+      aria-describedby="integration-edit-description"
+    >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-lg">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-lg font-semibold">
-              {integration.id.startsWith("new-") ? "Add" : "Edit"}{" "}
-              {INTEGRATION_TYPE_LABELS[type] ?? type}
+            <h3 id="integration-edit-title" className="text-lg font-semibold">
+              {(integration.id.startsWith("new-")
+                ? messages.settings.addIntegrationTitle
+                : messages.settings.editIntegrationTitle
+              ).replace("{type}", INTEGRATION_TYPE_LABELS[type] ?? type)}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p
+              id="integration-edit-description"
+              className="mt-1 text-sm text-muted-foreground"
+            >
               {integration.id.startsWith("new-")
-                ? "Configure metadata and secrets for this integration."
-                : "Update metadata and secrets for this integration."}
+                ? messages.settings.addIntegrationDescription
+                : messages.settings.editIntegrationDescription}
             </p>
           </div>
           {integrationDefaultValues[type] && (
@@ -2283,10 +2437,10 @@ function IntegrationEditModal({
                 const defaults = integrationDefaultValues[type] ?? {}
                 onMetaChange({ ...defaults, ...meta })
               }}
-              title="Auto-fill recommended defaults"
+              title={messages.settings.autoFillDefaultsTitle}
             >
               <Sparkle size={13} className="mr-1 text-primary" />
-              Auto-fill Defaults
+              {messages.settings.autoFillDefaults}
             </Button>
           )}
         </div>
@@ -2325,15 +2479,22 @@ function IntegrationEditModal({
                     value={String(meta[field] ?? "INTERNAL")}
                     onValueChange={(value) => handleMetaChange(field, value)}
                   >
-                    <SelectTrigger id={`int-meta-${field}`}>
-                      <SelectValue placeholder="Select connection mode..." />
+                    <SelectTrigger
+                      id={`int-meta-${field}`}
+                      name={`integration.meta.${field}`}
+                    >
+                      <SelectValue
+                        placeholder={
+                          messages.settings.connectionModePlaceholder
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="INTERNAL">
-                        Internal (In-Cluster ServiceAccount)
+                        {messages.settings.internalMode}
                       </SelectItem>
                       <SelectItem value="EXTERNAL">
-                        External (Kubeconfig / Remote Token)
+                        {messages.settings.externalMode}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -2348,17 +2509,29 @@ function IntegrationEditModal({
                       handleMetaChange(field, value === "true")
                     }
                   >
-                    <SelectTrigger id={`int-meta-${field}`}>
-                      <SelectValue placeholder="Select..." />
+                    <SelectTrigger
+                      id={`int-meta-${field}`}
+                      name={`integration.meta.${field}`}
+                    >
+                      <SelectValue
+                        placeholder={
+                          messages.settings.connectionModePlaceholder
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="true">True</SelectItem>
-                      <SelectItem value="false">False</SelectItem>
+                      <SelectItem value="true">
+                        {messages.settings.trueValue}
+                      </SelectItem>
+                      <SelectItem value="false">
+                        {messages.settings.falseValue}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 ) : isNum ? (
                   <Input
                     id={`int-meta-${field}`}
+                    name={`integration.meta.${field}`}
                     type="number"
                     value={String(meta[field] ?? "")}
                     onChange={(event) =>
@@ -2373,10 +2546,11 @@ function IntegrationEditModal({
                 ) : (
                   <Input
                     id={`int-meta-${field}`}
+                    name={`integration.meta.${field}`}
                     value={String(meta[field] ?? "")}
                     placeholder={
                       field === "apiUrl" && type === "ARGOCD"
-                        ? "https://argocd.example.com"
+                        ? messages.settings.integrationApiUrlPlaceholder
                         : ((integrationDefaultValues[type]?.[field] as
                             string | undefined) ?? "")
                     }
@@ -2392,106 +2566,30 @@ function IntegrationEditModal({
           {type === "KUBECONFIG" &&
             (meta.connectionMode === "INTERNAL" || !meta.connectionMode) && (
               <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-foreground">
-                    In-Cluster ServiceAccount Mode Active
+                    {messages.settings.internalModeTitle}
                   </p>
                   <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                    Zero External Secrets
+                    {messages.settings.internalModeBadge}
                   </span>
                 </div>
-                <p>
-                  Elysia connects directly to{" "}
-                  <code>https://kubernetes.default.svc</code> using the attached
-                  pod ServiceAccount (
-                  <code>/var/run/secrets/kubernetes.io/serviceaccount</code>).
-                  External network round trips are bypassed. Secrets below are
-                  optional overrides.
-                </p>
-                <details className="cursor-pointer rounded border border-border bg-background/60 p-2">
-                  <summary className="font-medium text-foreground hover:underline">
-                    View Kubernetes RBAC setup manifest
-                  </summary>
-                  <pre className="mt-2 overflow-x-auto rounded bg-muted p-2 font-mono text-[11px] text-foreground">
-                    {`apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: elysia-api-sa
-  namespace: projects-green
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: elysia-pod-exec-role
-rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["pods/exec"]
-    verbs: ["create", "get"]
-  - apiGroups: ["metrics.k8s.io"]
-    resources: ["pods"]
-    verbs: ["get", "list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: elysia-pod-exec-binding
-subjects:
-  - kind: ServiceAccount
-    name: elysia-api-sa
-    namespace: projects-green
-roleRef:
-  kind: ClusterRole
-  name: elysia-pod-exec-role
-  apiGroup: rbac.authorization.k8s.io`}
-                  </pre>
-                </details>
+                <p>{messages.settings.internalModeDescription}</p>
               </div>
             )}
 
           {type === "KUBECONFIG" && meta.connectionMode === "EXTERNAL" && (
             <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-muted-foreground">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <p className="font-semibold text-foreground">
-                  External Remote Cluster Mode
+                  {messages.settings.externalModeTitle}
                 </p>
                 <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                  Network API Access
+                  {messages.settings.externalModeBadge}
                 </span>
               </div>
-              <p>
-                Requires public or routable Kubernetes API Server URL and bearer
-                token or Kubeconfig. Ensure your cluster firewall allows traffic
-                from this server.
-              </p>
-              <details className="cursor-pointer rounded border border-border bg-background/60 p-2">
-                <summary className="font-medium text-foreground hover:underline">
-                  How to generate token for external cluster
-                </summary>
-                <div className="mt-2 space-y-1 font-mono text-[11px] text-foreground">
-                  <p className="font-sans text-muted-foreground">
-                    1. Create ServiceAccount & RBAC on remote cluster:
-                  </p>
-                  <pre className="overflow-x-auto rounded bg-muted p-2">
-                    {`kubectl create serviceaccount elysia-remote-sa -n kube-system
-kubectl create clusterrolebinding elysia-remote-binding \\
-  --clusterrole=cluster-admin \\
-  --serviceaccount=kube-system:elysia-remote-sa`}
-                  </pre>
-                  <p className="font-sans text-muted-foreground">
-                    2. Generate bearer token:
-                  </p>
-                  <pre className="overflow-x-auto rounded bg-muted p-2">
-                    {`kubectl create token elysia-remote-sa -n kube-system --duration=8760h`}
-                  </pre>
-                  <p className="font-sans text-muted-foreground">
-                    3. Fill in API Server URL, token, and optional CA cert
-                    below.
-                  </p>
-                </div>
-              </details>
+              <p>{messages.settings.externalModeDescription}</p>
+              <p>{messages.settings.externalModeSteps}</p>
             </div>
           )}
 
@@ -2503,8 +2601,8 @@ kubectl create clusterrolebinding elysia-remote-binding \\
               type === "KUBECONFIG" &&
               (meta.connectionMode === "INTERNAL" || !meta.connectionMode)
             const secretPlaceholder = isInternalKube
-              ? "Optional override (defaults to in-cluster ServiceAccount)"
-              : "Leave blank to keep existing secrets"
+              ? messages.settings.secretPlaceholderInternal
+              : messages.settings.secretPlaceholderExisting
 
             return (
               <div key={field} className="space-y-2">
@@ -2519,6 +2617,8 @@ kubectl create clusterrolebinding elysia-remote-binding \\
                 {field === "caCertificate" || field === "kubeconfig" ? (
                   <textarea
                     id={`int-secret-${field}`}
+                    name={`integration.secrets.${field}`}
+                    aria-label={label}
                     value={String(secrets[field] ?? "")}
                     onChange={(event) =>
                       handleSecretChange(field, event.target.value)
@@ -2530,6 +2630,8 @@ kubectl create clusterrolebinding elysia-remote-binding \\
                 ) : (
                   <Input
                     id={`int-secret-${field}`}
+                    name={`integration.secrets.${field}`}
+                    aria-label={label}
                     type={field === "username" ? "text" : "password"}
                     value={String(secrets[field] ?? "")}
                     onChange={(event) =>
@@ -2546,10 +2648,12 @@ kubectl create clusterrolebinding elysia-remote-binding \\
 
         <div className="mt-6 flex items-center justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+            {messages.settings.cancel}
           </Button>
           <Button type="button" onClick={onSave} disabled={saving}>
-            {saving ? "Saving..." : "Save Integration"}
+            {saving
+              ? messages.settings.savingIntegration
+              : messages.settings.saveIntegration}
           </Button>
         </div>
       </div>

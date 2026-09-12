@@ -52,7 +52,7 @@ describe("ClusterList", () => {
     ) as unknown as typeof fetch
 
     const view = render(<ClusterList />)
-    expect(view.getByText("Loading clusters...")).toBeTruthy()
+    expect(view.getByText("Loading clusters…")).toBeTruthy()
   })
 
   it("shows error state with retry button", async () => {
@@ -113,13 +113,15 @@ describe("ClusterList", () => {
     expect(view.getAllByText("us-east-1")).toHaveLength(2)
     expect(view.getAllByText("eu-west-1")).toHaveLength(2)
 
-    const activeBadges = view.getAllByText("Active")
-    expect(activeBadges.length).toBeGreaterThanOrEqual(1)
+    const enabledBadges = view.getAllByText("Enabled")
+    expect(enabledBadges.length).toBeGreaterThanOrEqual(1)
 
     const plannedBadges = view.getAllByText("Planned")
     expect(plannedBadges.length).toBeGreaterThanOrEqual(1)
 
     expect(view.getAllByText("Default").length).toBeGreaterThanOrEqual(1)
+    expect(view.getByText("1 enabled of 1 configured")).toBeTruthy()
+    expect(view.getByText("Setup needed")).toBeTruthy()
   })
 
   it("links to cluster detail page", async () => {
@@ -159,8 +161,8 @@ describe("ClusterList", () => {
     await waitFor(
       () => {
         expect(
-          view.getByRole("button", { name: /create cluster/i })
-        ).toBeTruthy()
+          view.getAllByRole("button", { name: /create cluster/i }).length
+        ).toBeGreaterThanOrEqual(2)
       },
       { timeout: 5000 }
     )

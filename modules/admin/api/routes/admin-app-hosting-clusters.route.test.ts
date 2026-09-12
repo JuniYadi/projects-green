@@ -323,10 +323,12 @@ describe("Admin App Hosting Clusters Routes", () => {
       )
 
       expect(res.status).toBe(200)
-      expect(await res.json()).toMatchObject({
+      const body = await res.json()
+      expect(body).toMatchObject({
         ok: true,
         data: { status: "healthy", nodes: { ready: 2, total: 2 } },
       })
+      expect(body.data).not.toHaveProperty("verdict")
       expect(mockGetClusterOperations).toHaveBeenCalledWith(
         "cl_1",
         "health",

@@ -11,7 +11,7 @@ import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { resolveOrgRole, type OrgRole } from "@/lib/auth/org-role"
 import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
 import {
-  getWorkOSSession,
+  getWorkOSSessionScope,
   resolveApiKey,
   extractBearerToken,
 } from "@/lib/auth/session"
@@ -125,18 +125,25 @@ export const resolveAuthContext = async (
     }
     // 2. Direct WorkOS session (cookie / wos_ bearer)
     try {
-      const workosUser = await getWorkOSSession(request)
-      if (workosUser) {
+      const session = await getWorkOSSessionScope(request)
+      if (session) {
+        const workosUser = session.user
         const platformRole = await getPlatformRoleForUser(workosUser)
-        const firstOrg = await resolveFirstActiveOrganization(workosUser.id)
-        const orgRole = firstOrg
-          ? await resolveOrgRole(workosUser.id, firstOrg.organizationId)
+        // The session names the org the user switched into. Falling back to
+        // the first membership only for org-less sessions keeps multi-org
+        // users from being scoped to the wrong tenant.
+        const org = session.organizationId
+          ? { organizationId: session.organizationId }
+          : await resolveFirstActiveOrganization(workosUser.id)
+        const orgRole = org
+          ? ((session.organizationId ? normalizeOrgRole(session.role) : null) ??
+            (await resolveOrgRole(workosUser.id, org.organizationId)))
           : null
         return {
           type: "workos",
           userId: workosUser.id,
           email: workosUser.email ?? null,
-          organizationId: firstOrg?.organizationId ?? null,
+          organizationId: org?.organizationId ?? null,
           orgRole,
           platformRole,
           source: "direct_cookie",

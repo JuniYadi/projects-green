@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Database,
@@ -12,23 +13,23 @@ import {
 export default function PortalApplicationsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).console.app.adminOverview
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">App Hosting Admin</h1>
-        <p className="text-sm text-muted-foreground">
-          Support and configuration surfaces for the App Hosting MVP. Customer
-          deploy and runtime management live in the console.
-        </p>
+        <h1 className="text-2xl font-semibold">{messages.heading}</h1>
+        <p className="text-sm text-muted-foreground">{messages.description}</p>
       </header>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-border bg-muted/20 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold">Cluster Inventory</h2>
+              <h2 className="text-sm font-semibold">
+                {messages.clustersHeading}
+              </h2>
               <p className="text-xs text-muted-foreground">
-                Manage hosting clusters, regions, and integrations.
+                {messages.clustersDescription}
               </p>
             </div>
             <Button asChild variant="outline" size="sm">
@@ -39,7 +40,7 @@ export default function PortalApplicationsPage() {
                 })}
               >
                 <Database size={14} className="mr-1" />
-                View Clusters
+                {messages.clustersAction}
               </Link>
             </Button>
           </div>
@@ -48,9 +49,11 @@ export default function PortalApplicationsPage() {
         <div className="rounded-xl border border-border bg-muted/20 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold">Marketplace Templates</h2>
+              <h2 className="text-sm font-semibold">
+                {messages.templatesHeading}
+              </h2>
               <p className="text-xs text-muted-foreground">
-                Review submissions, manage official and community blueprints.
+                {messages.templatesDescription}
               </p>
             </div>
             <Button asChild variant="outline" size="sm">
@@ -61,7 +64,7 @@ export default function PortalApplicationsPage() {
                 })}
               >
                 <Storefront size={14} className="mr-1" />
-                Manage Templates
+                {messages.templatesAction}
               </Link>
             </Button>
           </div>
@@ -69,10 +72,11 @@ export default function PortalApplicationsPage() {
         <div className="rounded-xl border border-border bg-muted/20 p-4 md:col-span-2">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold">Deployments Monitor</h2>
+              <h2 className="text-sm font-semibold">
+                {messages.deploymentsHeading}
+              </h2>
               <p className="text-xs text-muted-foreground">
-                Monitor active rollouts, inspect build logs, and filter
-                deployments per-organization.
+                {messages.deploymentsDescription}
               </p>
             </div>
             <Button asChild variant="outline" size="sm">
@@ -83,7 +87,7 @@ export default function PortalApplicationsPage() {
                 })}
               >
                 <RocketLaunchIcon size={14} className="mr-1" />
-                View Deployments
+                {messages.deploymentsAction}
               </Link>
             </Button>
           </div>

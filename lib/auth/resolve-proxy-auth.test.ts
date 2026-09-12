@@ -52,10 +52,15 @@ const mockListOrganizationMemberships = mock(
   })
 )
 
+const mockAuthenticateWithSessionCookie = mock<
+  (args: unknown) => Promise<Record<string, unknown>>
+>(async () => ({ authenticated: false }))
+
 mock.module("@workos-inc/node", () => ({
   createWorkOS: () => ({
     userManagement: {
       listOrganizationMemberships: mockListOrganizationMemberships,
+      authenticateWithSessionCookie: mockAuthenticateWithSessionCookie,
     },
   }),
 }))
@@ -93,6 +98,11 @@ beforeEach(() => {
         organizationId: string
         role?: { slug?: string | null } | null
       }>,
+  }))
+
+  mockAuthenticateWithSessionCookie.mockReset()
+  mockAuthenticateWithSessionCookie.mockImplementation(async () => ({
+    authenticated: false,
   }))
 
   mockOrgKeyFindFirst.mockReset()
@@ -165,6 +175,35 @@ describe("resolveProxyAuth", () => {
     const request = buildRequest({})
     const result = await resolveProxyAuth(request)
     expect(result.ok).toBe(false)
+  })
+})
+
+describe("resolveAuthContext — direct WorkOS session", () => {
+  it("scopes a multi-org user to the session org, not the first membership", async () => {
+    process.env.WORKOS_COOKIE_PASSWORD = "test-cookie-password"
+    mockAuthenticateWithSessionCookie.mockImplementation(async () => ({
+      authenticated: true,
+      user: { id: "user_multi", email: "multi@example.com" },
+      organizationId: "org_second",
+      role: "admin",
+    }))
+    mockListOrganizationMemberships.mockImplementation(async () => ({
+      autoPagination: async () => [
+        { id: "om_1", organizationId: "org_first", role: { slug: "owner" } },
+      ],
+    }))
+
+    const result = await resolveAuthContext(
+      buildRequest({ Authorization: "Bearer wos_sealed_session" })
+    )
+
+    expect(result?.source).toBe("direct_cookie")
+    expect(result?.type).toBe("workos")
+    if (result?.type === "workos") {
+      expect(result.organizationId).toBe("org_second")
+      expect(result.orgRole).toBe("admin")
+    }
+    expect(mockListOrganizationMemberships).not.toHaveBeenCalled()
   })
 })
 

@@ -352,14 +352,39 @@ describe("testIntegrationConnection", () => {
     expect(result500.message).toContain("OpenSearch returned HTTP 500")
   })
 
-  it("tests KUBECONFIG in-cluster ServiceAccount mode validation", async () => {
+  it("validates INTERNAL configuration without probing the portal cluster", async () => {
+    const mockFetcher = mock(async () => new Response("ok", { status: 200 }))
     const result = await testIntegrationConnection(
       "KUBECONFIG",
       { connectionMode: "INTERNAL", namespacePattern: "app-{slug}" },
-      {}
+      {},
+      mockFetcher as unknown as typeof fetch
+    )
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        message:
+          "Kubernetes configuration is valid; target health requires an explicit API server URL.",
+      })
+    )
+    expect(mockFetcher).not.toHaveBeenCalled()
+  })
+
+  it("probes only an explicitly configured INTERNAL target and credentials", async () => {
+    const mockFetcher = mock(async () => new Response("ok", { status: 200 }))
+    const result = await testIntegrationConnection(
+      "KUBECONFIG",
+      { connectionMode: "INTERNAL", apiServerUrl: "https://k8s.example.com" },
+      {},
+      mockFetcher as unknown as typeof fetch
     )
     expect(result.ok).toBe(true)
-    expect(result.message).toContain("In-cluster ServiceAccount mode")
+    expect(mockFetcher).toHaveBeenCalledWith(
+      "https://k8s.example.com/livez",
+      expect.objectContaining({
+        headers: { Accept: "application/json" },
+      })
+    )
   })
 
   it("tests KUBECONFIG external connection successfully with token and caCertificate", async () => {
