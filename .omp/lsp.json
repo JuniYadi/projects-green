@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "typescript-language-server": {
+      "args": ["--stdio"]
+    }
+  },
+  "idleTimeoutMs": 300000
+}
