@@ -96,6 +96,10 @@ const TRAFFIC_METRICS = [
   "p95_latency",
 ]
 
+const LOG_PAGE_SIZE = 100
+/** The service clamps here too; the button must not promise more. */
+const LOG_MAX_ROWS = 500
+
 const RANGE_MINUTES: Record<"1h" | "6h" | "24h", number> = {
   "1h": 60,
   "6h": 360,
@@ -213,6 +217,38 @@ const formatTime = (value: string): string => {
   return date.toLocaleTimeString()
 }
 
+const csvCell = (value: string | number | null): string =>
+  value === null ? "" : `"${String(value).replaceAll('"', '""')}"`
+
+/** Exports what is on screen, which is why the button sits by the row count. */
+const exportLogsCsv = (entries: ClusterLogsDTO["entries"], source: string) => {
+  const header = "timestamp,severity,service,namespace,route,status,message"
+  const rows = entries.map((entry) =>
+    [
+      entry.timestamp,
+      entry.severityLabel,
+      entry.service,
+      entry.namespace,
+      entry.route,
+      entry.status,
+      entry.message,
+    ]
+      .map(csvCell)
+      .join(",")
+  )
+  const blob = new Blob([[header, ...rows].join("\n")], {
+    type: "text/csv;charset=utf-8",
+  })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement("a")
+  anchor.href = url
+  anchor.download = `cluster-logs-${source}-${new Date().toISOString().slice(0, 19)}.csv`
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
+}
+
 const formatDuration = (ms: number | null): string => {
   if (ms === null) return "—"
   if (ms < 1000) return `${ms} ms`
@@ -262,6 +298,7 @@ export function ClusterOperationsTabs({
   const [logService, setLogService] = useState("ALL")
   const [logRange, setLogRange] = useState<LogRange>("1h")
   const [metricsRange, setMetricsRange] = useState<"1h" | "6h" | "24h">("1h")
+  const [logLimit, setLogLimit] = useState(LOG_PAGE_SIZE)
   const view = operationTabs.some((tab) => tab.value === activeTab)
     ? (activeTab as OperationView)
     : "health"
@@ -290,6 +327,7 @@ export function ClusterOperationsTabs({
               ...(logRange !== "all"
                 ? { from: `now-${logRange}`, to: "now" }
                 : {}),
+              limit: logLimit,
             }
           : view === "metrics"
             ? { range: metricsRange }
@@ -328,6 +366,7 @@ export function ClusterOperationsTabs({
   }, [
     clusterId,
     logLevel,
+    logLimit,
     debouncedLogQuery,
     logRange,
     logService,
@@ -346,12 +385,30 @@ export function ClusterOperationsTabs({
     logLevel,
     logService,
     logRange,
+    logLimit,
     metricsRange,
-    onLogSourceChange: setLogSource,
-    onLogQueryChange: setLogQuery,
-    onLogLevelChange: setLogLevel,
-    onLogServiceChange: setLogService,
-    onLogRangeChange: setLogRange,
+    // A new filter is a new result set, so any extra pages no longer apply.
+    onLogSourceChange: (value) => {
+      setLogLimit(LOG_PAGE_SIZE)
+      setLogSource(value)
+    },
+    onLogQueryChange: (value) => {
+      setLogLimit(LOG_PAGE_SIZE)
+      setLogQuery(value)
+    },
+    onLogLevelChange: (value) => {
+      setLogLimit(LOG_PAGE_SIZE)
+      setLogLevel(value)
+    },
+    onLogServiceChange: (value) => {
+      setLogLimit(LOG_PAGE_SIZE)
+      setLogService(value)
+    },
+    onLogRangeChange: (value) => {
+      setLogLimit(LOG_PAGE_SIZE)
+      setLogRange(value)
+    },
+    onLogLimitChange: setLogLimit,
     onMetricsRangeChange: setMetricsRange,
     onRetry: retryView,
     onTabChange,
@@ -433,12 +490,14 @@ type ViewControls = {
   logLevel: string
   logService: string
   logRange: LogRange
+  logLimit: number
   metricsRange: "1h" | "6h" | "24h"
   onLogSourceChange: (value: "all" | "application" | "http") => void
   onLogQueryChange: (value: string) => void
   onLogLevelChange: (value: string) => void
   onLogServiceChange: (value: string) => void
   onLogRangeChange: (value: LogRange) => void
+  onLogLimitChange: (value: number) => void
   onMetricsRangeChange: (value: "1h" | "6h" | "24h") => void
   onRetry: () => void
   onTabChange: (tab: string) => void
@@ -673,13 +732,42 @@ function LogsView({
         <CardHeader className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-base">{messages.logs.heading}</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {fill(countTemplate, {
-                shown: data.entries.length,
-                total: data.total.toLocaleString(),
-                pattern: data.indexPatterns.join(" + "),
-              })}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs text-muted-foreground">
+                {fill(countTemplate, {
+                  shown: data.entries.length,
+                  total: data.total.toLocaleString(),
+                  pattern: data.indexPatterns.join(" + "),
+                })}
+              </p>
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                disabled={data.entries.length === 0}
+                onClick={() => exportLogsCsv(data.entries, data.source)}
+              >
+                {messages.common.export}
+              </Button>
+              {data.entries.length >= controls.logLimit &&
+                controls.logLimit < LOG_MAX_ROWS && (
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="outline"
+                    onClick={() =>
+                      controls.onLogLimitChange(
+                        Math.min(
+                          LOG_MAX_ROWS,
+                          controls.logLimit + LOG_PAGE_SIZE
+                        )
+                      )
+                    }
+                  >
+                    {fill(messages.logs.loadMore, { count: LOG_PAGE_SIZE })}
+                  </Button>
+                )}
+            </div>
           </div>
           <div className="grid gap-2 md:grid-cols-4">
             <select
@@ -837,6 +925,19 @@ function LogsView({
                               <pre className="mt-2 max-h-64 overflow-auto font-mono text-[11px] whitespace-pre-wrap">
                                 {entry.message || messages.common.none}
                               </pre>
+                              <Button
+                                type="button"
+                                size="xs"
+                                variant="outline"
+                                className="mt-2"
+                                onClick={() =>
+                                  void navigator.clipboard.writeText(
+                                    entry.message
+                                  )
+                                }
+                              >
+                                {messages.common.copy}
+                              </Button>
                             </td>
                           </tr>
                         )}
