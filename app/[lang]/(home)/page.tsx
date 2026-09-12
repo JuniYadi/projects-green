@@ -8,7 +8,9 @@ import { TestimonialsSection } from "./components/testimonials"
 import { CTASection, Footer } from "./components/footer"
 
 export const metadata: Metadata = {
-  title: "PFNApp — The Full-Stack Cloud Platform for Developers",
+  title: {
+    absolute: "PFNApp — The Full-Stack Cloud Platform for Developers",
+  },
   description:
     "Deploy apps, send emails & SMS, store files, and scale your infrastructure — all from a single developer-first platform. Start free, scale effortlessly.",
   keywords: [
