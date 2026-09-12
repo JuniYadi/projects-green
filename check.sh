@@ -10,6 +10,8 @@
 set -euo pipefail
 
 MAX_ROUNDS="${1:-10}"
+# Batas waktu satu panggilan codex. Override: CODEX_TIMEOUT_SECS=900 ./check.sh
+CODEX_TIMEOUT_SECS="${CODEX_TIMEOUT_SECS:-600}"
 
 # --- Visual Logger Helpers ---
 C_RESET="\033[0m"
@@ -44,6 +46,16 @@ rollback() {
 	log_warn "Rollback perubahan ronde ini..."
 	git checkout -- .
 	git clean -fdq # aman: working tree sudah dipastikan bersih sebelum mulai
+}
+
+# kill -9 ke PID codex saja meninggalkan child-nya (shell yang dia jalankan)
+# tetap hidup dan bisa menulis file setelah rollback — bunuh pohonnya dari bawah.
+# ponytail: cukup untuk proses yang hang; child yang di-spawn di tengah
+# penelusuran bisa lolos. Pakai process group (set -m) kalau itu terjadi.
+kill_tree() {
+	local child
+	for child in $(pgrep -P "$1"); do kill_tree "$child"; done
+	kill -9 "$1" 2>/dev/null || true
 }
 
 # ---------------------------------------------------------
@@ -82,7 +94,8 @@ for ((round = 1; round <= MAX_ROUNDS; round++)); do
 	FIX_LOG=$(mktemp)
 	# </dev/null wajib: tanpa itu codex exec menunggu stdin ("Reading additional
 	# input from stdin...") dan menggantung selamanya di 0% CPU.
-	if ! codex exec \
+	# Jalan di background karena macOS tidak punya `timeout`; lihat loop di bawah.
+	codex exec \
 		--skip-git-repo-check \
 		--dangerously-bypass-approvals-and-sandbox \
 		--disable in_app_browser \
@@ -93,12 +106,35 @@ BATASAN KETAT:
 1. Dilarang memakai 'any', 'unknown', '@ts-ignore', atau '@ts-expect-error'.
 2. Pertahankan seluruh logic runtime agar unit test tetap hijau.
 3. Ubah seminimal mungkin — hanya yang dibutuhkan error di atas." \
-		</dev/null >"$FIX_LOG" 2>&1; then
+		</dev/null >"$FIX_LOG" 2>&1 &
+	CODEX_PID=$!
+	# Proses background di script non-interaktif mengabaikan SIGINT, jadi Ctrl+C
+	# tidak akan menghentikan codex tanpa trap ini.
+	trap 'kill_tree "$CODEX_PID"; rollback; exit 130' INT TERM
+
+	for ((waited = 0; waited < CODEX_TIMEOUT_SECS; waited++)); do
+		kill -0 "$CODEX_PID" 2>/dev/null || break
+		sleep 1
+	done
+
+	if kill -0 "$CODEX_PID" 2>/dev/null; then
+		kill_tree "$CODEX_PID"
+		wait "$CODEX_PID" 2>/dev/null || true
+		trap - INT TERM
+		log_fail "codex tidak selesai dalam ${CODEX_TIMEOUT_SECS}s dan di-kill. 20 baris terakhir log ($FIX_LOG):"
+		tail -n 20 "$FIX_LOG"
+		rollback
+		exit 1
+	fi
+
+	if ! wait "$CODEX_PID"; then
+		trap - INT TERM
 		log_fail "codex exec gagal. 20 baris terakhir log ($FIX_LOG):"
 		tail -n 20 "$FIX_LOG"
 		rollback
 		exit 1
 	fi
+	trap - INT TERM
 
 	if [ -z "$(git status --porcelain)" ]; then
 		log_fail "codex tidak mengubah file apa pun. Error ini perlu ditangani manual."
