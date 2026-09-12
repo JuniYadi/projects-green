@@ -928,7 +928,9 @@ export default function PlatformInstanceWorkspacePage() {
                         : "text-muted-foreground"
                     }
                   />
-                  <span className="flex-1">Domains & SSL</span>
+                  <span className="flex-1">
+                    {messages.console.app.settings.tabs.domains}
+                  </span>
                 </button>
 
                 <button
@@ -1070,6 +1072,7 @@ export default function PlatformInstanceWorkspacePage() {
                         api={domainCallbacks}
                         domainsLoading={domainsLoading}
                         domainsError={domainsError}
+                        messages={messages.console.app.settings.domainsPanel}
                       />
                     )}
                     {settingsSubTab === "scaling" && (
