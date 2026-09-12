@@ -263,7 +263,7 @@ describe("deploySubmitRoutes /submit", () => {
 
     expect(res.status).toBe(200)
     expect(claimManagedStock).toHaveBeenCalledWith({
-      serviceType: "MYSQL",
+      serviceType: "POSTGRESQL",
       stackId: "pending",
       orgId: "org-1",
       environment: "prod",
@@ -277,6 +277,20 @@ describe("deploySubmitRoutes /submit", () => {
         }),
       })
     )
+  })
+
+  it("never claims managed stock for a one-click template without an engine", async () => {
+    const res = await submit({
+      sourceType: "MANAGED_TEMPLATE",
+      templateId: "9router",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 250,
+      memory: 256,
+    })
+
+    expect(res.status).toBe(200)
+    expect(claimManagedStock).not.toHaveBeenCalled()
   })
 
   it("threads deploymentType and additionalPorts from a DB template blueprint into stack metadataJson", async () => {

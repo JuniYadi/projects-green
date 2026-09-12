@@ -54,4 +54,21 @@ describe("TemplateCatalog", () => {
       resourcePlanId: "small",
     })
   })
+
+  it("does not promise a database slot to a template that has no engine", () => {
+    const template = MANAGED_APP_TEMPLATES.find((t) => t.id === "9router")!
+    expect(template.engineType).toBeNull()
+
+    const view = render(
+      <QuickDeployDialog
+        template={template}
+        open
+        onClose={() => {}}
+        onConfirm={() => {}}
+      />
+    )
+
+    expect(view.queryByText(/database slot will be allocated/)).toBeNull()
+    expect(view.getByText(/own persistent volume/)).toBeTruthy()
+  })
 })
