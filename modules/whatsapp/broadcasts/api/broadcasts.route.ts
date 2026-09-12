@@ -328,12 +328,21 @@ export const broadcastsRoutes = new Elysia({
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      const { page, limit, skip } = getPagination(query)
-      const where =
+      const isSuperAdmin =
         whatsappAuth.type === "workos" &&
-        whatsappAuth.platformRole !== "super_admin"
-          ? { organizationId: whatsappAuth.organizationId! }
-          : {}
+        whatsappAuth.platformRole === "super_admin"
+      if (!isSuperAdmin && !whatsappAuth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "No active organization found.",
+        }
+      }
+      const { page, limit, skip } = getPagination(query)
+      const where = isSuperAdmin
+        ? {}
+        : { organizationId: whatsappAuth.organizationId! }
       const [total, campaigns] = await Promise.all([
         prisma.whatsappBroadcastCampaign.count({ where }),
         prisma.whatsappBroadcastCampaign.findMany({
