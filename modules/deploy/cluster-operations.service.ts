@@ -842,7 +842,16 @@ const severityQuery = (
   return { query_string: { query: clause, lenient: true } }
 }
 
-const SERVICE_AGG_FIELD = "kubernetes.container_name.keyword"
+/**
+ * `kubernetes.container_name` is mapped `keyword` in most indices and `text`
+ * with a `.keyword` sub-field in the rest, so neither name alone covers them
+ * all. Both aggregations run and their keys are merged; a shard that cannot
+ * serve one of them is covered by the other.
+ */
+const SERVICE_AGG_FIELDS = [
+  "kubernetes.container_name",
+  "kubernetes.container_name.keyword",
+] as const
 
 const logs = async (
   clusterId: string,
@@ -909,7 +918,10 @@ const logs = async (
     track_total_hits: TOTAL_HITS_CAP,
     sort: [{ "@timestamp": { order: "desc", unmapped_type: "date" } }],
     query: { bool: { must, filter: filters } },
-    aggs: { services: { terms: { field: SERVICE_AGG_FIELD, size: 50 } } },
+    aggs: {
+      servicesRaw: { terms: { field: SERVICE_AGG_FIELDS[0], size: 50 } },
+      servicesKeyword: { terms: { field: SERVICE_AGG_FIELDS[1], size: 50 } },
+    },
   }
 
   try {
@@ -920,9 +932,10 @@ const logs = async (
         total?: number | { value?: number; relation?: string }
         hits?: Array<{ _id?: string; _source?: Record<string, unknown> }>
       }
-      aggregations?: {
-        services?: { buckets?: Array<{ key?: string }> }
-      }
+      aggregations?: Record<
+        string,
+        { buckets?: Array<{ key?: string }> } | undefined
+      >
     }>(
       endpoint,
       {
@@ -946,10 +959,15 @@ const logs = async (
     const entries = (response.hits?.hits ?? []).map((hit, index) =>
       normalizeLog({ ...(hit._source ?? {}), _id: hit._id }, index)
     )
-    const services = (response.aggregations?.services?.buckets ?? [])
-      .map((bucket) => bucket.key)
-      .filter((key): key is string => Boolean(key))
-      .sort()
+    const services = Array.from(
+      new Set(
+        ["servicesRaw", "servicesKeyword"].flatMap((name) =>
+          (response.aggregations?.[name]?.buckets ?? [])
+            .map((bucket) => bucket.key)
+            .filter((key): key is string => Boolean(key))
+        )
+      )
+    ).sort()
     return toClusterLogsDTO({
       provider:
         entries.length > 0
@@ -1377,6 +1395,8 @@ const metricDefinitions = (
     {
       name: "storage_utilization",
       unit: "percent",
+      // Already a ratio of used to capacity, so it carries no denominator of
+      // its own - pairing it with a byte total renders bytes as a percentage.
       candidates: chain("storage_utilization", [
         {
           metric: "kubelet_volume_stats_used_bytes",
@@ -1384,12 +1404,6 @@ const metricDefinitions = (
             "100 * sum(kubelet_volume_stats_used_bytes) / sum(kubelet_volume_stats_capacity_bytes)",
         },
       ]),
-      capacity: [
-        {
-          metric: "kubelet_volume_stats_capacity_bytes",
-          query: "sum(kubelet_volume_stats_capacity_bytes)",
-        },
-      ],
     },
   ]
 }
