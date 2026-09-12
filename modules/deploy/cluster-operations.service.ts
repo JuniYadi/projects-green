@@ -227,16 +227,6 @@ const probeKubernetes = async (
   nodes: { ready: number | null; total: number | null }
   workloads: { ready: number | null; total: number | null }
 }> => {
-  if (!config.apiServerUrl || !config.serviceAccountToken) {
-    return {
-      state: configurationOnly(
-        providerSource.kubernetes,
-        "Kubernetes API credentials are not configured."
-      ),
-      nodes: { ready: null, total: null },
-      workloads: { ready: null, total: null },
-    }
-  }
   if (config.usesInClusterFallback) {
     // The row has no apiServerUrl of its own, so any counts below would come
     // from the cluster the portal itself runs in - real numbers, wrong cluster.
@@ -247,6 +237,16 @@ const probeKubernetes = async (
         "This integration has no API server URL, so it would report the portal's own cluster. Set an explicit API server URL to verify this cluster.",
         false,
         null
+      ),
+      nodes: { ready: null, total: null },
+      workloads: { ready: null, total: null },
+    }
+  }
+  if (!config.apiServerUrl || !config.serviceAccountToken) {
+    return {
+      state: configurationOnly(
+        providerSource.kubernetes,
+        "Kubernetes API credentials are not configured."
       ),
       nodes: { ready: null, total: null },
       workloads: { ready: null, total: null },
@@ -543,7 +543,7 @@ const health = async (clusterId: string): Promise<ClusterHealthDTO> => {
   }
   const providerValues = Object.values(providerStates)
   const failing = providerValues.filter((value) =>
-    ["unavailable", "forbidden"].includes(value.state)
+    ["unavailable", "forbidden", "stale"].includes(value.state)
   )
   const liveProviders = providerValues.filter((value) => value.state === "live")
   const workloadsDegraded =
@@ -554,63 +554,14 @@ const health = async (clusterId: string): Promise<ClusterHealthDTO> => {
 
   const status =
     liveProviders.length === 0
-      ? "unknown"
+      ? failing.length > 0
+        ? "degraded"
+        : "unknown"
       : kubernetes.state.state !== "live"
         ? "unverified"
         : failing.length > 0 || workloadsDegraded
           ? "degraded"
           : "healthy"
-
-  const liveTabs = (
-    [
-      ["opensearch", "logs"],
-      ["argocd", "deployments"],
-      ["jenkins", "builds"],
-      ["prometheus", "metrics"],
-    ] as const
-  )
-    .filter(([key]) => providerStates[key].state === "live")
-    .map(([, tab]) => tab)
-
-  const verdict =
-    status === "unknown"
-      ? {
-          headline: "No provider is connected",
-          detail:
-            "Nothing on this page is backed by a live observation. Configure at least one integration in Settings.",
-          unaffected: null,
-          action: null,
-        }
-      : status === "unverified"
-        ? {
-            headline: "Cannot verify this cluster",
-            detail:
-              kubernetes.state.message ??
-              "Kubernetes API is not connected, so node and workload health is unknown.",
-            unaffected:
-              liveTabs.length > 0
-                ? `${liveTabs.join(", ")} below are live and unaffected.`
-                : null,
-            action: "kubernetes" as const,
-          }
-        : status === "degraded"
-          ? {
-              headline: "Cluster is reachable but not fully healthy",
-              detail:
-                failing.length > 0
-                  ? (failing[0].message ??
-                    `${failing[0].source} is not responding.`)
-                  : "Some nodes or workloads are not ready.",
-              unaffected: null,
-              action: null,
-            }
-          : {
-              headline: "Cluster is healthy",
-              detail:
-                "Every configured provider answered and all nodes and workloads are ready.",
-              unaffected: null,
-              action: null,
-            }
 
   // Roll-up of what the providers actually said. `stale` is never invented
   // here: a fresh observation is never stale, whatever its outcome.
@@ -629,7 +580,6 @@ const health = async (clusterId: string): Promise<ClusterHealthDTO> => {
 
   return toClusterHealthDTO({
     status,
-    verdict,
     nodes: kubernetes.nodes,
     workloads: kubernetes.workloads,
     recentDeployment: await latestDeployment(clusterId),

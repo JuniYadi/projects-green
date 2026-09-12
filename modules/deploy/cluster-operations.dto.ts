@@ -53,16 +53,6 @@ export type ClusterProviderKey =
 export type ClusterHealthDTO = {
   provider: ClusterProviderStateDTO
   status: "healthy" | "degraded" | "unverified" | "unknown"
-  /**
-   * Why `status` is what it is, in the admin's terms. Never a provider signal
-   * on its own - `unverified` means "we did not ask", not "the cluster is down".
-   */
-  verdict: {
-    headline: string
-    detail: string
-    unaffected: string | null
-    action: ClusterProviderKey | null
-  }
   nodes: { ready: number | null; total: number | null }
   workloads: { ready: number | null; total: number | null }
   recentDeployment: {
@@ -80,7 +70,6 @@ type HealthInput = Omit<ClusterHealthDTO, "provider" | "providers"> & {
 
 export const toClusterHealthDTO = (input: HealthInput): ClusterHealthDTO => ({
   status: input.status,
-  verdict: input.verdict,
   nodes: input.nodes,
   workloads: input.workloads,
   recentDeployment: input.recentDeployment,

@@ -33,10 +33,10 @@ import type {
 type ClusterOperationsTabsProps = {
   clusterId: string
   activeTab: string
+  locale: string
   messages: ClusterMessages
   onTabChange: (tab: string) => void
 }
-
 type OperationView = "health" | "logs" | "deployments" | "builds" | "metrics"
 
 type LogRange = "1h" | "6h" | "24h" | "all"
@@ -159,7 +159,6 @@ function ProviderStatePanel({
   messages: ClusterMessages
   onRetry: () => void
 }) {
-  const message = state.message ?? messages.common.noDetail
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card/60 p-3 text-xs">
       <div className="flex min-w-0 items-start gap-2">
@@ -180,7 +179,15 @@ function ProviderStatePanel({
               </span>
             )}
           </div>
-          {message && <p className="mt-1 text-muted-foreground">{message}</p>}
+          {["unavailable", "forbidden", "stale"].includes(state.state) &&
+            state.message && (
+              <p className="mt-1 text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {messages.health.technicalDetail}:
+                </span>{" "}
+                {state.message}
+              </p>
+            )}
           {state.observedAt && (
             <p className="mt-1 text-[11px] text-muted-foreground">
               {fill(messages.common.observed, {
@@ -276,10 +283,10 @@ const formatMetric = (value: number | null, unit: string): string => {
   if (unit === "requests/s") return `${value.toFixed(2)} req/s`
   return value.toFixed(2)
 }
-
 export function ClusterOperationsTabs({
   clusterId,
   activeTab,
+  locale,
   messages,
   onTabChange,
 }: ClusterOperationsTabsProps) {
@@ -339,7 +346,9 @@ export function ClusterOperationsTabs({
         const payload = result.data as
           { ok?: boolean; data?: OperationData; message?: string } | undefined
         if (result.error || !payload?.ok || !payload.data) {
-          throw new Error(payload?.message ?? "Unable to load provider data.")
+          throw new Error(
+            payload?.message ?? messages.settings.unableToLoadProviderData
+          )
         }
         if (!cancelled) {
           setData(payload.data)
@@ -352,7 +361,7 @@ export function ClusterOperationsTabs({
           setError(
             cause instanceof Error
               ? cause.message
-              : "Unable to load provider data."
+              : messages.settings.unableToLoadProviderData
           )
         }
       } finally {
@@ -372,6 +381,7 @@ export function ClusterOperationsTabs({
     logService,
     logSource,
     metricsRange,
+    messages.settings.unableToLoadProviderData,
     retry,
     view,
   ])
@@ -466,7 +476,8 @@ export function ClusterOperationsTabs({
             !error &&
             dataView === view &&
             data &&
-            renderView(view, data, messages, controls)}
+            renderView(view, data, messages, controls, locale)}
+
           {activeTab === value &&
             !loading &&
             !error &&
@@ -507,7 +518,8 @@ function renderView(
   view: OperationView,
   data: OperationData,
   messages: ClusterMessages,
-  controls: ViewControls
+  controls: ViewControls,
+  locale: string
 ) {
   if (view === "health")
     return (
@@ -515,6 +527,7 @@ function renderView(
         data={data as ClusterHealthDTO}
         messages={messages}
         controls={controls}
+        locale={locale}
       />
     )
   if (view === "logs")
@@ -554,12 +567,81 @@ function HealthView({
   data,
   messages,
   controls,
+  locale,
 }: {
   data: ClusterHealthDTO
   messages: ClusterMessages
   controls: ViewControls
+  locale: string
 }) {
-  const needsKubernetes = data.providers.kubernetes.state !== "live"
+  const liveCount = PROVIDER_ORDER.filter(
+    (key) => data.providers[key].state === "live"
+  ).length
+  const liveCapabilities = PROVIDER_ORDER.filter(
+    (key) => key !== "kubernetes" && data.providers[key].state === "live"
+  ).map(
+    (key) => messages.tabs[PROVIDER_TAB[key] as keyof ClusterMessages["tabs"]]
+  )
+  const capabilityList = new Intl.ListFormat(locale, {
+    style: "long",
+    type: "conjunction",
+  }).format(liveCapabilities)
+
+  if (data.status === "unknown") {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-start gap-4 p-6">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">
+              {messages.health.unknownHeading}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {messages.health.unknownDescription}
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => controls.onTabChange("settings")}
+          >
+            {messages.health.configureIntegrations}
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const firstIssue = PROVIDER_ORDER.find((key) =>
+    ["unavailable", "forbidden", "stale"].includes(data.providers[key].state)
+  )
+  const kubernetesTotalsDiffer =
+    (data.nodes.total !== null && data.nodes.ready !== data.nodes.total) ||
+    (data.workloads.total !== null &&
+      data.workloads.ready !== data.workloads.total)
+  const heroDetail =
+    data.status === "unverified"
+      ? messages.health.unverifiedDescription
+      : data.status === "healthy"
+        ? messages.health.healthyDescription
+        : firstIssue
+          ? fill(
+              data.providers[firstIssue].state === "unavailable"
+                ? messages.health.providerUnavailable
+                : data.providers[firstIssue].state === "forbidden"
+                  ? messages.health.providerForbidden
+                  : messages.health.providerStale,
+              { provider: messages.providerNames[firstIssue] }
+            )
+          : kubernetesTotalsDiffer
+            ? messages.health.nodesOrWorkloadsNotReady
+            : messages.health.healthyDescription
+  const heroHeading =
+    data.status === "unverified"
+      ? messages.health.unverifiedHeading
+      : data.status === "healthy"
+        ? messages.health.healthyHeading
+        : messages.health.heading
+
   return (
     <>
       <div
@@ -572,27 +654,32 @@ function HealthView({
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
-            <p className="text-sm font-semibold">{data.verdict.headline}</p>
-            <p className="text-xs text-muted-foreground">
-              {data.verdict.detail}
-            </p>
-            {data.verdict.unaffected && (
-              <p className="text-xs text-muted-foreground">
-                {data.verdict.unaffected}
-              </p>
+            <p className="text-sm font-semibold">{heroHeading}</p>
+            <p className="text-xs text-muted-foreground">{heroDetail}</p>
+            {data.status === "unverified" && (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {fill(messages.health.liveSummary, {
+                    live: liveCount,
+                    total: PROVIDER_ORDER.length,
+                  })}
+                </p>
+                {capabilityList && (
+                  <p className="text-xs text-muted-foreground">
+                    {capabilityList}
+                  </p>
+                )}
+              </>
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {data.verdict.action && (
+            {data.status === "unverified" && (
               <Button
                 type="button"
                 size="xs"
-                onClick={() =>
-                  controls.onTabChange(PROVIDER_TAB[data.verdict.action!])
-                }
+                onClick={() => controls.onTabChange("settings")}
               >
-                {messages.common.connect}{" "}
-                {messages.providerNames[data.verdict.action]}
+                {messages.health.reviewKubernetes}
               </Button>
             )}
             <Button
@@ -615,7 +702,11 @@ function HealthView({
             formatCount(data.nodes.ready, data.nodes.total) ??
             messages.common.unknown
           }
-          detail={needsKubernetes ? messages.health.needsKubernetes : undefined}
+          detail={
+            data.providers.kubernetes.state !== "live"
+              ? messages.health.needsKubernetes
+              : undefined
+          }
         />
         <MetricCard
           label={messages.health.workloadsReady}
@@ -623,7 +714,11 @@ function HealthView({
             formatCount(data.workloads.ready, data.workloads.total) ??
             messages.common.unknown
           }
-          detail={needsKubernetes ? messages.health.needsKubernetes : undefined}
+          detail={
+            data.providers.kubernetes.state !== "live"
+              ? messages.health.needsKubernetes
+              : undefined
+          }
         />
         <MetricCard
           label={messages.health.lastDeployment}
@@ -658,10 +753,17 @@ function HealthView({
                 {PROVIDER_ORDER.map((key) => {
                   const state = data.providers[key]
                   const target = PROVIDER_TAB[key]
+                  const showMessage =
+                    state.state === "unavailable" || state.state === "forbidden"
                   return (
                     <tr key={key}>
                       <td className="px-3 py-2 font-medium">
-                        {messages.providerNames[key]}
+                        <div>{messages.providerNames[key]}</div>
+                        {showMessage && state.message && (
+                          <p className="mt-1 text-[11px] font-normal text-destructive">
+                            {state.message}
+                          </p>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <ProviderStateBadge state={state} messages={messages} />
@@ -683,7 +785,7 @@ function HealthView({
                         >
                           {state.state === "live"
                             ? messages.common.view
-                            : messages.common.connect}
+                            : messages.common.configure}
                         </Button>
                       </td>
                     </tr>
@@ -692,16 +794,6 @@ function HealthView({
               </tbody>
             </table>
           </div>
-          {PROVIDER_ORDER.filter((key) => data.providers[key].message).map(
-            (key) => (
-              <p key={key} className="mt-2 text-[11px] text-muted-foreground">
-                <span className="font-medium">
-                  {messages.providerNames[key]}:
-                </span>{" "}
-                {data.providers[key].message}
-              </p>
-            )
-          )}
         </CardContent>
       </Card>
     </>

@@ -1,5 +1,6 @@
 import "@/test/register"
-import { describe, expect, it, mock, afterEach } from "bun:test"
+import { getMessages } from "@/lib/i18n/messages"
+import { describe, expect, it, mock, afterEach, beforeEach } from "bun:test"
 import { render, cleanup, fireEvent, waitFor } from "@testing-library/react"
 
 mock.module("next/link", () => ({
@@ -52,7 +53,7 @@ const mockGetDeployments = mock(async () => ({
         startedAt: "2026-09-01T10:00:00.000Z",
         completedAt: "2026-09-01T10:01:00.000Z",
         durationMs: 60000,
-        failureReason: null,
+        failureReason: "ignored for running deployment",
         createdAt: "2026-09-01T10:00:00.000Z",
         updatedAt: "2026-09-01T10:01:00.000Z",
         eventsCount: 3,
@@ -79,26 +80,31 @@ mock.module("@/lib/eden", () => ({
   },
 }))
 
-const { default: AdminDeploymentsPage } = await import("./page")
+const { default: AdminDeploymentsPage, formatDeploymentDuration } =
+  await import("./page")
+
+beforeEach(() => {
+  mockGetDeployments.mockClear()
+  mockPush.mockClear()
+})
 
 afterEach(() => {
   cleanup()
   mock.restore()
 })
-
 describe("AdminDeploymentsPage", () => {
   it("renders page header and table headers", async () => {
     const { getByText, getAllByText } = render(<AdminDeploymentsPage />)
     expect(
       getByText(
-        "Cross-organization deploy rollouts, status monitoring, and build inspection."
+        "Cross-organization deployment rollouts, status monitoring, and build inspection."
       )
     ).toBeInTheDocument()
 
     await waitFor(() => {
       expect(getByText("Store API")).toBeInTheDocument()
       expect(getByText("dep_abc")).toBeInTheDocument()
-      expect(getAllByText("RUNNING").length).toBeGreaterThanOrEqual(1)
+      expect(getAllByText("Running").length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -122,5 +128,83 @@ describe("AdminDeploymentsPage", () => {
         $query: {},
       })
     })
+  })
+  it("includes DEPLOYING in URL-backed status filters", () => {
+    const { getByRole } = render(<AdminDeploymentsPage />)
+    fireEvent.click(getByRole("button", { name: "Deploying" }))
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining("status=DEPLOYING")
+    )
+  })
+
+  it("formats active, terminal, zero, and long deployment durations", () => {
+    const messages = getMessages("en").console.app.adminDeployments
+    expect(
+      formatDeploymentDuration(
+        { status: "RUNNING", durationMs: null },
+        messages
+      )
+    ).toBe("In progress")
+    expect(
+      formatDeploymentDuration({ status: "FAILED", durationMs: null }, messages)
+    ).toBe("Not available")
+    expect(
+      formatDeploymentDuration({ status: "FAILED", durationMs: 0 }, messages)
+    ).toBe("0s")
+    expect(
+      formatDeploymentDuration(
+        { status: "FAILED", durationMs: (6 * 24 + 7) * 60 * 60 * 1000 },
+        messages
+      )
+    ).toBe("6d 7h")
+  })
+
+  it("refreshes deployments through the client reload effect", async () => {
+    const view = render(<AdminDeploymentsPage />)
+    await waitFor(() => expect(mockGetDeployments).toHaveBeenCalledTimes(1))
+    const refresh = view.getByTestId("refresh-btn") as HTMLButtonElement
+    await waitFor(() => expect(refresh.disabled).toBe(false))
+    fireEvent.click(refresh)
+    await waitFor(() => expect(mockGetDeployments).toHaveBeenCalledTimes(2))
+  })
+
+  it("shows failed reason and opens full details from shortened deployment ID", async () => {
+    const fullId = "dep_1234567890abcdef"
+    mockGetDeployments.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: [
+          {
+            id: fullId,
+            stackId: "stack_1",
+            stackSlug: "store-api",
+            stackName: "Store API",
+            organizationId: "org_test",
+            status: "FAILED",
+            triggerType: "GIT_PUSH",
+            commitSha: "deadbeef",
+            commitMessage: "failed build",
+            commitAuthor: "Ops",
+            branchName: "main",
+            startedAt: "2026-09-01T10:00:00.000Z",
+            completedAt: "2026-09-01T10:01:00.000Z",
+            durationMs: 0,
+            failureReason:
+              "Build image failed because the registry was unavailable",
+            createdAt: "2026-09-01T10:00:00.000Z",
+            updatedAt: "2026-09-01T10:01:00.000Z",
+            eventsCount: 0,
+          },
+        ],
+        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      },
+    })
+    const view = render(<AdminDeploymentsPage />)
+    await waitFor(() => expect(view.getByText("dep_1234567890…")).toBeTruthy())
+    expect(view.getByText(/Build image failed because/)).toBeTruthy()
+    fireEvent.click(
+      view.getByRole("button", { name: `Deployment ID: ${fullId}` })
+    )
+    expect(view.getByText(fullId)).toBeTruthy()
   })
 })
