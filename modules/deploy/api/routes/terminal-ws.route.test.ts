@@ -11,7 +11,10 @@ import {
 
 const mockFindUnique = mock()
 const mockResolveAuthContext = mock()
-const mockResolveStackExecCredentials = mock()
+const mockResolveClusterIntegration = mock()
+const mockFetch = mock()
+// Ordered log of client sends and kube dials, to assert what happens first.
+const events: string[] = []
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -25,17 +28,29 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
   resolveAuthContext: mockResolveAuthContext,
 }))
 
-mock.module("@/modules/deploy/pod-exec.service", () => ({
-  resolveStackExecCredentials: mockResolveStackExecCredentials,
-  buildKubeExecUrl: () => "wss://k8s.test/exec",
-  decodeKubeFrame: (buf: ArrayBuffer) => {
-    const arr = new Uint8Array(buf)
-    return { channel: arr[0] ?? 1, data: "output-text" }
-  },
-  encodeKubeFrame: (channel: number, data: string) => new Uint8Array([channel]),
-  encodeResizeFrame: () => new Uint8Array([4]),
-  KUBE_EXEC_CHANNELS: { STDIN: 0, STDOUT: 1, STDERR: 2, ERROR: 3, RESIZE: 4 },
+mock.module("@/modules/deploy/cluster-integration.service", () => ({
+  resolveClusterIntegration: mockResolveClusterIntegration,
+  resolveClusterIntegrationByClusterCode: mock(),
 }))
+
+const kubeCreds = {
+  connectionMode: "EXTERNAL",
+  apiServerUrl: "https://k8s.test",
+  serviceAccountToken: "tok_123",
+  caCertificate: "cert_data",
+}
+
+const runningPod = (name: string, creationTimestamp: string) => ({
+  metadata: { name, creationTimestamp },
+  spec: { containers: [{ name: "app" }] },
+  status: {
+    phase: "Running",
+    conditions: [{ type: "Ready", status: "True" }],
+  },
+})
+
+const podList = (...items: ReturnType<typeof runningPod>[]) =>
+  Response.json({ items })
 class MockWebSocket {
   url: string
   protocols?: string[]
@@ -53,6 +68,7 @@ class MockWebSocket {
   removeEventListener = mock()
 
   constructor(url: string, protocols?: string[], options?: unknown) {
+    events.push("dial")
     this.url = url
     this.protocols = protocols
     this.options = options
@@ -185,16 +201,104 @@ describe("terminalWsRoute definition and message handlers", () => {
 
 describe("executeTerminalSession validation flows", () => {
   const originalWebSocket = globalThis.WebSocket
+  const originalFetch = globalThis.fetch
 
   beforeEach(() => {
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
+    globalThis.fetch = mockFetch as unknown as typeof fetch
+    events.length = 0
     mockFindUnique.mockReset()
     mockResolveAuthContext.mockReset()
-    mockResolveStackExecCredentials.mockReset()
+    mockResolveClusterIntegration.mockReset()
+    mockResolveClusterIntegration.mockResolvedValue(kubeCreds)
+    mockFetch.mockReset()
+    mockFetch.mockImplementation(async () =>
+      podList(runningPod("target-stack-abc", "2026-09-13T10:00:00Z"))
+    )
   })
 
   afterEach(() => {
     globalThis.WebSocket = originalWebSocket
+    globalThis.fetch = originalFetch
+  })
+
+  // A client whose sends are logged as "send:<type>" into `events`.
+  const memberClient = (query: TerminalWsClient["data"]["query"] = {}) => {
+    const ws: TerminalWsClient = {
+      data: {
+        params: { stackId: "stk_ok" },
+        query,
+        headers: { origin: "https://pfnapp.my.id" },
+        request: new Request("http://localhost"),
+      },
+      send: mock((msg: string) => {
+        events.push(`send:${(JSON.parse(msg) as { type: string }).type}`)
+      }),
+      close: mock(),
+    }
+    return ws
+  }
+
+  const asMemberOf = (organizationId: string) => {
+    mockResolveAuthContext.mockResolvedValueOnce({
+      type: "workos",
+      platformRole: "none",
+      organizationId,
+    })
+    mockFindUnique.mockResolvedValueOnce({
+      id: "stk_ok",
+      organizationId: "org_1",
+      slug: "target-stack",
+    })
+  }
+
+  it("lets a plain org member open the first replica when no pod is given", async () => {
+    asMemberOf("org_1")
+    mockFetch.mockImplementation(async () =>
+      podList(
+        runningPod("target-stack-new", "2026-09-13T11:00:00Z"),
+        runningPod("target-stack-old", "2026-09-13T10:00:00Z")
+      )
+    )
+    const ws = memberClient()
+
+    await executeTerminalSession(ws, { clientClosed: false })
+
+    expect(ws.close).not.toHaveBeenCalled()
+    expect((ws.kubeWs as unknown as MockWebSocket).url).toContain(
+      "/namespaces/app-1/pods/target-stack-old/exec"
+    )
+    expect(events).toEqual(["send:targets", "dial"])
+    expect(ws.send).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '"selected":{"pod":"target-stack-old","container":"app"}'
+      )
+    )
+  })
+
+  it("rejects a pod outside the app with 1008 and never dials", async () => {
+    asMemberOf("org_1")
+    const ws = memberClient({ pod: "billing-api-xyz" })
+
+    await executeTerminalSession(ws, { clientClosed: false })
+
+    expect(ws.close).toHaveBeenCalledWith(1008, "Invalid terminal target")
+    expect(ws.kubeWs).toBeUndefined()
+    expect(events).not.toContain("dial")
+  })
+
+  it("reports NO_RUNNING_POD with 1008 when the app has no live pod", async () => {
+    asMemberOf("org_1")
+    mockFetch.mockImplementation(async () => podList())
+    const ws = memberClient()
+
+    await executeTerminalSession(ws, { clientClosed: false })
+
+    expect(ws.send).toHaveBeenCalledWith(
+      expect.stringContaining('"code":"NO_RUNNING_POD"')
+    )
+    expect(ws.close).toHaveBeenCalledWith(1008, "No running pod")
+    expect(ws.kubeWs).toBeUndefined()
   })
 
   it("rejects invalid origin with 1008 close code", async () => {
@@ -285,6 +389,8 @@ describe("executeTerminalSession validation flows", () => {
 
     await executeTerminalSession(ws, { clientClosed: false })
     expect(mockClose).toHaveBeenCalledWith(1008, "Forbidden")
+    expect(ws.kubeWs).toBeUndefined()
+    expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it("connects to Kubernetes and sets up event handlers for authorized session", async () => {
@@ -298,18 +404,13 @@ describe("executeTerminalSession validation flows", () => {
       organizationId: "org_target",
       slug: "target-stack",
     })
-    mockResolveStackExecCredentials.mockResolvedValueOnce({
-      url: "https://k8s.test",
-      token: "tok_123",
-      caCert: "cert_data",
-    })
 
     const mockSend = mock()
     const mockClose = mock()
     const ws: TerminalWsClient = {
       data: {
         params: { stackId: "stk_ok" },
-        query: { pod: "pod_test" },
+        query: {},
         headers: { origin: "https://pfnapp.my.id" },
         request: new Request("http://localhost"),
       },
@@ -340,12 +441,12 @@ describe("executeTerminalSession validation flows", () => {
     if (kubeWs.onmessage) {
       kubeWs.onmessage({ data: new Uint8Array([1, 104, 105]).buffer }) // channel 1: stdout
       expect(mockSend).toHaveBeenCalledWith(
-        JSON.stringify({ type: "stdout", data: "output-text" })
+        JSON.stringify({ type: "stdout", data: "hi" })
       )
 
       kubeWs.onmessage({ data: new Uint8Array([3, 101, 114]).buffer }) // channel 3: error
       expect(mockSend).toHaveBeenCalledWith(
-        JSON.stringify({ type: "error", data: "output-text" })
+        JSON.stringify({ type: "error", data: "er" })
       )
     }
 
@@ -380,7 +481,7 @@ describe("executeTerminalSession validation flows", () => {
       organizationId: "org_target",
       slug: "err-stack",
     })
-    mockResolveStackExecCredentials.mockRejectedValueOnce(
+    mockResolveClusterIntegration.mockRejectedValueOnce(
       new Error("K8s cluster integration failed")
     )
 
