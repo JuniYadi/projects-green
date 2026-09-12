@@ -1,5 +1,11 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
+export const metadata: Metadata = {
+  title: "Create your account",
+  description: "Create your PFNApp account and start building.",
+}
 
 const getSafeNext = (next: string | undefined, fallbackPath: string) => {
   if (!next || !next.startsWith("/") || next.startsWith("//")) {

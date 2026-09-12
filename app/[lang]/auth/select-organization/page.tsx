@@ -1,6 +1,11 @@
+import type { Metadata } from "next"
 import { AuthPageShell } from "@/components/auth-page-shell"
 
 import { SelectOrganizationForm } from "@/components/select-organization-form"
+
+export const metadata: Metadata = {
+  title: "Select your workspace",
+}
 
 type SelectOrganizationPageProps = {
   params: Promise<{

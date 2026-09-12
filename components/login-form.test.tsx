@@ -72,9 +72,9 @@ describe("LoginForm", () => {
     ).toBeDefined()
   })
 
-  it("starts account creation through WorkOS", () => {
+  it("starts account creation from the login screen", () => {
     const view = render(<LoginForm nextPath="/console" />)
-    const link = view.getByRole("link", { name: "Create one with WorkOS" })
+    const link = view.getByRole("link", { name: "Create your account" })
 
     expect(link.getAttribute("href")).toBe(
       "/login/start?intent=signup&next=%2Fconsole"

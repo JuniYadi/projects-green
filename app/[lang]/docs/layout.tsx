@@ -10,6 +10,12 @@ import { DocsSidebar } from "./components/docs-sidebar"
 import { LanguageFlags } from "./components/language-flags"
 import { NavbarSearch } from "./components/navbar-search"
 import { ThemeToggle } from "@/components/theme-toggle"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "PFNApp Documentation",
+}
+
 type Props = {
   children: React.ReactNode
   params: Promise<{ lang: string }>

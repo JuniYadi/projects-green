@@ -14,6 +14,11 @@ const navLinks = [
         desc: "Deploy with zero config",
       },
       {
+        label: "WhatsApp Official",
+        href: "/products/whatsapp-official",
+        desc: "Business messaging API",
+      },
+      {
         label: "Communication",
         href: "#communication",
         desc: "Email, SMS & push",

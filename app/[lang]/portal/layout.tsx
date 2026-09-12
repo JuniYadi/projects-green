@@ -20,6 +20,12 @@ import { getPlatformAccessForUser } from "@/lib/platform-role"
 import { headers } from "next/headers"
 import { readFunctionalTestIdentity } from "@/lib/auth/functional-test-session"
 
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "PFNApp Portal",
+}
+
 const ONBOARDING_PATH = "/onboarding/organization"
 
 export default async function PortalLayout({
