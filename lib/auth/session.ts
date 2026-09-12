@@ -25,8 +25,16 @@ const getWorkOSClient = () => {
   return _workos
 }
 
+export type WorkOSSessionScope = {
+  user: User
+  // The org the user is currently signed into (set by org switching), and
+  // their role slug in it. Null when the session was issued without an org.
+  organizationId: string | null
+  role: string | null
+}
+
 /**
- * Resolve a WorkOS user from a request by calling the WorkOS SDK's
+ * Resolve a WorkOS session from a request by calling the WorkOS SDK's
  * `authenticateWithSessionCookie` — the single source of truth for
  * session validation.
  *
@@ -35,14 +43,14 @@ const getWorkOSClient = () => {
  *  2. Call workos.userManagement.authenticateWithSessionCookie() which
  *     internally unseals, verifies the JWT against WorkOS JWKS, and
  *     optionally refreshes the session.
- *  3. If authenticated, return the WorkOS User object.
+ *  3. If authenticated, return the user plus the session's active org/role.
  *
  * Also handles Bearer "wos_xxx" tokens (sealed session passed via
  * Authorization header) for API clients.
  */
-export const getWorkOSSession = async (
+export const getWorkOSSessionScope = async (
   request: Request
-): Promise<User | null> => {
+): Promise<WorkOSSessionScope | null> => {
   const cookiePassword = process.env.WORKOS_COOKIE_PASSWORD?.trim()
   if (!cookiePassword) return null
 
@@ -82,11 +90,19 @@ export const getWorkOSSession = async (
 
     if (!result.authenticated) return null
 
-    return result.user as User
+    return {
+      user: result.user as User,
+      organizationId: result.organizationId ?? null,
+      role: result.role ?? null,
+    }
   } catch {
     return null
   }
 }
+
+export const getWorkOSSession = async (
+  request: Request
+): Promise<User | null> => (await getWorkOSSessionScope(request))?.user ?? null
 
 // ─── API key resolver ──────────────────────────────────────────────────────────
 
