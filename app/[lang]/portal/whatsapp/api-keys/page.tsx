@@ -1,4 +1,8 @@
+import type { Metadata } from "next"
+
 import { WhatsappOrganizationApiKeyInventory } from "@/modules/whatsapp/organization-api-keys/ui/organization-api-key-inventory"
+
+export const metadata: Metadata = { title: "Organization API Keys" }
 
 export default function PortalWhatsAppApiKeysPage() {
   return (
