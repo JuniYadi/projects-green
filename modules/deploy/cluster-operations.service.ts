@@ -43,6 +43,7 @@ export type ClusterOperationsQuery = {
   service?: string
   from?: string
   to?: string
+  limit?: number
   range?: "1h" | "6h" | "24h"
 }
 
@@ -913,7 +914,10 @@ const logs = async (
     })
   }
   const body = {
-    size: Math.min(MAX_LOG_LIMIT, DEFAULT_LOG_LIMIT),
+    size: Math.min(
+      MAX_LOG_LIMIT,
+      Math.max(1, query.limit ?? DEFAULT_LOG_LIMIT)
+    ),
     // Explicit so the cap is a known number rather than an accidental one.
     track_total_hits: TOTAL_HITS_CAP,
     sort: [{ "@timestamp": { order: "desc", unmapped_type: "date" } }],
