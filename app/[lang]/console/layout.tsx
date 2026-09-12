@@ -2,7 +2,7 @@ import "./console.css"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "PFNApp Console",
+  title: { absolute: "PFNApp Console", template: "%s | PFNApp Console" },
 }
 
 import { AppSidebar } from "@/components/app-sidebar"
