@@ -1,6 +1,10 @@
+import type { Metadata } from "next"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 import { InvoicesTable } from "@/app/[lang]/console/invoices/invoices-table"
+
+export const metadata: Metadata = { title: "Invoices" }
 
 type InvoicesPageProps = {
   params: Promise<{
