@@ -12,7 +12,7 @@ type BillingPageProps = {
 }
 
 export const metadata: Metadata = {
-  title: "Billing | Console",
+  title: "Billing",
   description: "Manage your billing, subscriptions, and invoices.",
 }
 
