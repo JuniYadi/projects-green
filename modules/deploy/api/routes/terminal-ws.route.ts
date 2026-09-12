@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
+import type { WorkOSScope } from "@/lib/auth/types"
 import { formatTenantNamespace } from "@/modules/deploy/prometheus-telemetry.service"
 import {
   buildKubeExecUrl,
@@ -8,6 +9,8 @@ import {
   encodeKubeFrame,
   encodeResizeFrame,
   KUBE_EXEC_CHANNELS,
+  listStackExecTargets,
+  pickExecTarget,
   resolveStackExecCredentials,
 } from "@/modules/deploy/pod-exec.service"
 
@@ -42,6 +45,18 @@ export function isAllowedOrigin(origin: string | null): boolean {
   const normalized = origin.trim().replace(/\/+$/, "")
   return allowedOrigins.has(normalized)
 }
+
+// ponytail: any member of the stack's org may open a shell (super_admin
+// anywhere). Ceiling: no role gate, so a read-only member gets a shell too.
+// Upgrade path: also require auth.orgRole to be "owner" or "admin" here.
+export function canOpenTerminal(
+  auth: WorkOSScope,
+  stack: { organizationId: string }
+): boolean {
+  if (auth.platformRole === "super_admin") return true
+  return stack.organizationId === auth.organizationId
+}
+
 export type WsClientContext = {
   terminalState?: { clientClosed: boolean }
   kubeWs?: WebSocket
@@ -85,7 +100,7 @@ export function handleWsClose(ws: WsClientContext): void {
 export type TerminalWsClient = {
   data: {
     params: { stackId: string }
-    query: { pod: string; container?: string }
+    query: { pod?: string; container?: string }
     headers?: Record<string, string>
     request?: Request
   }
@@ -149,8 +164,7 @@ export async function executeTerminalSession(
       return
     }
 
-    const isSuperAdmin = auth.platformRole === "super_admin"
-    if (!isSuperAdmin && stack.organizationId !== auth.organizationId) {
+    if (!canOpenTerminal(auth, stack)) {
       if (!state.clientClosed) {
         ws.send(
           JSON.stringify({
@@ -170,9 +184,44 @@ export async function executeTerminalSession(
     // targeted a namespace that never exists.
     const namespace = formatTenantNamespace(stack.organizationId)
     const creds = await resolveStackExecCredentials(stackId)
-    const execUrl = buildKubeExecUrl(creds.url, namespace, pod, container, [
-      "/bin/sh",
-    ])
+
+    // The pod list comes from the app's label selector, never from the
+    // client: `pod`/`container` are only accepted if they are in this list.
+    const targets = await listStackExecTargets({
+      namespace,
+      slug: stack.slug,
+      creds,
+    })
+    if (state.clientClosed) return
+
+    if (targets.length === 0) {
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          code: "NO_RUNNING_POD",
+          error: "No running pod for this app",
+        })
+      )
+      ws.close(1008, "No running pod")
+      return
+    }
+
+    const selected = pickExecTarget(targets, pod, container)
+    if ("error" in selected) {
+      ws.send(JSON.stringify({ type: "error", error: selected.error }))
+      ws.close(1008, "Invalid terminal target")
+      return
+    }
+
+    ws.send(JSON.stringify({ type: "targets", targets, selected }))
+
+    const execUrl = buildKubeExecUrl(
+      creds.url,
+      namespace,
+      selected.pod,
+      selected.container,
+      ["/bin/sh"]
+    )
 
     const kubeWs = new (
       WebSocket as unknown as new (
@@ -265,7 +314,7 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
       stackId: t.String(),
     }),
     query: t.Object({
-      pod: t.String(),
+      pod: t.Optional(t.String()),
       container: t.Optional(t.String()),
     }),
     open(ws) {
