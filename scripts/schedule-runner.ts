@@ -16,6 +16,10 @@ import {
   BILLING_RENEWAL_LADDER_QUEUE,
   BILLING_RENEWAL_LADDER_JOB,
 } from "@/lib/queue/billing-cron"
+import {
+  APP_HOSTING_TRAFFIC_SNAPSHOT_JOB,
+  APP_HOSTING_TRAFFIC_SNAPSHOT_QUEUE,
+} from "@/lib/queue/app-hosting-traffic-snapshot"
 import { WhatsAppHealthJob } from "@/lib/queue/whatsapp-health"
 export interface ScheduledJobDefinition {
   name: string
@@ -126,8 +130,8 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
   },
   {
     name: "app-hosting-daily-traffic-snapshot",
-    queueName: "app-hosting-traffic-snapshot",
-    jobName: "process-daily-traffic-snapshot",
+    queueName: APP_HOSTING_TRAFFIC_SNAPSHOT_QUEUE,
+    jobName: APP_HOSTING_TRAFFIC_SNAPSHOT_JOB,
     expression: "0 1 * * *",
     buildJobId: (d) => `traffic-snapshot-${d.toISOString().slice(0, 10)}`,
   },
