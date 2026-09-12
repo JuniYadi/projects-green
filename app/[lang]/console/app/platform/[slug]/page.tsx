@@ -705,11 +705,7 @@ export default function PlatformInstanceWorkspacePage() {
 
           {/* TAB: TERMINAL */}
           {activeWorkspaceTab === "terminal" && (
-            <TabTerminal
-              stackId={overview.stack.id}
-              slug={overview.stack.slug}
-              locale={locale}
-            />
+            <TabTerminal stackId={overview.stack.id} locale={locale} />
           )}
 
           {/* TAB 2: DEPLOYMENTS */}
