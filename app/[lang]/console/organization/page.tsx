@@ -1,4 +1,5 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { getMessages } from "@/lib/i18n/messages"
@@ -12,6 +13,13 @@ type ConsoleOrganizationPageProps = {
   params: Promise<{
     lang: string
   }>
+}
+
+export async function generateMetadata({
+  params,
+}: ConsoleOrganizationPageProps): Promise<Metadata> {
+  const locale = resolveLocaleOrDefault((await params).lang)
+  return { title: getMessages(locale).console.organization.heading }
 }
 
 export default async function ConsoleOrganizationPage({
