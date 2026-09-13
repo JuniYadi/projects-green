@@ -1,17 +1,15 @@
-import { app } from "@/lib/api"
-import { terminalWsRoute } from "@/modules/deploy/api/routes/terminal-ws.route"
+import { terminalWsGateway } from "@/modules/deploy/api/terminal-ws-gateway"
 
 const port = Number(process.env.API_PORT || process.env.PORT || 3301)
 const hostname = process.env.HOST || "0.0.0.0"
 
-// Mount terminal WebSocket routes under /ws/deploy/* and start standalone server
-const server = app.use(terminalWsRoute).listen({
+const server = terminalWsGateway.listen({
   port,
   hostname,
 })
 
 console.log(
-  `🚀 Projects Green API & WebSocket Gateway running at http://${hostname}:${port}`
+  `🚀 Projects Green WebSocket Gateway running at http://${hostname}:${port}`
 )
 
 export default server
