@@ -9,7 +9,7 @@
       "default": "./standard-fonts/*.mjs"
     }
   },
-  "packageManager": "bun@1.3.14",
+  "packageManager": "bun@1.4.2",
   "scripts": {
     "obsidian:resolve": "bun run scripts/obsidian-vault.ts resolve",
     "obsidian:read": "bun run scripts/obsidian-vault.ts read",
