@@ -558,7 +558,12 @@ async function resolveClusterIntegrationForCluster<
 
   let secrets: Record<string, unknown> = {}
   const vaultPath = typeof meta.vaultPath === "string" ? meta.vaultPath : null
-  if (vaultPath) {
+  const isUnversionedInternalKubeconfig =
+    type === "KUBECONFIG" &&
+    meta.connectionMode === "INTERNAL" &&
+    typeof meta.vaultVersion !== "number"
+
+  if (vaultPath && !isUnversionedInternalKubeconfig) {
     const vaultVersion =
       typeof meta.vaultVersion === "number" ? meta.vaultVersion : undefined
     try {

@@ -20,8 +20,20 @@ describe("terminal WebSocket gateway", () => {
       expect(healthResponse.status).toBe(200)
       expect(await healthResponse.json()).toEqual({ ok: true })
 
-      const apiHealthResponse = await fetch(`${baseUrl}/api/health`)
-      expect(apiHealthResponse.status).toBe(404)
+      const startupResponse = await fetch(`${baseUrl}/api/health/startup`)
+      expect(startupResponse.status).toBe(200)
+      expect(await startupResponse.json()).toEqual({ ok: true })
+
+      const liveResponse = await fetch(`${baseUrl}/api/healthz/live`)
+      expect(liveResponse.status).toBe(200)
+      expect(await liveResponse.json()).toEqual({ ok: true })
+
+      const readyResponse = await fetch(`${baseUrl}/api/healthz/ready`)
+      expect(readyResponse.status).toBe(200)
+      expect(await readyResponse.json()).toEqual({ ok: true })
+
+      const apiAppsResponse = await fetch(`${baseUrl}/api/apps`)
+      expect(apiAppsResponse.status).toBe(404)
 
       const observation = await new Promise<{
         opened: boolean

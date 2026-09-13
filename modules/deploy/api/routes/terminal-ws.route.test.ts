@@ -67,11 +67,23 @@ class MockWebSocket {
   addEventListener = mock()
   removeEventListener = mock()
 
-  constructor(url: string, protocols?: string[], options?: unknown) {
+  constructor(
+    url: string,
+    protocolsOrOptions?: string[] | Record<string, unknown>,
+    options?: unknown
+  ) {
     events.push("dial")
     this.url = url
-    this.protocols = protocols
-    this.options = options
+    if (Array.isArray(protocolsOrOptions)) {
+      this.protocols = protocolsOrOptions
+      this.options = options
+    } else if (
+      typeof protocolsOrOptions === "object" &&
+      protocolsOrOptions !== null
+    ) {
+      this.options = protocolsOrOptions
+      this.protocols = protocolsOrOptions.protocols as string[] | undefined
+    }
   }
 }
 

@@ -223,17 +223,30 @@ export async function executeTerminalSession(
       ["/bin/sh"]
     )
 
+    const credsUrlObj = new URL(creds.url)
+    const isIpHost =
+      /^\d+\.\d+\.\d+\.\d+$/.test(credsUrlObj.hostname) ||
+      credsUrlObj.hostname.includes(":")
+    const tlsServerName = isIpHost
+      ? "kubernetes.default.svc"
+      : credsUrlObj.hostname
+
     const kubeWs = new (
       WebSocket as unknown as new (
         url: string,
-        protocols: string[],
-        options?: Record<string, unknown>
+        options: Record<string, unknown>
       ) => WebSocket
-    )(execUrl, ["v4.channel.k8s.io"], {
+    )(execUrl, {
+      protocols: ["v4.channel.k8s.io"],
       headers: {
         Authorization: `Bearer ${creds.token}`,
       },
-      tls: creds.caCert ? { ca: [creds.caCert] } : undefined,
+      tls: creds.caCert
+        ? {
+            ca: creds.caCert,
+            serverName: tlsServerName,
+          }
+        : undefined,
     })
 
     kubeWs.binaryType = "arraybuffer"
@@ -279,7 +292,18 @@ export async function executeTerminalSession(
       }
     }
 
-    const handleWsError = () => {
+    const handleWsError = (err?: unknown) => {
+      if (err !== undefined) {
+        const detail =
+          err instanceof Error
+            ? err.message
+            : typeof err === "object" && err !== null && "message" in err
+              ? String((err as { message: unknown }).message)
+              : typeof err === "string"
+                ? err
+                : JSON.stringify(err)
+        console.error("[Terminal WS] Kubernetes exec error:", detail)
+      }
       if (!state.clientClosed) {
         ws.send(
           JSON.stringify({
