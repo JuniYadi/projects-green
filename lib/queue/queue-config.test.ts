@@ -23,15 +23,10 @@ afterEach(() => {
   for (const key of MANAGED_ENV_KEYS) {
     const value = savedEnv[key]
     if (value === undefined) {
-      delete process.env[key]
-      continue
+      delete (process.env as Record<string, string | undefined>)[key]
+    } else {
+      ;(process.env as Record<string, string | undefined>)[key] = value
     }
-
-    Object.defineProperty(process.env, key, {
-      value,
-      writable: true,
-      configurable: true,
-    })
   }
 })
 
@@ -40,11 +35,7 @@ describe("getQueueRuntimeConfig", () => {
     delete process.env.REDIS_URL
     delete process.env.QUEUE_PREFIX
     delete process.env.GITHUB_EVENTS_QUEUE_NAME
-    Object.defineProperty(process.env, "NODE_ENV", {
-      value: "test",
-      writable: true,
-      configurable: true,
-    })
+    ;(process.env as Record<string, string>).NODE_ENV = "test"
 
     const config = getQueueRuntimeConfig()
 
@@ -54,11 +45,7 @@ describe("getQueueRuntimeConfig", () => {
   })
 
   test("reads queue config from environment", () => {
-    Object.defineProperty(process.env, "NODE_ENV", {
-      value: "production",
-      writable: true,
-      configurable: true,
-    })
+    ;(process.env as Record<string, string>).NODE_ENV = "production"
     Object.assign(process.env, {
       REDIS_URL: "rediss://:s3cr3t@example-redis:6380/4",
       QUEUE_PREFIX: "platform",
@@ -74,11 +61,7 @@ describe("getQueueRuntimeConfig", () => {
 
   test("throws when REDIS_URL is missing in production", () => {
     delete process.env.REDIS_URL
-    Object.defineProperty(process.env, "NODE_ENV", {
-      value: "production",
-      writable: true,
-      configurable: true,
-    })
+    ;(process.env as Record<string, string>).NODE_ENV = "production"
 
     expect(() => getQueueRuntimeConfig()).toThrow(
       "Missing REDIS_URL environment variable"
@@ -86,11 +69,7 @@ describe("getQueueRuntimeConfig", () => {
   })
 
   test("throws on invalid Redis protocol", () => {
-    Object.defineProperty(process.env, "NODE_ENV", {
-      value: "production",
-      writable: true,
-      configurable: true,
-    })
+    ;(process.env as Record<string, string>).NODE_ENV = "production"
     Object.assign(process.env, {
       REDIS_URL: "https://example.com",
     })
@@ -101,11 +80,7 @@ describe("getQueueRuntimeConfig", () => {
   })
 
   test("throws on invalid Redis DB index (non-numeric)", () => {
-    Object.defineProperty(process.env, "NODE_ENV", {
-      value: "production",
-      writable: true,
-      configurable: true,
-    })
+    ;(process.env as Record<string, string>).NODE_ENV = "production"
     Object.assign(process.env, {
       REDIS_URL: "redis://localhost:6379/abc",
     })
@@ -114,11 +89,7 @@ describe("getQueueRuntimeConfig", () => {
   })
 
   test("throws on invalid Redis URL format", () => {
-    Object.defineProperty(process.env, "NODE_ENV", {
-      value: "production",
-      writable: true,
-      configurable: true,
-    })
+    ;(process.env as Record<string, string>).NODE_ENV = "production"
     Object.assign(process.env, {
       REDIS_URL: "not a url:::://",
     })
