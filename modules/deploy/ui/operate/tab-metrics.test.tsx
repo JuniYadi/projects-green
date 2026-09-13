@@ -149,7 +149,7 @@ describe("TabMetrics", () => {
       [
         "deploy",
         "pod-telemetry",
-        "compute",
+        "all",
         { type: "preset", preset: "1h" },
         "sgp",
         "UTC",
@@ -224,7 +224,7 @@ describe("TabMetrics", () => {
     expect(pod1Btn.className).toContain("bg-secondary")
     expect(allBtn.className).not.toContain("bg-primary")
   })
-  it("switches to HTTP Traffic sub-tab and renders Edge L7 metrics without HAProxy labels", () => {
+  it("renders unified Edge L7 metrics and Pod Replicas simultaneously without sub-tab toggles or HAProxy labels", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
@@ -234,27 +234,22 @@ describe("TabMetrics", () => {
       </QueryClientProvider>
     )
 
-    const computeTabBtn = view.getByRole("button", { name: /^Compute/i })
-    const httpTrafficBtn = view.getByRole("button", { name: /HTTP Traffic/i })
-    expect(computeTabBtn).toBeDefined()
-    expect(httpTrafficBtn).toBeDefined()
+    // Sub-tab buttons are removed in unified layout
+    expect(view.queryByRole("button", { name: /^Compute/i })).toBeNull()
+    expect(view.queryByRole("button", { name: /HTTP Traffic/i })).toBeNull()
 
-    // Default is Compute with Pod Replicas & Health
-    expect(view.getByText(/Pod Replicas & Health/i)).toBeDefined()
-
-    // Switch to HTTP Traffic
-    fireEvent.click(httpTrafficBtn)
-
+    // Both Edge L7 and Pod Compute telemetry render simultaneously
     expect(view.getByText(/Service Traffic/i)).toBeDefined()
     expect(view.getByText(/Grouped HTTP Response Codes/i)).toBeDefined()
     expect(view.getByText(/Latency Breakdown/i)).toBeDefined()
+    expect(view.getByText(/Pod Replicas & Health/i)).toBeDefined()
+    expect(view.getByText(/CPU Usage per Pod/i)).toBeDefined()
+    expect(view.getByText(/RAM Working Set per Pod/i)).toBeDefined()
+    expect(view.getByText(/Network Ingress per Pod/i)).toBeDefined()
+
     // Ensure internal plumbing / gateway routing noise is hidden
     expect(view.queryByText(/Edge Ingress Gateway/i)).toBeNull()
     expect(view.queryByText(/Routing Service/i)).toBeNull()
     expect(view.queryByText(/HAProxy/i)).toBeNull()
-
-    // Switch back to Compute
-    fireEvent.click(computeTabBtn)
-    expect(view.getByText(/Pod Replicas & Health/i)).toBeDefined()
   })
 })
