@@ -482,6 +482,67 @@ describe("executeTerminalSession validation flows", () => {
     }
   })
 
+  it("uses kubernetes.default.svc for IP and IPv6 hosts, and omits tls when caCert is missing", async () => {
+    asMemberOf("org_1")
+    mockResolveClusterIntegration.mockReset()
+    mockResolveClusterIntegration.mockResolvedValueOnce({
+      connectionMode: "INTERNAL",
+      apiServerUrl: "https://10.43.0.1:443",
+      serviceAccountToken: "tok_123",
+      caCertificate: "cert_data",
+    })
+
+    const wsIp = memberClient()
+    await executeTerminalSession(wsIp, { clientClosed: false })
+    const kubeWsIp = wsIp.kubeWs as unknown as MockWebSocket
+    expect(kubeWsIp.options).toMatchObject({
+      tls: { serverName: "kubernetes.default.svc", ca: "cert_data" },
+    })
+
+    asMemberOf("org_1")
+    mockResolveClusterIntegration.mockResolvedValueOnce({
+      connectionMode: "INTERNAL",
+      apiServerUrl: "https://[2001:db8::1]:443",
+      serviceAccountToken: "tok_123",
+      caCertificate: "cert_data",
+    })
+    const wsIpv6 = memberClient()
+    await executeTerminalSession(wsIpv6, { clientClosed: false })
+    const kubeWsIpv6 = wsIpv6.kubeWs as unknown as MockWebSocket
+    expect(kubeWsIpv6.options).toMatchObject({
+      tls: { serverName: "kubernetes.default.svc", ca: "cert_data" },
+    })
+
+    asMemberOf("org_1")
+    mockResolveClusterIntegration.mockResolvedValueOnce({
+      connectionMode: "EXTERNAL",
+      apiServerUrl: "https://k8s.example.com",
+      serviceAccountToken: "tok_123",
+      caCertificate: null,
+    })
+    const wsNoCa = memberClient()
+    await executeTerminalSession(wsNoCa, { clientClosed: false })
+    const kubeWsNoCa = wsNoCa.kubeWs as unknown as MockWebSocket
+    expect(kubeWsNoCa.options).toMatchObject({
+      tls: undefined,
+    })
+  })
+
+  it("formats different error payloads in handleWsError", async () => {
+    asMemberOf("org_1")
+    const ws = memberClient()
+    await executeTerminalSession(ws, { clientClosed: false })
+    const kubeWs = ws.kubeWs as unknown as { onerror?: (err?: unknown) => void }
+
+    kubeWs.onerror?.(new Error("dial failed"))
+    kubeWs.onerror?.({ message: "connection dropped" })
+    kubeWs.onerror?.("raw error message")
+    kubeWs.onerror?.({ code: 500 })
+    kubeWs.onerror?.()
+
+    expect(ws.close).toHaveBeenCalledWith(1011, "Exec error")
+  })
+
   it("handles exception thrown during credential resolution gracefully", async () => {
     mockResolveAuthContext.mockResolvedValueOnce({
       type: "workos",

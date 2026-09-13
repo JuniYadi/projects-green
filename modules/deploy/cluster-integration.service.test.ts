@@ -682,6 +682,34 @@ describe("cluster-integration.service", () => {
     })
   })
 
+  it("skips Vault read for unversioned INTERNAL KUBECONFIG integration even if vaultPath is set", async () => {
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValue({
+      id: "cluster-sgp",
+      code: "sgp",
+      name: "Singapore Cluster",
+    })
+    mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
+      clusterId: "cluster-sgp",
+      type: "KUBECONFIG",
+      metaJson: {
+        connectionMode: "INTERNAL",
+        vaultPath: "admin/clusters/cluster-sgp/integrations/KUBECONFIG",
+        namespacePattern: "app-{slug}",
+        labelSelector: "app={slug}",
+      },
+      secretCiphertext: encryptClusterIntegrationSecrets({}),
+    })
+
+    const mockVaultClient = { readKV: mock() }
+    const config = await resolveClusterIntegrationByClusterCode(
+      "sgp",
+      "KUBECONFIG",
+      mockVaultClient
+    )
+    expect(config.usesInClusterFallback).toBe(true)
+    expect(mockVaultClient.readKV).not.toHaveBeenCalled()
+  })
+
   it("resolveClusterIntegrationByClusterCode throws when cluster is not found", async () => {
     mockPrisma.appHostingCluster.findUnique.mockResolvedValue(null)
 
