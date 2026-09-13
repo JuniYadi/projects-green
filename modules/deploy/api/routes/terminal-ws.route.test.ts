@@ -209,6 +209,54 @@ describe("terminalWsRoute definition and message handlers", () => {
     expect(terminalState.clientClosed).toBe(true)
     expect(mockClose).toHaveBeenCalledWith(1000, "Client closed terminal")
   })
+
+  it("forwards stdin message when kubeWs is stored on ws.data or ws.raw.data", () => {
+    const mockSend = mock()
+    const mockKubeWs = {
+      readyState: 1, // OPEN
+      send: mockSend,
+      close: mock(),
+    } as unknown as WebSocket
+
+    // ElysiaWS pattern where ws.data holds the connection context
+    const ctxWithData: WsClientContext = {
+      data: { kubeWs: mockKubeWs },
+    }
+    handleWsMessage(ctxWithData, JSON.stringify({ type: "stdin", data: "pwd\n" }))
+    expect(mockSend).toHaveBeenCalled()
+
+    mockSend.mockClear()
+    // Bun ServerWebSocket pattern where ws.raw.data holds the context
+    const ctxWithRaw: WsClientContext = {
+      raw: { data: { kubeWs: mockKubeWs } },
+    }
+    handleWsMessage(ctxWithRaw, JSON.stringify({ type: "stdin", data: "whoami\n" }))
+    expect(mockSend).toHaveBeenCalled()
+  })
+
+  it("closes kubeWs and marks closed when state is on ws.data or ws.raw.data", () => {
+    const mockClose = mock()
+    const mockKubeWs = {
+      readyState: 1,
+      send: mock(),
+      close: mockClose,
+    } as unknown as WebSocket
+
+    const dataTerminalState = { clientClosed: false }
+    handleWsClose({
+      data: { kubeWs: mockKubeWs, terminalState: dataTerminalState },
+    })
+    expect(dataTerminalState.clientClosed).toBe(true)
+    expect(mockClose).toHaveBeenCalledWith(1000, "Client closed terminal")
+
+    mockClose.mockClear()
+    const rawTerminalState = { clientClosed: false }
+    handleWsClose({
+      raw: { data: { kubeWs: mockKubeWs, terminalState: rawTerminalState } },
+    })
+    expect(rawTerminalState.clientClosed).toBe(true)
+    expect(mockClose).toHaveBeenCalledWith(1000, "Client closed terminal")
+  })
 })
 
 describe("executeTerminalSession validation flows", () => {
