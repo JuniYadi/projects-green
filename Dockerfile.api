@@ -1,4 +1,4 @@
-# Build stage — compile TS, generate Prisma client
+# Build stage — compile WebSocket gateway, generate Prisma client
 FROM oven/bun:1-alpine AS builder
 RUN apk update && apk upgrade --no-cache
 
@@ -16,12 +16,10 @@ COPY prisma.config.ts ./
 ENV DATABASE_URL=postgresql://localhost:5432/dummy
 RUN bun prisma generate
 COPY scripts ./scripts
-RUN bun run scripts/copy-standard-fonts.ts
 
-# Bundle API server & WebSocket gateway with inlined JS dependencies
+# Bundle WebSocket gateway with inlined JS dependencies
 COPY lib ./lib
 COPY modules ./modules
-COPY public ./public
 RUN bun run scripts/build-api-server.ts
 
 # ── Production stage ────────────────────────────────────────────────────────
@@ -44,10 +42,8 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 # Copy Prisma schema
 COPY --from=builder /app/prisma ./prisma
 
-# Copy bundled API server and native assets
+# Copy bundled WebSocket gateway and generated Prisma assets
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/standard-fonts ./standard-fonts
 
 ENV NODE_ENV=production
 EXPOSE 3301
@@ -55,6 +51,6 @@ EXPOSE 3301
 STOPSIGNAL SIGTERM
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["sh", "-c", "wget -qO- http://127.0.0.1:3301/api/health || exit 1"]
+  CMD ["sh", "-c", "wget -qO- http://127.0.0.1:3301/health || exit 1"]
 
 CMD ["bun", "run", "dist/api-server.js"]
