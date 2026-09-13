@@ -511,6 +511,29 @@ describe("deploy-monitor.dto", () => {
       expect(dto.envCount).toBe(2)
     })
 
+    it("falls back to DEPLOY_TEMPLATES or templateSlug when template relation is absent", () => {
+      const dto = toStackSummaryDTO({
+        id: "stack-tpl-fallback",
+        name: "WordPress Site",
+        slug: "wordpress-site",
+        status: "RUNNING",
+        framework: null,
+        branchName: "main",
+        subdomain: "my-wp",
+        customDomain: null,
+        resourcePlanId: "starter",
+        billingMode: "PAYG",
+        templateId: "cmtcagyzt0001o44cwzm30ldc",
+        template: null,
+        metadataJson: {
+          templateSlug: "wordpress",
+        },
+        lastDeployedAt: new Date("2026-06-05T10:00:00.000Z"),
+      })
+
+      expect(dto.templateName).toBe("WordPress")
+    })
+
     it("maps catalogPlan, createdAt, orderedAt, and computes renewalAt", () => {
       const createdAt = new Date("2026-09-07T15:50:27.570Z")
       const dto = toStackSummaryDTO({

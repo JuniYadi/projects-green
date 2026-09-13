@@ -41,6 +41,27 @@ const mockApps = [
     currentStepIndex: null,
     currentStepStartedAt: null,
   },
+  {
+    id: "stack-3",
+    name: "Ghost Blog",
+    slug: "ghost-blog",
+    status: "running",
+    framework: null,
+    templateId: "cmtcagyzt0001o44cwzm30ldc",
+    templateName: "Ghost",
+    sourceType: "TEMPLATE",
+    branchName: "main",
+    subdomain: "ghost-blog.pfnapp.dev",
+    customDomain: null,
+    resourcePlanId: "small",
+    billingMode: "PAYG",
+    billingState: "ACTIVE",
+    lastDeployedAt: "2026-09-10T00:00:00.000Z",
+    latestDeploymentId: "dep-3",
+    currentStepLabel: "Application live",
+    currentStepIndex: 4,
+    currentStepStartedAt: "2026-09-10T00:00:00.000Z",
+  },
 ]
 
 mock.module("@/lib/eden", () => ({
@@ -106,5 +127,30 @@ describe("PlatformsFleetPage (/console/app/platforms)", () => {
 
     expect(queryByText("Hermes Comet")).toBeNull()
     expect(queryByText("n8n Workflow")).toBeDefined()
+  })
+
+  it("displays template name instead of leaking raw database cuid", async () => {
+    const { getByText, queryByText } = render(<PlatformsFleetPage />)
+
+    await waitFor(() => {
+      expect(getByText("Ghost Blog")).toBeDefined()
+      // Template name should be rendered with Template badge
+      expect(getByText("Ghost")).toBeDefined()
+      expect(getByText("Template")).toBeDefined()
+      // Raw CUID should NEVER be present in the document
+      expect(queryByText("cmtcagyzt0001o44cwzm30ldc")).toBeNull()
+    })
+  })
+
+  it("renders live domain link for running applications", async () => {
+    const { getByRole } = render(<PlatformsFleetPage />)
+
+    await waitFor(() => {
+      const liveLink = getByRole("link", { name: /ghost-blog\.pfnapp\.dev/i })
+      expect(liveLink).toBeDefined()
+      expect(liveLink.getAttribute("href")).toBe(
+        "https://ghost-blog.pfnapp.dev"
+      )
+    })
   })
 })

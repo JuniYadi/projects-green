@@ -11,6 +11,7 @@ import type {
   DeployStatus,
   DeployTimelineItem,
 } from "@/modules/deploy/deploy.types"
+import { DEPLOY_TEMPLATES } from "@/modules/deploy/deploy.constants"
 /**
  * PGREEN-072 — Console Monitor/Manage truth path.
  *
@@ -473,8 +474,36 @@ export const toStackSummaryDTO = (stack: {
         string | undefined) ??
       stack.templateId ??
       null,
-    templateName:
-      stack.template?.name ?? (meta.templateName as string | undefined) ?? null,
+    templateName: (() => {
+      const templateSlugOrId =
+        (typeof meta.templateSlug === "string"
+          ? meta.templateSlug
+          : undefined) ??
+        (typeof meta.templateId === "string" && !meta.templateId.startsWith("c")
+          ? meta.templateId
+          : undefined) ??
+        (typeof stack.templateId === "string" &&
+        !stack.templateId.startsWith("c")
+          ? stack.templateId
+          : undefined)
+
+      const matchedTemplate = templateSlugOrId
+        ? DEPLOY_TEMPLATES.find(
+            (t) =>
+              t.id === templateSlugOrId ||
+              t.id.toLowerCase() === templateSlugOrId.toLowerCase()
+          )
+        : null
+
+      return (
+        stack.template?.name ??
+        (meta.templateName as string | undefined) ??
+        matchedTemplate?.name ??
+        (templateSlugOrId
+          ? templateSlugOrId.charAt(0).toUpperCase() + templateSlugOrId.slice(1)
+          : null)
+      )
+    })(),
     port: resolvedPort,
     templateUpdate,
     cpu: stack.cpu ?? (typeof meta.cpu === "number" ? meta.cpu : null),
