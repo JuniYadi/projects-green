@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { act, cleanup, render } from "@testing-library/react"
+import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import type { TerminalTargetDTO } from "@/modules/deploy/terminal-target.dto"
+
+const mockFocus = mock()
 
 mock.module("@xterm/xterm", () => ({
   Terminal: class {
@@ -8,7 +10,7 @@ mock.module("@xterm/xterm", () => ({
     rows = 24
     loadAddon() {}
     open() {}
-    focus() {}
+    focus = mockFocus
     write() {}
     writeln() {}
     dispose() {}
@@ -96,5 +98,16 @@ describe("StackTerminal", () => {
     ])
 
     expect(getByRole("combobox")).toBeDefined()
+  })
+
+  it("focuses terminal when terminal region is clicked", () => {
+    mockFocus.mockClear()
+    const { getByRole } = renderWithTargets([
+      target("api-7d9f8-abcde", "Replica 1"),
+    ])
+
+    const terminalCanvas = getByRole("region", { name: "Terminal console" })
+    fireEvent.click(terminalCanvas)
+    expect(mockFocus).toHaveBeenCalled()
   })
 })

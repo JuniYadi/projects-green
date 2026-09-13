@@ -215,41 +215,52 @@ export function StackTerminal({
   }[status]
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-[#09090b]">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-[#09090b] shadow-sm">
       {/* Terminal Toolbar */}
-      <div className="flex items-center justify-between border-b border-border/40 bg-muted/20 px-4 py-2 text-xs">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <TerminalWindow size={16} className="text-primary" />
-          {options.length > 1 ? (
-            <Select
-              value={selectedValue}
-              onValueChange={(value) => {
-                const [pod, container] = value.split("/")
-                const next = { pod, container }
-                setSelected(next)
-                connect(next)
-              }}
-            >
-              <SelectTrigger
-                size="sm"
-                className="h-7 text-xs"
-                aria-label={isId ? "Pilih replica" : "Choose replica"}
+      <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/95 px-4 py-2.5 text-xs">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 pr-0.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-zinc-700/80" />
+            <span className="h-2.5 w-2.5 rounded-full bg-zinc-700/80" />
+            <span className="h-2.5 w-2.5 rounded-full bg-zinc-700/80" />
+          </div>
+          <div className="flex items-center gap-2 text-zinc-300">
+            <TerminalWindow size={16} className="text-emerald-400" />
+            {options.length > 1 ? (
+              <Select
+                value={selectedValue}
+                onValueChange={(value) => {
+                  const [pod, container] = value.split("/")
+                  const next = { pod, container }
+                  setSelected(next)
+                  connect(next)
+                }}
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label} · {readyText(option.ready)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : current ? (
-            <span className="font-semibold text-foreground">
-              {current.label} · {readyText(current.ready)}
-            </span>
-          ) : null}
+                <SelectTrigger
+                  size="sm"
+                  className="h-7 border-zinc-700 bg-zinc-800 text-xs text-zinc-200 hover:bg-zinc-700/50"
+                  aria-label={isId ? "Pilih replica" : "Choose replica"}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-zinc-800 bg-zinc-900 text-zinc-200">
+                  {options.map((option) => (
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      className="focus:bg-zinc-800 focus:text-zinc-100"
+                    >
+                      {option.label} · {readyText(option.ready)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : current ? (
+              <span className="font-semibold text-zinc-200">
+                {current.label} · {readyText(current.ready)}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -263,7 +274,7 @@ export function StackTerminal({
                     : "bg-rose-500"
               }`}
             />
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[11px] font-medium text-zinc-300">
               {statusText}
             </span>
           </div>
@@ -274,7 +285,7 @@ export function StackTerminal({
             size="sm"
             onClick={() => connect()}
             disabled={status === "connecting"}
-            className="h-7 gap-1 px-2 text-xs"
+            className="h-7 gap-1 px-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
           >
             <ArrowsClockwise size={14} />
             {isId ? "Hubungkan ulang" : "Reconnect"}
@@ -284,15 +295,15 @@ export function StackTerminal({
 
       {noRunningPod && (
         <div
-          className="flex items-start gap-2 border-b border-amber-500/30 bg-amber-500/5 p-4 text-sm"
+          className="flex items-start gap-2 border-b border-amber-500/30 bg-amber-500/10 p-4 text-sm"
           role="alert"
         >
-          <WarningCircle size={18} className="mt-0.5 shrink-0 text-amber-500" />
+          <WarningCircle size={18} className="mt-0.5 shrink-0 text-amber-400" />
           <div className="space-y-1">
-            <p className="font-semibold text-foreground">
+            <p className="font-semibold text-zinc-200">
               {isId ? "Tidak ada pod aktif" : "No active pod"}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-zinc-400">
               {isId
                 ? "Terminal butuh pod yang sedang jalan. Cek tab Log untuk melihat kenapa aplikasi belum aktif."
                 : "A shell needs a running pod. Check the Logs tab to see why the app is not up."}
@@ -303,7 +314,7 @@ export function StackTerminal({
 
       {/* Error alert banner */}
       {errorMessage && (
-        <div className="flex items-center gap-2 border-b border-rose-500/20 bg-rose-500/10 px-4 py-2 text-xs text-rose-500">
+        <div className="flex items-center gap-2 border-b border-rose-500/20 bg-rose-500/10 px-4 py-2 text-xs text-rose-400">
           <WarningCircle size={14} />
           <span>{errorMessage}</span>
         </div>
@@ -313,7 +324,11 @@ export function StackTerminal({
           reattach xterm once a pod comes up. */}
       <div
         ref={containerRef}
-        className={`min-h-[420px] w-full flex-1 p-3 font-mono text-sm focus:outline-none ${noRunningPod ? "hidden" : ""}`}
+        onClick={() => termRef.current?.focus()}
+        tabIndex={-1}
+        role="region"
+        aria-label={isId ? "Konsol terminal" : "Terminal console"}
+        className={`min-h-[420px] w-full flex-1 cursor-text p-3 font-mono text-sm focus:outline-none ${noRunningPod ? "hidden" : ""}`}
       />
     </div>
   )

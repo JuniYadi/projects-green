@@ -60,10 +60,38 @@ export function canOpenTerminal(
 export type WsClientContext = {
   terminalState?: { clientClosed: boolean }
   kubeWs?: WebSocket
+  data?: {
+    terminalState?: { clientClosed: boolean }
+    kubeWs?: WebSocket
+    [key: string]: unknown
+  }
+  raw?: {
+    data?: {
+      terminalState?: { clientClosed: boolean }
+      kubeWs?: WebSocket
+      [key: string]: unknown
+    }
+  }
+}
+
+export function resolveWsKubeSocket(
+  ws: WsClientContext
+): WebSocket | undefined {
+  return ws.kubeWs ?? ws.data?.kubeWs ?? ws.raw?.data?.kubeWs
+}
+
+export function resolveWsTerminalState(
+  ws: WsClientContext
+): { clientClosed: boolean } | undefined {
+  return (
+    ws.terminalState ??
+    ws.data?.terminalState ??
+    ws.raw?.data?.terminalState
+  )
 }
 
 export function handleWsMessage(ws: WsClientContext, message: unknown): void {
-  const kubeWs = ws.kubeWs
+  const kubeWs = resolveWsKubeSocket(ws)
   if (!kubeWs || kubeWs.readyState !== WebSocket.OPEN) return
 
   try {
@@ -88,10 +116,11 @@ export function handleWsMessage(ws: WsClientContext, message: unknown): void {
 }
 
 export function handleWsClose(ws: WsClientContext): void {
-  if (ws.terminalState) {
-    ws.terminalState.clientClosed = true
+  const terminalState = resolveWsTerminalState(ws)
+  if (terminalState) {
+    terminalState.clientClosed = true
   }
-  const kubeWs = ws.kubeWs
+  const kubeWs = resolveWsKubeSocket(ws)
   if (kubeWs && kubeWs.readyState === WebSocket.OPEN) {
     kubeWs.close(1000, "Client closed terminal")
   }
@@ -103,11 +132,19 @@ export type TerminalWsClient = {
     query: { pod?: string; container?: string }
     headers?: Record<string, string>
     request?: Request
+    terminalState?: { clientClosed: boolean }
+    kubeWs?: WebSocket
   }
   send: (msg: string) => void
   close: (code?: number, reason?: string) => void
   terminalState?: { clientClosed: boolean }
   kubeWs?: WebSocket
+  raw?: {
+    data?: {
+      terminalState?: { clientClosed: boolean }
+      kubeWs?: WebSocket
+    }
+  }
 }
 
 export async function executeTerminalSession(
@@ -321,6 +358,15 @@ export async function executeTerminalSession(
     }
 
     ws.kubeWs = kubeWs
+    if (ws.data && typeof ws.data === "object") {
+      ;(ws.data as Record<string, unknown>).kubeWs = kubeWs
+    }
+    const rawData = (
+      ws as unknown as { raw?: { data?: Record<string, unknown> } }
+    ).raw?.data
+    if (rawData && typeof rawData === "object") {
+      rawData.kubeWs = kubeWs
+    }
   } catch (error) {
     if (!state.clientClosed) {
       const message =
@@ -343,7 +389,17 @@ export const terminalWsRoute = new Elysia({ prefix: "/ws/deploy" }).ws(
     }),
     open(ws) {
       const state = { clientClosed: false }
-      ;(ws as unknown as Record<string, unknown>).terminalState = state
+      const ctx = ws as unknown as Record<string, unknown>
+      ctx.terminalState = state
+      if (ctx.data && typeof ctx.data === "object") {
+        ;(ctx.data as Record<string, unknown>).terminalState = state
+      }
+      const rawData = (
+        ctx.raw as { data?: Record<string, unknown> } | undefined
+      )?.data
+      if (rawData && typeof rawData === "object") {
+        rawData.terminalState = state
+      }
       void executeTerminalSession(ws as unknown as TerminalWsClient, state)
     },
     message(ws, message) {
