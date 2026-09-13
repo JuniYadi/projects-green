@@ -798,13 +798,21 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
     })
     const command = Array.isArray(blueprintRuntime?.command)
       ? (blueprintRuntime.command as string[])
-      : undefined
+      : Array.isArray(stackMeta?.command)
+        ? (stackMeta.command as string[])
+        : undefined
+    const args = Array.isArray(blueprintRuntime?.args)
+      ? (blueprintRuntime.args as string[])
+      : Array.isArray(stackMeta?.args)
+        ? (stackMeta.args as string[])
+        : undefined
 
     const values = buildHelmValues({
       slug: stack.slug,
       imageRepository,
       imageTag,
       command,
+      args,
       containerPort: runtimePort,
       servicePort: runtimePort,
       env: envVars,

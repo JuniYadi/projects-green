@@ -302,6 +302,7 @@ describe("deploySubmitRoutes /submit", () => {
       blueprintJson: {
         runtime: {
           image: "nousresearch/hermes-agent:v2026.8.18",
+          command: ["hermes", "gateway", "run"],
           defaultPort: 8642,
           deploymentType: "statefulset",
           additionalPorts: [{ port: 9119, name: "dashboard" }],
@@ -331,6 +332,7 @@ describe("deploySubmitRoutes /submit", () => {
             imageRepository: "nousresearch/hermes-agent:v2026.8.18",
             deploymentType: "statefulset",
             additionalPorts: [{ port: 9119, name: "dashboard" }],
+            command: ["hermes", "gateway", "run"],
           }),
         }),
       })

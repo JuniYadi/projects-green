@@ -16,6 +16,8 @@ mock.module("next/navigation", () => ({
 interface SavePayload {
   blueprintJson?: {
     runtime?: {
+      command?: string[]
+      args?: string[]
       healthCheckPath?: string
       livenessProbe?: { path: string }
       readinessProbe?: { path: string }
@@ -154,5 +156,41 @@ describe("TemplateEditorForm", () => {
     expect(payload?.blueprintJson?.runtime?.startupProbe?.path).toBe(
       "/health/startup"
     )
+  })
+
+  it("preserves and saves container command and args when provided", async () => {
+    const onSave = mock(async (_payload: SavePayload) => {})
+    const { getByTestId, getByText, getByLabelText } = render(
+      <TemplateEditorForm isNew={true} onSave={onSave} />
+    )
+
+    const user = userEvent.setup()
+    await user.type(getByTestId("template-name-input"), "Hermes App")
+    await user.type(getByTestId("template-desc-input"), "Hermes AI gateway")
+
+    // Switch to Runtime tab
+    await user.click(getByText("Runtime & Services"))
+
+    // Enter container command and arguments
+    const cmdInput = getByLabelText(/Container Command/i)
+    await user.type(cmdInput, "hermes gateway run")
+
+    const argsInput = getByLabelText(/Container Arguments/i)
+    await user.type(argsInput, "--verbose")
+
+    // Save
+    await user.click(getByText("Create Template"))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1)
+    })
+
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.runtime?.command).toEqual([
+      "hermes",
+      "gateway",
+      "run",
+    ])
+    expect(payload?.blueprintJson?.runtime?.args).toEqual(["--verbose"])
   })
 })

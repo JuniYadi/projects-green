@@ -157,6 +157,16 @@ export function TemplateEditorForm({
   const [runAsNonRoot, setRunAsNonRoot] = useState(
     initialData?.blueprintJson?.runtime?.runAsNonRoot ?? true
   )
+  const [runtimeCommand, setRuntimeCommand] = useState(
+    Array.isArray(initialData?.blueprintJson?.runtime?.command)
+      ? initialData.blueprintJson.runtime.command.join(" ")
+      : ""
+  )
+  const [runtimeArgs, setRuntimeArgs] = useState(
+    Array.isArray(initialData?.blueprintJson?.runtime?.args)
+      ? initialData.blueprintJson.runtime.args.join(" ")
+      : ""
+  )
   const [deploymentType, setDeploymentType] = useState<
     "deployment" | "statefulset"
   >(initialData?.blueprintJson?.runtime?.deploymentType ?? "deployment")
@@ -221,6 +231,8 @@ export function TemplateEditorForm({
   const constructBlueprint = (): AppTemplateBlueprint => {
     const hasStorageOrMounts = storageEnabled || mounts.length > 0
     const trimmedHealthCheck = healthCheckPath.trim()
+    const parsedCommand = runtimeCommand.trim().split(/\s+/).filter(Boolean)
+    const parsedArgs = runtimeArgs.trim().split(/\s+/).filter(Boolean)
     return {
       version: "1.0.0",
       runtime: {
@@ -256,6 +268,8 @@ export function TemplateEditorForm({
             }
           : {}),
         runAsNonRoot,
+        ...(parsedCommand.length > 0 ? { command: parsedCommand } : {}),
+        ...(parsedArgs.length > 0 ? { args: parsedArgs } : {}),
         deploymentType,
         additionalPorts,
       },
@@ -478,6 +492,12 @@ export function TemplateEditorForm({
           setDeploymentType(bp.runtime.deploymentType)
         if (bp.runtime.additionalPorts)
           setAdditionalPorts(bp.runtime.additionalPorts)
+        if (Array.isArray(bp.runtime.command))
+          setRuntimeCommand(bp.runtime.command.join(" "))
+        else if (bp.runtime.command === undefined) setRuntimeCommand("")
+        if (Array.isArray(bp.runtime.args))
+          setRuntimeArgs(bp.runtime.args.join(" "))
+        else if (bp.runtime.args === undefined) setRuntimeArgs("")
       }
 
       if (bp.resources) {
@@ -1061,6 +1081,32 @@ export function TemplateEditorForm({
                         <SelectItem value="statefulset">StatefulSet</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="runtime-command">Container Command</Label>
+                    <Input
+                      id="runtime-command"
+                      value={runtimeCommand}
+                      onChange={(e) => setRuntimeCommand(e.target.value)}
+                      placeholder="e.g. hermes gateway run"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Override container entrypoint (space-separated)
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="runtime-args">Container Arguments</Label>
+                    <Input
+                      id="runtime-args"
+                      value={runtimeArgs}
+                      onChange={(e) => setRuntimeArgs(e.target.value)}
+                      placeholder="e.g. gateway run"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Optional arguments passed to the entrypoint
+                    </p>
                   </div>
                 </div>
 

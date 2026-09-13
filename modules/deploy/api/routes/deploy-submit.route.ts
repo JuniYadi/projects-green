@@ -25,6 +25,8 @@ interface BlueprintRuntimeConfig {
   runtime?: {
     defaultPort?: number
     image?: string
+    command?: string[]
+    args?: string[]
     deploymentType?: "deployment" | "statefulset"
     additionalPorts?: Array<{ port: number; name: string }>
   }
@@ -136,6 +138,8 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       port: number
       name: string
     }> | null = null
+    let dbTemplateCommand: string[] | null = null
+    let dbTemplateArgs: string[] | null = null
     let resolvedDbTemplateId: string | null = null
     let dbTemplateVersion: string | null = null
     let resolvedTemplateDefaultPort: number | null = null
@@ -154,6 +158,32 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       repositoryConnectionId = null
       name = body.name?.trim() || managedTemplate.name
       slug = slugify(name)
+
+      if (body.templateId) {
+        const dbTemplate = await prisma.appTemplate.findFirst({
+          where: {
+            OR: [{ id: body.templateId }, { slug: body.templateId }],
+          },
+        })
+        if (dbTemplate) {
+          resolvedDbTemplateId = dbTemplate.id
+          const blueprint =
+            (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig) ??
+            null
+          dbTemplateImageRepository = blueprint?.runtime?.image ?? null
+          dbTemplateDeploymentType = blueprint?.runtime?.deploymentType ?? null
+          dbTemplateAdditionalPorts =
+            blueprint?.runtime?.additionalPorts ?? null
+          dbTemplateCommand = Array.isArray(blueprint?.runtime?.command)
+            ? blueprint.runtime.command
+            : null
+          dbTemplateArgs = Array.isArray(blueprint?.runtime?.args)
+            ? blueprint.runtime.args
+            : null
+          dbTemplateVersion = dbTemplate.version ?? "1.0.0"
+          resolvedTemplateDefaultPort = blueprint?.runtime?.defaultPort ?? null
+        }
+      }
     } else if (sourceType === "TEMPLATE") {
       let template = DEPLOY_TEMPLATES.find(
         (item) => item.id === body.templateId
@@ -174,6 +204,12 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           dbTemplateDeploymentType = blueprint?.runtime?.deploymentType ?? null
           dbTemplateAdditionalPorts =
             blueprint?.runtime?.additionalPorts ?? null
+          dbTemplateCommand = Array.isArray(blueprint?.runtime?.command)
+            ? blueprint.runtime.command
+            : null
+          dbTemplateArgs = Array.isArray(blueprint?.runtime?.args)
+            ? blueprint.runtime.args
+            : null
           dbTemplateVersion = dbTemplate.version ?? "1.0.0"
           if (!template) {
             template = {
@@ -335,6 +371,8 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           managedTemplate?.imageRepository ?? dbTemplateImageRepository ?? null,
         deploymentType: dbTemplateDeploymentType,
         additionalPorts: dbTemplateAdditionalPorts,
+        command: dbTemplateCommand,
+        args: dbTemplateArgs,
         healthCheckPath: body.healthCheckPath,
         fsGroup: body.fsGroup,
         templateId:
