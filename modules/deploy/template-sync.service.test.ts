@@ -139,6 +139,7 @@ describe("template-sync.service", () => {
           version: "1.0.0",
           runtime: {
             image: "registry.pfnapp.com/ninerouter:latest",
+            command: ["hermes", "gateway", "run"],
             defaultPort: 8080,
             deploymentType: "statefulset",
             additionalPorts: [{ port: 9119, name: "dashboard" }],
@@ -199,6 +200,11 @@ describe("template-sync.service", () => {
         { port: 9119, name: "dashboard" },
       ])
       expect(updateCall.data.metadataJson.healthCheckPath).toBe("/healthz")
+      expect(updateCall.data.metadataJson.command).toEqual([
+        "hermes",
+        "gateway",
+        "run",
+      ])
       expect(updateCall.data.metadataJson.customBuildOpt).toBe(true)
       expect(updateCall.data.metadataJson.templateVersion).toBe("1.0.0")
 

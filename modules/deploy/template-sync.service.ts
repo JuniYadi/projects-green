@@ -95,9 +95,25 @@ export async function listTemplateInstallations(
     const installedVersion =
       (meta.templateVersion as string | undefined) ?? "1.0.0"
     const latestVersion = template.version ?? "1.0.0"
+    const currentCommand = Array.isArray(meta.command)
+      ? (meta.command as string[]).join(" ")
+      : ""
+    const targetCommand = Array.isArray(bp?.runtime?.command)
+      ? bp.runtime.command.join(" ")
+      : ""
+    const isCommandAligned = currentCommand === targetCommand
+    const currentArgs = Array.isArray(meta.args)
+      ? (meta.args as string[]).join(" ")
+      : ""
+    const targetArgs = Array.isArray(bp?.runtime?.args)
+      ? bp.runtime.args.join(" ")
+      : ""
+    const isArgsAligned = currentArgs === targetArgs
     const isAligned =
       currentDeploymentType === targetDeploymentType &&
-      installedVersion === latestVersion
+      installedVersion === latestVersion &&
+      isCommandAligned &&
+      isArgsAligned
     const latestDeployment = stack.deployments[0] ?? null
     return {
       id: stack.id,
@@ -201,6 +217,16 @@ export async function syncStackFromParentTemplate(params: {
     }
     if (bp.runtime.defaultPort) {
       updatedMetadata.defaultPort = bp.runtime.defaultPort
+    }
+    if (bp.runtime.command !== undefined) {
+      updatedMetadata.command = bp.runtime.command
+    } else {
+      delete updatedMetadata.command
+    }
+    if (bp.runtime.args !== undefined) {
+      updatedMetadata.args = bp.runtime.args
+    } else {
+      delete updatedMetadata.args
     }
     if (bp.runtime.healthCheckPath !== undefined) {
       updatedMetadata.healthCheckPath =

@@ -44,6 +44,8 @@ export type StackUpsertInput = {
   imageRepository?: string | null
   deploymentType?: "deployment" | "statefulset" | null
   additionalPorts?: Array<{ port: number; name: string }> | null
+  command?: string[] | null
+  args?: string[] | null
   fsGroup?: number | null
   healthCheckPath?: string | null
   templateId?: string | null
@@ -174,6 +176,8 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       buildMetadata.deploymentType = input.deploymentType
     if (input.additionalPorts != null)
       buildMetadata.additionalPorts = input.additionalPorts
+    if (input.command !== undefined) buildMetadata.command = input.command
+    if (input.args !== undefined) buildMetadata.args = input.args
     if (input.healthCheckPath !== undefined)
       buildMetadata.healthCheckPath = input.healthCheckPath
     if (input.fsGroup !== undefined) buildMetadata.fsGroup = input.fsGroup

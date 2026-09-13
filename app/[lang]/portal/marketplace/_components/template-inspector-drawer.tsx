@@ -213,6 +213,26 @@ export function TemplateInspectorDrawer({
                     {runtime.healthCheckPath || "N/A"}
                   </p>
                 </div>
+                {Boolean(runtime.command && runtime.command.length > 0) && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">
+                      Command:
+                    </span>
+                    <p className="font-mono font-medium">
+                      {runtime.command?.join(" ")}
+                    </p>
+                  </div>
+                )}
+                {Boolean(runtime.args && runtime.args.length > 0) && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">
+                      Arguments:
+                    </span>
+                    <p className="font-mono font-medium">
+                      {runtime.args?.join(" ")}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
