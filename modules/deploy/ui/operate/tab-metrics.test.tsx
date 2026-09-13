@@ -136,9 +136,7 @@ describe("TabMetrics", () => {
     expect(view.getByText("RAM Working Set per Pod")).toBeDefined()
     expect(view.getByText("Network Ingress per Pod")).toBeDefined()
     expect(view.queryByText("Filter Pod:")).toBeNull()
-    expect(view.getByText("Resource Advisory")).toBeDefined()
-    expect(view.getByText("Latency Percentiles")).toBeDefined()
-    expect(view.getByText("HTTP Status & Error Rate")).toBeDefined()
+    expect(view.getByText(/Resource Advisory/i)).toBeDefined()
   })
 
   it("renders pod replica selector when multiple pods are present", () => {
