@@ -10,11 +10,23 @@ import {
   GearSix,
   Storefront,
   MagnifyingGlass,
+  ArrowSquareOut,
+  DotsThreeVertical,
+  Globe,
+  GitBranch,
+  Cube,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   DEPLOY_STATUS_LABELS,
   DEPLOY_STATUS_TONE as STATUS_TONE,
@@ -38,6 +50,67 @@ const formatRelativeTime = (timestamp: string, locale: string) => {
     Math.round(elapsedMs / unitMs),
     unit
   )
+}
+
+const formatDate = (dateStr: string | null, locale: string) => {
+  if (!dateStr) return "Never"
+  try {
+    return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(dateStr))
+  } catch {
+    return dateStr
+  }
+}
+
+const getAppType = (app: StackSummaryDTO) => {
+  if (app.framework && !app.framework.startsWith("c")) {
+    return { label: app.framework, isTemplate: false }
+  }
+  if (app.templateName && !app.templateName.startsWith("c")) {
+    return { label: app.templateName, isTemplate: true }
+  }
+  if (
+    app.templateId &&
+    !app.templateId.startsWith("c") &&
+    app.templateId.length < 25
+  ) {
+    return { label: app.templateId, isTemplate: true }
+  }
+  if (app.sourceType === "TEMPLATE") {
+    return { label: "Template App", isTemplate: true }
+  }
+  return { label: "Custom App", isTemplate: false }
+}
+
+const getDeploymentStatusText = (app: StackSummaryDTO, locale: string) => {
+  if (app.status === "running") {
+    if (
+      app.currentStepLabel &&
+      !app.currentStepLabel.toLowerCase().includes("deploying") &&
+      !app.currentStepLabel.toLowerCase().includes("queued") &&
+      !app.currentStepLabel.toLowerCase().includes("building")
+    ) {
+      return `${app.currentStepLabel}${
+        app.currentStepStartedAt
+          ? ` — ${formatRelativeTime(app.currentStepStartedAt, locale)}`
+          : ""
+      }`
+    }
+    return app.lastDeployedAt
+      ? `Live — ${formatRelativeTime(app.lastDeployedAt, locale)}`
+      : "Application live"
+  }
+  if (app.currentStepLabel) {
+    return `${app.currentStepLabel}${
+      app.currentStepStartedAt
+        ? ` — ${formatRelativeTime(app.currentStepStartedAt, locale)}`
+        : ""
+    }`
+  }
+  return "—"
 }
 
 export default function PlatformsFleetPage() {
@@ -106,11 +179,17 @@ export default function PlatformsFleetPage() {
         const matchesSlug = app.slug.toLowerCase().includes(q)
         const matchesBranch = app.branchName.toLowerCase().includes(q)
         const matchesFramework = app.framework?.toLowerCase().includes(q)
+        const matchesTemplate = app.templateName?.toLowerCase().includes(q)
+        const matchesSubdomain = app.subdomain?.toLowerCase().includes(q)
+        const matchesCustomDomain = app.customDomain?.toLowerCase().includes(q)
         return (
           matchesName ||
           matchesSlug ||
           matchesBranch ||
-          Boolean(matchesFramework)
+          Boolean(matchesFramework) ||
+          Boolean(matchesTemplate) ||
+          Boolean(matchesSubdomain) ||
+          Boolean(matchesCustomDomain)
         )
       }
 
@@ -281,7 +360,7 @@ export default function PlatformsFleetPage() {
                   <th className="px-4 py-3 font-medium">Branch</th>
                   <th className="px-4 py-3 font-medium">Last Deployed</th>
                   <th className="px-4 py-3 font-medium">Current deployment</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,77 +371,162 @@ export default function PlatformsFleetPage() {
                   const deploymentsHref = `/${locale}/console/app/platform/${app.slug}?tab=deployments`
                   const settingsHref = `/${locale}/console/app/platform/${app.slug}?tab=env`
 
+                  const targetDomain = app.customDomain || app.subdomain
+                  const typeInfo = getAppType(app)
+                  const deploymentStatusText = getDeploymentStatusText(
+                    app,
+                    locale
+                  )
+
                   return (
                     <tr
                       key={app.id}
                       className="border-b border-border transition-colors hover:bg-muted/20"
                     >
-                      <td className="px-4 py-3 font-medium">
-                        <Link
-                          href={overviewHref}
-                          className="font-medium text-foreground hover:underline"
-                        >
-                          {app.name}
-                        </Link>
+                      <td className="px-4 py-3">
+                        <div className="space-y-0.5">
+                          <Link
+                            href={overviewHref}
+                            className="font-medium text-foreground hover:underline"
+                          >
+                            {app.name}
+                          </Link>
+                          {targetDomain ? (
+                            <div>
+                              <a
+                                href={`https://${targetDomain}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                              >
+                                <Globe size={12} className="shrink-0" />
+                                <span className="max-w-[200px] truncate">
+                                  {targetDomain}
+                                </span>
+                                <ArrowSquareOut
+                                  size={11}
+                                  className="shrink-0 text-muted-foreground"
+                                />
+                              </a>
+                            </div>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
                             STATUS_TONE[app.status] ?? STATUS_TONE.idle
                           }`}
                         >
+                          <span className="size-1.5 rounded-full bg-current" />
                           {DEPLOY_STATUS_LABELS[app.status] ?? app.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {app.framework ?? app.templateId ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                        {app.branchName}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {app.lastDeployedAt
-                          ? new Date(app.lastDeployedAt).toLocaleDateString()
-                          : "Never"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {app.currentStepLabel
-                          ? `${app.currentStepLabel} — ${
-                              app.currentStepStartedAt
-                                ? formatRelativeTime(
-                                    app.currentStepStartedAt,
-                                    locale
-                                  )
-                                : "—"
-                            }`
-                          : "—"}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <Cube
+                            size={13}
+                            className="shrink-0 text-muted-foreground"
+                          />
+                          <span className="font-medium text-foreground">
+                            {typeInfo.label}
+                          </span>
+                          {typeInfo.isTemplate ? (
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              Template
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <Button asChild variant="outline" size="xs">
-                            <Link href={deploymentsHref}>
-                              <ListMagnifyingGlass size={13} className="mr-1" />
-                              Deployments
-                            </Link>
+                        <span className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground">
+                          <GitBranch size={12} className="shrink-0" />
+                          {app.branchName}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {formatDate(app.lastDeployedAt, locale)}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {deploymentStatusText}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="xs"
+                            className="h-7 text-xs"
+                          >
+                            <Link href={overviewHref}>Overview</Link>
                           </Button>
-                          <Button asChild variant="outline" size="xs">
-                            <Link href={logsHref}>
-                              <ListMagnifyingGlass size={13} className="mr-1" />
-                              Logs
-                            </Link>
-                          </Button>
-                          <Button asChild variant="outline" size="xs">
-                            <Link href={metricsHref}>
-                              <ChartLine size={13} className="mr-1" />
-                              Metrics
-                            </Link>
-                          </Button>
-                          <Button asChild variant="outline" size="xs">
-                            <Link href={settingsHref}>
-                              <GearSix size={13} className="mr-1" />
-                              Settings
-                            </Link>
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                aria-label={`Actions for ${app.name}`}
+                              >
+                                <DotsThreeVertical size={16} weight="bold" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              {targetDomain && app.status === "running" ? (
+                                <>
+                                  <DropdownMenuItem asChild>
+                                    <a
+                                      href={`https://${targetDomain}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="flex cursor-pointer items-center gap-2"
+                                    >
+                                      <ArrowSquareOut size={14} />
+                                      <span>Open Live App</span>
+                                    </a>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              ) : null}
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={deploymentsHref}
+                                  className="flex cursor-pointer items-center gap-2"
+                                >
+                                  <RocketLaunch size={14} />
+                                  <span>Deployments</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={logsHref}
+                                  className="flex cursor-pointer items-center gap-2"
+                                >
+                                  <ListMagnifyingGlass size={14} />
+                                  <span>Logs</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={metricsHref}
+                                  className="flex cursor-pointer items-center gap-2"
+                                >
+                                  <ChartLine size={14} />
+                                  <span>Metrics</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={settingsHref}
+                                  className="flex cursor-pointer items-center gap-2"
+                                >
+                                  <GearSix size={14} />
+                                  <span>Settings</span>
+                                </Link>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </td>
                     </tr>
