@@ -1552,48 +1552,35 @@ function PodObservabilityView({
               </tbody>
             </table>
           </div>
+
+          {/* Resource Advisory Banner (Real Dynamic Headroom Telemetry) */}
+          <div className="mt-3.5 flex items-start gap-2.5 rounded-lg border border-border bg-muted/20 p-3 text-xs">
+            {memPercent > 85 ? (
+              <Warning size={16} className="mt-0.5 shrink-0 text-destructive" />
+            ) : cpuPercent > 85 ? (
+              <Warning size={16} className="mt-0.5 shrink-0 text-amber-500" />
+            ) : (
+              <CheckCircle
+                size={16}
+                className="mt-0.5 shrink-0 text-emerald-500"
+              />
+            )}
+            <div className="space-y-0.5 leading-relaxed">
+              <span className="font-semibold text-foreground">
+                Resource Advisory:{" "}
+              </span>
+              <span className="text-muted-foreground">
+                {memPercent > 85
+                  ? `Elevated RAM utilization at ${memPercent}% (${formatBytes(totalMemBytes)} of ${ramLimitMB} MB). Under heavy load, container pods risk OOMKilled restarts. `
+                  : `RAM headroom adequate (${formatBytes(totalMemBytes)} of ${ramLimitMB} MB, ${memPercent}% allocated). `}
+                {cpuPercent > 85
+                  ? `High CPU consumption at ${cpuPercent}% (${totalCpuCores.toFixed(3)} of ${cpuLimitCores} cores), which may cause container throttling.`
+                  : `Steady CPU at ${totalCpuCores.toFixed(3)} cores (${cpuPercent}% of ${cpuLimitCores} Limit). Buffer is optimal.`}
+              </span>
+            </div>
+          </div>
         </CardContent>
       </Card>
-
-      {/* Deep-dive Observability Cards: Advisory, Latency & Traffic Distribution */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <ResourceAdvisoryCard
-          cpuUsageValue={totalCpuCores}
-          cpuLimitValue={cpuLimitCores}
-          cpuPercent={cpuPercent}
-          memoryUsageValue={totalMemBytes}
-          memoryLimitValue={ramLimitMB * 1024 * 1024}
-          memoryPercent={memPercent}
-        />
-        <div className="col-span-2 grid gap-6 md:grid-cols-2">
-          <LatencyPercentilesCard
-            currentMetrics={
-              METRICS_BY_RANGE[
-                timeSelection.type === "preset" &&
-                timeSelection.preset in METRICS_BY_RANGE
-                  ? (timeSelection.preset as TimeRange)
-                  : "1h"
-              ]
-            }
-            timeRange={
-              timeSelection.type === "preset" &&
-              timeSelection.preset in METRICS_BY_RANGE
-                ? (timeSelection.preset as TimeRange)
-                : "1h"
-            }
-          />
-          <HttpStatusDistributionCard
-            currentMetrics={
-              METRICS_BY_RANGE[
-                timeSelection.type === "preset" &&
-                timeSelection.preset in METRICS_BY_RANGE
-                  ? (timeSelection.preset as TimeRange)
-                  : "1h"
-              ]
-            }
-          />
-        </div>
-      </div>
     </div>
   )
 }
