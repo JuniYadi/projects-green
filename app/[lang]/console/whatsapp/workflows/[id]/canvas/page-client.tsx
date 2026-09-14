@@ -404,9 +404,11 @@ export default function WhatsappWorkflowCanvasPage() {
 
         if (workflowId === "new" && draftWorkflowStr) {
           try {
-            const draft = JSON.parse(draftWorkflowStr)
+            const rawDraft = JSON.parse(draftWorkflowStr)
             sessionStorage.removeItem("draft_canvas_workflow")
-            if (mounted) {
+            const parsed = WorkflowDefinitionSchema.safeParse(rawDraft)
+            if (parsed.success && mounted) {
+              const draft = parsed.data
               setWorkflowMeta({
                 id: "wf_new",
                 name: draft.name || "Alur AI WhatsApp",
@@ -419,30 +421,37 @@ export default function WhatsappWorkflowCanvasPage() {
                   keywords: ["halo", "tanya"],
                 },
               })
-              if (Array.isArray(draft.nodes)) {
-                const loadedNodes = (draft.nodes as WorkflowNode[]).map((n) => {
-                  if (n.type === "ai_generate" && draft.agentProfileId) {
-                    return {
-                      ...n,
-                      config: {
-                        ...n.config,
-                        agentProfileId: draft.agentProfileId,
-                        agentProfileName: draft.agentProfileName,
-                      },
-                    }
+              const loadedNodes = draft.nodes.map((n) => {
+                if (
+                  n.type === "ai_generate" &&
+                  (rawDraft as { agentProfileId?: string }).agentProfileId
+                ) {
+                  return {
+                    ...n,
+                    config: {
+                      ...n.config,
+                      agentProfileId: (
+                        rawDraft as { agentProfileId?: string }
+                      ).agentProfileId,
+                      agentProfileName: (
+                        rawDraft as { agentProfileName?: string }
+                      ).agentProfileName,
+                    },
                   }
-                  return n
-                })
-                setNodes(loadedNodes.map(toXyFlowNode))
-              }
+                }
+                return n
+              })
+              setNodes(loadedNodes.map(toXyFlowNode))
               if (Array.isArray(draft.edges)) {
-                setEdges((draft.edges as WorkflowEdge[]).map(toXyFlowEdge))
+                setEdges(draft.edges.map(toXyFlowEdge))
               }
               toast.success(
                 "Alur dari AI Studio berhasil dimuat ke Canvas WhatsApp!"
               )
+              return
+            } else if (!parsed.success) {
+              console.warn("[canvas] invalid draft schema:", parsed.error)
             }
-            return
           } catch (err) {
             console.error("[canvas] failed parsing draft workflow:", err)
           }

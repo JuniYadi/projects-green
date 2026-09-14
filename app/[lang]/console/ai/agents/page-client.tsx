@@ -282,7 +282,8 @@ export default function AiAgentsPage() {
         if (openCanvasAfter && generatedWorkflowRaw) {
           const draftPayload = {
             ...(generatedWorkflowRaw as Record<string, unknown>),
-            name: name.trim() || (generatedWorkflowRaw as { name?: string }).name,
+            name:
+              name.trim() || (generatedWorkflowRaw as { name?: string }).name,
             agentProfileId: savedAgent.id,
             agentProfileName: savedAgent.name,
           }
@@ -294,10 +295,10 @@ export default function AiAgentsPage() {
           }
           toast.success("Asisten disimpan! Membuka di WhatsApp Canvas...")
           router.push(`/${lang}/console/whatsapp/workflows/new/canvas`)
-        } else {
-          toast.success("Asisten AI berhasil disimpan.")
+          return
         }
 
+        toast.success("Asisten AI berhasil disimpan.")
         setName("")
         setDescription("")
         setSystemPrompt("")

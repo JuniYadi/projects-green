@@ -462,9 +462,14 @@ export async function executeWorkflowNode(
 
             // Guardrail 2: Profanity filter and blocked words
             if (agent.enableProfanityFilter && agent.customBlockedWords?.length) {
-              const isBlocked = agent.customBlockedWords.some((word: string) =>
-                renderedPrompt.toLowerCase().includes(word.toLowerCase().trim())
-              )
+              const isBlocked = agent.customBlockedWords.some((word: string) => {
+                const trimmed = word.trim()
+                if (!trimmed) return false
+                const escaped = trimmed
+                  .toLowerCase()
+                  .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+                return new RegExp(`\\b${escaped}\\b`, "i").test(renderedPrompt)
+              })
               if (isBlocked) {
                 const fallback =
                   agent.fallbackMessage ||

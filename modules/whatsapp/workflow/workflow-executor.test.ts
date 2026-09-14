@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test"
 
+type MockHybridChunk = {
+  id: string
+  title: string
+  category: string
+  contentMarkdown: string
+  rrfScore: number
+}
+
 const sendMessage = mock(async () => ({ jobId: "j" }))
 const generateText = mock(async () => ({ text: "  generated answer  " }))
 const resolveAiProviderConfig = mock(async () => ({
@@ -13,7 +21,7 @@ const mockPrisma = {
   },
 }
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
-const searchHybridKnowledge = mock(async () => [])
+const searchHybridKnowledge = mock(async (): Promise<MockHybridChunk[]> => [])
 mock.module("@/modules/ai/ai-rag.service", () => ({ searchHybridKnowledge }))
 
 mock.module("@/modules/whatsapp/messages/messages.service", () => ({
@@ -327,5 +335,37 @@ describe("executeWorkflowNode", () => {
       })
     )
     expect(generateText).not.toHaveBeenCalled()
+  })
+
+  test("does not false-positive on substrings when profanity filter uses word boundaries", async () => {
+    mockPrisma.aiAgentProfile.findFirst.mockResolvedValueOnce({
+      id: "agent_123",
+      isActive: true,
+      systemPrompt: "Anda adalah AI Toko.",
+      enableProfanityFilter: true,
+      customBlockedWords: ["apa"],
+      fallbackMessage: "Mohon gunakan bahasa yang sopan.",
+      maxCharLength: 500,
+      knowledgeDocuments: [],
+    })
+
+    // "Berapa" contains "apa" as a substring, but is NOT the word "apa"
+    const result = await executeWorkflowNode(
+      base({
+        type: "ai_generate",
+        id: "node_ai",
+        name: "AI Step",
+        config: {
+          prompt: "Berapa harganya?",
+          captureVariable: "ai_reply",
+          agentProfileId: "agent_123",
+          sendReply: false,
+        },
+      })
+    )
+
+    expect(result.status).toBe("COMPLETED")
+    expect(generateText).toHaveBeenCalled()
+    expect(result.capturedVariable?.value).toBe("generated answer")
   })
 })
