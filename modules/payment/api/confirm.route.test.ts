@@ -21,17 +21,23 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 
 type MockVal = Record<string, unknown> | null
 
-const mockBillingInvoiceFindFirst = mock(
-  (): Promise<MockVal> => Promise.resolve(null)
+const mockBillingInvoiceFindFirst = mock((): Promise<MockVal> =>
+  Promise.resolve(null)
 )
-const mockPaymentConfirmationFindFirst = mock(
-  (): Promise<MockVal> => Promise.resolve(null)
+const mockPaymentConfirmationFindFirst = mock((): Promise<MockVal> =>
+  Promise.resolve(null)
 )
 const mockPaymentConfirmationCreate = mock(() => Promise.resolve({}))
 
 const mockPrisma = {
   billingInvoice: {
     findFirst: mockBillingInvoiceFindFirst,
+  },
+  billingAccount: {
+    findUnique: mock(async () => null),
+  },
+  authPlatformUserRole: {
+    findMany: mock(async () => []),
   },
   paymentConfirmation: {
     findFirst: mockPaymentConfirmationFindFirst,

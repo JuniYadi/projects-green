@@ -23,6 +23,9 @@ const mockPrismaClient = {
   billingAdjustment: {
     create: mockCreate,
   },
+  billingAuditLog: {
+    create: mock(async () => ({})),
+  },
   $transaction: mockTransaction,
 }
 

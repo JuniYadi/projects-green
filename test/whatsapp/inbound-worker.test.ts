@@ -23,9 +23,13 @@ const mockMessage: MockQuery = {
   update: mock(async () => null),
 }
 
-const mockDevice: MockQuery = {
+const mockDevice = {
   findFirst: mock(async () => null),
   findUnique: mock(async () => ({ id: "device-1", organizationId: "org-1" })),
+  findUniqueOrThrow: mock(async () => ({
+    id: "device-1",
+    organizationId: "org-1",
+  })),
   create: mock(async () => null),
   update: mock(async () => null),
 }
@@ -59,6 +63,15 @@ mock.module("@/lib/prisma", () => ({
     whatsappMedia: {
       findUnique: mock(async () => null),
       upsert: mock(async () => ({ id: "media-1" })),
+    },
+    whatsappWorkflowSession: {
+      findFirst: mock(async () => null),
+    },
+    whatsappWorkflow: {
+      findFirst: mock(async () => null),
+    },
+    aiChannelBinding: {
+      findFirst: mock(async () => null),
     },
   },
 }))

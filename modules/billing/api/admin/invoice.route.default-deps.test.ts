@@ -52,6 +52,9 @@ mock.module("@/lib/prisma", () => ({
       findUnique: mockFindUnique,
       update: mockUpdate,
     },
+    billingAuditLog: {
+      create: mock(async () => ({})),
+    },
   },
 }))
 

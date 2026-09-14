@@ -23,7 +23,14 @@ const mockPrismaClient = {
     update: mockUpdate,
   },
   billingAccount: {
+    findUnique: mock(async () => ({ organizationId: "org-test" })),
     update: mockBalanceUpdate,
+  },
+  billingAuditLog: {
+    create: mock(async () => ({})),
+  },
+  authPlatformUserRole: {
+    findMany: mock(async () => []),
   },
 }
 
