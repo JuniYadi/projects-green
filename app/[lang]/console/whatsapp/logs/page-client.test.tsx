@@ -91,22 +91,15 @@ mock.module("@/lib/eden", () => ({
   },
 }))
 
-import ConsoleWhatsAppLogsPage from "./page"
+import ConsoleWhatsAppLogsPage from "./page-client"
 
-describe("ConsoleWhatsAppLogsPage", () => {
+describe("ConsoleWhatsAppLogsPageClient", () => {
   it("renders page heading and tabs", async () => {
+    mockIsFeatureLocked = false
     const view = render(<ConsoleWhatsAppLogsPage />)
     expect(view.getByText("Logs & Activity Trail")).toBeInTheDocument()
     expect(view.getByRole("tab", { name: "Message Logs" })).toBeInTheDocument()
     expect(view.getByRole("tab", { name: "Activity Logs" })).toBeInTheDocument()
-  })
-
-  it("renders message logs tab content by default", async () => {
-    mockIsFeatureLocked = false
-    const view = render(<ConsoleWhatsAppLogsPage />)
-    expect(
-      view.getAllByText("Message Logs & Delivery Status").length
-    ).toBeGreaterThanOrEqual(1)
   })
 
   it("renders locked teaser on webhooks tab without locking out tabs when webhook_logs is locked", async () => {

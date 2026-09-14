@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import type { WhatsappAuditLog } from "@prisma/client"
 
 export type WhatsappAuditLogDTO = {
   id: string
@@ -9,6 +9,7 @@ export type WhatsappAuditLogDTO = {
   adminId: string | null
   actorName?: string | null
   actorEmail?: string | null
+  isPlatformAdmin?: boolean
   correlationId: string | null
   action: string
   status: string | null
@@ -21,11 +22,11 @@ export type WhatsappAuditLogDTO = {
   createdAt: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-type AuditLogWithExtras = Prisma.WhatsappAuditLogGetPayload<{}> & {
+type AuditLogWithExtras = WhatsappAuditLog & {
   deviceLabel?: string | null
   actorName?: string | null
   actorEmail?: string | null
+  isPlatformAdmin?: boolean
 }
 
 export function toWhatsappAuditLogDTO(
@@ -49,6 +50,7 @@ export function toWhatsappAuditLogDTO(
     adminId: log.adminId,
     actorName: log.actorName ?? (log.adminId ? log.adminId.slice(0, 10) : null),
     actorEmail: log.actorEmail ?? null,
+    isPlatformAdmin: Boolean(log.isPlatformAdmin),
     correlationId: log.correlationId,
     action: log.action,
     status: log.status,

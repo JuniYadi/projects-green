@@ -20,6 +20,9 @@ const mockPrisma = {
     findUnique: mock(),
     findMany: mock(),
   },
+  authPlatformUserRole: {
+    findMany: mock(),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
@@ -84,6 +87,8 @@ beforeEach(() => {
   mockPrisma.whatsappDevice.findUnique.mockReset()
   mockPrisma.whatsappDevice.findMany.mockReset()
   mockPrisma.whatsappDevice.findMany.mockResolvedValue([])
+  mockPrisma.authPlatformUserRole.findMany.mockReset()
+  mockPrisma.authPlatformUserRole.findMany.mockResolvedValue([])
 })
 const mockUnauthorized = (set: any) => {
   set.status = 401
@@ -183,6 +188,45 @@ describe("Admin WhatsApp Audit Routes", () => {
       expect(body.data[0].actorEmail).toBe("admin@example.com")
       expect(body.data[0].deviceLabel).toBe("+628123456789")
       expect(mockGetCachedUser).toHaveBeenCalledWith("user_admin_123")
+    })
+
+    it("preserves super admin name and email in admin portal while setting isPlatformAdmin: true", async () => {
+      mockPrisma.whatsappAuditLog.count.mockResolvedValue(1)
+      mockPrisma.whatsappAuditLog.findMany.mockResolvedValue([
+        {
+          ...sampleRows[0],
+          adminId: "user_super_admin_123",
+          deviceId: "dev-1",
+        },
+      ])
+      mockGetCachedUser.mockResolvedValue({
+        name: "pfnjyadi",
+        email: "pfnjyadi@gmail.com",
+      })
+      mockPrisma.authPlatformUserRole.findMany.mockResolvedValue([
+        {
+          workosUserId: "user_super_admin_123",
+          email: "pfnjyadi@gmail.com",
+        },
+      ])
+
+      const app = buildApp()
+      const res = await app.handle(new Request(`${BASE}/`))
+      const body = (await res.json()) as {
+        ok: boolean
+        data: Array<{
+          id: string
+          actorName: string | null
+          actorEmail: string | null
+          isPlatformAdmin?: boolean
+        }>
+      }
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data[0].actorName).toBe("pfnjyadi")
+      expect(body.data[0].actorEmail).toBe("pfnjyadi@gmail.com")
+      expect(body.data[0].isPlatformAdmin).toBe(true)
     })
 
     it("returns empty list when no entries", async () => {
@@ -385,6 +429,45 @@ describe("Console WhatsApp Audit Routes", () => {
       expect(body.data[0].actorEmail).toBe("console@example.com")
       expect(body.data[0].deviceLabel).toBe("+628123456789")
       expect(mockGetCachedUser).toHaveBeenCalledWith("user_console_123")
+    })
+
+    it("masks platform super admin identity to Platform Support and removes email in console workspace", async () => {
+      mockPrisma.whatsappAuditLog.count.mockResolvedValue(1)
+      mockPrisma.whatsappAuditLog.findMany.mockResolvedValue([
+        {
+          ...sampleRows[0],
+          adminId: "user_super_admin_123",
+          deviceId: "dev-1",
+        },
+      ])
+      mockGetCachedUser.mockResolvedValue({
+        name: "pfnjyadi",
+        email: "pfnjyadi@gmail.com",
+      })
+      mockPrisma.authPlatformUserRole.findMany.mockResolvedValue([
+        {
+          workosUserId: "user_super_admin_123",
+          email: "pfnjyadi@gmail.com",
+        },
+      ])
+
+      const app = buildConsoleApp()
+      const res = await app.handle(new Request(`${CONSOLE_BASE}/`))
+      const body = (await res.json()) as {
+        ok: boolean
+        data: Array<{
+          id: string
+          actorName: string | null
+          actorEmail: string | null
+          isPlatformAdmin?: boolean
+        }>
+      }
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data[0].actorName).toBe("Platform Support")
+      expect(body.data[0].actorEmail).toBeNull()
+      expect(body.data[0].isPlatformAdmin).toBe(true)
     })
   })
 
