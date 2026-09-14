@@ -61,15 +61,39 @@ export function StackTerminal({
   const [noRunningPod, setNoRunningPod] = useState(false)
   const [targets, setTargets] = useState<TerminalTargetDTO[]>([])
   const [selected, setSelected] = useState<ExecTargetSelection | null>(null)
+  const prevSizeRef = useRef<{ cols: number; rows: number }>({
+    cols: 0,
+    rows: 0,
+  })
+  const resizeRafRef = useRef<number | null>(null)
 
   const sendResize = useCallback(() => {
     const ws = wsRef.current
     const term = termRef.current
-    if (!ws || !term || ws.readyState !== WebSocket.OPEN) return
-    fitAddonRef.current?.fit()
-    ws.send(
-      JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows })
-    )
+    const container = containerRef.current
+    if (!ws || !term || !container || ws.readyState !== WebSocket.OPEN) return
+
+    if (container.clientWidth <= 0 || container.clientHeight <= 0) return
+
+    try {
+      fitAddonRef.current?.fit()
+    } catch {
+      return
+    }
+
+    const cols = term.cols
+    const rows = term.rows
+    if (cols <= 0 || rows <= 0) return
+
+    if (
+      prevSizeRef.current.cols === cols &&
+      prevSizeRef.current.rows === rows
+    ) {
+      return
+    }
+
+    prevSizeRef.current = { cols, rows }
+    ws.send(JSON.stringify({ type: "resize", cols, rows }))
   }, [])
 
   // Without a target the gateway picks the first ready replica.
@@ -192,9 +216,20 @@ export function StackTerminal({
 
   useEffect(() => {
     connect()
-    window.addEventListener("resize", sendResize)
+    const handleWindowResize = () => {
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current)
+      }
+      resizeRafRef.current = requestAnimationFrame(() => {
+        sendResize()
+      })
+    }
+    window.addEventListener("resize", handleWindowResize)
     return () => {
-      window.removeEventListener("resize", sendResize)
+      window.removeEventListener("resize", handleWindowResize)
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current)
+      }
       const ws = wsRef.current
       wsRef.current = null
       ws?.close()
@@ -215,12 +250,32 @@ export function StackTerminal({
   }, [isActive, sendResize])
 
   useEffect(() => {
+    const handleFocus = () => {
+      if (isActive) {
+        termRef.current?.focus()
+      }
+    }
+    window.addEventListener("focus", handleFocus)
+    return () => window.removeEventListener("focus", handleFocus)
+  }, [isActive])
+
+  useEffect(() => {
     if (typeof ResizeObserver === "undefined" || !containerRef.current) return
     const ro = new ResizeObserver(() => {
-      sendResize()
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current)
+      }
+      resizeRafRef.current = requestAnimationFrame(() => {
+        sendResize()
+      })
     })
     ro.observe(containerRef.current)
-    return () => ro.disconnect()
+    return () => {
+      ro.disconnect()
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current)
+      }
+    }
   }, [sendResize])
 
   const readyText = (ready: boolean) =>
@@ -248,8 +303,10 @@ export function StackTerminal({
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-[#09090b] shadow-sm ${
-        fillHeight ? "h-full w-full flex-1" : ""
+      className={`flex w-full min-w-0 flex-col overflow-hidden bg-[#09090b] shadow-sm ${
+        fillHeight
+          ? "h-full flex-1 rounded-none border-0"
+          : "h-[620px] max-h-[calc(100vh-240px)] min-h-[440px] rounded-xl border border-zinc-800"
       }`}
     >
       {/* Terminal Toolbar */}
@@ -411,9 +468,9 @@ export function StackTerminal({
         tabIndex={-1}
         role="region"
         aria-label={isId ? "Konsol terminal" : "Terminal console"}
-        className={`w-full flex-1 cursor-text p-3 font-mono text-sm focus:outline-none ${
-          fillHeight ? "h-full min-h-0" : "min-h-[420px]"
-        } ${noRunningPod ? "hidden" : ""}`}
+        className={`relative w-full min-w-0 flex-1 cursor-text overflow-hidden p-3 font-mono text-sm focus:outline-none ${
+          noRunningPod ? "hidden" : ""
+        }`}
       />
     </div>
   )

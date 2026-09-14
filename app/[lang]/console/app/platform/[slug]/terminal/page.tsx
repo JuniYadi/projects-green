@@ -1,5 +1,10 @@
-import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 
-export const metadata: Metadata = { title: "Terminal" }
-
-export { default } from "./page-client"
+export default async function ConsoleTerminalRedirectPage({
+  params,
+}: {
+  params: Promise<{ lang: string; slug: string }>
+}) {
+  const { lang, slug } = await params
+  redirect(`/${lang}/terminal/${slug}`)
+}

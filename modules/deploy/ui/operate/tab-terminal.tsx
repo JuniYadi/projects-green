@@ -31,7 +31,11 @@ export function TabTerminal({
   const isId = locale.startsWith("id")
 
   return (
-    <div className={`space-y-3 ${fillHeight ? "flex h-full flex-col" : ""}`}>
+    <div
+      className={`w-full min-w-0 ${
+        fillHeight ? "flex h-full flex-col" : "space-y-3"
+      }`}
+    >
       {!fillHeight && (
         <p className="text-xs text-muted-foreground">
           {isId

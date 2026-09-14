@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, TerminalWindow } from "@phosphor-icons/react"
+import { ArrowLeft, TerminalWindow, X } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
@@ -59,9 +59,17 @@ export default function PlatformTerminalStandalonePage() {
 
   const appConsoleUrl = `/${locale}/console/app/platform/${slug}?tab=terminal`
 
+  const handleCloseWindow = () => {
+    if (typeof window !== "undefined" && window.opener) {
+      window.close()
+    } else {
+      router.push(appConsoleUrl)
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#09090b] text-zinc-400">
+      <div className="fixed inset-0 flex h-screen w-screen flex-col items-center justify-center bg-[#09090b] text-zinc-400">
         <div className="flex items-center gap-3">
           <span className="h-3 w-3 animate-pulse rounded-full bg-emerald-500" />
           <p className="font-mono text-xs">
@@ -74,7 +82,7 @@ export default function PlatformTerminalStandalonePage() {
 
   if (error || !stack) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-[#09090b] p-6 text-zinc-400">
+      <div className="fixed inset-0 flex h-screen w-screen flex-col items-center justify-center gap-4 bg-[#09090b] p-6 text-zinc-400">
         <p className="text-sm text-rose-400">{error ?? "App not found"}</p>
         <Button
           variant="outline"
@@ -93,37 +101,48 @@ export default function PlatformTerminalStandalonePage() {
   const statusLabel = DEPLOY_STATUS_LABELS[stack.status] ?? stack.status
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#09090b] text-zinc-100">
-      {/* Standalone Minimal Navigation Bar */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-900/90 px-4">
-        <div className="flex items-center gap-3">
+    <div className="fixed inset-0 flex h-screen w-screen flex-col overflow-hidden bg-[#09090b] text-zinc-100">
+      {/* Standalone Proxmox VNC-style Minimal Top Bar */}
+      <header className="flex h-9 shrink-0 items-center justify-between border-b border-zinc-800/90 bg-zinc-950 px-3 text-xs">
+        <div className="flex items-center gap-2.5">
           <Link
             href={appConsoleUrl}
-            className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
+            title={isId ? "Kembali ke Console" : "Back to Console"}
           >
-            <ArrowLeft size={14} />
-            <span>{isId ? "Kembali" : "Back"}</span>
+            <ArrowLeft size={13} />
+            <span className="text-[11px]">{isId ? "Konsol" : "Console"}</span>
           </Link>
-          <div className="h-4 w-px bg-zinc-800" />
-          <div className="flex items-center gap-2">
-            <TerminalWindow size={16} className="text-emerald-400" />
-            <span className="text-sm font-semibold text-zinc-200">
-              {stack.name}
-            </span>
-            <span className="font-mono text-xs text-zinc-500">
-              ({stack.slug})
-            </span>
-          </div>
+          <div className="h-3.5 w-px bg-zinc-800" />
+          <TerminalWindow size={15} className="text-emerald-400" />
+          <span className="font-semibold text-zinc-200">{stack.name}</span>
+          <span className="font-mono text-[11px] text-zinc-500">
+            ({stack.slug})
+          </span>
           <span
             className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tone}`}
           >
             {statusLabel}
           </span>
         </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleCloseWindow}
+            className="h-6 gap-1 px-2 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+            title={isId ? "Tutup jendela" : "Close window"}
+          >
+            <X size={13} />
+            <span>{isId ? "Tutup" : "Close"}</span>
+          </Button>
+        </div>
       </header>
 
-      {/* Main Terminal Viewport */}
-      <main className="flex-1 overflow-hidden p-2">
+      {/* Main Terminal Viewport (100% focused, borderless, seamless) */}
+      <main className="relative min-h-0 w-full min-w-0 flex-1 overflow-hidden bg-[#09090b]">
         <TabTerminal
           stackId={stack.id}
           locale={locale}

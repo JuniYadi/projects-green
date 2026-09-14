@@ -373,11 +373,11 @@ export default function PlatformInstanceWorkspacePage() {
     terminalEverOpened || activeWorkspaceTab === "terminal"
 
   const handlePopOutTerminal = () => {
-    const standaloneUrl = `/${locale}/console/app/platform/${slug}/terminal`
+    const standaloneUrl = `/${locale}/terminal/${slug}`
     window.open(
       standaloneUrl,
       `terminal-${slug}`,
-      "width=1080,height=700,menubar=no,toolbar=no,location=no,status=no"
+      "width=1080,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes"
     )
   }
 
@@ -738,7 +738,7 @@ export default function PlatformInstanceWorkspacePage() {
             <div
               className={
                 activeWorkspaceTab === "terminal"
-                  ? "space-y-3"
+                  ? "w-full min-w-0 space-y-3"
                   : drawerState === "minimized"
                     ? "pointer-events-none sr-only"
                     : "fixed right-6 bottom-4 z-40 flex h-[440px] w-[720px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-[#09090b] shadow-2xl"
