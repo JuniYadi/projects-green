@@ -212,8 +212,7 @@ export const run = (): number => {
   }
 
   const sorted = [...tests].sort()
-  const concurrency =
-    process.env.TEST_CONCURRENCY?.trim() || (process.env.CI ? "4" : "2")
+  const concurrency = process.env.TEST_CONCURRENCY?.trim() || "2"
   const preload = import.meta.dir + "/../test/setup.ts"
   // --parallel runs files in worker processes and implies --isolate.
   // --max-concurrency only affects test.concurrent, so files ran serially.
