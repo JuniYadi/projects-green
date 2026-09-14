@@ -1,12 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter, useParams } from "next/navigation"
 import { toast } from "sonner"
 import { Spinner } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -15,8 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { eden } from "@/lib/eden"
-import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
 import type { AppCredentialType } from "@prisma/client"
 import {
   credentialTypeRegistry,
@@ -24,19 +29,17 @@ import {
 } from "@/modules/credentials/credential-type-registry"
 
 const TYPE_OPTIONS = Object.keys(credentialTypeRegistry)
-  .filter((key) => key !== "GITHUB_APP") // system-managed, created automatically on GitHub App install
+  .filter((key) => key !== "GITHUB_APP")
   .map((key) => ({
     value: key as AppCredentialType,
     label: getCredentialTypeDef(key as AppCredentialType).label,
   }))
 
-// ─── Secrets field definitions per type ─────────────────────────────────────
-
 type SecretField = { key: string; label: string; type?: string }
 
 const SECRETS_FIELDS: Record<AppCredentialType, SecretField[]> = {
   GITHUB_TOKEN: [{ key: "token", label: "Personal Access Token" }],
-  GITHUB_APP: [], // auto-generated, no user input
+  GITHUB_APP: [],
   CLOUDFLARE_API_TOKEN: [{ key: "token", label: "API Token" }],
   CLOUDFLARE_LEGACY_TOKEN: [
     { key: "apiKey", label: "Global API Key" },
@@ -44,20 +47,37 @@ const SECRETS_FIELDS: Record<AppCredentialType, SecretField[]> = {
   ],
 }
 
-export default function NewCredentialPage() {
-  const router = useRouter()
-  const params = useParams<{ lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
-  const backHref = localizePathname({
-    pathname: "/console/app/credentials",
-    locale,
-  })
+export type AddCredentialDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess: () => void
+}
 
+export function AddCredentialDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+}: AddCredentialDialogProps) {
   const [type, setType] = useState<AppCredentialType | "">("")
   const [name, setName] = useState("")
   const [metadata, setMetadata] = useState<Record<string, string>>({})
   const [secrets, setSecrets] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+
+  const resetForm = () => {
+    setType("")
+    setName("")
+    setMetadata({})
+    setSecrets({})
+    setSubmitting(false)
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetForm()
+    }
+    onOpenChange(nextOpen)
+  }
 
   const typeDef = type ? getCredentialTypeDef(type as AppCredentialType) : null
   const metadataFields = typeDef?.metadataFields ?? []
@@ -86,9 +106,11 @@ export default function NewCredentialPage() {
           headers: { "Content-Type": "application/json" },
         },
       })
+
       if (payload?.ok) {
         toast.success("Credential created.")
-        router.push(backHref)
+        handleOpenChange(false)
+        onSuccess()
       } else {
         toast.error("Failed to create credential.")
       }
@@ -100,13 +122,18 @@ export default function NewCredentialPage() {
   }
 
   return (
-    <LifecyclePageShell
-      title="Add Credential"
-      description={`Add a new ${typeDef?.label ?? "credential"} to your application.`}
-    >
-      <div className="max-w-lg">
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6">
-          {/* Type selector */}
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Add Credential</DialogTitle>
+          <DialogDescription>
+            {typeDef
+              ? `Add a new ${typeDef.label} to your application.`
+              : "Add a new credential or API token for your application."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="cred-type">Type</Label>
             <Select
@@ -117,7 +144,7 @@ export default function NewCredentialPage() {
                 setSecrets({})
               }}
             >
-              <SelectTrigger id="cred-type">
+              <SelectTrigger id="cred-type" className="w-full">
                 <SelectValue placeholder="Select credential type" />
               </SelectTrigger>
               <SelectContent>
@@ -130,9 +157,14 @@ export default function NewCredentialPage() {
             </Select>
           </div>
 
+          {!typeDef && (
+            <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Select a credential type above to configure the required fields.
+            </div>
+          )}
+
           {typeDef && (
             <>
-              {/* Name */}
               <div className="space-y-2">
                 <Label htmlFor="cred-name">Name</Label>
                 <Input
@@ -144,7 +176,6 @@ export default function NewCredentialPage() {
                 />
               </div>
 
-              {/* Metadata fields */}
               {metadataFields.map((field) => (
                 <div key={field.key} className="space-y-2">
                   <Label htmlFor={`meta-${field.key}`}>{field.label}</Label>
@@ -161,7 +192,6 @@ export default function NewCredentialPage() {
                 </div>
               ))}
 
-              {/* Secret fields */}
               {secretFields.map((field) => (
                 <div key={field.key} className="space-y-2">
                   <Label htmlFor={`secret-${field.key}`}>{field.label}</Label>
@@ -186,31 +216,30 @@ export default function NewCredentialPage() {
                   enter.
                 </p>
               )}
-
-              {/* Submit */}
-              <div className="flex gap-3">
-                <Button type="submit" disabled={submitting || !canSubmit}>
-                  {submitting ? (
-                    <>
-                      <Spinner className="mr-2 h-4 w-4 animate-spin" />
-                      Creating…
-                    </>
-                  ) : (
-                    "Create Credential"
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push(backHref)}
-                >
-                  Cancel
-                </Button>
-              </div>
             </>
           )}
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting || !canSubmit}>
+              {submitting ? (
+                <>
+                  <Spinner className="mr-2 h-4 w-4 animate-spin" />
+                  Creating…
+                </>
+              ) : (
+                "Create Credential"
+              )}
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </LifecyclePageShell>
+      </DialogContent>
+    </Dialog>
   )
 }

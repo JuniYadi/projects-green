@@ -1,9 +1,8 @@
 "use client"
 
 import type { ColumnDef } from "@tanstack/react-table"
-import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { eden } from "@/lib/eden"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
@@ -16,13 +15,14 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Spinner } from "@phosphor-icons/react"
 import { getMessages } from "@/lib/i18n/messages"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
 import type { AppCredentialType, AppCredentialStatus } from "@prisma/client"
 import {
   credentialTypeRegistry,
   getCredentialTypeDef,
 } from "@/modules/credentials/credential-type-registry"
+import { AddCredentialDialog } from "./_components/add-credential-dialog"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -175,12 +175,26 @@ const getColumns = (
 
 export default function CredentialsPage() {
   const params = useParams<{ lang?: string }>()
+  const searchParams = useSearchParams()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
 
   const [state, setState] = useState<CredentialListRequestState>({
     status: "loading",
   })
+  const isNewParam =
+    searchParams?.get("action") === "new" || searchParams?.get("new") === "true"
+  const [addDialogOpen, setAddDialogOpen] = useState(isNewParam)
+
+  useEffect(() => {
+    if (
+      searchParams?.get("action") === "new" ||
+      searchParams?.get("new") === "true"
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAddDialogOpen(true)
+    }
+  }, [searchParams])
 
   const fetchCredentials = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -260,11 +274,6 @@ export default function CredentialsPage() {
     []
   )
 
-  const newHref = localizePathname({
-    pathname: "/console/app/credentials/new",
-    locale,
-  })
-
   if (state.status === "loading") {
     return (
       <LifecyclePageShell
@@ -308,10 +317,16 @@ export default function CredentialsPage() {
       description={messages.console.app.credentials.description}
     >
       <div className="flex justify-end">
-        <Button asChild size="sm">
-          <Link href={newHref}>Add Credential</Link>
+        <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+          Add Credential
         </Button>
       </div>
+
+      <AddCredentialDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onSuccess={() => void fetchCredentials()}
+      />
 
       <DataTable
         tableId="console-credentials"

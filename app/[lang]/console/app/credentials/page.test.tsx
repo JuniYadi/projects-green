@@ -1,8 +1,10 @@
 import "@/test/setup"
 import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 
 // ─── Mock functions ─────────────────────────────────────────────────────────
+
+let mockSearchParams = new URLSearchParams()
 
 const jsonResponse = (body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -59,6 +61,7 @@ async function defaultFetch(input: string | URL | Request) {
 
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
+  useSearchParams: () => mockSearchParams,
   useRouter: () => ({
     push: mock(() => {}),
     replace: mock(() => {}),
@@ -91,6 +94,7 @@ import CredentialsPage from "./page"
 
 describe("CredentialsPage", () => {
   beforeEach(() => {
+    mockSearchParams = new URLSearchParams()
     globalThis.fetch = mockFetch as unknown as typeof fetch
     mockFetch.mockClear()
     mockFetch.mockImplementation(defaultFetch)
@@ -222,15 +226,38 @@ describe("CredentialsPage", () => {
     view.unmount()
   })
 
-  it("renders Add Credential button with correct link", async () => {
+  it("renders Add Credential button and opens dialog when clicked", async () => {
     const view = render(<CredentialsPage />)
 
     await waitFor(() => {
       expect(view.getByText("Add Credential")).toBeInTheDocument()
     })
 
-    const link = view.getByText("Add Credential").closest("a")
-    expect(link?.getAttribute("href")).toContain("/console/app/credentials/new")
+    const button = view.getByRole("button", { name: "Add Credential" })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(
+        view.getByText(
+          "Add a new credential or API token for your application."
+        )
+      ).toBeInTheDocument()
+    })
+
+    view.unmount()
+  })
+
+  it("opens dialog automatically when searchParams has action=new", async () => {
+    mockSearchParams = new URLSearchParams("action=new")
+    const view = render(<CredentialsPage />)
+
+    await waitFor(() => {
+      expect(
+        view.getByText(
+          "Add a new credential or API token for your application."
+        )
+      ).toBeInTheDocument()
+    })
 
     view.unmount()
   })
