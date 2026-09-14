@@ -24,7 +24,10 @@ import type {
 
 type GitSourceStepProps = {
   initialSource?: GitSourceConfig
-  onSourceVerified: (source: GitSourceConfig, inspectionData?: unknown) => void
+  onSourceVerified: (
+    source: GitSourceConfig,
+    inspectionData?: Record<string, unknown> | null
+  ) => void
 }
 
 export function GitSourceStep({
@@ -37,7 +40,10 @@ export function GitSourceStep({
   const [rootDir, setRootDir] = useState(initialSource?.rootDir ?? "./")
   const [accessState, setAccessState] = useState<GitAccessState>("idle")
   const [accessMessage, setAccessMessage] = useState<string>("")
-  const [inspectionResult, setInspectionResult] = useState<unknown>(null)
+  const [inspectionResult, setInspectionResult] = useState<Record<
+    string,
+    unknown
+  > | null>(null)
 
   // Connected Repositories state
   const [repos, setRepos] = useState<ConnectedRepository[]>([])
@@ -102,31 +108,37 @@ export function GitSourceStep({
         return
       }
 
-      const payload = data.data
-      setInspectionResult(payload)
+      const payload = data.data as
+        | {
+            status?: string
+            access?: { state?: string; displayLabel?: string }
+            [key: string]: unknown
+          }
+        | undefined
+      setInspectionResult(payload ?? null)
 
       // Evaluate visibility and access status
-      if (payload.access?.state === "public") {
+      if (payload?.access?.state === "public") {
         setAccessState("public")
         setAccessMessage(
           "Public repository verified. No GitHub authentication or permissions required."
         )
-      } else if (payload.access?.state === "connected") {
+      } else if (payload?.access?.state === "connected") {
         setAccessState("connected")
         setAccessMessage(
           "Private repository verified with connected GitHub App installation."
         )
-      } else if (payload.access?.state === "required") {
+      } else if (payload?.access?.state === "required") {
         setAccessState("required")
         setAccessMessage(
           "This repository is private. GitHub App credentials are required to read code and build."
         )
-      } else if (payload.access?.state === "denied") {
+      } else if (payload?.access?.state === "denied") {
         setAccessState("denied")
         setAccessMessage(
           "GitHub access was denied for this repository. Please install or re-authorize the GitHub App."
         )
-      } else if (payload.status === "not_supported") {
+      } else if (payload?.status === "not_supported") {
         setAccessState("error")
         setAccessMessage(
           "Only valid Git / GitHub repository HTTPS URLs are supported."

@@ -50,9 +50,12 @@ export function GitDeployWizard() {
     }
   }
 
-  const handleSourceVerified = (src: GitSourceConfig, inspected?: unknown) => {
+  const handleSourceVerified = (
+    src: GitSourceConfig,
+    inspected?: Record<string, unknown> | null
+  ) => {
     setSource(src)
-    setInspectionData(inspected)
+    setInspectionData(inspected ?? null)
     setCurrentStep("config")
   }
 
@@ -71,7 +74,8 @@ export function GitDeployWizard() {
 
     try {
       // If we have an inspect session from /deploy/ai-sessions/inspect, we can confirm it
-      const sessionId = inspectionData?.session?.id
+      const session = inspectionData?.session as { id?: string } | undefined
+      const sessionId = session?.id
       if (sessionId) {
         const res = await fetch(
           `/api/deploy/ai-sessions/${sessionId}/confirm`,
