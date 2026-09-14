@@ -309,4 +309,54 @@ describe("DeployPage Client", () => {
       expect(view.getByText("Repositori Terhubung:")).toBeTruthy()
     })
   })
+
+  it("handles balance failure gracefully with unknown balance badge", async () => {
+    mockFetch.mockImplementation(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/billing/account")) {
+          return new Response(
+            JSON.stringify({ ok: false, message: "Service unavailable" }),
+            { status: 500, headers: { "Content-Type": "application/json" } }
+          )
+        }
+        if (url.includes("/api/deploy/ai-sessions/inspect")) {
+          return new Response(JSON.stringify(mockInspectResponse), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    )
+
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
+    const input = view.getByPlaceholderText(
+      "https://github.com/organization/repository"
+    )
+
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "https://github.com/acme/public-app" },
+      })
+      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+    })
+
+    await act(async () => {
+      fireEvent.click(
+        view.getByRole("button", { name: /continue to build settings/i })
+      )
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Could Not Verify Balance")).toBeTruthy()
+    })
+  })
 })

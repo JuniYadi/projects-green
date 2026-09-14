@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   GithubLogo,
   Globe,
@@ -78,87 +78,94 @@ export function AiAgentIntake({
   }, [])
 
   // Inspect repository URL
-  const handleInspectUrl = async (targetUrl: string) => {
-    let trimmed = targetUrl.trim()
-    if (!trimmed) {
-      toast.error("Please enter a valid Git repository URL.")
-      return
-    }
-
-    // Support shorthand like owner/repo
-    if (
-      !trimmed.startsWith("http://") &&
-      !trimmed.startsWith("https://") &&
-      !trimmed.startsWith("git@")
-    ) {
-      if (/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(trimmed)) {
-        trimmed = `https://github.com/${trimmed}`
-        setUrl(trimmed)
-      }
-    }
-
-    setAccessState("inspecting")
-    setAccessMessage("")
-
-    try {
-      const res = await fetch("/api/deploy/ai-sessions/inspect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceUrl: trimmed,
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok || !data.ok) {
-        setAccessState("error")
-        setAccessMessage(
-          data.message || data.error || "Failed to inspect repository."
-        )
+  const handleInspectUrl = useCallback(
+    async (targetUrl: string) => {
+      let trimmed = targetUrl.trim()
+      if (!trimmed) {
+        toast.error("Please enter a valid Git repository URL.")
         return
       }
 
-      const payload = data.data as
-        | {
-            status?: string
-            access?: { state?: string; displayLabel?: string }
-            [key: string]: unknown
-          }
-        | undefined
-      setInspectionResult(payload ?? null)
+      // Support shorthand like owner/repo
+      if (
+        !trimmed.startsWith("http://") &&
+        !trimmed.startsWith("https://") &&
+        !trimmed.startsWith("git@")
+      ) {
+        if (/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(trimmed)) {
+          trimmed = `https://github.com/${trimmed}`
+          setUrl(trimmed)
+        }
+      }
 
-      if (payload?.access?.state === "public") {
-        setAccessState("public")
-        setAccessMessage(agentMessages.publicDescription)
-      } else if (payload?.access?.state === "connected") {
-        setAccessState("connected")
-        setAccessMessage(agentMessages.privateAuthorizedDescription)
-      } else if (payload?.access?.state === "required") {
-        setAccessState("required")
-        setAccessMessage(agentMessages.privateRequiredDescription)
-      } else if (payload?.access?.state === "denied") {
-        setAccessState("denied")
-        setAccessMessage(
-          "GitHub access was denied for this repository. Please install or re-authorize the GitHub App."
-        )
-      } else if (payload?.status === "not_supported") {
+      setAccessState("inspecting")
+      setAccessMessage("")
+
+      try {
+        const res = await fetch("/api/deploy/ai-sessions/inspect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sourceUrl: trimmed,
+          }),
+        })
+
+        const data = await res.json()
+        if (!res.ok || !data.ok) {
+          setAccessState("error")
+          setAccessMessage(
+            data.message || data.error || "Failed to inspect repository."
+          )
+          return
+        }
+
+        const payload = data.data as
+          | {
+              status?: string
+              access?: { state?: string; displayLabel?: string }
+              [key: string]: unknown
+            }
+          | undefined
+        setInspectionResult(payload ?? null)
+
+        if (payload?.access?.state === "public") {
+          setAccessState("public")
+          setAccessMessage(agentMessages.publicDescription)
+        } else if (payload?.access?.state === "connected") {
+          setAccessState("connected")
+          setAccessMessage(agentMessages.privateAuthorizedDescription)
+        } else if (payload?.access?.state === "required") {
+          setAccessState("required")
+          setAccessMessage(agentMessages.privateRequiredDescription)
+        } else if (payload?.access?.state === "denied") {
+          setAccessState("denied")
+          setAccessMessage(
+            "GitHub access was denied for this repository. Please install or re-authorize the GitHub App."
+          )
+        } else if (payload?.status === "not_supported") {
+          setAccessState("error")
+          setAccessMessage(
+            "Only valid Git / GitHub repository HTTPS URLs are supported."
+          )
+        } else {
+          setAccessState("public")
+          setAccessMessage("Repository access confirmed.")
+        }
+      } catch {
         setAccessState("error")
         setAccessMessage(
-          "Only valid Git / GitHub repository HTTPS URLs are supported."
+          "Network error while inspecting repository. Please try again."
         )
-      } else {
-        setAccessState("public")
-        setAccessMessage("Repository access confirmed.")
       }
-    } catch {
-      setAccessState("error")
-      setAccessMessage(
-        "Network error while inspecting repository. Please try again."
-      )
-    }
-  }
+    },
+    [
+      agentMessages.publicDescription,
+      agentMessages.privateAuthorizedDescription,
+      agentMessages.privateRequiredDescription,
+    ]
+  )
 
-  const refreshRepos = async () => {
+  const refreshRepos = useCallback(async () => {
     try {
       const res = await fetch("/api/integrations/github/repositories")
       const data = await res.json()
@@ -168,7 +175,7 @@ export function AiAgentIntake({
     } catch {
       // ignore
     }
-  }
+  }, [])
 
   // Handle GitHub App install popup
   const openGithubInstall = () => {
@@ -209,8 +216,7 @@ export function AiAgentIntake({
 
     window.addEventListener("message", handleMessage)
     return () => window.removeEventListener("message", handleMessage)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url])
+  }, [url, handleInspectUrl, refreshRepos])
 
   const handleContinue = () => {
     onSourceVerified(

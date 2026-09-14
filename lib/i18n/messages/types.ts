@@ -1669,6 +1669,28 @@ export type AppMessages = {
         bulkPaste: string
         computeSizingLabel: string
         subdomainLabel: string
+        evaluatingVisibility: string
+        inspectionFailed: string
+        inspectionFailedDesc: string
+        retryInspection: string
+        sourceRepo: string
+        publicBadge: string
+        privateBadge: string
+        buildSettings: string
+        noEnvVars: string
+        bulkPasteTitle: string
+        bulkPasteDesc: string
+        bulkPasteCancel: string
+        bulkPasteAction: string
+        accountBalance: string
+        balanceVerified: string
+        insufficientBalance: string
+        balanceUnknown: string
+        activeSubscription: string
+        balanceBelowCost: string
+        topUp: string
+        recommendedBadge: string
+        catalogBadge: string
       }
       deployWizard: {
         heading: string

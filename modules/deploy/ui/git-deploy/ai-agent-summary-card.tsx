@@ -271,15 +271,23 @@ export function AiAgentSummaryCard({
 
   // Balance Check & Top-Up
   const [account, setAccount] = useState<BillingAccount | null>(null)
+  const [accountStatus, setAccountStatus] = useState<
+    "loading" | "loaded" | "error"
+  >("loading")
   const [topUpOpen, setTopUpOpen] = useState(false)
   const [deploying, setDeploying] = useState(false)
 
   const reloadAccount = async () => {
     try {
       const res = await getAccount()
-      if (res?.ok) setAccount(res)
+      if (res?.ok) {
+        setAccount(res)
+        setAccountStatus("loaded")
+      } else {
+        setAccountStatus("error")
+      }
     } catch {
-      // ignore
+      setAccountStatus("error")
     }
   }
 
@@ -288,9 +296,16 @@ export function AiAgentSummaryCard({
     void (async () => {
       try {
         const res = await getAccount()
-        if (active && res?.ok) setAccount(res)
+        if (active) {
+          if (res?.ok) {
+            setAccount(res)
+            setAccountStatus("loaded")
+          } else {
+            setAccountStatus("error")
+          }
+        }
       } catch {
-        // ignore
+        if (active) setAccountStatus("error")
       }
     })()
     return () => {
@@ -298,7 +313,8 @@ export function AiAgentSummaryCard({
     }
   }, [])
 
-  const isBalanceSufficient = !account || account.isPositive
+  const isBalanceSufficient =
+    accountStatus === "loaded" ? Boolean(account?.isPositive) : false
 
   const handleTriggerDeploy = async () => {
     setDeploying(true)
@@ -358,10 +374,12 @@ export function AiAgentSummaryCard({
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Source Repository
+                {agentMessages.sourceRepo}
               </span>
               <Badge variant="secondary" className="text-xs">
-                {source.isPrivate ? "Private" : "Public"}
+                {source.isPrivate
+                  ? agentMessages.privateBadge
+                  : agentMessages.publicBadge}
               </Badge>
             </div>
             <p className="mt-1 font-mono text-sm font-medium text-foreground">
@@ -423,7 +441,7 @@ export function AiAgentSummaryCard({
           {/* Card 3: Build & Network Settings */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
             <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Build & Network Settings
+              {agentMessages.buildSettings}
             </span>
             <div className="mt-4 grid gap-4">
               <div>
@@ -474,7 +492,7 @@ export function AiAgentSummaryCard({
                 </span>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {envVars.length === 0
-                    ? "No environment variables added yet"
+                    ? agentMessages.noEnvVars
                     : `${envVars.length} variable${envVars.length === 1 ? "" : "s"} configured`}
                 </p>
               </div>
@@ -554,7 +572,7 @@ export function AiAgentSummaryCard({
               </span>
               {catalogPlans.length > 0 && (
                 <Badge variant="outline" className="text-[10px]">
-                  Catalog: APP_HOSTING
+                  {agentMessages.catalogBadge}
                 </Badge>
               )}
             </div>
@@ -583,7 +601,7 @@ export function AiAgentSummaryCard({
                             variant="secondary"
                             className="px-1.5 py-0 text-[10px]"
                           >
-                            Recommended
+                            {agentMessages.recommendedBadge}
                           </Badge>
                         )}
                       </div>
@@ -636,35 +654,45 @@ export function AiAgentSummaryCard({
               <div className="flex items-center gap-2">
                 <Wallet className="h-4 w-4 text-muted-foreground" />
                 <span className="text-xs font-semibold text-muted-foreground uppercase">
-                  Account Balance
+                  {agentMessages.accountBalance}
                 </span>
               </div>
-              {account?.formattedBalance ? (
+              {accountStatus === "loading" && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Spinner className="h-3 w-3 animate-spin" />
+                  <span>...</span>
+                </div>
+              )}
+              {accountStatus === "loaded" && account && (
                 <div className="text-right">
                   <Badge
                     variant={isBalanceSufficient ? "secondary" : "destructive"}
                     className="text-xs"
                   >
                     {isBalanceSufficient
-                      ? "Balance Verified"
-                      : "Insufficient Balance"}
+                      ? agentMessages.balanceVerified
+                      : agentMessages.insufficientBalance}
                   </Badge>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {account.formattedBalance} available
                   </p>
                 </div>
-              ) : (
-                <Badge variant="secondary" className="text-xs">
-                  Active Subscription
+              )}
+              {accountStatus === "error" && (
+                <Badge
+                  variant="outline"
+                  className="text-xs text-muted-foreground"
+                >
+                  {agentMessages.balanceUnknown}
                 </Badge>
               )}
             </div>
 
-            {!isBalanceSufficient && (
+            {accountStatus === "loaded" && !isBalanceSufficient && (
               <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs text-amber-600 dark:text-amber-400">
                 <div className="flex items-center gap-1.5">
                   <WarningCircle className="h-4 w-4 shrink-0" />
-                  <span>Your current balance is below the plan cost.</span>
+                  <span>{agentMessages.balanceBelowCost}</span>
                 </div>
                 <Button
                   size="sm"
@@ -672,7 +700,7 @@ export function AiAgentSummaryCard({
                   onClick={() => setTopUpOpen(true)}
                   className="h-7 border-amber-500/30 text-xs"
                 >
-                  Top Up
+                  {agentMessages.topUp}
                 </Button>
               </div>
             )}
@@ -699,12 +727,11 @@ export function AiAgentSummaryCard({
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Bulk Paste Environment Variables</DialogTitle>
+            <DialogTitle>{agentMessages.bulkPasteTitle}</DialogTitle>
           </DialogHeader>
           <div className="py-2">
             <p className="mb-2 text-xs text-muted-foreground">
-              Paste lines from your <code>.env</code> file. Format:{" "}
-              <code>KEY=value</code>.
+              {agentMessages.bulkPasteDesc}
             </p>
             <Textarea
               rows={8}
@@ -720,10 +747,10 @@ export function AiAgentSummaryCard({
               size="sm"
               onClick={() => setBulkDialogOpen(false)}
             >
-              Cancel
+              {agentMessages.bulkPasteCancel}
             </Button>
             <Button size="sm" onClick={handleBulkParse}>
-              Parse & Add
+              {agentMessages.bulkPasteAction}
             </Button>
           </DialogFooter>
         </DialogContent>

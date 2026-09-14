@@ -38,7 +38,7 @@ export function AiAgentAccessChecker({
     return (
       <div className="flex animate-pulse items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground shadow-xs">
         <Spinner className="h-4 w-4 animate-spin text-primary" />
-        <span>Evaluating repository visibility and analyzing stack…</span>
+        <span>{agentMessages.evaluatingVisibility}</span>
       </div>
     )
   }
@@ -114,9 +114,9 @@ export function AiAgentAccessChecker({
         <div className="flex items-center gap-2 text-sm text-destructive">
           <WarningCircle className="h-5 w-5 shrink-0" weight="fill" />
           <div>
-            <p className="font-medium">Inspection Failed</p>
+            <p className="font-medium">{agentMessages.inspectionFailed}</p>
             <p className="text-xs text-muted-foreground">
-              {accessMessage || "Failed to inspect repository."}
+              {accessMessage || agentMessages.inspectionFailedDesc}
             </p>
           </div>
         </div>
@@ -126,7 +126,7 @@ export function AiAgentAccessChecker({
           onClick={onRetry}
           className="shrink-0"
         >
-          Retry Inspection
+          {agentMessages.retryInspection}
         </Button>
       </div>
     )
