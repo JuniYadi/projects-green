@@ -5,11 +5,17 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { localizePathname } from "@/lib/i18n/pathname"
 import {
+  CheckCircle,
+  Copy,
+  DeviceMobile,
   DownloadSimple,
   Info,
   MagnifyingGlass,
   PaperPlaneTilt,
+  Speedometer,
+  Timer,
 } from "@phosphor-icons/react"
+import { WhatsAppTemplatePreview } from "@/modules/whatsapp/templates/ui/template-preview"
 import { toast } from "sonner"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -45,6 +51,7 @@ import {
   type Broadcast,
   type BroadcastRecipient,
   type BroadcastRecipientStatus,
+  type Template,
 } from "@/modules/whatsapp/whatsapp-client"
 
 type RecipientFilter = "ALL" | BroadcastRecipientStatus
@@ -130,6 +137,17 @@ const downloadFailedRecipientsCsv = (
   URL.revokeObjectURL(link.href)
 }
 
+const formatDuration = (startedAt?: string | null, endedAt?: string | null) => {
+  if (!startedAt) return null
+  const start = new Date(startedAt).getTime()
+  const end = endedAt ? new Date(endedAt).getTime() : Date.now()
+  const diffSec = Math.max(0, Math.round((end - start) / 1000))
+  if (diffSec < 60) return `~${diffSec}s`
+  const min = Math.floor(diffSec / 60)
+  const sec = diffSec % 60
+  return `${min}m ${sec}s`
+}
+
 export default function WhatsAppBroadcastDetailPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string; id: string }>()
@@ -142,6 +160,7 @@ export default function WhatsAppBroadcastDetailPage() {
     { value: "FAILED", label: t.detail.failed },
   ]
   const [broadcast, setBroadcast] = React.useState<Broadcast | null>(null)
+  const [template, setTemplate] = React.useState<Template | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [sending, setSending] = React.useState(false)
   const [filter, setFilter] = React.useState<RecipientFilter>("ALL")
@@ -155,6 +174,16 @@ export default function WhatsAppBroadcastDetailPage() {
         if (active) {
           setBroadcast(data)
           setLoading(false)
+          if (data.templateId) {
+            whatsappClient
+              .getTemplate(data.templateId)
+              .then((tpl) => {
+                if (active) setTemplate(tpl)
+              })
+              .catch(() => {
+                // non-blocking
+              })
+          }
         }
       })
       .catch((error) => {
@@ -213,6 +242,39 @@ export default function WhatsAppBroadcastDetailPage() {
     : 0
 
   const isDraft = isDraftBroadcast(broadcast)
+
+  const templateLanguageData = React.useMemo(() => {
+    if (!template || !broadcast) return null
+    return (
+      template.languages.find((l) => l.lang === broadcast.templateLanguage) ??
+      template.languages[0]
+    )
+  }, [template, broadcast])
+
+  const executionDuration = formatDuration(
+    broadcast?.startedAt,
+    broadcast?.endedAt
+  )
+
+  const templatePreviewValues = React.useMemo<
+    Record<number, string> | undefined
+  >(() => {
+    const params = broadcast?.templateParams
+    if (!params) return undefined
+    const result: Record<number, string> = {}
+    for (const [key, val] of Object.entries(params)) {
+      const match = key.match(/\d+/)
+      if (match && val !== null && val !== undefined) {
+        result[Number(match[0])] = String(val)
+      }
+    }
+    return Object.keys(result).length > 0 ? result : undefined
+  }, [broadcast])
+
+  const copyId = (id: string) => {
+    navigator.clipboard.writeText(id)
+    toast.success(t.detail.messageIdCopied)
+  }
 
   return (
     <div className="space-y-6">
@@ -280,6 +342,216 @@ export default function WhatsAppBroadcastDetailPage() {
               </div>
             </Alert>
           )}
+          {/* 3-Zone Executive & Audit Layout */}
+
+          {/* Metric Overview Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Sender Device Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {t.detail.senderDevice}
+                </CardTitle>
+                <DeviceMobile className="size-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {broadcast.whatsappDevice ? (
+                  <div className="space-y-1">
+                    <div className="text-xl font-bold">
+                      {broadcast.whatsappDevice.phoneNumber}
+                    </div>
+                    {broadcast.whatsappDevice.verifiedName ? (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <CheckCircle
+                          weight="fill"
+                          className="size-3.5 text-emerald-600 dark:text-emerald-400"
+                        />
+                        <span>{broadcast.whatsappDevice.verifiedName}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="text-base text-muted-foreground">
+                    {t.detail.noDevice}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Execution Window Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {t.detail.executionWindow}
+                </CardTitle>
+                <Timer className="size-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold">
+                  {executionDuration ?? t.detail.notStarted}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {broadcast.startedAt
+                    ? formatDate(broadcast.startedAt)
+                    : formatDate(broadcast.createdAt)}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Speed and Throttling Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {t.detail.speedAndThrottle}
+                </CardTitle>
+                <Speedometer className="size-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold">
+                  {broadcast.throttleMaxMessages && broadcast.throttlePerMinutes
+                    ? t.detail.throttleRate
+                        .replace("{max}", String(broadcast.throttleMaxMessages))
+                        .replace(
+                          "{period}",
+                          String(broadcast.throttlePerMinutes)
+                        )
+                    : t.detail.noThrottle}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {broadcast.sent} / {broadcast.total}{" "}
+                  {t.detail.sent.toLowerCase()}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total Recipients & Progress */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {t.detail.totalRecipients}
+                </CardTitle>
+                <span className="text-sm font-bold text-primary">
+                  {progress}%
+                </span>
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold">{broadcast.total}</div>
+                <div className="text-xs text-muted-foreground">
+                  {broadcast.sent} {t.detail.sent.toLowerCase()} •{" "}
+                  {broadcast.failed} {t.detail.failed.toLowerCase()}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Middle Zone: WhatsApp Message Preview & Campaign Configuration */}
+          <div className="grid gap-6 lg:grid-cols-12">
+            {/* Live WhatsApp Bubble Preview */}
+            <div className="lg:col-span-7">
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle>{t.detail.previewTitle}</CardTitle>
+                  <CardDescription>
+                    {t.detail.previewDescription}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col justify-center">
+                  {templateLanguageData ? (
+                    <WhatsAppTemplatePreview
+                      language={{
+                        ...templateLanguageData,
+                        metaStatus:
+                          templateLanguageData.metaStatus ?? undefined,
+                        parameters:
+                          templateLanguageData.parameters ?? undefined,
+                      }}
+                      values={templatePreviewValues}
+                      mode="full"
+                    />
+                  ) : (
+                    <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+                      <p>{t.detail.noPreview}</p>
+                      <p className="mt-1 font-mono text-xs">
+                        {broadcast.templateName} ({broadcast.templateLanguage})
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Campaign Parameters & Configuration */}
+            <div className="lg:col-span-5">
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle>{t.detail.campaignConfiguration}</CardTitle>
+                  <CardDescription>{t.detail.templateDetails}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="flex justify-between border-b pb-2">
+                    <span className="text-muted-foreground">
+                      {t.detail.templateCategory}
+                    </span>
+                    <Badge variant="outline">
+                      {typeof broadcast.templateParams?.category === "string"
+                        ? broadcast.templateParams.category
+                        : (template?.category ?? "MARKETING")}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between border-b pb-2">
+                    <span className="text-muted-foreground">
+                      {t.detail.templateLanguage}
+                    </span>
+                    <span className="font-mono font-medium">
+                      {broadcast.templateLanguage}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b pb-2">
+                    <span className="text-muted-foreground">Template ID</span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {broadcast.templateId ?? "—"}
+                    </span>
+                  </div>
+                  {broadcast.startedAt && (
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-muted-foreground">
+                        {t.detail.executionWindow}
+                      </span>
+                      <span className="text-xs">
+                        {formatDate(broadcast.startedAt)}
+                      </span>
+                    </div>
+                  )}
+                  {broadcast.endedAt && (
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-muted-foreground">
+                        {t.detail.sentAt}
+                      </span>
+                      <span className="text-xs">
+                        {formatDate(broadcast.endedAt)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="font-medium text-muted-foreground">
+                      {t.detail.dynamicVariables}
+                    </span>
+                    {broadcast.templateParams &&
+                    Object.keys(broadcast.templateParams).length > 0 ? (
+                      <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">
+                        {JSON.stringify(broadcast.templateParams, null, 2)}
+                      </pre>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">
+                        {t.detail.noVariables}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -346,9 +618,17 @@ export default function WhatsAppBroadcastDetailPage() {
                   </p>
                 </div>
                 <div className="rounded-lg border p-4">
-                  <p className="text-sm text-muted-foreground">
-                    {t.detail.failed}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {t.detail.failed}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="text-red-600 dark:text-red-400"
+                    >
+                      {t.detail.failed}
+                    </Badge>
+                  </div>
                   <p className="mt-2 text-2xl font-semibold text-red-600 dark:text-red-400">
                     {broadcast.failed}
                   </p>
@@ -419,9 +699,11 @@ export default function WhatsAppBroadcastDetailPage() {
                       <TableHead>{t.detail.phoneNumber}</TableHead>
                       <TableHead>{t.detail.name}</TableHead>
                       <TableHead>{t.detail.status}</TableHead>
-                      <TableHead>{t.detail.attempts}</TableHead>
-                      <TableHead>{t.detail.messageId}</TableHead>
+                      <TableHead>{t.detail.sentAt}</TableHead>
                       <TableHead>{t.detail.error}</TableHead>
+                      <TableHead className="text-right">
+                        {t.list.actions}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -449,33 +731,31 @@ export default function WhatsAppBroadcastDetailPage() {
                           </TableCell>
                           <TableCell>{recipient.name ?? "—"}</TableCell>
                           <TableCell>
-                            <Badge
-                              variant={recipientBadgeVariant(recipient.status)}
-                            >
-                              {formatRecipientStatus(recipient.status, t)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{recipient.attempts}</TableCell>
-                          <TableCell className="max-w-48 truncate">
-                            {recipient.waMessageId ? (
-                              <Link
-                                href={localizePathname({
-                                  pathname: `/console/whatsapp/messages/${recipient.waMessageId}`,
-                                  locale,
-                                })}
-                                className="font-mono text-xs text-primary hover:underline"
+                            <div className="flex items-center gap-1.5">
+                              <Badge
+                                variant={recipientBadgeVariant(
+                                  recipient.status
+                                )}
                               >
-                                {recipient.waMessageId}
-                              </Link>
-                            ) : (
-                              "—"
+                                {formatRecipientStatus(recipient.status, t)}
+                              </Badge>
+                              {recipient.attempts > 1 && (
+                                <span className="text-[11px] text-muted-foreground">
+                                  ({recipient.attempts}x)
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                            {formatDate(
+                              recipient.updatedAt ?? recipient.createdAt
                             )}
                           </TableCell>
                           <TableCell className="max-w-64">
                             {recipient.lastError ? (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="block cursor-default truncate text-destructive">
+                                  <span className="block cursor-default truncate text-xs text-destructive">
                                     {recipient.lastError}
                                   </span>
                                 </TooltipTrigger>
@@ -486,6 +766,51 @@ export default function WhatsAppBroadcastDetailPage() {
                             ) : (
                               "—"
                             )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                asChild
+                              >
+                                <Link
+                                  href={`${localizePathname({
+                                    pathname: "/console/whatsapp/messages",
+                                    locale,
+                                  })}?phone=${encodeURIComponent(
+                                    recipient.phoneNumber.replace(/^\+/, "")
+                                  )}`}
+                                >
+                                  {t.detail.openChat}
+                                </Link>
+                              </Button>
+                              {recipient.waMessageId && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="size-7 p-0"
+                                      onClick={() =>
+                                        copyId(recipient.waMessageId!)
+                                      }
+                                    >
+                                      <Copy className="size-3.5 text-muted-foreground" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="font-mono text-[10px]">
+                                      {t.detail.copyMessageId}
+                                    </p>
+                                    <p className="font-mono text-[9px] text-muted-foreground">
+                                      {recipient.waMessageId}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))

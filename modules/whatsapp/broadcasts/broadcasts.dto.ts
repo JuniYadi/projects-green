@@ -1,5 +1,13 @@
 import { Prisma } from "@prisma/client"
 
+export type WhatsappBroadcastDeviceDTO = {
+  id: string
+  phoneNumber: string
+  name?: string | null
+  verifiedName?: string | null
+  status?: string | null
+}
+
 export type WhatsappBroadcastRecipientDTO = Pick<
   Prisma.WhatsappBroadcastRecipientGetPayload<Prisma.WhatsappBroadcastRecipientDefaultArgs>,
   | "id"
@@ -33,17 +41,34 @@ export type WhatsappBroadcastCampaignDTO = Pick<
   | "throttleMaxMessages"
   | "throttlePerMinutes"
   | "acknowledgeMultiDay"
+  | "whatsappDeviceId"
+  | "whatsappContactGroupId"
 > & {
   recipients?: WhatsappBroadcastRecipientDTO[]
   recipientCount?: number
+  whatsappDevice?: WhatsappBroadcastDeviceDTO | null
 }
 
-type CampaignWithRecipients = Prisma.WhatsappBroadcastCampaignGetPayload<{
-  include: { recipients: true }
-}>
+type CampaignDeviceRecord = {
+  id: string
+  phoneNumber: string
+  whatsappProfile?: Prisma.JsonValue | null
+  status?: string | null
+}
 
-type CampaignWithCount = Prisma.WhatsappBroadcastCampaignGetPayload<{
-  include: { _count: { select: { recipients: true } } }
+type CampaignWithRelations = Prisma.WhatsappBroadcastCampaignGetPayload<{
+  include: {
+    recipients?: true
+    whatsappDevice?: {
+      select: {
+        id: true
+        phoneNumber: true
+        whatsappProfile: true
+        status: true
+      }
+    }
+    _count?: { select: { recipients: true } }
+  }
 }>
 
 export function toWhatsappBroadcastRecipientDTO(
@@ -66,9 +91,40 @@ export function toWhatsappBroadcastRecipientDTO(
 export function toWhatsappBroadcastCampaignDTO(
   campaign:
     | Prisma.WhatsappBroadcastCampaignGetPayload<Prisma.WhatsappBroadcastCampaignDefaultArgs>
-    | CampaignWithRecipients
-    | CampaignWithCount
+    | CampaignWithRelations
+    | (Prisma.WhatsappBroadcastCampaignGetPayload<Prisma.WhatsappBroadcastCampaignDefaultArgs> & {
+        whatsappDevice?: CampaignDeviceRecord | null
+        recipients?: Prisma.WhatsappBroadcastRecipientGetPayload<Prisma.WhatsappBroadcastRecipientDefaultArgs>[]
+        _count?: { recipients: number }
+      })
 ): WhatsappBroadcastCampaignDTO {
+  let device: WhatsappBroadcastDeviceDTO | null = null
+
+  if ("whatsappDevice" in campaign && campaign.whatsappDevice) {
+    const rawDevice = campaign.whatsappDevice as CampaignDeviceRecord
+    const profile =
+      rawDevice.whatsappProfile &&
+      typeof rawDevice.whatsappProfile === "object" &&
+      !Array.isArray(rawDevice.whatsappProfile)
+        ? (rawDevice.whatsappProfile as Record<string, unknown>)
+        : null
+
+    const verifiedName =
+      profile &&
+      typeof profile.verified_name === "string" &&
+      profile.verified_name.trim().length > 0
+        ? profile.verified_name.trim()
+        : null
+
+    device = {
+      id: rawDevice.id,
+      phoneNumber: rawDevice.phoneNumber,
+      name: rawDevice.phoneNumber,
+      verifiedName,
+      status: rawDevice.status,
+    }
+  }
+
   return {
     id: campaign.id,
     templateId: campaign.templateId,
@@ -87,11 +143,16 @@ export function toWhatsappBroadcastCampaignDTO(
     throttleMaxMessages: campaign.throttleMaxMessages,
     throttlePerMinutes: campaign.throttlePerMinutes,
     acknowledgeMultiDay: campaign.acknowledgeMultiDay,
+    whatsappDeviceId: campaign.whatsappDeviceId,
+    whatsappContactGroupId: campaign.whatsappContactGroupId,
+    whatsappDevice: device,
     recipients:
-      "recipients" in campaign
+      "recipients" in campaign && Array.isArray(campaign.recipients)
         ? campaign.recipients.map(toWhatsappBroadcastRecipientDTO)
         : undefined,
     recipientCount:
-      "_count" in campaign ? campaign._count.recipients : undefined,
+      "_count" in campaign && campaign._count
+        ? campaign._count.recipients
+        : undefined,
   }
 }

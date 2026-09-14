@@ -1255,10 +1255,15 @@ export type AppMessages = {
         emptyDescription: string
         searchPlaceholder: string
         statusAll: string
+        filterDevice: string
+        allDevices: string
+        filterStatus: string
         columnName: string
         columnTemplate: string
+        columnDevice: string
         columnStatus: string
         columnProgress: string
+        columnTiming: string
         columnCreatedAt: string
         newBroadcastTitle: string
         newBroadcastDescription: string
@@ -1293,6 +1298,27 @@ export type AppMessages = {
           sent: string
           failed: string
           queued: string
+          senderDevice: string
+          noDevice: string
+          executionWindow: string
+          executionDuration: string
+          speedAndThrottle: string
+          throttleRate: string
+          noThrottle: string
+          notStarted: string
+          previewTitle: string
+          previewDescription: string
+          noPreview: string
+          campaignConfiguration: string
+          templateDetails: string
+          templateCategory: string
+          templateLanguage: string
+          dynamicVariables: string
+          noVariables: string
+          openChat: string
+          copyMessageId: string
+          messageIdCopied: string
+          sentAt: string
           draftReady: string
           draftBannerTitle: string
           draftBannerDescription: string

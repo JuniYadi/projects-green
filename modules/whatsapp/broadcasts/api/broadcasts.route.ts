@@ -348,6 +348,14 @@ export const broadcastsRoutes = new Elysia({
         prisma.whatsappBroadcastCampaign.findMany({
           where,
           include: {
+            whatsappDevice: {
+              select: {
+                id: true,
+                phoneNumber: true,
+                whatsappProfile: true,
+                status: true,
+              },
+            },
             _count: {
               select: { recipients: true },
             },
@@ -465,6 +473,14 @@ export const broadcastsRoutes = new Elysia({
       const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
         where: { id },
         include: {
+          whatsappDevice: {
+            select: {
+              id: true,
+              phoneNumber: true,
+              whatsappProfile: true,
+              status: true,
+            },
+          },
           recipients: true,
         },
       })
