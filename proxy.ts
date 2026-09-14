@@ -23,8 +23,9 @@ import {
 
 const CONSOLE_HOME = "/console"
 const PORTAL_HOME = "/portal"
+const TERMINAL_HOME = "/terminal"
 
-const PROTECTED_PATHS = [CONSOLE_HOME, PORTAL_HOME]
+const PROTECTED_PATHS = [CONSOLE_HOME, PORTAL_HOME, TERMINAL_HOME]
 const LOCALE_EXCLUDED_PATHS = ["/api", "/callback"]
 
 type UserArea = "console" | "portal"
