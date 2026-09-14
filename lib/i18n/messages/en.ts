@@ -2847,6 +2847,9 @@ export const enMessages: AppMessages = {
         leadGenTitle: "Lead Qualification Bot",
         leadGenDesc:
           "Ask a few questions and capture qualified leads automatically.",
+        aiSalesTitle: "AI Sales & Pricing Consultant",
+        aiSalesDesc:
+          "Consultant bot with live HTTP catalog & auto-closing AI.",
       },
       card: {
         nodesCount: "{count} nodes",
@@ -2930,6 +2933,11 @@ export const enMessages: AppMessages = {
         aiPromptLabel: "AI instructions",
         aiPromptPlaceholder: "Tell the AI how to respond...",
         aiVariableLabel: "Save response as",
+        aiTemplateLabel: "AI Agent Template",
+        aiTemplateNone: "No template (pure custom prompt)",
+        aiTemplateDesc: "Inherit persona, knowledge base docs (RAG), and security filters from an AI Studio template.",
+        aiSendReplyLabel: "Auto-send reply to WhatsApp",
+        aiSendReplyDesc: "Automatically send the AI generated response back to the customer on WhatsApp.",
         httpMethodLabel: "Method",
         httpUrlLabel: "Request URL",
         httpVariableLabel: "Save response as",

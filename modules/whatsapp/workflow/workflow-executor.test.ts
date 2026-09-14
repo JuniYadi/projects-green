@@ -7,6 +7,15 @@ const resolveAiProviderConfig = mock(async () => ({
   model: "gpt",
 }))
 const createAiLanguageModel = mock(() => ({}) as never)
+const mockPrisma = {
+  aiAgentProfile: {
+    findFirst: mock(),
+  },
+}
+mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
+const searchHybridKnowledge = mock(async () => [])
+mock.module("@/modules/ai/ai-rag.service", () => ({ searchHybridKnowledge }))
+
 mock.module("@/modules/whatsapp/messages/messages.service", () => ({
   messageService: { sendMessage },
 }))
@@ -30,6 +39,8 @@ describe("executeWorkflowNode", () => {
     sendMessage.mockClear()
     generateText.mockClear()
     resolveAiProviderConfig.mockClear()
+    mockPrisma.aiAgentProfile.findFirst.mockClear()
+    searchHybridKnowledge.mockClear()
   })
   test("sends media and caption", async () => {
     const result = await executeWorkflowNode(
@@ -211,5 +222,110 @@ describe("executeWorkflowNode", () => {
       })
     )
     expect(failed.status).toBe("FAILED")
+  })
+
+  test("inherits AI agent template persona and executes RAG when agentProfileId is set", async () => {
+    mockPrisma.aiAgentProfile.findFirst.mockResolvedValueOnce({
+      id: "agent_123",
+      isActive: true,
+      systemPrompt: "Anda adalah AI Agen Resmi Toko.",
+      enableProfanityFilter: false,
+      maxCharLength: 500,
+      knowledgeDocuments: [{ id: "doc_1", title: "Kebijakan Garansi" }],
+    })
+    searchHybridKnowledge.mockResolvedValueOnce([
+      {
+        id: "chunk_1",
+        title: "Kebijakan Garansi",
+        category: "policy",
+        contentMarkdown: "Garansi resmi berlaku 12 bulan.",
+        rrfScore: 0.9,
+      },
+    ])
+
+    const result = await executeWorkflowNode(
+      base({
+        type: "ai_generate",
+        id: "node_ai",
+        name: "AI Step",
+        config: {
+          prompt: "Berapa lama garansi barang ini?",
+          captureVariable: "ai_reply",
+          agentProfileId: "agent_123",
+          agentProfileName: "Agen Resmi Toko",
+          sendReply: true,
+        },
+      })
+    )
+
+    expect(result.status).toBe("COMPLETED")
+    expect(mockPrisma.aiAgentProfile.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "agent_123",
+        organizationId: "org",
+      },
+      include: {
+        knowledgeDocuments: {
+          where: { status: "READY" },
+          select: { id: true, title: true },
+        },
+      },
+    })
+    expect(searchHybridKnowledge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org",
+        agentProfileId: "agent_123",
+        query: "Berapa lama garansi barang ini?",
+      })
+    )
+    expect(generateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        system: expect.stringContaining("Garansi resmi berlaku 12 bulan."),
+        prompt: "Berapa lama garansi barang ini?",
+      })
+    )
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "generated answer",
+      })
+    )
+  })
+
+  test("blocks output and sends fallback when AI agent profanity filter triggers", async () => {
+    mockPrisma.aiAgentProfile.findFirst.mockResolvedValueOnce({
+      id: "agent_123",
+      isActive: true,
+      systemPrompt: "Anda adalah AI Toko.",
+      enableProfanityFilter: true,
+      customBlockedWords: ["kasar", "anjing"],
+      fallbackMessage: "Mohon gunakan bahasa yang sopan.",
+      maxCharLength: 500,
+      knowledgeDocuments: [],
+    })
+
+    const result = await executeWorkflowNode(
+      base({
+        type: "ai_generate",
+        id: "node_ai",
+        name: "AI Step",
+        config: {
+          prompt: "Ini adalah kata kasar ya",
+          captureVariable: "ai_reply",
+          agentProfileId: "agent_123",
+          sendReply: true,
+        },
+      })
+    )
+
+    expect(result.status).toBe("COMPLETED")
+    expect(result.capturedVariable?.value).toBe(
+      "Mohon gunakan bahasa yang sopan."
+    )
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Mohon gunakan bahasa yang sopan.",
+      })
+    )
+    expect(generateText).not.toHaveBeenCalled()
   })
 })

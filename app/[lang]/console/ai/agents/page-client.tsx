@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
+import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
   Robot,
@@ -12,6 +14,7 @@ import {
   PaperPlaneRight,
   CheckCircle,
   Lightning,
+  ArrowsClockwise,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
@@ -64,7 +67,17 @@ type GeneratedStep = {
   captureVariable?: string
 }
 
+type DeviceItem = {
+  id: string
+  name: string
+  phoneNumber: string
+}
+
 export default function AiAgentsPage() {
+  const params = useParams<{ lang?: string }>()
+  const router = useRouter()
+  const lang = params?.lang || "id"
+
   const [agents, setAgents] = useState<AgentProfile[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState("")
@@ -80,11 +93,22 @@ export default function AiAgentsPage() {
   const [generationError, setGenerationError] = useState("")
   const [workflowSummary, setWorkflowSummary] = useState("")
   const [workflowSteps, setWorkflowSteps] = useState<GeneratedStep[]>([])
+  const [generatedWorkflowRaw, setGeneratedWorkflowRaw] = useState<unknown | null>(null)
   const [simulatedChat, setSimulatedChat] = useState<
     { role: "user" | "bot"; text: string }[]
   >([])
   const [simVariables, setSimVariables] = useState<Record<string, string>>({})
   const [testInput, setTestInput] = useState("")
+
+  // Device Binding State
+  const [devices, setDevices] = useState<DeviceItem[]>([])
+  const [loadingDevices, setLoadingDevices] = useState(false)
+  const [bindingModalOpen, setBindingModalOpen] = useState(false)
+  const [selectedAgentForBinding, setSelectedAgentForBinding] =
+    useState<AgentProfile | null>(null)
+  const [bindingActionLoadingId, setBindingActionLoadingId] = useState<
+    string | null
+  >(null)
   const loadAgents = useCallback(async () => {
     try {
       const res = await eden.api.console.ai.agents.get()
@@ -149,6 +173,7 @@ export default function AiAgentsPage() {
           })
         )
         setWorkflowSteps(steps)
+        setGeneratedWorkflowRaw(data.workflow)
         setSimVariables({})
 
         // Set default name & prompt if empty
@@ -233,7 +258,7 @@ export default function AiAgentsPage() {
     setTestInput("")
   }
 
-  const handleSave = async () => {
+  const handleSave = async (openCanvasAfter = false) => {
     if (!name.trim()) {
       toast.error("Nama asisten wajib diisi.")
       return
@@ -250,15 +275,36 @@ export default function AiAgentsPage() {
       })
 
       if (res.data && res.data.ok) {
+        const savedAgent = res.data.data as { id: string; name: string }
         await loadAgents()
         setIsOpen(false)
+
+        if (openCanvasAfter && generatedWorkflowRaw) {
+          const draftPayload = {
+            ...(generatedWorkflowRaw as Record<string, unknown>),
+            name: name.trim() || (generatedWorkflowRaw as { name?: string }).name,
+            agentProfileId: savedAgent.id,
+            agentProfileName: savedAgent.name,
+          }
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(
+              "draft_canvas_workflow",
+              JSON.stringify(draftPayload)
+            )
+          }
+          toast.success("Asisten disimpan! Membuka di WhatsApp Canvas...")
+          router.push(`/${lang}/console/whatsapp/workflows/new/canvas`)
+        } else {
+          toast.success("Asisten AI berhasil disimpan.")
+        }
+
         setName("")
         setDescription("")
         setSystemPrompt("")
         setWorkflowSteps([])
         setWorkflowSummary("")
         setSimVariables({})
-        toast.success("Asisten AI berhasil disimpan.")
+        setGeneratedWorkflowRaw(null)
       } else {
         toast.error("Gagal menyimpan profil asisten.")
       }
@@ -267,6 +313,92 @@ export default function AiAgentsPage() {
       toast.error("Terjadi kesalahan saat menyimpan asisten.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleOpenBindingModal = async (agent: AgentProfile) => {
+    setSelectedAgentForBinding(agent)
+    setBindingModalOpen(true)
+    setLoadingDevices(true)
+    try {
+      const res = await eden.api.whatsapp.devices.get()
+      if (res.data && "devices" in res.data && Array.isArray(res.data.devices)) {
+        const devList = (
+          res.data.devices as Array<{
+            id: string
+            name?: string
+            phoneNumber: string
+          }>
+        ).map((d) => ({
+          id: d.id,
+          name: d.name || d.phoneNumber,
+          phoneNumber: d.phoneNumber,
+        }))
+        setDevices(devList)
+      }
+    } catch (err) {
+      console.warn("[ai-agents] load devices error:", err)
+      toast.error("Gagal memuat perangkat WhatsApp.")
+    } finally {
+      setLoadingDevices(false)
+    }
+  }
+
+  const handleBindDevice = async (device: DeviceItem) => {
+    if (!selectedAgentForBinding) return
+    setBindingActionLoadingId(device.id)
+    try {
+      const res = await eden.api.console.ai.agents[
+        selectedAgentForBinding.id
+      ].bindings.post({
+        channel: "WHATSAPP",
+        targetId: device.id,
+        targetName: device.name || device.phoneNumber,
+      })
+      if (res.data && res.data.ok) {
+        toast.success(`WhatsApp (${device.phoneNumber}) berhasil dihubungkan!`)
+        const updated = await eden.api.console.ai.agents.get()
+        if (updated.data && updated.data.ok && Array.isArray(updated.data.data)) {
+          const allAgents = updated.data.data as AgentProfile[]
+          setAgents(allAgents)
+          const curr = allAgents.find((a) => a.id === selectedAgentForBinding.id)
+          if (curr) setSelectedAgentForBinding(curr)
+        }
+      } else {
+        toast.error("Gagal menghubungkan nomor WhatsApp.")
+      }
+    } catch (err) {
+      console.error("[ai-agents] bind device error:", err)
+      toast.error("Terjadi kesalahan saat menghubungkan nomor.")
+    } finally {
+      setBindingActionLoadingId(null)
+    }
+  }
+
+  const handleUnbindDevice = async (bindingId: string, phoneNumber: string) => {
+    if (!selectedAgentForBinding) return
+    setBindingActionLoadingId(bindingId)
+    try {
+      const res = await eden.api.console.ai.agents[
+        selectedAgentForBinding.id
+      ].bindings[bindingId].delete()
+      if (res.data && res.data.ok) {
+        toast.success(`Hubungan WhatsApp (${phoneNumber}) berhasil diputus.`)
+        const updated = await eden.api.console.ai.agents.get()
+        if (updated.data && updated.data.ok && Array.isArray(updated.data.data)) {
+          const allAgents = updated.data.data as AgentProfile[]
+          setAgents(allAgents)
+          const curr = allAgents.find((a) => a.id === selectedAgentForBinding.id)
+          if (curr) setSelectedAgentForBinding(curr)
+        }
+      } else {
+        toast.error("Gagal memutuskan hubungan nomor.")
+      }
+    } catch (err) {
+      console.error("[ai-agents] unbind error:", err)
+      toast.error("Terjadi kesalahan saat memutuskan hubungan.")
+    } finally {
+      setBindingActionLoadingId(null)
     }
   }
 
@@ -550,17 +682,37 @@ export default function AiAgentsPage() {
               </TabsContent>
             </Tabs>
 
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="ghost" onClick={() => setIsOpen(false)}>
                 Batal
               </Button>
-              <Button
-                onClick={handleSave}
-                disabled={!name.trim() || saving}
-                className="bg-emerald-600 text-white hover:bg-emerald-700"
-              >
-                {saving ? "Menyimpan..." : "Simpan & Aktifkan"}
-              </Button>
+              {generatedWorkflowRaw ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSave(false)}
+                    disabled={!name.trim() || saving}
+                  >
+                    Simpan Profil Saja
+                  </Button>
+                  <Button
+                    onClick={() => handleSave(true)}
+                    disabled={!name.trim() || saving}
+                    className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    <Sparkle size={15} weight="fill" />
+                    <span>Simpan & Buka di WhatsApp Canvas</span>
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => handleSave(false)}
+                  disabled={!name.trim() || saving}
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  {saving ? "Menyimpan..." : "Simpan & Aktifkan"}
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -630,20 +782,186 @@ export default function AiAgentsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-border pt-3">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <WhatsappLogo size={16} className="text-emerald-500" />
-                    <span>{agent.channelsCount || 0} Channel Terhubung</span>
+                <div className="flex flex-col gap-2.5 border-t border-border pt-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <WhatsappLogo size={16} className="text-emerald-500" />
+                      <span>{agent.channelsCount || 0} Channel Terhubung</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => handleOpenBindingModal(agent)}
+                      >
+                        Kelola Nomor
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1 border-emerald-500/30 text-xs text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400"
+                        asChild
+                      >
+                        <Link
+                          href={`/${lang}/console/whatsapp/workflows/new/canvas?agentProfileId=${agent.id}&agentProfileName=${encodeURIComponent(agent.name)}`}
+                        >
+                          <Sparkle size={13} weight="fill" />
+                          <span>Buka di Canvas</span>
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
-                    Kelola Nomor
-                  </Button>
+
+                  {agent.channelBindings && agent.channelBindings.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {agent.channelBindings.map((b) => (
+                        <Badge
+                          key={b.id}
+                          variant="secondary"
+                          className="border border-emerald-500/20 bg-emerald-500/5 text-[10px] text-emerald-600 dark:text-emerald-400"
+                        >
+                          📱 {b.targetName || b.targetId}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      {/* Modal Kelola Nomor WhatsApp */}
+      <Dialog open={bindingModalOpen} onOpenChange={setBindingModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <WhatsappLogo
+                size={20}
+                className="text-emerald-500"
+                weight="fill"
+              />
+              <span>Kelola Nomor WhatsApp Asisten</span>
+            </DialogTitle>
+            <DialogDescription>
+              Tautkan nomor WhatsApp organisasi ke profil asisten{" "}
+              <strong>{selectedAgentForBinding?.name}</strong> untuk membalas
+              pesan masuk pelanggan secara otomatis.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {loadingDevices ? (
+              <div className="flex items-center justify-center p-8 text-xs text-muted-foreground">
+                <ArrowsClockwise
+                  size={16}
+                  className="mr-2 animate-spin text-emerald-500"
+                />
+                <span>Memuat daftar nomor WhatsApp...</span>
+              </div>
+            ) : devices.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                <p>
+                  Belum ada nomor WhatsApp yang terhubung di organisasi ini.
+                </p>
+                <Button
+                  variant="link"
+                  size="sm"
+                  asChild
+                  className="mt-1 h-auto p-0 text-emerald-600"
+                >
+                  <Link href={`/${lang}/console/whatsapp/devices`}>
+                    + Hubungkan nomor di menu WhatsApp Devices
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {devices.map((dev) => {
+                  const binding =
+                    selectedAgentForBinding?.channelBindings?.find(
+                      (b) =>
+                        b.channel.toUpperCase() === "WHATSAPP" &&
+                        b.targetId === dev.id
+                    )
+                  const isBound = Boolean(binding)
+                  const isLoading =
+                    bindingActionLoadingId === dev.id ||
+                    (binding && bindingActionLoadingId === binding.id)
+
+                  return (
+                    <div
+                      key={dev.id}
+                      className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-foreground">
+                            {dev.name}
+                          </span>
+                          {isBound ? (
+                            <Badge
+                              variant="secondary"
+                              className="border-emerald-500/20 bg-emerald-500/10 text-[10px] text-emerald-600"
+                            >
+                              Terhubung
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] text-muted-foreground"
+                            >
+                              Tersedia
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="font-mono text-[11px] text-muted-foreground">
+                          {dev.phoneNumber}
+                        </p>
+                      </div>
+
+                      {isBound && binding ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={Boolean(isLoading)}
+                          onClick={() =>
+                            handleUnbindDevice(binding.id, dev.phoneNumber)
+                          }
+                          className="h-7 border-destructive/30 text-xs text-destructive hover:bg-destructive/10"
+                        >
+                          {isLoading ? "Memproses..." : "Putuskan"}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          disabled={Boolean(isLoading)}
+                          onClick={() => handleBindDevice(dev)}
+                          className="h-7 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
+                        >
+                          {isLoading ? "Menghubungkan..." : "Hubungkan"}
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBindingModalOpen(false)}
+            >
+              Selesai
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

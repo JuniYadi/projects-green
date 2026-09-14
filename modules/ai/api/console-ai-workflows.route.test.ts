@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test"
-import {
-  buildTemplateWorkflow,
-  createConsoleAiWorkflowsRoutes,
-} from "./console-ai-workflows.route"
+import { describe, it, expect, mock } from "bun:test"
+
+mock.module("server-only", () => ({}))
+
+const { buildTemplateWorkflow, createConsoleAiWorkflowsRoutes } =
+  await import("./console-ai-workflows.route")
 import { WorkflowDefinitionSchema } from "@/modules/whatsapp/workflow/workflow.schema"
 
 describe("modules/ai/api - Console AI Workflows Route", () => {

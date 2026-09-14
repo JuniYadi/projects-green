@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   Lightning,
   Trash,
+  Robot,
 } from "@phosphor-icons/react"
 import type { WorkflowNodeType } from "@/modules/whatsapp/workflow/workflow.schema"
 
@@ -162,6 +163,14 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
         )}
       </div>
       <div className="mt-1.5 space-y-1">
+        {Boolean(nodeData.config?.agentProfileName) && (
+          <div className="flex items-center gap-1 rounded border border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-medium text-purple-400">
+            <Robot className="h-3 w-3 shrink-0" weight="fill" />
+            <span className="truncate">
+              Template: {String(nodeData.config.agentProfileName)}
+            </span>
+          </div>
+        )}
         <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
           {previewText}
         </p>

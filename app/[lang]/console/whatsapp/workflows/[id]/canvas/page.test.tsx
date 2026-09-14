@@ -30,6 +30,13 @@ mock.module("@/lib/eden", () => ({
       whatsapp: {
         devices: { get: mock(async () => ({ data: { devices: [] } })) },
       },
+      console: {
+        ai: {
+          agents: {
+            get: mock(async () => ({ data: { ok: true, data: [] } })),
+          },
+        },
+      },
     },
   },
 }))

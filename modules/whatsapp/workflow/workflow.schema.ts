@@ -93,6 +93,8 @@ export const AiGenerateNodeConfigSchema = z.object({
   providerId: z.string().optional(),
   model: z.string().optional(),
   sendReply: z.boolean().default(false),
+  agentProfileId: z.string().optional(),
+  agentProfileName: z.string().optional(),
 })
 export type AiGenerateNodeConfig = z.infer<typeof AiGenerateNodeConfigSchema>
 

@@ -1,5 +1,7 @@
 import { generateText } from "ai"
+import { prisma } from "@/lib/prisma"
 import { messageService } from "@/modules/whatsapp/messages/messages.service"
+import { searchHybridKnowledge } from "@/modules/ai/ai-rag.service"
 import {
   evaluateMustacheTemplate,
   type TemplateContext,
@@ -427,11 +429,108 @@ export async function executeWorkflowNode(
         config.prompt,
         templateContext
       )
-      const renderedSystem = config.systemPrompt
+      let renderedSystem = config.systemPrompt
         ? evaluateMustacheTemplate(config.systemPrompt, templateContext)
         : "Anda adalah asisten cerdas yang ringkas dan tepat."
 
       try {
+        // If an AI Agent Template profile is bound, inherit its persona, guardrails, and knowledge documents
+        if (config.agentProfileId) {
+          const agent = await prisma.aiAgentProfile.findFirst({
+            where: {
+              id: config.agentProfileId,
+              organizationId,
+            },
+            include: {
+              knowledgeDocuments: {
+                where: { status: "READY" },
+                select: { id: true, title: true },
+              },
+            },
+          })
+
+          if (agent && agent.isActive) {
+            // Guardrail 1: Max character length
+            const maxChar = agent.maxCharLength || 1000
+            if (renderedPrompt.length > maxChar) {
+              return {
+                status: "FAILED",
+                outputPort: "error",
+                errorMessage: `Input prompt exceeds agent max length (${maxChar} chars)`,
+              }
+            }
+
+            // Guardrail 2: Profanity filter and blocked words
+            if (agent.enableProfanityFilter && agent.customBlockedWords?.length) {
+              const isBlocked = agent.customBlockedWords.some((word: string) =>
+                renderedPrompt.toLowerCase().includes(word.toLowerCase().trim())
+              )
+              if (isBlocked) {
+                const fallback =
+                  agent.fallbackMessage ||
+                  "Maaf, pertanyaan Anda belum dapat diproses."
+                if (config.sendReply) {
+                  await messageService.sendMessage({
+                    organizationId,
+                    phoneNumber,
+                    deviceId,
+                    message: fallback,
+                  })
+                }
+                return {
+                  status: "COMPLETED",
+                  outputPort: "default",
+                  capturedVariable: {
+                    name: config.captureVariable,
+                    value: fallback,
+                  },
+                  stepOutput: {
+                    generatedText: fallback,
+                    blockedByFilter: true,
+                    sentReply: config.sendReply,
+                  },
+                }
+              }
+            }
+
+            // In-Database Hybrid RAG (pgvector + BM25)
+            if (agent.knowledgeDocuments && agent.knowledgeDocuments.length > 0) {
+              try {
+                const knowledgeChunks = await searchHybridKnowledge({
+                  organizationId,
+                  agentProfileId: agent.id,
+                  query: renderedPrompt,
+                  limit: 3,
+                })
+                if (knowledgeChunks.length > 0) {
+                  const contextText = knowledgeChunks
+                    .map(
+                      (chunk, idx) =>
+                        `[Dokumen ${idx + 1}: ${chunk.title}]\n${chunk.contentMarkdown}`
+                    )
+                    .join("\n\n")
+                  renderedSystem = `${agent.systemPrompt || renderedSystem}\n\n### KONTEKS DOKUMEN RESMI:\n${contextText}\n\nJawab pertanyaan berdasarkan konteks dokumen di atas secara ramah dan ringkas.`
+                } else if (agent.systemPrompt) {
+                  renderedSystem = config.systemPrompt
+                    ? `${agent.systemPrompt}\n\n${config.systemPrompt}`
+                    : agent.systemPrompt
+                }
+              } catch (ragError) {
+                console.warn("[workflow-executor] RAG search error:", ragError)
+                if (agent.systemPrompt) {
+                  renderedSystem = config.systemPrompt
+                    ? `${agent.systemPrompt}\n\n${config.systemPrompt}`
+                    : agent.systemPrompt
+                }
+              }
+            } else if (agent.systemPrompt) {
+              renderedSystem = config.systemPrompt
+                ? `${agent.systemPrompt}\n\n${config.systemPrompt}`
+                : agent.systemPrompt
+            }
+          }
+        }
+
         const providerConfig = await resolveAiProviderConfig({
           organizationId,
           providerId: config.providerId,

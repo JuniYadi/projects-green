@@ -2589,6 +2589,8 @@ export type AppMessages = {
         orderTrackingDesc: string
         leadGenTitle: string
         leadGenDesc: string
+        aiSalesTitle: string
+        aiSalesDesc: string
       }
       card: {
         nodesCount: string
@@ -2668,6 +2670,11 @@ export type AppMessages = {
         aiPromptLabel: string
         aiPromptPlaceholder: string
         aiVariableLabel: string
+        aiTemplateLabel: string
+        aiTemplateNone: string
+        aiTemplateDesc: string
+        aiSendReplyLabel: string
+        aiSendReplyDesc: string
         httpMethodLabel: string
         httpUrlLabel: string
         httpVariableLabel: string
