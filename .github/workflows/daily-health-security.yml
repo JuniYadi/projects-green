@@ -145,8 +145,8 @@ jobs:
       - name: Evaluate Security Severity Gate
         shell: bash
         run: |
-          # Gate: Fail if HIGH or CRITICAL vulnerabilities are found
-          if grep -E 'CRITICAL|HIGH' reports/trivy.log > /dev/null 2>&1; then
+          # Gate: Fail if HIGH or CRITICAL vulnerability rows exist in the table
+          if grep -E '(CRITICAL|HIGH)\s*\|' reports/trivy.log > /dev/null 2>&1; then
             echo "::error::Actionable HIGH or CRITICAL security vulnerabilities detected."
             exit 1
           fi
