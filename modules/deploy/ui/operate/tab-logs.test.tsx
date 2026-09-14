@@ -1,4 +1,4 @@
-import { cleanup, render } from "@testing-library/react"
+import { cleanup, fireEvent, render } from "@testing-library/react"
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TabLogs } from "./tab-logs"
@@ -51,6 +51,55 @@ describe("TabLogs Component", () => {
 
       const log2 = await view.findByText("High memory utilization warning")
       expect(log2).toBeTruthy()
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it("opens inspector drawer when a log row is clicked", async () => {
+    const originalFetch = globalThis.fetch
+    const mockLogs = [
+      {
+        id: "log-101",
+        timestamp: "14:00:00",
+        level: "ERROR",
+        source: "api",
+        message: "Database connection refused",
+        raw: {
+          http: { status_code: 500 },
+          error: { code: "ECONNREFUSED" },
+        },
+      },
+    ]
+
+    globalThis.fetch = mock(async (url: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes("/logs/report")) {
+        return { ok: false, json: async () => ({}) }
+      }
+      return { ok: true, json: async () => ({ ok: true, data: mockLogs }) }
+    }) as unknown as typeof fetch
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    try {
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <TabLogs appSlug="hermes-sparkling-pulsar" />
+        </QueryClientProvider>
+      )
+
+      const rowMessage = await view.findByText("Database connection refused")
+      expect(rowMessage).toBeTruthy()
+
+      fireEvent.click(rowMessage)
+
+      // Drawer should open displaying attributes
+      const attrField = await view.findByText("error.code")
+      expect(attrField).toBeTruthy()
+      expect(view.getByText("ECONNREFUSED")).toBeTruthy()
     } finally {
       globalThis.fetch = originalFetch
     }
