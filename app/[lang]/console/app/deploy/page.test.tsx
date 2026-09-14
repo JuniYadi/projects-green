@@ -334,4 +334,16 @@ describe("DeployPage", () => {
       expect(view.getByText("Standard Compute")).toBeTruthy()
     })
   })
+
+  it("renders Indonesian localized greeting when lang is id", async () => {
+    const deployPageModule =
+      await import("@/app/[lang]/console/app/deploy/page")
+    const view = render(<deployPageModule.default lang="id" />)
+
+    await waitFor(() => {
+      expect(
+        view.getByText(/apa yang ingin Anda deploy hari ini\?/i)
+      ).toBeTruthy()
+    })
+  })
 })

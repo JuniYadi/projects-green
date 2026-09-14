@@ -219,6 +219,7 @@ export function GitDeployWizard({
         <GitSourceStep
           initialSource={source ?? undefined}
           userName={userName}
+          lang={lang}
           onSourceVerified={handleSourceVerified}
         />
       )}
