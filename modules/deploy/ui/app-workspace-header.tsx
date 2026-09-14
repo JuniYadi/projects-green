@@ -46,6 +46,7 @@ export type AppWorkspaceHeaderProps = {
   locale?: string
   onSync?: () => void
   isSyncing?: boolean
+  isTerminalActive?: boolean
 }
 
 export function AppWorkspaceHeader({
@@ -55,6 +56,7 @@ export function AppWorkspaceHeader({
   locale: localeProp,
   onSync,
   isSyncing = false,
+  isTerminalActive = false,
 }: AppWorkspaceHeaderProps) {
   const params = useParams<{ lang?: string }>()
   const router = useRouter()
@@ -250,6 +252,12 @@ export function AppWorkspaceHeader({
               >
                 {tab.icon}
                 <span>{tab.label}</span>
+                {tab.key === "terminal" && isTerminalActive && (
+                  <span
+                    className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"
+                    title="Live terminal session"
+                  />
+                )}
               </Link>
             )
           })}
