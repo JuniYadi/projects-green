@@ -9,6 +9,7 @@ import {
   Globe,
   LockKey,
   MagnifyingGlass,
+  Sparkle,
   Spinner,
   WarningCircle,
 } from "@phosphor-icons/react"
@@ -24,6 +25,7 @@ import type {
 
 type GitSourceStepProps = {
   initialSource?: GitSourceConfig
+  userName?: string
   onSourceVerified: (
     source: GitSourceConfig,
     inspectionData?: Record<string, unknown> | null
@@ -32,6 +34,7 @@ type GitSourceStepProps = {
 
 export function GitSourceStep({
   initialSource,
+  userName,
   onSourceVerified,
 }: GitSourceStepProps) {
   const [tab, setTab] = useState<"url" | "connected">("url")
@@ -76,6 +79,40 @@ export function GitSourceStep({
       setReposLoading(false)
     }
   }
+
+  // Load connected repos on mount for quick picks
+  useEffect(() => {
+    let active = true
+    const fetchInitialRepos = async () => {
+      try {
+        const res = await fetch("/api/integrations/github/repositories")
+        if (!active) return
+        if (res.status === 401 || res.status === 404) {
+          setGithubConnected(false)
+          setRepos([])
+          return
+        }
+        const data = await res.json()
+        if (!active) return
+        if (data.ok && Array.isArray(data.items)) {
+          setRepos(data.items)
+          setGithubConnected(true)
+        } else {
+          setGithubConnected(false)
+          setRepos([])
+        }
+      } catch {
+        if (active) {
+          setGithubConnected(false)
+          setRepos([])
+        }
+      }
+    }
+    void fetchInitialRepos()
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Inspect source URL to detect visibility (Public vs Private)
   const handleInspectUrl = async (targetUrl: string) => {
@@ -218,6 +255,20 @@ export function GitSourceStep({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Centered AI Agent Helper Hero */}
+      <div className="flex flex-col items-center justify-center py-6 text-center">
+        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary shadow-xs">
+          <Sparkle className="h-5 w-5" weight="fill" />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          {`Hi ${userName || "Developer"}, what do you want to deploy today?`}
+        </h1>
+        <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+          Paste your GitHub repository URL below. Our AI will automatically
+          check repository visibility and prepare your deployment configuration.
+        </p>
+      </div>
+
       {/* Intake Method Toggle */}
       <div className="flex items-center gap-2 border-b border-border pb-4">
         <Button
@@ -304,6 +355,31 @@ export function GitSourceStep({
                 </div>
               </div>
             </div>
+
+            {/* Quick-pick chips from connected repositories */}
+            {repos.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Quick picks:
+                </span>
+                {repos.slice(0, 5).map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                    onClick={() => {
+                      setUrl(r.htmlUrl)
+                      setBranch(r.defaultBranch || "main")
+                      setAccessState("idle")
+                      void handleInspectUrl(r.htmlUrl)
+                    }}
+                  >
+                    <GitBranch className="h-3 w-3 text-muted-foreground" />
+                    {r.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="mt-4 flex justify-end">
               <Button

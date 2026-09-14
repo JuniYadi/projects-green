@@ -1806,6 +1806,26 @@ export const idMessages: AppMessages = {
         heading: "Mari online-kan aplikasi Anda",
         description: "Tempel URL repo atau pilih template.",
       },
+      deployAgent: {
+        greeting: "Halo {name}, apa yang ingin Anda deploy hari ini?",
+        subtitle:
+          "Masukkan URL repositori GitHub di bawah. AI kami akan memeriksa visibilitas dan menyiapkan spesifikasi.",
+        inputPlaceholder: "https://github.com/organization/repository",
+        inspectButton: "Inspect Repository",
+        quickPicks: "Repositori Terhubung:",
+        publicVerified: "Public Repository Verified",
+        publicDescription:
+          "Repositori publik terverifikasi. Tidak memerlukan autentikasi GitHub.",
+        privateAuthorized: "Private Repository Authorized",
+        privateAuthorizedDescription:
+          "Repositori privat terverifikasi melalui instalasi GitHub App.",
+        privateRequired: "GitHub App Installation Required",
+        privateRequiredDescription:
+          "Repositori ini privat. Kredensial GitHub App diperlukan untuk membaca kode dan build.",
+        installApp: "Install GitHub App",
+        recheckAccess: "Re-check Access",
+        continueButton: "Continue to Build Settings",
+      },
       deployWizard: {
         heading: "Mari online-kan aplikasi Anda",
         description: "Tempel URL repo atau pilih template.",
