@@ -41,6 +41,7 @@ import {
   type WhatsappAuditEventStatus,
 } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 import { syncMetaWebhookSubscription } from "../services/meta-webhook-sync.service"
+import { syncMetaDevicePermissions } from "../services/meta-permissions-sync.service"
 
 const MAX_BALANCE = new Decimal("999999999.99")
 
@@ -503,6 +504,35 @@ export const createAdminDevicesRoutes = (
           error: "SYNC_FAILED",
           message:
             err instanceof Error ? err.message : "Failed to sync webhook",
+        }
+      }
+    })
+    .post("/:id/sync-permissions", async ({ params: { id }, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
+
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+        select: { id: true },
+      })
+
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      }
+
+      try {
+        const result = await syncMetaDevicePermissions(id)
+        return { ok: true, data: result }
+      } catch (err) {
+        set.status = 500
+        return {
+          ok: false,
+          error: "SYNC_FAILED",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to sync Meta permissions",
         }
       }
     })

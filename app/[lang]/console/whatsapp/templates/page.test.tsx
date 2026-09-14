@@ -79,10 +79,14 @@ const mockUseSyncTemplate = mock(() => ({
   syncing: false,
 }))
 
+const mockDeviceList = mock(() =>
+  Promise.resolve({ ok: true, devices: [] as Array<Record<string, unknown>> })
+)
+
 mock.module("@/lib/api/whatsapp-client", () => ({
   whatsappClient: {
     devices: {
-      list: mock(() => Promise.resolve({ ok: true, devices: [] })),
+      list: mockDeviceList,
       pullTemplates: mock(() => Promise.resolve({ ok: true, syncedCount: 0 })),
     },
   },
@@ -181,5 +185,36 @@ describe("WhatsAppTemplatesPage", () => {
     expect(view.queryByText("Creation Date")).toBeNull()
     // "Last Updated" should be visible in headers
     expect(view.getAllByText("Last Updated").length).toBeGreaterThan(0)
+  })
+
+  it("renders a warning banner when selected device lacks MANAGE permissions on Meta WABA", async () => {
+    mockDeviceList.mockResolvedValueOnce({
+      ok: true,
+      devices: [
+        {
+          id: "dev-unassigned",
+          phoneNumber: "+6285177284620",
+          name: "PMI Bantul",
+          features: {
+            metaPermissions: {
+              status: "NOT_ASSIGNED",
+              canManageTemplates: false,
+              warning:
+                "System User token is not assigned to this WhatsApp Business Account in Meta Business Suite.",
+            },
+          },
+        },
+      ],
+    })
+
+    const view = render(<WhatsAppTemplatesPage />)
+    expect(
+      await view.findByText(
+        /Warning: WhatsApp Token Lacks Full Access \(MANAGE\) in Meta/i
+      )
+    ).toBeInTheDocument()
+    expect(
+      view.getByText(/System User token is not assigned/i)
+    ).toBeInTheDocument()
   })
 })

@@ -70,6 +70,7 @@ export default function ConsoleTemplatesPage() {
       phoneNumber: string
       verifiedName?: string | null
       name?: string | null
+      features?: Record<string, unknown> | null
     }>
   >([])
   const [loadingDevices, setLoadingDevices] = React.useState<boolean>(true)
@@ -169,6 +170,15 @@ export default function ConsoleTemplatesPage() {
   const syncedCount = templates.filter((t) => t.syncStatus === "SYNCED").length
   const totalCount = templates.length
   const isAllSynced = totalCount > 0 && syncedCount === totalCount
+
+  const selectedDevice = devices.find((d) => d.id === selectedDeviceId)
+  const metaPermissions = selectedDevice?.features?.metaPermissions as
+    | {
+        status?: string
+        canManageTemplates?: boolean
+        warning?: string | null
+      }
+    | undefined
   function formatRelativeTime(dateString: string | Date): string {
     const date = new Date(dateString)
     const now = new Date()
@@ -618,6 +628,27 @@ export default function ConsoleTemplatesPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {metaPermissions &&
+            !metaPermissions.canManageTemplates &&
+            (metaPermissions.status === "NOT_ASSIGNED" ||
+              metaPermissions.status === "MISSING_MANAGE_TASK") && (
+              <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-900 dark:text-amber-200">
+                <Warning className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div className="space-y-1 text-sm">
+                  <p className="font-semibold">
+                    {locale === "id"
+                      ? "Perhatian: Token WhatsApp Belum Memiliki Akses Penuh (MANAGE) di Meta"
+                      : "Warning: WhatsApp Token Lacks Full Access (MANAGE) in Meta"}
+                  </p>
+                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                    {metaPermissions.warning ||
+                      (locale === "id"
+                        ? "System User belum di-assign izin MANAGE pada WhatsApp Business Account di Meta Business Suite. Pembuatan dan penghapusan template di Meta akan ditolak sampai izin diberikan."
+                        : "System User lacks MANAGE permissions on this WhatsApp Business Account in Meta Business Suite. Creating or deleting templates in Meta will fail until permissions are granted.")}
+                  </p>
+                </div>
+              </div>
+            )}
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
               <div className="flex items-center justify-between">

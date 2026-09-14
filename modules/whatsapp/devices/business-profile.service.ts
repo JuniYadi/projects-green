@@ -1,5 +1,6 @@
 import { resolveDecryptedDeviceMetaToken } from "@/modules/whatsapp/meta-apps/services/meta-credentials-resolver.service"
 import { syncMetaWebhookSubscription } from "./services/meta-webhook-sync.service"
+import { syncMetaDevicePermissions } from "./services/meta-permissions-sync.service"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { MetaCloudHttpClient } from "@/lib/whatsapp/meta-cloud/client"
@@ -232,6 +233,12 @@ export async function syncDeviceFromMeta(
     console.warn(
       `[syncDeviceFromMeta] Webhook sync failed for ${deviceId}:`,
       syncErr
+    )
+  )
+  await syncMetaDevicePermissions(deviceId).catch((permErr) =>
+    console.warn(
+      `[syncDeviceFromMeta] Permissions sync failed for ${deviceId}:`,
+      permErr
     )
   )
 

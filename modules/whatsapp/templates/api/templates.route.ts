@@ -1160,12 +1160,24 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             })
             await metaClient.deleteTemplate(template.slug || template.name)
           } catch (metaErr: unknown) {
+            const isPermissionDenied =
+              metaErr instanceof MetaCloudError &&
+              (metaErr.httpStatus === 403 ||
+                metaErr.code === 200 ||
+                metaErr.message?.toLowerCase().includes("permission") ||
+                metaErr.message?.toLowerCase().includes("access token") ||
+                metaErr.message?.toLowerCase().includes("access denied"))
+
             const isNotFound =
+              !isPermissionDenied &&
               metaErr instanceof MetaCloudError &&
               (metaErr.httpStatus === 404 ||
-                metaErr.code === 100 ||
+                metaErr.errorSubcode === 2593002 ||
                 metaErr.message?.toLowerCase().includes("does not exist") ||
-                metaErr.message?.toLowerCase().includes("not found"))
+                metaErr.message?.toLowerCase().includes("template not found") ||
+                Boolean(
+                  metaErr.errorUserTitle?.toLowerCase().includes("not found")
+                ))
 
             if (!isNotFound) {
               console.error(

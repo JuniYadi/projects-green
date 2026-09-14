@@ -99,6 +99,7 @@ export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
     qualityRating: qualityRating ?? null,
     lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
     lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
+    features: toJsonRecord(device.features),
   }
 }
 export type DeviceHealthInfo = {

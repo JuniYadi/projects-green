@@ -1293,6 +1293,78 @@ describe("templatesRoutes", () => {
       expect(body.error).toBe("META_DELETION_FAILED")
       expect(mockTemplateDelete).not.toHaveBeenCalled()
     })
+
+    it("returns 502 and does not delete locally when Meta returns code 100 permission error", async () => {
+      const { MetaCloudError } =
+        await import("@/lib/whatsapp/meta-cloud/errors")
+      mockTemplateDelete.mockClear()
+      mockDeleteMetaTemplate.mockRejectedValueOnce(
+        new MetaCloudError(
+          "(#100) Need permission on either WhatsApp Business Account or owner/shared business.",
+          {
+            code: 100,
+            httpStatus: 400,
+          }
+        )
+      )
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        slug: "unassigned_waba_template",
+        whatsappDeviceId: "dev-1",
+      } as unknown as MockTemplate)
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        id: "dev-1",
+        tokenEncrypted: "encrypted-token",
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(502)
+      const body = await res.json()
+      expect(body.error).toBe("META_DELETION_FAILED")
+      expect(mockTemplateDelete).not.toHaveBeenCalled()
+    })
+
+    it("proceeds with local deletion when Meta returns code 100 with subcode 2593002 (Message template not found)", async () => {
+      const { MetaCloudError } =
+        await import("@/lib/whatsapp/meta-cloud/errors")
+      mockTemplateDelete.mockClear()
+      mockDeleteMetaTemplate.mockRejectedValueOnce(
+        new MetaCloudError("Invalid parameter", {
+          code: 100,
+          errorSubcode: 2593002,
+          errorUserTitle: "Message template not found",
+          errorUserMsg: "The message template wasn't found for this account.",
+          httpStatus: 400,
+        })
+      )
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        slug: "template_already_gone",
+        whatsappDeviceId: "dev-1",
+      } as unknown as MockTemplate)
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        id: "dev-1",
+        tokenEncrypted: "encrypted-token",
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+      })
+
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(mockTemplateDelete).toHaveBeenCalledWith({
+        where: { id: "tpl-approved" },
+      })
+    })
   })
 
   describe("POST /:id/sync", () => {

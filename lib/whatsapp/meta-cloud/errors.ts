@@ -24,6 +24,9 @@ export class MetaCloudError extends Error {
   readonly type: string | undefined
   readonly fbtrace_id: string | undefined
   readonly httpStatus: number | undefined
+  readonly errorSubcode: number | undefined
+  readonly errorUserTitle: string | undefined
+  readonly errorUserMsg: string | undefined
 
   constructor(
     message: string,
@@ -32,6 +35,9 @@ export class MetaCloudError extends Error {
       type?: string
       fbtrace_id?: string
       httpStatus?: number
+      errorSubcode?: number
+      errorUserTitle?: string
+      errorUserMsg?: string
     } = {}
   ) {
     super(message)
@@ -40,6 +46,9 @@ export class MetaCloudError extends Error {
     this.type = options.type
     this.fbtrace_id = options.fbtrace_id
     this.httpStatus = options.httpStatus
+    this.errorSubcode = options.errorSubcode
+    this.errorUserTitle = options.errorUserTitle
+    this.errorUserMsg = options.errorUserMsg
   }
 }
 
