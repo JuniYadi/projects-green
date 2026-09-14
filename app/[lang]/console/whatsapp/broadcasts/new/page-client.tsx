@@ -58,8 +58,8 @@ import {
   type BroadcastPreflightResult,
 } from "@/modules/whatsapp/whatsapp-client"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
+import { CountryFlag } from "@/components/ui/country-flag"
 import {
-  getFlagEmoji,
   getLanguageDisplay,
   WhatsAppTemplatePreview,
   type TemplatePreviewValues,
@@ -914,9 +914,10 @@ export default function NewWhatsAppBroadcastPage() {
                             }`}
                           >
                             {flag ? (
-                              <span className="text-sm leading-none">
-                                {getFlagEmoji(flag)}
-                              </span>
+                              <CountryFlag
+                                country={flag}
+                                className="rounded-2xs h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                              />
                             ) : null}
                             <span>{label}</span>
                             <span className="opacity-70">({code})</span>

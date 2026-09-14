@@ -42,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { CountryFlag } from "@/components/ui/country-flag"
 import {
   formatTemplateSlug,
   validateTemplateBodyRules,
@@ -115,14 +116,14 @@ type TemplateFormProps = {
 }
 
 const SUPPORTED_LANGUAGES = [
-  { code: "id", label: "Indonesian", flag: "🇮🇩" },
-  { code: "en", label: "English (US)", flag: "🇺🇸" },
-  { code: "en_GB", label: "English (UK)", flag: "🇬🇧" },
-  { code: "ms", label: "Malay", flag: "🇲🇾" },
-  { code: "th", label: "Thai", flag: "🇹🇭" },
-  { code: "vi", label: "Vietnamese", flag: "🇻🇳" },
-  { code: "fil", label: "Filipino", flag: "🇵🇭" },
-  { code: "zh_CN", label: "Chinese (Simplified)", flag: "🇨🇳" },
+  { code: "id", label: "Indonesian", country: "ID" },
+  { code: "en", label: "English (US)", country: "US" },
+  { code: "en_GB", label: "English (UK)", country: "GB" },
+  { code: "ms", label: "Malay", country: "MY" },
+  { code: "th", label: "Thai", country: "TH" },
+  { code: "vi", label: "Vietnamese", country: "VN" },
+  { code: "fil", label: "Filipino", country: "PH" },
+  { code: "zh_CN", label: "Chinese (Simplified)", country: "CN" },
 ]
 
 function getAuthOtpCopies(
@@ -722,7 +723,10 @@ export function TemplateForm({
                     <SelectContent>
                       {SUPPORTED_LANGUAGES.map((l) => (
                         <SelectItem key={l.code} value={l.code}>
-                          <span className="mr-2">{l.flag}</span>
+                          <CountryFlag
+                            country={l.country}
+                            className="rounded-2xs mr-2 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                          />
                           {l.label} ({l.code})
                         </SelectItem>
                       ))}

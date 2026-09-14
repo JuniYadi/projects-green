@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getCatalogProduct } from "@/lib/billing-client"
@@ -28,8 +29,8 @@ import { cn } from "@/lib/utils"
 type BillingPeriod = "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
 
 const CURRENCY_OPTIONS = [
-  { code: "IDR", flag: "🇮🇩", label: "IDR" },
-  { code: "USD", flag: "🇺🇸", label: "USD" },
+  { code: "IDR", country: "ID", label: "IDR" },
+  { code: "USD", country: "US", label: "USD" },
 ] as const
 
 function formatPrice(price: string, currency: string, locale: string): string {
@@ -189,7 +190,10 @@ export default function ProductDetailPage() {
                 {CURRENCY_OPTIONS.map((c) => (
                   <SelectItem key={c.code} value={c.code}>
                     <span className="flex items-center gap-1.5">
-                      <span>{c.flag}</span>
+                      <CountryFlag
+                        country={c.country}
+                        className="rounded-2xs h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                      />
                       <span className="font-medium">{c.label}</span>
                     </span>
                   </SelectItem>
