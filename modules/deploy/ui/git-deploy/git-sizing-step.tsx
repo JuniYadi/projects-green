@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ArrowLeft,
   ArrowRight,
@@ -12,11 +12,18 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import {
+  getCatalogProduct,
+  type CatalogProductDetailResponse,
+} from "@/lib/billing-client"
+import { getPlanResources } from "@/modules/deploy/catalog-plan-utils"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 import type { GitSizingConfig } from "./types"
 
 type GitSizingStepProps = {
   initialConfig?: Partial<GitSizingConfig>
   suggestedSubdomain: string
+  currency?: string
   onBack: () => void
   onNext: (config: GitSizingConfig) => void
 }
@@ -53,25 +60,99 @@ const TIERS = [
 export function GitSizingStep({
   initialConfig,
   suggestedSubdomain,
+  currency = "USD",
   onBack,
   onNext,
 }: GitSizingStepProps) {
-  const [tier, setTier] = useState<"starter" | "standard" | "pro">(
-    initialConfig?.tier ?? "standard"
-  )
+  const [catalogData, setCatalogData] =
+    useState<CatalogProductDetailResponse | null>(null)
+  const [tier, setTier] = useState<string>(initialConfig?.tier ?? "standard")
   const [subdomain, setSubdomain] = useState(
     initialConfig?.subdomain ?? suggestedSubdomain
   )
 
-  const selectedTierConfig = TIERS.find((t) => t.id === tier) ?? TIERS[1]!
+  useEffect(() => {
+    let isMounted = true
+    async function loadCatalog() {
+      try {
+        const res = await getCatalogProduct("APP_HOSTING", currency)
+        if (isMounted && res) {
+          setCatalogData(res)
+          if (!initialConfig?.tier && res.product?.plans?.[0]) {
+            const std = res.product.plans.find(
+              (p) => p.code === "STANDARD" || p.code === "MEDIUM"
+            )
+            setTier(
+              std?.code.toLowerCase() || res.product.plans[0].code.toLowerCase()
+            )
+          }
+        }
+      } catch {
+        // Fall back gracefully to static presets
+      }
+    }
+    void loadCatalog()
+    return () => {
+      isMounted = false
+    }
+  }, [currency, initialConfig?.tier])
+
+  const catalogPlans = useMemo(() => {
+    return catalogData?.product?.plans ?? []
+  }, [catalogData])
+
+  const tiers = useMemo(() => {
+    if (catalogPlans.length > 0) {
+      return catalogPlans.map((plan, index) => {
+        const resources = getPlanResources(plan)
+        const offer =
+          plan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+          plan.offers?.[0]
+        const periodPrice = offer?.periodPrice ? Number(offer.periodPrice) : 0
+        const hourlyRate =
+          periodPrice > 0 ? Number((periodPrice / 720).toFixed(4)) : 0.04
+        return {
+          id: plan.code.toLowerCase(),
+          code: plan.code,
+          name: plan.name || `${plan.code} Tier`,
+          rate: hourlyRate,
+          monthlyPrice: periodPrice,
+          currency: offer?.currency || currency,
+          cpu: resources.cpu,
+          memory: resources.mem,
+          recommended:
+            index === 1 || plan.code === "MEDIUM" || plan.code === "STANDARD",
+          description:
+            plan.description ||
+            `Compute plan with ${resources.cpu}m CPU and ${resources.mem}MB RAM.`,
+        }
+      })
+    }
+    return TIERS.map((t) => ({
+      ...t,
+      code: t.id.toUpperCase(),
+      monthlyPrice: undefined,
+      currency,
+    }))
+  }, [catalogPlans, currency])
+
+  const selectedTierConfig =
+    tiers.find(
+      (t) => t.id === tier || t.code.toLowerCase() === tier.toLowerCase()
+    ) ??
+    tiers[1] ??
+    tiers[0]!
 
   const handleContinue = () => {
     onNext({
-      tier,
+      tier: selectedTierConfig.code || tier,
       cpu: selectedTierConfig.cpu,
       memory: selectedTierConfig.memory,
       hourlyRate: selectedTierConfig.rate,
       subdomain: subdomain.trim().toLowerCase(),
+      planName: selectedTierConfig.name,
+      monthlyPrice: selectedTierConfig.monthlyPrice,
+      currency: selectedTierConfig.currency,
     })
   }
 
@@ -107,14 +188,26 @@ export function GitSizingStep({
 
       {/* Compute Sizing Presets */}
       <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-base font-semibold">Compute & Sizing Tier</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Transparent hourly billing deducted per second of container runtime.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Compute & Sizing Tier</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Transparent billing loaded from the App Hosting product catalog.
+            </p>
+          </div>
+          {catalogPlans.length > 0 && (
+            <Badge variant="outline" className="text-xs">
+              Catalog: APP_HOSTING
+            </Badge>
+          )}
+        </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {TIERS.map((item) => {
-            const isSelected = tier === item.id
+          {tiers.map((item) => {
+            const isSelected =
+              tier === item.id ||
+              tier.toLowerCase() === item.id.toLowerCase() ||
+              tier.toLowerCase() === item.code.toLowerCase()
             return (
               <div
                 key={item.id}
@@ -136,12 +229,25 @@ export function GitSizingStep({
                   </div>
 
                   <div className="mt-3 flex items-baseline gap-1">
-                    <span className="text-2xl font-bold">
-                      ${item.rate.toFixed(4)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      / hour
-                    </span>
+                    {item.monthlyPrice ? (
+                      <div>
+                        <span className="text-xl font-bold">
+                          {formatBillingMoney(item.monthlyPrice, item.currency)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          /mo (~${item.rate.toFixed(4)}/h)
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-2xl font-bold">
+                          ${item.rate.toFixed(4)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          / hour
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   <p className="mt-2 text-xs text-muted-foreground">

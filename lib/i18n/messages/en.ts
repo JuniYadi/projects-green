@@ -1788,6 +1788,26 @@ export const enMessages: AppMessages = {
         heading: "Let’s get your app online",
         description: "Paste a repo URL or pick a template.",
       },
+      deployAgent: {
+        greeting: "Hi {name}, what do you want to deploy today?",
+        subtitle:
+          "Paste your GitHub repository URL below. Our AI will check visibility and prepare sizing.",
+        inputPlaceholder: "https://github.com/organization/repository",
+        inspectButton: "Inspect Repository",
+        quickPicks: "Connected Repositories:",
+        publicVerified: "Public Repository Verified",
+        publicDescription:
+          "Public repository verified. No GitHub authentication required.",
+        privateAuthorized: "Private Repository Authorized",
+        privateAuthorizedDescription:
+          "Private repository verified with connected GitHub App installation.",
+        privateRequired: "GitHub App Installation Required",
+        privateRequiredDescription:
+          "This repository is private. GitHub App credentials are required to read code and build.",
+        installApp: "Install GitHub App",
+        recheckAccess: "Re-check Access",
+        continueButton: "Continue to Build Settings",
+      },
       deployWizard: {
         heading: "Let’s get your app online",
         description: "Paste a repo URL or pick a template.",

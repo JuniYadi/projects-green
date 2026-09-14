@@ -1637,6 +1637,22 @@ export type AppMessages = {
         heading: string
         description: string
       }
+      deployAgent: {
+        greeting: string
+        subtitle: string
+        inputPlaceholder: string
+        inspectButton: string
+        quickPicks: string
+        publicVerified: string
+        publicDescription: string
+        privateAuthorized: string
+        privateAuthorizedDescription: string
+        privateRequired: string
+        privateRequiredDescription: string
+        installApp: string
+        recheckAccess: string
+        continueButton: string
+      }
       deployWizard: {
         heading: string
         description: string

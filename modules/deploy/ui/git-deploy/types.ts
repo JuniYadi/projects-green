@@ -50,10 +50,13 @@ export type GitBuildConfig = {
 }
 
 export type GitSizingConfig = {
-  tier: "starter" | "standard" | "pro"
+  tier: string
   cpu: number
   memory: number
   hourlyRate: number
   subdomain: string
   customDomain?: string
+  planName?: string
+  monthlyPrice?: number
+  currency?: string
 }

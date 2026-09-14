@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { GitSourceStep } from "./git-source-step"
 import { GitBuildStep } from "./git-build-step"
@@ -22,8 +22,42 @@ const STEPS: Array<{ id: GitDeployStep; label: string; number: number }> = [
   { id: "rollout", label: "Rollout", number: 5 },
 ]
 
-export function GitDeployWizard() {
+type GitDeployWizardProps = {
+  initialUserName?: string
+  lang?: string
+}
+
+export function GitDeployWizard({
+  initialUserName,
+  lang = "en",
+}: GitDeployWizardProps = {}) {
+  const currency = lang === "id" ? "IDR" : "USD"
   const [currentStep, setCurrentStep] = useState<GitDeployStep>("source")
+  const [userName, setUserName] = useState<string>(initialUserName || "")
+
+  useEffect(() => {
+    if (!userName) {
+      let active = true
+      void (async () => {
+        try {
+          const res = await fetch("/api/auth/session")
+          const data = await res.json()
+          if (active && data?.ok && data?.user) {
+            const resolved =
+              data.user.firstName ||
+              data.user.name?.split(" ")[0] ||
+              "Developer"
+            setUserName(resolved)
+          }
+        } catch {
+          // ignore transient auth error
+        }
+      })()
+      return () => {
+        active = false
+      }
+    }
+  }, [userName])
 
   // Wizard state
   const [source, setSource] = useState<GitSourceConfig | null>(null)
@@ -184,6 +218,8 @@ export function GitDeployWizard() {
       {currentStep === "source" && (
         <GitSourceStep
           initialSource={source ?? undefined}
+          userName={userName}
+          lang={lang}
           onSourceVerified={handleSourceVerified}
         />
       )}
@@ -202,6 +238,7 @@ export function GitDeployWizard() {
         <GitSizingStep
           initialConfig={sizingConfig ?? undefined}
           suggestedSubdomain={getSuggestedSubdomain()}
+          currency={currency}
           onBack={() => setCurrentStep("config")}
           onNext={handleSizingConfigured}
         />

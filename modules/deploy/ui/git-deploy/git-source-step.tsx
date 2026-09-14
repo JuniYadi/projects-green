@@ -9,6 +9,7 @@ import {
   Globe,
   LockKey,
   MagnifyingGlass,
+  Sparkle,
   Spinner,
   WarningCircle,
 } from "@phosphor-icons/react"
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import type {
   ConnectedRepository,
   GitAccessState,
@@ -24,6 +26,8 @@ import type {
 
 type GitSourceStepProps = {
   initialSource?: GitSourceConfig
+  userName?: string
+  lang?: string
   onSourceVerified: (
     source: GitSourceConfig,
     inspectionData?: Record<string, unknown> | null
@@ -32,8 +36,12 @@ type GitSourceStepProps = {
 
 export function GitSourceStep({
   initialSource,
+  userName,
+  lang,
   onSourceVerified,
 }: GitSourceStepProps) {
+  const messages = getMessagesForMaybeLocale(lang)
+  const agentMessages = messages.console.app.deployAgent
   const [tab, setTab] = useState<"url" | "connected">("url")
   const [url, setUrl] = useState(initialSource?.url ?? "")
   const [branch, setBranch] = useState(initialSource?.branch ?? "main")
@@ -76,6 +84,40 @@ export function GitSourceStep({
       setReposLoading(false)
     }
   }
+
+  // Load connected repos on mount for quick picks
+  useEffect(() => {
+    let active = true
+    const fetchInitialRepos = async () => {
+      try {
+        const res = await fetch("/api/integrations/github/repositories")
+        if (!active) return
+        if (res.status === 401 || res.status === 404) {
+          setGithubConnected(false)
+          setRepos([])
+          return
+        }
+        const data = await res.json()
+        if (!active) return
+        if (data.ok && Array.isArray(data.items)) {
+          setRepos(data.items)
+          setGithubConnected(true)
+        } else {
+          setGithubConnected(false)
+          setRepos([])
+        }
+      } catch {
+        if (active) {
+          setGithubConnected(false)
+          setRepos([])
+        }
+      }
+    }
+    void fetchInitialRepos()
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Inspect source URL to detect visibility (Public vs Private)
   const handleInspectUrl = async (targetUrl: string) => {
@@ -218,6 +260,19 @@ export function GitSourceStep({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Centered AI Agent Helper Hero */}
+      <div className="flex flex-col items-center justify-center py-6 text-center">
+        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary shadow-xs">
+          <Sparkle className="h-5 w-5" weight="fill" />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          {agentMessages.greeting.replace("{name}", userName || "Developer")}
+        </h1>
+        <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+          {agentMessages.subtitle}
+        </p>
+      </div>
+
       {/* Intake Method Toggle */}
       <div className="flex items-center gap-2 border-b border-border pb-4">
         <Button
@@ -305,6 +360,31 @@ export function GitSourceStep({
               </div>
             </div>
 
+            {/* Quick-pick chips from connected repositories */}
+            {repos.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {agentMessages.quickPicks}
+                </span>
+                {repos.slice(0, 5).map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                    onClick={() => {
+                      setUrl(r.htmlUrl)
+                      setBranch(r.defaultBranch || "main")
+                      setAccessState("idle")
+                      void handleInspectUrl(r.htmlUrl)
+                    }}
+                  >
+                    <GitBranch className="h-3 w-3 text-muted-foreground" />
+                    {r.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="mt-4 flex justify-end">
               <Button
                 variant="outline"
@@ -320,7 +400,7 @@ export function GitSourceStep({
                 ) : (
                   <>
                     <MagnifyingGlass className="mr-1.5 h-4 w-4" />
-                    Inspect Repository
+                    {agentMessages.inspectButton}
                   </>
                 )}
               </Button>
@@ -351,7 +431,7 @@ export function GitSourceStep({
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold text-foreground">
-                        Public Repository Verified
+                        {agentMessages.publicVerified}
                       </h3>
                       <Badge
                         variant="secondary"
@@ -361,12 +441,12 @@ export function GitSourceStep({
                       </Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {accessMessage}
+                      {accessMessage || agentMessages.publicDescription}
                     </p>
                   </div>
                 </div>
                 <Button size="sm" onClick={handleContinue}>
-                  Continue to Build Settings
+                  {agentMessages.continueButton}
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>
               </div>
@@ -381,7 +461,7 @@ export function GitSourceStep({
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold text-foreground">
-                        Private Repository Authorized
+                        {agentMessages.privateAuthorized}
                       </h3>
                       <Badge
                         variant="secondary"
@@ -391,12 +471,13 @@ export function GitSourceStep({
                       </Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {accessMessage}
+                      {accessMessage ||
+                        agentMessages.privateAuthorizedDescription}
                     </p>
                   </div>
                 </div>
                 <Button size="sm" onClick={handleContinue}>
-                  Continue to Build Settings
+                  {agentMessages.continueButton}
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>
               </div>
@@ -410,7 +491,7 @@ export function GitSourceStep({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-foreground">
-                      GitHub App Installation Required
+                      {agentMessages.privateRequired}
                     </h3>
                     <Badge
                       variant="secondary"
@@ -420,7 +501,7 @@ export function GitSourceStep({
                     </Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {accessMessage}
+                    {accessMessage || agentMessages.privateRequiredDescription}
                   </p>
                 </div>
               </div>
@@ -428,14 +509,14 @@ export function GitSourceStep({
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <Button size="sm" onClick={openGithubInstall}>
                   <GithubLogo className="mr-1.5 h-4 w-4" />
-                  Install GitHub App
+                  {agentMessages.installApp}
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => void handleInspectUrl(url)}
                 >
-                  Re-check Access
+                  {agentMessages.recheckAccess}
                 </Button>
               </div>
             </div>
