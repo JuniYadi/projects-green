@@ -136,6 +136,9 @@ export class MetaCloudHttpClient {
             type: responseData.error?.type,
             fbtrace_id: responseData.error?.fbtrace_id,
             httpStatus: response.status,
+            errorSubcode: responseData.error?.error_subcode,
+            errorUserTitle: responseData.error?.error_user_title,
+            errorUserMsg: responseData.error?.error_user_msg,
           }
         )
       } catch (error: any) {

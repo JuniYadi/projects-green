@@ -21,6 +21,7 @@ import { checkDeviceHealth } from "@/lib/queue/whatsapp-health"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 import { generateWebhookSigningSecret } from "../devices.service"
 import { syncMetaWebhookSubscription } from "../services/meta-webhook-sync.service"
+import { syncMetaDevicePermissions } from "../services/meta-permissions-sync.service"
 
 type RouteSet = {
   status?: number | string
@@ -446,6 +447,55 @@ export const devicesRoutes = new Elysia({
         summary: "Sync WhatsApp Webhook Subscription",
         description:
           "Verifies and syncs WABA webhook subscription against the linked Meta App.",
+        tags: ["WhatsApp Devices"],
+      },
+    }
+  )
+  .post(
+    "/:id/sync-permissions",
+    async ({ request, params: { id }, set }: any) => {
+      const whatsappAuth = await resolveDeviceAuth(request)
+      if (!whatsappAuth) return toUnauthorized(set)
+
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+        select: { id: true, organizationId: true },
+      })
+
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      }
+
+      if (
+        !isSuperAdmin(whatsappAuth) &&
+        device.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      try {
+        const result = await syncMetaDevicePermissions(id)
+        return { ok: true, data: result }
+      } catch (err) {
+        set.status = 500
+        return {
+          ok: false,
+          error: "SYNC_FAILED",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to sync Meta permissions",
+        }
+      }
+    },
+    {
+      params: t.Object({ id: t.String() }),
+      detail: {
+        summary: "Sync WhatsApp WABA Permissions",
+        description:
+          "Verifies whether the device's System User token has MANAGE permissions on the WABA in Meta Business Suite.",
         tags: ["WhatsApp Devices"],
       },
     }

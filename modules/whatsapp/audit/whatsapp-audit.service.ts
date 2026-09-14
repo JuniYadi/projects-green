@@ -21,6 +21,7 @@ export type WhatsappAuditAction =
   | "DEVICE_CALLBACK_URL_UPDATED"
   | "DEVICE_META_APP_ASSIGNED"
   | "DEVICE_PHONE_ID_BOUND"
+  | "DEVICE_META_PERMISSION_MISSING"
   // Broadcast / Message
   | "BROADCAST_SENT"
   | "BROADCAST_FAILED"

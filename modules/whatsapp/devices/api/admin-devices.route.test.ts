@@ -68,8 +68,27 @@ const mockSyncMetaWebhookSubscription = mock<(...args: any[]) => any>(
   })
 )
 
+const mockSyncMetaDevicePermissions = mock(async () => ({
+  active: true,
+  status: "GRANTED" as const,
+  wabaId: "waba-1",
+  businessId: "biz-1",
+  businessName: "Biz",
+  systemUserId: "sys-1",
+  systemUserName: "krmpesan-su",
+  assignedUsers: [],
+  tokenScopes: ["whatsapp_business_management"],
+  canManageTemplates: true,
+  lastCheckedAt: "2026-09-14T00:00:00.000Z",
+  warning: null,
+}))
+
 mock.module("../services/meta-webhook-sync.service", () => ({
   syncMetaWebhookSubscription: mockSyncMetaWebhookSubscription,
+}))
+
+mock.module("../services/meta-permissions-sync.service", () => ({
+  syncMetaDevicePermissions: mockSyncMetaDevicePermissions,
 }))
 
 mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
@@ -912,6 +931,108 @@ describe("Admin Devices Routes", () => {
       expect(body.ok).toBe(false)
       expect(body.error).toBe("SYNC_FAILED")
       expect(body.message).toBe("Failed to sync webhook")
+    })
+  })
+
+  // ─── POST /:id/sync-permissions ──────────────────────────────────────────
+
+  describe("POST /:id/sync-permissions", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-permissions`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not super admin", async () => {
+      const app = createTestApp(forbiddenContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-permissions`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 404 when device not found", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/missing/sync-permissions`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+      expect(mockSyncMetaDevicePermissions).not.toHaveBeenCalled()
+    })
+
+    it("returns the permissions sync result for an existing device", async () => {
+      mockFindUnique.mockImplementationOnce(async () => ({
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+      }))
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-permissions`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data.status).toBe("GRANTED")
+      expect(body.data.canManageTemplates).toBe(true)
+      expect(mockSyncMetaDevicePermissions).toHaveBeenCalledWith("dev-1")
+    })
+
+    it("returns the sync error message when permissions sync fails", async () => {
+      mockFindUnique.mockImplementationOnce(async () => ({
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+      }))
+      mockSyncMetaDevicePermissions.mockImplementationOnce(async () => {
+        throw new Error("Meta API unavailable")
+      })
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-permissions`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(500)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("SYNC_FAILED")
+      expect(body.message).toBe("Meta API unavailable")
+    })
+
+    it("returns a fallback message for a non-Error permissions sync failure", async () => {
+      mockFindUnique.mockImplementationOnce(async () => ({
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+      }))
+      mockSyncMetaDevicePermissions.mockImplementationOnce(async () => {
+        throw "sync failed"
+      })
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/sync-permissions`, { method: "POST" })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(500)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("SYNC_FAILED")
+      expect(body.message).toBe("Failed to sync Meta permissions")
     })
   })
 

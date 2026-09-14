@@ -134,6 +134,7 @@ export type DeviceListItem = {
   qualityRating?: string | null
   lastHeartbeatAt?: string | null
   lastDisconnectedAt?: string | null
+  features?: Record<string, unknown> | null
 }
 export type DeviceDetail = DeviceListItem & {
   businessId: string | null
