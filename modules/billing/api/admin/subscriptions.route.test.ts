@@ -45,6 +45,9 @@ const mockPrismaClient = {
     findMany: mockWhatsappDeviceFindMany,
     updateMany: mock(),
   },
+  billingAuditLog: {
+    create: mock(async () => ({})),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({

@@ -1,6 +1,18 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import type { PrismaLike } from "./vpn-provisioning.service"
 
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: () => ({
+    userManagement: {
+      listOrganizationMemberships: mock(async () => ({
+        data: [],
+        autoPagination: async () => [],
+      })),
+      getUser: mock(async (id: string) => ({ id, email: `${id}@example.com` })),
+    },
+  }),
+}))
+
 const mockAuditLogs: Array<{
   action: string
   adminId: string | null

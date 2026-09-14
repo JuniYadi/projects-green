@@ -173,6 +173,9 @@ const mockPrisma = {
       isActive: true,
     })),
   },
+  billingAlertRule: {
+    findMany: mock(async () => []),
+  },
   $transaction: mock(async (fn: any) => await fn(mockTx)),
 }
 

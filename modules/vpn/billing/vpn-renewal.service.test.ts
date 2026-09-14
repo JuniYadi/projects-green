@@ -7,6 +7,18 @@ import { Prisma } from "@prisma/client"
 // prisma + transactions via constructor, so we inject plain mocks rather
 // than mock.module to avoid cross-file cache pollution.
 
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: () => ({
+    userManagement: {
+      listOrganizationMemberships: mock(async () => ({
+        data: [],
+        autoPagination: async () => [],
+      })),
+      getUser: mock(async (id: string) => ({ id, email: `${id}@example.com` })),
+    },
+  }),
+}))
+
 const mockTransactions = {
   debitServiceBalance: mock(),
 }

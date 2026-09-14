@@ -2,6 +2,18 @@ import type { BillingTransactionService } from "@/modules/billing/billing-transa
 import type { InvoiceEmailService } from "@/modules/invoices/email.service"
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: () => ({
+    userManagement: {
+      listOrganizationMemberships: mock(async () => ({
+        data: [],
+        autoPagination: async () => [],
+      })),
+      getUser: mock(async (id: string) => ({ id, email: `${id}@example.com` })),
+    },
+  }),
+}))
+
 const mockPrisma = {
   billingInvoice: {
     create: mock(() =>

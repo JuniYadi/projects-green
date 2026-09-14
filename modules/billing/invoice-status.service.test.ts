@@ -2,6 +2,18 @@ import { describe, it, expect, mock, beforeEach } from "bun:test"
 import type { PrismaClient } from "@prisma/client"
 import type { InvoiceEmailService } from "@/modules/invoices/email.service"
 
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: () => ({
+    userManagement: {
+      listOrganizationMemberships: mock(async () => ({
+        data: [],
+        autoPagination: async () => [],
+      })),
+      getUser: mock(async (id: string) => ({ id, email: `${id}@example.com` })),
+    },
+  }),
+}))
+
 const mockFindMany = mock()
 const mockUpdate = mock()
 const mockSendPaymentReminder = mock()
