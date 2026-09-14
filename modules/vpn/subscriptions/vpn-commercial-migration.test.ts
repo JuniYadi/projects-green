@@ -1,6 +1,18 @@
 import { describe, expect, it, mock } from "bun:test"
 import { Prisma } from "@prisma/client"
 
+mock.module("@workos-inc/node", () => ({
+  createWorkOS: () => ({
+    userManagement: {
+      listOrganizationMemberships: mock(async () => ({
+        data: [],
+        autoPagination: async () => [],
+      })),
+      getUser: mock(async (id: string) => ({ id, email: `${id}@example.com` })),
+    },
+  }),
+}))
+
 import { toVpnPublicPackageDTO } from "./vpn-package-public.dto"
 import { VpnSubscriptionService } from "./vpn-subscription.service"
 import { VpnRenewalService } from "../billing/vpn-renewal.service"
