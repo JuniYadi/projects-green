@@ -50,7 +50,7 @@ export type GitBuildConfig = {
 }
 
 export type GitSizingConfig = {
-  tier: "starter" | "standard" | "pro" | "payg"
+  tier: "starter" | "standard" | "pro"
   cpu: number
   memory: number
   hourlyRate: number

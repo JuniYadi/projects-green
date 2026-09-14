@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ArrowLeft,
   CheckCircle,
@@ -8,9 +8,11 @@ import {
   RocketLaunch,
   Spinner,
   Wallet,
+  WarningCircle,
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { getAccount, type BillingAccount } from "@/lib/billing-client"
 import type { GitBuildConfig, GitSizingConfig, GitSourceConfig } from "./types"
 
 type GitReviewStepProps = {
@@ -29,7 +31,30 @@ export function GitReviewStep({
   onDeploy,
 }: GitReviewStepProps) {
   const [deploying, setDeploying] = useState(false)
+  const [account, setAccount] = useState<BillingAccount | null>(null)
+  const [checkingBalance, setCheckingBalance] = useState(true)
   const monthlyCost = (sizing.hourlyRate * 720).toFixed(2)
+
+  useEffect(() => {
+    let active = true
+    void (async () => {
+      try {
+        const res = await getAccount()
+        if (active && res?.ok) {
+          setAccount(res)
+        }
+      } catch {
+        // Keep neutral state if billing service is unavailable
+      } finally {
+        if (active) {
+          setCheckingBalance(false)
+        }
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleLaunch = async () => {
     setDeploying(true)
@@ -149,13 +174,44 @@ export function GitReviewStep({
               <Wallet className="h-4 w-4" />
               Pre-check Status
             </div>
-            <div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
-              <CheckCircle className="h-4 w-4" />
-              Wallet Pre-check Passed
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Buffer requirement met
-            </p>
+            {checkingBalance ? (
+              <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Spinner className="h-4 w-4 animate-spin" />
+                Checking Balance…
+              </div>
+            ) : account ? (
+              account.isPositive ? (
+                <>
+                  <div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+                    <CheckCircle className="h-4 w-4" />
+                    Balance Verified
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {account.formattedBalance} available
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-amber-600">
+                    <WarningCircle className="h-4 w-4" />
+                    Low Balance
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {account.formattedBalance} (Top-up recommended)
+                  </p>
+                </>
+              )
+            ) : (
+              <>
+                <div className="mt-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                  <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/50" />
+                  Not verified
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Verified upon deployment
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

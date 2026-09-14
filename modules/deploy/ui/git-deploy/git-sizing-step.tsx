@@ -56,7 +56,7 @@ export function GitSizingStep({
   onBack,
   onNext,
 }: GitSizingStepProps) {
-  const [tier, setTier] = useState<"starter" | "standard" | "pro" | "payg">(
+  const [tier, setTier] = useState<"starter" | "standard" | "pro">(
     initialConfig?.tier ?? "standard"
   )
   const [subdomain, setSubdomain] = useState(

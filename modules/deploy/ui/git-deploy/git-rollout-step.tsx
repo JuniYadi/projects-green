@@ -26,18 +26,13 @@ export function GitRolloutStep({
 }: GitRolloutStepProps) {
   const [activeTab, setActiveTab] = useState<"build" | "runtime">("build")
 
-  // Mock initial streaming log lines
+  // TODO: Replace static build logs placeholder with real-time SSE / WebSocket streaming log consumer from /api/deploy/build-logs or OpenSearch
   const buildLogs = [
     `[INFO] Initializing build environment for ${source.url} (ref: ${source.branch})`,
-    `[INFO] Pulling builder image from registry-apac.pfnapp.com/builders/node:20-alpine`,
+    `[INFO] Pulling builder image from registry-apac.pfnapp.com/builders/base`,
     `[INFO] Cloning repository into workspace /workspace/source ...`,
     `[INFO] Checking out commit HEAD on branch '${source.branch}' (depth 1)`,
-    `[INFO] Executing build command: pnpm run build`,
-    `[INFO] > next build`,
-    `[INFO] ▲ Next.js 14.2.3`,
-    `[INFO]   - Environments: .env.production`,
-    `[INFO]   - Creating an optimized production build ...`,
-    `[INFO]   ✓ Compiled successfully in 14.8s`,
+    `[INFO] Running automated buildpack compilation and packaging ...`,
     `[INFO] Packaging standalone OCI container image ...`,
     `[INFO] Pushing image to registry-apac.pfnapp.com/app-${sizing.subdomain}:${deploymentId}`,
     `[INFO] Generating Helm values and syncing manifests to GitOps repository ...`,

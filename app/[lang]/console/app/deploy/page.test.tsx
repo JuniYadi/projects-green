@@ -52,6 +52,25 @@ const mockFetch = mock(
         { status: 200, headers: { "Content-Type": "application/json" } }
       )
     }
+    if (url.includes("/api/billing/account")) {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          formattedBalance: "$50.00",
+          isPositive: true,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+    if (url.includes("/confirm")) {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          data: { stackId: "stack-new" },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -116,6 +135,72 @@ describe("DeployPage", () => {
 
     expect(view.getByText("Automated Framework Detection")).toBeTruthy()
     expect(view.getByText("Build & Runtime Settings")).toBeTruthy()
+  })
+
+  it("advances to review step, verifies balance, and prevents rollout on failure", async () => {
+    const deployPageModule =
+      await import("@/app/[lang]/console/app/deploy/page")
+    const view = render(<deployPageModule.default />)
+
+    // Step 1: Inspect URL
+    const input = view.getByPlaceholderText(
+      "https://github.com/organization/repository"
+    )
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "https://github.com/acme/public-app" },
+      })
+    })
+    await act(async () => {
+      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+    })
+    await waitFor(() => {
+      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+    })
+    await act(async () => {
+      fireEvent.click(
+        view.getByRole("button", { name: /continue to build settings/i })
+      )
+    })
+
+    // Step 2: Build config -> Sizing
+    await act(async () => {
+      fireEvent.click(
+        view.getByRole("button", { name: /continue to sizing & domain/i })
+      )
+    })
+
+    // Step 3: Sizing -> Review
+    await act(async () => {
+      fireEvent.click(view.getByRole("button", { name: /review deployment/i }))
+    })
+
+    // Step 4: Review step renders, checks balance
+    await waitFor(() => {
+      expect(view.getByText("Balance Verified")).toBeTruthy()
+      expect(view.getByText("$50.00 available")).toBeTruthy()
+    })
+
+    // Simulate deploy failure
+    mockFetch.mockImplementationOnce(async (input: RequestInfo | URL) => {
+      if (String(input).includes("/confirm")) {
+        return new Response(
+          JSON.stringify({ ok: false, message: "Insufficient quota" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        )
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    })
+
+    await act(async () => {
+      fireEvent.click(view.getByRole("button", { name: /deploy application/i }))
+    })
+
+    // On failure, should STAY on review step, NOT advance to rollout
+    await waitFor(() => {
+      expect(view.getByText("Deployment Specification Summary")).toBeTruthy()
+      expect(view.queryByText("Deployment Rollout")).toBeNull()
+    })
   })
 
   it("switches to connected repositories tab and lists repos", async () => {

@@ -92,6 +92,13 @@ export function GitDeployWizard() {
           }
         )
         const data = await res.json().catch(() => null)
+        if (data && !data.ok) {
+          throw new Error(
+            data.message ||
+              data.error ||
+              "Failed to confirm deployment session."
+          )
+        }
         if (data?.ok && data?.data?.stackId) {
           setDeploymentId(data.data.stackId)
         }
@@ -105,8 +112,6 @@ export function GitDeployWizard() {
           ? error.message
           : "Failed to initiate deployment."
       )
-      // Still proceed to rollout preview if needed
-      setCurrentStep("rollout")
     }
   }
 

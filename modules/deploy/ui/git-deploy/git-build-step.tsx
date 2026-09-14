@@ -73,6 +73,22 @@ export function GitBuildStep({
     initialConfig?.dockerfilePath ?? "Dockerfile"
   )
 
+  const detectedPackageManager =
+    (detection as { packageManager?: string } | undefined)?.packageManager ||
+    (buildCommand.includes("bun")
+      ? "bun"
+      : buildCommand.includes("pnpm")
+        ? "pnpm"
+        : buildCommand.includes("yarn")
+          ? "yarn"
+          : buildCommand.includes("npm")
+            ? "npm"
+            : buildCommand.includes("composer")
+              ? "composer"
+              : buildCommand.includes("go")
+                ? "go"
+                : "Auto-detected")
+
   // Environment variables
   const [envVars, setEnvVars] = useState<EnvVar[]>(
     initialConfig?.envVars ?? [
@@ -175,7 +191,9 @@ export function GitBuildStep({
             <p className="text-xs text-muted-foreground uppercase">
               Package Manager
             </p>
-            <p className="mt-1 font-semibold text-foreground">pnpm</p>
+            <p className="mt-1 font-semibold text-foreground">
+              {detectedPackageManager}
+            </p>
           </div>
         </div>
       </div>
