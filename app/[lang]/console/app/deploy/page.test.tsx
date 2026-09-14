@@ -1,99 +1,138 @@
-import { describe, expect, it, mock } from "bun:test"
-import { act, fireEvent, render } from "@testing-library/react"
+import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { act, fireEvent, render, waitFor } from "@testing-library/react"
 
-const capturedBody: { current: Record<string, unknown> | null } = {
-  current: null,
+const mockInspectResponse = {
+  ok: true,
+  data: {
+    status: "detection_success",
+    access: {
+      state: "public",
+      displayLabel: "Public GitHub repository",
+    },
+    detection: {
+      framework: "Next.js",
+      version: "14.2.3",
+      primaryEngine: "Node.js 20",
+      buildCommand: "pnpm run build",
+      startCommand: "pnpm start",
+      outputDir: ".next",
+      port: 3000,
+      confidence: 0.95,
+      evidence: [],
+    },
+    plan: null,
+    session: { id: "sess-123" },
+  },
 }
 
-const mockPost = mock(async (body: unknown) => {
-  capturedBody.current = body as Record<string, unknown>
-  return { data: { ok: true, data: { stackId: "stack-1" } } }
-})
-
-mock.module("@/lib/eden", () => ({
-  eden: {
-    api: {
-      deploy: {
-        submit: { post: mockPost },
-        apps: {
-          get: mock(async () => ({ data: { ok: true, data: [] } })),
-        },
-      },
-    },
-  },
-}))
-mock.module("@/lib/billing-client", () => ({
-  getCatalogProduct: mock(async () => ({
-    ok: true,
-    product: {
-      code: "APP_HOSTING",
-      name: "App Hosting",
-      plans: [
-        {
-          id: "plan_starter",
-          code: "STARTER",
-          name: "Starter",
-          offers: [
+const mockFetch = mock(
+  async (input: RequestInfo | URL, _init?: RequestInit) => {
+    const url = String(input)
+    if (url.includes("/api/deploy/ai-sessions/inspect")) {
+      return new Response(JSON.stringify(mockInspectResponse), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+    if (url.includes("/api/integrations/github/repositories")) {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          items: [
             {
-              id: "off_1",
-              billingPeriod: "MONTHLY",
-              periodPrice: "15000",
-              currency: "IDR",
+              id: "1",
+              name: "my-ecommerce-web",
+              fullName: "juniyadi/my-ecommerce-web",
+              defaultBranch: "main",
+              isPrivate: true,
+              htmlUrl: "https://github.com/juniyadi/my-ecommerce-web",
             },
           ],
-        },
-      ],
-    },
-  })),
-}))
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+)
+
+globalThis.fetch = mockFetch as unknown as typeof fetch
 
 describe("DeployPage", () => {
-  it("renders AI deployment assistant feed", async () => {
-    const deployPageModule =
-      // dynamic import required: module must load after mock.module()
-      await import("@/app/[lang]/console/app/deploy/page")
-    const view = render(<deployPageModule.default />)
-
-    expect(view.getByText("AI deployment assistant")).toBeTruthy()
-    expect(
-      view.getByPlaceholderText("Paste a GitHub repository URL to deploy…")
-    ).toBeTruthy()
-    expect(view.getByText("Or launch a ready-made app")).toBeTruthy()
+  beforeEach(() => {
+    mockFetch.mockClear()
   })
 
-  it("submits a ready-made app with package settings", async () => {
-    capturedBody.current = null
-    mockPost.mockClear()
-
+  it("renders Git Deployment Launchpad", async () => {
     const deployPageModule =
-      // dynamic import required: module must load after mock.module()
       await import("@/app/[lang]/console/app/deploy/page")
     const view = render(<deployPageModule.default />)
 
+    expect(view.getByText("Deploy Git Repository")).toBeTruthy()
+    expect(view.getByText("Git Repository URL")).toBeTruthy()
+    expect(view.getByText("Connected Repositories")).toBeTruthy()
+    expect(
+      view.getByPlaceholderText("https://github.com/organization/repository")
+    ).toBeTruthy()
+  })
+
+  it("inspects public repository and advances to build settings", async () => {
+    const deployPageModule =
+      await import("@/app/[lang]/console/app/deploy/page")
+    const view = render(<deployPageModule.default />)
+
+    const input = view.getByPlaceholderText(
+      "https://github.com/organization/repository"
+    )
+
     await act(async () => {
-      fireEvent.click(view.getAllByRole("button", { name: "Deploy" })[0]!)
+      fireEvent.change(input, {
+        target: { value: "https://github.com/acme/public-app" },
+      })
+    })
+
+    const inspectBtn = view.getByRole("button", {
+      name: /inspect repository/i,
     })
 
     await act(async () => {
-      fireEvent.click(
-        view.getByRole("button", { name: "Launch to Kubernetes" })
-      )
+      fireEvent.click(inspectBtn)
     })
 
-    expect(capturedBody.current).toMatchObject({
-      sourceType: "MANAGED_TEMPLATE",
-      templateId: "n8n",
-      billingMode: "PACKAGE",
-      resourcePlanId: "starter",
+    await waitFor(() => {
+      expect(view.getByText("Public Repository Verified")).toBeTruthy()
     })
-    expect(
-      String(
-        (capturedBody.current as Record<string, unknown> | null)?.subdomain ??
-          ""
-      )
-    ).toMatch(/^n8n-/)
-    expect(
-      view.queryByRole("button", { name: "Launch to Kubernetes" })
-    ).toBeNull()
+
+    const continueBtn = view.getByRole("button", {
+      name: /continue to build settings/i,
+    })
+
+    await act(async () => {
+      fireEvent.click(continueBtn)
+    })
+
+    expect(view.getByText("Automated Framework Detection")).toBeTruthy()
+    expect(view.getByText("Build & Runtime Settings")).toBeTruthy()
+  })
+
+  it("switches to connected repositories tab and lists repos", async () => {
+    const deployPageModule =
+      await import("@/app/[lang]/console/app/deploy/page")
+    const view = render(<deployPageModule.default />)
+
+    const connectedTabBtn = view.getByRole("button", {
+      name: /connected repositories/i,
+    })
+
+    await act(async () => {
+      fireEvent.click(connectedTabBtn)
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("juniyadi/my-ecommerce-web")).toBeTruthy()
+    })
   })
 })
