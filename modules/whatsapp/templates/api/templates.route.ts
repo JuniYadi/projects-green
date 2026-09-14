@@ -710,6 +710,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           tokenIv: true,
           whatsappPhoneId: true,
           whatsappBusinessAccountId: true,
+          features: true,
         },
       })
 
@@ -770,6 +771,25 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             languages: true,
           },
         })
+
+        const currentFeatures =
+          (device.features as Record<string, unknown> | null) ?? {}
+        const deletedSlugs = Array.isArray(currentFeatures.deletedTemplateSlugs)
+          ? (currentFeatures.deletedTemplateSlugs as string[])
+          : []
+        if (deletedSlugs.includes(slug) || deletedSlugs.includes(name)) {
+          await prisma.whatsappDevice.update({
+            where: { id: device.id },
+            data: {
+              features: {
+                ...currentFeatures,
+                deletedTemplateSlugs: deletedSlugs.filter(
+                  (s) => s !== slug && s !== name
+                ),
+              },
+            },
+          })
+        }
 
         // Direct push to Meta if device has credentials
         let finalTemplate = template
@@ -1179,7 +1199,20 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                   metaErr.errorUserTitle?.toLowerCase().includes("not found")
                 ))
 
-            if (!isNotFound) {
+            const isSampleTemplate =
+              !isPermissionDenied &&
+              ((metaErr instanceof MetaCloudError &&
+                (metaErr.errorSubcode === 2388094 ||
+                  metaErr.errorUserMsg
+                    ?.toLowerCase()
+                    .includes("sample template") ||
+                  metaErr.errorUserTitle
+                    ?.toLowerCase()
+                    .includes("can't be edited"))) ||
+                (metaErr instanceof Error &&
+                  metaErr.message.toLowerCase().includes("sample template")))
+
+            if (!isNotFound && !isSampleTemplate) {
               console.error(
                 "[templatesRoute] Meta template deletion failed:",
                 metaErr
@@ -1192,6 +1225,33 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                   metaErr instanceof Error
                     ? metaErr.message
                     : "Failed to delete template from Meta WhatsApp Business Account.",
+              }
+            }
+
+            if (isSampleTemplate) {
+              console.warn(
+                `[templatesRoute] Template "${template.name}" is a Meta sample template and cannot be deleted on Meta WABA (subcode 2388094). Proceeding with local deletion.`
+              )
+              const currentFeatures =
+                (device.features as Record<string, unknown> | null) ?? {}
+              const deletedSlugs = Array.isArray(
+                currentFeatures.deletedTemplateSlugs
+              )
+                ? (currentFeatures.deletedTemplateSlugs as string[])
+                : []
+              const slugsToAdd = [template.slug, template.name].filter(
+                (s): s is string => Boolean(s) && !deletedSlugs.includes(s)
+              )
+              if (slugsToAdd.length > 0) {
+                await prisma.whatsappDevice.update({
+                  where: { id: device.id },
+                  data: {
+                    features: {
+                      ...currentFeatures,
+                      deletedTemplateSlugs: [...deletedSlugs, ...slugsToAdd],
+                    },
+                  },
+                })
               }
             }
           }
