@@ -198,10 +198,12 @@ export function createConsoleAiAgentsRoutes() {
           }
         }
 
+        const normalizedChannel = channel.trim().toUpperCase()
+
         const binding = await prisma.aiChannelBinding.upsert({
           where: {
             channel_targetId: {
-              channel,
+              channel: normalizedChannel,
               targetId,
             },
           },
@@ -214,7 +216,7 @@ export function createConsoleAiAgentsRoutes() {
           create: {
             organizationId: auth.orgId,
             agentProfileId: agent.id,
-            channel,
+            channel: normalizedChannel,
             targetId,
             targetName: targetName?.trim() || null,
             isActive: true,
@@ -234,6 +236,32 @@ export function createConsoleAiAgentsRoutes() {
         }),
       }
     )
+    .delete("/:id/bindings/:bindingId", async ({ params, set }) => {
+      const auth = await requireConsoleOrgAuth()
+      if ("error" in auth) {
+        set.status = auth.status
+        return { ok: false, error: auth.error }
+      }
+
+      const existing = await prisma.aiChannelBinding.findFirst({
+        where: {
+          id: params.bindingId,
+          agentProfileId: params.id,
+          organizationId: auth.orgId,
+        },
+      })
+
+      if (!existing) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Binding not found" }
+      }
+
+      await prisma.aiChannelBinding.delete({
+        where: { id: existing.id },
+      })
+
+      return { ok: true }
+    })
     .delete("/:id", async ({ params, set }) => {
       const auth = await requireConsoleOrgAuth()
       if ("error" in auth) {

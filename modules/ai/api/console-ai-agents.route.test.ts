@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
+mock.module("server-only", () => ({}))
 // Mock WorkOS auth before imports
 const mockAuth = mock(() =>
   Promise.resolve({
@@ -21,13 +22,16 @@ const mockPrisma = {
   },
   aiChannelBinding: {
     upsert: mock(),
+    findFirst: mock(),
+    delete: mock(),
   },
 }
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-import { createConsoleAiAgentsRoutes } from "./console-ai-agents.route"
+const { createConsoleAiAgentsRoutes } =
+  await import("./console-ai-agents.route")
 
 describe("Console AI Agents Route", () => {
   let app: ReturnType<typeof createConsoleAiAgentsRoutes>
@@ -40,6 +44,8 @@ describe("Console AI Agents Route", () => {
     mockPrisma.aiAgentProfile.update.mockClear()
     mockPrisma.aiAgentProfile.delete.mockClear()
     mockPrisma.aiChannelBinding.upsert.mockClear()
+    mockPrisma.aiChannelBinding.findFirst.mockClear()
+    mockPrisma.aiChannelBinding.delete.mockClear()
 
     mockAuth.mockResolvedValue({
       user: { id: "user_1", organizationId: "org_1" },
@@ -155,5 +161,32 @@ describe("Console AI Agents Route", () => {
     const json = (await res.json()) as { ok: boolean; data: { id: string } }
     expect(json.ok).toBe(true)
     expect(mockPrisma.aiChannelBinding.upsert).toHaveBeenCalled()
+  })
+
+  it("unbinds agent from a channel", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValue({
+      id: "bind_wa",
+      agentProfileId: "agent_1",
+      organizationId: "org_1",
+    })
+    mockPrisma.aiChannelBinding.delete.mockResolvedValue({
+      id: "bind_wa",
+    })
+
+    const res = await app.handle(
+      new Request(
+        "http://localhost/console/ai/agents/agent_1/bindings/bind_wa",
+        {
+          method: "DELETE",
+        }
+      )
+    )
+
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as { ok: boolean }
+    expect(json.ok).toBe(true)
+    expect(mockPrisma.aiChannelBinding.delete).toHaveBeenCalledWith({
+      where: { id: "bind_wa" },
+    })
   })
 })

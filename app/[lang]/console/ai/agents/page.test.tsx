@@ -1,6 +1,11 @@
 import { describe, expect, it, mock } from "bun:test"
 import { renderToString } from "react-dom/server"
 
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "id" }),
+  useRouter: () => ({ push: mock(() => {}) }),
+}))
+
 mock.module("sonner", () => ({
   toast: {
     success: mock(() => {}),

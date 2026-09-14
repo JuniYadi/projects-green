@@ -40,6 +40,7 @@ import {
   X,
   MapTrifold,
   Lightning,
+  Robot,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -211,6 +212,9 @@ export default function WhatsappWorkflowCanvasPage() {
   const [devices, setDevices] = useState<
     { id: string; name: string; phoneNumber: string }[]
   >([])
+  const [availableAiAgents, setAvailableAiAgents] = useState<
+    { id: string; name: string; systemPrompt?: string | null }[]
+  >([])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("")
   const [saving, setSaving] = useState(false)
   const [, setLoadingInitial] = useState(true)
@@ -364,6 +368,159 @@ export default function WhatsappWorkflowCanvasPage() {
           }
         }
 
+        // Fetch AI Agent profiles for template assignment
+        try {
+          const agentsRes = await eden.api.console.ai.agents.get()
+          if (
+            agentsRes.data &&
+            agentsRes.data.ok &&
+            Array.isArray(agentsRes.data.data)
+          ) {
+            if (mounted) {
+              setAvailableAiAgents(
+                (
+                  agentsRes.data.data as Array<{
+                    id: string
+                    name: string
+                    systemPrompt?: string | null
+                  }>
+                ).map((a) => ({
+                  id: a.id,
+                  name: a.name,
+                  systemPrompt: a.systemPrompt,
+                }))
+              )
+            }
+          }
+        } catch (err) {
+          console.warn("[canvas] load AI agents error:", err)
+        }
+
+        // Check if there is a draft generated workflow from AI Studio
+        const draftWorkflowStr =
+          typeof window !== "undefined"
+            ? sessionStorage.getItem("draft_canvas_workflow")
+            : null
+
+        if (workflowId === "new" && draftWorkflowStr) {
+          try {
+            const rawDraft = JSON.parse(draftWorkflowStr)
+            sessionStorage.removeItem("draft_canvas_workflow")
+            const parsed = WorkflowDefinitionSchema.safeParse(rawDraft)
+            if (parsed.success && mounted) {
+              const draft = parsed.data
+              setWorkflowMeta({
+                id: "wf_new",
+                name: draft.name || "Alur AI WhatsApp",
+                description: draft.description || "",
+                isActive: true,
+                isDefault: false,
+                trigger: draft.trigger || {
+                  id: "trig_1",
+                  type: "keyword_match",
+                  keywords: ["halo", "tanya"],
+                },
+              })
+              const loadedNodes = draft.nodes.map((n) => {
+                if (
+                  n.type === "ai_generate" &&
+                  (rawDraft as { agentProfileId?: string }).agentProfileId
+                ) {
+                  return {
+                    ...n,
+                    config: {
+                      ...n.config,
+                      agentProfileId: (
+                        rawDraft as { agentProfileId?: string }
+                      ).agentProfileId,
+                      agentProfileName: (
+                        rawDraft as { agentProfileName?: string }
+                      ).agentProfileName,
+                    },
+                  }
+                }
+                return n
+              })
+              setNodes(loadedNodes.map(toXyFlowNode))
+              if (Array.isArray(draft.edges)) {
+                setEdges(draft.edges.map(toXyFlowEdge))
+              }
+              toast.success(
+                "Alur dari AI Studio berhasil dimuat ke Canvas WhatsApp!"
+              )
+              return
+            } else if (!parsed.success) {
+              console.warn("[canvas] invalid draft schema:", parsed.error)
+            }
+          } catch (err) {
+            console.error("[canvas] failed parsing draft workflow:", err)
+          }
+        }
+
+        // Check if opened with preselected AI Agent template from AI Studio
+        const agentProfileIdParam = searchParams.get("agentProfileId")
+        const agentProfileNameParam = searchParams.get("agentProfileName")
+        if (workflowId === "new" && agentProfileIdParam && !templateId) {
+          if (mounted) {
+            const decodedName = agentProfileNameParam
+              ? decodeURIComponent(agentProfileNameParam)
+              : "Asisten AI"
+            setWorkflowMeta({
+              id: "wf_new",
+              name: `Alur ${decodedName}`,
+              description:
+                "Alur percakapan WhatsApp bertenaga AI Agent Template",
+              isActive: true,
+              isDefault: false,
+              trigger: {
+                id: "trig_1",
+                type: "whatsapp_inbound",
+                keywords: [],
+              },
+            })
+            const starterNodes: WorkflowNode[] = [
+              {
+                id: "node_ask_customer",
+                type: "prompt_input",
+                name: "1. Sambut & Tanya Kebutuhan",
+                position: { x: 250, y: 50 },
+                config: {
+                  question: "Halo! Ada yang bisa kami bantu hari ini?",
+                  captureVariable: "customer_message",
+                  validation: { type: "text" },
+                },
+              },
+              {
+                id: "node_ai_agent",
+                type: "ai_generate",
+                name: "2. Penalaran Asisten AI",
+                position: { x: 250, y: 240 },
+                config: {
+                  prompt: "{{variables.customer_message}}",
+                  captureVariable: "ai_reply",
+                  agentProfileId: agentProfileIdParam,
+                  agentProfileName: decodedName,
+                  sendReply: true,
+                },
+              },
+            ]
+            const starterEdges: WorkflowEdge[] = [
+              {
+                id: "edge_1_to_2",
+                sourceNodeId: "node_ask_customer",
+                sourcePort: "default",
+                targetNodeId: "node_ai_agent",
+              },
+            ]
+            setNodes(starterNodes.map(toXyFlowNode))
+            setEdges(starterEdges.map(toXyFlowEdge))
+            toast.success(
+              `Canvas diinisialisasi dengan Template: ${decodedName}`
+            )
+          }
+          return
+        }
+
         const template = templateId
           ? WORKFLOW_TEMPLATES.find((item) => item.id === templateId)
           : undefined
@@ -446,6 +603,7 @@ export default function WhatsappWorkflowCanvasPage() {
     hasLoadedData,
     initialNodesSample,
     initialEdgesSample,
+    searchParams,
     templateId,
     toXyFlowNode,
     toXyFlowEdge,
@@ -1581,12 +1739,63 @@ export default function WhatsappWorkflowCanvasPage() {
 
                 {selectedNodeData.type === "ai_generate" && (
                   <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
+                    {/* Template AI Agent Selector */}
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                        <Robot size={14} className="text-purple-400" />
+                        <span>{t.inspector.aiTemplateLabel}</span>
+                      </Label>
+                      <Select
+                        value={
+                          (selectedNodeData.config?.agentProfileId as string) ||
+                          "none"
+                        }
+                        onValueChange={(val) => {
+                          if (val === "none") {
+                            handleUpdateSelectedNode((cfg) => ({
+                              ...cfg,
+                              agentProfileId: undefined,
+                              agentProfileName: undefined,
+                            }))
+                          } else {
+                            const found = availableAiAgents.find(
+                              (a) => a.id === val
+                            )
+                            handleUpdateSelectedNode((cfg) => ({
+                              ...cfg,
+                              agentProfileId: val,
+                              agentProfileName: found?.name || val,
+                            }))
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={t.inspector.aiTemplateNone}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            {t.inspector.aiTemplateNone}
+                          </SelectItem>
+                          {availableAiAgents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              🤖 {agent.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        {t.inspector.aiTemplateDesc}
+                      </p>
+                    </div>
+
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
                         {t.inspector.aiPromptLabel}
                       </Label>
                       <Textarea
-                        rows={5}
+                        rows={4}
                         value={
                           (selectedNodeData.config?.prompt as string) || ""
                         }
@@ -1618,6 +1827,28 @@ export default function WhatsappWorkflowCanvasPage() {
                         }
                         placeholder={t.inspector.variableNamePlaceholder}
                         className="h-9 font-mono text-xs"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-border/40 pt-2">
+                      <div className="space-y-0.5">
+                        <Label className="text-xs font-semibold">
+                          {t.inspector.aiSendReplyLabel}
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          {t.inspector.aiSendReplyDesc}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={Boolean(
+                          selectedNodeData.config?.sendReply ?? true
+                        )}
+                        onCheckedChange={(checked) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            sendReply: checked,
+                          }))
+                        }
                       />
                     </div>
                   </div>

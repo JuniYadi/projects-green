@@ -2867,6 +2867,9 @@ export const idMessages: AppMessages = {
         leadGenTitle: "Bot Kualifikasi Prospek",
         leadGenDesc:
           "Ajukan beberapa pertanyaan dan simpan prospek berkualitas secara otomatis.",
+        aiSalesTitle: "Konsultan Penjualan & Harga AI",
+        aiSalesDesc:
+          "Bot konsultan dengan integrasi API katalog live & closing otomatis AI.",
       },
       card: {
         nodesCount: "{count} node",
@@ -2952,6 +2955,11 @@ export const idMessages: AppMessages = {
         aiPromptLabel: "Instruksi AI",
         aiPromptPlaceholder: "Beri tahu AI cara merespons...",
         aiVariableLabel: "Simpan respons sebagai",
+        aiTemplateLabel: "Template AI Agent",
+        aiTemplateNone: "Tanpa template (prompt kustom mandiri)",
+        aiTemplateDesc: "Mewarisi persona, dokumen basis pengetahuan (RAG), dan filter keamanan dari template AI Studio.",
+        aiSendReplyLabel: "Otomatis balas ke WhatsApp",
+        aiSendReplyDesc: "Kirim teks jawaban AI langsung ke pelanggan di WhatsApp.",
         httpMethodLabel: "Metode",
         httpUrlLabel: "URL permintaan",
         httpVariableLabel: "Simpan respons sebagai",

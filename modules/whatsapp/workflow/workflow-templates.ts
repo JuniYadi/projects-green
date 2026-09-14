@@ -83,8 +83,8 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplateItem[] = [
   },
   {
     id: "template_ai_sales_catalog",
-    titleKey: "leadGenTitle",
-    descKey: "leadGenDesc",
+    titleKey: "aiSalesTitle",
+    descKey: "aiSalesDesc",
     category: "sales",
     workflow: {
       id: "wf_tpl_sales_catalog",
