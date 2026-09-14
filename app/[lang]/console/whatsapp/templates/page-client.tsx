@@ -5,10 +5,11 @@ import {
 } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
-import { Plus, ArrowsClockwise } from "@phosphor-icons/react"
-import type { ColumnDef } from "@tanstack/react-table"
+import { Plus, ArrowsClockwise, Trash } from "@phosphor-icons/react"
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   CheckCircle,
   Clock,
@@ -41,7 +42,9 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import {
   useTemplates,
   useSyncTemplate,
+  useDeleteTemplate,
 } from "@/modules/whatsapp/templates/api/templates.hooks"
+import { TemplateDeleteDialog } from "@/modules/whatsapp/templates/ui/template-delete-dialog"
 import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -85,6 +88,18 @@ export default function ConsoleTemplatesPage() {
       : undefined
   )
   const { sync: _sync } = useSyncTemplate()
+  const { remove: deleteTemplate, deleting: isDeletingSingle } =
+    useDeleteTemplate()
+
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+  const [deleteDialogState, setDeleteDialogState] = React.useState<{
+    open: boolean
+    templatesToDelete: WhatsAppTemplate[]
+  }>({
+    open: false,
+    templatesToDelete: [],
+  })
+  const [isBulkDeleting, setIsBulkDeleting] = React.useState(false)
   // Load devices for device selector
   React.useEffect(() => {
     void (async () => {
@@ -155,6 +170,91 @@ export default function ConsoleTemplatesPage() {
       )
     } finally {
       setIsPulling(false)
+    }
+  }
+
+  const selectedTemplates = React.useMemo(() => {
+    const selectedIds = Object.keys(rowSelection).filter(
+      (id) => rowSelection[id]
+    )
+    return templates.filter((t) => selectedIds.includes(t.id))
+  }, [rowSelection, templates])
+
+  const handleOpenSingleDelete = (template: WhatsAppTemplate) => {
+    setDeleteDialogState({
+      open: true,
+      templatesToDelete: [template],
+    })
+  }
+
+  const handleOpenBulkDelete = () => {
+    if (selectedTemplates.length === 0) return
+    setDeleteDialogState({
+      open: true,
+      templatesToDelete: selectedTemplates,
+    })
+  }
+
+  const handleConfirmDelete = async () => {
+    const toDelete = deleteDialogState.templatesToDelete
+    if (toDelete.length === 0) return
+
+    if (toDelete.length === 1) {
+      try {
+        await deleteTemplate(toDelete[0].id)
+        toast.success(
+          locale === "id"
+            ? "Template berhasil dihapus."
+            : "Template deleted successfully."
+        )
+        setDeleteDialogState({ open: false, templatesToDelete: [] })
+        setRowSelection((prev) => {
+          const next = { ...prev }
+          delete next[toDelete[0].id]
+          return next
+        })
+        await reload()
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : locale === "id"
+              ? "Gagal menghapus template."
+              : "Failed to delete template."
+        )
+      }
+      return
+    }
+
+    // Bulk deletion
+    setIsBulkDeleting(true)
+    try {
+      const results = await Promise.allSettled(
+        toDelete.map((t) => deleteTemplate(t.id))
+      )
+      const succeeded = results.filter((r) => r.status === "fulfilled").length
+      const failed = results.filter((r) => r.status === "rejected").length
+
+      if (succeeded > 0) {
+        toast.success(
+          locale === "id"
+            ? `${succeeded} template berhasil dihapus.`
+            : `Successfully deleted ${succeeded} template(s).`
+        )
+      }
+      if (failed > 0) {
+        toast.error(
+          locale === "id"
+            ? `${failed} template gagal dihapus.`
+            : `Failed to delete ${failed} template(s).`
+        )
+      }
+
+      setDeleteDialogState({ open: false, templatesToDelete: [] })
+      setRowSelection({})
+      await reload()
+    } finally {
+      setIsBulkDeleting(false)
     }
   }
 
@@ -334,6 +434,30 @@ export default function ConsoleTemplatesPage() {
   }
 
   const columns: ColumnDef<WhatsAppTemplate>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="translate-y-[2px]"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="translate-y-[2px]"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: "name",
       header: "Template",
@@ -540,13 +664,31 @@ export default function ConsoleTemplatesPage() {
       enableHiding: false,
       header: "Actions",
       cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push(`${templatesBasePath}/${row.original.id}`)}
-        >
-          <WhatsAppText id="s180" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              router.push(`${templatesBasePath}/${row.original.id}`)
+            }
+          >
+            <WhatsAppText id="s180" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => handleOpenSingleDelete(row.original)}
+            title={locale === "id" ? "Hapus template" : "Delete template"}
+            aria-label={
+              locale === "id"
+                ? `Hapus ${row.original.name}`
+                : `Delete ${row.original.name}`
+            }
+          >
+            <Trash className="size-4" />
+          </Button>
+        </div>
       ),
     },
   ]
@@ -735,6 +877,37 @@ export default function ConsoleTemplatesPage() {
             </div>
           </div>
 
+          {selectedTemplates.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm">
+              <span className="font-medium text-destructive">
+                {locale === "id"
+                  ? `${selectedTemplates.length} template dipilih`
+                  : `${selectedTemplates.length} template(s) selected`}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRowSelection({})}
+                  disabled={isBulkDeleting}
+                >
+                  {locale === "id" ? "Batalkan Pilihan" : "Deselect All"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleOpenBulkDelete}
+                  disabled={isBulkDeleting}
+                >
+                  <Trash className="mr-1.5 size-4" />
+                  {locale === "id"
+                    ? `Hapus Terpilih (${selectedTemplates.length})`
+                    : `Delete Selected (${selectedTemplates.length})`}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {loading || error ? (
             <TemplateList
               templates={[]}
@@ -761,6 +934,10 @@ export default function ConsoleTemplatesPage() {
               ]}
               initialSorting={[{ id: "updatedAt", desc: true }]}
               pageSize={10}
+              enableRowSelection
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              getRowId={(row) => row.id}
               defaultColumnVisibility={{
                 createdAt: false,
                 languages: false,
@@ -792,6 +969,36 @@ export default function ConsoleTemplatesPage() {
         </CardContent>
       </Card>
       <FlightHudWidget onboarding={onboarding} />
+
+      <TemplateDeleteDialog
+        open={deleteDialogState.open}
+        onOpenChange={(open) =>
+          setDeleteDialogState((prev) => ({
+            ...prev,
+            open,
+            templatesToDelete: open ? prev.templatesToDelete : [],
+          }))
+        }
+        templateName={
+          deleteDialogState.templatesToDelete.length === 1
+            ? deleteDialogState.templatesToDelete[0]?.name
+            : undefined
+        }
+        templateNames={
+          deleteDialogState.templatesToDelete.length > 1
+            ? deleteDialogState.templatesToDelete.map((t) => t.name)
+            : undefined
+        }
+        isApproved={deleteDialogState.templatesToDelete.some(
+          (t) =>
+            t.metaStatus === "APPROVED" ||
+            t.languages?.some(
+              (l) => l.metaStatus === "APPROVED" || l.isApproved
+            )
+        )}
+        deleting={isDeletingSingle || isBulkDeleting}
+        onConfirm={() => void handleConfirmDelete()}
+      />
     </div>
   )
 }

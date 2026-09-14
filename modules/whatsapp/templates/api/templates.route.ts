@@ -1072,8 +1072,14 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           action: "TEMPLATE_UPDATED",
           organizationId: updated.organizationId,
           adminId: auth.userId,
+          deviceId: updated.whatsappDeviceId,
           message: `Template updated: ${updated.name}`,
           status: "OK",
+          details: {
+            templateId: updated.id,
+            slug: updated.slug,
+            name: updated.name,
+          },
         })
 
         return { ok: true, template: toWhatsappTemplateDTO(updated) }
@@ -1266,8 +1272,15 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         action: "TEMPLATE_DELETED",
         organizationId: template.organizationId,
         adminId: auth.userId,
+        deviceId: template.whatsappDeviceId,
         message: `Template deleted: ${template.name}`,
         status: "OK",
+        details: {
+          templateId: template.id,
+          slug: template.slug,
+          name: template.name,
+          category: template.category,
+        },
       })
       return { ok: true, message: "Template deleted." }
     },
@@ -1351,8 +1364,14 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         action: "TEMPLATE_SYNC_REQUESTED",
         organizationId: template.organizationId,
         adminId: auth.userId,
+        deviceId: template.whatsappDeviceId,
         message: `Template sync requested: ${template.name}`,
         status: "STARTED",
+        details: {
+          templateId: template.id,
+          slug: template.slug,
+          name: template.name,
+        },
       })
 
       try {

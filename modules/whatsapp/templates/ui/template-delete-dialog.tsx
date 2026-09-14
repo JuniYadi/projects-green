@@ -1,5 +1,5 @@
 /**
- * Template Delete Dialog — Confirmation dialog with loading state
+ * Template Delete Dialog — Confirmation dialog with loading state and type-to-confirm safety
  */
 
 "use client"
@@ -19,12 +19,14 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 type TemplateDeleteDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  templateName: string
+  templateName?: string
+  templateNames?: string[]
   isApproved?: boolean
   deleting: boolean
   onConfirm: () => void
@@ -34,34 +36,62 @@ export function TemplateDeleteDialog({
   open,
   onOpenChange,
   templateName,
+  templateNames,
   isApproved = false,
   deleting,
   onConfirm,
 }: TemplateDeleteDialogProps) {
   const [acknowledged, setAcknowledged] = React.useState(false)
+  const [confirmInput, setConfirmInput] = React.useState("")
   const params = useParams<{ lang?: string }>()
   const isIndonesian = params?.lang === "id"
+
+  const names =
+    templateNames && templateNames.length > 0
+      ? templateNames
+      : templateName
+        ? [templateName]
+        : ["this template"]
+  const isBulk = names.length > 1
+  const isConfirmed = confirmInput === "DELETE"
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setAcknowledged(false)
+      setConfirmInput("")
     }
     onOpenChange(nextOpen)
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            <WhatsAppText id="s259" />
+            {isBulk ? (
+              isIndonesian ? (
+                `Hapus ${names.length} Template WhatsApp`
+              ) : (
+                `Delete ${names.length} WhatsApp Templates`
+              )
+            ) : (
+              <WhatsAppText id="s259" />
+            )}
           </DialogTitle>
           <DialogDescription className="space-y-1">
-            <span>
-              <WhatsAppText id="s260" />{" "}
-              <strong className="text-foreground">{templateName}</strong>
-              <WhatsAppText id="s261" />
-            </span>
+            {isBulk ? (
+              <span>
+                {isIndonesian
+                  ? `Apakah Anda yakin ingin menghapus ${names.length} template yang dipilih? Tindakan ini tidak dapat dibatalkan.`
+                  : `Are you sure you want to delete the ${names.length} selected templates? This action cannot be undone.`}
+              </span>
+            ) : (
+              <span>
+                <WhatsAppText id="s260" />{" "}
+                <strong className="text-foreground">{names[0]}</strong>
+                <WhatsAppText id="s261" />
+              </span>
+            )}
             <span className="block text-xs text-muted-foreground">
               {isIndonesian
                 ? "Tindakan ini juga akan menghapus template dari Meta WhatsApp Business Account secara permanen."
@@ -69,6 +99,21 @@ export function TemplateDeleteDialog({
             </span>
           </DialogDescription>
         </DialogHeader>
+
+        {isBulk && (
+          <div className="max-h-32 overflow-y-auto rounded-md border bg-muted/40 p-2.5">
+            <p className="mb-1 text-[11px] font-semibold text-muted-foreground">
+              {isIndonesian ? "Template terpilih:" : "Selected templates:"}
+            </p>
+            <ul className="list-inside list-disc space-y-0.5 text-xs text-foreground">
+              {names.map((name, idx) => (
+                <li key={idx} className="truncate font-medium">
+                  {name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {isApproved && (
           <div className="space-y-3 py-1">
@@ -104,6 +149,42 @@ export function TemplateDeleteDialog({
             </div>
           </div>
         )}
+
+        <div className="space-y-2 pt-1">
+          <label
+            htmlFor="delete-confirm-input"
+            className="text-xs text-muted-foreground"
+          >
+            {isIndonesian ? (
+              <>
+                Ketik{" "}
+                <span className="font-mono font-bold text-destructive">
+                  DELETE
+                </span>{" "}
+                untuk konfirmasi:
+              </>
+            ) : (
+              <>
+                Type{" "}
+                <span className="font-mono font-bold text-destructive">
+                  DELETE
+                </span>{" "}
+                to confirm:
+              </>
+            )}
+          </label>
+          <Input
+            id="delete-confirm-input"
+            value={confirmInput}
+            onChange={(e) => setConfirmInput(e.target.value)}
+            placeholder="DELETE"
+            disabled={deleting}
+            className="font-mono"
+            autoComplete="off"
+            autoCapitalize="characters"
+          />
+        </div>
+
         <DialogFooter>
           <Button
             variant="outline"
@@ -115,15 +196,19 @@ export function TemplateDeleteDialog({
           <Button
             variant="destructive"
             onClick={onConfirm}
-            disabled={deleting || (isApproved && !acknowledged)}
+            disabled={deleting || !isConfirmed || (isApproved && !acknowledged)}
           >
             {deleting
               ? isIndonesian
                 ? "Menghapus..."
                 : "Deleting..."
-              : isIndonesian
-                ? "Hapus Template"
-                : "Delete Template"}
+              : isBulk
+                ? isIndonesian
+                  ? `Hapus ${names.length} Template`
+                  : `Delete ${names.length} Templates`
+                : isIndonesian
+                  ? "Hapus Template"
+                  : "Delete Template"}
           </Button>
         </DialogFooter>
       </DialogContent>

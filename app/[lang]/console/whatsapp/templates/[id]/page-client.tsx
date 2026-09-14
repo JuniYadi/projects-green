@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -30,9 +31,14 @@ import { TemplateDeleteDialog } from "@/modules/whatsapp/templates/ui/template-d
 import { TemplateDetailView } from "@/modules/whatsapp/templates/ui/template-detail"
 
 export default function ConsoleTemplateDetailPage() {
-  const params = useParams()
+  const params = useParams<{ id: string; lang?: string }>()
   const router = useRouter()
   const id = params.id as string
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const templatesBasePath = localizePathname({
+    pathname: "/console/whatsapp/templates",
+    locale,
+  })
 
   const { template, loading, error, reload } = useTemplate(id)
   const { update, updating } = useUpdateTemplate()
@@ -86,7 +92,7 @@ export default function ConsoleTemplateDetailPage() {
     try {
       await remove(id)
       toast.success("Template deleted successfully.")
-      router.push("../")
+      router.push(templatesBasePath)
     } catch {
       toast.error("Failed to delete template.")
     }
@@ -104,7 +110,7 @@ export default function ConsoleTemplateDetailPage() {
   return (
     <div className="space-y-6">
       <Button asChild variant="ghost" size="sm" className="w-fit px-0">
-        <Link href="../">
+        <Link href={templatesBasePath}>
           <ArrowLeft className="mr-1 size-4" />
           <WhatsAppText id="s172" />
         </Link>
