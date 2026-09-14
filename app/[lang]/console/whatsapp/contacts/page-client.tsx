@@ -8,7 +8,6 @@ import {
 import * as React from "react"
 import {
   User,
-  MagnifyingGlass,
   PencilSimple,
   Trash,
   UserPlus,
@@ -18,15 +17,14 @@ import {
   Upload,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import type { ColumnDef, ColumnFiltersState } from "@tanstack/react-table"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -134,7 +132,9 @@ export default function WhatsAppContactsPage() {
   const [groups, setGroups] = React.useState<ContactGroup[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = React.useState("")
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  )
 
   // ── Dialog state ────────────────────────────────────────────────────────
 
@@ -200,19 +200,6 @@ export default function WhatsAppContactsPage() {
       await loadGroups()
     })()
   }, [loadContacts, loadGroups])
-
-  // ── Filtered contacts (client-side search) ──────────────────────────────
-
-  const filteredContacts = React.useMemo(() => {
-    if (!searchQuery.trim()) return contacts
-    const query = searchQuery.trim().toLowerCase()
-    return contacts.filter(
-      (c) =>
-        c.phoneNumber.toLowerCase().includes(query) ||
-        c.name.toLowerCase().includes(query) ||
-        c.email.toLowerCase().includes(query)
-    )
-  }, [contacts, searchQuery])
 
   // ── Mutations ───────────────────────────────────────────────────────────
   const normalizePhone = React.useCallback(async (phoneNumber: string) => {
@@ -474,87 +461,357 @@ export default function WhatsAppContactsPage() {
     return map
   }, [groups])
 
+  // ── Table Columns ────────────────────────────────────────────────────────
+  const columns = React.useMemo<ColumnDef<Contact>[]>(
+    () => [
+      {
+        accessorFn: (row) => `${row.name || ""} ${row.phoneNumber}`,
+        id: "contact",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={messages.console.whatsapp.contacts.heading}
+          />
+        ),
+        cell: ({ row }) => {
+          const contact = row.original
+          return (
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <User className="size-4" weight="fill" />
+              </div>
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-medium">
+                  {contact.name || contact.phoneNumber}
+                </span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {contact.phoneNumber}
+                </span>
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        accessorKey: "email",
+        id: "email",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={messages.console.whatsapp.contacts.email}
+          />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {row.original.email || "—"}
+          </span>
+        ),
+      },
+      {
+        accessorFn: (row) => row.contactGroupId || "none",
+        id: "group",
+        filterFn: "equals",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={messages.console.whatsapp.contacts.groupLabel}
+          />
+        ),
+        cell: ({ row }) => {
+          const groupId = row.original.contactGroupId
+          const groupName = groupId ? groupMap.get(groupId) : undefined
+          return groupName ? (
+            <Badge variant="outline" className="text-xs font-normal">
+              {groupName}
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )
+        },
+      },
+      {
+        accessorKey: "status",
+        id: "status",
+        filterFn: "equals",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={messages.console.whatsapp.contacts.status}
+          />
+        ),
+        cell: ({ row }) => (
+          <ContactStatusBadge
+            status={row.original.status}
+            isWhatsapp={row.original.isWhatsapp}
+          />
+        ),
+      },
+      {
+        accessorFn: (row) => (row.isWhatsapp ? "yes" : "no"),
+        id: "whatsapp",
+        filterFn: "equals",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="WhatsApp" />
+        ),
+      },
+      {
+        accessorFn: (row) => row.lastMessage || "",
+        id: "lastMessage",
+        header: ({ column }) => (
+          <DataTableColumnHeader
+            column={column}
+            title={messages.console.whatsapp.contacts.lastMessageLabel}
+          />
+        ),
+        cell: ({ row }) => {
+          const contact = row.original
+          if (!contact.lastMessage && !contact.lastMessageAt) {
+            return <span className="text-xs text-muted-foreground">—</span>
+          }
+          return (
+            <div className="flex max-w-xs flex-col">
+              {contact.lastMessage && (
+                <span className="truncate text-xs text-foreground/80">
+                  {contact.lastMessage}
+                </span>
+              )}
+              {contact.lastMessageAt && (
+                <span className="text-[11px] text-muted-foreground">
+                  {new Date(contact.lastMessageAt).toLocaleString()}
+                </span>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => {
+          const contact = row.original
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm">
+                  <span className="sr-only">
+                    {messages.console.whatsapp.contacts.openMenu}
+                  </span>
+                  <DotsThreeVertical weight="bold" className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openEditDialog(contact)}>
+                  <PencilSimple className="mr-2 size-4" />
+                  {messages.console.whatsapp.contacts.edit}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => openDeleteDialog(contact)}
+                >
+                  <Trash className="mr-2 size-4" />
+                  {messages.console.whatsapp.contacts.delete}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
+        },
+      },
+    ],
+    [groupMap, messages]
+  )
+
+  // ── Facet Filters ────────────────────────────────────────────────────────
+  const facetFilters = [
+    {
+      columnId: "status",
+      label: messages.console.whatsapp.contacts.status,
+      allLabel: messages.console.whatsapp.contacts.allStatus,
+      options: [
+        {
+          label: messages.console.whatsapp.contacts.activeLabel,
+          value: "ACTIVE",
+        },
+        {
+          label: messages.console.whatsapp.contacts.inactiveLabel,
+          value: "INACTIVE",
+        },
+      ],
+    },
+    {
+      columnId: "whatsapp",
+      label: "WhatsApp",
+      allLabel: messages.console.whatsapp.contacts.allWhatsApp,
+      options: [
+        {
+          label: messages.console.whatsapp.contacts.hasWhatsAppOption,
+          value: "yes",
+        },
+        {
+          label: messages.console.whatsapp.contacts.noWhatsAppOption,
+          value: "no",
+        },
+      ],
+    },
+    {
+      columnId: "group",
+      label: messages.console.whatsapp.contacts.groupLabel,
+      allLabel: messages.console.whatsapp.contacts.allGroups,
+      options: [
+        ...groups.map((g) => ({ label: g.name, value: g.id })),
+        { label: messages.console.whatsapp.contacts.noGroup, value: "none" },
+      ],
+    },
+  ]
+
+  // ── Quick Filter KPI Ribbon Handlers ─────────────────────────────────────
+  const activeStatusFilter = columnFilters.find((f) => f.id === "status")
+    ?.value as string | undefined
+  const activeWaFilter = columnFilters.find((f) => f.id === "whatsapp")
+    ?.value as string | undefined
+
+  const handleSelectQuickFilter = (
+    type: "all" | "active" | "whatsapp" | "inactive"
+  ) => {
+    setColumnFilters((prev) => {
+      const remaining = prev.filter(
+        (f) => f.id !== "status" && f.id !== "whatsapp"
+      )
+      switch (type) {
+        case "all":
+          return remaining
+        case "active":
+          return [...remaining, { id: "status", value: "ACTIVE" }]
+        case "inactive":
+          return [...remaining, { id: "status", value: "INACTIVE" }]
+        case "whatsapp":
+          return [...remaining, { id: "whatsapp", value: "yes" }]
+      }
+    })
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {messages.console.whatsapp.contacts.heading}
-        </h1>
-        <p className="text-muted-foreground">
-          {messages.console.whatsapp.contacts.description}
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {messages.console.whatsapp.contacts.heading}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {messages.console.whatsapp.contacts.description}
+          </p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <Button variant="outline" onClick={openImportDialog}>
+            <Upload weight="bold" className="mr-2 size-4" />
+            <WhatsAppText id="s0" />
+          </Button>
+          <Button onClick={openAddDialog}>
+            <UserPlus weight="bold" className="mr-2 size-4" />
+            {messages.console.whatsapp.contacts.addContact}
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Quick Filter KPI Ribbon ────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <button
+          type="button"
+          onClick={() => handleSelectQuickFilter("all")}
+          className={cn(
+            "flex flex-col items-start justify-center rounded-xl border p-3.5 text-left transition-all",
+            !activeStatusFilter && !activeWaFilter
+              ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary/30"
+              : "border-border bg-card hover:border-muted-foreground/30 hover:bg-muted/50"
+          )}
+        >
+          <span className="text-xs font-medium text-muted-foreground">
+            {messages.console.whatsapp.contacts.totalContacts}
+          </span>
+          {isLoading ? (
+            <Skeleton className="my-0.5 h-7 w-12" />
+          ) : (
+            <span className="text-2xl font-bold tracking-tight">
+              {contacts.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectQuickFilter("active")}
+          className={cn(
+            "flex flex-col items-start justify-center rounded-xl border p-3.5 text-left transition-all",
+            activeStatusFilter === "ACTIVE"
+              ? "border-emerald-500 bg-emerald-500/10 shadow-xs ring-1 ring-emerald-500/40"
+              : "border-border bg-card hover:border-muted-foreground/30 hover:bg-muted/50"
+          )}
+        >
+          <span className="text-xs font-medium text-muted-foreground">
+            {messages.console.whatsapp.contacts.activeLabel}
+          </span>
+          {isLoading ? (
+            <Skeleton className="my-0.5 h-7 w-12" />
+          ) : (
+            <span className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-500">
+              {contacts.filter((c) => c.status === "ACTIVE").length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectQuickFilter("whatsapp")}
+          className={cn(
+            "flex flex-col items-start justify-center rounded-xl border p-3.5 text-left transition-all",
+            activeWaFilter === "yes"
+              ? "border-blue-500 bg-blue-500/10 shadow-xs ring-1 ring-blue-500/40"
+              : "border-border bg-card hover:border-muted-foreground/30 hover:bg-muted/50"
+          )}
+        >
+          <span className="text-xs font-medium text-muted-foreground">
+            {messages.console.whatsapp.contacts.hasWhatsApp}
+          </span>
+          {isLoading ? (
+            <Skeleton className="my-0.5 h-7 w-12" />
+          ) : (
+            <span className="text-2xl font-bold tracking-tight text-blue-600 dark:text-blue-500">
+              {contacts.filter((c) => c.isWhatsapp).length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectQuickFilter("inactive")}
+          className={cn(
+            "flex flex-col items-start justify-center rounded-xl border p-3.5 text-left transition-all",
+            activeStatusFilter === "INACTIVE"
+              ? "border-gray-500 bg-gray-500/10 shadow-xs ring-1 ring-gray-500/40"
+              : "border-border bg-card hover:border-muted-foreground/30 hover:bg-muted/50"
+          )}
+        >
+          <span className="text-xs font-medium text-muted-foreground">
+            {messages.console.whatsapp.contacts.inactiveLabel}
+          </span>
+          {isLoading ? (
+            <Skeleton className="my-0.5 h-7 w-12" />
+          ) : (
+            <span className="text-2xl font-bold tracking-tight text-muted-foreground">
+              {contacts.filter((c) => c.status === "INACTIVE").length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* ── Main Card ──────────────────────────────────────────────────── */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>
-              {messages.console.whatsapp.contacts.cardTitle}
-            </CardTitle>
-            <CardDescription>
-              {messages.console.whatsapp.contacts.cardDescription}
-            </CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={openImportDialog}>
-              <Upload weight="bold" className="mr-2 size-4" />
-              <WhatsAppText id="s0" />
-            </Button>
-            <Button onClick={openAddDialog}>
-              <UserPlus weight="bold" className="mr-2 size-4" />
-              {messages.console.whatsapp.contacts.addContact}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* ── Search ─────────────────────────────────────────────────── */}
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={
-                  messages.console.whatsapp.contacts.searchPlaceholder
-                }
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-
-          {/* ── Stats ──────────────────────────────────────────────────── */}
-          <div className="mb-6 grid grid-cols-3 gap-4">
-            <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold">{contacts.length}</p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.whatsapp.contacts.totalContacts}
-              </p>
-            </div>
-            <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold text-green-600">
-                {contacts.filter((c) => c.status === "ACTIVE").length}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.whatsapp.contacts.activeLabel}
-              </p>
-            </div>
-            <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold text-blue-600">
-                {contacts.filter((c) => c.isWhatsapp).length}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.whatsapp.contacts.hasWhatsApp}
-              </p>
-            </div>
-          </div>
-
-          {/* ── Loading ────────────────────────────────────────────────── */}
-          {isLoading && (
-            <div className="space-y-3">
+        <CardContent className="p-6">
+          {isLoading ? (
+            <div className="space-y-3 py-2">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
@@ -571,16 +828,18 @@ export default function WhatsAppContactsPage() {
                 </div>
               ))}
             </div>
-          )}
-
-          {/* ── Error ──────────────────────────────────────────────────── */}
-          {!isLoading && errorMessage && (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
+          ) : errorMessage ? (
+            <div
+              className="flex flex-col items-center justify-center py-8 text-center"
+              role="alert"
+            >
               <XCircle
                 className="mb-3 size-10 text-destructive"
                 weight="fill"
               />
-              <p className="text-sm text-destructive">{errorMessage}</p>
+              <p className="text-sm font-medium text-destructive">
+                {errorMessage}
+              </p>
               <Button
                 variant="outline"
                 className="mt-3"
@@ -589,102 +848,37 @@ export default function WhatsAppContactsPage() {
                 {messages.console.whatsapp.contacts.retry}
               </Button>
             </div>
-          )}
-
-          {/* ── Empty ──────────────────────────────────────────────────── */}
-          {!isLoading && !errorMessage && filteredContacts.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
+          ) : contacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
               <User className="mb-3 size-10 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                {searchQuery
-                  ? messages.console.whatsapp.contacts.noContactsMatch
-                  : messages.console.whatsapp.contacts.noContactsYet}
+              <p className="text-sm font-medium text-muted-foreground">
+                {messages.console.whatsapp.contacts.noContactsYet}
               </p>
-              {!searchQuery && (
-                <Button
-                  variant="outline"
-                  className="mt-3"
-                  onClick={openAddDialog}
-                >
-                  {messages.console.whatsapp.contacts.addFirstContact}
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={openAddDialog}
+              >
+                <UserPlus weight="bold" className="mr-2 size-4" />
+                {messages.console.whatsapp.contacts.addFirstContact}
+              </Button>
             </div>
-          )}
-
-          {/* ── Contact List ───────────────────────────────────────────── */}
-          {!isLoading && !errorMessage && filteredContacts.length > 0 && (
-            <div className="space-y-3">
-              {filteredContacts.map((contact) => (
-                <div
-                  key={contact.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
-                      <User className="size-5 text-primary" weight="fill" />
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {contact.name || contact.phoneNumber}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {contact.phoneNumber}
-                      </p>
-                      {contact.lastMessage && (
-                        <p className="max-w-64 truncate text-xs text-muted-foreground">
-                          <WhatsAppText id="s1" />
-                          {contact.lastMessage}
-                        </p>
-                      )}
-                      {contact.lastMessageAt && (
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(contact.lastMessageAt).toLocaleString()}
-                        </p>
-                      )}
-                      {contact.contactGroupId &&
-                        groupMap.has(contact.contactGroupId) && (
-                          <p className="text-xs text-muted-foreground">
-                            {groupMap.get(contact.contactGroupId)}
-                          </p>
-                        )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <ContactStatusBadge
-                      status={contact.status}
-                      isWhatsapp={contact.isWhatsapp}
-                    />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon-sm">
-                          <span className="sr-only">
-                            <WhatsAppText id="s2" />
-                          </span>
-                          <DotsThreeVertical weight="bold" className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => openEditDialog(contact)}
-                        >
-                          <PencilSimple className="mr-2 size-4" />
-                          {messages.console.whatsapp.contacts.edit}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => openDeleteDialog(contact)}
-                        >
-                          <Trash className="mr-2 size-4" />
-                          {messages.console.whatsapp.contacts.delete}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              ))}
-            </div>
+          ) : (
+            <DataTable
+              tableId="console-whatsapp-contacts"
+              columns={columns}
+              data={contacts}
+              searchableColumns={["contact", "email"]}
+              searchPlaceholder={
+                messages.console.whatsapp.contacts.searchPlaceholder
+              }
+              facetFilters={facetFilters}
+              columnFilters={columnFilters}
+              onColumnFiltersChange={setColumnFilters}
+              pageSize={10}
+              defaultColumnVisibility={{ whatsapp: false }}
+              emptyMessage={messages.console.whatsapp.contacts.noContactsMatch}
+            />
           )}
         </CardContent>
       </Card>

@@ -64,6 +64,8 @@ type DataTableProps<TData> = {
   emptyMessage?: string
   facetFilters?: DataTableFacetFilter[]
   initialColumnFilters?: ColumnFiltersState
+  columnFilters?: ColumnFiltersState
+  onColumnFiltersChange?: OnChangeFn<ColumnFiltersState>
   initialSorting?: SortingState
   searchableColumns?: string[]
   searchPlaceholder?: string
@@ -97,6 +99,8 @@ export function DataTable<TData>({
   emptyMessage = "No results found.",
   facetFilters = [],
   initialColumnFilters = [],
+  columnFilters: controlledColumnFilters,
+  onColumnFiltersChange,
   initialSorting = [],
   searchableColumns = [],
   searchPlaceholder = "",
@@ -111,8 +115,29 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
-  const [columnFilters, setColumnFilters] =
+  const [internalColumnFilters, setInternalColumnFilters] =
     React.useState<ColumnFiltersState>(initialColumnFilters)
+  const isControlledColumnFilters = controlledColumnFilters !== undefined
+  const columnFilters = isControlledColumnFilters
+    ? controlledColumnFilters
+    : internalColumnFilters
+  const handleColumnFiltersChange = React.useCallback<
+    OnChangeFn<ColumnFiltersState>
+  >(
+    (updaterOrValue) => {
+      const nextValue =
+        typeof updaterOrValue === "function"
+          ? updaterOrValue(columnFilters)
+          : updaterOrValue
+      if (onColumnFiltersChange) {
+        onColumnFiltersChange(updaterOrValue)
+      }
+      if (!isControlledColumnFilters) {
+        setInternalColumnFilters(nextValue)
+      }
+    },
+    [columnFilters, isControlledColumnFilters, onColumnFiltersChange]
+  )
   const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
     tableId,
     defaultColumnVisibility
@@ -162,7 +187,7 @@ export function DataTable<TData>({
     },
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     ...(pageSize
       ? {
