@@ -110,4 +110,32 @@ describe("StackTerminal", () => {
     fireEvent.click(terminalCanvas)
     expect(mockFocus).toHaveBeenCalled()
   })
+
+  it("calls onPopOut when pop out button is clicked", () => {
+    const handlePopOut = mock()
+    const { getByTitle } = render(
+      <StackTerminal stackId="stk_1" locale="en" onPopOut={handlePopOut} />
+    )
+    const button = getByTitle("Open in standalone window")
+    fireEvent.click(button)
+    expect(handlePopOut).toHaveBeenCalledTimes(1)
+  })
+
+  it("calls onMinimize and onClose when buttons are clicked", () => {
+    const handleMinimize = mock()
+    const handleClose = mock()
+    const { getByTitle } = render(
+      <StackTerminal
+        stackId="stk_1"
+        locale="en"
+        onMinimize={handleMinimize}
+        onClose={handleClose}
+      />
+    )
+    fireEvent.click(getByTitle("Minimize"))
+    expect(handleMinimize).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(getByTitle("Close session"))
+    expect(handleClose).toHaveBeenCalledTimes(1)
+  })
 })

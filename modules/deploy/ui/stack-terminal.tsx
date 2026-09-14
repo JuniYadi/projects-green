@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Terminal } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit"
 import "@xterm/xterm/css/xterm.css"
@@ -8,6 +8,9 @@ import {
   TerminalWindow,
   ArrowsClockwise,
   WarningCircle,
+  ArrowSquareOut,
+  Minus,
+  X,
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,6 +27,11 @@ export type StackTerminalProps = {
   stackId: string
   locale: string
   wsBaseUrl?: string
+  fillHeight?: boolean
+  isActive?: boolean
+  onPopOut?: () => void
+  onMinimize?: () => void
+  onClose?: () => void
 }
 
 // Pod and container names are DNS-1123 labels, so "/" never appears in them.
@@ -34,6 +42,11 @@ export function StackTerminal({
   stackId,
   locale,
   wsBaseUrl,
+  fillHeight = false,
+  isActive = true,
+  onPopOut,
+  onMinimize,
+  onClose,
 }: StackTerminalProps) {
   const isId = locale.startsWith("id")
   const containerRef = useRef<HTMLDivElement>(null)
@@ -49,7 +62,7 @@ export function StackTerminal({
   const [targets, setTargets] = useState<TerminalTargetDTO[]>([])
   const [selected, setSelected] = useState<ExecTargetSelection | null>(null)
 
-  const sendResize = () => {
+  const sendResize = useCallback(() => {
     const ws = wsRef.current
     const term = termRef.current
     if (!ws || !term || ws.readyState !== WebSocket.OPEN) return
@@ -57,7 +70,7 @@ export function StackTerminal({
     ws.send(
       JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows })
     )
-  }
+  }, [])
 
   // Without a target the gateway picks the first ready replica.
   const connect = (target?: ExecTargetSelection) => {
@@ -191,6 +204,25 @@ export function StackTerminal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stackId])
 
+  useEffect(() => {
+    if (isActive) {
+      const timer = setTimeout(() => {
+        sendResize()
+        termRef.current?.focus()
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [isActive, sendResize])
+
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined" || !containerRef.current) return
+    const ro = new ResizeObserver(() => {
+      sendResize()
+    })
+    ro.observe(containerRef.current)
+    return () => ro.disconnect()
+  }, [sendResize])
+
   const readyText = (ready: boolean) =>
     ready ? (isId ? "Siap" : "Ready") : isId ? "Belum siap" : "Not ready"
 
@@ -215,7 +247,11 @@ export function StackTerminal({
   }[status]
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-[#09090b] shadow-sm">
+    <div
+      className={`flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-[#09090b] shadow-sm ${
+        fillHeight ? "h-full w-full flex-1" : ""
+      }`}
+    >
       {/* Terminal Toolbar */}
       <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/95 px-4 py-2.5 text-xs">
         <div className="flex items-center gap-3">
@@ -263,7 +299,7 @@ export function StackTerminal({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-1.5">
             <span
               className={`h-2 w-2 rounded-full ${
@@ -286,10 +322,57 @@ export function StackTerminal({
             onClick={() => connect()}
             disabled={status === "connecting"}
             className="h-7 gap-1 px-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+            title={isId ? "Hubungkan ulang" : "Reconnect"}
           >
             <ArrowsClockwise size={14} />
-            {isId ? "Hubungkan ulang" : "Reconnect"}
+            <span className="hidden sm:inline">
+              {isId ? "Hubungkan ulang" : "Reconnect"}
+            </span>
           </Button>
+
+          {onPopOut && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onPopOut}
+              className="h-7 gap-1 px-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+              title={
+                isId ? "Buka di jendela terpisah" : "Open in standalone window"
+              }
+            >
+              <ArrowSquareOut size={14} />
+              <span className="hidden sm:inline">
+                {isId ? "Jendela Baru" : "Pop out"}
+              </span>
+            </Button>
+          )}
+
+          {onMinimize && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onMinimize}
+              className="h-7 w-7 p-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+              title={isId ? "Minimize" : "Minimize"}
+            >
+              <Minus size={14} />
+            </Button>
+          )}
+
+          {onClose && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-7 w-7 p-0 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+              title={isId ? "Tutup sesi" : "Close session"}
+            >
+              <X size={14} />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -328,7 +411,9 @@ export function StackTerminal({
         tabIndex={-1}
         role="region"
         aria-label={isId ? "Konsol terminal" : "Terminal console"}
-        className={`min-h-[420px] w-full flex-1 cursor-text p-3 font-mono text-sm focus:outline-none ${noRunningPod ? "hidden" : ""}`}
+        className={`w-full flex-1 cursor-text p-3 font-mono text-sm focus:outline-none ${
+          fillHeight ? "h-full min-h-0" : "min-h-[420px]"
+        } ${noRunningPod ? "hidden" : ""}`}
       />
     </div>
   )

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
+  ArrowSquareOut,
   Cpu,
   Globe,
   HardDrive,
@@ -352,6 +353,34 @@ export default function PlatformInstanceWorkspacePage() {
     useState<Record<K8sEnvironmentId, VolumeMount[]>>(emptyMounts)
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
+
+  // Terminal drawer state: keep terminal mounted across tab switches once initiated
+  const [terminalEverOpened, setTerminalEverOpened] = useState(
+    activeWorkspaceTab === "terminal"
+  )
+  const [drawerState, setDrawerState] = useState<"minimized" | "open">("open")
+
+  useEffect(() => {
+    if (activeWorkspaceTab === "terminal" && !terminalEverOpened) {
+      queueMicrotask(() => {
+        setTerminalEverOpened(true)
+        setDrawerState("open")
+      })
+    }
+  }, [activeWorkspaceTab, terminalEverOpened])
+
+  const isTerminalInitiated =
+    terminalEverOpened || activeWorkspaceTab === "terminal"
+
+  const handlePopOutTerminal = () => {
+    const standaloneUrl = `/${locale}/console/app/platform/${slug}/terminal`
+    window.open(
+      standaloneUrl,
+      `terminal-${slug}`,
+      "width=1080,height=700,menubar=no,toolbar=no,location=no,status=no"
+    )
+  }
+
   // Load apps list for switcher
   useEffect(() => {
     let cancelled = false
@@ -682,6 +711,7 @@ export default function PlatformInstanceWorkspacePage() {
             locale={locale}
             onSync={handleSync}
             isSyncing={syncing}
+            isTerminalActive={isTerminalInitiated}
           />
 
           {/* Template Update Banner */}
@@ -703,10 +733,72 @@ export default function PlatformInstanceWorkspacePage() {
             <AppOverviewTab stack={overview.stack} locale={locale} />
           )}
 
-          {/* TAB: TERMINAL */}
-          {activeWorkspaceTab === "terminal" && (
-            <TabTerminal stackId={overview.stack.id} locale={locale} />
+          {/* TAB: TERMINAL (Persistent across tab switches) */}
+          {isTerminalInitiated && (
+            <div
+              className={
+                activeWorkspaceTab === "terminal"
+                  ? "space-y-3"
+                  : drawerState === "minimized"
+                    ? "pointer-events-none sr-only"
+                    : "fixed right-6 bottom-4 z-40 flex h-[440px] w-[720px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-[#09090b] shadow-2xl"
+              }
+            >
+              <TabTerminal
+                stackId={overview.stack.id}
+                locale={locale}
+                isActive={
+                  activeWorkspaceTab === "terminal" || drawerState === "open"
+                }
+                fillHeight={activeWorkspaceTab !== "terminal"}
+                onPopOut={handlePopOutTerminal}
+                onMinimize={
+                  activeWorkspaceTab !== "terminal"
+                    ? () => setDrawerState("minimized")
+                    : undefined
+                }
+                onClose={
+                  activeWorkspaceTab !== "terminal"
+                    ? () => {
+                        setTerminalEverOpened(false)
+                        setDrawerState("open")
+                      }
+                    : undefined
+                }
+              />
+            </div>
           )}
+
+          {/* Minimized Docked Bar when browsing other tabs with active terminal */}
+          {activeWorkspaceTab !== "terminal" &&
+            isTerminalInitiated &&
+            drawerState === "minimized" && (
+              <div className="fixed right-6 bottom-4 z-40 flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950/95 px-3 py-1.5 text-xs text-zinc-200 shadow-xl backdrop-blur">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                <span className="font-mono text-xs">Terminal (Live)</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-[11px] text-zinc-300 hover:text-zinc-100"
+                  onClick={() => setDrawerState("open")}
+                >
+                  {locale.startsWith("id") ? "Buka Drawer" : "Expand"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-100"
+                  onClick={handlePopOutTerminal}
+                  title={
+                    locale.startsWith("id")
+                      ? "Buka di Jendela Baru"
+                      : "Open in new window"
+                  }
+                >
+                  <ArrowSquareOut size={13} />
+                </Button>
+              </div>
+            )}
 
           {/* TAB 2: DEPLOYMENTS */}
           {activeWorkspaceTab === "deployments" && (
