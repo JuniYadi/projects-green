@@ -400,7 +400,7 @@ describe("WhatsAppMessagesPage", () => {
     expect(
       view.getByRole("radio", { name: "Indonesian (id)" })
     ).toBeInTheDocument()
-    expect(view.getByText("🇮🇩")).toBeInTheDocument()
+    expect(view.getByTitle("ID")).toBeInTheDocument()
     expect(view.getAllByText("Utility")).toHaveLength(2)
     view.unmount()
   })

@@ -9,6 +9,7 @@ import type { ClusterMessages } from "@/lib/i18n/messages/types"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -1205,7 +1206,13 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                             value={r.id}
                             className="text-xs"
                           >
-                            {r.flag ? `${r.flag} ` : ""}
+                            {r.flag ? (
+                              <CountryFlag
+                                country={r.flag}
+                                fallback={`${r.flag} `}
+                                className="rounded-2xs mr-1.5 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                              />
+                            ) : null}
                             {r.name} ({r.code})
                           </SelectItem>
                         ))}

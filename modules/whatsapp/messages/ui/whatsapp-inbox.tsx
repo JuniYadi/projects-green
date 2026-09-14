@@ -63,6 +63,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { FilterPills } from "@/components/ui/filter-pills"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { CDNAsset } from "@/components/ui/cdn-asset"
@@ -256,7 +257,7 @@ type TemplateCategory = NonNullable<WhatsAppTemplate["category"]>
 
 type LanguagePresentation = {
   name: string
-  flag: string
+  country?: string
 }
 
 const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = {
@@ -266,22 +267,22 @@ const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = {
 }
 
 const LANGUAGE_PRESENTATIONS: Record<string, LanguagePresentation> = {
-  id: { name: "Indonesian", flag: "🇮🇩" },
-  id_ID: { name: "Indonesian", flag: "🇮🇩" },
-  en: { name: "English", flag: "🇺🇸" },
-  en_US: { name: "English (US)", flag: "🇺🇸" },
-  en_GB: { name: "English (UK)", flag: "🇬🇧" },
-  ms: { name: "Malay", flag: "🇲🇾" },
-  zh_CN: { name: "Chinese (Simplified)", flag: "🇨🇳" },
-  zh_TW: { name: "Chinese (Traditional)", flag: "🇹🇼" },
-  ja: { name: "Japanese", flag: "🇯🇵" },
-  ko: { name: "Korean", flag: "🇰🇷" },
-  es: { name: "Spanish", flag: "🇪🇸" },
-  pt_BR: { name: "Portuguese (Brazil)", flag: "🇧🇷" },
-  ar: { name: "Arabic", flag: "🇸🇦" },
-  hi: { name: "Hindi", flag: "🇮🇳" },
-  fr: { name: "French", flag: "🇫🇷" },
-  de: { name: "German", flag: "🇩🇪" },
+  id: { name: "Indonesian", country: "ID" },
+  id_ID: { name: "Indonesian", country: "ID" },
+  en: { name: "English", country: "US" },
+  en_US: { name: "English (US)", country: "US" },
+  en_GB: { name: "English (UK)", country: "GB" },
+  ms: { name: "Malay", country: "MY" },
+  zh_CN: { name: "Chinese (Simplified)", country: "CN" },
+  zh_TW: { name: "Chinese (Traditional)", country: "TW" },
+  ja: { name: "Japanese", country: "JP" },
+  ko: { name: "Korean", country: "KR" },
+  es: { name: "Spanish", country: "ES" },
+  pt_BR: { name: "Portuguese (Brazil)", country: "BR" },
+  ar: { name: "Arabic", country: "SA" },
+  hi: { name: "Hindi", country: "IN" },
+  fr: { name: "French", country: "FR" },
+  de: { name: "German", country: "DE" },
 }
 
 function getTemplateCategoryLabel(category: WhatsAppTemplate["category"]) {
@@ -296,7 +297,7 @@ function getLanguagePresentation(code: string): LanguagePresentation {
   if (LANGUAGE_PRESENTATIONS[base]) {
     return LANGUAGE_PRESENTATIONS[base]
   }
-  return { name: code, flag: "🌐" }
+  return { name: code }
 }
 
 // ─── Conversation List Item ───────────────────────────────────────────────────
@@ -2089,9 +2090,10 @@ export function WhatsAppInbox({
                                 Language
                               </span>
                               <span className="inline-flex items-center gap-2 text-sm font-medium">
-                                <span aria-hidden="true">
-                                  {presentation.flag}
-                                </span>
+                                <CountryFlag
+                                  country={presentation.country}
+                                  className="rounded-2xs h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                                />
                                 <span>
                                   {presentation.name} ({singleLang.lang})
                                 </span>
@@ -2141,12 +2143,10 @@ export function WhatsAppInbox({
                                       className="size-4 shrink-0 accent-primary"
                                       aria-label={`${presentation.name} (${lang.lang})`}
                                     />
-                                    <span
-                                      className="text-xl leading-none"
-                                      aria-hidden="true"
-                                    >
-                                      {presentation.flag}
-                                    </span>
+                                    <CountryFlag
+                                      country={presentation.country}
+                                      className="rounded-2xs h-4 w-5.5 shrink-0 object-cover shadow-2xs"
+                                    />
                                     <span className="min-w-0 flex-1">
                                       <span className="block text-sm font-medium">
                                         {presentation.name}
@@ -2268,13 +2268,14 @@ export function WhatsAppInbox({
                                       Language
                                     </p>
                                     <p className="flex items-center gap-2 text-sm">
-                                      <span aria-hidden="true">
-                                        {
+                                      <CountryFlag
+                                        country={
                                           getLanguagePresentation(
                                             selectedTemplateLanguage
-                                          ).flag
+                                          ).country
                                         }
-                                      </span>
+                                        className="rounded-2xs h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                                      />
                                       {
                                         getLanguagePresentation(
                                           selectedTemplateLanguage

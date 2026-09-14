@@ -70,6 +70,13 @@ describe("getLanguageDisplay", () => {
     expect(result.flag).toBe("US")
   })
 
+  it("maps es to Spanish with ES flag", () => {
+    const result = getLanguageDisplay("es")
+    expect(result.code).toBe("es")
+    expect(result.label).toBe("Spanish")
+    expect(result.flag).toBe("ES")
+  })
+
   it("returns no flag for unknown codes", () => {
     const result = getLanguageDisplay("xh")
     expect(result.flag).toBe("")
@@ -230,16 +237,25 @@ describe("WhatsAppTemplatePreview", () => {
 // ─── TemplateLanguageBadge ────────────────────────────────────────────────────
 
 describe("TemplateLanguageBadge", () => {
-  it("shows code and label for Indonesian", () => {
+  it("shows code and label for Indonesian with SVG flag", () => {
     const { container } = render(<TemplateLanguageBadge lang="id" />)
     expect(container.textContent).toContain("id")
     expect(container.textContent).toContain("Indonesian")
+    expect(container.querySelector("svg")).not.toBeNull()
   })
 
-  it("shows code and label for English", () => {
+  it("shows code and label for English with SVG flag", () => {
     const { container } = render(<TemplateLanguageBadge lang="en" />)
     expect(container.textContent).toContain("en")
     expect(container.textContent).toContain("English")
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("renders Spanish with Spain SVG flag", () => {
+    const { container } = render(<TemplateLanguageBadge lang="es" />)
+    expect(container.textContent).toContain("es")
+    expect(container.textContent).toContain("Spanish")
+    expect(container.querySelector("svg")).not.toBeNull()
   })
 })
 

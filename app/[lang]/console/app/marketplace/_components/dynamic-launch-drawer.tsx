@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/phosphor-icons"
 import { TemplateLogo } from "./template-logo"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -515,7 +516,13 @@ export function DynamicLaunchDrawer({
                           : "border-border bg-card hover:bg-muted/40"
                       }`}
                     >
-                      <span className="text-base">{region.flag}</span>
+                      <CountryFlag
+                        country={region.flag}
+                        fallback={
+                          <span className="text-base">{region.flag}</span>
+                        }
+                        className="rounded-2xs h-4 w-5.5 shrink-0 object-cover shadow-2xs"
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium text-foreground">
                           {region.name}

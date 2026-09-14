@@ -9,6 +9,7 @@ import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import {
   renderTemplateBody,
   resolveTemplatePreviewValues,
@@ -34,6 +35,20 @@ const REGION_MAP: Record<string, string> = {
   fil: "PH",
   tl: "PH",
   zh: "CN",
+  es: "ES",
+  pt: "BR",
+  de: "DE",
+  fr: "FR",
+  it: "IT",
+  ja: "JP",
+  ko: "KR",
+  ar: "SA",
+  hi: "IN",
+  ru: "RU",
+  nl: "NL",
+  tr: "TR",
+  uk: "UA",
+  pl: "PL",
 }
 
 export function getLanguageDisplay(lang: string): {
@@ -69,7 +84,10 @@ export function TemplateLanguageBadge({
   return (
     <Badge variant="secondary" className={className}>
       {flag ? (
-        <span className="mr-1 text-xs leading-none">{getFlagEmoji(flag)}</span>
+        <CountryFlag
+          country={flag}
+          className="rounded-2xs mr-1.5 inline-block h-3 w-4 shrink-0 object-cover shadow-2xs"
+        />
       ) : null}
       {code}
       <span className="ml-1 text-muted-foreground/60">·</span>

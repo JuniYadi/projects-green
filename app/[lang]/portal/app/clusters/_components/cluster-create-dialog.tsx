@@ -7,6 +7,7 @@ import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -192,7 +193,13 @@ export function ClusterCreateDialog({
               <SelectContent>
                 {regions.map((r) => (
                   <SelectItem key={r.id} value={r.id}>
-                    {r.flag ? `${r.flag} ` : ""}
+                    {r.flag ? (
+                      <CountryFlag
+                        country={r.flag}
+                        fallback={`${r.flag} `}
+                        className="rounded-2xs mr-1.5 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                      />
+                    ) : null}
                     {r.name} ({r.code})
                   </SelectItem>
                 ))}
