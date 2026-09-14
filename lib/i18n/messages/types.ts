@@ -1081,7 +1081,18 @@ export type AppMessages = {
         searchPlaceholder: string
         totalContacts: string
         activeLabel: string
+        inactiveLabel: string
         hasWhatsApp: string
+        allStatus: string
+        allWhatsApp: string
+        hasWhatsAppOption: string
+        noWhatsAppOption: string
+        allGroups: string
+        noGroup: string
+        groupLabel: string
+        lastMessageLabel: string
+        actions: string
+        resetFilters: string
         noContactsMatch: string
         noContactsYet: string
         addFirstContact: string

@@ -1195,7 +1195,18 @@ export const enMessages: AppMessages = {
         searchPlaceholder: "Search contacts...",
         totalContacts: "Total Contacts",
         activeLabel: "Active",
+        inactiveLabel: "Inactive",
         hasWhatsApp: "Has WhatsApp",
+        allStatus: "All Status",
+        allWhatsApp: "All WhatsApp",
+        hasWhatsAppOption: "Has WhatsApp",
+        noWhatsAppOption: "No WhatsApp",
+        allGroups: "All Groups",
+        noGroup: "No Group",
+        groupLabel: "Group",
+        lastMessageLabel: "Last Message",
+        actions: "Actions",
+        resetFilters: "Reset filters",
         noContactsMatch: "No contacts match your search",
         noContactsYet: "No contacts yet",
         addFirstContact: "Add your first contact",
@@ -2848,8 +2859,7 @@ export const enMessages: AppMessages = {
         leadGenDesc:
           "Ask a few questions and capture qualified leads automatically.",
         aiSalesTitle: "AI Sales & Pricing Consultant",
-        aiSalesDesc:
-          "Consultant bot with live HTTP catalog & auto-closing AI.",
+        aiSalesDesc: "Consultant bot with live HTTP catalog & auto-closing AI.",
       },
       card: {
         nodesCount: "{count} nodes",
@@ -2935,9 +2945,11 @@ export const enMessages: AppMessages = {
         aiVariableLabel: "Save response as",
         aiTemplateLabel: "AI Agent Template",
         aiTemplateNone: "No template (pure custom prompt)",
-        aiTemplateDesc: "Inherit persona, knowledge base docs (RAG), and security filters from an AI Studio template.",
+        aiTemplateDesc:
+          "Inherit persona, knowledge base docs (RAG), and security filters from an AI Studio template.",
         aiSendReplyLabel: "Auto-send reply to WhatsApp",
-        aiSendReplyDesc: "Automatically send the AI generated response back to the customer on WhatsApp.",
+        aiSendReplyDesc:
+          "Automatically send the AI generated response back to the customer on WhatsApp.",
         httpMethodLabel: "Method",
         httpUrlLabel: "Request URL",
         httpVariableLabel: "Save response as",
