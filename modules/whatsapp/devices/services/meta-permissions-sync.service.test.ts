@@ -234,4 +234,146 @@ describe("syncMetaDevicePermissions", () => {
       globalThis.fetch = originalFetch
     }
   })
+
+  it("sets status to ERROR when debug_token returns non-200", async () => {
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = url.toString()
+      if (urlStr.includes("debug_token")) {
+        return new Response(
+          JSON.stringify({ error: { message: "Invalid OAuth access token." } }),
+          { status: 400 }
+        )
+      }
+      return new Response("{}", { status: 200 })
+    }) as unknown as typeof fetch
+
+    try {
+      const res = await syncMetaDevicePermissions("device-1")
+      expect(res.status).toBe("ERROR")
+      expect(res.canManageTemplates).toBe(false)
+      expect(res.warning).toContain("debug_token failed with HTTP 400")
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it("sets status to ERROR when WABA query returns non-200", async () => {
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = url.toString()
+      if (urlStr.includes("debug_token")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              user_id: "sys-1",
+              scopes: ["whatsapp_business_management"],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlStr.includes("fields=id,name,owner_business_info")) {
+        return new Response(
+          JSON.stringify({ error: { message: "WABA not found" } }),
+          { status: 404 }
+        )
+      }
+      return new Response("{}", { status: 200 })
+    }) as unknown as typeof fetch
+
+    try {
+      const res = await syncMetaDevicePermissions("device-1")
+      expect(res.status).toBe("ERROR")
+      expect(res.canManageTemplates).toBe(false)
+      expect(res.warning).toContain("WABA query failed with HTTP 404")
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it("sets status to ERROR when assigned_users query returns non-200", async () => {
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = url.toString()
+      if (urlStr.includes("debug_token")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              user_id: "sys-1",
+              scopes: ["whatsapp_business_management"],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlStr.includes("fields=id,name,owner_business_info")) {
+        return new Response(
+          JSON.stringify({
+            id: "waba-123",
+            owner_business_info: { id: "biz-123", name: "Biz" },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlStr.includes("assigned_users")) {
+        return new Response(
+          JSON.stringify({ error: { message: "Permission error" } }),
+          { status: 403 }
+        )
+      }
+      return new Response("{}", { status: 200 })
+    }) as unknown as typeof fetch
+
+    try {
+      const res = await syncMetaDevicePermissions("device-1")
+      expect(res.status).toBe("ERROR")
+      expect(res.canManageTemplates).toBe(false)
+      expect(res.warning).toContain("assigned_users query failed with HTTP 403")
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it("sets status to NO_TOKEN when token resolution throws an error", async () => {
+    const { resolveDecryptedDeviceMetaToken } =
+      await import("@/modules/whatsapp/meta-apps/services/meta-credentials-resolver.service")
+    const mockResolve = resolveDecryptedDeviceMetaToken as any
+    mockResolve.mockRejectedValueOnce(new Error("Decryption key invalid"))
+
+    const res = await syncMetaDevicePermissions("device-1")
+    expect(res.status).toBe("NO_TOKEN")
+    expect(res.canManageTemplates).toBe(false)
+    expect(res.warning).toBe("Decryption key invalid")
+  })
+
+  it("marks GRANTED when owner_business_info is not provided on WABA", async () => {
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = url.toString()
+      if (urlStr.includes("debug_token")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              user_id: "sys-1",
+              scopes: ["whatsapp_business_management"],
+            },
+          }),
+          { status: 200 }
+        )
+      }
+      if (urlStr.includes("fields=id,name,owner_business_info")) {
+        return new Response(
+          JSON.stringify({ id: "waba-123", name: "Solo WABA" }),
+          { status: 200 }
+        )
+      }
+      return new Response("{}", { status: 200 })
+    }) as unknown as typeof fetch
+
+    try {
+      const res = await syncMetaDevicePermissions("device-1")
+      expect(res.status).toBe("GRANTED")
+      expect(res.canManageTemplates).toBe(true)
+      expect(res.assignedUsers).toEqual([])
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
 })

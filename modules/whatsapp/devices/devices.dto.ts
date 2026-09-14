@@ -13,7 +13,7 @@ type WhatsappDeviceRecord = WhatsappDevice & {
 const toNumber = (value: Prisma.Decimal | number | string) => Number(value)
 
 const toJsonRecord = (
-  value: Prisma.JsonValue | null
+  value: Prisma.JsonValue | null | undefined
 ): Record<string, unknown> | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null
@@ -45,6 +45,25 @@ export function toMetaAppMetadata(
  *   NOT persisted.
  */
 export type DeviceHealthStatus = "CONNECTED" | "DISCONNECTED" | "UNKNOWN"
+
+function pruneListItemFeatures(
+  features: Prisma.JsonValue | null | undefined
+): Record<string, unknown> | null {
+  const record = toJsonRecord(features)
+  if (!record) return null
+
+  const pruned: Record<string, unknown> = {}
+  if (record.metaWebhook) pruned.metaWebhook = record.metaWebhook
+  if (record.metaPermissions && typeof record.metaPermissions === "object") {
+    const p = record.metaPermissions as Record<string, unknown>
+    pruned.metaPermissions = {
+      status: p.status,
+      canManageTemplates: p.canManageTemplates,
+      warning: p.warning,
+    }
+  }
+  return Object.keys(pruned).length > 0 ? pruned : null
+}
 
 export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
   const profile =
@@ -99,7 +118,7 @@ export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
     qualityRating: qualityRating ?? null,
     lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
     lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
-    features: toJsonRecord(device.features),
+    features: pruneListItemFeatures(device.features),
   }
 }
 export type DeviceHealthInfo = {

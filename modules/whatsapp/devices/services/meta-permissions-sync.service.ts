@@ -143,6 +143,9 @@ export async function syncMetaDevicePermissions(
       token
     )}&access_token=${encodeURIComponent(token)}`
     const debugRes = await fetch(debugUrl)
+    if (!debugRes.ok) {
+      throw new Error(`debug_token failed with HTTP ${debugRes.status}`)
+    }
     const debugData = (await debugRes.json()) as {
       data?: {
         user_id?: string
@@ -160,6 +163,9 @@ export async function syncMetaDevicePermissions(
     const wabaRes = await fetch(wabaUrl, {
       headers: { Authorization: `Bearer ${token}` },
     })
+    if (!wabaRes.ok) {
+      throw new Error(`WABA query failed with HTTP ${wabaRes.status}`)
+    }
     const wabaData = (await wabaRes.json()) as {
       id?: string
       name?: string
@@ -184,33 +190,36 @@ export async function syncMetaDevicePermissions(
       const usersRes = await fetch(usersUrl, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (usersRes.ok) {
-        const usersData = (await usersRes.json()) as {
-          data?: Array<{ id: string; name?: string; tasks?: string[] }>
-        }
-        if (Array.isArray(usersData.data)) {
-          assignedUsers = usersData.data.map((u) => ({
-            id: u.id,
-            name: u.name,
-            tasks: Array.isArray(u.tasks) ? u.tasks : [],
-          }))
-        }
+      if (!usersRes.ok) {
+        throw new Error(
+          `assigned_users query failed with HTTP ${usersRes.status}`
+        )
+      }
+      const usersData = (await usersRes.json()) as {
+        data?: Array<{ id: string; name?: string; tasks?: string[] }>
+      }
+      if (Array.isArray(usersData.data)) {
+        assignedUsers = usersData.data.map((u) => ({
+          id: u.id,
+          name: u.name,
+          tasks: Array.isArray(u.tasks) ? u.tasks : [],
+        }))
+      }
 
-        if (systemUserId) {
-          const matchedUser = assignedUsers.find((u) => u.id === systemUserId)
-          if (!matchedUser) {
-            status = "NOT_ASSIGNED"
+      if (systemUserId) {
+        const matchedUser = assignedUsers.find((u) => u.id === systemUserId)
+        if (!matchedUser) {
+          status = "NOT_ASSIGNED"
+          canManageTemplates = false
+          warning =
+            "System User token is not assigned to this WhatsApp Business Account in Meta Business Suite. Template operations (create/delete) will be rejected by Meta."
+        } else {
+          systemUserName = matchedUser.name ?? null
+          if (!matchedUser.tasks.includes("MANAGE")) {
+            status = "MISSING_MANAGE_TASK"
             canManageTemplates = false
             warning =
-              "System User token is not assigned to this WhatsApp Business Account in Meta Business Suite. Template operations (create/delete) will be rejected by Meta."
-          } else {
-            systemUserName = matchedUser.name ?? null
-            if (!matchedUser.tasks.includes("MANAGE")) {
-              status = "MISSING_MANAGE_TASK"
-              canManageTemplates = false
-              warning =
-                "System User is assigned to this WABA but lacks the MANAGE task. Full control is required for template management."
-            }
+              "System User is assigned to this WABA but lacks the MANAGE task. Full control is required for template management."
           }
         }
       }

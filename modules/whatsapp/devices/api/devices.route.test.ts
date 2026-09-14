@@ -40,8 +40,27 @@ const mockSyncMetaWebhookSubscription = mock(async () => ({
   warning: null,
 }))
 
+const mockSyncMetaDevicePermissions = mock(async () => ({
+  active: true,
+  status: "GRANTED" as const,
+  wabaId: "waba-1",
+  businessId: "biz-1",
+  businessName: "Biz",
+  systemUserId: "sys-1",
+  systemUserName: "krmpesan-su",
+  assignedUsers: [],
+  tokenScopes: ["whatsapp_business_management"],
+  canManageTemplates: true,
+  lastCheckedAt: "2026-09-14T00:00:00.000Z",
+  warning: null,
+}))
+
 mock.module("../services/meta-webhook-sync.service", () => ({
   syncMetaWebhookSubscription: mockSyncMetaWebhookSubscription,
+}))
+
+mock.module("../services/meta-permissions-sync.service", () => ({
+  syncMetaDevicePermissions: mockSyncMetaDevicePermissions,
 }))
 
 mock.module("../business-profile.service", () => ({
@@ -567,6 +586,134 @@ describe("devices routes", () => {
     expect(payload.ok).toBe(false)
     expect(payload.error).toBe("SYNC_FAILED")
     expect(payload.message).toBe("Failed to sync webhook")
+  })
+
+  // ── Permissions sync tests (POST /:id/sync-permissions) ──────────────────────
+  it("returns 401 when unauthorized for permissions sync", async () => {
+    mockWithAuth.mockImplementationOnce(async () => ({ user: null }))
+    setMockAuthContext(null)
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-permissions", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(401)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("UNAUTHORIZED")
+  })
+
+  it("returns 404 when syncing permissions for missing device", async () => {
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_missing/sync-permissions", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(404)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("NOT_FOUND")
+    expect(mockSyncMetaDevicePermissions).not.toHaveBeenCalled()
+  })
+
+  it("returns 403 when syncing permissions for a device in another org", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_other", organizationId: "org_other" })
+    )
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_other/sync-permissions", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("FORBIDDEN")
+    expect(mockSyncMetaDevicePermissions).not.toHaveBeenCalled()
+  })
+
+  it("returns the permissions sync result for an own-org device", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_1", organizationId: "org_1" })
+    )
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-permissions", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as {
+      ok: boolean
+      data: { status: string; canManageTemplates: boolean }
+    }
+    expect(payload.ok).toBe(true)
+    expect(payload.data.status).toBe("GRANTED")
+    expect(payload.data.canManageTemplates).toBe(true)
+    expect(mockSyncMetaDevicePermissions).toHaveBeenCalledWith("dev_1")
+  })
+
+  it("returns the sync error message when permissions sync fails", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_1", organizationId: "org_1" })
+    )
+    mockSyncMetaDevicePermissions.mockImplementationOnce(async () => {
+      throw new Error("Meta API unavailable")
+    })
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-permissions", {
+        method: "POST",
+      })
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+
+    expect(response.status).toBe(500)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("SYNC_FAILED")
+    expect(payload.message).toBe("Meta API unavailable")
+  })
+
+  it("returns a fallback message for a non-Error permissions sync failure", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_1", organizationId: "org_1" })
+    )
+    mockSyncMetaDevicePermissions.mockImplementationOnce(async () => {
+      throw "sync failed"
+    })
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/sync-permissions", {
+        method: "POST",
+      })
+    )
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+
+    expect(response.status).toBe(500)
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("SYNC_FAILED")
+    expect(payload.message).toBe("Failed to sync Meta permissions")
   })
 
   // ── Template sync ──────────────────────────────────────────────────────────

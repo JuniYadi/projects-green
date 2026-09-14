@@ -1163,7 +1163,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             const isPermissionDenied =
               metaErr instanceof MetaCloudError &&
               (metaErr.httpStatus === 403 ||
-                metaErr.code === 200 ||
+                metaErr.code === 200 || // Meta error code 200 = "Permissions error"
                 metaErr.message?.toLowerCase().includes("permission") ||
                 metaErr.message?.toLowerCase().includes("access token") ||
                 metaErr.message?.toLowerCase().includes("access denied"))
