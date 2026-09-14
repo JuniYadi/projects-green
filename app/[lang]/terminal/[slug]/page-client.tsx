@@ -111,7 +111,7 @@ export default function PlatformTerminalStandalonePage() {
             title={isId ? "Kembali ke Console" : "Back to Console"}
           >
             <ArrowLeft size={13} />
-            <span className="text-[11px]">{isId ? "Console" : "Console"}</span>
+            <span className="text-[11px]">{isId ? "Konsol" : "Console"}</span>
           </Link>
           <div className="h-3.5 w-px bg-zinc-800" />
           <TerminalWindow size={15} className="text-emerald-400" />
@@ -120,7 +120,7 @@ export default function PlatformTerminalStandalonePage() {
             ({stack.slug})
           </span>
           <span
-            className={`py-0.2 inline-flex rounded-full border px-2 text-[10px] font-semibold ${tone}`}
+            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tone}`}
           >
             {statusLabel}
           </span>
