@@ -62,8 +62,8 @@ type DataTableProps<TData> = {
   facetFilters?: DataTableFacetFilter[]
   initialColumnFilters?: ColumnFiltersState
   initialSorting?: SortingState
-  searchableColumns: string[]
-  searchPlaceholder: string
+  searchableColumns?: string[]
+  searchPlaceholder?: string
   tableId?: string
   /**
    * Columns to hide by default. These can be toggled on via the Columns dropdown.
@@ -74,6 +74,11 @@ type DataTableProps<TData> = {
    * When set, enables client-side pagination with the given page size.
    */
   pageSize?: number
+  /**
+   * When true, suppresses the built-in search input in the toolbar.
+   * Useful when an external server-side search input is already present.
+   */
+  hideSearch?: boolean
 }
 
 export function DataTable<TData>({
@@ -83,11 +88,12 @@ export function DataTable<TData>({
   facetFilters = [],
   initialColumnFilters = [],
   initialSorting = [],
-  searchableColumns,
-  searchPlaceholder,
+  searchableColumns = [],
+  searchPlaceholder = "",
   tableId,
   defaultColumnVisibility = {},
   pageSize,
+  hideSearch = false,
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
@@ -154,13 +160,15 @@ export function DataTable<TData>({
   return (
     <div className="grid gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Input
-          value={globalFilter}
-          onChange={(event) => setGlobalFilter(event.target.value)}
-          placeholder={searchPlaceholder}
-          className="w-full sm:max-w-sm"
-          aria-label={searchPlaceholder}
-        />
+        {!hideSearch && (
+          <Input
+            value={globalFilter}
+            onChange={(event) => setGlobalFilter(event.target.value)}
+            placeholder={searchPlaceholder}
+            className="w-full sm:max-w-sm"
+            aria-label={searchPlaceholder}
+          />
+        )}
         <div className="flex flex-wrap gap-3 sm:ml-auto">
           {facetFilters.map((filter) => {
             const column = table.getColumn(filter.columnId)

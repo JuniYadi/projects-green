@@ -16,8 +16,22 @@ import {
   revokeAdminInvitation,
 } from "@/modules/admin/admin.service"
 
-export const createAdminInvitationsRoutes = (deps = {}) => {
-  const { requireSuperAdmin: guard = requireSuperAdmin } = { ...deps }
+export type AdminInvitationsRouteDeps = {
+  requireSuperAdmin?: typeof requireSuperAdmin
+  sendAdminInvitation?: typeof sendAdminInvitation
+  listAdminInvitations?: typeof listAdminInvitations
+  revokeAdminInvitation?: typeof revokeAdminInvitation
+}
+
+export const createAdminInvitationsRoutes = (
+  deps: AdminInvitationsRouteDeps = {}
+) => {
+  const {
+    requireSuperAdmin: guard = requireSuperAdmin,
+    sendAdminInvitation: sendInvite = sendAdminInvitation,
+    listAdminInvitations: listInvites = listAdminInvitations,
+    revokeAdminInvitation: revokeInvite = revokeAdminInvitation,
+  } = deps
 
   return new Elysia()
     .get(
@@ -30,8 +44,14 @@ export const createAdminInvitationsRoutes = (deps = {}) => {
 
         try {
           const { limit, before, after, organizationId, status, search } = query
-          const result = await listAdminInvitations({
-            limit,
+          const isFiltering = Boolean((status && status !== "all") || search)
+          // ponytail: WorkOS User Management API does not support filtering invitations
+          // by status or free-text search. Fetch up to a ceiling of 50 to maximize chances
+          // of filling the requested limit after in-memory filtering.
+          const fetchLimit = isFiltering ? Math.max(limit, 50) : limit
+
+          const result = await listInvites({
+            limit: fetchLimit,
             before,
             after,
             organizationId,
@@ -56,6 +76,10 @@ export const createAdminInvitationsRoutes = (deps = {}) => {
             )
           }
 
+          if (isFiltering && invitations.length > limit) {
+            invitations = invitations.slice(0, limit)
+          }
+
           return {
             ok: true,
             data: {
@@ -78,7 +102,7 @@ export const createAdminInvitationsRoutes = (deps = {}) => {
         }
 
         try {
-          const invitation = await sendAdminInvitation({
+          const invitation = await sendInvite({
             email: body.email.trim().toLowerCase(),
             organizationId: body.organizationId.trim(),
             inviterUserId: (actor as AdminActorContext).userId,
@@ -104,7 +128,7 @@ export const createAdminInvitationsRoutes = (deps = {}) => {
       }
 
       try {
-        const invitation = await revokeAdminInvitation(params.id)
+        const invitation = await revokeInvite(params.id)
         return {
           ok: true,
           invitation,

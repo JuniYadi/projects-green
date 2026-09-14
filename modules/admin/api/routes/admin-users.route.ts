@@ -8,8 +8,18 @@ import {
 import { toWorkosError } from "@/modules/admin/api/admin.errors"
 import { listAdminUsers, getAdminUser } from "@/modules/admin/admin.service"
 
-export const createAdminUsersRoutes = (deps = {}) => {
-  const { requireSuperAdmin: guard = requireSuperAdmin } = { ...deps }
+export type AdminUsersRouteDeps = {
+  requireSuperAdmin?: typeof requireSuperAdmin
+  listAdminUsers?: typeof listAdminUsers
+  getAdminUser?: typeof getAdminUser
+}
+
+export const createAdminUsersRoutes = (deps: AdminUsersRouteDeps = {}) => {
+  const {
+    requireSuperAdmin: guard = requireSuperAdmin,
+    listAdminUsers: listUsers = listAdminUsers,
+    getAdminUser: getUser = getAdminUser,
+  } = deps
 
   return new Elysia()
     .get(
@@ -22,8 +32,13 @@ export const createAdminUsersRoutes = (deps = {}) => {
 
         try {
           const { limit, before, after, email, organizationId, search } = query
-          const result = await listAdminUsers({
-            limit,
+          const isFiltering = Boolean(search)
+          // ponytail: WorkOS User Management API does not support partial text / name search.
+          // Fetch up to a ceiling of 50 to maximize chances of filling the requested limit after in-memory filtering.
+          const fetchLimit = isFiltering ? Math.max(limit, 50) : limit
+
+          const result = await listUsers({
+            limit: fetchLimit,
             before,
             after,
             email,
@@ -42,6 +57,10 @@ export const createAdminUsersRoutes = (deps = {}) => {
                 u.email.toLowerCase().includes(searchLower)
               )
             })
+          }
+
+          if (isFiltering && users.length > limit) {
+            users = users.slice(0, limit)
           }
 
           return {
@@ -64,7 +83,7 @@ export const createAdminUsersRoutes = (deps = {}) => {
       }
 
       try {
-        const user = await getAdminUser(params.id)
+        const user = await getUser(params.id)
         return {
           ok: true,
           data: user,

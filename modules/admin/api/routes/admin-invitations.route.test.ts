@@ -14,12 +14,16 @@ const mockListAdminInvitations = mock()
 const mockRevokeAdminInvitation = mock()
 
 mock.module("@/modules/admin/admin.service", () => ({
+  createAdminOrganization: mock(),
+  listAdminOrganizations: mock(),
+  listAdminOrganizationMembers: mock(),
   sendAdminInvitation: mockSendAdminInvitation,
   listAdminInvitations: mockListAdminInvitations,
   revokeAdminInvitation: mockRevokeAdminInvitation,
+  listAdminUsers: mock(),
+  getAdminUser: mock(),
 }))
 
-// Test seam: dynamic import after mock.module to ensure mock resolution
 const { createAdminInvitationsRoutes } =
   await import("./admin-invitations.route")
 
@@ -32,8 +36,19 @@ describe("createAdminInvitationsRoutes", () => {
     platformRole: "super_admin",
   }
 
+  const createRoutes = (overrides = {}) =>
+    createAdminInvitationsRoutes({
+      requireSuperAdmin: mock(async () => allowedActor),
+      sendAdminInvitation: mockSendAdminInvitation,
+      listAdminInvitations: mockListAdminInvitations,
+      revokeAdminInvitation: mockRevokeAdminInvitation,
+      ...overrides,
+    })
+
   beforeEach(() => {
     mockSendAdminInvitation.mockReset()
+    mockListAdminInvitations.mockReset()
+    mockRevokeAdminInvitation.mockReset()
   })
 
   it("returns 401 when requireSuperAdmin returns unauthorized", async () => {
@@ -47,7 +62,7 @@ describe("createAdminInvitationsRoutes", () => {
     })
 
     const app = new Elysia()
-      .use(createAdminInvitationsRoutes({ requireSuperAdmin: unauthGuard }))
+      .use(createRoutes({ requireSuperAdmin: unauthGuard }))
       .compile()
 
     const res = await app.handle(
@@ -80,7 +95,7 @@ describe("createAdminInvitationsRoutes", () => {
     })
 
     const app = new Elysia()
-      .use(createAdminInvitationsRoutes({ requireSuperAdmin: forbiddenGuard }))
+      .use(createRoutes({ requireSuperAdmin: forbiddenGuard }))
       .compile()
 
     const res = await app.handle(
@@ -103,11 +118,7 @@ describe("createAdminInvitationsRoutes", () => {
   })
 
   it("returns 422 / bad request on invalid body (missing required email)", async () => {
-    const allowedGuard = mock(async () => allowedActor)
-
-    const app = new Elysia()
-      .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
-      .compile()
+    const app = new Elysia().use(createRoutes()).compile()
 
     const res = await app.handle(
       new Request(BASE, {
@@ -124,7 +135,6 @@ describe("createAdminInvitationsRoutes", () => {
   })
 
   it("returns 201 with invitation on success", async () => {
-    const allowedGuard = mock(async () => allowedActor)
     const expectedInvitation = {
       id: "inv_123",
       email: "newmember@example.com",
@@ -138,9 +148,7 @@ describe("createAdminInvitationsRoutes", () => {
 
     mockSendAdminInvitation.mockResolvedValueOnce(expectedInvitation)
 
-    const app = new Elysia()
-      .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
-      .compile()
+    const app = new Elysia().use(createRoutes()).compile()
 
     const res = await app.handle(
       new Request(BASE, {
@@ -170,7 +178,6 @@ describe("createAdminInvitationsRoutes", () => {
   })
 
   it("returns WorkOS conflict error response when service throws ConflictException", async () => {
-    const allowedGuard = mock(async () => allowedActor)
     mockSendAdminInvitation.mockRejectedValueOnce(
       new ConflictException({
         message: "The user is already a member of this organization",
@@ -180,9 +187,7 @@ describe("createAdminInvitationsRoutes", () => {
       })
     )
 
-    const app = new Elysia()
-      .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
-      .compile()
+    const app = new Elysia().use(createRoutes()).compile()
 
     const res = await app.handle(
       new Request(BASE, {
@@ -202,14 +207,11 @@ describe("createAdminInvitationsRoutes", () => {
   })
 
   it("returns internal error response when service throws generic error", async () => {
-    const allowedGuard = mock(async () => allowedActor)
     mockSendAdminInvitation.mockRejectedValueOnce(
       new Error("Unexpected failure")
     )
 
-    const app = new Elysia()
-      .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
-      .compile()
+    const app = new Elysia().use(createRoutes()).compile()
 
     const res = await app.handle(
       new Request(BASE, {
@@ -229,12 +231,7 @@ describe("createAdminInvitationsRoutes", () => {
   })
 
   describe("GET /admin/invitations", () => {
-    beforeEach(() => {
-      mockListAdminInvitations.mockReset()
-    })
-
     it("returns 200 with invitations list", async () => {
-      const allowedGuard = mock(async () => allowedActor)
       mockListAdminInvitations.mockResolvedValueOnce({
         invitations: [
           {
@@ -252,9 +249,7 @@ describe("createAdminInvitationsRoutes", () => {
         listMetadata: {},
       })
 
-      const app = new Elysia()
-        .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
-        .compile()
+      const app = new Elysia().use(createRoutes()).compile()
 
       const res = await app.handle(new Request(BASE))
       expect(res.status).toBe(200)
@@ -262,10 +257,15 @@ describe("createAdminInvitationsRoutes", () => {
       expect(json.ok).toBe(true)
       expect(json.data.invitations).toHaveLength(1)
       expect(json.data.invitations[0].email).toBe("user@example.com")
+      expect(mockListAdminInvitations).toHaveBeenCalledWith({
+        limit: 10,
+        before: undefined,
+        after: undefined,
+        organizationId: undefined,
+      })
     })
 
-    it("filters invitations by status and search query", async () => {
-      const allowedGuard = mock(async () => allowedActor)
+    it("filters invitations by status and search query with ceiling of 50 and slices to limit", async () => {
       mockListAdminInvitations.mockResolvedValueOnce({
         invitations: [
           {
@@ -281,6 +281,17 @@ describe("createAdminInvitationsRoutes", () => {
           },
           {
             id: "inv_2",
+            email: "alice2@alpha.com",
+            state: "pending",
+            organizationId: "org_1",
+            organizationName: "Alpha Corp",
+            roleSlug: "member",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            expiresAt: "2026-02-01T00:00:00.000Z",
+            acceptedAt: null,
+          },
+          {
+            id: "inv_3",
             email: "bob@beta.com",
             state: "accepted",
             organizationId: "org_2",
@@ -293,36 +304,48 @@ describe("createAdminInvitationsRoutes", () => {
         ],
       })
 
-      const app = new Elysia()
-        .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
-        .compile()
+      const app = new Elysia().use(createRoutes()).compile()
 
       const res = await app.handle(
-        new Request(`${BASE}?status=pending&search=alice`)
+        new Request(`${BASE}?status=pending&search=alice&limit=1`)
       )
       expect(res.status).toBe(200)
       const json = await res.json()
+      // Sliced to requested limit of 1
       expect(json.data.invitations).toHaveLength(1)
       expect(json.data.invitations[0].email).toBe("alice@alpha.com")
+      expect(mockListAdminInvitations).toHaveBeenCalledWith({
+        limit: 50,
+        before: undefined,
+        after: undefined,
+        organizationId: undefined,
+      })
+    })
+
+    it("returns error response when listAdminInvitations throws", async () => {
+      mockListAdminInvitations.mockRejectedValueOnce(
+        new Error("Database error")
+      )
+
+      const app = new Elysia().use(createRoutes()).compile()
+
+      const res = await app.handle(new Request(BASE))
+      expect(res.status).toBe(500)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("INTERNAL_ERROR")
     })
   })
 
   describe("DELETE /admin/invitations/:id", () => {
-    beforeEach(() => {
-      mockRevokeAdminInvitation.mockReset()
-    })
-
     it("revokes invitation successfully", async () => {
-      const allowedGuard = mock(async () => allowedActor)
       mockRevokeAdminInvitation.mockResolvedValueOnce({
         id: "inv_123",
         email: "revoked@example.com",
         state: "revoked",
       })
 
-      const app = new Elysia()
-        .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
-        .compile()
+      const app = new Elysia().use(createRoutes()).compile()
 
       const res = await app.handle(
         new Request(`${BASE}/inv_123`, { method: "DELETE" })
@@ -332,6 +355,22 @@ describe("createAdminInvitationsRoutes", () => {
       expect(json.ok).toBe(true)
       expect(json.invitation.state).toBe("revoked")
       expect(mockRevokeAdminInvitation).toHaveBeenCalledWith("inv_123")
+    })
+
+    it("returns error response when revokeAdminInvitation throws", async () => {
+      mockRevokeAdminInvitation.mockRejectedValueOnce(
+        new Error("Revoke failed")
+      )
+
+      const app = new Elysia().use(createRoutes()).compile()
+
+      const res = await app.handle(
+        new Request(`${BASE}/inv_123`, { method: "DELETE" })
+      )
+      expect(res.status).toBe(500)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("INTERNAL_ERROR")
     })
   })
 })

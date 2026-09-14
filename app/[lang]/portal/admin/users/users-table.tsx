@@ -366,8 +366,7 @@ export function UsersTable() {
         tableId="portal-admin-users"
         columns={columns}
         data={users}
-        searchPlaceholder="Search users..."
-        searchableColumns={["id"]}
+        hideSearch
       />
 
       {/* Pagination */}

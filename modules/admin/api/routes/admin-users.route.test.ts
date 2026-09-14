@@ -13,6 +13,12 @@ const mockListAdminUsers = mock()
 const mockGetAdminUser = mock()
 
 mock.module("@/modules/admin/admin.service", () => ({
+  createAdminOrganization: mock(),
+  listAdminOrganizations: mock(),
+  listAdminOrganizationMembers: mock(),
+  sendAdminInvitation: mock(),
+  listAdminInvitations: mock(),
+  revokeAdminInvitation: mock(),
   listAdminUsers: mockListAdminUsers,
   getAdminUser: mockGetAdminUser,
 }))
@@ -27,6 +33,14 @@ describe("Admin Users Routes", () => {
     userId: "admin_user_1",
     platformRole: "super_admin",
   }
+
+  const createRoutes = (overrides = {}) =>
+    createAdminUsersRoutes({
+      requireSuperAdmin: mock(async () => allowedActor),
+      listAdminUsers: mockListAdminUsers,
+      getAdminUser: mockGetAdminUser,
+      ...overrides,
+    })
 
   beforeEach(() => {
     mockListAdminUsers.mockReset()
@@ -45,7 +59,7 @@ describe("Admin Users Routes", () => {
       })
 
       const app = new Elysia()
-        .use(createAdminUsersRoutes({ requireSuperAdmin: unauthGuard }))
+        .use(createRoutes({ requireSuperAdmin: unauthGuard }))
         .compile()
 
       const res = await app.handle(new Request(BASE))
@@ -66,7 +80,7 @@ describe("Admin Users Routes", () => {
       })
 
       const app = new Elysia()
-        .use(createAdminUsersRoutes({ requireSuperAdmin: forbiddenGuard }))
+        .use(createRoutes({ requireSuperAdmin: forbiddenGuard }))
         .compile()
 
       const res = await app.handle(new Request(BASE))
@@ -77,7 +91,6 @@ describe("Admin Users Routes", () => {
     })
 
     it("returns 200 with list of users on success", async () => {
-      const allowedGuard = mock(async () => allowedActor)
       mockListAdminUsers.mockResolvedValueOnce({
         users: [
           {
@@ -95,9 +108,7 @@ describe("Admin Users Routes", () => {
         listMetadata: { before: "b1", after: "a1" },
       })
 
-      const app = new Elysia()
-        .use(createAdminUsersRoutes({ requireSuperAdmin: allowedGuard }))
-        .compile()
+      const app = new Elysia().use(createRoutes()).compile()
 
       const res = await app.handle(new Request(BASE))
       expect(res.status).toBe(200)
@@ -106,10 +117,16 @@ describe("Admin Users Routes", () => {
       expect(json.data.users).toHaveLength(1)
       expect(json.data.users[0].email).toBe("alice@example.com")
       expect(json.data.listMetadata.after).toBe("a1")
+      expect(mockListAdminUsers).toHaveBeenCalledWith({
+        limit: 10,
+        before: undefined,
+        after: undefined,
+        email: undefined,
+        organizationId: undefined,
+      })
     })
 
-    it("filters users by search query", async () => {
-      const allowedGuard = mock(async () => allowedActor)
+    it("filters users by search query with ceiling of 50 and slices to limit", async () => {
       mockListAdminUsers.mockResolvedValueOnce({
         users: [
           {
@@ -125,6 +142,17 @@ describe("Admin Users Routes", () => {
           },
           {
             id: "user_2",
+            email: "alice2@example.com",
+            firstName: "Alice",
+            lastName: "Cooper",
+            emailVerified: true,
+            profilePictureUrl: null,
+            lastSignInAt: null,
+            createdAt: "2026-01-01",
+            updatedAt: "2026-01-01",
+          },
+          {
+            id: "user_3",
             email: "bob@example.com",
             firstName: "Bob",
             lastName: "Jones",
@@ -137,21 +165,40 @@ describe("Admin Users Routes", () => {
         ],
       })
 
-      const app = new Elysia()
-        .use(createAdminUsersRoutes({ requireSuperAdmin: allowedGuard }))
-        .compile()
+      const app = new Elysia().use(createRoutes()).compile()
 
-      const res = await app.handle(new Request(`${BASE}?search=alice`))
+      const res = await app.handle(new Request(`${BASE}?search=alice&limit=1`))
       expect(res.status).toBe(200)
       const json = await res.json()
+      // Sliced to requested limit of 1
       expect(json.data.users).toHaveLength(1)
       expect(json.data.users[0].email).toBe("alice@example.com")
+      expect(mockListAdminUsers).toHaveBeenCalledWith({
+        limit: 50,
+        before: undefined,
+        after: undefined,
+        email: undefined,
+        organizationId: undefined,
+      })
+    })
+
+    it("returns error response when listAdminUsers throws", async () => {
+      mockListAdminUsers.mockRejectedValueOnce(
+        new Error("Database connection error")
+      )
+
+      const app = new Elysia().use(createRoutes()).compile()
+
+      const res = await app.handle(new Request(BASE))
+      expect(res.status).toBe(500)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("INTERNAL_ERROR")
     })
   })
 
   describe("GET /admin/users/:id", () => {
     it("returns 200 with user detail and memberships", async () => {
-      const allowedGuard = mock(async () => allowedActor)
       mockGetAdminUser.mockResolvedValueOnce({
         id: "user_123",
         email: "charlie@example.com",
@@ -175,9 +222,7 @@ describe("Admin Users Routes", () => {
         ],
       })
 
-      const app = new Elysia()
-        .use(createAdminUsersRoutes({ requireSuperAdmin: allowedGuard }))
-        .compile()
+      const app = new Elysia().use(createRoutes()).compile()
 
       const res = await app.handle(new Request(`${BASE}/user_123`))
       expect(res.status).toBe(200)
@@ -189,7 +234,6 @@ describe("Admin Users Routes", () => {
     })
 
     it("returns 404 when user is not found", async () => {
-      const allowedGuard = mock(async () => allowedActor)
       mockGetAdminUser.mockRejectedValueOnce(
         new NotFoundException({
           message: "User not found",
@@ -199,11 +243,9 @@ describe("Admin Users Routes", () => {
         })
       )
 
-      const app = new Elysia()
-        .use(createAdminUsersRoutes({ requireSuperAdmin: allowedGuard }))
-        .compile()
+      const app = new Elysia().use(createRoutes()).compile()
 
-      const res = await app.handle(new Request(`${BASE}/user_missing`))
+      const res = await app.handle(new Request(`${BASE}/user_not_found`))
       expect(res.status).toBe(404)
       const json = await res.json()
       expect(json.ok).toBe(false)

@@ -127,53 +127,60 @@ export function InvitationsTable() {
     void loadOrgs()
   }, [])
 
-  const fetchInvitations = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const query: {
-        limit: number
-        before?: string
-        after?: string
-        search?: string
-        organizationId?: string
-        status?: string
-      } = {
-        limit: 10,
-        ...(cursor.before && { before: cursor.before }),
-        ...(cursor.after && { after: cursor.after }),
-        ...(search && { search }),
-        ...(selectedOrgId !== "all" && { organizationId: selectedOrgId }),
-        ...(selectedStatus !== "all" && { status: selectedStatus }),
-      }
+  const fetchInvitations = useCallback(
+    async (options?: { signal?: AbortSignal }) => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const query: {
+          limit: number
+          before?: string
+          after?: string
+          search?: string
+          organizationId?: string
+          status?: string
+        } = {
+          limit: 10,
+          ...(cursor.before && { before: cursor.before }),
+          ...(cursor.after && { after: cursor.after }),
+          ...(search && { search }),
+          ...(selectedOrgId !== "all" && { organizationId: selectedOrgId }),
+          ...(selectedStatus !== "all" && { status: selectedStatus }),
+        }
 
-      const { data } = await eden.api.admin.invitations.get({
-        $query: query,
-      })
+        const { data } = await eden.api.admin.invitations.get({
+          $query: query,
+          ...(options?.signal && { $fetch: { signal: options.signal } }),
+        })
 
-      if (!data || !data.ok) {
+        if (!data || !data.ok) {
+          setError(
+            data && "message" in data
+              ? data.message
+              : "Failed to load invitations"
+          )
+          return
+        }
+
+        setInvitations(data.data.invitations)
+        setListMetadata(data.data.listMetadata ?? {})
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return
         setError(
-          data && "message" in data
-            ? data.message
-            : "Failed to load invitations"
+          err instanceof Error ? err.message : "An unexpected error occurred"
         )
-        return
+      } finally {
+        setIsLoading(false)
       }
-
-      setInvitations(data.data.invitations)
-      setListMetadata(data.data.listMetadata ?? {})
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unexpected error occurred"
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }, [cursor, search, selectedOrgId, selectedStatus])
+    },
+    [cursor, search, selectedOrgId, selectedStatus]
+  )
 
   useEffect(() => {
+    const ac = new AbortController()
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchInvitations()
+    void fetchInvitations({ signal: ac.signal })
+    return () => ac.abort()
   }, [fetchInvitations])
 
   const handleSendInvite = async (e: React.FormEvent) => {
@@ -454,8 +461,7 @@ export function InvitationsTable() {
         tableId="portal-admin-invitations"
         columns={columns}
         data={invitations}
-        searchPlaceholder="Search invitations..."
-        searchableColumns={["email"]}
+        hideSearch
       />
 
       {/* Pagination */}
