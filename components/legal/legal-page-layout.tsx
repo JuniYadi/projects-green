@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { CountryFlag } from "@/components/ui/country-flag"
 import {
   Lightning,
   ArrowLeft,
@@ -80,9 +81,13 @@ export function LegalPageLayout({
           <div className="flex items-center gap-3">
             <Link
               href={switchLocaleHref}
-              className="rounded-lg border border-border bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              {locale === "en" ? "🇮🇩 Bahasa Indonesia" : "🇺🇸 English"}
+              <CountryFlag
+                country={locale === "en" ? "ID" : "US"}
+                className="rounded-2xs inline-block h-3.5 w-5 object-cover shadow-2xs"
+              />
+              <span>{locale === "en" ? "Bahasa Indonesia" : "English"}</span>
             </Link>
             <Link
               href={`/${locale}`}

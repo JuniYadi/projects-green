@@ -1,5 +1,6 @@
+import "@/test/register"
 import { describe, it, expect, mock, beforeEach } from "bun:test"
-import { render, screen, waitFor, cleanup } from "@testing-library/react"
+import { render, waitFor, cleanup, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import PortalBillingRegionsPage from "./page"
 
@@ -99,61 +100,63 @@ describe("PortalBillingRegionsPage", () => {
   }))
 
   it("renders the master regions table and lists regions", async () => {
-    render(<PortalBillingRegionsPage />)
+    const view = render(<PortalBillingRegionsPage />)
 
-    expect(screen.getByText("Master Regions")).toBeInTheDocument()
+    expect(view.getByText("Master Regions")).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByText("Singapore")).toBeInTheDocument()
-      expect(screen.getByText("Indonesia")).toBeInTheDocument()
-      expect(screen.getByText("SINGAPORE")).toBeInTheDocument()
-      expect(screen.getByText("INDONESIA")).toBeInTheDocument()
-      expect(screen.getByText("2 clusters")).toBeInTheDocument()
-      expect(screen.getByText("0 clusters")).toBeInTheDocument()
+      expect(view.getByText("Singapore")).toBeInTheDocument()
+      expect(view.getByText("Indonesia")).toBeInTheDocument()
+      expect(view.getByText("SINGAPORE")).toBeInTheDocument()
+      expect(view.getByText("INDONESIA")).toBeInTheDocument()
+      expect(view.getByText("2 clusters")).toBeInTheDocument()
+      expect(view.getByText("0 clusters")).toBeInTheDocument()
     })
   })
 
   it("opens add region dialog when clicking Add Region button", async () => {
     const user = userEvent.setup()
-    render(<PortalBillingRegionsPage />)
+    const view = render(<PortalBillingRegionsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Singapore")).toBeInTheDocument()
+      expect(view.getByText("Singapore")).toBeInTheDocument()
     })
 
-    const addButton = screen.getByRole("button", { name: /add region/i })
+    const addButton = view.getByRole("button", { name: /add region/i })
     await user.click(addButton)
 
     await waitFor(() => {
+      const body = within(document.body)
       expect(
-        screen.getByRole("heading", { name: "Add Region" })
+        body.getByRole("heading", { name: "Add Region" })
       ).toBeInTheDocument()
-      expect(screen.getByLabelText(/Name/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/Code/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/Country/i)).toBeInTheDocument()
+      expect(body.getByLabelText(/Name/i)).toBeInTheDocument()
+      expect(body.getByLabelText(/Code/i)).toBeInTheDocument()
+      expect(body.getByLabelText(/Country/i)).toBeInTheDocument()
     })
   })
 
   it("opens edit dialog and populates data", async () => {
     const user = userEvent.setup()
-    render(<PortalBillingRegionsPage />)
+    const view = render(<PortalBillingRegionsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Singapore")).toBeInTheDocument()
+      expect(view.getByText("Singapore")).toBeInTheDocument()
     })
 
-    const editButtons = screen.getAllByRole("button", {
+    const editButtons = view.getAllByRole("button", {
       name: /edit singapore/i,
     })
     await user.click(editButtons[0]!)
 
     await waitFor(() => {
+      const body = within(document.body)
       expect(
-        screen.getByRole("heading", { name: "Edit Region" })
+        body.getByRole("heading", { name: "Edit Region" })
       ).toBeInTheDocument()
-      const nameInput = screen.getByLabelText(/Name/i) as HTMLInputElement
+      const nameInput = body.getByLabelText(/Name/i) as HTMLInputElement
       expect(nameInput.value).toBe("Singapore")
-      const codeInput = screen.getByLabelText(/Code/i) as HTMLInputElement
+      const codeInput = body.getByLabelText(/Code/i) as HTMLInputElement
       expect(codeInput.value).toBe("SINGAPORE")
     })
   })

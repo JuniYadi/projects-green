@@ -1406,9 +1406,10 @@ export function TemplateForm({
                 <div className="mb-4 flex items-center justify-between border-b pb-3 text-xs text-muted-foreground">
                   <div className="flex items-center gap-2 font-medium">
                     {getLanguageDisplay(lang).flag && (
-                      <span className="text-sm">
-                        {getLanguageDisplay(lang).flag}
-                      </span>
+                      <CountryFlag
+                        country={getLanguageDisplay(lang).flag}
+                        className="rounded-2xs inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                      />
                     )}
                     <span>{getLanguageDisplay(lang).label}</span>
                     <Badge variant="outline" className="text-[10px]">

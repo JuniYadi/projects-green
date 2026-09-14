@@ -1,9 +1,15 @@
+import "@/test/register"
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
-import { useParams } from "next/navigation"
 import type { VpnSubscriptionItem } from "../../_components/vpn-admin-client"
 
 const mockGetVpnAdminSubscription = mock()
+const mockUseParams = mock(() => ({ id: "vpn-1" }))
+
+mock.module("next/navigation", () => ({
+  useParams: mockUseParams,
+  useRouter: () => ({ push: mock(() => {}) }),
+}))
 
 mock.module("../../_components/vpn-admin-client", () => ({
   getVpnAdminSubscription: mockGetVpnAdminSubscription,
@@ -55,7 +61,7 @@ const baseSubscription: VpnSubscriptionItem = {
 
 beforeEach(() => {
   mockGetVpnAdminSubscription.mockReset()
-  ;(useParams as ReturnType<typeof mock>).mockReturnValue({ id: "vpn-1" })
+  mockUseParams.mockReturnValue({ id: "vpn-1" })
 })
 
 describe("VPN service operation detail", () => {

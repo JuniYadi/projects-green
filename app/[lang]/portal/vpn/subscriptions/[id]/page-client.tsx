@@ -13,6 +13,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Card,
@@ -106,14 +107,6 @@ function addAccountToSummary(
       summary.revoked += 1
       break
   }
-}
-
-function flagEmoji(countryCode: string | undefined): string {
-  if (!countryCode || countryCode.length !== 2) return ""
-  const upper = countryCode.toUpperCase()
-  const a = 0x1f1e6 + upper.charCodeAt(0) - 65
-  const b = 0x1f1e6 + upper.charCodeAt(1) - 65
-  return String.fromCodePoint(a, b)
 }
 
 function formatDate(dateStr: string) {
@@ -752,9 +745,6 @@ export default function SubscriptionDetailPage() {
       {/* Server Accounts — grouped by server */}
       {serverGroups.map((group) => {
         const protocols = group.accounts.map((account) => account.protocol)
-        const regionLabel = group.region
-          ? `${flagEmoji(group.region.countryCode)} ${group.region.name}`
-          : "No region"
 
         return (
           <Collapsible key={group.serverId} defaultOpen>
@@ -769,8 +759,18 @@ export default function SubscriptionDetailPage() {
                       <div className="text-lg font-semibold">
                         {group.serverName}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {regionLabel}
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        {group.region ? (
+                          <>
+                            <CountryFlag
+                              country={group.region.countryCode}
+                              className="rounded-2xs inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                            />
+                            <span>{group.region.name}</span>
+                          </>
+                        ) : (
+                          <span>No region</span>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span>Host: {group.hostname || "—"}</span>

@@ -10,6 +10,7 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { toast } from "sonner"
 import {
   cancelVpnSubscription,
@@ -83,14 +84,6 @@ function normalizeCountryCode(countryCode: string | undefined): string {
   return countryCode?.trim().toUpperCase() ?? ""
 }
 
-function flagEmoji(countryCode: string | undefined): string {
-  const normalized = normalizeCountryCode(countryCode)
-  if (!/^[A-Z]{2}$/.test(normalized)) return ""
-  const a = 0x1f1e6 + normalized.charCodeAt(0) - 65
-  const b = 0x1f1e6 + normalized.charCodeAt(1) - 65
-  return String.fromCodePoint(a, b)
-}
-
 function RegionBadge({
   region,
 }: {
@@ -106,11 +99,14 @@ function RegionBadge({
   }
 
   const countryCode = normalizeCountryCode(region.countryCode)
-  const flag = flagEmoji(countryCode)
 
   return (
     <Badge variant="outline" className="gap-1.5">
-      <span aria-hidden>{flag}</span>
+      <CountryFlag
+        country={countryCode}
+        className="rounded-2xs inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+        fallback={<span aria-hidden>🌐</span>}
+      />
       <span>{countryCode || region.slug.toUpperCase()}</span>
       <span className="text-muted-foreground">{region.name}</span>
     </Badge>

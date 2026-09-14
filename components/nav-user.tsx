@@ -8,6 +8,7 @@ import Link from "next/link"
 import { useTheme } from "next-themes"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { CountryFlag } from "@/components/ui/country-flag"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -348,8 +349,12 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
               <DropdownMenuSubTrigger>
                 <GlobeIcon className="mr-2 h-4 w-4" />
                 <span>{messages.navUser.languageLabel}</span>
-                <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-                  {activeLocale === "en" ? "🇺🇸 EN" : "🇮🇩 ID"}
+                <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <CountryFlag
+                    country={activeLocale === "en" ? "US" : "ID"}
+                    className="rounded-2xs inline-block h-3 w-4.5 object-cover shadow-2xs"
+                  />
+                  <span>{activeLocale === "en" ? "EN" : "ID"}</span>
                 </span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -364,14 +369,20 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
                     value="en"
                     className="flex items-center gap-2"
                   >
-                    <span className="text-base select-none">🇺🇸</span>
+                    <CountryFlag
+                      country="US"
+                      className="rounded-2xs inline-block h-3.5 w-5 object-cover shadow-2xs"
+                    />
                     <span>{messages.navUser.languages.en}</span>
                   </DropdownMenuRadioItem>
                   <DropdownMenuRadioItem
                     value="id"
                     className="flex items-center gap-2"
                   >
-                    <span className="text-base select-none">🇮🇩</span>
+                    <CountryFlag
+                      country="ID"
+                      className="rounded-2xs inline-block h-3.5 w-5 object-cover shadow-2xs"
+                    />
                     <span>{messages.navUser.languages.id}</span>
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>

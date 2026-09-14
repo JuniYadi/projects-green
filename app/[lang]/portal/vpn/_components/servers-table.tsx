@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -201,6 +202,10 @@ export function ServersTable() {
               <SelectItem value="all">All regions</SelectItem>
               {regions.map((region) => (
                 <SelectItem key={region.id} value={region.id}>
+                  <CountryFlag
+                    country={region.countryCode}
+                    className="rounded-2xs mr-1.5 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                  />
                   {region.countryCode.toUpperCase()} — {region.name}
                 </SelectItem>
               ))}
@@ -271,6 +276,10 @@ export function ServersTable() {
                       className="max-w-[160px] truncate whitespace-nowrap"
                       title={`${server.region.countryCode.toUpperCase()} — ${server.region.name}`}
                     >
+                      <CountryFlag
+                        country={server.region.countryCode}
+                        className="rounded-2xs mr-1.5 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                      />
                       {server.region.countryCode.toUpperCase()} —{" "}
                       {server.region.name}
                     </TableCell>

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Dialog,
@@ -159,7 +160,13 @@ export function RegionsTable() {
               regions.map((region) => (
                 <TableRow key={region.id}>
                   <TableCell className="font-mono text-sm uppercase">
-                    {region.countryCode}
+                    <span className="inline-flex items-center gap-1.5">
+                      <CountryFlag
+                        country={region.countryCode}
+                        className="rounded-2xs inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                      />
+                      <span>{region.countryCode}</span>
+                    </span>
                   </TableCell>
                   <TableCell className="font-medium">{region.name}</TableCell>
                   <TableCell className="text-muted-foreground">
