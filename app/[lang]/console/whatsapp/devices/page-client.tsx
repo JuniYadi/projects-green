@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
@@ -63,14 +64,6 @@ function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
   return <Badge variant={variant[status]}>{label[status]}</Badge>
 }
 
-function getCountryFlagEmoji(iso: string): string {
-  if (!iso || iso.length !== 2) return ""
-  const codePoints = iso
-    .toUpperCase()
-    .split("")
-    .map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
-  return String.fromCodePoint(...codePoints)
-}
 // ─── Meta Name Status badge ──────────────────────────────────────────────────
 
 // ─── Quota Progress Bar with Tooltip ─────────────────────────────────────────
@@ -295,7 +288,6 @@ export default function WhatsAppDevicesPage() {
       cell: ({ row }) => {
         const device = row.original
         const detected = detectCountryFromPhone(device.phoneNumber)
-        const flag = detected?.iso ? getCountryFlagEmoji(detected.iso) : ""
         const countryName = detected?.country ?? ""
 
         return (
@@ -303,9 +295,14 @@ export default function WhatsAppDevicesPage() {
             <p className="font-mono text-sm font-medium tracking-tight">
               {device.phoneNumber}
             </p>
-            {(flag || countryName) && (
+            {(detected?.iso || countryName) && (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                {flag && <span className="text-sm leading-none">{flag}</span>}
+                {detected?.iso && (
+                  <CountryFlag
+                    country={detected.iso}
+                    className="rounded-2xs inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                  />
+                )}
                 <span>{countryName}</span>
               </p>
             )}

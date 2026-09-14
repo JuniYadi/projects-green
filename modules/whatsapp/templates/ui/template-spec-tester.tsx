@@ -16,6 +16,7 @@ import * as React from "react"
 import { Sparkle } from "@phosphor-icons/react"
 
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -90,7 +91,11 @@ export function TemplateSpecTester({
                 const info = getLanguageDisplay(l.lang)
                 return (
                   <SelectItem key={l.id} value={l.lang} className="text-xs">
-                    <span className="mr-1.5">{info.flag || "🌐"}</span>
+                    <CountryFlag
+                      country={info.flag}
+                      className="rounded-2xs mr-1.5 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                      fallback={<span className="mr-1.5">🌐</span>}
+                    />
                     {info.label} ({l.lang})
                   </SelectItem>
                 )

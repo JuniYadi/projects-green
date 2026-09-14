@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -301,9 +302,15 @@ export default function VpnServerDetailPage() {
                     {server.health}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {server.region.countryCode.toUpperCase()} —{" "}
-                  {server.region.name}
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <CountryFlag
+                    country={server.region.countryCode}
+                    className="rounded-2xs inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                  />
+                  <span>
+                    {server.region.countryCode.toUpperCase()} —{" "}
+                    {server.region.name}
+                  </span>
                 </p>
               </div>
               <Button

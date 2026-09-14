@@ -8,6 +8,11 @@ mock.module("sonner", () => ({
   toast: { success: mockToastSuccess, error: mockToastError },
 }))
 
+mock.module("next/navigation", () => ({
+  useRouter: () => ({ refresh: mock(() => {}) }),
+  usePathname: () => "/en/console",
+}))
+
 const { SubscriptionManager } = await import("./subscription-manager")
 
 const baseSubscription = {

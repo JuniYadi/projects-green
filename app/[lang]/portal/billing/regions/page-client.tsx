@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Dialog,
@@ -322,9 +323,15 @@ export default function PortalBillingRegionsPage() {
           const region = row.original
           return (
             <div className="flex items-center gap-2">
-              <span className="text-xl" role="img" aria-label={region.name}>
-                {region.flag || "🌐"}
-              </span>
+              <CountryFlag
+                country={region.flag || region.country}
+                className="rounded-2xs inline-block h-4 w-6 shrink-0 object-cover shadow-2xs"
+                fallback={
+                  <span className="text-xl" role="img" aria-label={region.name}>
+                    {region.flag || "🌐"}
+                  </span>
+                }
+              />
               <div className="flex flex-col">
                 <span className="font-medium text-foreground">
                   {region.name}

@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Dialog,
@@ -752,9 +753,13 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                       {countryInfo && (
                         <Badge
                           variant="outline"
-                          className="text-xs font-normal"
+                          className="inline-flex items-center gap-1.5 text-xs font-normal"
                         >
-                          {countryInfo.country}
+                          <CountryFlag
+                            country={countryInfo.iso}
+                            className="rounded-2xs inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                          />
+                          <span>{countryInfo.country}</span>
                         </Badge>
                       )}
                     </div>

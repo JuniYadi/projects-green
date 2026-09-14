@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import {
   Select,
   SelectContent,
@@ -285,8 +286,20 @@ function SubscriptionCard({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ID">🇮🇩 Indonesia</SelectItem>
-                      <SelectItem value="SG">🇸🇬 Singapore</SelectItem>
+                      <SelectItem value="ID">
+                        <CountryFlag
+                          country="ID"
+                          className="rounded-2xs mr-2 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                        />
+                        Indonesia
+                      </SelectItem>
+                      <SelectItem value="SG">
+                        <CountryFlag
+                          country="SG"
+                          className="rounded-2xs mr-2 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                        />
+                        Singapore
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

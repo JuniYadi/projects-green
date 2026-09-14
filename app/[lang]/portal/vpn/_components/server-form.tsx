@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -315,6 +316,10 @@ export function ServerForm({
                 <SelectContent>
                   {regions.map((region) => (
                     <SelectItem key={region.id} value={region.id}>
+                      <CountryFlag
+                        country={region.countryCode}
+                        className="rounded-2xs mr-1.5 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                      />
                       {region.countryCode.toUpperCase()} — {region.name}
                     </SelectItem>
                   ))}

@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { CountryFlag } from "@/components/ui/country-flag"
 
 interface LanguageFlagsProps {
   currentLang: string
@@ -34,9 +35,11 @@ export function LanguageFlags({ currentLang }: LanguageFlagsProps) {
             : "opacity-60 hover:bg-muted hover:opacity-100"
         }`}
       >
-        <span className="text-sm select-none" role="img" aria-label="English">
-          🇺🇸
-        </span>
+        <CountryFlag
+          country="US"
+          className="rounded-2xs h-3.5 w-5 object-cover shadow-2xs"
+          title="English"
+        />
       </Link>
 
       {/* Indonesian Flag */}
@@ -49,13 +52,11 @@ export function LanguageFlags({ currentLang }: LanguageFlagsProps) {
             : "opacity-60 hover:bg-muted hover:opacity-100"
         }`}
       >
-        <span
-          className="text-sm select-none"
-          role="img"
-          aria-label="Bahasa Indonesia"
-        >
-          🇮🇩
-        </span>
+        <CountryFlag
+          country="ID"
+          className="rounded-2xs h-3.5 w-5 object-cover shadow-2xs"
+          title="Bahasa Indonesia"
+        />
       </Link>
     </div>
   )
