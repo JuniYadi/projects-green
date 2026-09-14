@@ -171,7 +171,7 @@ describe("syncMetaDevicePermissions", () => {
       expect(mockLogWhatsappAuditEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "DEVICE_META_PERMISSION_MISSING",
-          status: "WARNING",
+          status: "FAILED",
         })
       )
     } finally {
@@ -227,7 +227,7 @@ describe("syncMetaDevicePermissions", () => {
       expect(mockLogWhatsappAuditEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "DEVICE_META_PERMISSION_MISSING",
-          status: "WARNING",
+          status: "FAILED",
         })
       )
     } finally {

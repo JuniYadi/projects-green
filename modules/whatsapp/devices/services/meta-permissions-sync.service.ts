@@ -223,7 +223,7 @@ export async function syncMetaDevicePermissions(
         organizationId: device.organizationId,
         deviceId: device.id,
         message: `Meta WABA permission issue for device ${device.phoneNumber}: ${warning}`,
-        status: "WARNING",
+        status: "FAILED",
       }).catch((err) => {
         console.warn("[meta-permissions-sync] Audit log failed:", err)
       })
