@@ -99,6 +99,7 @@ const mockDeviceFindUnique = mock(async (): Promise<any> => ({
   organizationId: "org-1",
   status: "ACTIVE",
 }))
+const mockDeviceUpdate = mock(async () => ({}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -113,6 +114,7 @@ mock.module("@/lib/prisma", () => ({
     whatsappDevice: {
       findFirst: mockDeviceFindFirst,
       findUnique: mockDeviceFindUnique,
+      update: mockDeviceUpdate,
     },
     serviceSubscription: {
       findFirst: mockSubscriptionFindFirst,
@@ -1363,6 +1365,56 @@ describe("templatesRoutes", () => {
       expect(res.status).toBe(200)
       expect(mockTemplateDelete).toHaveBeenCalledWith({
         where: { id: "tpl-approved" },
+      })
+    })
+
+    it("proceeds with local deletion when Meta returns code 100 with subcode 2388094 (Sample templates cannot be edited or deleted)", async () => {
+      const { MetaCloudError } =
+        await import("@/lib/whatsapp/meta-cloud/errors")
+      mockTemplateDelete.mockClear()
+      mockDeviceUpdate.mockClear()
+      mockDeleteMetaTemplate.mockRejectedValueOnce(
+        new MetaCloudError("Invalid parameter", {
+          code: 100,
+          errorSubcode: 2388094,
+          errorUserTitle: "Message template can't be edited",
+          errorUserMsg: "Sample templates cannot be edited or deleted.",
+          httpStatus: 400,
+        })
+      )
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        ...approvedTemplate(),
+        name: "sample flight confirmation",
+        slug: "sample_flight_confirmation",
+        whatsappDeviceId: "dev-1",
+      } as unknown as MockTemplate)
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        id: "dev-1",
+        tokenEncrypted: "encrypted-token",
+        whatsappBusinessAccountId: "waba-1",
+        whatsappPhoneId: "phone-1",
+        features: {},
+      })
+
+      const res = await createTestApp().handle(
+        new Request("http://localhost/templates/tpl-approved", {
+          method: "DELETE",
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(mockTemplateDelete).toHaveBeenCalledWith({
+        where: { id: "tpl-approved" },
+      })
+      expect(mockDeviceUpdate).toHaveBeenCalledWith({
+        where: { id: "dev-1" },
+        data: {
+          features: {
+            deletedTemplateSlugs: [
+              "sample_flight_confirmation",
+              "sample flight confirmation",
+            ],
+          },
+        },
       })
     })
   })

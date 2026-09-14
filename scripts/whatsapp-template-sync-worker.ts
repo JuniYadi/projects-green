@@ -405,7 +405,31 @@ export async function syncTemplates(
     failed: 0,
   }
 
+  const device = await prisma.whatsappDevice.findFirst({
+    where: {
+      id: jobData.deviceId,
+      organizationId: jobData.organizationId,
+    },
+    select: {
+      features: true,
+    },
+  })
+  const deviceFeatures =
+    (device?.features as Record<string, unknown> | null) ?? {}
+  const deletedSlugs = new Set(
+    Array.isArray(deviceFeatures.deletedTemplateSlugs)
+      ? (deviceFeatures.deletedTemplateSlugs as string[])
+      : []
+  )
+
   for (const template of templates) {
+    if (
+      deletedSlugs.has(template.name) ||
+      possibleSlugsFor(template.name).some((s) => deletedSlugs.has(s))
+    ) {
+      summary.skipped += 1
+      continue
+    }
     try {
       const result = await upsertTemplate(
         jobData.organizationId,

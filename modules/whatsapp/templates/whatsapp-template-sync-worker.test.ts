@@ -149,4 +149,62 @@ describe("whatsapp-template-sync-worker", () => {
       })
     )
   })
+
+  it("skips templates recorded in device features deletedTemplateSlugs", async () => {
+    mockWhatsAppDeviceClient.listTemplatesPage.mockResolvedValue({
+      data: [
+        {
+          name: "sample_flight_confirmation",
+          status: "APPROVED",
+          category: "UTILITY",
+          language: "en_US",
+          components: [{ type: "BODY", text: "Flight info" }],
+        },
+        {
+          name: "welcome_message",
+          status: "APPROVED",
+          category: "UTILITY",
+          language: "id",
+          components: [{ type: "BODY", text: "Selamat datang" }],
+        },
+      ],
+      paging: {},
+    })
+
+    mockPrisma.whatsappDevice.findFirst.mockResolvedValue({
+      id: "device-1",
+      token: null,
+      tokenEncrypted: "encrypted-token",
+      tokenIv: null,
+      whatsappPhoneId: "phone-1",
+      whatsappBusinessAccountId: "waba-1",
+      organizationId: "org-1",
+      features: {
+        deletedTemplateSlugs: ["sample_flight_confirmation"],
+      },
+    })
+
+    mockPrisma.whatsappTemplate.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappTemplate.create.mockResolvedValue({ id: "tpl-welcome" })
+    mockPrisma.whatsappTemplate.updateMany.mockResolvedValue({ count: 0 })
+
+    const summary = await syncTemplates({
+      organizationId: "org-1",
+      deviceId: "device-1",
+      method: "sync-templates",
+    })
+
+    expect(summary.fetched).toBe(2)
+    expect(summary.skipped).toBe(1)
+    expect(summary.created).toBe(1)
+    // Only welcome_message should have been created, not sample_flight_confirmation
+    expect(mockPrisma.whatsappTemplate.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.whatsappTemplate.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          slug: "welcome_message",
+        }),
+      })
+    )
+  })
 })
