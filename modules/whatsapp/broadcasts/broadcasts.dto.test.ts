@@ -69,6 +69,9 @@ describe("WhatsApp broadcast DTOs", () => {
       throttleMaxMessages: 40,
       throttlePerMinutes: 60,
       acknowledgeMultiDay: true,
+      whatsappDeviceId: "device-1",
+      whatsappContactGroupId: null,
+      whatsappDevice: null,
       recipients: undefined,
       recipientCount: undefined,
     })

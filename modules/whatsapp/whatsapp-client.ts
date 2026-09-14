@@ -262,6 +262,14 @@ export type BroadcastRecipient = {
   updatedAt: string
 }
 
+export type BroadcastDevice = {
+  id: string
+  phoneNumber: string
+  name?: string | null
+  verifiedName?: string | null
+  status?: string | null
+}
+
 export type Broadcast = {
   id: string
   organizationId?: string
@@ -280,6 +288,7 @@ export type Broadcast = {
   startedAt?: string | null
   endedAt?: string | null
   whatsappDeviceId?: string | null
+  whatsappDevice?: BroadcastDevice | null
   whatsappContactGroupId?: string | null
   recipients?: BroadcastRecipient[]
   recipientCount?: number

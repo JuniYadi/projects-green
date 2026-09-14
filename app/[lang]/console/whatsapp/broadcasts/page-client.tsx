@@ -2,7 +2,15 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Plus, Trash, PaperPlaneTilt, Eye } from "@phosphor-icons/react"
+import {
+  Plus,
+  Trash,
+  PaperPlaneTilt,
+  Eye,
+  DeviceMobile,
+  Clock,
+  CheckCircle,
+} from "@phosphor-icons/react"
 import {
   Dialog,
   DialogContent,
@@ -48,6 +56,17 @@ const statusVariant = (status: BroadcastStatus) => {
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString() : "—"
+
+const formatDuration = (startedAt?: string | null, endedAt?: string | null) => {
+  if (!startedAt) return null
+  const start = new Date(startedAt).getTime()
+  const end = endedAt ? new Date(endedAt).getTime() : Date.now()
+  const diffSec = Math.max(0, Math.round((end - start) / 1000))
+  if (diffSec < 60) return `~${diffSec}s`
+  const min = Math.floor(diffSec / 60)
+  const sec = diffSec % 60
+  return `${min}m ${sec}s`
+}
 
 export default function WhatsAppBroadcastsPage() {
   const router = useRouter()
@@ -166,12 +185,59 @@ export default function WhatsAppBroadcastsPage() {
         ),
         cell: ({ row }) => (
           <div>
-            <div className="font-medium">{row.original.templateName}</div>
-            <div className="text-xs text-muted-foreground">
-              {row.original.templateLanguage}
+            <div className="font-medium text-foreground">
+              {row.original.templateName}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="font-mono">{row.original.templateLanguage}</span>
+              {typeof row.original.templateParams?.category === "string" && (
+                <>
+                  <span>•</span>
+                  <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                    {String(row.original.templateParams.category)}
+                  </Badge>
+                </>
+              )}
             </div>
           </div>
         ),
+      },
+      {
+        id: "senderDevice",
+        accessorFn: (row) =>
+          row.whatsappDevice?.phoneNumber ??
+          row.whatsappDeviceId ??
+          t.detail.noDevice,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.columnDevice} />
+        ),
+        cell: ({ row }) => {
+          const device = row.original.whatsappDevice
+          if (!device) {
+            return (
+              <span className="text-xs text-muted-foreground">
+                {t.detail.noDevice}
+              </span>
+            )
+          }
+          return (
+            <div className="flex flex-col text-xs">
+              <div className="flex items-center gap-1 font-medium text-foreground">
+                <DeviceMobile className="size-3.5 text-muted-foreground" />
+                <span>{device.phoneNumber}</span>
+              </div>
+              {device.verifiedName ? (
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <CheckCircle
+                    weight="fill"
+                    className="size-3 text-emerald-600 dark:text-emerald-400"
+                  />
+                  <span>{device.verifiedName}</span>
+                </div>
+              ) : null}
+            </div>
+          )
+        },
       },
       {
         accessorKey: "status",
@@ -203,14 +269,66 @@ export default function WhatsAppBroadcastsPage() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t.columnProgress} />
         ),
-        cell: ({ row }) => (
-          <span>
-            {t.list.progress
-              .replace("{sent}", String(row.original.sent))
-              .replace("{failed}", String(row.original.failed))
-              .replace("{total}", String(row.original.total))}
-          </span>
+        cell: ({ row }) => {
+          const total = row.original.total || 0
+          const sent = row.original.sent || 0
+          const failed = row.original.failed || 0
+          const percent =
+            total > 0 ? Math.round(((sent + failed) / total) * 100) : 0
+          return (
+            <div className="w-40 space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-foreground">
+                  {sent} / {total}
+                </span>
+                <span className="text-muted-foreground">{percent}%</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+              {failed > 0 && (
+                <div className="text-[10px] font-medium text-destructive">
+                  {failed} {t.detail.failed.toLowerCase()}
+                </div>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "timing",
+        accessorFn: (row) => row.startedAt ?? row.createdAt,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t.columnTiming} />
         ),
+        cell: ({ row }) => {
+          const startedAt = row.original.startedAt
+          const endedAt = row.original.endedAt
+          const duration = formatDuration(startedAt, endedAt)
+          return (
+            <div className="space-y-0.5 text-xs">
+              <div className="text-foreground">
+                {formatDate(startedAt ?? row.original.createdAt)}
+              </div>
+              {duration ? (
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Clock className="size-3" />
+                  <span>{duration}</span>
+                  {row.original.throttleMaxMessages && (
+                    <span>• {row.original.throttleMaxMessages}/min</span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-[11px] text-muted-foreground">
+                  {t.detail.notStarted}
+                </div>
+              )}
+            </div>
+          )
+        },
       },
       {
         accessorKey: "createdAt",
@@ -261,6 +379,39 @@ export default function WhatsAppBroadcastsPage() {
     ]
   }, [basePath, handleDelete, handleSendClick, router, t])
 
+  const facetFilters = React.useMemo(() => {
+    const devices = Array.from(
+      new Set(
+        broadcasts
+          .map((b) => b.whatsappDevice?.phoneNumber)
+          .filter(Boolean) as string[]
+      )
+    )
+
+    return [
+      {
+        columnId: "senderDevice",
+        label: t.filterDevice,
+        allLabel: t.allDevices,
+        options: devices.map((phone) => ({ label: phone, value: phone })),
+      },
+      {
+        columnId: "status",
+        label: t.filterStatus,
+        allLabel: t.statusAll,
+        options: [
+          { label: t.status.completed, value: "COMPLETED" },
+          {
+            label: t.status.completedWithErrors,
+            value: "COMPLETED_WITH_ERRORS",
+          },
+          { label: t.status.processing, value: "PROCESSING" },
+          { label: t.status.queued, value: "QUEUED" },
+        ],
+      },
+    ]
+  }, [broadcasts, t])
+
   if (onboarding.isFeatureLocked("broadcasts")) {
     return (
       <>
@@ -308,6 +459,7 @@ export default function WhatsAppBroadcastsPage() {
               data={broadcasts}
               searchableColumns={["templateName"]}
               searchPlaceholder={t.searchPlaceholder}
+              facetFilters={facetFilters}
               defaultColumnVisibility={{ createdAt: false }}
               emptyMessage={t.emptyTitle}
             />

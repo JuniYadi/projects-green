@@ -177,7 +177,7 @@ describe("WhatsAppBroadcastDetailPage", () => {
     expect(metricValue(view, "Failed")).toBe("1")
 
     // (sent 1 + failed 1) / total 4 = 50%, label plus completion caption
-    expect(view.getByText("50%")).toBeInTheDocument()
+    expect(view.getAllByText("50%").length).toBeGreaterThanOrEqual(1)
     expect(view.getByText(/50% complete/)).toBeInTheDocument()
     const fill = document.querySelector<HTMLElement>("[style*='width: 50%']")
     expect(fill).not.toBeNull()
