@@ -119,9 +119,15 @@ mock.module("@/modules/whatsapp/onboarding/use-whatsapp-onboarding", () => ({
   }),
 }))
 
+const mockDeleteTemplate = mock(() => Promise.resolve())
+
 mock.module("@/modules/whatsapp/templates/api/templates.hooks", () => ({
   useTemplates: mockUseTemplates,
   useSyncTemplate: mockUseSyncTemplate,
+  useDeleteTemplate: () => ({
+    remove: mockDeleteTemplate,
+    deleting: false,
+  }),
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({
@@ -216,5 +222,14 @@ describe("WhatsAppTemplatesPage", () => {
     expect(
       view.getByText(/System User token is not assigned/i)
     ).toBeInTheDocument()
+  })
+
+  it("renders selection checkboxes and row delete buttons", async () => {
+    const view = render(<WhatsAppTemplatesPage />)
+    const checkboxes = view.getAllByRole("checkbox")
+    expect(checkboxes.length).toBeGreaterThan(0)
+
+    const deleteButtons = view.getAllByLabelText(/Delete/i)
+    expect(deleteButtons.length).toBeGreaterThan(0)
   })
 })

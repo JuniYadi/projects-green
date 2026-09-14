@@ -9,7 +9,10 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type OnChangeFn,
   type PaginationState,
+  type Row,
+  type RowSelectionState,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table"
@@ -79,6 +82,13 @@ type DataTableProps<TData> = {
    * Useful when an external server-side search input is already present.
    */
   hideSearch?: boolean
+  /**
+   * Optional row selection configuration
+   */
+  enableRowSelection?: boolean | ((row: Row<TData>) => boolean)
+  rowSelection?: RowSelectionState
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>
+  getRowId?: (originalRow: TData, index: number) => string
 }
 
 export function DataTable<TData>({
@@ -94,6 +104,10 @@ export function DataTable<TData>({
   defaultColumnVisibility = {},
   pageSize,
   hideSearch = false,
+  enableRowSelection,
+  rowSelection,
+  onRowSelectionChange,
+  getRowId,
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
@@ -119,11 +133,15 @@ export function DataTable<TData>({
   const table = useReactTable({
     data,
     columns,
+    ...(getRowId ? { getRowId } : {}),
+    ...(enableRowSelection !== undefined ? { enableRowSelection } : {}),
+    ...(onRowSelectionChange ? { onRowSelectionChange } : {}),
     state: {
       globalFilter,
       sorting,
       columnFilters,
       columnVisibility,
+      ...(rowSelection !== undefined ? { rowSelection } : {}),
       ...(pageSize ? { pagination } : {}),
     },
     globalFilterFn: (row, _, filterValue) => {

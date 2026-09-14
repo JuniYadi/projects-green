@@ -1155,6 +1155,7 @@ describe("templatesRoutes", () => {
       mockTemplateFindUnique.mockResolvedValueOnce({
         ...approvedTemplate(),
         name: "Delete me",
+        whatsappDeviceId: "dev-1",
       } as unknown as MockTemplate)
       const res = await createTestApp().handle(
         new Request("http://localhost/templates/tpl-approved", {
@@ -1170,6 +1171,7 @@ describe("templatesRoutes", () => {
         expect.objectContaining({
           action: "TEMPLATE_DELETED",
           organizationId: "org-1",
+          deviceId: "dev-1",
         })
       )
     })
