@@ -360,10 +360,14 @@ export default function PlatformInstanceWorkspacePage() {
   )
   const [drawerState, setDrawerState] = useState<"minimized" | "open">("open")
 
-  if (activeWorkspaceTab === "terminal" && !terminalEverOpened) {
-    setTerminalEverOpened(true)
-    setDrawerState("open")
-  }
+  useEffect(() => {
+    if (activeWorkspaceTab === "terminal" && !terminalEverOpened) {
+      queueMicrotask(() => {
+        setTerminalEverOpened(true)
+        setDrawerState("open")
+      })
+    }
+  }, [activeWorkspaceTab, terminalEverOpened])
 
   const isTerminalInitiated =
     terminalEverOpened || activeWorkspaceTab === "terminal"

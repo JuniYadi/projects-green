@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Terminal } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit"
 import "@xterm/xterm/css/xterm.css"
@@ -62,7 +62,7 @@ export function StackTerminal({
   const [targets, setTargets] = useState<TerminalTargetDTO[]>([])
   const [selected, setSelected] = useState<ExecTargetSelection | null>(null)
 
-  const sendResize = () => {
+  const sendResize = useCallback(() => {
     const ws = wsRef.current
     const term = termRef.current
     if (!ws || !term || ws.readyState !== WebSocket.OPEN) return
@@ -70,7 +70,7 @@ export function StackTerminal({
     ws.send(
       JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows })
     )
-  }
+  }, [])
 
   // Without a target the gateway picks the first ready replica.
   const connect = (target?: ExecTargetSelection) => {
@@ -212,7 +212,7 @@ export function StackTerminal({
       }, 50)
       return () => clearTimeout(timer)
     }
-  }, [isActive])
+  }, [isActive, sendResize])
 
   useEffect(() => {
     if (typeof ResizeObserver === "undefined" || !containerRef.current) return
@@ -221,7 +221,7 @@ export function StackTerminal({
     })
     ro.observe(containerRef.current)
     return () => ro.disconnect()
-  }, [])
+  }, [sendResize])
 
   const readyText = (ready: boolean) =>
     ready ? (isId ? "Siap" : "Ready") : isId ? "Belum siap" : "Not ready"
