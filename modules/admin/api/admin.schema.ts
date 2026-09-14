@@ -42,9 +42,29 @@ export const listOrganizationsQuerySchema = z.object({
   search: z.string().optional(),
 })
 
+export const listUsersQuerySchema = z.object({
+  limit: z.coerce.number().min(1).max(100).optional().default(10),
+  before: z.string().optional(),
+  after: z.string().optional(),
+  email: z.string().optional(),
+  organizationId: z.string().optional(),
+  search: z.string().optional(),
+})
+
+export const listInvitationsQuerySchema = z.object({
+  limit: z.coerce.number().min(1).max(100).optional().default(10),
+  before: z.string().optional(),
+  after: z.string().optional(),
+  organizationId: z.string().optional(),
+  status: z.string().optional(),
+  search: z.string().optional(),
+})
+
 export type ListOrganizationsQuery = z.infer<
   typeof listOrganizationsQuerySchema
 >
+export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>
+export type ListInvitationsQuery = z.infer<typeof listInvitationsQuerySchema>
 
 export type AdminCreateOrganizationInput = z.infer<
   typeof adminCreateOrganizationSchema

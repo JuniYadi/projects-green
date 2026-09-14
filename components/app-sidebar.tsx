@@ -47,6 +47,8 @@ import {
   Brain as BrainIcon,
   FileText as FileTextIcon,
   Storefront as StorefrontIcon,
+  Users as UsersIcon,
+  EnvelopeSimple as EnvelopeSimpleIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 import { useWhatsAppOnboardingStore } from "@/modules/whatsapp/onboarding/whatsapp-onboarding.store"
@@ -127,6 +129,24 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
       },
       {
+        name: "Users",
+        url: localizePathname({
+          pathname: "/portal/admin/users",
+          locale,
+        }),
+        icon: <UsersIcon />,
+        isActive: startsWithRoute(path, "/portal/admin/users"),
+      },
+      {
+        name: "Invitations",
+        url: localizePathname({
+          pathname: "/portal/admin/invitations",
+          locale,
+        }),
+        icon: <EnvelopeSimpleIcon />,
+        isActive: startsWithRoute(path, "/portal/admin/invitations"),
+      },
+      {
         name: "Back to Portal",
         url: localizePathname({ pathname: "/portal", locale }),
         icon: <CaretLeftIcon />,
@@ -141,6 +161,24 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+      {
+        title: "Users",
+        url: localizePathname({
+          pathname: "/portal/admin/users",
+          locale,
+        }),
+        icon: <UsersIcon />,
+        isActive: startsWithRoute(path, "/portal/admin/users"),
+      },
+      {
+        title: "Invitations",
+        url: localizePathname({
+          pathname: "/portal/admin/invitations",
+          locale,
+        }),
+        icon: <EnvelopeSimpleIcon />,
+        isActive: startsWithRoute(path, "/portal/admin/invitations"),
       },
     ],
   },
@@ -1070,6 +1108,12 @@ const buildPortalNavMain = (
       startsWithRoute(pathname, "/portal/settings/emails") ||
       startsWithRoute(pathname, "/portal/ai") ||
       startsWithRoute(pathname, "/portal/storage"),
+  },
+  {
+    title: "Admin",
+    url: localizePathname({ pathname: "/portal/admin/organizations", locale }),
+    icon: <ShieldCheckIcon />,
+    isActive: startsWithRoute(pathname, "/portal/admin"),
   },
 ]
 

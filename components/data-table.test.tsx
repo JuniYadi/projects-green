@@ -260,6 +260,20 @@ describe("DataTable pagination", () => {
 
       expect(getByPlaceholderText("Search items...")).toBeDefined()
     })
+
+    it("hides search input when hideSearch is true", () => {
+      const { queryByPlaceholderText } = render(
+        <DataTable
+          columns={columns}
+          data={items}
+          tableId="hide-search-table"
+          searchPlaceholder="Search items..."
+          hideSearch
+        />
+      )
+
+      expect(queryByPlaceholderText("Search items...")).toBeNull()
+    })
   })
 
   describe("empty state", () => {
