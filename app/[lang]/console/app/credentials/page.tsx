@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import CredentialsPageClient from "./page-client"
 
 export async function generateMetadata({
   params,
@@ -12,4 +14,10 @@ export async function generateMetadata({
   return { title: getMessages(locale).console.app.credentials.heading }
 }
 
-export { default } from "./page-client"
+export default function CredentialsPage() {
+  return (
+    <Suspense>
+      <CredentialsPageClient />
+    </Suspense>
+  )
+}

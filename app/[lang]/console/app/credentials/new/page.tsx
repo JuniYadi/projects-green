@@ -1,5 +1,12 @@
-import type { Metadata } from "next"
+import { redirect } from "next/navigation"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
-export const metadata: Metadata = { title: "Add Credential" }
-
-export { default } from "./page-client"
+export default async function NewCredentialPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>
+}) {
+  const { lang } = await params
+  const locale = resolveLocaleOrDefault(lang)
+  redirect(`/${locale}/console/app/credentials?action=new`)
+}
