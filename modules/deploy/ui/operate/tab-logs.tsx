@@ -2,11 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowsClockwise, MagnifyingGlass } from "@phosphor-icons/react"
+import {
+  ArrowsClockwise,
+  CaretRight,
+  MagnifyingGlass,
+} from "@phosphor-icons/react"
 import { LogHealthSummaryCards } from "./log-health-summary-cards"
 import { LogHourlyChart } from "./log-hourly-chart"
 import { LogTopErrorsCard } from "./log-top-errors-card"
+import { LogColumnPicker } from "./log-column-picker"
+import { LogInspectorDrawer } from "./log-inspector-drawer"
+import {
+  discoverLogFields,
+  formatAttributeValue,
+  getNestedValue,
+} from "./log-table-utils"
 import type { AppLogReportDTO } from "../../opensearch/opensearch-log-health.types"
+import type { NormalizedLogEntry } from "../../opensearch/opensearch-log-normalizer"
 import {
   Card,
   CardContent,
@@ -14,6 +26,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -74,10 +94,105 @@ export function TabLogs({
   const [isLiveTailing, setIsLiveTailing] = useState(true)
   const [isLoading, setIsLoading] = useState(Boolean(appSlug))
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [selectedLog, setSelectedLog] = useState<
+    NormalizedLogEntry | LogMessage | null
+  >(null)
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      const stored = localStorage.getItem(
+        `app-log-columns-${appSlug || "default"}`
+      )
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) return parsed
+      }
+    } catch {
+      // ignore
+    }
+    return []
+  })
+  const [prevAppSlug, setPrevAppSlug] = useState(appSlug)
+
+  if (prevAppSlug !== appSlug) {
+    setPrevAppSlug(appSlug)
+    let restored: string[] = []
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(
+          `app-log-columns-${appSlug || "default"}`
+        )
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed)) restored = parsed
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setSelectedColumns(restored)
+  }
+
+  const handleToggleColumn = useCallback(
+    (field: string) => {
+      setSelectedColumns((prev) => {
+        const next = prev.includes(field)
+          ? prev.filter((f) => f !== field)
+          : [...prev, field]
+        try {
+          localStorage.setItem(
+            `app-log-columns-${appSlug || "default"}`,
+            JSON.stringify(next)
+          )
+        } catch {
+          // ignore
+        }
+        return next
+      })
+    },
+    [appSlug]
+  )
+
+  const handleResetColumns = useCallback(() => {
+    setSelectedColumns([])
+    try {
+      localStorage.removeItem(`app-log-columns-${appSlug || "default"}`)
+    } catch {
+      // ignore
+    }
+  }, [appSlug])
+
+  const handleAddColumn = useCallback(
+    (field: string) => {
+      setSelectedColumns((prev) => {
+        if (prev.includes(field)) return prev
+        const next = [...prev, field]
+        try {
+          localStorage.setItem(
+            `app-log-columns-${appSlug || "default"}`,
+            JSON.stringify(next)
+          )
+        } catch {
+          // ignore
+        }
+        return next
+      })
+    },
+    [appSlug]
+  )
 
   const activeLogs = propLogs ?? internalLogs
   const updateLogs = propSetLogs ?? setInternalLogs
   const logConsoleEndRef = useRef<HTMLDivElement>(null)
+
+  // Dynamically discover all JSON fields across active logs
+  const availableFields = useMemo(() => {
+    return discoverLogFields(
+      activeLogs as Array<
+        { raw?: Record<string, unknown> } & Record<string, unknown>
+      >
+    )
+  }, [activeLogs])
 
   // Fetch real logs from OpenSearch API when appSlug is present
   const fetchRealLogs = useCallback(async () => {
@@ -326,7 +441,14 @@ export function TabLogs({
               Live streaming log aggregates index from this workspace cluster
             </CardDescription>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LogColumnPicker
+              availableFields={availableFields}
+              selectedColumns={selectedColumns}
+              onToggleColumn={handleToggleColumn}
+              onResetColumns={handleResetColumns}
+            />
+
             {appSlug && (
               <Button
                 type="button"
@@ -337,7 +459,7 @@ export function TabLogs({
                   void fetchRealLogs()
                 }}
                 disabled={isRefreshing}
-                className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground"
+                className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 <ArrowsClockwise
                   size={13}
@@ -404,83 +526,159 @@ export function TabLogs({
             </div>
           </div>
 
-          {/* Logs display shell */}
-          <div className="max-h-[350px] min-h-[220px] space-y-1 overflow-auto rounded-xl border border-border bg-zinc-950 px-4 py-3.5 font-mono text-[11px] leading-relaxed text-zinc-100 shadow-inner dark:bg-[#050507]">
-            {isLoading && activeLogs.length === 0 ? (
-              <div className="flex h-[200px] flex-col items-center justify-center gap-2 text-muted-foreground">
-                <ArrowsClockwise
-                  size={20}
-                  className="animate-spin text-primary"
-                />
-                <p className="text-xs">Memuat log dari OpenSearch cluster...</p>
-              </div>
-            ) : (
-              filteredLogs.map((log, idx) => {
-                const levelBadgeStyle =
-                  log.level === "ERROR"
-                    ? "bg-red-500/10 text-red-400 border-red-500/20"
-                    : log.level === "WARN"
-                      ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                      : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+          {/* Structured Log Explorer Table (Datadog & Kibana style) */}
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+            <div className="max-h-[520px] min-h-[240px] overflow-auto">
+              <Table>
+                <TableHeader className="sticky top-0 z-10 bg-muted/70 text-[11px] backdrop-blur-xs">
+                  <TableRow className="border-b border-border hover:bg-transparent">
+                    <TableHead className="w-8 px-2" />
+                    <TableHead className="w-24 font-semibold text-foreground">
+                      Waktu
+                    </TableHead>
+                    <TableHead className="w-20 font-semibold text-foreground">
+                      Level
+                    </TableHead>
+                    <TableHead className="w-24 font-semibold text-foreground">
+                      Sumber
+                    </TableHead>
+                    {selectedColumns.map((col) => (
+                      <TableHead
+                        key={col}
+                        className="font-mono text-[11px] font-semibold whitespace-nowrap text-foreground"
+                      >
+                        {col}
+                      </TableHead>
+                    ))}
+                    <TableHead className="font-semibold text-foreground">
+                      Pesan / Ringkasan Log
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="text-xs">
+                  {isLoading && activeLogs.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5 + selectedColumns.length}
+                        className="h-48 text-center"
+                      >
+                        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                          <ArrowsClockwise
+                            size={20}
+                            className="animate-spin text-primary"
+                          />
+                          <p className="text-xs">
+                            Memuat log dari OpenSearch cluster...
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredLogs.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5 + selectedColumns.length}
+                        className="h-48 text-center"
+                      >
+                        <div className="flex flex-col items-center justify-center gap-2 p-8 font-sans text-xs font-medium text-muted-foreground/80">
+                          <p>
+                            Belum ada output log di OpenSearch untuk service
+                            ini.
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/60">
+                            Pod mungkin sedang proses booting atau belum
+                            menghasilkan output stdout/stderr.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            onClick={() => {
+                              setIsRefreshing(true)
+                              void fetchRealLogs()
+                            }}
+                            className="mt-2 text-xs"
+                          >
+                            Cek Ulang
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredLogs.map((log, idx) => {
+                      const levelBadgeStyle =
+                        log.level === "ERROR"
+                          ? "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30"
+                          : log.level === "WARN"
+                            ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                            : "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30"
 
-                const sourceBadgeStyle =
-                  log.source === "nginx"
-                    ? "text-purple-400"
-                    : log.source === "app" || log.source === "deploy"
-                      ? "text-cyan-400"
-                      : "text-amber-300"
+                      const rawEntry =
+                        (log as NormalizedLogEntry).raw ??
+                        (log as Record<string, unknown>)
 
-                return (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-3 rounded-lg border border-transparent px-2 py-1 transition-colors select-text hover:border-white/[0.03] hover:bg-white/[0.03]"
-                  >
-                    <span className="shrink-0 font-semibold text-muted-foreground/60 select-none">
-                      {log.timestamp}
-                    </span>
-                    <span
-                      className={`py-0.2 shrink-0 rounded border px-1.5 text-[9px] font-bold tracking-wider uppercase ${levelBadgeStyle}`}
-                    >
-                      {log.level}
-                    </span>
-                    <span
-                      className={`shrink-0 text-[10px] font-semibold ${sourceBadgeStyle}`}
-                    >
-                      [{log.source}]
-                    </span>
-                    <span className="leading-relaxed font-medium break-all text-white/90">
-                      {log.message}
-                    </span>
-                  </div>
-                )
-              })
-            )}
-
-            {!isLoading && filteredLogs.length === 0 && (
-              <div className="flex h-[200px] flex-col items-center justify-center gap-2 p-10 text-center font-sans text-xs font-medium text-muted-foreground/80">
-                <p>Belum ada output log di OpenSearch untuk service ini.</p>
-                <p className="text-[11px] text-muted-foreground/60">
-                  Pod mungkin sedang proses booting atau belum menghasilkan
-                  output stdout/stderr.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="xs"
-                  onClick={() => {
-                    setIsRefreshing(true)
-                    void fetchRealLogs()
-                  }}
-                  className="mt-2 text-xs"
-                >
-                  Cek Ulang
-                </Button>
-              </div>
-            )}
-            <div ref={logConsoleEndRef} />
+                      return (
+                        <TableRow
+                          key={idx}
+                          onClick={() => setSelectedLog(log)}
+                          className="group cursor-pointer border-b border-border/60 transition-colors select-text hover:bg-muted/40"
+                        >
+                          <TableCell className="w-8 px-2 text-muted-foreground group-hover:text-foreground">
+                            <CaretRight
+                              size={12}
+                              className="transition-transform group-hover:translate-x-0.5"
+                            />
+                          </TableCell>
+                          <TableCell className="w-24 font-mono text-[11px] font-medium whitespace-nowrap text-muted-foreground">
+                            {log.timestamp}
+                          </TableCell>
+                          <TableCell className="w-20">
+                            <span
+                              className={`inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase ${levelBadgeStyle}`}
+                            >
+                              {log.level}
+                            </span>
+                          </TableCell>
+                          <TableCell className="w-24 max-w-[120px] truncate font-mono text-[11px] text-muted-foreground">
+                            [{log.source}]
+                          </TableCell>
+                          {selectedColumns.map((col) => {
+                            const val = getNestedValue(rawEntry, col)
+                            return (
+                              <TableCell
+                                key={col}
+                                className="max-w-[160px] truncate font-mono text-[11px] whitespace-nowrap text-foreground/80"
+                              >
+                                {formatAttributeValue(val)}
+                              </TableCell>
+                            )
+                          })}
+                          <TableCell className="font-mono text-[11px] leading-relaxed break-all text-foreground">
+                            {log.message}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+              <div ref={logConsoleEndRef} />
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      <LogInspectorDrawer
+        log={selectedLog}
+        open={Boolean(selectedLog)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedLog(null)
+        }}
+        selectedColumns={selectedColumns}
+        onAddColumn={handleAddColumn}
+        onApplyFilter={(text) => {
+          setLogFilterQuery(text)
+        }}
+      />
     </div>
   )
 }
