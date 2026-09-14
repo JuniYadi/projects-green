@@ -13,21 +13,29 @@ export type PublicSourceAccessResult =
     }
 
 const checkRemote = async (url: string, ref: string) => {
-  const proc = Bun.spawn(["git", "ls-remote", url, ref], {
-    stdout: "pipe",
-    stderr: "pipe",
-    env: {
-      ...process.env,
-      GIT_TERMINAL_PROMPT: "0",
-    } as Record<string, string>,
-  })
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ])
+  try {
+    const proc = Bun.spawn(["git", "ls-remote", url, ref], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: "0",
+      } as Record<string, string>,
+    })
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ])
 
-  return { stdout, stderr, exitCode }
+    return { stdout, stderr, exitCode }
+  } catch (error) {
+    return {
+      stdout: "",
+      stderr: error instanceof Error ? error.message : "git execution failed",
+      exitCode: 1,
+    }
+  }
 }
 
 export async function checkPublicSourceAccess(input: {

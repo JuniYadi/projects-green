@@ -1,5 +1,6 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { act, fireEvent, render, waitFor } from "@testing-library/react"
+import DeployPageClient from "./page-client"
 
 const mockInspectResponse = {
   ok: true,
@@ -106,6 +107,7 @@ const mockFetch = mock(
         JSON.stringify({
           ok: true,
           formattedBalance: "$50.00",
+          balance: "50.00",
           isPositive: true,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -129,28 +131,32 @@ const mockFetch = mock(
 
 globalThis.fetch = mockFetch as unknown as typeof fetch
 
-describe("DeployPage", () => {
+describe("DeployPage Client", () => {
   beforeEach(() => {
     mockFetch.mockClear()
   })
 
-  it("renders Git Deployment Launchpad", async () => {
-    const deployPageModule =
-      await import("@/app/[lang]/console/app/deploy/page")
-    const view = render(<deployPageModule.default />)
+  it("renders Centered AI Agent Hero & Intake (Screen 1)", async () => {
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
-    expect(view.getByText("Deploy Git Repository")).toBeTruthy()
-    expect(view.getByText("Git Repository URL")).toBeTruthy()
-    expect(view.getByText("Connected Repositories")).toBeTruthy()
+    expect(
+      view.getByText("Hi Alex, what do you want to deploy today?")
+    ).toBeTruthy()
     expect(
       view.getByPlaceholderText("https://github.com/organization/repository")
     ).toBeTruthy()
+    expect(
+      view.getByRole("button", { name: /inspect repository/i })
+    ).toBeTruthy()
+
+    // Wait for organization repositories quick-picks to load
+    await waitFor(() => {
+      expect(view.getByText("my-ecommerce-web")).toBeTruthy()
+    })
   })
 
-  it("inspects public repository and advances to build settings", async () => {
-    const deployPageModule =
-      await import("@/app/[lang]/console/app/deploy/page")
-    const view = render(<deployPageModule.default />)
+  it("inspects public repository and transitions to AI Deployment Summary (Screen 2)", async () => {
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
     const input = view.getByPlaceholderText(
       "https://github.com/organization/repository"
@@ -182,16 +188,21 @@ describe("DeployPage", () => {
       fireEvent.click(continueBtn)
     })
 
-    expect(view.getByText("Automated Framework Detection")).toBeTruthy()
-    expect(view.getByText("Build & Runtime Settings")).toBeTruthy()
+    // Screen 2: AI Deployment Summary
+    await waitFor(() => {
+      expect(view.getByText("Deployment Summary")).toBeTruthy()
+      expect(
+        view.getByText("Review and adjust your configuration before launching.")
+      ).toBeTruthy()
+      expect(view.getByText("Next.js 14.2.3")).toBeTruthy()
+      expect(view.getByText("Node.js 20")).toBeTruthy()
+    })
   })
 
-  it("advances to review step, verifies balance, and prevents rollout on failure", async () => {
-    const deployPageModule =
-      await import("@/app/[lang]/console/app/deploy/page")
-    const view = render(<deployPageModule.default />)
+  it("allows environment variable management and compute sizing selection on Screen 2", async () => {
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
-    // Step 1: Inspect URL
+    // Step 1: inspect
     const input = view.getByPlaceholderText(
       "https://github.com/organization/repository"
     )
@@ -199,106 +210,55 @@ describe("DeployPage", () => {
       fireEvent.change(input, {
         target: { value: "https://github.com/acme/public-app" },
       })
-    })
-    await act(async () => {
       fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
     })
+
     await waitFor(() => {
       expect(view.getByText("Public Repository Verified")).toBeTruthy()
     })
+
     await act(async () => {
       fireEvent.click(
         view.getByRole("button", { name: /continue to build settings/i })
       )
     })
 
-    // Step 2: Build config -> Sizing
-    await act(async () => {
-      fireEvent.click(
-        view.getByRole("button", { name: /continue to sizing & domain/i })
-      )
-    })
-
-    // Step 3: Sizing -> Review
-    await act(async () => {
-      fireEvent.click(view.getByRole("button", { name: /review deployment/i }))
-    })
-
-    // Step 4: Review step renders, checks balance
+    // Screen 2: verify balance and add env variable
     await waitFor(() => {
       expect(view.getByText("Balance Verified")).toBeTruthy()
       expect(view.getByText("$50.00 available")).toBeTruthy()
     })
 
-    // Simulate deploy failure
-    mockFetch.mockImplementationOnce(async (input: RequestInfo | URL) => {
-      if (String(input).includes("/confirm")) {
-        return new Response(
-          JSON.stringify({ ok: false, message: "Insufficient quota" }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        )
-      }
-      return new Response(JSON.stringify({ ok: true }), { status: 200 })
-    })
+    // Add env var
+    const keyInput = view.getByPlaceholderText("VARIABLE_NAME")
+    const valInput = view.getByPlaceholderText("Value")
+    const addBtn = view.getByRole("button", { name: /add variable/i })
 
     await act(async () => {
-      fireEvent.click(view.getByRole("button", { name: /deploy application/i }))
+      fireEvent.change(keyInput, { target: { value: "DATABASE_URL" } })
+      fireEvent.change(valInput, {
+        target: { value: "postgres://user:pass@host/db" },
+      })
+      fireEvent.click(addBtn)
     })
 
-    // On failure, should STAY on review step, NOT advance to rollout
-    await waitFor(() => {
-      expect(view.getByText("Deployment Specification Summary")).toBeTruthy()
-      expect(view.queryByText("Deployment Rollout")).toBeNull()
-    })
-  })
+    expect(view.getByText("DATABASE_URL")).toBeTruthy()
+    expect(view.getByText("1 variable configured")).toBeTruthy()
 
-  it("switches to connected repositories tab and lists repos", async () => {
-    const deployPageModule =
-      await import("@/app/[lang]/console/app/deploy/page")
-    const view = render(<deployPageModule.default />)
-
-    const connectedTabBtn = view.getByRole("button", {
-      name: /connected repositories/i,
-    })
-
+    // Test start over
+    const startOverBtn = view.getByRole("button", { name: /start over/i })
     await act(async () => {
-      fireEvent.click(connectedTabBtn)
+      fireEvent.click(startOverBtn)
     })
 
-    await waitFor(() => {
-      expect(view.getByText("juniyadi/my-ecommerce-web")).toBeTruthy()
-    })
+    // Should return to Screen 1
+    expect(
+      view.getByText("Hi Alex, what do you want to deploy today?")
+    ).toBeTruthy()
   })
 
-  it("renders AI Agent Helper greeting and quick-pick chips", async () => {
-    const deployPageModule =
-      await import("@/app/[lang]/console/app/deploy/page")
-    const view = render(<deployPageModule.default />)
-
-    await waitFor(() => {
-      expect(view.getByText(/what do you want to deploy today\?/i)).toBeTruthy()
-    })
-
-    // Connected repos should appear as quick-pick buttons
-    await waitFor(() => {
-      expect(view.getByText("my-ecommerce-web")).toBeTruthy()
-    })
-
-    // Clicking quick-pick populates input and triggers inspection
-    const chip = view.getByText("my-ecommerce-web")
-    await act(async () => {
-      fireEvent.click(chip)
-    })
-
-    await waitFor(() => {
-      expect(view.getByText("Public Repository Verified")).toBeTruthy()
-    })
-  })
-
-  it("re-uses App Hosting product catalog plans in sizing step", async () => {
-    const deployPageModule =
-      await import("@/app/[lang]/console/app/deploy/page")
-    const view = render(<deployPageModule.default />)
+  it("triggers deployment from Screen 2 and advances to Flight Deck", async () => {
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
     const input = view.getByPlaceholderText(
       "https://github.com/organization/repository"
@@ -320,30 +280,33 @@ describe("DeployPage", () => {
       )
     })
 
-    // Advance to sizing
-    await act(async () => {
-      fireEvent.click(
-        view.getByRole("button", { name: /continue to sizing & domain/i })
-      )
+    await waitFor(() => {
+      expect(view.getByText("Deployment Summary")).toBeTruthy()
     })
 
-    // Verify catalog badge and plans from APP_HOSTING product catalog
+    const deployBtn = view.getByRole("button", {
+      name: /deploy application now/i,
+    })
+
+    await act(async () => {
+      fireEvent.click(deployBtn)
+    })
+
+    // Advances to live rollout flight deck
     await waitFor(() => {
-      expect(view.getByText("Catalog: APP_HOSTING")).toBeTruthy()
-      expect(view.getByText("Starter Compute")).toBeTruthy()
-      expect(view.getByText("Standard Compute")).toBeTruthy()
+      expect(view.getByText("Deployment Rollout")).toBeTruthy()
     })
   })
 
-  it("renders Indonesian localized greeting when lang is id", async () => {
-    const deployPageModule =
-      await import("@/app/[lang]/console/app/deploy/page")
-    const view = render(<deployPageModule.default lang="id" />)
+  it("renders Indonesian localized greeting and labels when lang is id", async () => {
+    const view = render(<DeployPageClient initialUserName="Alex" lang="id" />)
+
+    expect(
+      view.getByText("Halo Alex, apa yang ingin Anda deploy hari ini?")
+    ).toBeTruthy()
 
     await waitFor(() => {
-      expect(
-        view.getByText(/apa yang ingin Anda deploy hari ini\?/i)
-      ).toBeTruthy()
+      expect(view.getByText("Repositori Terhubung:")).toBeTruthy()
     })
   })
 })

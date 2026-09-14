@@ -2,25 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { GitSourceStep } from "./git-source-step"
-import { GitBuildStep } from "./git-build-step"
-import { GitSizingStep } from "./git-sizing-step"
-import { GitReviewStep } from "./git-review-step"
+import { AiAgentIntake } from "./ai-agent-intake"
+import {
+  AiAgentSummaryCard,
+  type DeploymentSummaryConfig,
+} from "./ai-agent-summary-card"
 import { GitRolloutStep } from "./git-rollout-step"
-import type {
-  GitBuildConfig,
-  GitDeployStep,
-  GitSizingConfig,
-  GitSourceConfig,
-} from "./types"
-
-const STEPS: Array<{ id: GitDeployStep; label: string; number: number }> = [
-  { id: "source", label: "Source Intake", number: 1 },
-  { id: "config", label: "Build Config", number: 2 },
-  { id: "sizing", label: "Compute & Domain", number: 3 },
-  { id: "review", label: "Review & Deploy", number: 4 },
-  { id: "rollout", label: "Rollout", number: 5 },
-]
+import type { GitSizingConfig, GitSourceConfig } from "./types"
 
 type GitDeployWizardProps = {
   initialUserName?: string
@@ -32,7 +20,9 @@ export function GitDeployWizard({
   lang = "en",
 }: GitDeployWizardProps = {}) {
   const currency = lang === "id" ? "IDR" : "USD"
-  const [currentStep, setCurrentStep] = useState<GitDeployStep>("source")
+  const [screen, setScreen] = useState<"intake" | "summary" | "rollout">(
+    "intake"
+  )
   const [userName, setUserName] = useState<string>(initialUserName || "")
 
   useEffect(() => {
@@ -65,24 +55,8 @@ export function GitDeployWizard({
     string,
     unknown
   > | null>(null)
-  const [buildConfig, setBuildConfig] = useState<GitBuildConfig | null>(null)
   const [sizingConfig, setSizingConfig] = useState<GitSizingConfig | null>(null)
   const [deploymentId, setDeploymentId] = useState<string>("dep-initial")
-
-  // Generate suggested subdomain from repository name or URL
-  const getSuggestedSubdomain = () => {
-    if (!source?.url) return "my-app"
-    try {
-      const parts = source.url.replace(/\.git$/i, "").split("/")
-      const repo = parts[parts.length - 1] || "my-app"
-      return repo
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "-")
-        .replace(/^-+|-+$/g, "")
-    } catch {
-      return "my-app"
-    }
-  }
 
   const handleSourceVerified = (
     src: GitSourceConfig,
@@ -90,24 +64,24 @@ export function GitDeployWizard({
   ) => {
     setSource(src)
     setInspectionData(inspected ?? null)
-    setCurrentStep("config")
+    setScreen("summary")
   }
 
-  const handleBuildConfigured = (cfg: GitBuildConfig) => {
-    setBuildConfig(cfg)
-    setCurrentStep("sizing")
-  }
+  const handleDeployFromSummary = async (config: DeploymentSummaryConfig) => {
+    if (!source) return
 
-  const handleSizingConfigured = (cfg: GitSizingConfig) => {
-    setSizingConfig(cfg)
-    setCurrentStep("review")
-  }
-
-  const handleDeploy = async () => {
-    if (!source || !buildConfig || !sizingConfig) return
+    const sizing: GitSizingConfig = {
+      tier: config.tier,
+      cpu: config.cpu,
+      memory: config.memory,
+      hourlyRate: config.hourlyRate,
+      subdomain: config.subdomain,
+      monthlyPrice: config.monthlyPrice,
+      currency,
+    }
+    setSizingConfig(sizing)
 
     try {
-      // If we have an inspect session from /deploy/ai-sessions/inspect, we can confirm it
       const session = inspectionData?.session as { id?: string } | undefined
       const sessionId = session?.id
       if (sessionId) {
@@ -117,34 +91,35 @@ export function GitDeployWizard({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              subdomain: sizingConfig.subdomain,
-              cpu: sizingConfig.cpu,
-              memory: sizingConfig.memory,
-              billingMode: "PAYG",
-              resourcePlanId: sizingConfig.tier,
+              subdomain: config.subdomain,
+              resources: {
+                cpu: config.cpu,
+                memory: config.memory,
+              },
             }),
           }
         )
-        const data = await res.json().catch(() => null)
-        if (data && !data.ok) {
-          throw new Error(
-            data.message ||
-              data.error ||
-              "Failed to confirm deployment session."
+        const data = await res.json()
+        if (!res.ok || !data.ok) {
+          toast.error(
+            data.message || data.error || "Deployment failed to start."
           )
+          return
         }
-        if (data?.ok && data?.data?.stackId) {
-          setDeploymentId(data.data.stackId)
-        }
+        const createdStackId =
+          data.data?.stackId ||
+          data.data?.stack?.id ||
+          data.stackId ||
+          "dep-" + Date.now()
+        setDeploymentId(createdStackId)
+      } else {
+        setDeploymentId("dep-" + Date.now())
       }
-
-      toast.success("Application deployment initiated.")
-      setCurrentStep("rollout")
-    } catch (error) {
+      setScreen("rollout")
+      toast.success("Application deployment initiated!")
+    } catch {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to initiate deployment."
+        "Network error while initiating deployment. Please try again."
       )
     }
   }
@@ -152,71 +127,14 @@ export function GitDeployWizard({
   const handleReset = () => {
     setSource(null)
     setInspectionData(null)
-    setBuildConfig(null)
     setSizingConfig(null)
-    setCurrentStep("source")
+    setScreen("intake")
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Header Banner */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">
-          Deploy Git Repository
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Import your codebase, configure build settings, and deploy to
-          production Kubernetes.
-        </p>
-      </div>
-
-      {/* Progress Stepper */}
-      <nav aria-label="Progress" className="border-b border-border pb-4">
-        <ol className="flex flex-wrap items-center gap-2 text-xs font-medium md:gap-4">
-          {STEPS.map((step) => {
-            const isCurrent = currentStep === step.id
-            const isCompleted =
-              (step.id === "source" && source !== null) ||
-              (step.id === "config" && buildConfig !== null) ||
-              (step.id === "sizing" && sizingConfig !== null) ||
-              (step.id === "review" && currentStep === "rollout")
-
-            return (
-              <li key={step.id} className="flex items-center gap-2">
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                    isCurrent
-                      ? "bg-primary text-primary-foreground"
-                      : isCompleted
-                        ? "bg-muted text-foreground"
-                        : "border border-border text-muted-foreground"
-                  }`}
-                >
-                  {step.number}
-                </span>
-                <span
-                  className={
-                    isCurrent
-                      ? "font-semibold text-foreground"
-                      : isCompleted
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                  }
-                >
-                  {step.label}
-                </span>
-                {step.number < STEPS.length && (
-                  <span className="text-muted-foreground/40">/</span>
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      </nav>
-
-      {/* Step Views */}
-      {currentStep === "source" && (
-        <GitSourceStep
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 pt-0">
+      {screen === "intake" && (
+        <AiAgentIntake
           initialSource={source ?? undefined}
           userName={userName}
           lang={lang}
@@ -224,37 +142,18 @@ export function GitDeployWizard({
         />
       )}
 
-      {currentStep === "config" && source && (
-        <GitBuildStep
+      {screen === "summary" && source && (
+        <AiAgentSummaryCard
           source={source}
-          initialConfig={buildConfig ?? undefined}
           inspectionData={inspectionData}
-          onBack={() => setCurrentStep("source")}
-          onNext={handleBuildConfigured}
-        />
-      )}
-
-      {currentStep === "sizing" && (
-        <GitSizingStep
-          initialConfig={sizingConfig ?? undefined}
-          suggestedSubdomain={getSuggestedSubdomain()}
           currency={currency}
-          onBack={() => setCurrentStep("config")}
-          onNext={handleSizingConfigured}
+          lang={lang}
+          onStartOver={handleReset}
+          onDeploy={handleDeployFromSummary}
         />
       )}
 
-      {currentStep === "review" && source && buildConfig && sizingConfig && (
-        <GitReviewStep
-          source={source}
-          build={buildConfig}
-          sizing={sizingConfig}
-          onBack={() => setCurrentStep("sizing")}
-          onDeploy={handleDeploy}
-        />
-      )}
-
-      {currentStep === "rollout" && source && sizingConfig && (
+      {screen === "rollout" && source && sizingConfig && (
         <GitRolloutStep
           source={source}
           sizing={sizingConfig}

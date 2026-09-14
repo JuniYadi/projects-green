@@ -1652,6 +1652,23 @@ export type AppMessages = {
         installApp: string
         recheckAccess: string
         continueButton: string
+        summaryHeading: string
+        summarySubheading: string
+        deployButton: string
+        startOver: string
+        branchLabel: string
+        directoryLabel: string
+        frameworkLabel: string
+        runtimeLabel: string
+        packageManagerLabel: string
+        portLabel: string
+        buildCommandLabel: string
+        startCommandLabel: string
+        envVarsLabel: string
+        addVariable: string
+        bulkPaste: string
+        computeSizingLabel: string
+        subdomainLabel: string
       }
       deployWizard: {
         heading: string
