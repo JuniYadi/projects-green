@@ -44,6 +44,48 @@ const mockSendInvitation = mock(() =>
   })
 )
 
+const mockListUsers = mock(() =>
+  Promise.resolve({
+    data: [],
+    listMetadata: {},
+  })
+)
+
+const mockGetUser = mock(() =>
+  Promise.resolve({
+    id: "user_test",
+    email: "user@example.com",
+    firstName: "Jane",
+    lastName: "Doe",
+    emailVerified: true,
+    profilePictureUrl: "https://example.com/avatar.png",
+    lastSignInAt: "2026-01-01T00:00:00.000Z",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  })
+)
+
+const mockRevokeInvitation = mock(() =>
+  Promise.resolve({
+    id: "inv_revoked",
+    email: "revoked@example.com",
+    state: "revoked",
+    organizationId: "org_1",
+    roleSlug: "member",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2026-02-01T00:00:00.000Z",
+    acceptedAt: null,
+  })
+)
+
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganization: mock(async (id: string) => ({
+    id,
+    name: `Org ${id}`,
+    slug: id,
+  })),
+}))
+
 mock.module("@workos-inc/authkit-nextjs", () => ({
   getWorkOS: () => ({
     organizations: {
@@ -54,6 +96,9 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
       listOrganizationMemberships: mockListOrganizationMemberships,
       listInvitations: mockListInvitations,
       sendInvitation: mockSendInvitation,
+      listUsers: mockListUsers,
+      getUser: mockGetUser,
+      revokeInvitation: mockRevokeInvitation,
     },
   }),
   withAuth: mock(async () => ({ user: null })),
@@ -64,6 +109,10 @@ const {
   listAdminOrganizationMembers,
   createAdminOrganization,
   sendAdminInvitation,
+  listAdminUsers,
+  getAdminUser,
+  listAdminInvitations,
+  revokeAdminInvitation,
 } = await import("./admin.service")
 
 describe("listAdminOrganizations", () => {
@@ -283,5 +332,138 @@ describe("sendAdminInvitation", () => {
     })
 
     expect(result.acceptedAt).toBeNull()
+  })
+})
+
+describe("listAdminUsers", () => {
+  beforeEach(() => {
+    mockListUsers.mockClear()
+  })
+
+  it("calls workos.userManagement.listUsers with params", async () => {
+    await listAdminUsers({ limit: 15, email: "test@example.com" })
+    expect(mockListUsers).toHaveBeenCalledWith({
+      limit: 15,
+      email: "test@example.com",
+      before: undefined,
+      after: undefined,
+      organizationId: undefined,
+    })
+  })
+
+  it("returns users mapped to summary format", async () => {
+    mockListUsers.mockResolvedValue({
+      data: [
+        {
+          id: "user_123",
+          email: "user@test.com",
+          firstName: "Alice",
+          lastName: "Smith",
+          emailVerified: true,
+          profilePictureUrl: null,
+          lastSignInAt: "2026-01-01T00:00:00.000Z",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+        },
+      ],
+      listMetadata: { before: "b1", after: "a1" },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    const result = await listAdminUsers()
+    expect(result.users).toHaveLength(1)
+    expect(result.users[0].email).toBe("user@test.com")
+    expect(result.users[0].firstName).toBe("Alice")
+    expect(result.listMetadata?.after).toBe("a1")
+  })
+})
+
+describe("getAdminUser", () => {
+  beforeEach(() => {
+    mockGetUser.mockClear()
+    mockListOrganizationMemberships.mockClear()
+  })
+
+  it("calls getUser and listOrganizationMemberships", async () => {
+    mockGetUser.mockResolvedValue({
+      id: "user_1",
+      email: "u1@example.com",
+      firstName: "Bob",
+      lastName: "Jones",
+      emailVerified: true,
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    mockListOrganizationMemberships.mockResolvedValue({
+      data: [
+        {
+          id: "mem_1",
+          organizationId: "org_alpha",
+          status: "active",
+          role: { slug: "admin" },
+          createdAt: "2026-01-01",
+          updatedAt: "2026-01-01",
+        },
+      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    const result = await getAdminUser("user_1")
+    expect(mockGetUser).toHaveBeenCalledWith("user_1")
+    expect(mockListOrganizationMemberships).toHaveBeenCalledWith({
+      userId: "user_1",
+    })
+    expect(result.id).toBe("user_1")
+    expect(result.memberships).toHaveLength(1)
+    expect(result.memberships[0].organizationName).toBe("Org org_alpha")
+  })
+})
+
+describe("listAdminInvitations", () => {
+  beforeEach(() => {
+    mockListInvitations.mockClear()
+  })
+
+  it("calls workos.userManagement.listInvitations and resolves organization names", async () => {
+    mockListInvitations.mockResolvedValue({
+      data: [
+        {
+          id: "inv_1",
+          email: "invitee@example.com",
+          state: "pending",
+          organizationId: "org_beta",
+          roleSlug: "member",
+          createdAt: "2026-01-01",
+          expiresAt: "2026-02-01",
+        },
+      ],
+      listMetadata: {},
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    const result = await listAdminInvitations({ limit: 10 })
+    expect(mockListInvitations).toHaveBeenCalledWith({
+      limit: 10,
+      before: undefined,
+      after: undefined,
+      organizationId: undefined,
+    })
+    expect(result.invitations).toHaveLength(1)
+    expect(result.invitations[0].email).toBe("invitee@example.com")
+    expect(result.invitations[0].organizationName).toBe("Org org_beta")
+  })
+})
+
+describe("revokeAdminInvitation", () => {
+  beforeEach(() => {
+    mockRevokeInvitation.mockClear()
+  })
+
+  it("calls workos.userManagement.revokeInvitation", async () => {
+    const result = await revokeAdminInvitation("inv_123")
+    expect(mockRevokeInvitation).toHaveBeenCalledWith("inv_123")
+    expect(result.id).toBe("inv_revoked")
   })
 })

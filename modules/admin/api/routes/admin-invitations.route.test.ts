@@ -1,4 +1,7 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
+
+mock.module("server-only", () => ({}))
+
 import { Elysia } from "elysia"
 import { ConflictException } from "@workos-inc/node"
 import type {
@@ -7,9 +10,13 @@ import type {
 } from "@/modules/admin/api/admin.guards"
 
 const mockSendAdminInvitation = mock()
+const mockListAdminInvitations = mock()
+const mockRevokeAdminInvitation = mock()
 
 mock.module("@/modules/admin/admin.service", () => ({
   sendAdminInvitation: mockSendAdminInvitation,
+  listAdminInvitations: mockListAdminInvitations,
+  revokeAdminInvitation: mockRevokeAdminInvitation,
 }))
 
 // Test seam: dynamic import after mock.module to ensure mock resolution
@@ -219,5 +226,112 @@ describe("createAdminInvitationsRoutes", () => {
     const json = await res.json()
     expect(json.ok).toBe(false)
     expect(json.error).toBe("INTERNAL_ERROR")
+  })
+
+  describe("GET /admin/invitations", () => {
+    beforeEach(() => {
+      mockListAdminInvitations.mockReset()
+    })
+
+    it("returns 200 with invitations list", async () => {
+      const allowedGuard = mock(async () => allowedActor)
+      mockListAdminInvitations.mockResolvedValueOnce({
+        invitations: [
+          {
+            id: "inv_1",
+            email: "user@example.com",
+            state: "pending",
+            organizationId: "org_1",
+            organizationName: "Org 1",
+            roleSlug: "member",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            expiresAt: "2026-02-01T00:00:00.000Z",
+            acceptedAt: null,
+          },
+        ],
+        listMetadata: {},
+      })
+
+      const app = new Elysia()
+        .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
+        .compile()
+
+      const res = await app.handle(new Request(BASE))
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(json.data.invitations).toHaveLength(1)
+      expect(json.data.invitations[0].email).toBe("user@example.com")
+    })
+
+    it("filters invitations by status and search query", async () => {
+      const allowedGuard = mock(async () => allowedActor)
+      mockListAdminInvitations.mockResolvedValueOnce({
+        invitations: [
+          {
+            id: "inv_1",
+            email: "alice@alpha.com",
+            state: "pending",
+            organizationId: "org_1",
+            organizationName: "Alpha Corp",
+            roleSlug: "member",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            expiresAt: "2026-02-01T00:00:00.000Z",
+            acceptedAt: null,
+          },
+          {
+            id: "inv_2",
+            email: "bob@beta.com",
+            state: "accepted",
+            organizationId: "org_2",
+            organizationName: "Beta Corp",
+            roleSlug: "admin",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            expiresAt: "2026-02-01T00:00:00.000Z",
+            acceptedAt: "2026-01-02T00:00:00.000Z",
+          },
+        ],
+      })
+
+      const app = new Elysia()
+        .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
+        .compile()
+
+      const res = await app.handle(
+        new Request(`${BASE}?status=pending&search=alice`)
+      )
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.data.invitations).toHaveLength(1)
+      expect(json.data.invitations[0].email).toBe("alice@alpha.com")
+    })
+  })
+
+  describe("DELETE /admin/invitations/:id", () => {
+    beforeEach(() => {
+      mockRevokeAdminInvitation.mockReset()
+    })
+
+    it("revokes invitation successfully", async () => {
+      const allowedGuard = mock(async () => allowedActor)
+      mockRevokeAdminInvitation.mockResolvedValueOnce({
+        id: "inv_123",
+        email: "revoked@example.com",
+        state: "revoked",
+      })
+
+      const app = new Elysia()
+        .use(createAdminInvitationsRoutes({ requireSuperAdmin: allowedGuard }))
+        .compile()
+
+      const res = await app.handle(
+        new Request(`${BASE}/inv_123`, { method: "DELETE" })
+      )
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(json.invitation.state).toBe("revoked")
+      expect(mockRevokeAdminInvitation).toHaveBeenCalledWith("inv_123")
+    })
   })
 })

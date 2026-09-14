@@ -1,9 +1,9 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 
-import {
-  resolveSidebarMenu,
-  resolveSidebarSecondaryLinks,
-} from "@/components/app-sidebar"
+mock.module("server-only", () => ({}))
+
+const { resolveSidebarMenu, resolveSidebarSecondaryLinks } =
+  await import("@/components/app-sidebar")
 import { getLocaleFromPathname } from "@/lib/i18n/pathname"
 
 describe("resolveSidebarMenu", () => {
@@ -269,6 +269,7 @@ describe("resolveSidebarMenu", () => {
       "VPN",
       "WhatsApp",
       "Systems",
+      "Admin",
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
 
@@ -296,6 +297,7 @@ describe("resolveSidebarMenu", () => {
       "VPN",
       "WhatsApp",
       "Systems",
+      "Admin",
     ])
   })
   it("renders Systems without collapsible children for portal surface", () => {
@@ -720,6 +722,23 @@ describe("resolveSidebarMenu", () => {
     // Overview nav item is active for detail route
     const overviewItem = navMain.find((item) => item.title === "Overview")
     expect(overviewItem?.isActive).toBe(true)
+  })
+
+  it("returns admin context navigation with Organizations, Users, and Invitations", () => {
+    const { navMain, navMainLabel, projects } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/admin/users",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("Admin")
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Organizations",
+      "Users",
+      "Invitations",
+    ])
+    expect(navMain.find((item) => item.title === "Users")?.isActive).toBe(true)
+    expect(projects.map((item) => item.name)).toContain("Back to Portal")
   })
 })
 

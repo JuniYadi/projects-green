@@ -1,4 +1,5 @@
 import { getWorkOS } from "@workos-inc/authkit-nextjs"
+import { getCachedOrganization } from "@/lib/workos-directory"
 
 export type AdminOrganizationSummary = {
   id: string
@@ -16,10 +17,49 @@ export type AdminInvitationSummary = {
   email: string
   state: string
   organizationId: string | null
+  organizationName?: string | null
   roleSlug: string | null
   createdAt: string
   expiresAt: string
   acceptedAt: string | null
+}
+
+export type AdminUserSummary = {
+  id: string
+  email: string
+  firstName: string | null
+  lastName: string | null
+  emailVerified: boolean
+  profilePictureUrl: string | null
+  lastSignInAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type AdminUserMembership = {
+  id: string
+  organizationId: string
+  organizationName: string | null
+  status: string
+  roleSlug: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type AdminUserDetail = AdminUserSummary & {
+  memberships: AdminUserMembership[]
+}
+
+type WorkOSUser = {
+  id: string
+  email: string
+  firstName?: string | null
+  lastName?: string | null
+  emailVerified: boolean
+  profilePictureUrl?: string | null
+  lastSignInAt?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 type WorkOSOrganization = {
@@ -84,6 +124,18 @@ const toInvitationSummary = (
   createdAt: inv.createdAt,
   expiresAt: inv.expiresAt,
   acceptedAt: inv.acceptedAt ?? null,
+})
+
+const toUserSummary = (user: WorkOSUser): AdminUserSummary => ({
+  id: user.id,
+  email: user.email,
+  firstName: user.firstName ?? null,
+  lastName: user.lastName ?? null,
+  emailVerified: user.emailVerified ?? false,
+  profilePictureUrl: user.profilePictureUrl ?? null,
+  lastSignInAt: user.lastSignInAt ?? null,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
 })
 
 export const createAdminOrganization = async (params: {
@@ -222,4 +274,139 @@ export const listAdminOrganizations = async (
         }
       : undefined,
   }
+}
+
+export type ListUsersParams = {
+  limit?: number
+  before?: string
+  after?: string
+  email?: string
+  organizationId?: string
+}
+
+export type ListUsersResult = {
+  users: AdminUserSummary[]
+  listMetadata?: {
+    before?: string
+    after?: string
+  }
+}
+
+export const listAdminUsers = async (
+  params: ListUsersParams = {}
+): Promise<ListUsersResult> => {
+  const workos = getWorkOS()
+
+  const result = await workos.userManagement.listUsers({
+    limit: params.limit,
+    before: params.before,
+    after: params.after,
+    email: params.email,
+    organizationId: params.organizationId,
+  })
+
+  return {
+    users: (result.data as unknown as WorkOSUser[]).map(toUserSummary),
+    listMetadata: result.listMetadata
+      ? {
+          before: result.listMetadata.before ?? undefined,
+          after: result.listMetadata.after ?? undefined,
+        }
+      : undefined,
+  }
+}
+
+export const getAdminUser = async (
+  userId: string
+): Promise<AdminUserDetail> => {
+  const workos = getWorkOS()
+
+  const [user, membershipsResult] = await Promise.all([
+    workos.userManagement.getUser(userId),
+    workos.userManagement.listOrganizationMemberships({ userId }),
+  ])
+
+  const membershipsData =
+    membershipsResult.data as unknown as WorkOSMembership[]
+
+  const memberships: AdminUserMembership[] = await Promise.all(
+    membershipsData.map(async (m) => {
+      const org = await getCachedOrganization(m.organizationId)
+      return {
+        id: m.id,
+        organizationId: m.organizationId,
+        organizationName: org?.name ?? null,
+        status: m.status,
+        roleSlug: m.role?.slug ?? "member",
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+      }
+    })
+  )
+
+  return {
+    ...toUserSummary(user as unknown as WorkOSUser),
+    memberships,
+  }
+}
+
+export type ListInvitationsParams = {
+  limit?: number
+  before?: string
+  after?: string
+  organizationId?: string
+}
+
+export type ListInvitationsResult = {
+  invitations: AdminInvitationSummary[]
+  listMetadata?: {
+    before?: string
+    after?: string
+  }
+}
+
+export const listAdminInvitations = async (
+  params: ListInvitationsParams = {}
+): Promise<ListInvitationsResult> => {
+  const workos = getWorkOS()
+
+  const result = await workos.userManagement.listInvitations({
+    limit: params.limit,
+    before: params.before,
+    after: params.after,
+    organizationId: params.organizationId,
+  })
+
+  const rawInvitations = result.data as unknown as WorkOSInvitation[]
+
+  const invitations: AdminInvitationSummary[] = await Promise.all(
+    rawInvitations.map(async (inv) => {
+      const org = inv.organizationId
+        ? await getCachedOrganization(inv.organizationId)
+        : null
+
+      return {
+        ...toInvitationSummary(inv),
+        organizationName: org?.name ?? null,
+      }
+    })
+  )
+
+  return {
+    invitations,
+    listMetadata: result.listMetadata
+      ? {
+          before: result.listMetadata.before ?? undefined,
+          after: result.listMetadata.after ?? undefined,
+        }
+      : undefined,
+  }
+}
+
+export const revokeAdminInvitation = async (
+  invitationId: string
+): Promise<AdminInvitationSummary> => {
+  const workos = getWorkOS()
+  const result = await workos.userManagement.revokeInvitation(invitationId)
+  return toInvitationSummary(result as unknown as WorkOSInvitation)
 }
