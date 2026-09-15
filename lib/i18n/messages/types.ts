@@ -1601,6 +1601,84 @@ export type AppMessages = {
           error: string
         }
       }
+      metaApps: {
+        heading: string
+        description: string
+        newAppButton: string
+        accessDeniedTitle: string
+        accessDeniedDesc: string
+        conflictError: string
+        loadError: string
+        createError: string
+        updateError: string
+        rotateError: string
+        deleteError: string
+        createValidation: string
+        nameRequired: string
+        rotateValidation: string
+        deleteConfirm: string
+        table: {
+          cardTitle: string
+          cardDesc: string
+          loading: string
+          empty: string
+          colName: string
+          colMetaAppId: string
+          colVersion: string
+          colMasterToken: string
+          colCallbackUrl: string
+          colDevices: string
+          colStatus: string
+          colActions: string
+          tokenConfigured: string
+          tokenNotSet: string
+          statusActive: string
+          statusInactive: string
+          copyCallbackUrl: string
+          btnEdit: string
+          btnRotate: string
+          btnDelete: string
+        }
+        createDialog: {
+          title: string
+          description: string
+          nameLabel: string
+          metaAppIdLabel: string
+          appSecretLabel: string
+          verifyTokenLabel: string
+          versionLabel: string
+          versionPlaceholder: string
+          masterTokenLabel: string
+          masterTokenPlaceholder: string
+          masterTokenHint: string
+          btnCancel: string
+          btnCreate: string
+          btnCreating: string
+        }
+        editDialog: {
+          title: string
+          description: string
+          nameLabel: string
+          versionLabel: string
+          versionPlaceholder: string
+          masterTokenLabel: string
+          masterTokenPlaceholder: string
+          masterTokenHint: string
+          activeLabel: string
+          btnCancel: string
+          btnSave: string
+          btnSaving: string
+        }
+        rotateDialog: {
+          title: string
+          description: string
+          appSecretLabel: string
+          verifyTokenLabel: string
+          btnCancel: string
+          btnRotate: string
+          btnRotating: string
+        }
+      }
     }
     supportTickets: {
       heading: string
@@ -1693,6 +1771,33 @@ export type AppMessages = {
       address: string
       cityState: string
       countryPostCode: string
+      organization: string
+      requester: string
+      pic: string
+      picFull: string
+      unassigned: string
+      staffSuffix: string
+      closing: string
+      categorizationControl: string
+      selectStatus: string
+      saveCategorization: string
+      saving: string
+      dangerZone: string
+      deleteWarning: string
+      deleteTicket: string
+      deleting: string
+      postInternalNote: string
+      replyRequired: string
+      replySuccess: string
+      unableToSubmitReply: string
+      confirmCloseTransition: string
+      categorizationUpdated: string
+      unableToUpdateCategorization: string
+      confirmClose: string
+      ticketClosedSuccess: string
+      unableToClose: string
+      confirmDelete: string
+      unableToDelete: string
     }
     adminCronjobs: {
       heading: string
@@ -2836,6 +2941,86 @@ export type AppMessages = {
       date: string
       amount: string
       noInvoices: string
+    }
+    vpn: {
+      myServices: {
+        orderPlan: string
+        downloadAllZip: string
+        getConfig: string
+        download: string
+        downloadConf: string
+        renewToDownload: string
+        provisioning: string
+        revoked: string
+        failed: string
+        error: string
+        ready: string
+        qr: string
+        wireGuardQrCode: string
+        scanQrWireGuard: string
+        scanQrWireGuardMobile: string
+        loadingQr: string
+        unableToGenerateQr: string
+        user: string
+        pass: string
+        hidePassword: string
+        showPassword: string
+        copyProxyCredentials: string
+        proxyCredentialsCopied: string
+        failedToCopyProxyCredentials: string
+        copySubscriptionId: string
+        copied: string
+        failedToCopyManual: string
+        failedToCancel: string
+        failedToReinstate: string
+        connectionProfile: string
+        status: string
+        locationCoverage: string
+        devices: string
+        setupAndConnect: string
+        actions: string
+        viewDetails: string
+        pairDevice: string
+        reinstate: string
+        reinstating: string
+        cancel: string
+        cancelling: string
+        searchSubscriptionsPlaceholder: string
+        emptySubscriptions: string
+        allStatuses: string
+        region: string
+        allRegions: string
+        activeStatus: string
+        cancellingStatus: string
+        suspendedStatus: string
+        expiredStatus: string
+        noRegions: string
+        devicesCount: string
+        moreCount: string
+        searchServersPlaceholder: string
+        filterByRegion: string
+        allRegionsCount: string
+        noServersMatchFilter: string
+        cancelDialogTitle: string
+        cancelDialogAbout: string
+        cancelDialogServiceUntil: string
+        cancelDialogServiceUntilSuffix: string
+        cancelDialogReasonLabel: string
+        cancelDialogReasonPlaceholder: string
+        cancelDialogType: string
+        cancelDialogToConfirm: string
+        cancelDialogConfirmPlaceholder: string
+        keepSubscription: string
+        confirmCancelButton: string
+        reinstateDialogTitle: string
+        reinstateDialogAbout: string
+        reinstateDialogBillingResume: string
+        reinstateDialogBillingResumeSuffix: string
+        reinstateDialogReasonLabel: string
+        reinstateDialogReasonPlaceholder: string
+        goBack: string
+        confirmReinstateButton: string
+      }
     }
   }
   sidebar: {
