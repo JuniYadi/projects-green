@@ -32,7 +32,7 @@ import type {
 } from "@/modules/deploy/api/environment-variables.contract"
 import {
   ENV_VAR_MAX_VALUE_SIZE,
-  LARAVEL_ENV_PRESETS,
+  getEnvPresets,
   getEnvVarPreviewValue,
   inferEnvVarTypeFromKey,
   isSecretEnvVarType,
@@ -54,6 +54,9 @@ type EnvVarsEditorProps = {
   persistence?: "api" | "local"
   /** Existing stack id enables the audited Vault write/reveal endpoints. */
   stackId?: string
+  framework?: string | null
+  templateName?: string | null
+  presets?: readonly string[]
   sharedSecretOptions?: SharedSecretOption[]
   onRevealSecret?: (envVar: EnvVar) => Promise<string>
 }
@@ -104,13 +107,13 @@ const createActivityId = () => {
 
 const formatUpdatedAt = (value: string | undefined) => {
   if (!value) {
-    return "-"
+    return "—"
   }
 
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
-    return "-"
+    return "—"
   }
 
   return date.toLocaleString()
@@ -127,9 +130,9 @@ const normalizeType = (type: EnvVarType | undefined): EditableEnvVarType => {
 const getTypeLabel = (type: EnvVarType | undefined) => {
   switch (normalizeType(type)) {
     case "secret_ref":
-      return "Secret (Vault)"
+      return "Secret"
     case "secret_shared_ref":
-      return "Shared secret"
+      return "Shared Secret"
     default:
       return "Plain"
   }
@@ -321,8 +324,7 @@ const revealVaultSecret = async (input: {
     }),
   })
   const payload = (await readResponse(response)) as
-    | (VaultWriteResponse & { data?: { value?: string } })
-    | null
+    (VaultWriteResponse & { data?: { value?: string } }) | null
 
   if (!response.ok || !payload?.ok || typeof payload.data?.value !== "string") {
     throw new Error(payload?.message ?? "Unable to reveal this Vault secret.")
@@ -353,6 +355,9 @@ export function EnvVarsEditor({
   onChange,
   persistence = "api",
   stackId,
+  framework,
+  templateName,
+  presets,
   sharedSecretOptions = [],
   onRevealSecret,
 }: EnvVarsEditorProps) {
@@ -360,6 +365,11 @@ export function EnvVarsEditor({
   const sharedSecretById = useMemo(() => {
     return new Map(sharedSecretOptions.map((option) => [option.id, option]))
   }, [sharedSecretOptions])
+
+  const activePresets = useMemo(
+    () => presets ?? getEnvPresets(framework, templateName),
+    [presets, framework, templateName]
+  )
 
   const [searchQuery, setSearchQuery] = useState("")
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -984,7 +994,13 @@ export function EnvVarsEditor({
       setVisibilityById((current) => ({ ...current, [row.id]: true }))
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Unable to reveal this secret."
+        error instanceof Error &&
+        (error.message.toLowerCase().includes("not found") ||
+          error.message.toLowerCase().includes("unable to reveal"))
+          ? `Secret "${row.key}" is stored securely and cannot be revealed. Click Edit to enter a new value.`
+          : error instanceof Error
+            ? error.message
+            : "Unable to reveal this secret."
       pushToast("error", message)
       pushValidationActivity(message)
     } finally {
@@ -1063,19 +1079,21 @@ export function EnvVarsEditor({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Quick start:</span>
-        {LARAVEL_ENV_PRESETS.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            className="rounded-full border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => addPreset(preset)}
-          >
-            {preset}
-          </button>
-        ))}
-      </div>
+      {activePresets.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Quick start:</span>
+          {activePresets.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              className="rounded-full border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => addPreset(preset)}
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full border-collapse text-sm">
@@ -1142,7 +1160,7 @@ export function EnvVarsEditor({
                       {getTypeLabel(row.type)}
                     </Badge>
                   </td>
-                  <td className="px-3 py-2 text-xs uppercase">
+                  <td className="px-3 py-2 text-xs capitalize">
                     {row.scope ?? "runtime"}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
@@ -1271,7 +1289,7 @@ export function EnvVarsEditor({
             <SheetDescription>
               {mode === "import"
                 ? "Paste .env content, review detected types, then import."
-                : "Choose where this value lives before saving it."}
+                : "Plain text values are readable directly, while secrets are encrypted securely."}
             </SheetDescription>
           </SheetHeader>
 
@@ -1388,11 +1406,11 @@ export function EnvVarsEditor({
                       }))
                     }}
                   >
-                    <option value="plain">Plain (ConfigMap)</option>
-                    <option value="secret_ref">Secret (Vault)</option>
-                    <option value="secret_shared_ref">
-                      Shared secret reference
-                    </option>
+                    <option value="plain">Plain Text</option>
+                    <option value="secret_ref">Secret</option>
+                    {sharedSecretOptions.length > 0 ? (
+                      <option value="secret_shared_ref">Shared Secret</option>
+                    ) : null}
                   </select>
                 </label>
 

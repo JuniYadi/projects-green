@@ -63,4 +63,13 @@ describe("TabBuild Component", () => {
     expect(getByText("Build & Deploy")).toBeTruthy()
     expect(getByText("Save Changes")).toBeTruthy()
   })
+
+  it("renders prebuilt template info card when application is a template", () => {
+    const { getByText, queryByText } = render(
+      <TabBuild sourceType="TEMPLATE" templateName="9router" />
+    )
+    expect(getByText(/9router/)).toBeTruthy()
+    expect(getByText(/Managed Container Image/i)).toBeTruthy()
+    expect(queryByText("Save Changes")).toBeNull()
+  })
 })

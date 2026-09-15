@@ -219,7 +219,7 @@ describe("EnvVarsEditor", () => {
     )
 
     expect(view.getByText("••••••••")).toBeTruthy()
-    expect(view.getByText("Secret (Vault)")).toBeTruthy()
+    expect(view.getByText("Secret")).toBeTruthy()
     expect(view.queryByText("top-secret")).toBeNull()
 
     await user.click(view.getByRole("button", { name: "Import variables" }))

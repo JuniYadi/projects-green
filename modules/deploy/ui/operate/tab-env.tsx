@@ -24,6 +24,8 @@ type TabEnvProps = {
   >
   onPersist?: (rows: OperateEnvVar[]) => Promise<void>
   stackId?: string
+  framework?: string | null
+  templateName?: string | null
   sharedSecretOptions?: SharedSecretOption[]
 }
 
@@ -80,6 +82,8 @@ export function TabEnv({
   setEnvVars,
   onPersist,
   stackId,
+  framework,
+  templateName,
   sharedSecretOptions = [],
 }: TabEnvProps) {
   const editorEnvVars = useMemo(
@@ -105,8 +109,8 @@ export function TabEnv({
               Environment Variables
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Plain configuration, Vault secrets, and managed-service references
-              for the {selectedEnv} environment.
+              Manage configuration and secrets for the {selectedEnv}{" "}
+              environment.
             </CardDescription>
           </div>
         </CardHeader>
@@ -117,6 +121,8 @@ export function TabEnv({
             onChange={handleEnvVarsChange}
             persistence="local"
             stackId={stackId}
+            framework={framework}
+            templateName={templateName}
             sharedSecretOptions={sharedSecretOptions}
           />
         </CardContent>

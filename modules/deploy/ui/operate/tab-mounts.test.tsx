@@ -43,7 +43,7 @@ describe("TabMounts", () => {
     expect(
       view.getByText("No volume or configuration files mounted.")
     ).toBeDefined()
-    expect(view.getByText("In-Container File Mounting Mechanics")).toBeDefined()
+    expect(view.getByText("How File Mounts Work")).toBeDefined()
 
     const nameInput = view.getByPlaceholderText(
       "e.g. app-config or application-key"

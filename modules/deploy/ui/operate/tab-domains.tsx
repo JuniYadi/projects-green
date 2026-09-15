@@ -250,73 +250,92 @@ export function TabDomains({
       ...ipv6.map((value) => ({ type: "AAAA", host: "@", value })),
     ]
     const allRecords = [...cnameRecords, ...ipRecords]
+    const isVerified = domain.dnsStatus === "VERIFIED"
 
     return (
-      <div className="mt-3 space-y-2.5 rounded-lg border border-border bg-muted/30 p-3">
-        <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-          {t.dnsTargetsLabel}
-        </p>
-        {allRecords.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t.dnsTargetsEmpty}</p>
-        ) : (
-          <>
-            <p className="text-[11px] text-muted-foreground">
-              {t.dnsTargetsHint}
-            </p>
-            {cnameRecords.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <p className="text-[10px] font-semibold text-muted-foreground">
-                  Option 1: CNAME (Recommended for subdomains like{" "}
-                  {domain.hostname})
-                </p>
-                {cnameRecords.map((record, index) => (
-                  <div
-                    key={`${domain.id}-${record.type}-${record.value}-${index}`}
-                    className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
-                  >
-                    <span className="font-bold text-emerald-400">
-                      {record.type}
-                    </span>
-                    <span className="truncate text-foreground">
-                      {record.value}
-                    </span>
-                    {renderCopyButton(
-                      record.value,
-                      `${domain.id}-${record.type}-${index}`
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {ipRecords.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <p className="text-[10px] font-semibold text-muted-foreground">
-                  {cnameRecords.length > 0
-                    ? "Option 2: Direct A / AAAA (For Apex / Root domain @)"
-                    : "Direct IP Records"}
-                </p>
-                {ipRecords.map((record, index) => (
-                  <div
-                    key={`${domain.id}-${record.type}-${record.value}-${index}`}
-                    className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
-                  >
-                    <span className="font-bold text-emerald-400">
-                      {record.type}
-                    </span>
-                    <span className="truncate text-foreground">
-                      {record.value}
-                    </span>
-                    {renderCopyButton(
-                      record.value,
-                      `${domain.id}-${record.type}-${index}`
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      <Collapsible
+        defaultOpen={!isVerified}
+        className="mt-3 rounded-lg border border-border bg-muted/30 p-3"
+      >
+        <div className="flex items-center justify-between">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-left text-[10px] font-bold tracking-wider text-muted-foreground uppercase hover:text-foreground"
+            >
+              <CaretDown size={14} />
+              <span>{t.dnsTargetsLabel}</span>
+              {isVerified && (
+                <span className="ml-1 font-normal text-emerald-500 lowercase">
+                  ✓ verified
+                </span>
+              )}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent className="mt-2 space-y-2.5">
+          {allRecords.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{t.dnsTargetsEmpty}</p>
+          ) : (
+            <>
+              <p className="text-[11px] text-muted-foreground">
+                {t.dnsTargetsHint}
+              </p>
+              {cnameRecords.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[10px] font-semibold text-muted-foreground">
+                    Option 1: CNAME (Recommended for subdomains like{" "}
+                    {domain.hostname})
+                  </p>
+                  {cnameRecords.map((record, index) => (
+                    <div
+                      key={`${domain.id}-${record.type}-${record.value}-${index}`}
+                      className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
+                    >
+                      <span className="font-bold text-emerald-400">
+                        {record.type}
+                      </span>
+                      <span className="truncate text-foreground">
+                        {record.value}
+                      </span>
+                      {renderCopyButton(
+                        record.value,
+                        `${domain.id}-${record.type}-${index}`
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {ipRecords.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[10px] font-semibold text-muted-foreground">
+                    {cnameRecords.length > 0
+                      ? "Option 2: Direct A / AAAA (For Apex / Root domain @)"
+                      : "Direct IP Records"}
+                  </p>
+                  {ipRecords.map((record, index) => (
+                    <div
+                      key={`${domain.id}-${record.type}-${record.value}-${index}`}
+                      className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
+                    >
+                      <span className="font-bold text-emerald-400">
+                        {record.type}
+                      </span>
+                      <span className="truncate text-foreground">
+                        {record.value}
+                      </span>
+                      {renderCopyButton(
+                        record.value,
+                        `${domain.id}-${record.type}-${index}`
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
     )
   }
 
@@ -451,170 +470,202 @@ export function TabDomains({
         </div>
         {!isManaged && renderDns(domain)}
         {!isManaged && (
-          <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-3">
-            <p className="text-[11px] text-muted-foreground md:col-span-3">
-              {t.certificateHint}
-            </p>
-            {(["certificatePem", "privateKeyPem", "chainPem"] as const).map(
-              (field) => (
-                <label
-                  key={field}
-                  className="space-y-1 text-[10px] font-semibold text-muted-foreground"
-                >
-                  {field === "certificatePem"
-                    ? t.certificatePemLabel
-                    : field === "privateKeyPem"
-                      ? t.privateKeyPemLabel
-                      : t.chainPemLabel}
-                  <textarea
-                    className="min-h-20 w-full rounded-md border border-border bg-background p-2 font-mono text-[10px] text-foreground"
-                    value={certificate[field]}
-                    onChange={(event) =>
-                      updateCertificateField(
-                        domain.id,
-                        field,
-                        event.target.value
-                      )
-                    }
-                    placeholder={t.pemPlaceholder}
-                  />
-                </label>
-              )
-            )}
-            <Button
-              type="button"
-              size="sm"
-              className="md:col-span-3 md:w-fit"
-              disabled={
-                busyKey !== null ||
-                !certificate.certificatePem ||
-                !certificate.privateKeyPem
-              }
-              onClick={() =>
-                void runAction(`certificate-${domain.id}`, async () => {
-                  await api!.onUploadCertificate(domain.id, certificate)
-                  setCertificateForm((previous) => ({
-                    ...previous,
-                    [domain.id]: {
-                      certificatePem: "",
-                      privateKeyPem: "",
-                      chainPem: "",
-                    },
-                  }))
-                })
-              }
-            >
-              {t.saveCertificate}
-            </Button>
-          </div>
-        )}
-        <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
-              {t.allowlistLabel}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-hidden"
-                      aria-label={t.allowlistTooltipAria}
-                    >
-                      <Info size={12} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[220px]">
-                    {t.allowlistTooltipContent}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </span>
-            <Select
-              value={domain.allowlistMode}
-              onValueChange={(value) =>
-                void runAction(`allowlist-mode-${domain.id}`, () =>
-                  api!.onUpdateAllowlist(
-                    domain.id,
-                    value as DomainAllowlistMode
-                  )
+          <Collapsible className="rounded-lg border border-border bg-muted/30 p-3">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-left text-[11px] font-semibold text-muted-foreground hover:text-foreground"
+              >
+                <CaretDown size={14} />
+                <span>{t.certificateHeading} (Custom SSL / TLS)</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 grid gap-3 md:grid-cols-3">
+              <p className="text-[11px] text-muted-foreground md:col-span-3">
+                {t.certificateHint}
+              </p>
+              {(["certificatePem", "privateKeyPem", "chainPem"] as const).map(
+                (field) => (
+                  <label
+                    key={field}
+                    className="space-y-1 text-[10px] font-semibold text-muted-foreground"
+                  >
+                    {field === "certificatePem"
+                      ? t.certificatePemLabel
+                      : field === "privateKeyPem"
+                        ? t.privateKeyPemLabel
+                        : t.chainPemLabel}
+                    <textarea
+                      className="min-h-20 w-full rounded-md border border-border bg-background p-2 font-mono text-[10px] text-foreground"
+                      value={certificate[field]}
+                      onChange={(event) =>
+                        updateCertificateField(
+                          domain.id,
+                          field,
+                          event.target.value
+                        )
+                      }
+                      placeholder={t.pemPlaceholder}
+                    />
+                  </label>
                 )
-              }
-            >
-              <SelectTrigger className="h-8 w-40 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="OPEN">{t.allowlistOpen}</SelectItem>
-                <SelectItem value="ALLOWLIST_ONLY">
-                  {t.allowlistRestricted}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Input
-              value={allowlistEntry}
-              onChange={(event) =>
-                setAllowlistInput((previous) => ({
-                  ...previous,
-                  [domain.id]: event.target.value,
-                }))
-              }
-              placeholder={t.cidrPlaceholder}
-              className="h-8 max-w-xs text-xs"
-            />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={busyKey !== null || !allowlistEntry.trim()}
-              onClick={() =>
-                void runAction(`allowlist-add-${domain.id}`, async () => {
-                  await api!.onAddAllowlistEntry(domain.id, {
-                    cidr: allowlistEntry.trim(),
+              )}
+              <Button
+                type="button"
+                size="sm"
+                className="md:col-span-3 md:w-fit"
+                disabled={
+                  busyKey !== null ||
+                  !certificate.certificatePem ||
+                  !certificate.privateKeyPem
+                }
+                onClick={() =>
+                  void runAction(`certificate-${domain.id}`, async () => {
+                    await api!.onUploadCertificate(domain.id, certificate)
+                    setCertificateForm((previous) => ({
+                      ...previous,
+                      [domain.id]: {
+                        certificatePem: "",
+                        privateKeyPem: "",
+                        chainPem: "",
+                      },
+                    }))
                   })
+                }
+              >
+                {t.saveCertificate}
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+        <Collapsible
+          defaultOpen={
+            domain.allowlistMode === "ALLOWLIST_ONLY" ||
+            domain.allowlistEntries.length > 0
+          }
+          className="space-y-2 rounded-lg border border-border bg-muted/20 p-3"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-left text-xs font-semibold text-foreground hover:text-primary"
+              >
+                <CaretDown size={14} />
+                <span>{t.allowlistLabel} (IP Restriction)</span>
+                {domain.allowlistMode === "ALLOWLIST_ONLY" ? (
+                  <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-500 uppercase">
+                    {t.allowlistRestricted} ({domain.allowlistEntries.length})
+                  </span>
+                ) : null}
+              </button>
+            </CollapsibleTrigger>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-hidden"
+                    aria-label={t.allowlistTooltipAria}
+                  >
+                    <Info size={12} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[220px]">
+                  {t.allowlistTooltipContent}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <CollapsibleContent className="space-y-2 pt-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                value={domain.allowlistMode}
+                onValueChange={(value) =>
+                  void runAction(`allowlist-mode-${domain.id}`, () =>
+                    api!.onUpdateAllowlist(
+                      domain.id,
+                      value as DomainAllowlistMode
+                    )
+                  )
+                }
+              >
+                <SelectTrigger className="h-8 w-40 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OPEN">{t.allowlistOpen}</SelectItem>
+                  <SelectItem value="ALLOWLIST_ONLY">
+                    {t.allowlistRestricted}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Input
+                value={allowlistEntry}
+                onChange={(event) =>
                   setAllowlistInput((previous) => ({
                     ...previous,
-                    [domain.id]: "",
+                    [domain.id]: event.target.value,
                   }))
-                })
-              }
-            >
-              {t.addEntry}
-            </Button>
-          </div>
-          {domain.allowlistEntries.length > 0 && (
-            <ul className="space-y-1 text-xs text-muted-foreground">
-              {domain.allowlistEntries.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="flex items-center justify-between gap-2"
-                >
-                  <span>
-                    {entry.cidr}
-                    {entry.label || entry.description
-                      ? ` · ${entry.label || entry.description}`
-                      : ""}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 text-rose-400"
-                    disabled={busyKey !== null}
-                    onClick={() =>
-                      void runAction(`allowlist-delete-${entry.id}`, () =>
-                        api!.onDeleteAllowlistEntry(domain.id, entry.id)
-                      )
-                    }
+                }
+                placeholder={t.cidrPlaceholder}
+                className="h-8 max-w-xs text-xs"
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busyKey !== null || !allowlistEntry.trim()}
+                onClick={() =>
+                  void runAction(`allowlist-add-${domain.id}`, async () => {
+                    await api!.onAddAllowlistEntry(domain.id, {
+                      cidr: allowlistEntry.trim(),
+                    })
+                    setAllowlistInput((previous) => ({
+                      ...previous,
+                      [domain.id]: "",
+                    }))
+                  })
+                }
+              >
+                {t.addEntry}
+              </Button>
+            </div>
+            {domain.allowlistEntries.length > 0 && (
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                {domain.allowlistEntries.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex items-center justify-between gap-2"
                   >
-                    {t.removeEntry}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                    <span>
+                      {entry.cidr}
+                      {entry.label || entry.description
+                        ? ` · ${entry.label || entry.description}`
+                        : ""}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-rose-400"
+                      disabled={busyKey !== null}
+                      onClick={() =>
+                        void runAction(`allowlist-delete-${entry.id}`, () =>
+                          api!.onDeleteAllowlistEntry(domain.id, entry.id)
+                        )
+                      }
+                    >
+                      {t.removeEntry}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     )
   }

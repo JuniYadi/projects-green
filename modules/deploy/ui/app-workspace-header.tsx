@@ -194,6 +194,7 @@ export function AppWorkspaceHeader({
               onClick={onSync}
               disabled={isSyncing}
               className="h-8 gap-1.5 px-3 text-xs"
+              title="Sync latest configuration and state"
             >
               <ArrowsClockwise
                 size={14}
@@ -219,15 +220,6 @@ export function AppWorkspaceHeader({
               </a>
             </Button>
           ) : null}
-
-          <Button asChild size="sm" className="h-8 gap-1.5 px-3 text-xs">
-            <Link
-              href={`/${locale}/console/app/platform/${selectedApp.slug}?tab=env`}
-            >
-              <GearSix size={14} />
-              <span>Settings</span>
-            </Link>
-          </Button>
         </div>
       </div>
 

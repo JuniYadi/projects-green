@@ -1230,6 +1230,8 @@ export default function PlatformInstanceWorkspacePage() {
                         selectedEnv={selectedEnv}
                         envVars={envVars}
                         setEnvVars={setEnvVars}
+                        framework={overview.stack.framework}
+                        templateName={overview.stack.templateName}
                         onPersist={async (rows) => {
                           try {
                             await persistEnvVars(rows)
@@ -1259,6 +1261,23 @@ export default function PlatformInstanceWorkspacePage() {
                       <TabScaling
                         replicas={replicas}
                         setReplicas={setReplicas}
+                        maxAllowedReplicas={
+                          overview?.stack?.resourcePlanId === "small"
+                            ? 2
+                            : overview?.stack?.resourcePlanId === "medium"
+                              ? 4
+                              : 8
+                        }
+                        maxCpuQuota={
+                          overview?.stack?.cpu
+                            ? `${overview.stack.cpu}m`
+                            : "1000m"
+                        }
+                        maxMemoryQuota={
+                          overview?.stack?.memory
+                            ? `${overview.stack.memory}Mi`
+                            : "4096Mi"
+                        }
                         initialCpuLimit={
                           overview?.stack?.cpu
                             ? `${overview.stack.cpu}m`
@@ -1288,6 +1307,9 @@ export default function PlatformInstanceWorkspacePage() {
                         rootDirectory={buildSettings.rootDirectory}
                         dockerfileDetected={buildSettings.dockerfileDetected}
                         framework={buildSettings.framework}
+                        sourceType={overview.stack.sourceType}
+                        templateName={overview.stack.templateName}
+                        templateId={overview.stack.templateId}
                         onSave={persistBuildSettings}
                       />
                     )}

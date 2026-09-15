@@ -21,8 +21,19 @@ describe("TabScaling", () => {
 
   it("verifies table legibility and absence of hardcoded text-white/border-white tokens", () => {
     const setReplicas = mock(() => {})
+    const dummyPods = [
+      {
+        name: "web-7d9f8b-xk2qp",
+        status: "healthy" as const,
+        uptime: "3d 14h",
+        cpu: 42,
+        ram: 61,
+        restarts: 0,
+        node: "node-us-east-1a",
+      },
+    ]
     const { container } = render(
-      <TabScaling replicas={2} setReplicas={setReplicas} />
+      <TabScaling replicas={2} setReplicas={setReplicas} pods={dummyPods} />
     )
 
     // Ensure no hardcoded text-white/80, border-white, or #0A0A0C
@@ -39,7 +50,7 @@ describe("TabScaling", () => {
   it("calculates total resource footprint based on replicas and limits", () => {
     const setReplicas = mock(() => {})
     const { getByText } = render(
-      <TabScaling replicas={2} setReplicas={setReplicas} />
+      <TabScaling replicas={2} setReplicas={setReplicas} maxCpuQuota="4000m" />
     )
 
     // 2 replicas * 1000m = 2.0 / 4.0 Cores
