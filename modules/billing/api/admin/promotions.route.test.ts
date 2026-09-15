@@ -19,7 +19,7 @@ const mockGetVoucherById = mock(() => Promise.resolve(null))
 const mockUpdatePromotion = mock(() => Promise.resolve({}))
 const mockPublishVoucher = mock(() => Promise.resolve({}))
 const mockDisablePromotionVoucher = mock(() => Promise.resolve({}))
-const mockExpireVoucher = mock(() => Promise.resolve({}))
+const mockExpireVoucher = mock(() => Promise.resolve(sampleVoucher))
 const mockGetPromotionClaims = mock(() => Promise.resolve([]))
 
 const mockService = {
@@ -82,6 +82,7 @@ describe("admin promotions.route", () => {
     mockUpdatePromotion.mockClear()
     mockPublishVoucher.mockClear()
     mockDisablePromotionVoucher.mockClear()
+    mockExpireVoucher.mockClear()
     mockGetPromotionClaims.mockClear()
 
     app = createAdminPromotionsRoutes({
