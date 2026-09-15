@@ -1,0 +1,12 @@
+[extend]
+# Extend default gitleaks configuration
+
+[allowlist]
+description = "Global allowlist for mock secrets, test fixtures, and documentation examples"
+paths = [
+  '''(?i).*\.test\.(ts|tsx|js|jsx)$''',
+  '''(?i).*\.spec\.(ts|tsx|js|jsx)$''',
+  '''(?i)test/.*''',
+  '''(?i)content/knowledge-base/.*''',
+  '''(?i)\.agents/.*''',
+]
