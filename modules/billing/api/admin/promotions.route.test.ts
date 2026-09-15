@@ -244,6 +244,20 @@ describe("admin promotions.route", () => {
       expect(data.ok).toBe(true)
       expect(data.data.status).toBe("EXPIRED")
     })
+
+    it("returns 404 when promotion does not exist", async () => {
+      mockExpireVoucher.mockRejectedValueOnce(
+        new VoucherNotFoundError("promo-404")
+      )
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/promotions/promo-404/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(404)
+    })
   })
 
   describe("GET /admin/promotions/:id/claims", () => {

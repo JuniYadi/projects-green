@@ -511,6 +511,25 @@ describe("VoucherService", () => {
         VoucherNotFoundError
       )
     })
+
+    it("expires a disabled voucher for an explicit admin action", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        code: "EXP123",
+        status: "DISABLED",
+      })) as never
+      prisma.voucher.update = mock(({ data }) => ({
+        id: "v_1",
+        code: "EXP123",
+        status: data.status,
+      })) as never
+
+      const service = new VoucherService(prisma as unknown as PrismaClient)
+      const result = await service.expireVoucher("v_1")
+
+      expect(result.status).toBe("EXPIRED")
+    })
   })
 
   describe("sweepExpiredVouchers", () => {

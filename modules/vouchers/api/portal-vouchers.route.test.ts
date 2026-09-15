@@ -485,6 +485,36 @@ describe("Portal Voucher Routes", () => {
       expect(body.ok).toBe(true)
       expect(body.data.status).toBe("EXPIRED")
     })
+
+    it("returns 404 when voucher does not exist", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.expireVoucher = mock(() => {
+        throw new VoucherNotFoundError("missing")
+      })
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/missing/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+    })
+
+    it("returns 422 for an invalid voucher id", async () => {
+      const res = await toApp(createDeps()).handle(
+        new Request("http://localhost/vouchers/portal/%20/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
+    })
   })
 
   describe("GET /vouchers/portal/:id/claims", () => {
