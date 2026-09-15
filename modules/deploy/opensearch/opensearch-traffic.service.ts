@@ -161,13 +161,16 @@ export async function resolveOpenSearchForStack(
  * Prefers exact FQDN matching on `haproxy_host.keyword` with fallback to backend prefix.
  */
 function buildStackFilterClause(
-  domainList: string[],
-  stackSlug: string
+  domainList: string[] = [],
+  stackSlug = ""
 ): Record<string, unknown> {
-  if (domainList.length > 0) {
+  const validDomains = Array.isArray(domainList)
+    ? domainList.filter(Boolean)
+    : []
+  if (validDomains.length > 0) {
     return {
       terms: {
-        "haproxy_host.keyword": domainList,
+        "haproxy_host.keyword": validDomains,
       },
     }
   }

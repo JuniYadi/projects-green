@@ -164,6 +164,38 @@ describe("opensearch-traffic.service", () => {
         { path: "/missing", errors: 5, sampleStatus: 404 },
       ])
     })
+
+    it("throws error when stack is not found in computeDailyTrafficSnapshotFromOpenSearch", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue(null)
+      const mockClient = { search: mock() }
+      expect(
+        computeDailyTrafficSnapshotFromOpenSearch(
+          "unknown",
+          new Date(),
+          mockClient as unknown as import("@opensearch-project/opensearch").Client
+        )
+      ).rejects.toThrow("not found")
+    })
+
+    it("handles OpenSearch search error gracefully in snapshot compute", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+      const mockClient = {
+        search: mock(async () => {
+          throw new Error("OpenSearch down")
+        }),
+      }
+      const result = await computeDailyTrafficSnapshotFromOpenSearch(
+        "my-app",
+        new Date(),
+        mockClient as unknown as import("@opensearch-project/opensearch").Client
+      )
+      expect(result.totalRequests).toBe(0)
+      expect(result.topIps).toEqual([])
+    })
   })
 
   describe("getAppTrafficReport", () => {
@@ -279,6 +311,14 @@ describe("opensearch-traffic.service", () => {
           avgLatencyMs: 25,
           topPathsJson: [{ path: "/v1", views: 400 }],
           errorPathsJson: [],
+          topIpsJson: [
+            {
+              ip: "1.1.1.1",
+              requestsCount: 100,
+              countryCode: "SG",
+              countryName: "Singapura",
+            },
+          ],
         },
         {
           id: "snap_2",
@@ -291,6 +331,14 @@ describe("opensearch-traffic.service", () => {
           avgLatencyMs: 30,
           topPathsJson: [{ path: "/v1", views: 800 }],
           errorPathsJson: [],
+          topIpsJson: [
+            {
+              ip: "1.1.1.1",
+              requestsCount: 200,
+              countryCode: "SG",
+              countryName: "Singapura",
+            },
+          ],
         },
       ])
 
@@ -311,6 +359,34 @@ describe("opensearch-traffic.service", () => {
         requests: 2000,
         errors: 40,
       })
+      expect(report.topIps[0].requestsCount).toBe(300)
+    })
+
+    it("returns empty default report when snapshot is absent", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+      mockPrisma.appHostingDailyTrafficSnapshot.findUnique.mockResolvedValue(
+        null
+      )
+
+      const report = await getAppTrafficReport("my-app", {
+        granularity: "daily",
+      })
+
+      expect(report.totalRequests).toBe(0)
+      expect(report.totalBytes).toBe(0)
+      expect(report.totalBytesFormatted).toBe("0 B")
+      expect(report.topPages).toEqual([])
+      expect(report.topIps).toEqual([])
+      expect(report.topCountries).toEqual([])
+    })
+
+    it("throws error when stack is not found", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue(null)
+      expect(getAppTrafficReport("unknown", {})).rejects.toThrow("not found")
     })
   })
 

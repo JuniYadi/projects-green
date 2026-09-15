@@ -3,6 +3,7 @@ import { render, cleanup } from "@testing-library/react"
 import { TrafficSummaryCards } from "./traffic-summary-cards"
 import { TrafficHourlyChart } from "./traffic-hourly-chart"
 import { TrafficTopPagesCard } from "./traffic-top-pages-card"
+import { TrafficGeoCard } from "./traffic-geo-card"
 
 describe("Frontend Traffic Components", () => {
   afterEach(() => {
@@ -85,6 +86,66 @@ describe("Frontend Traffic Components", () => {
       )
 
       expect(view.getByText("Semua Tautan Bersih!")).toBeTruthy()
+    })
+  })
+
+  describe("TrafficGeoCard", () => {
+    it("renders top countries and top IP visitors with location badges", () => {
+      const view = render(
+        <TrafficGeoCard
+          topCountries={[
+            {
+              countryCode: "SG",
+              countryName: "Singapura",
+              requests: 1500,
+              percentage: 75,
+            },
+            {
+              countryCode: "ID",
+              countryName: "Indonesia",
+              requests: 500,
+              percentage: 25,
+            },
+          ]}
+          topIps={[
+            {
+              ip: "149.22.90.218",
+              requestsCount: 1200,
+              countryCode: "SG",
+              countryName: "Singapura",
+              city: "Singapore",
+            },
+            {
+              ip: "103.10.10.1",
+              requestsCount: 500,
+              countryCode: "ID",
+              countryName: "Indonesia",
+              city: "Jakarta",
+            },
+          ]}
+        />
+      )
+
+      expect(view.getByText("Asal Negara Pengunjung (GeoIP)")).toBeTruthy()
+      expect(view.getByText("Singapura")).toBeTruthy()
+      expect(view.getByText("75%")).toBeTruthy()
+      expect(view.getByText("Indonesia")).toBeTruthy()
+      expect(view.getByText("25%")).toBeTruthy()
+
+      expect(view.getByText("Top 10 Alamat IP Pengunjung")).toBeTruthy()
+      expect(view.getByText("149.22.90.218")).toBeTruthy()
+      expect(view.getByText("Singapore, Singapura")).toBeTruthy()
+      expect(view.getByText("103.10.10.1")).toBeTruthy()
+      expect(view.getByText("Jakarta, Indonesia")).toBeTruthy()
+    })
+
+    it("renders empty state messages when country and IP arrays are empty", () => {
+      const view = render(<TrafficGeoCard topCountries={[]} topIps={[]} />)
+
+      expect(view.getByText("Belum ada data geolokasi pengunjung")).toBeTruthy()
+      expect(
+        view.getByText("Belum ada data client IP yang tercatat")
+      ).toBeTruthy()
     })
   })
 })
