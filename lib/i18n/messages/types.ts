@@ -118,6 +118,119 @@ export type AppMessages = {
       invitations: string
       ownership: string
     }
+    organizationAdmin: {
+      heading: string
+      description: string
+      effectiveRole: string
+      noneRole: string
+      unknownRole: string
+      retry: string
+      refreshing: string
+      tabs: {
+        members: string
+        membersDesc: string
+        invitations: string
+        invitationsDesc: string
+        settings: string
+        settingsDesc: string
+      }
+      members: {
+        heading: string
+        description: string
+        noPermission: string
+        searchPlaceholder: string
+        searchAriaLabel: string
+        filterRoleAriaLabel: string
+        allRoles: string
+        filterStatusAriaLabel: string
+        allStatuses: string
+        resetFilters: string
+        showingCount: string
+        noMembers: string
+        noMatchingMembers: string
+        clearFilters: string
+        memberId: string
+        roleAndStatus: string
+        promoteToAdmin: string
+        promotingToAdmin: string
+        promoteToOwner: string
+        promotingToOwner: string
+        demoteToMember: string
+        demotingToMember: string
+        transferOwnership: string
+        transferringOwnership: string
+        removeMember: string
+        removingMember: string
+      }
+      invitations: {
+        heading: string
+        description: string
+        emailPlaceholder: string
+        invite: string
+        sending: string
+        noPermission: string
+        noPending: string
+        roleAndExpires: string
+        resend: string
+        resending: string
+        revoke: string
+        revoking: string
+      }
+      settings: {
+        profileHeading: string
+        profileDescription: string
+        orgNameLabel: string
+        orgNamePlaceholder: string
+        billingFullNameLabel: string
+        billingFullNamePlaceholder: string
+        billingAddressLabel: string
+        billingAddressPlaceholder: string
+        billingCityLabel: string
+        billingCityPlaceholder: string
+        billingStateLabel: string
+        billingStatePlaceholder: string
+        billingCountryLabel: string
+        billingCountryPlaceholder: string
+        billingPostCodeLabel: string
+        billingPostCodePlaceholder: string
+        saveProfile: string
+        savingProfile: string
+        orgId: string
+        created: string
+        lastUpdated: string
+        profileUnavailable: string
+        dangerZoneHeading: string
+        dangerZoneDescription: string
+        deleteNoticePrefix: string
+        deleteNoticeUnavailable: string
+        deleteConfirmPlaceholder: string
+        deleteOrganization: string
+        deletingOrganization: string
+      }
+      confirm: {
+        promoteOwner: string
+        transferOwnership: string
+        removeMember: string
+        revokeInvitation: string
+        deleteOrganization: string
+      }
+      messages: {
+        requestFailed: string
+        loadFailed: string
+        actionFailed: string
+        inviteEmailRequired: string
+        invitationSent: string
+        memberPromotedAdmin: string
+        memberPromotedOwner: string
+        memberDemoted: string
+        ownershipTransferred: string
+        memberRemoved: string
+        invitationResent: string
+        invitationRevoked: string
+        profileUpdated: string
+        orgDeleted: string
+      }
+    }
     billing: {
       heading: string
       description: string
