@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -25,9 +25,12 @@ import { formatBytes } from "@/lib/utils"
 import { MarkdownEditor } from "@/components/ui/markdown-editor"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { sanitizeHtml } from "@/lib/sanitize-html"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 type SupportTicketDetailScreenProps = {
   ticketId: string
+  locale?: AppLocale
 }
 
 type FileWithPreview = {
@@ -57,9 +60,15 @@ const apiClient = createSupportTicketsClient()
 function SecureDetailsViewer({
   content,
   label,
+  messages,
 }: {
   content: string
   label: string
+  messages?: {
+    encrypted: string
+    showSecureDetails: string
+    hideSecureDetails: string
+  }
 }) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -83,7 +92,7 @@ function SecureDetailsViewer({
           </svg>
           <span>{label}</span>
           <span className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-semibold">
-            Encrypted
+            {messages?.encrypted || "Encrypted"}
           </span>
         </div>
         <Button
@@ -93,7 +102,9 @@ function SecureDetailsViewer({
           className="h-7 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 hover:text-yellow-400"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? "Hide secure details" : "Show secure details"}
+          {isOpen
+            ? messages?.hideSecureDetails || "Hide secure details"
+            : messages?.showSecureDetails || "Show secure details"}
         </Button>
       </div>
       {isOpen && (
@@ -165,8 +176,14 @@ function AttachmentItem({
 
 export function SupportTicketDetailScreen({
   ticketId,
+  locale: propLocale,
 }: SupportTicketDetailScreenProps) {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const activeLocale: AppLocale =
+    propLocale || (params?.lang as AppLocale) || "en"
+  const messages = getMessages(activeLocale).console.supportTickets
+
   const [thread, setThread] = useState<SupportTicketThread | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -516,9 +533,7 @@ export function SupportTicketDetailScreen({
 
   if (!thread || !ticket) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Support ticket thread is unavailable.
-      </p>
+      <p className="text-sm text-muted-foreground">{messages.failedToLoad}</p>
     )
   }
 
@@ -552,13 +567,9 @@ export function SupportTicketDetailScreen({
             ></path>
           </svg>
           <div>
-            <p className="text-sm font-semibold">
-              Secure Details Permanently Wiped
-            </p>
+            <p className="text-sm font-semibold">{messages.secureWipedTitle}</p>
             <p className="mt-0.5 text-xs leading-relaxed text-destructive/80">
-              This ticket is closed. For security compliance, all credentials
-              and sensitive information in the secure fields have been
-              permanently deleted and cannot be retrieved.
+              {messages.secureWipedDesc}
             </p>
           </div>
         </div>
@@ -583,12 +594,10 @@ export function SupportTicketDetailScreen({
           </svg>
           <div>
             <p className="text-sm font-semibold">
-              Active Secure Details Warning
+              {messages.activeSecureWarningTitle}
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-yellow-500/80">
-              This ticket currently stores secure credential information.
-              Closing this ticket will permanently wipe all secure credentials
-              across the thread.
+              {messages.activeSecureWarningDesc}
             </p>
           </div>
         </div>
@@ -614,8 +623,8 @@ export function SupportTicketDetailScreen({
                 {isClosing
                   ? "Closing..."
                   : isClosed
-                    ? "Closed"
-                    : "Close Ticket"}
+                    ? messages.closed
+                    : messages.close}
               </Button>
             </div>
           </div>
@@ -633,17 +642,18 @@ export function SupportTicketDetailScreen({
             Object.keys(ticket.organizationMetadata).length > 0 && (
               <div className="space-y-1.5 rounded-lg border border-border/50 bg-muted/30 p-4 text-sm">
                 <p className="font-semibold text-foreground">
-                  Organization Billing/Support Details
+                  {messages.orgDetails}
                 </p>
                 <p className="text-xs font-medium text-foreground">
-                  Full Name:{" "}
+                  {messages.fullName}{" "}
                   {ticket.organizationMetadata.billing_full_name || "—"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Address: {ticket.organizationMetadata.billing_address || "—"}
+                  {messages.address}{" "}
+                  {ticket.organizationMetadata.billing_address || "—"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  City, State:{" "}
+                  {messages.cityState}{" "}
                   {[
                     ticket.organizationMetadata.billing_city,
                     ticket.organizationMetadata.billing_state,
@@ -652,7 +662,7 @@ export function SupportTicketDetailScreen({
                     .join(", ") || "—"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Country, Post Code:{" "}
+                  {messages.countryPostCode}{" "}
                   {[
                     ticket.organizationMetadata.billing_country,
                     ticket.organizationMetadata.billing_post_code,
@@ -665,7 +675,9 @@ export function SupportTicketDetailScreen({
 
           {ticket.description ? (
             <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm">
-              <p className="font-semibold text-foreground">Message</p>
+              <p className="font-semibold text-foreground">
+                {messages.generalMessage}
+              </p>
               {ticket.descriptionHtml ? (
                 <div
                   className="mt-1.5 space-y-3 text-sm leading-relaxed text-muted-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
@@ -684,14 +696,19 @@ export function SupportTicketDetailScreen({
           {ticket.secureForm ? (
             <SecureDetailsViewer
               content={ticket.secureForm}
-              label="Secure details"
+              label={messages.secureDetails}
+              messages={{
+                encrypted: messages.encrypted,
+                showSecureDetails: messages.showSecureDetails,
+                hideSecureDetails: messages.hideSecureDetails,
+              }}
             />
           ) : null}
 
           {ticket.attachmentMetadata.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground">
-                Attachments
+                {messages.attachments}
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {ticket.attachmentMetadata.map((attachment) => (
@@ -707,14 +724,16 @@ export function SupportTicketDetailScreen({
 
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-border/50 pb-2">
-              <h3 className="font-heading text-base font-semibold">Thread</h3>
+              <h3 className="font-heading text-base font-semibold">
+                {messages.thread}
+              </h3>
               <p className="text-xs font-medium text-muted-foreground">
                 {replyCountLabel}
               </p>
             </div>
             {thread.replies.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground italic">
-                No replies yet.
+                {messages.noRepliesYet}
               </p>
             ) : (
               <div className="space-y-4">
@@ -760,15 +779,15 @@ export function SupportTicketDetailScreen({
                               </span>
                               {reply.isInternalNote ? (
                                 <span className="rounded border border-yellow-500/30 bg-yellow-500/20 px-1.5 py-0.5 text-[10px] font-bold text-yellow-600 uppercase dark:text-yellow-400">
-                                  Internal Note
+                                  {messages.internalNote}
                                 </span>
                               ) : author.isStaff ? (
                                 <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                                  Support Team
+                                  {messages.supportTeam}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground dark:bg-muted/30">
-                                  Customer
+                                  {messages.customer}
                                 </span>
                               )}
                             </div>
@@ -797,14 +816,19 @@ export function SupportTicketDetailScreen({
                       {reply.secureForm ? (
                         <SecureDetailsViewer
                           content={reply.secureForm}
-                          label="Secure details"
+                          label={messages.secureDetails}
+                          messages={{
+                            encrypted: messages.encrypted,
+                            showSecureDetails: messages.showSecureDetails,
+                            hideSecureDetails: messages.hideSecureDetails,
+                          }}
                         />
                       ) : null}
 
                       {reply.attachmentMetadata.length > 0 ? (
                         <div className="space-y-1.5 pt-2">
                           <p className="text-[10px] font-semibold text-muted-foreground">
-                            Attachments
+                            {messages.attachments}
                           </p>
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             {reply.attachmentMetadata.map((attachment) => (
@@ -826,24 +850,25 @@ export function SupportTicketDetailScreen({
 
           {isClosed ? (
             <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground">
-              This ticket is closed. If you have a new issue, please open a new
-              ticket.
+              {messages.closedWarning}
             </div>
           ) : (
             <div className="space-y-4 border-t border-border/50 pt-5">
-              <h3 className="font-heading text-base font-semibold">Reply</h3>
+              <h3 className="font-heading text-base font-semibold">
+                {messages.reply}
+              </h3>
               <div className="space-y-2">
                 <Label
                   htmlFor="reply-body"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Message
+                  {messages.generalMessage}
                 </Label>
                 <MarkdownEditor
                   id="reply-body"
                   ref={replyBodyRef}
                   rows={4}
-                  placeholder="Write your reply"
+                  placeholder={messages.replyBodyPlaceholder}
                   disabled={isSubmittingReply}
                   onInput={(event) =>
                     updateCredentialWarning(
@@ -865,30 +890,27 @@ export function SupportTicketDetailScreen({
                     <span className="relative flex h-2 w-2">
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
                     </span>
-                    Secure details (encrypted)
+                    {messages.secureDetails} ({messages.encrypted})
                   </span>
                   <span className="text-xs font-semibold underline-offset-2 hover:underline">
                     {showSecureComposer
-                      ? "Hide secure details"
-                      : "Show secure details"}
+                      ? messages.hideSecureDetails
+                      : messages.showSecureDetails}
                   </span>
                 </button>
                 {showSecureComposer ? (
                   <>
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Details entered here are encrypted end-to-end and only
-                      visible to engineers assigned to your ticket. Use this
-                      section for passwords, tokens, API keys, or sensitive
-                      credentials.
+                      {messages.secureDescription}
                     </p>
                     <Label htmlFor="reply-secure-form" className="sr-only">
-                      Secure Form (encrypted)
+                      {messages.secureFormLabel}
                     </Label>
                     <MarkdownEditor
                       id="reply-secure-form"
                       ref={replySecureFormRef}
                       rows={4}
-                      placeholder="Sensitive credentials, configurations, or secrets only"
+                      placeholder={messages.secureFormPlaceholder}
                       disabled={isSubmittingReply}
                       onInput={(event) =>
                         updateCredentialWarning(
@@ -903,9 +925,9 @@ export function SupportTicketDetailScreen({
 
               {credentialWarning ? (
                 <Alert variant="destructive" data-testid="credential-warning">
-                  <AlertTitle>Possible credential detected</AlertTitle>
+                  <AlertTitle>{messages.possibleCredentialTitle}</AlertTitle>
                   <AlertDescription>
-                    Looks like a credential. Move it to Secure details.{" "}
+                    {messages.possibleCredentialBody}{" "}
                     {credentialWarning.patterns.join(", ")}
                   </AlertDescription>
                 </Alert>
@@ -925,7 +947,7 @@ export function SupportTicketDetailScreen({
                     htmlFor="reply-files"
                     className="text-xs font-semibold text-muted-foreground"
                   >
-                    Attachments (optional)
+                    {messages.attachmentsOptional}
                   </Label>
                   <Input
                     id="reply-files"
@@ -1001,7 +1023,7 @@ export function SupportTicketDetailScreen({
                   onClick={submitReply}
                   disabled={isSubmittingReply}
                 >
-                  {isSubmittingReply ? "Sending..." : "Send Reply"}
+                  {isSubmittingReply ? messages.submitting : messages.sendReply}
                 </Button>
               </div>
             </div>
@@ -1050,7 +1072,7 @@ export function SupportTicketDetailScreen({
                       d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                     ></path>
                   </svg>
-                  <span>Download</span>
+                  <span>{messages.download}</span>
                 </Button>
                 <button
                   type="button"
@@ -1066,7 +1088,7 @@ export function SupportTicketDetailScreen({
                 <div className="flex flex-col items-center gap-2 py-12">
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
                   <span className="text-xs text-muted-foreground">
-                    Loading preview...
+                    {messages.loadingPreview}
                   </span>
                 </div>
               ) : previewContent ? (
@@ -1118,11 +1140,10 @@ export function SupportTicketDetailScreen({
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-foreground">
-                          Preview Unavailable
+                          {messages.previewUnavailable}
                         </p>
                         <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-                          A preview {"isn't"} available for this file type.
-                          Please download the file to view its contents.
+                          {messages.previewUnavailableDesc}
                         </p>
                       </div>
                     </div>
@@ -1130,7 +1151,7 @@ export function SupportTicketDetailScreen({
                 </>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  Unable to load preview
+                  {messages.unableToLoadPreview}
                 </span>
               )}
             </div>

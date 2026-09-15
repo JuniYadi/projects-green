@@ -1646,6 +1646,7 @@ export type AppMessages = {
       ticketDetails: string
       subjectPlaceholder: string
       generalMessage: string
+      sendReply: string
       secureDetails: string
       messageOptional: string
       messagePlaceholder: string
@@ -1668,6 +1669,89 @@ export type AppMessages = {
       submitTicket: string
       submitting: string
       cancel: string
+      closedWarning: string
+      secureWipedTitle: string
+      secureWipedDesc: string
+      activeSecureWarningTitle: string
+      activeSecureWarningDesc: string
+      thread: string
+      noRepliesYet: string
+      internalNote: string
+      supportTeam: string
+      customer: string
+      replyBodyPlaceholder: string
+      secureFormLabel: string
+      secureFormPlaceholder: string
+      attachments: string
+      download: string
+      loadingPreview: string
+      previewUnavailable: string
+      previewUnavailableDesc: string
+      unableToLoadPreview: string
+      orgDetails: string
+      fullName: string
+      address: string
+      cityState: string
+      countryPostCode: string
+    }
+    adminCronjobs: {
+      heading: string
+      description: string
+      tabs: {
+        overview: string
+        history: string
+      }
+      metrics: {
+        totalJobs: string
+        executions24h: string
+        successRate: string
+        failedRuns: string
+        activeSchedules: string
+        totalCompleted: string
+      }
+      filters: {
+        searchPlaceholder: string
+        allCategories: string
+        allStatuses: string
+      }
+      table: {
+        jobName: string
+        category: string
+        schedule: string
+        target: string
+        lastRun: string
+        status: string
+        actions: string
+        executionId: string
+        triggerType: string
+        startTime: string
+        duration: string
+        runNow: string
+        viewLogs: string
+        noJobs: string
+        noExecutions: string
+      }
+      modal: {
+        triggerTitle: string
+        triggerDescription: string
+        reasonLabel: string
+        reasonPlaceholder: string
+        cancel: string
+        confirmRun: string
+        running: string
+      }
+      drawer: {
+        title: string
+        description: string
+        copyLogs: string
+        copied: string
+        noLogs: string
+      }
+      messages: {
+        triggerSuccess: string
+        triggerFailed: string
+        loadFailed: string
+      }
     }
     app: {
       deploy: {
