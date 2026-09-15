@@ -83,6 +83,7 @@ export default function ConsoleVpnProfilesPage() {
           <VpnMyServices
             subscriptions={subscriptions}
             onChanged={() => void refetch()}
+            locale={locale}
           />
         </section>
       ) : (

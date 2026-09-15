@@ -50,6 +50,7 @@ import {
 type Props = {
   subscriptions: VpnSubscription[]
   onChanged: () => void
+  locale?: string
 }
 
 export function formatDate(value: string): string {
@@ -763,7 +764,11 @@ export function VpnServerAccountsDetail({
   )
 }
 
-export function VpnMyServices({ subscriptions, onChanged }: Props) {
+export function VpnMyServices({
+  subscriptions,
+  onChanged,
+  locale = "en",
+}: Props) {
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null)
   const [confirmCancelTexts, setConfirmCancelTexts] = useState<
@@ -1119,7 +1124,9 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <Button asChild size="sm">
-            <Link href="/console/billing/services/vpn">+ Pesan VPN Baru</Link>
+            <Link href="/console/billing/services/vpn">
+              {locale === "id" ? "+ Pesan VPN Baru" : "+ Order VPN Plan"}
+            </Link>
           </Button>
           {subscriptions.length === 1 ? (
             <Button asChild variant="outline" size="sm">
