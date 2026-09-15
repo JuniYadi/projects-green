@@ -249,7 +249,7 @@ export function TabMounts({
                   Read-Only Mount
                 </span>
                 <span className="text-[10px] text-muted-foreground">
-                  Mode 0400 (Highly Recommended for keys/certs).
+                  Recommended for configuration files and certificates.
                 </span>
               </div>
               <Switch
@@ -268,14 +268,14 @@ export function TabMounts({
         </CardContent>
       </Card>
 
-      {/* Create Mount form */}
+      {/* Active Pod File Mounts */}
       <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold text-foreground">
             Active Pod File Mounts
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            File injections mapped directly into target containers
+            Configuration files attached directly to this application
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -297,12 +297,14 @@ export function TabMounts({
                     {item.mountPath}
                   </span>
                   <span className="col-span-3 flex flex-col gap-0.5 font-mono text-xs text-muted-foreground">
-                    <span>
-                      {item.sourceType.toUpperCase()} ({item.fileMode})
-                    </span>
-                    {item.readOnly && (
-                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400">
+                    <span>{item.sourceType.toUpperCase()}</span>
+                    {item.readOnly ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-500">
                         ● Read-Only
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-medium text-muted-foreground">
+                        ● Read-Write
                       </span>
                     )}
                   </span>
@@ -334,29 +336,15 @@ export function TabMounts({
             </div>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-4 text-xs leading-relaxed">
+          <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-4 text-xs leading-relaxed">
             <span className="block text-xs font-bold text-foreground">
-              In-Container File Mounting Mechanics
+              How File Mounts Work
             </span>
             <p className="leading-normal text-muted-foreground">
-              Configuration files and secret materials are stored in encrypted
-              Kubernetes{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-foreground">
-                Secrets
-              </code>{" "}
-              or{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-foreground">
-                ConfigMaps
-              </code>
-              , then mounted into the container filesystem at boot:
+              Uploaded configuration files and certificates are stored encrypted
+              and automatically mounted into your application container
+              filesystem at startup.
             </p>
-            <pre className="overflow-x-auto rounded-xl border border-border bg-muted/40 p-3.5 font-mono text-[10px] leading-relaxed text-emerald-400">
-              {`volumes:
-  - name: secure-key-volume
-    secret:
-      secretName: dev-secrets-pem
-      items: [{ key: "pem", path: "key.pem", mode: 256 }]`}
-            </pre>
           </div>
         </CardContent>
       </Card>
