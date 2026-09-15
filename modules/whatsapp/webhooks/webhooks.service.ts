@@ -308,8 +308,7 @@ export function extractMessageBody(
 
   if (msgType === "reaction") {
     const reaction = (payload as Record<string, unknown>).reaction as
-      | { emoji?: string }
-      | undefined
+      { emoji?: string } | undefined
     if (reaction?.emoji) {
       return reaction.emoji
     }
@@ -582,8 +581,12 @@ export async function processDeliveryStatus(
           },
         })
 
-        // Automatically restore device allowance quota
-        if (billingLedger.whatsappDeviceId && billingLedger.quotaValue) {
+        // Automatically restore device allowance quota (only if consumed from allowance, not overage)
+        if (
+          billingLedger.whatsappDeviceId &&
+          billingLedger.quotaValue &&
+          !billingLedger.pricingBillable
+        ) {
           const billing = new WhatsappBillingService(
             prisma,
             new BillingTransactionService(prisma)
