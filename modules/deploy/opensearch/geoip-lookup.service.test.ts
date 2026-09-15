@@ -76,7 +76,7 @@ describe("geoip-lookup.service", () => {
       "195.10.10.10",
       mockFetch as unknown as typeof fetch
     )
-    expect(fallbackCalledUrl.startsWith("https://ip-api.com/json/")).toBe(true)
+    expect(fallbackCalledUrl.startsWith("http://ip-api.com/json/")).toBe(true)
     expect(res.countryCode).toBe("BE")
     expect(res.countryName).toBe("Belgium")
     expect(res.city).toBe("Brussels")

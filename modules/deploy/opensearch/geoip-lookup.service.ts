@@ -104,12 +104,12 @@ export async function lookupIpGeo(
     )
   }
 
-  // 2. Fallback: ip-api.com over HTTPS
+  // 2. Fallback: ip-api.com over HTTP (free tier endpoints do not support HTTPS)
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 2500)
     const res = await fetchFn(
-      `https://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,city`,
+      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,city`,
       {
         signal: controller.signal,
         headers: { Accept: "application/json" },
