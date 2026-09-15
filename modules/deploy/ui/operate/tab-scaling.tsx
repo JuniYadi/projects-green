@@ -33,46 +33,6 @@ type PodInfo = {
   node: string
 }
 
-// Dummy pod data — replace with real API data when available
-const DUMMY_PODS: PodInfo[] = [
-  {
-    name: "web-7d9f8b-xk2qp",
-    status: "healthy",
-    uptime: "3d 14h",
-    cpu: 42,
-    ram: 61,
-    restarts: 0,
-    node: "node-us-east-1a",
-  },
-  {
-    name: "web-7d9f8b-mn4rt",
-    status: "healthy",
-    uptime: "3d 14h",
-    cpu: 38,
-    ram: 54,
-    restarts: 0,
-    node: "node-us-east-1b",
-  },
-  {
-    name: "web-7d9f8b-p9wzx",
-    status: "warning",
-    uptime: "1d 2h",
-    cpu: 88,
-    ram: 79,
-    restarts: 2,
-    node: "node-us-east-1a",
-  },
-  {
-    name: "web-7d9f8b-q1lmv",
-    status: "crashed",
-    uptime: "—",
-    cpu: 0,
-    ram: 0,
-    restarts: 7,
-    node: "node-us-east-1c",
-  },
-]
-
 const POD_STATUS_META: Record<
   PodStatus,
   {
@@ -146,8 +106,8 @@ export function parseMemoryToMiB(memStr: string): number {
 export function TabScaling({
   replicas,
   setReplicas,
-  maxAllowedReplicas = 8,
-  maxCpuQuota = "4000m",
+  maxAllowedReplicas = 4,
+  maxCpuQuota = "1000m",
   maxMemoryQuota = "4096Mi",
   initialCpuLimit,
   initialMemLimit,
@@ -213,7 +173,7 @@ export function TabScaling({
     isAtMaxReplicas || wouldExceedCpu || wouldExceedMemory
   const isPlusDisabled = hpaEnabled || isQuotaCapReached
 
-  const pods = explicitPods ?? DUMMY_PODS
+  const pods = explicitPods ?? []
 
   const handleSave = async () => {
     if (!onSave) return
@@ -234,164 +194,166 @@ export function TabScaling({
   return (
     <div className="flex flex-col gap-6">
       {/* Pod Status Overview */}
-      <Card size="sm" className="border-border bg-card shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-primary/20 bg-primary/10">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+      {pods.length > 0 && (
+        <Card size="sm" className="border-border bg-card shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-primary/20 bg-primary/10">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                  </span>
+                  Pod Status Overview
+                </CardTitle>
+                <CardDescription className="mt-0.5 text-xs text-muted-foreground">
+                  Live view of all running pod instances and their health state
+                </CardDescription>
+              </div>
+              {/* Summary badges */}
+              <div className="flex items-center gap-2 text-[10px] font-bold">
+                <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-muted-foreground">
+                  {podCounts.total} Total
                 </span>
-                Pod Status Overview
-              </CardTitle>
-              <CardDescription className="mt-0.5 text-xs text-muted-foreground">
-                Live view of all running pod instances and their health state
-              </CardDescription>
+                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-400">
+                  {podCounts.healthy} Healthy
+                </span>
+                {podCounts.warning > 0 && (
+                  <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-amber-400">
+                    {podCounts.warning} Warning
+                  </span>
+                )}
+                {podCounts.crashed > 0 && (
+                  <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-red-400">
+                    {podCounts.crashed} Crashed
+                  </span>
+                )}
+              </div>
             </div>
-            {/* Summary badges */}
-            <div className="flex items-center gap-2 text-[10px] font-bold">
-              <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-muted-foreground">
-                {podCounts.total} Total
-              </span>
-              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-400">
-                {podCounts.healthy} Healthy
-              </span>
-              {podCounts.warning > 0 && (
-                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-amber-400">
-                  {podCounts.warning} Warning
-                </span>
-              )}
-              {podCounts.crashed > 0 && (
-                <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-red-400">
-                  {podCounts.crashed} Crashed
-                </span>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="px-0 pb-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border">
-                  {[
-                    "Pod Name",
-                    "Status",
-                    "CPU",
-                    "RAM",
-                    "Uptime",
-                    "Restarts",
-                    "Node",
-                  ].map((col) => (
-                    <th
-                      key={col}
-                      className="px-4 py-2.5 text-left text-[10px] font-semibold tracking-wider whitespace-nowrap text-muted-foreground/70 uppercase"
-                    >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {pods.map((pod, i) => {
-                  const meta = POD_STATUS_META[pod.status]
-                  const StatusIcon = meta.icon
-                  return (
-                    <tr
-                      key={pod.name}
-                      className={`border-b border-border transition-colors hover:bg-muted/30 ${
-                        i === pods.length - 1 ? "border-b-0" : ""
-                      }`}
-                    >
-                      {/* Pod name */}
-                      <td className="px-4 py-3 font-mono text-[11px] whitespace-nowrap text-foreground">
-                        {pod.name}
-                      </td>
+          </CardHeader>
+          <CardContent className="px-0 pb-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    {[
+                      "Pod Name",
+                      "Status",
+                      "CPU",
+                      "RAM",
+                      "Uptime",
+                      "Restarts",
+                      "Node",
+                    ].map((col) => (
+                      <th
+                        key={col}
+                        className="px-4 py-2.5 text-left text-[10px] font-semibold tracking-wider whitespace-nowrap text-muted-foreground/70 uppercase"
+                      >
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pods.map((pod, i) => {
+                    const meta = POD_STATUS_META[pod.status]
+                    const StatusIcon = meta.icon
+                    return (
+                      <tr
+                        key={pod.name}
+                        className={`border-b border-border transition-colors hover:bg-muted/30 ${
+                          i === pods.length - 1 ? "border-b-0" : ""
+                        }`}
+                      >
+                        {/* Pod name */}
+                        <td className="px-4 py-3 font-mono text-[11px] whitespace-nowrap text-foreground">
+                          {pod.name}
+                        </td>
 
-                      {/* Status badge */}
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${meta.border} ${meta.bg} ${meta.color}`}
-                        >
-                          <StatusIcon size={10} weight="fill" />
-                          {meta.label}
-                        </span>
-                      </td>
-
-                      {/* CPU */}
-                      <td className="min-w-[100px] px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-16 flex-shrink-0 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className={`h-full rounded-full ${meta.bar}`}
-                              style={{ width: `${pod.cpu}%` }}
-                            />
-                          </div>
+                        {/* Status badge */}
+                        <td className="px-4 py-3">
                           <span
-                            className={`font-mono text-[10px] font-semibold ${
-                              pod.status === "crashed"
-                                ? "text-muted-foreground/30"
-                                : "text-foreground"
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${meta.border} ${meta.bg} ${meta.color}`}
+                          >
+                            <StatusIcon size={10} weight="fill" />
+                            {meta.label}
+                          </span>
+                        </td>
+
+                        {/* CPU */}
+                        <td className="min-w-[100px] px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-16 flex-shrink-0 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className={`h-full rounded-full ${meta.bar}`}
+                                style={{ width: `${pod.cpu}%` }}
+                              />
+                            </div>
+                            <span
+                              className={`font-mono text-[10px] font-semibold ${
+                                pod.status === "crashed"
+                                  ? "text-muted-foreground/30"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {pod.cpu}%
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* RAM */}
+                        <td className="min-w-[100px] px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-16 flex-shrink-0 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className={`h-full rounded-full ${meta.bar}`}
+                                style={{ width: `${pod.ram}%` }}
+                              />
+                            </div>
+                            <span
+                              className={`font-mono text-[10px] font-semibold ${
+                                pod.status === "crashed"
+                                  ? "text-muted-foreground/30"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {pod.ram}%
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Uptime */}
+                        <td className="px-4 py-3 font-mono text-[11px] whitespace-nowrap text-muted-foreground">
+                          {pod.uptime}
+                        </td>
+
+                        {/* Restarts */}
+                        <td className="px-4 py-3">
+                          <span
+                            className={`font-mono text-[11px] font-bold ${
+                              pod.restarts > 3
+                                ? "text-red-400"
+                                : pod.restarts > 0
+                                  ? "text-amber-400"
+                                  : "text-muted-foreground"
                             }`}
                           >
-                            {pod.cpu}%
+                            {pod.restarts}
                           </span>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* RAM */}
-                      <td className="min-w-[100px] px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-16 flex-shrink-0 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className={`h-full rounded-full ${meta.bar}`}
-                              style={{ width: `${pod.ram}%` }}
-                            />
-                          </div>
-                          <span
-                            className={`font-mono text-[10px] font-semibold ${
-                              pod.status === "crashed"
-                                ? "text-muted-foreground/30"
-                                : "text-foreground"
-                            }`}
-                          >
-                            {pod.ram}%
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Uptime */}
-                      <td className="px-4 py-3 font-mono text-[11px] whitespace-nowrap text-muted-foreground">
-                        {pod.uptime}
-                      </td>
-
-                      {/* Restarts */}
-                      <td className="px-4 py-3">
-                        <span
-                          className={`font-mono text-[11px] font-bold ${
-                            pod.restarts > 3
-                              ? "text-red-400"
-                              : pod.restarts > 0
-                                ? "text-amber-400"
-                                : "text-muted-foreground"
-                          }`}
-                        >
-                          {pod.restarts}
-                        </span>
-                      </td>
-
-                      {/* Node */}
-                      <td className="px-4 py-3 font-mono text-[10px] whitespace-nowrap text-muted-foreground">
-                        {pod.node}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                        {/* Node */}
+                        <td className="px-4 py-3 font-mono text-[10px] whitespace-nowrap text-muted-foreground">
+                          {pod.node}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Resource Tuning + Autoscaling */}
       <div className="space-y-6">
@@ -480,9 +442,8 @@ export function TabScaling({
                     {cpuLimit === "500m"
                       ? "0.5 Cores"
                       : cpuLimit === "1000m"
-                        ? "1.0 Cores"
-                        : "2.0 Cores"}{" "}
-                    ({cpuLimit})
+                        ? "1.0 Core"
+                        : "2.0 Cores"}
                   </span>
                 </div>
                 <input

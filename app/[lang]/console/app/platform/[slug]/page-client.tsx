@@ -1261,6 +1261,23 @@ export default function PlatformInstanceWorkspacePage() {
                       <TabScaling
                         replicas={replicas}
                         setReplicas={setReplicas}
+                        maxAllowedReplicas={
+                          overview?.stack?.resourcePlanId === "small"
+                            ? 2
+                            : overview?.stack?.resourcePlanId === "medium"
+                              ? 4
+                              : 8
+                        }
+                        maxCpuQuota={
+                          overview?.stack?.cpu
+                            ? `${overview.stack.cpu}m`
+                            : "1000m"
+                        }
+                        maxMemoryQuota={
+                          overview?.stack?.memory
+                            ? `${overview.stack.memory}Mi`
+                            : "4096Mi"
+                        }
                         initialCpuLimit={
                           overview?.stack?.cpu
                             ? `${overview.stack.cpu}m`
