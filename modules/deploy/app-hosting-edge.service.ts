@@ -196,6 +196,7 @@ async function findStack(input: { organizationId: string; slug: string }) {
     },
   })) as {
     id: string
+    organizationId: string
     slug: string
     clusterId: string | null
     subdomain?: string | null

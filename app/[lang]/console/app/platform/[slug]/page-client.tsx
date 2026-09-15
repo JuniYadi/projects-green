@@ -614,8 +614,10 @@ export default function PlatformInstanceWorkspacePage() {
     const settings = readSettingsData(payload)
     setEnvVars(settings.envVars)
     setMounts(settings.mounts)
-    setPersistentStorage(settings.persistentStorage)
-    setBuildSettings(settings.build)
+    setPersistentStorage(settings.persistentStorage ?? null)
+    if (settings.build) {
+      setBuildSettings(settings.build)
+    }
     setSettingsError(null)
   }
 
