@@ -140,4 +140,23 @@ describe("TabScaling", () => {
       )
     ).toBeDefined()
   })
+
+  it("calls onSave with updated replicas, cpu, and memory values", async () => {
+    const onSave = mock(async () => {})
+    const setReplicas = mock(() => {})
+    const { getByRole } = render(
+      <TabScaling
+        replicas={3}
+        setReplicas={setReplicas}
+        initialCpuLimit="1000m"
+        initialMemLimit="512Mi"
+        onSave={onSave}
+      />
+    )
+
+    const saveBtn = getByRole("button", { name: "Save Resource Settings" })
+    fireEvent.click(saveBtn)
+
+    expect(onSave).toHaveBeenCalledWith(3, 1, 512)
+  })
 })

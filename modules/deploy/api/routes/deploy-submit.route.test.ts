@@ -339,6 +339,55 @@ describe("deploySubmitRoutes /submit", () => {
     )
   })
 
+  it("automatically tags template secret keys as secret and masked when submitting", async () => {
+    mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+      id: "tpl-9router",
+      slug: "9router",
+      name: "9router",
+      blueprintJson: {
+        runtime: {
+          image: "docker.io/decolua/9router:0.5.75",
+          defaultPort: 20128,
+        },
+        envSchema: [
+          { key: "DATA_DIR", defaultValue: "/app/data", isSecret: false },
+          { key: "JWT_SECRET", isSecret: true },
+        ],
+      },
+    } as never)
+
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "9router",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 250,
+      memory: 256,
+      envVars: [
+        { key: "DATA_DIR", value: "/app/data" },
+        { key: "JWT_SECRET", value: "secret123" },
+      ],
+    })
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          envVarsJson: [
+            { key: "DATA_DIR", value: "/app/data" },
+            {
+              key: "JWT_SECRET",
+              value: "secret123",
+              type: "secret",
+              masked: true,
+              isStoredSecret: true,
+            },
+          ],
+        }),
+      })
+    )
+  })
+
   it("persists secret reference metadata without dropping it", async () => {
     const envVars = [
       {
