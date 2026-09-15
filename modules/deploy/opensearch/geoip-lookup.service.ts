@@ -8,10 +8,24 @@ export interface IpGeoInfo {
   requestsCount: number
 }
 
+const MAX_GEO_CACHE_SIZE = 5000
 const geoCache = new Map<
   string,
   { countryCode: string; countryName: string; city?: string }
 >()
+
+function setCachedGeo(
+  ip: string,
+  value: { countryCode: string; countryName: string; city?: string }
+): void {
+  if (geoCache.size >= MAX_GEO_CACHE_SIZE) {
+    const oldestKey = geoCache.keys().next().value
+    if (oldestKey) {
+      geoCache.delete(oldestKey)
+    }
+  }
+  geoCache.set(ip, value)
+}
 
 const isPrivateOrInvalidIp = (ip: string): boolean => {
   if (!ip || ip === "-" || ip === "unknown") return true
@@ -49,7 +63,12 @@ export async function lookupIpGeo(
   }
 
   const cached = geoCache.get(ip)
-  if (cached) return cached
+  if (cached) {
+    // Refresh LRU order
+    geoCache.delete(ip)
+    geoCache.set(ip, cached)
+    return cached
+  }
 
   // 1. Primary: findy.juniyadi.id
   try {
@@ -74,7 +93,7 @@ export async function lookupIpGeo(
         const countryName = resolveCountryName(countryCode)
         const city = data.geo.city || undefined
         const result = { countryCode, countryName, city }
-        geoCache.set(ip, result)
+        setCachedGeo(ip, result)
         return result
       }
     }
@@ -85,12 +104,12 @@ export async function lookupIpGeo(
     )
   }
 
-  // 2. Fallback: ip-api.com
+  // 2. Fallback: ip-api.com over HTTPS
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 2500)
     const res = await fetchFn(
-      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,city`,
+      `https://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,city`,
       {
         signal: controller.signal,
         headers: { Accept: "application/json" },
@@ -110,7 +129,7 @@ export async function lookupIpGeo(
         const countryName = data.country || resolveCountryName(countryCode)
         const city = data.city || undefined
         const result = { countryCode, countryName, city }
-        geoCache.set(ip, result)
+        setCachedGeo(ip, result)
         return result
       }
     }
@@ -125,7 +144,7 @@ export async function lookupIpGeo(
     countryCode: "UNKNOWN",
     countryName: "Tidak Diketahui",
   }
-  geoCache.set(ip, unknownResult)
+  setCachedGeo(ip, unknownResult)
   return unknownResult
 }
 

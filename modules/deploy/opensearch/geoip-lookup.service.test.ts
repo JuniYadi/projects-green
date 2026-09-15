@@ -54,11 +54,13 @@ describe("geoip-lookup.service", () => {
   })
 
   it("falls back to ip-api when primary API returns error status", async () => {
+    let fallbackCalledUrl = ""
     const mockFetch = mock(async (url: string | URL | Request) => {
       const urlStr = String(url)
       if (urlStr.includes("api.findy.juniyadi.id")) {
         return { ok: false, status: 502 }
       }
+      fallbackCalledUrl = urlStr
       return {
         ok: true,
         json: async () => ({
@@ -74,6 +76,7 @@ describe("geoip-lookup.service", () => {
       "195.10.10.10",
       mockFetch as unknown as typeof fetch
     )
+    expect(fallbackCalledUrl.startsWith("https://ip-api.com/json/")).toBe(true)
     expect(res.countryCode).toBe("BE")
     expect(res.countryName).toBe("Belgium")
     expect(res.city).toBe("Brussels")

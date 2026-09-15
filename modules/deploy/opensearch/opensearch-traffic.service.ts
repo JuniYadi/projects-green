@@ -176,7 +176,7 @@ function buildStackFilterClause(
   }
   return {
     prefix: {
-      "haproxy_backend.keyword": `app-${stackSlug}`,
+      "haproxy_backend.keyword": `app-${stackSlug}_svc_`,
     },
   }
 }
