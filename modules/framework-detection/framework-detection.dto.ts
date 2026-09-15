@@ -60,6 +60,7 @@ export type DetectionResultDTO = {
   inspectionLogId?: string
   frameworkVersion?: string | null
   defaultPort?: number | null
+  envDefaults?: Record<string, string> | null
 }
 
 // --- Mapping Functions ---
@@ -120,6 +121,7 @@ export function toDetectionResultDTO(
     source: result.source,
     frameworkVersion: result.frameworkVersion ?? null,
     defaultPort: result.defaultPort ?? null,
+    envDefaults: result.envDefaults ?? null,
     enforcedRuntimes: result.enforcedRuntimes,
     inspectionLogId: result.inspectionLogId,
   }

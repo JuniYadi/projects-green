@@ -5,28 +5,13 @@ export type DetectionFailureCode =
   | "DETECTION_TRANSIENT_PROVIDER_ERROR"
 
 export type DetectionErrorCode =
-  | DetectionFailureCode
-  | "DETECTION_FAILED"
-  | "NETWORK_ERROR"
+  DetectionFailureCode | "DETECTION_FAILED" | "NETWORK_ERROR"
 
 export type DetectionEcosystem =
-  | "node"
-  | "php"
-  | "python"
-  | "ruby"
-  | "java"
-  | "go"
-  | "rust"
-  | "unknown"
+  "node" | "php" | "python" | "ruby" | "java" | "go" | "rust" | "unknown"
 
 export type RuntimeId =
-  | "node"
-  | "php"
-  | "python"
-  | "ruby"
-  | "java"
-  | "go"
-  | "rust"
+  "node" | "php" | "python" | "ruby" | "java" | "go" | "rust"
 
 export type DetectedFramework = {
   id: string
@@ -51,10 +36,7 @@ export type DetectionEvidence = {
 }
 
 export type DetectionDecisionStatus =
-  | "success"
-  | "blocked"
-  | "unsupported"
-  | "low_confidence"
+  "success" | "blocked" | "unsupported" | "low_confidence"
 
 export type DetectionDecision = {
   status: DetectionDecisionStatus
@@ -79,6 +61,7 @@ export type DetectionResult = {
   frameworkVersion?: string | null
   defaultPort?: number | null
   enforcedRuntimes?: Array<{ runtimeId: string; version: string }>
+  envDefaults?: Record<string, string>
 }
 
 export type FrameworkDetectionInput = {

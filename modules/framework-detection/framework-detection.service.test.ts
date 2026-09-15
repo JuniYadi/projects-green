@@ -133,6 +133,7 @@ describe("detectFrameworkFromGitRepo", () => {
     )
 
     expect(result.primaryFramework?.id).toBe("nextjs")
+    expect(result.frameworkVersion).toBe("16.1")
     expect(result.requiredDependencies).toContainEqual(
       expect.objectContaining({
         id: "node",
@@ -166,6 +167,7 @@ describe("detectFrameworkFromGitRepo", () => {
     )
 
     expect(result.primaryFramework?.id).toBe("laravel")
+    expect(result.frameworkVersion).toBe("11.x")
     expect(result.requiredDependencies).toContainEqual(
       expect.objectContaining({
         id: "php",
@@ -1791,8 +1793,7 @@ describe("detectFrameworkFromGithubApi - malformed AI with active rules", () => 
       )
     }
     const logCall = createLog.mock.calls[0]?.[0] as
-      | { data: { errorMessage?: string; warnings: string[] } }
-      | undefined
+      { data: { errorMessage?: string; warnings: string[] } } | undefined
     expect(logCall).toBeDefined()
     if (!logCall) return
     expect(logCall.data.errorMessage).not.toContain("SECRET_KEY")
@@ -2101,5 +2102,53 @@ describe("detectFrameworkFromGithubApi - deterministic fallback", () => {
         subdir: "apps/laravel",
       })
     )
+  })
+
+  describe("framework version and env parsing helpers", () => {
+    const { parseEnvFile, normalizeVersionString, extractFrameworkVersion } =
+      __testables
+
+    it("parses .env.example into key-value map ignoring comments", () => {
+      const sample = `
+# Application config
+APP_NAME="My App"
+APP_ENV=production
+APP_KEY=base64:xyz123==
+APP_DEBUG=false
+DB_HOST=127.0.0.1
+`
+      const parsed = parseEnvFile(sample)
+      expect(parsed).toEqual({
+        APP_NAME: "My App",
+        APP_ENV: "production",
+        APP_KEY: "base64:xyz123==",
+        APP_DEBUG: "false",
+        DB_HOST: "127.0.0.1",
+      })
+    })
+
+    it("normalizes versions for laravel and other frameworks", () => {
+      expect(normalizeVersionString("^11.0", "laravel")).toBe("11.x")
+      expect(normalizeVersionString("^11.31.2", "laravel")).toBe("11.x")
+      expect(normalizeVersionString("10.*", "laravel")).toBe("10.x")
+      expect(normalizeVersionString("^14.2.5", "nextjs")).toBe("14.2")
+      expect(normalizeVersionString("^15.0.0", "nextjs")).toBe("15.x")
+    })
+
+    it("extracts framework version from inventory manifests", () => {
+      const inventory = {
+        files: ["composer.json"],
+        directories: [],
+        packageJsonDependencies: new Set<string>(),
+        packageJsonScripts: new Set<string>(),
+        composerDependencies: new Set(["laravel/framework"]),
+        lockfiles: new Set<string>(),
+        evidence: [],
+        composerVersions: {
+          "laravel/framework": "^11.0",
+        },
+      }
+      expect(extractFrameworkVersion("laravel", inventory)).toBe("11.x")
+    })
   })
 })

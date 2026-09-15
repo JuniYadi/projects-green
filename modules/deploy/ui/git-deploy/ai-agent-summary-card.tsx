@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ArrowLeft,
   Code,
@@ -115,8 +115,14 @@ export function AiAgentSummaryCard({
   const messages = getMessagesForMaybeLocale(lang)
   const agentMessages = messages.console.app.deployAgent
 
-  const detection = (inspectionData?.detection ?? {}) as Record<string, unknown>
-  const plan = (inspectionData?.plan ?? {}) as Record<string, unknown>
+  const detection = useMemo(
+    () => (inspectionData?.detection ?? {}) as Record<string, unknown>,
+    [inspectionData?.detection]
+  )
+  const plan = useMemo(
+    () => (inspectionData?.plan ?? {}) as Record<string, unknown>,
+    [inspectionData?.plan]
+  )
   const planDetection = (plan?.detection ?? {}) as Record<string, unknown>
   const primaryFramework = detection?.primaryFramework as
     Record<string, unknown> | undefined
@@ -265,12 +271,124 @@ export function AiAgentSummaryCard({
   const [buildCommand, setBuildCommand] = useState(defaultBuildCommand)
   const [startCommand, setStartCommand] = useState(defaultStartCommand)
 
-  // Step 4: Environment Variables
-  const [envVars, setEnvVars] = useState<EnvVar[]>([])
+  // Generate suggested subdomain from repo URL
+  const initialSubdomain = useMemo(() => {
+    try {
+      const parts = source.url.replace(/\.git$/i, "").split("/")
+      const repo = parts[parts.length - 1] || "my-app"
+      return repo
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/^-+|-+$/g, "")
+    } catch {
+      return "my-app"
+    }
+  }, [source.url])
+
+  const [subdomain, setSubdomain] = useState(initialSubdomain)
+
+  // Step 4: Environment Variables (Auto-prefilled from .env.example or smart template)
+  const computePrefilledEnvVars = useCallback((): EnvVar[] => {
+    const isPhp =
+      detectedFrameworkId === "laravel" ||
+      ecosystem === "php" ||
+      frameworkName.toLowerCase() === "laravel"
+    const isPython =
+      ["django", "fastapi", "flask"].includes(detectedFrameworkId) ||
+      ecosystem === "python"
+
+    // 1. If inspectionData has envRequirements or envDefaults from .env.example
+    const envReqs = (
+      plan?.configuration as {
+        envRequirements?: Array<{ key: string; value?: string }>
+      }
+    )?.envRequirements
+    if (Array.isArray(envReqs) && envReqs.length > 0) {
+      return envReqs.map((e) => ({
+        key: e.key,
+        value:
+          e.key === "APP_URL"
+            ? `https://${initialSubdomain}.pfnapp.dev`
+            : e.key === "APP_ENV"
+              ? "production"
+              : e.key === "APP_DEBUG"
+                ? "false"
+                : e.value || "",
+      }))
+    }
+
+    const envDefaults =
+      (detection?.envDefaults as Record<string, string> | undefined) || {}
+    const defaultEntries = Object.entries(envDefaults)
+    if (defaultEntries.length > 0) {
+      return defaultEntries.map(([k, v]) => ({
+        key: k,
+        value:
+          k === "APP_URL"
+            ? `https://${initialSubdomain}.pfnapp.dev`
+            : k === "APP_ENV"
+              ? "production"
+              : k === "APP_DEBUG"
+                ? "false"
+                : v || "",
+      }))
+    }
+
+    // 2. Framework fallback prefill
+    if (isPhp) {
+      return [
+        { key: "APP_NAME", value: initialSubdomain || "Laravel" },
+        { key: "APP_ENV", value: "production" },
+        { key: "APP_KEY", value: "" },
+        { key: "APP_DEBUG", value: "false" },
+        { key: "APP_URL", value: `https://${initialSubdomain}.pfnapp.dev` },
+        { key: "DB_CONNECTION", value: "mysql" },
+        { key: "DB_HOST", value: "127.0.0.1" },
+        { key: "DB_PORT", value: "3306" },
+        { key: "DB_DATABASE", value: initialSubdomain || "laravel" },
+        { key: "DB_USERNAME", value: "root" },
+        { key: "DB_PASSWORD", value: "" },
+      ]
+    }
+    if (isPython) {
+      return [
+        { key: "SECRET_KEY", value: "" },
+        { key: "DEBUG", value: "0" },
+        { key: "ALLOWED_HOSTS", value: `${initialSubdomain}.pfnapp.dev` },
+        { key: "DATABASE_URL", value: "" },
+      ]
+    }
+    return [
+      { key: "NODE_ENV", value: "production" },
+      { key: "PORT", value: String(detectedPort || 3000) },
+      {
+        key: "NEXT_PUBLIC_APP_URL",
+        value: `https://${initialSubdomain}.pfnapp.dev`,
+      },
+    ]
+  }, [
+    detectedFrameworkId,
+    ecosystem,
+    frameworkName,
+    initialSubdomain,
+    plan,
+    detection,
+    detectedPort,
+  ])
+
+  const [envVars, setEnvVars] = useState<EnvVar[]>(() =>
+    computePrefilledEnvVars()
+  )
   const [newKey, setNewKey] = useState("")
   const [newValue, setNewValue] = useState("")
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [bulkText, setBulkText] = useState("")
+
+  const handleUpdateEnvVar = (idx: number, val: string) => {
+    setEnvVars((prev) =>
+      prev.map((item, i) => (i === idx ? { ...item, value: val } : item))
+    )
+  }
 
   const handleAddEnvVar = () => {
     const trimmedKey = newKey.trim()
@@ -313,22 +431,6 @@ export function AiAgentSummaryCard({
     useState<CatalogProductDetailResponse | null>(null)
   const [tier, setTier] = useState<string>("MEDIUM")
 
-  // Generate suggested subdomain from repo URL
-  const initialSubdomain = useMemo(() => {
-    try {
-      const parts = source.url.replace(/\.git$/i, "").split("/")
-      const repo = parts[parts.length - 1] || "my-app"
-      return repo
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "-")
-        .replace(/^-+|-+$/g, "")
-    } catch {
-      return "my-app"
-    }
-  }, [source.url])
-
-  const [subdomain, setSubdomain] = useState(initialSubdomain)
-
   const repoName = useMemo(() => {
     try {
       const parts = source.url.replace(/\.git$/i, "").split("/")
@@ -339,44 +441,7 @@ export function AiAgentSummaryCard({
   }, [source.url])
 
   const handlePrefillEnvKeys = () => {
-    const isPhp =
-      detectedFrameworkId === "laravel" ||
-      ecosystem === "php" ||
-      frameworkName.toLowerCase() === "laravel"
-    const isPython =
-      ["django", "fastapi", "flask"].includes(detectedFrameworkId) ||
-      ecosystem === "python"
-
-    const templateKeys: EnvVar[] = isPhp
-      ? [
-          { key: "APP_NAME", value: initialSubdomain || "Laravel" },
-          { key: "APP_ENV", value: "production" },
-          { key: "APP_KEY", value: "" },
-          { key: "APP_DEBUG", value: "false" },
-          { key: "APP_URL", value: `https://${subdomain}.pfnapp.dev` },
-          { key: "DB_CONNECTION", value: "mysql" },
-          { key: "DB_HOST", value: "127.0.0.1" },
-          { key: "DB_PORT", value: "3306" },
-          { key: "DB_DATABASE", value: initialSubdomain || "laravel" },
-          { key: "DB_USERNAME", value: "root" },
-          { key: "DB_PASSWORD", value: "" },
-        ]
-      : isPython
-        ? [
-            { key: "SECRET_KEY", value: "" },
-            { key: "DEBUG", value: "0" },
-            { key: "ALLOWED_HOSTS", value: `${subdomain}.pfnapp.dev` },
-            { key: "DATABASE_URL", value: "" },
-          ]
-        : [
-            { key: "NODE_ENV", value: "production" },
-            { key: "PORT", value: String(port) },
-            {
-              key: "NEXT_PUBLIC_APP_URL",
-              value: `https://${subdomain}.pfnapp.dev`,
-            },
-          ]
-
+    const templateKeys = computePrefilledEnvVars()
     setEnvVars((prev) => {
       const existingKeys = new Set(prev.map((e) => e.key))
       const added = templateKeys.filter((t) => !existingKeys.has(t.key))
@@ -386,20 +451,21 @@ export function AiAgentSummaryCard({
   }
 
   const insightEntrypoint = useMemo(() => {
+    const versionLabel = frameworkVersion ? ` ${frameworkVersion}` : ""
     if (detectedFrameworkId === "laravel" || ecosystem === "php") {
       return lang === "id"
-        ? "Terverifikasi aplikasi Laravel melalui file composer.json dan entrypoint artisan."
-        : "Verified Laravel application with composer.json dependencies and artisan entrypoint."
+        ? `Terverifikasi aplikasi Laravel${versionLabel} melalui file composer.json dan entrypoint artisan.`
+        : `Verified Laravel${versionLabel} application with composer.json dependencies and artisan entrypoint.`
     }
     if (detectedFrameworkId === "django" || ecosystem === "python") {
       return lang === "id"
-        ? "Terverifikasi aplikasi Python melalui requirements dan entrypoint WSGI/ASGI."
-        : "Verified Python application with requirements and WSGI/ASGI entrypoint."
+        ? `Terverifikasi aplikasi Python${versionLabel} melalui requirements dan entrypoint WSGI/ASGI.`
+        : `Verified Python${versionLabel} application with requirements and WSGI/ASGI entrypoint.`
     }
     return lang === "id"
-      ? `Terverifikasi stack ${frameworkName} dengan konfigurasi siap-pakai.`
-      : `Verified ${frameworkName} stack with production-ready defaults.`
-  }, [detectedFrameworkId, ecosystem, frameworkName, lang])
+      ? `Terverifikasi stack ${frameworkName}${versionLabel} dengan konfigurasi siap-pakai.`
+      : `Verified ${frameworkName}${versionLabel} stack with production-ready defaults.`
+  }, [detectedFrameworkId, ecosystem, frameworkName, frameworkVersion, lang])
 
   const insightCompute = useMemo(() => {
     if (detectedFrameworkId === "laravel" || ecosystem === "php") {
@@ -414,8 +480,8 @@ export function AiAgentSummaryCard({
 
   const insightEnv = useMemo(() => {
     return lang === "id"
-      ? "Deteksi template konfigurasi: Klik 'Pre-fill Kunci .env.example' untuk mengisi variabel standar dengan 1 klik."
-      : "Configuration template detected: Click 'Pre-fill Keys from .env.example' to populate standard variables with 1 click."
+      ? "Variabel lingkungan dari .env.example telah diisi otomatis. Anda dapat menyesuaikan nilainya di bawah."
+      : "Environment variables from .env.example have been auto-configured. You can customize any values below."
   }, [lang])
 
   useEffect(() => {
@@ -621,7 +687,7 @@ export function AiAgentSummaryCard({
               {agentMessages.verifiedStack}:
             </span>{" "}
             {frameworkName}
-            {frameworkVersion ? ` (${frameworkVersion})` : ""} · {runtimeName} ·{" "}
+            {frameworkVersion ? ` ${frameworkVersion}` : ""} · {runtimeName} ·{" "}
             {packageManager} · Port {port}
           </p>
         </div>
@@ -698,7 +764,8 @@ export function AiAgentSummaryCard({
               <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-sm font-medium">
                 <Code className="h-4 w-4 text-primary" />
                 <span>
-                  {frameworkName} {frameworkVersion}
+                  {frameworkName}
+                  {frameworkVersion ? ` ${frameworkVersion}` : ""}
                 </span>
               </div>
               <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-sm font-medium">
@@ -729,7 +796,7 @@ export function AiAgentSummaryCard({
                   className="mt-1 font-mono text-sm"
                 />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_120px]">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">
                     {agentMessages.startCommandLabel}
@@ -801,20 +868,23 @@ export function AiAgentSummaryCard({
                 {envVars.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-2 text-xs"
+                    className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-1.5 px-2.5 text-xs"
                   >
-                    <span className="w-1/3 truncate font-mono font-medium text-foreground">
+                    <span className="w-1/3 min-w-[120px] truncate font-mono font-medium text-foreground">
                       {item.key}
                     </span>
                     <span className="text-muted-foreground">=</span>
-                    <span className="flex-1 truncate font-mono text-muted-foreground">
-                      ••••••••
-                    </span>
+                    <Input
+                      value={item.value}
+                      onChange={(e) => handleUpdateEnvVar(idx, e.target.value)}
+                      placeholder="Value"
+                      className="h-7 flex-1 bg-background/50 font-mono text-xs"
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleRemoveEnvVar(idx)}
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                     >
                       <Trash className="h-3.5 w-3.5" />
                     </Button>
@@ -894,7 +964,10 @@ export function AiAgentSummaryCard({
                         )}
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {t.cpu}m CPU · {t.memory}MB RAM
+                        {t.cpu >= 1000
+                          ? `${(t.cpu / 1000).toFixed(t.cpu % 1000 === 0 ? 0 : 1)} vCPU`
+                          : `${(t.cpu / 1000).toFixed(1)} vCPU (${t.cpu}m)`}{" "}
+                        · {t.memory}MB RAM
                       </p>
                     </div>
                     <div className="text-right">
