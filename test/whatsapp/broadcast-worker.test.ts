@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { Prisma } from "@prisma/client"
 import type { Job } from "bullmq"
 
 process.env.REDIS_URL = "redis://localhost:6379/0"
@@ -48,8 +49,43 @@ const deviceFU = mock(async () => device()) as any
 const deviceUpd = mock(async () => ({})) as any
 const dailyCountFU = mock(async () => null) as any
 const hourlyCountFU = mock(async () => null) as any
+const billingLedgerCr = mock(async () => null) as any
+const basePriceFU = mock(async () => null) as any
+function createMockTx(overrides: Record<string, unknown> = {}) {
+  return {
+    $queryRaw: mock(async () => []),
+    whatsappDevice: { findUnique: deviceFU, update: deviceUpd },
+    serviceSubscription: { findFirst: mock(async () => null) },
+    billingAccount: {
+      findUnique: mock(async () => ({
+        id: "ba1",
+        currency: "IDR",
+        balance: new Prisma.Decimal(0),
+      })),
+      update: mock(async () => ({ id: "ba1" })),
+    },
+    billingAdjustment: {
+      findFirst: mock(async () => null),
+      create: mock(async () => ({ id: "adj1" })),
+    },
+    billingInvoice: {
+      findFirst: mock(async () => null),
+      create: mock(async () => ({ id: "inv1", status: "DRAFT" })),
+      update: mock(async () => ({ id: "inv1" })),
+    },
+    billingInvoiceLine: {
+      create: mock(async () => ({ id: "line1" })),
+    },
+    ...overrides,
+  }
+}
+
 const txn = mock(async (ops: unknown) =>
-  Array.isArray(ops) ? Promise.all(ops) : null
+  Array.isArray(ops)
+    ? Promise.all(ops)
+    : typeof ops === "function"
+      ? (ops as (tx: unknown) => Promise<unknown>)(createMockTx())
+      : null
 ) as any
 const msgCr = mock(async () => ({ id: "m" })) as any
 mock.module("bullmq", () => ({ Queue: QueueMock, Worker: WorkerMock }) as any)
@@ -58,6 +94,10 @@ mock.module(
   () =>
     ({
       prisma: {
+        $queryRaw: mock(async () => []),
+        whatsappBasePrice: { findFirst: basePriceFU },
+        serviceSubscription: { findFirst: mock(async () => null) },
+        billingAccount: { findUnique: mock(async () => null) },
         whatsappBroadcastRecipient: {
           findUnique: recipientFU,
           update: recipientUpd,
@@ -84,7 +124,7 @@ mock.module(
         },
         whatsappMonthlyCount: { upsert: mock(async () => null) },
         $transaction: txn,
-        whatsappBillingLedger: { create: mock(async () => null) },
+        whatsappBillingLedger: { create: billingLedgerCr },
         whatsappQuotaCreditRate: { findFirst: mock(async () => null) },
         whatsappTemplate: { findFirst: mock(async () => null) },
         whatsappContactGroup: {
@@ -191,6 +231,8 @@ beforeEach(() => {
     hourlyCountFU,
     txn,
     deviceUpd,
+    billingLedgerCr,
+    basePriceFU,
   ]) {
     m.mockClear()
   }
@@ -207,7 +249,13 @@ beforeEach(() => {
   deviceFU.mockResolvedValue(device())
   dailyCountFU.mockResolvedValue(null)
   hourlyCountFU.mockResolvedValue(null)
-  txn.mockClear()
+  txn.mockImplementation(async (ops: unknown) =>
+    Array.isArray(ops)
+      ? Promise.all(ops)
+      : typeof ops === "function"
+        ? (ops as (tx: unknown) => Promise<unknown>)(createMockTx())
+        : null
+  )
 })
 
 function exec(data: Record<string, string>) {
@@ -331,6 +379,88 @@ describe("dispatch", () => {
     expect(sendTemplateMessageMock).toHaveBeenCalledWith(
       expect.objectContaining({
         fields: expect.arrayContaining(["Alice", "Bob"]),
+      })
+    )
+  })
+
+  it("marks recipient FAILED without calling Meta API when quota exhausted and balance is insufficient", async () => {
+    basePriceFU.mockResolvedValue({ basePrice: 500, isActive: true })
+    deviceFU.mockResolvedValue(device({ quotaBaseOut: 0, addonQuota: 0 }))
+    txn.mockImplementation(async (ops: unknown) => {
+      if (typeof ops === "function") {
+        return (ops as (tx: unknown) => Promise<unknown>)(
+          createMockTx({
+            whatsappDevice: {
+              findUnique: mock(async () =>
+                device({ quotaBaseOut: 0, addonQuota: 0 })
+              ),
+              update: deviceUpd,
+            },
+            billingAccount: {
+              findUnique: mock(async () => ({
+                id: "ba1",
+                balance: new Prisma.Decimal(0),
+                currency: "IDR",
+              })),
+              update: mock(async () => ({ id: "ba1" })),
+            },
+          })
+        )
+      }
+      return null
+    })
+
+    await exec({ campaignId: "c1", recipientId: "r1", method: "dispatch" })
+    expect(sendTemplateMessageMock).not.toHaveBeenCalled()
+    expect(recipientUpd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "FAILED",
+          lastError: expect.stringContaining("Insufficient balance"),
+        }),
+      })
+    )
+  })
+
+  it("charges overage to balance and records pricingBillable: true when quota is exhausted and balance is sufficient", async () => {
+    basePriceFU.mockResolvedValue({ basePrice: 500, isActive: true })
+    deviceFU.mockResolvedValue(device({ quotaBaseOut: 0, addonQuota: 0 }))
+    txn.mockImplementation(async (ops: unknown) => {
+      if (typeof ops === "function") {
+        return (ops as (tx: unknown) => Promise<unknown>)(
+          createMockTx({
+            whatsappDevice: {
+              findUnique: mock(async () =>
+                device({ quotaBaseOut: 0, addonQuota: 0 })
+              ),
+              update: deviceUpd,
+            },
+            billingAccount: {
+              findUnique: mock(async () => ({
+                id: "ba1",
+                balance: new Prisma.Decimal(50000),
+                currency: "IDR",
+              })),
+              update: mock(async () => ({ id: "ba1" })),
+            },
+          })
+        )
+      }
+      return null
+    })
+
+    await exec({ campaignId: "c1", recipientId: "r1", method: "dispatch" })
+    expect(sendTemplateMessageMock).toHaveBeenCalled()
+    expect(recipientUpd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "SENT", waMessageId: "wmid" }),
+      })
+    )
+    expect(billingLedgerCr).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          pricingBillable: true,
+        }),
       })
     )
   })

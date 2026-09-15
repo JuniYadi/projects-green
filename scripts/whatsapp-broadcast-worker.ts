@@ -11,17 +11,23 @@ import {
 import { logger } from "@/lib/logger"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
-import { resolveWhatsappQuotaCredit } from "@/modules/whatsapp/messages/quota-credit.service"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 import { renderTemplateBody } from "@/modules/whatsapp/templates/lib/template-renderer"
 import {
   getHourlyMessageLimit,
   DEFAULT_DAILY_LIMIT_MESSAGE,
 } from "@/modules/whatsapp/devices/devices.constants"
+import { WhatsappBillingService } from "@/modules/whatsapp/billing/whatsapp-billing.service"
+import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+
 const redisConnection = getWhatsAppBroadcastRedisConnection()
 const broadcastQueue = new Queue<WhatsAppBroadcastJobData>(
   WHATSAPP_BROADCAST_QUEUE_NAME,
   { connection: redisConnection }
+)
+const whatsappBilling = new WhatsappBillingService(
+  prisma,
+  new BillingTransactionService(prisma)
 )
 
 function getErrorMessage(error: unknown) {
@@ -337,25 +343,10 @@ async function dispatchBroadcast(
       return
     }
 
-    const client = await WhatsAppDeviceClient.fromDevice({
-      accessToken: device.tokenEncrypted,
-      phoneNumberId: device.whatsappPhoneId,
-      wabaId: device.whatsappBusinessAccountId,
-      organizationId: campaign.organizationId,
-    })
     const fields = toTemplateFields(
       campaign.templateParams,
       recipient.dynamicValues
     )
-    const result = await client.sendTemplateMessage({
-      to: recipient.phoneNumber,
-      templateName: campaign.templateName,
-      templateLanguage: campaign.templateLanguage,
-      fields,
-    })
-    const normalizedPhone =
-      normalizeIndonesianPhoneNumber(recipient.phoneNumber) ??
-      recipient.phoneNumber
 
     // Find template to get language content for the rendered message and billing category
     let templateBody: string | null = null
@@ -406,6 +397,55 @@ async function dispatchBroadcast(
       })
       renderedBody = renderTemplateBody(templateBody, values)
     }
+
+    // Unified message billing: deducts from allowance or charges overage to organization balance
+    const resolvedCategory =
+      (templateCategory as WhatsappBillingCategory) ??
+      WhatsappBillingCategory.UTILITY
+
+    const idempotencyKey = `wa-broadcast:${campaign.id}:${recipient.id}:attempt-${recipient.attempts}`
+    const billingResult = await whatsappBilling.consumeMessageBilling({
+      organizationId: campaign.organizationId,
+      deviceId: device.id,
+      phoneNumber: recipient.phoneNumber,
+      category: resolvedCategory,
+      messageType: "template",
+      idempotencyKey,
+    })
+    const billingDecision = billingResult.decision
+
+    const client = await WhatsAppDeviceClient.fromDevice({
+      accessToken: device.tokenEncrypted,
+      phoneNumberId: device.whatsappPhoneId,
+      wabaId: device.whatsappBusinessAccountId,
+      organizationId: campaign.organizationId,
+    })
+
+    let result
+    try {
+      result = await client.sendTemplateMessage({
+        to: recipient.phoneNumber,
+        templateName: campaign.templateName,
+        templateLanguage: campaign.templateLanguage,
+        fields,
+      })
+    } catch (metaError) {
+      await whatsappBilling
+        .compensateMessageBilling({
+          deviceId: device.id,
+          organizationId: campaign.organizationId,
+          decision: billingDecision,
+          reason: getErrorMessage(metaError),
+        })
+        .catch((compErr) => {
+          logger.warn({ compErr }, "failed to compensate broadcast billing")
+        })
+      throw metaError
+    }
+
+    const normalizedPhone =
+      normalizeIndonesianPhoneNumber(recipient.phoneNumber) ??
+      recipient.phoneNumber
 
     const conversation = await prisma.whatsappConversation.upsert({
       where: {
@@ -470,66 +510,6 @@ async function dispatchBroadcast(
     const deviceIdStr =
       campaign.whatsappDeviceId ?? `org-${campaign.organizationId}`
 
-    // Resolve quota credit: use template category or default to UTILITY
-    const resolvedCategory =
-      (templateCategory as WhatsappBillingCategory) ??
-      WhatsappBillingCategory.UTILITY
-    const quotaCredit = await resolveWhatsappQuotaCredit({
-      category: resolvedCategory,
-      phoneNumber: recipient.phoneNumber,
-    })
-    const credit = quotaCredit.quotaCredit
-    let deviceQuotaPromise: Promise<unknown> = Promise.resolve()
-
-    if (device?.id) {
-      try {
-        const currentDevice = await prisma.whatsappDevice.findUnique({
-          where: { id: device.id },
-          select: { quotaBaseOut: true, addonQuota: true },
-        })
-
-        if (currentDevice) {
-          const defaultRemaining =
-            currentDevice.quotaBaseOut instanceof Prisma.Decimal
-              ? currentDevice.quotaBaseOut
-              : new Prisma.Decimal(Number(currentDevice.quotaBaseOut ?? 0))
-          const addonRemaining =
-            currentDevice.addonQuota instanceof Prisma.Decimal
-              ? currentDevice.addonQuota
-              : new Prisma.Decimal(Number(currentDevice.addonQuota ?? 0))
-
-          if (defaultRemaining.gte(credit)) {
-            deviceQuotaPromise = prisma.whatsappDevice.update({
-              where: { id: device.id },
-              data: { quotaBaseOut: { decrement: credit } },
-            })
-          } else if (defaultRemaining.plus(addonRemaining).gte(credit)) {
-            const addonNeed = credit.minus(defaultRemaining)
-            deviceQuotaPromise = prisma.whatsappDevice.update({
-              where: { id: device.id },
-              data: {
-                quotaBaseOut: new Prisma.Decimal(0),
-                addonQuota: { decrement: addonNeed },
-              },
-            })
-          } else {
-            deviceQuotaPromise = prisma.whatsappDevice.update({
-              where: { id: device.id },
-              data: {
-                quotaBaseOut: new Prisma.Decimal(0),
-                addonQuota: new Prisma.Decimal(0),
-              },
-            })
-          }
-        }
-      } catch (err) {
-        logger.warn(
-          { err, deviceId: device.id },
-          "failed to decrement device broadcast quota allowance"
-        )
-      }
-    }
-
     await Promise.all([
       prisma.whatsappMonthlyCount.upsert({
         where: {
@@ -554,13 +534,14 @@ async function dispatchBroadcast(
           organizationId: campaign.organizationId,
           waMessageId: result.providerMessageId,
           phoneNumber: recipient.phoneNumber,
-          category: quotaCredit.category,
+          category: billingResult.category,
           quotaKey: device.id,
-          quotaValue: quotaCredit.quotaCredit,
+          quotaValue: billingResult.quotaCredit,
           whatsappDeviceId: device.id,
+          pricingBillable: billingResult.isBillableOverage,
+          pricingCategory: billingResult.category,
         },
       }),
-      deviceQuotaPromise,
     ])
     await prisma.whatsappBroadcastRecipient.update({
       where: { id: recipient.id },

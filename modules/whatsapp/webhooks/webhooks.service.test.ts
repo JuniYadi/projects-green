@@ -873,4 +873,51 @@ describe("processDeliveryStatus", () => {
       }),
     })
   })
+
+  it("does not restore allowance on failed delivery if ledger was billable overage", async () => {
+    mockPrisma.whatsappDevice.update = mock(async () => ({}))
+    mockPrisma.whatsappMessage.findFirst = mock(
+      async () =>
+        ({
+          id: "msg-billable-fail",
+          conversation: {
+            contactPhone: "6281234567890",
+            organizationId: "org-1",
+            whatsappDeviceId: "dev-1",
+          },
+        }) as any
+    )
+    mockPrisma.whatsappBillingLedger.findFirst = mock(
+      async () =>
+        ({
+          id: "ledger-billable-1",
+          waMessageId: "wamid.fail.billable",
+          status: "CHARGED_PENDING_VERIFY",
+          quotaValue: 1,
+          whatsappDeviceId: "dev-1",
+          pricingBillable: true,
+        }) as any
+    )
+
+    const result = await processDeliveryStatus(
+      {
+        id: "wamid.fail.billable",
+        status: "failed",
+        timestamp: "1723456789",
+        errors: [
+          {
+            code: 131026,
+            title: "Message Undeliverable",
+            error_data: { details: "User not found" },
+          },
+        ],
+        recipient_id: "6281234567890",
+      },
+      "dev-1",
+      "org-1"
+    )
+
+    expect(result.status).toBe("FAILED")
+    expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalled()
+  })
 })

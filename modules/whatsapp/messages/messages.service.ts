@@ -184,36 +184,26 @@ export const messageService: MessageService = {
       new BillingTransactionService(prisma)
     )
     // 1. Check WhatsApp allowance or charge overage BEFORE Meta API call
-    const unitPrice = await messageCostService.estimateMessageCost({
-      organizationId,
-      messageType: "text",
-      deviceId,
-    })
-
-    // Resolve quota credit for SERVICE category (free-form customer service replies)
-    const quotaCredit = await resolveWhatsappQuotaCredit({
-      category: WhatsappBillingCategory.SERVICE,
-      phoneNumber,
-    })
-
     // idempotencyKey includes retry context so broadcast retries generate unique keys
     const idempotencyKey = `wa-message:${jobId}:attempt-0`
 
     // Track billing decision to enable compensation on Meta API failure
     let billingDecision: WhatsappBillingDecision | null = null
+    let billingResult:
+      | import("@/modules/whatsapp/billing/whatsapp-billing.service").ConsumeMessageBillingResult
+      | null = null
 
     try {
-      billingDecision = await whatsappBilling.consumeAllowanceOrChargeOverage({
+      billingResult = await whatsappBilling.consumeMessageBilling({
         organizationId,
         deviceId: device.id,
-        quotaCredit: quotaCredit.quotaCredit,
-        unitPrice,
+        phoneNumber,
+        category: WhatsappBillingCategory.SERVICE,
+        messageType: "text",
         idempotencyKey,
       })
+      billingDecision = billingResult.decision
     } catch (err) {
-      if (err instanceof Error && err.message === "INSUFFICIENT_BALANCE") {
-        throw new InsufficientBalanceError(unitPrice, new Prisma.Decimal(0))
-      }
       console.error("[messageService] Billing check failed:", err)
       throw err
     }
@@ -341,11 +331,13 @@ export const messageService: MessageService = {
       console.error("[messageService] Failed to send via Meta API:", err)
       sendFailure = getWhatsappSendErrorMessage(err)
       // Compensate: restore allowance if it was consumed
-      if (billingDecision?.kind === "ALLOWANCE") {
+      if (billingDecision) {
         whatsappBilling
-          .restoreAllowance(device.id, {
-            default: billingDecision.defaultConsumed,
-            addon: billingDecision.addonConsumed,
+          .compensateMessageBilling({
+            deviceId: device.id,
+            organizationId,
+            decision: billingDecision,
+            reason: sendFailure,
           })
           .catch((restoreErr) => {
             console.error(
@@ -353,11 +345,6 @@ export const messageService: MessageService = {
               restoreErr
             )
           })
-      } else if (billingDecision?.kind === "OVERAGE_CHARGED") {
-        console.warn(
-          "[messageService] Overage charged but Meta API failed. Balance not auto-refunded.",
-          { adjustmentId: billingDecision.adjustmentId, jobId }
-        )
       }
     }
 
@@ -372,10 +359,12 @@ export const messageService: MessageService = {
           organizationId,
           waMessageId,
           phoneNumber,
-          category: quotaCredit.category,
+          category: billingResult?.category ?? WhatsappBillingCategory.SERVICE,
           quotaKey: device.id,
-          quotaValue: quotaCredit.quotaCredit,
+          quotaValue: billingResult?.quotaCredit ?? new Prisma.Decimal(1),
           whatsappDeviceId: device.id,
+          pricingBillable: billingResult?.isBillableOverage,
+          pricingCategory: billingResult?.category,
         },
       })
     }
@@ -626,36 +615,27 @@ export const messageService: MessageService = {
       new BillingTransactionService(prisma)
     )
 
-    const unitPrice = await messageCostService.estimateMessageCost({
-      organizationId,
-      messageType: "text",
-      deviceId,
-    })
-
-    // Resolve quota credit: use template's category or default to UTILITY
     const resolvedCategory = billingCategory ?? WhatsappBillingCategory.UTILITY
-    const quotaCredit = await resolveWhatsappQuotaCredit({
-      category: resolvedCategory,
-      phoneNumber,
-    })
-
     const idempotencyKey = `wa-message:${jobId}:attempt-0`
     let billingDecision:
       | import("@/modules/whatsapp/billing/whatsapp-billing.service").WhatsappBillingDecision
       | null = null
+    let billingResult:
+      | import("@/modules/whatsapp/billing/whatsapp-billing.service").ConsumeMessageBillingResult
+      | null = null
 
     try {
-      billingDecision = await whatsappBilling.consumeAllowanceOrChargeOverage({
+      billingResult = await whatsappBilling.consumeMessageBilling({
         organizationId,
         deviceId: device.id,
-        quotaCredit: quotaCredit.quotaCredit,
-        unitPrice,
+        phoneNumber,
+        category: resolvedCategory,
+        messageType: "template",
         idempotencyKey,
       })
+      billingDecision = billingResult.decision
     } catch (err) {
-      if (err instanceof Error && err.message === "INSUFFICIENT_BALANCE") {
-        throw new InsufficientBalanceError(unitPrice, new Prisma.Decimal(0))
-      }
+      console.error("[messageService] Billing check failed:", err)
       throw err
     }
 
@@ -757,18 +737,15 @@ export const messageService: MessageService = {
         err
       )
       sendFailure = getWhatsappSendErrorMessage(err)
-      if (billingDecision?.kind === "ALLOWANCE") {
+      if (billingDecision) {
         whatsappBilling
-          .restoreAllowance(device.id, {
-            default: billingDecision.defaultConsumed,
-            addon: billingDecision.addonConsumed,
+          .compensateMessageBilling({
+            deviceId: device.id,
+            organizationId,
+            decision: billingDecision,
+            reason: sendFailure,
           })
           .catch(() => {})
-      } else if (billingDecision?.kind === "OVERAGE_CHARGED") {
-        console.warn(
-          "[messageService] Overage charged but Meta API failed. Balance not auto-refunded.",
-          { adjustmentId: billingDecision.adjustmentId, jobId }
-        )
       }
     }
 
@@ -783,10 +760,12 @@ export const messageService: MessageService = {
           organizationId,
           waMessageId,
           phoneNumber,
-          category: quotaCredit.category,
+          category: billingResult?.category ?? resolvedCategory,
           quotaKey: device.id,
-          quotaValue: quotaCredit.quotaCredit,
+          quotaValue: billingResult?.quotaCredit ?? new Prisma.Decimal(1),
           whatsappDeviceId: device.id,
+          pricingBillable: billingResult?.isBillableOverage,
+          pricingCategory: billingResult?.category,
         },
       })
     }

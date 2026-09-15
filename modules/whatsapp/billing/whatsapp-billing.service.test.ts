@@ -695,4 +695,129 @@ describe("WhatsappBillingService", () => {
       expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalled()
     })
   })
+
+  describe("consumeMessageBilling", () => {
+    it("deducts from allowance and returns structured result", async () => {
+      defaultTx.whatsappDevice.findUnique.mockResolvedValue(
+        whatsappDevice({
+          quotaBaseOut: decimal("100"),
+          addonQuota: decimal("0"),
+        })
+      )
+
+      const result = await service.consumeMessageBilling({
+        organizationId: "org_1",
+        deviceId: "device_1",
+        phoneNumber: "+628123456789",
+        idempotencyKey: "test-idemp-1",
+        unitPrice: 500,
+        quotaCredit: 1,
+      })
+
+      expect(result.isBillableOverage).toBe(false)
+      expect(result.decision.kind).toBe("ALLOWANCE")
+      expect(result.quotaCredit.toString()).toBe("1")
+      expect(result.unitPrice.toString()).toBe("500")
+      expect(defaultTx.whatsappDevice.update).toHaveBeenCalledWith({
+        where: { id: "device_1" },
+        data: { quotaBaseOut: { decrement: decimal("1") } },
+      })
+    })
+
+    it("charges overage to balance when allowance is depleted", async () => {
+      defaultTx.whatsappDevice.findUnique.mockResolvedValue(
+        whatsappDevice({ quotaBaseOut: decimal("0"), addonQuota: decimal("0") })
+      )
+      defaultTx.billingAccount.findUnique.mockResolvedValue(
+        billingAccount({ balance: decimal("100000") })
+      )
+      defaultTx.serviceSubscription.findFirst.mockResolvedValue(null)
+      mockBillingTransactionService.debitServiceBalance.mockResolvedValue({
+        adjustmentId: "adj_overage_1",
+      })
+
+      const result = await service.consumeMessageBilling({
+        organizationId: "org_1",
+        deviceId: "device_1",
+        phoneNumber: "+628123456789",
+        idempotencyKey: "test-idemp-2",
+        unitPrice: 500,
+        quotaCredit: 2,
+      })
+
+      expect(result.isBillableOverage).toBe(true)
+      expect(result.decision.kind).toBe("OVERAGE_CHARGED")
+      if (result.decision.kind === "OVERAGE_CHARGED") {
+        expect(result.decision.charged.toString()).toBe("1000")
+        expect(result.decision.adjustmentId).toBe("adj_overage_1")
+      }
+    })
+
+    it("throws InsufficientBalanceError when balance is insufficient for overage", async () => {
+      defaultTx.whatsappDevice.findUnique.mockResolvedValue(
+        whatsappDevice({ quotaBaseOut: decimal("0"), addonQuota: decimal("0") })
+      )
+      defaultTx.billingAccount.findUnique.mockResolvedValue(
+        billingAccount({ balance: decimal("100") })
+      )
+      defaultTx.serviceSubscription.findFirst.mockResolvedValue(null)
+      mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
+        new Error("INSUFFICIENT_BALANCE")
+      )
+
+      expect(
+        service.consumeMessageBilling({
+          organizationId: "org_1",
+          deviceId: "device_1",
+          phoneNumber: "+628123456789",
+          idempotencyKey: "test-idemp-3",
+          unitPrice: 500,
+          quotaCredit: 1,
+        })
+      ).rejects.toThrow("Insufficient balance")
+    })
+  })
+
+  describe("compensateMessageBilling", () => {
+    it("restores allowance if decision was ALLOWANCE", async () => {
+      mockPrisma.whatsappDevice.update.mockResolvedValue({} as any)
+
+      await service.compensateMessageBilling({
+        organizationId: "org_1",
+        deviceId: "device_1",
+        decision: {
+          kind: "ALLOWANCE",
+          defaultConsumed: decimal("1"),
+          addonConsumed: decimal("0"),
+          remainingDefaultAllowance: decimal("99"),
+          remainingAddonAllowance: decimal("0"),
+        },
+      })
+
+      expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith({
+        where: { id: "device_1" },
+        data: { quotaBaseOut: { increment: decimal("1") } },
+      })
+    })
+
+    it("does not restore allowance if decision was OVERAGE_CHARGED", async () => {
+      mockPrisma.whatsappDevice.update.mockClear()
+
+      await service.compensateMessageBilling({
+        organizationId: "org_1",
+        deviceId: "device_1",
+        decision: {
+          kind: "OVERAGE_CHARGED",
+          defaultConsumed: decimal("0"),
+          addonConsumed: decimal("0"),
+          remainingDefaultAllowance: decimal("0"),
+          remainingAddonAllowance: decimal("0"),
+          charged: decimal("500"),
+          adjustmentId: "adj_1",
+        },
+      })
+
+      expect(mockPrisma.whatsappDevice.update).not.toHaveBeenCalled()
+    })
+  })
 })

@@ -1,6 +1,9 @@
-import { Prisma } from "@prisma/client"
+import { Prisma, WhatsappBillingCategory } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import { MessageCostService } from "@/modules/billing/message-cost.service"
+import { InsufficientBalanceError } from "@/modules/billing/types"
+import { resolveWhatsappQuotaCredit } from "@/modules/whatsapp/messages/quota-credit.service"
 import type { WhatsAppPlanResources } from "@/modules/billing/types"
 
 type BillingOrderResultLike = { orderId: string; [key: string]: unknown }
@@ -52,6 +55,33 @@ export type OverageInput = {
   quotaCredit: Prisma.Decimal
   unitPrice: Prisma.Decimal
   idempotencyKey: string
+}
+
+export type ConsumeMessageBillingInput = {
+  organizationId: string
+  deviceId: string
+  phoneNumber: string
+  category?: WhatsappBillingCategory
+  messageType?: "text" | "template" | "media" | "interactive"
+  idempotencyKey: string
+  unitPrice?: Prisma.Decimal | number
+  quotaCredit?: Prisma.Decimal | number
+}
+
+export type ConsumeMessageBillingResult = {
+  decision: WhatsappBillingDecision
+  quotaCredit: Prisma.Decimal
+  unitPrice: Prisma.Decimal
+  category: WhatsappBillingCategory
+  isBillableOverage: boolean
+}
+
+export type CompensateMessageBillingInput = {
+  organizationId: string
+  deviceId: string
+  decision: WhatsappBillingDecision
+  idempotencyKey?: string
+  reason?: string
 }
 
 // ─── Service ────────────────────────────────────────────────────────────
@@ -362,6 +392,109 @@ export class WhatsappBillingService {
         where: { id: deviceId },
         data,
       })
+    }
+  }
+
+  /**
+   * Unified single-entry message billing deduction:
+   * 1. Resolves quota credit and unit pricing if not explicitly provided.
+   * 2. Atomically consumes allowance or charges overage to organization balance.
+   * 3. Rejects with InsufficientBalanceError if quota and balance are both insufficient.
+   */
+  async consumeMessageBilling(
+    input: ConsumeMessageBillingInput
+  ): Promise<ConsumeMessageBillingResult> {
+    const resolvedCategory =
+      input.category ??
+      (input.messageType === "template"
+        ? WhatsappBillingCategory.UTILITY
+        : WhatsappBillingCategory.SERVICE)
+
+    let quotaCredit: Prisma.Decimal
+    if (input.quotaCredit !== undefined) {
+      quotaCredit =
+        typeof input.quotaCredit === "number"
+          ? new Prisma.Decimal(input.quotaCredit)
+          : input.quotaCredit
+    } else {
+      const resolved = await resolveWhatsappQuotaCredit({
+        category: resolvedCategory,
+        phoneNumber: input.phoneNumber,
+      })
+      quotaCredit = resolved.quotaCredit
+    }
+
+    let unitPrice: Prisma.Decimal
+    if (input.unitPrice !== undefined) {
+      unitPrice =
+        typeof input.unitPrice === "number"
+          ? new Prisma.Decimal(input.unitPrice)
+          : input.unitPrice
+    } else {
+      const messageCostService = new MessageCostService(this.prisma)
+      unitPrice = await messageCostService.estimateMessageCost({
+        organizationId: input.organizationId,
+        messageType: input.messageType === "template" ? "template" : "text",
+        deviceId: input.deviceId,
+        category: resolvedCategory,
+      })
+    }
+
+    try {
+      const decision = await this.consumeAllowanceOrChargeOverage({
+        organizationId: input.organizationId,
+        deviceId: input.deviceId,
+        quotaCredit,
+        unitPrice,
+        idempotencyKey: input.idempotencyKey,
+      })
+
+      return {
+        decision,
+        quotaCredit,
+        unitPrice,
+        category: resolvedCategory,
+        isBillableOverage: decision.kind === "OVERAGE_CHARGED",
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message === "INSUFFICIENT_BALANCE") {
+        throw new InsufficientBalanceError(unitPrice, new Prisma.Decimal(0))
+      }
+      throw err
+    }
+  }
+
+  /**
+   * Unified compensation when message dispatch or Meta API fails:
+   * - If consumed from allowance: restores consumed allowance to device.
+   * - If charged as overage: preserves existing balance behavior and logs warning.
+   */
+  async compensateMessageBilling(
+    input: CompensateMessageBillingInput
+  ): Promise<void> {
+    if (input.decision.kind === "ALLOWANCE") {
+      const amounts: {
+        default?: Prisma.Decimal
+        addon?: Prisma.Decimal
+      } = {}
+      if (input.decision.defaultConsumed.gt(0)) {
+        amounts.default = input.decision.defaultConsumed
+      }
+      if (input.decision.addonConsumed.gt(0)) {
+        amounts.addon = input.decision.addonConsumed
+      }
+      if (Object.keys(amounts).length > 0) {
+        await this.restoreAllowance(input.deviceId, amounts)
+      }
+    } else if (input.decision.kind === "OVERAGE_CHARGED") {
+      console.warn(
+        "[whatsappBilling] Overage charged but message dispatch failed. Balance not auto-refunded.",
+        {
+          adjustmentId: input.decision.adjustmentId,
+          deviceId: input.deviceId,
+          reason: input.reason,
+        }
+      )
     }
   }
 }
