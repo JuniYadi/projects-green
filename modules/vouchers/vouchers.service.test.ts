@@ -551,6 +551,22 @@ describe("VoucherService", () => {
         },
       })
     })
+
+    it("uses the supplied time when sweeping expired vouchers", async () => {
+      const prisma = createMockPrisma()
+      const now = new Date("2026-09-15T00:00:00.000Z")
+      prisma.voucher.updateMany = mock(() => ({ count: 2 })) as never
+
+      const service = new VoucherService(prisma as unknown as PrismaClient)
+      const count = await service.sweepExpiredVouchers(now)
+
+      expect(count).toBe(2)
+      expect(prisma.voucher.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ expiresAt: { lte: now } }),
+        })
+      )
+    })
   })
 
   // ─── redeemVoucher ────────────────────────────────────────────────────
