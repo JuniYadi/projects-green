@@ -72,7 +72,7 @@ jobs:
 
           echo "::group::Running Typecheck (tsc --noEmit)"
           if ! bun run typecheck > reports/typecheck.log 2>&1; then
-            echo "::error::Typecheck failed"
+            echo "::warning::Typecheck issues detected. Captured in reports/typecheck.log"
             tail -n 50 reports/typecheck.log
             HAS_ERRORS=1
           else
@@ -82,7 +82,7 @@ jobs:
 
           echo "::group::Running ESLint (eslint)"
           if ! bun run lint > reports/lint.log 2>&1; then
-            echo "::error::ESLint failed"
+            echo "::warning::ESLint issues detected. Captured in reports/lint.log"
             tail -n 50 reports/lint.log
             HAS_ERRORS=1
           else
@@ -91,7 +91,9 @@ jobs:
           echo "::endgroup::"
 
           if [ "$HAS_ERRORS" -ne 0 ]; then
-            exit 1
+            echo "Code health check finished with issues. Logged for automated triage."
+          else
+            echo "Code health check passed."
           fi
 
       - name: Upload Code Health Reports
@@ -115,17 +117,30 @@ jobs:
           fetch-depth: 0
 
       - name: Prepare reports directory
-        run: mkdir -p reports
+        run: |
+          mkdir -p reports
+          touch reports/trivy.log reports/gitleaks.log
 
       - name: Secret Scanning (Gitleaks)
         id: gitleaks
         uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+
+      - name: Collect Gitleaks Report
+        if: always()
+        shell: bash
+        run: |
+          if [ -f gitleaks-results.sarif ]; then
+            cp gitleaks-results.sarif reports/
+          fi
 
       - name: Dependency & File Vulnerability Scan (Trivy - All Levels)
         id: trivy
         uses: aquasecurity/trivy-action@v0.36.0
+        continue-on-error: true
         with:
           scan-type: "fs"
           scan-ref: "."
@@ -138,17 +153,16 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if [ -f reports/trivy.log ]; then
+          if [ -f reports/trivy.log ] && [ -s reports/trivy.log ]; then
             cat reports/trivy.log
           fi
 
       - name: Evaluate Security Severity Gate
+        if: always()
         shell: bash
         run: |
-          # Gate: Fail if HIGH or CRITICAL vulnerability rows exist in the table
-          if grep -E '(CRITICAL|HIGH)\s*\|' reports/trivy.log > /dev/null 2>&1; then
-            echo "::error::Actionable HIGH or CRITICAL security vulnerabilities detected."
-            exit 1
+          if [ -f reports/trivy.log ] && grep -E '(CRITICAL|HIGH)\s*\|' reports/trivy.log > /dev/null 2>&1; then
+            echo "::warning::Actionable HIGH or CRITICAL security vulnerabilities detected. Logged for automated triage."
           fi
 
       - name: Upload Security Reports
@@ -162,7 +176,7 @@ jobs:
   ai-autofix-and-triage:
     name: AI Auto-Fix & Incident Triage
     needs: [code-health, security-audit]
-    if: failure()
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -200,7 +214,6 @@ jobs:
         run: bun run db:generate
 
       - name: Download Health Reports
-        if: always()
         uses: actions/download-artifact@v4
         with:
           name: health-reports
@@ -208,14 +221,48 @@ jobs:
         continue-on-error: true
 
       - name: Download Security Reports
-        if: always()
         uses: actions/download-artifact@v4
         with:
           name: security-reports
           path: reports/security
         continue-on-error: true
 
+      - name: Check for Sentinel Findings
+        id: check-findings
+        shell: bash
+        run: |
+          HAS_FINDINGS=0
+
+          if [ -f reports/health/typecheck.log ] && grep -qE "error TS[0-9]+" reports/health/typecheck.log; then
+            echo "Found TypeScript typecheck errors"
+            HAS_FINDINGS=1
+          fi
+
+          if [ -f reports/health/lint.log ] && grep -qE "([0-9]+ problem|[0-9]+ error)" reports/health/lint.log; then
+            echo "Found ESLint errors"
+            HAS_FINDINGS=1
+          fi
+
+          if [ -f reports/security/trivy.log ] && grep -qE '(CRITICAL|HIGH|MEDIUM|LOW)\s*\|' reports/security/trivy.log; then
+            echo "Found Trivy vulnerability findings"
+            HAS_FINDINGS=1
+          fi
+
+          if [ -f reports/security/gitleaks-results.sarif ] && [ -s reports/security/gitleaks-results.sarif ]; then
+            echo "Found Gitleaks SARIF report"
+            HAS_FINDINGS=1
+          fi
+
+          if [ "$HAS_FINDINGS" -eq 1 ]; then
+            echo "findings_detected=true" >> "$GITHUB_OUTPUT"
+            echo "Actionable sentinel findings detected. Dispatching AI Auto-Fix & Incident Triage."
+          else
+            echo "findings_detected=false" >> "$GITHUB_OUTPUT"
+            echo "All health and security checks are clean. No triage needed."
+          fi
+
       - name: Claude Code — Auto-Fix & Triage
+        if: steps.check-findings.outputs.findings_detected == 'true'
         uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
@@ -242,9 +289,10 @@ jobs:
             - reports/health/typecheck.log (TypeScript compiler errors)
             - reports/health/lint.log (ESLint errors)
             - reports/security/trivy.log (Vulnerability scanner findings - all severities)
+            - reports/security/gitleaks-results.sarif (Gitleaks scanner findings)
 
             TASK 1: AUTO-FIX FOR CODE HEALTH (Typecheck & ESLint)
-            If typecheck or ESLint failures exist:
+            If typecheck or ESLint failures exist in reports/health/:
             1. Configure git identity:
                ```bash
                git config user.name "JuniYadi"
@@ -282,9 +330,22 @@ jobs:
 
             TASK 2: TRIAGE & ISSUE DISPATCH FOR SECURITY FINDINGS
             If security vulnerabilities (Trivy report) or leaked secrets are detected:
-            1. Parse the findings from reports/security/trivy.log.
+            1. Parse the findings from reports/security/trivy.log and secret findings.
             2. Categorize by severity: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL.
-            3. Open a GitHub Issue using `gh issue create`:
+            3. Check if an open issue already exists for Sentinel alerts:
+               ```bash
+               EXISTING_ISSUE=$(gh issue list --state open --search "Security Sentinel" --json number,title --jq '.[0].number')
+               ```
+            4. If an open issue exists, post a comment with the latest scan update:
+               ```bash
+               gh issue comment "$EXISTING_ISSUE" --body "### Daily Security Scan Update ($(date -u +'%Y-%m-%d %H:%M UTC'))
+
+               #### Findings Summary
+               \`\`\`
+               $(cat reports/security/trivy.log 2>/dev/null | head -n 40 || echo "See security audit logs")
+               \`\`\`"
+               ```
+            5. If no open issue exists, open a new GitHub Issue using `gh issue create`:
                ```bash
                gh issue create --title "[Security Sentinel] Daily Vulnerability Alert - $(date +%Y-%m-%d)" \
                                --body "### Daily Security Scan Findings
