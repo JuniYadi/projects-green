@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { TrafficSummaryCards } from "./traffic-summary-cards"
 import { TrafficHourlyChart } from "./traffic-hourly-chart"
 import { TrafficTopPagesCard } from "./traffic-top-pages-card"
+import { TrafficGeoCard } from "./traffic-geo-card"
 import { TrafficLiveStreamTable } from "./traffic-live-stream-table"
 import { Button } from "@/components/ui/button"
 import { ArrowClockwise } from "@phosphor-icons/react"
@@ -190,7 +191,13 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
             troubledPages={data.troubledPages}
           />
 
-          {/* 4. Live Feed Stream Section */}
+          {/* 4. Geographical Origin & Top IP Visitors Card */}
+          <TrafficGeoCard
+            topCountries={data.topCountries || []}
+            topIps={data.topIps || []}
+          />
+
+          {/* 5. Live Feed Stream Section */}
           <TrafficLiveStreamTable appSlug={appSlug} />
         </div>
       ) : null}

@@ -16,8 +16,10 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
+const actualTraffic = await import("./opensearch-traffic.service")
 const mockResolveOpenSearchForStack = mock()
 mock.module("./opensearch-traffic.service", () => ({
+  ...actualTraffic,
   resolveOpenSearchForStack: mockResolveOpenSearchForStack,
 }))
 

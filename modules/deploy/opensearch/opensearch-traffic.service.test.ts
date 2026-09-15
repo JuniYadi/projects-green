@@ -24,6 +24,7 @@ mock.module("../cluster-integration.service", () => ({
 // Dynamic import required after mock.module setup in Bun test
 const {
   formatBytes,
+  computeTopCountries,
   computeDailyTrafficSnapshotFromOpenSearch,
   getAppTrafficReport,
   getLiveTrafficLogs,
@@ -46,6 +47,45 @@ describe("opensearch-traffic.service", () => {
       expect(formatBytes(1024)).toBe("1.0 KB")
       expect(formatBytes(1048576)).toBe("1.0 MB")
       expect(formatBytes(BigInt(1073741824))).toBe("1.0 GB")
+    })
+  })
+
+  describe("computeTopCountries", () => {
+    it("aggregates requests per country and calculates percentage correctly", () => {
+      const topIps = [
+        {
+          ip: "1.1.1.1",
+          countryCode: "SG",
+          countryName: "Singapore",
+          requestsCount: 60,
+        },
+        {
+          ip: "1.1.1.2",
+          countryCode: "SG",
+          countryName: "Singapore",
+          requestsCount: 40,
+        },
+        {
+          ip: "2.2.2.2",
+          countryCode: "ID",
+          countryName: "Indonesia",
+          requestsCount: 100,
+        },
+      ]
+      const countries = computeTopCountries(topIps)
+      expect(countries.length).toBe(2)
+      expect(countries[0]).toEqual({
+        countryCode: "SG",
+        countryName: "Singapore",
+        requests: 100,
+        percentage: 50,
+      })
+      expect(countries[1]).toEqual({
+        countryCode: "ID",
+        countryName: "Indonesia",
+        requests: 100,
+        percentage: 50,
+      })
     })
   })
 
@@ -123,6 +163,38 @@ describe("opensearch-traffic.service", () => {
       expect(result.errorPaths).toEqual([
         { path: "/missing", errors: 5, sampleStatus: 404 },
       ])
+    })
+
+    it("throws error when stack is not found in computeDailyTrafficSnapshotFromOpenSearch", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue(null)
+      const mockClient = { search: mock() }
+      expect(
+        computeDailyTrafficSnapshotFromOpenSearch(
+          "unknown",
+          new Date(),
+          mockClient as unknown as import("@opensearch-project/opensearch").Client
+        )
+      ).rejects.toThrow("not found")
+    })
+
+    it("handles OpenSearch search error gracefully in snapshot compute", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+      const mockClient = {
+        search: mock(async () => {
+          throw new Error("OpenSearch down")
+        }),
+      }
+      const result = await computeDailyTrafficSnapshotFromOpenSearch(
+        "my-app",
+        new Date(),
+        mockClient as unknown as import("@opensearch-project/opensearch").Client
+      )
+      expect(result.totalRequests).toBe(0)
+      expect(result.topIps).toEqual([])
     })
   })
 
@@ -239,6 +311,14 @@ describe("opensearch-traffic.service", () => {
           avgLatencyMs: 25,
           topPathsJson: [{ path: "/v1", views: 400 }],
           errorPathsJson: [],
+          topIpsJson: [
+            {
+              ip: "1.1.1.1",
+              requestsCount: 100,
+              countryCode: "SG",
+              countryName: "Singapura",
+            },
+          ],
         },
         {
           id: "snap_2",
@@ -251,6 +331,14 @@ describe("opensearch-traffic.service", () => {
           avgLatencyMs: 30,
           topPathsJson: [{ path: "/v1", views: 800 }],
           errorPathsJson: [],
+          topIpsJson: [
+            {
+              ip: "1.1.1.1",
+              requestsCount: 200,
+              countryCode: "SG",
+              countryName: "Singapura",
+            },
+          ],
         },
       ])
 
@@ -271,6 +359,34 @@ describe("opensearch-traffic.service", () => {
         requests: 2000,
         errors: 40,
       })
+      expect(report.topIps[0].requestsCount).toBe(300)
+    })
+
+    it("returns empty default report when snapshot is absent", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+      mockPrisma.appHostingDailyTrafficSnapshot.findUnique.mockResolvedValue(
+        null
+      )
+
+      const report = await getAppTrafficReport("my-app", {
+        granularity: "daily",
+      })
+
+      expect(report.totalRequests).toBe(0)
+      expect(report.totalBytes).toBe(0)
+      expect(report.totalBytesFormatted).toBe("0 B")
+      expect(report.topPages).toEqual([])
+      expect(report.topIps).toEqual([])
+      expect(report.topCountries).toEqual([])
+    })
+
+    it("throws error when stack is not found", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue(null)
+      expect(getAppTrafficReport("unknown", {})).rejects.toThrow("not found")
     })
   })
 
@@ -385,6 +501,7 @@ describe("opensearch-traffic.service", () => {
         hourlyTrend: [],
         topPaths: [],
         errorPaths: [],
+        topIps: [],
       })
       expect(
         mockPrisma.appHostingDailyTrafficSnapshot.upsert
