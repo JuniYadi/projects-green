@@ -1230,6 +1230,8 @@ export default function PlatformInstanceWorkspacePage() {
                         selectedEnv={selectedEnv}
                         envVars={envVars}
                         setEnvVars={setEnvVars}
+                        framework={overview.framework}
+                        templateName={overview.templateName}
                         onPersist={async (rows) => {
                           try {
                             await persistEnvVars(rows)

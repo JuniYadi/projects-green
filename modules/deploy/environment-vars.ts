@@ -19,6 +19,45 @@ export const LARAVEL_ENV_PRESETS = [
   "QUEUE_CONNECTION",
 ] as const
 
+export const NODE_ENV_PRESETS = [
+  "PORT",
+  "NODE_ENV",
+  "APP_URL",
+  "JWT_SECRET",
+  "DATABASE_URL",
+  "REDIS_URL",
+] as const
+
+export const GENERIC_ENV_PRESETS = [
+  "PORT",
+  "APP_ENV",
+  "APP_URL",
+  "SECRET_KEY",
+  "DATABASE_URL",
+] as const
+
+export const getEnvPresets = (
+  framework?: string,
+  templateName?: string
+): readonly string[] => {
+  const target = `${framework ?? ""} ${templateName ?? ""}`.toLowerCase()
+  if (target.includes("laravel") || target.includes("php")) {
+    return LARAVEL_ENV_PRESETS
+  }
+  if (
+    target.includes("node") ||
+    target.includes("next") ||
+    target.includes("express") ||
+    target.includes("nest") ||
+    target.includes("router") ||
+    target.includes("js") ||
+    target.includes("ts")
+  ) {
+    return NODE_ENV_PRESETS
+  }
+  return GENERIC_ENV_PRESETS
+}
+
 const SECRET_KEY_HINT_PATTERN =
   /(SECRET|TOKEN|PASSWORD|PASS|PRIVATE|CREDENTIAL|APP_KEY|DB_PASSWORD|SALT|API_KEY|ENCRYPTION_KEY|AUTH_KEY)/i
 
