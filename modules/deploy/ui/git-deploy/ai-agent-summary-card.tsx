@@ -919,7 +919,11 @@ export function AiAgentSummaryCard({
             <div className="mt-2 flex items-center gap-1 font-mono text-sm">
               <Input
                 value={subdomain}
-                onChange={(e) => setSubdomain(e.target.value)}
+                onChange={(e) =>
+                  setSubdomain(
+                    e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")
+                  )
+                }
                 placeholder="my-app"
                 className="h-9 font-mono text-sm"
               />
@@ -997,7 +1001,7 @@ export function AiAgentSummaryCard({
             <Button
               size="lg"
               onClick={handleTriggerDeploy}
-              disabled={deploying}
+              disabled={deploying || !subdomain.trim()}
               className="mt-2 w-full gap-2 font-semibold shadow-xs"
             >
               {deploying ? (

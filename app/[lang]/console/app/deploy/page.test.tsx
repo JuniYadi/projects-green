@@ -298,6 +298,47 @@ describe("DeployPage Client", () => {
     })
   })
 
+  it("sanitizes the subdomain and prevents deployment when it is empty", async () => {
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
+
+    await act(async () => {
+      fireEvent.change(
+        view.getByPlaceholderText("https://github.com/organization/repository"),
+        { target: { value: "https://github.com/acme/public-app" } }
+      )
+      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+    })
+
+    await act(async () => {
+      fireEvent.click(
+        view.getByRole("button", { name: /continue to build settings/i })
+      )
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Deployment Summary")).toBeTruthy()
+    })
+
+    const subdomain = view.getByPlaceholderText("my-app")
+    const deployButton = view.getByRole("button", {
+      name: /deploy application now/i,
+    })
+
+    await act(async () => {
+      fireEvent.change(subdomain, { target: { value: "My App!🚀" } })
+    })
+    expect(subdomain).toHaveValue("myapp")
+
+    await act(async () => {
+      fireEvent.change(subdomain, { target: { value: "" } })
+    })
+    expect(deployButton).toBeDisabled()
+  })
+
   it("renders Indonesian localized greeting and labels when lang is id", async () => {
     const view = render(<DeployPageClient initialUserName="Alex" lang="id" />)
 
