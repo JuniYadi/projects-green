@@ -1,4 +1,8 @@
-import { describe, expect, it, mock } from "bun:test"
+import { mock } from "bun:test"
+
+mock.module("server-only", () => ({}))
+
+import { describe, expect, it } from "bun:test"
 import { Elysia } from "elysia"
 
 import { VoucherNotFoundError } from "../vouchers.errors"
@@ -447,6 +451,124 @@ describe("Portal Voucher Routes", () => {
       const body = await res.json()
       expect(body.ok).toBe(true)
       expect(body.data.status).toBe("DISABLED")
+    })
+  })
+
+  describe("POST /vouchers/portal/:id/expire", () => {
+    it("returns 401 when unauthenticated", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: null,
+          organizationId: null,
+          role: null,
+          roles: null,
+        })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 for non-admin users", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.getPlatformRole = mock(() => Promise.resolve("none" as const))
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(403)
+    })
+
+    it("marks a voucher as expired", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.expireVoucher = mock(() =>
+        Promise.resolve({
+          id: "v_1",
+          code: "TEST1234",
+          status: "EXPIRED",
+          prefix: null,
+          maxClaims: 10,
+          claimedCount: 0,
+          expiresAt: new Date(),
+          amount: { toFixed: () => "50000" },
+          currency: "IDR",
+          targetWorkosUserId: null,
+          targetOrganizationId: null,
+          createdByWorkosUserId: "user_1",
+          metadataJson: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.status).toBe("EXPIRED")
+    })
+
+    it("returns 404 when voucher does not exist", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.expireVoucher = mock(() => {
+        throw new VoucherNotFoundError("missing")
+      })
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/missing/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+    })
+
+    it("returns 500 when expiration fails unexpectedly", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.expireVoucher = mock(() => {
+        throw new Error("database unavailable")
+      })
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(500)
+    })
+
+    it("returns 422 for an invalid voucher id", async () => {
+      const res = await toApp(createDeps()).handle(
+        new Request("http://localhost/vouchers/portal/%20/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
     })
   })
 

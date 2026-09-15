@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { mock } from "bun:test"
+
+mock.module("server-only", () => ({}))
+
+import { beforeEach, describe, expect, it } from "bun:test"
 import { createAdminPromotionsRoutes } from "./promotions.route"
 import { VoucherNotFoundError } from "@/modules/vouchers/vouchers.errors"
 
@@ -15,6 +19,7 @@ const mockGetVoucherById = mock(() => Promise.resolve(null))
 const mockUpdatePromotion = mock(() => Promise.resolve({}))
 const mockPublishVoucher = mock(() => Promise.resolve({}))
 const mockDisablePromotionVoucher = mock(() => Promise.resolve({}))
+const mockExpireVoucher = mock(() => Promise.resolve({}))
 const mockGetPromotionClaims = mock(() => Promise.resolve([]))
 
 const mockService = {
@@ -24,6 +29,7 @@ const mockService = {
   updatePromotion: mockUpdatePromotion,
   publishVoucher: mockPublishVoucher,
   disablePromotionVoucher: mockDisablePromotionVoucher,
+  expireVoucher: mockExpireVoucher,
   getPromotionClaims: mockGetPromotionClaims,
 } as unknown as never
 
@@ -221,6 +227,62 @@ describe("admin promotions.route", () => {
       expect(res.status).toBe(200)
       const data = await res.json()
       expect(data.ok).toBe(true)
+    })
+  })
+
+  describe("POST /admin/promotions/:id/expire", () => {
+    it("marks promotion as expired", async () => {
+      mockExpireVoucher.mockResolvedValueOnce({
+        ...sampleVoucher,
+        status: "EXPIRED",
+      } as unknown as never)
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/promotions/promo-1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.ok).toBe(true)
+      expect(data.data.status).toBe("EXPIRED")
+    })
+
+    it("returns 404 when promotion does not exist", async () => {
+      mockExpireVoucher.mockRejectedValueOnce(
+        new VoucherNotFoundError("promo-404")
+      )
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/promotions/promo-404/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(404)
+    })
+
+    it("returns 500 when expiration fails unexpectedly", async () => {
+      mockExpireVoucher.mockRejectedValueOnce(new Error("database unavailable"))
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/promotions/promo-1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(500)
+    })
+
+    it("returns 422 for an invalid promotion id", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/admin/promotions/%20/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(422)
     })
   })
 

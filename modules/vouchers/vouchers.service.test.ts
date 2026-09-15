@@ -465,6 +465,110 @@ describe("VoucherService", () => {
     })
   })
 
+  // ─── expireVoucher & sweepExpiredVouchers ──────────────────────────────
+
+  describe("expireVoucher", () => {
+    it("marks an active voucher as EXPIRED", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        code: "EXP123",
+        status: "ACTIVE",
+      })) as never
+      prisma.voucher.update = mock(({ data }) => ({
+        id: "v_1",
+        code: "EXP123",
+        status: data.status,
+      })) as never
+
+      const service = new VoucherService(prisma as unknown as PrismaClient)
+      const result = await service.expireVoucher("v_1")
+
+      expect(result.status).toBe("EXPIRED")
+    })
+
+    it("returns as-is if already EXPIRED", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        code: "EXP123",
+        status: "EXPIRED",
+      })) as never
+
+      const service = new VoucherService(prisma as unknown as PrismaClient)
+      const result = await service.expireVoucher("v_1")
+
+      expect(result.status).toBe("EXPIRED")
+      expect(prisma.voucher.update).not.toHaveBeenCalled()
+    })
+
+    it("throws VoucherNotFoundError if voucher does not exist", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => null)
+
+      const service = new VoucherService(prisma as unknown as PrismaClient)
+      await expect(service.expireVoucher("nonexistent")).rejects.toThrow(
+        VoucherNotFoundError
+      )
+    })
+
+    it("expires a disabled voucher for an explicit admin action", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        code: "EXP123",
+        status: "DISABLED",
+      })) as never
+      prisma.voucher.update = mock(({ data }) => ({
+        id: "v_1",
+        code: "EXP123",
+        status: data.status,
+      })) as never
+
+      const service = new VoucherService(prisma as unknown as PrismaClient)
+      const result = await service.expireVoucher("v_1")
+
+      expect(result.status).toBe("EXPIRED")
+    })
+  })
+
+  describe("sweepExpiredVouchers", () => {
+    it("sweeps and updates active vouchers that passed expiration date", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.updateMany = mock(() => ({ count: 5 })) as never
+
+      const service = new VoucherService(prisma as unknown as PrismaClient)
+      const count = await service.sweepExpiredVouchers()
+
+      expect(count).toBe(5)
+      expect(prisma.voucher.updateMany).toHaveBeenCalledWith({
+        where: {
+          status: "ACTIVE",
+          expiresAt: { lte: expect.any(Date) },
+        },
+        data: {
+          status: "EXPIRED",
+        },
+      })
+    })
+
+    it("uses the supplied time when sweeping expired vouchers", async () => {
+      const prisma = createMockPrisma()
+      const now = new Date("2026-09-15T00:00:00.000Z")
+      prisma.voucher.updateMany = mock(() => ({ count: 2 })) as never
+
+      const service = new VoucherService(prisma as unknown as PrismaClient)
+      const count = await service.sweepExpiredVouchers(now)
+
+      expect(count).toBe(2)
+      expect(prisma.voucher.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ expiresAt: { lte: now } }),
+        })
+      )
+    })
+  })
+
   // ─── redeemVoucher ────────────────────────────────────────────────────
 
   describe("redeemVoucher", () => {

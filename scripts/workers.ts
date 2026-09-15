@@ -46,11 +46,13 @@ import {
   BILLING_MONTHLY_RESET_QUEUE,
   BILLING_INVOICE_STATUS_QUEUE,
   BILLING_PAYMENT_REMINDER_QUEUE,
+  BILLING_VOUCHER_EXPIRATION_QUEUE,
   BILLING_DAILY_RESET_JOB,
   BILLING_MONTHLY_RESET_JOB,
   BILLING_MONTHLY_BILLING_JOB,
   BILLING_INVOICE_STATUS_JOB,
   BILLING_PAYMENT_REMINDER_JOB,
+  BILLING_VOUCHER_EXPIRATION_JOB,
   type BillingCronJobData,
 } from "@/lib/queue/billing-cron"
 import { registerRepeatableJobs } from "./billing-cron"
@@ -58,6 +60,7 @@ import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
 import { BillingCycleService } from "@/modules/billing/billing-cycle.service"
 import { InvoiceStatusManager } from "@/modules/billing/invoice-status.service"
 import { invoiceEmailService } from "@/modules/invoices/email.service"
+import { VoucherService } from "@/modules/vouchers/vouchers.service"
 
 // ── OpenSearch Ingest ──────────────────────────────────────────────────────
 import { OPENSEARCH_INGEST_QUEUE } from "@/lib/queue/opensearch-ingest"
@@ -309,6 +312,25 @@ const billingReminderWorker = new Worker<BillingCronJobData>(
   { connection: redisConnection, prefix, concurrency: 1 }
 )
 allWorkers.push(billingReminderWorker)
+
+const billingVoucherExpirationWorker = new Worker<BillingCronJobData>(
+  BILLING_VOUCHER_EXPIRATION_QUEUE,
+  async (job: Job<BillingCronJobData>) => {
+    if (job.name === BILLING_VOUCHER_EXPIRATION_JOB) {
+      const voucherService = new VoucherService(prisma)
+      const count = await voucherService.sweepExpiredVouchers()
+      logger.info(
+        {
+          event: "billing.voucher_expiration.completed",
+          expiredCount: count,
+        },
+        `Voucher expiration marked ${count} expired vouchers`
+      )
+    }
+  },
+  { connection: redisConnection, prefix, concurrency: 1 }
+)
+allWorkers.push(billingVoucherExpirationWorker)
 
 // ── OpenSearch Ingest Worker ────────────────────────────────────────────────
 const opensearchConcurrency = parseInt(
@@ -965,6 +987,7 @@ logger.info(
       BILLING_MONTHLY_RESET_QUEUE,
       BILLING_INVOICE_STATUS_QUEUE,
       BILLING_PAYMENT_REMINDER_QUEUE,
+      BILLING_VOUCHER_EXPIRATION_QUEUE,
       OPENSEARCH_INGEST_QUEUE,
       QUOTA_RECONCILIATION_QUEUE,
       WHATSAPP_BROADCAST_QUEUE_NAME,

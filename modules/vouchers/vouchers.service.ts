@@ -61,9 +61,7 @@ type CreatePromotionData = {
   discountValue: number
   discountCurrency?: string | null
   currencyPolicy:
-    | "MATCH_CURRENCY_ONLY"
-    | "CONVERT_AT_CHECKOUT"
-    | "CONVERT_AT_REDEMPTION"
+    "MATCH_CURRENCY_ONLY" | "CONVERT_AT_CHECKOUT" | "CONVERT_AT_REDEMPTION"
   firstCheckoutOnly?: boolean
   allowUpgrade?: boolean
   stackable?: boolean
@@ -86,9 +84,7 @@ type UpdatePromotionData = {
   discountValue?: number
   discountCurrency?: string | null
   currencyPolicy?:
-    | "MATCH_CURRENCY_ONLY"
-    | "CONVERT_AT_CHECKOUT"
-    | "CONVERT_AT_REDEMPTION"
+    "MATCH_CURRENCY_ONLY" | "CONVERT_AT_CHECKOUT" | "CONVERT_AT_REDEMPTION"
   firstCheckoutOnly?: boolean
   allowUpgrade?: boolean
   stackable?: boolean
@@ -326,6 +322,39 @@ export class VoucherService {
       where: { id },
       data: { status: "DISABLED" },
     })
+  }
+
+  // ─── Expire voucher ─────────────────────────────────────────────────────────
+
+  async expireVoucher(id: string) {
+    const existing = await this.prisma.voucher.findUnique({ where: { id } })
+    if (!existing) {
+      throw new VoucherNotFoundError(id)
+    }
+
+    if (existing.status === "EXPIRED") {
+      return existing
+    }
+
+    return this.prisma.voucher.update({
+      where: { id },
+      data: { status: "EXPIRED" },
+    })
+  }
+
+  // ─── Sweep expired vouchers ─────────────────────────────────────────────────
+
+  async sweepExpiredVouchers(now: Date = new Date()): Promise<number> {
+    const result = await this.prisma.voucher.updateMany({
+      where: {
+        status: "ACTIVE",
+        expiresAt: { lte: now },
+      },
+      data: {
+        status: "EXPIRED",
+      },
+    })
+    return result.count
   }
 
   // ─── Portal: get voucher claims ─────────────────────────────────────────────

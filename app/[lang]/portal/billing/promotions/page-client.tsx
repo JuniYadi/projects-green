@@ -23,7 +23,14 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   CopySimpleIcon,
+  DotsThreeVerticalIcon,
 } from "@phosphor-icons/react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 import {
   VOUCHER_STATUS_COLORS,
@@ -134,6 +141,46 @@ export default function BillingPromotionsPage() {
     void navigator.clipboard.writeText(code)
   }, [])
 
+  const handleDisable = useCallback(async (id: string) => {
+    setError(null)
+    try {
+      const { data } = await eden.api.vouchers.portal[id].disable.post()
+      if (data && "ok" in data && data.ok) {
+        setVouchers((prev) =>
+          prev.map((v) => (v.id === id ? { ...v, status: "DISABLED" } : v))
+        )
+      } else {
+        setError(
+          (data && "message" in data ? (data.message as string) : null) ||
+            "Failed to disable voucher"
+        )
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to disable voucher")
+    }
+  }, [])
+
+  const handleExpire = useCallback(async (id: string) => {
+    setError(null)
+    try {
+      const { data } = await eden.api.vouchers.portal[id].expire.post()
+      if (data && "ok" in data && data.ok) {
+        setVouchers((prev) =>
+          prev.map((v) => (v.id === id ? { ...v, status: "EXPIRED" } : v))
+        )
+      } else {
+        setError(
+          (data && "message" in data ? (data.message as string) : null) ||
+            "Failed to mark voucher as expired"
+        )
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to mark voucher as expired"
+      )
+    }
+  }, [])
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1
 
@@ -227,8 +274,57 @@ export default function BillingPromotionsPage() {
           </span>
         ),
       },
+      {
+        id: "actions",
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => {
+          const v = row.original
+          const isExpired =
+            v.status === "EXPIRED" || new Date(v.expiresAt) <= new Date()
+
+          return (
+            <div className="flex justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    aria-label="Actions"
+                  >
+                    <DotsThreeVerticalIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/portal/billing/promotions/${v.id}`}>
+                      Edit / Details
+                    </Link>
+                  </DropdownMenuItem>
+                  {v.status === "ACTIVE" && (
+                    <DropdownMenuItem
+                      onClick={() => void handleDisable(v.id)}
+                      className="text-amber-600 focus:text-amber-700"
+                    >
+                      Deactivate (Disable)
+                    </DropdownMenuItem>
+                  )}
+                  {v.status !== "EXPIRED" && isExpired && (
+                    <DropdownMenuItem
+                      onClick={() => void handleExpire(v.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      Mark as Expired
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )
+        },
+      },
     ],
-    [copyCode]
+    [copyCode, handleDisable, handleExpire]
   )
 
   if (isLoading && vouchers.length === 0) {

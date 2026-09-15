@@ -325,6 +325,29 @@ export const createAdminPromotionsRoutes = (
         }
       })
 
+      // ─── POST /admin/promotions/:id/expire — Mark voucher as expired ───────────
+
+      .post("/:id/expire", async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+        const parsed = voucherIdParamSchema.safeParse(params)
+        if (!parsed.success) {
+          return validationError(set, parsed.error.issues)
+        }
+
+        try {
+          const voucher = await service.expireVoucher(parsed.data.id)
+
+          return {
+            ok: true as const,
+            data: toVoucherDTO(voucher as never),
+          }
+        } catch (error) {
+          return toAdminApiError(set, error)
+        }
+      })
+
       // ─── GET /admin/promotions/:id/claims — Claim history for a voucher ────────
 
       .get("/:id/claims", async ({ params, set }) => {

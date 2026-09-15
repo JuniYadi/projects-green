@@ -15,6 +15,8 @@ import {
   BILLING_PAYMENT_REMINDER_JOB,
   BILLING_RENEWAL_LADDER_QUEUE,
   BILLING_RENEWAL_LADDER_JOB,
+  BILLING_VOUCHER_EXPIRATION_QUEUE,
+  BILLING_VOUCHER_EXPIRATION_JOB,
 } from "@/lib/queue/billing-cron"
 import {
   APP_HOSTING_TRAFFIC_SNAPSHOT_JOB,
@@ -131,6 +133,13 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     jobName: BILLING_DAILY_RESET_JOB,
     expression: "0 0 * * *",
     buildJobId: (d) => `daily-cleanup-${d.toISOString().slice(0, 10)}`,
+  },
+  {
+    name: "voucher-expiration",
+    queueName: BILLING_VOUCHER_EXPIRATION_QUEUE,
+    jobName: BILLING_VOUCHER_EXPIRATION_JOB,
+    expression: "0 0 * * *",
+    buildJobId: (d) => `voucher-expiration-${d.toISOString().slice(0, 10)}`,
   },
   {
     // Registered in lib/cron/registry.ts since #7xx but never scheduled, so

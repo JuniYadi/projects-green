@@ -423,6 +423,42 @@ export const createPortalVoucherRoutes = (
         }
       })
 
+      // POST /vouchers/portal/:id/expire — mark voucher as expired
+      .post("/:id/expire", async ({ params, set }) => {
+        const auth = await authenticate()
+
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(set, "Only administrators can expire vouchers.")
+        }
+
+        const parsed = voucherIdParamSchema.safeParse(params)
+        if (!parsed.success) {
+          set.status = 422
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: "Please fix the highlighted fields and try again.",
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
+          }
+        }
+
+        try {
+          const voucher = await service.expireVoucher(parsed.data.id)
+
+          return {
+            ok: true as const,
+            data: toVoucherDTO(voucher),
+          }
+        } catch (error) {
+          return toErrorResponse(set, error)
+        }
+      })
+
       // GET /vouchers/portal/:id/claims — claim history for a voucher
       .get("/:id/claims", async ({ params, set }) => {
         const auth = await authenticate()
