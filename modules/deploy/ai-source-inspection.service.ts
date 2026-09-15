@@ -128,8 +128,7 @@ type GithubRepositoryConnection = Prisma.GithubRepositoryConnectionGetPayload<{
 export type NormalizedGithubSource = AiSourceInspectionSourceDTO
 
 export type GithubSourceNormalization =
-  | { ok: true; source: NormalizedGithubSource }
-  | { ok: false; message: string }
+  { ok: true; source: NormalizedGithubSource } | { ok: false; message: string }
 
 export type AiSourceInspectionServiceDependencies = {
   db?: PrismaClient
@@ -902,7 +901,19 @@ export class AiSourceInspectionService {
         appName: source.repo,
         branchOrRef: source.ref,
         environment: "production",
-        envRequirements: [],
+        envRequirements: detection.envDefaults
+          ? Object.entries(detection.envDefaults).map(([key, value]) => {
+              const isSecret =
+                /secret|key|password|token|auth|credential/i.test(key)
+              return {
+                key,
+                required: false,
+                kind: isSecret ? ("secret" as const) : ("plain" as const),
+                status: value ? ("provided" as const) : ("missing" as const),
+                description: `Configured from .env.example: ${key}`,
+              }
+            })
+          : [],
       },
       dependencies: [],
       resources: {

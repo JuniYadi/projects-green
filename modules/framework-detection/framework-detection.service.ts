@@ -168,6 +168,9 @@ type Inventory = {
   composerDependencies: Set<string>
   lockfiles: Set<string>
   evidence: DetectionEvidence[]
+  packageJsonVersions?: Record<string, string>
+  composerVersions?: Record<string, string>
+  envExampleVars?: Record<string, string>
 }
 
 export type DetectorDependencies = {
@@ -546,7 +549,10 @@ const buildInventory = async (
   const evidence: DetectionEvidence[] = []
   const packageJsonDependencies = new Set<string>()
   const packageJsonScripts = new Set<string>()
+  const packageJsonVersions: Record<string, string> = {}
   const composerDependencies = new Set<string>()
+  const composerVersions: Record<string, string> = {}
+  let envExampleVars: Record<string, string> | undefined
   const lockfiles = new Set<string>()
 
   const fileSet = new Set(files)
@@ -620,8 +626,11 @@ const buildInventory = async (
       ...(packageJson?.devDependencies ?? {}),
     }
 
-    for (const dependency of Object.keys(dependencies)) {
+    for (const [dependency, version] of Object.entries(dependencies)) {
       packageJsonDependencies.add(dependency)
+      if (typeof version === "string") {
+        packageJsonVersions[dependency] = version
+      }
       evidence.push({
         type: "dependency",
         value: dependency,
@@ -651,13 +660,30 @@ const buildInventory = async (
       ...(composerJson?.["require-dev"] ?? {}),
     }
 
-    for (const dependency of Object.keys(dependencies)) {
+    for (const [dependency, version] of Object.entries(dependencies)) {
       composerDependencies.add(dependency)
+      if (typeof version === "string") {
+        composerVersions[dependency] = version
+      }
       evidence.push({
         type: "dependency",
         value: dependency,
         detail: "composer.json dependency",
       })
+    }
+  }
+
+  if (fileSet.has(".env.example")) {
+    try {
+      const envText = await readManifest(".env.example")
+      envExampleVars = parseEnvFile(envText)
+      evidence.push({
+        type: "file",
+        value: ".env.example",
+        detail: `.env.example configuration template with ${Object.keys(envExampleVars).length} keys`,
+      })
+    } catch {
+      // ignore .env.example read error
     }
   }
 
@@ -691,6 +717,94 @@ const buildInventory = async (
     composerDependencies,
     lockfiles,
     evidence,
+    packageJsonVersions,
+    composerVersions,
+    envExampleVars,
+  }
+}
+
+export function parseEnvFile(text: string): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith("#")) continue
+    const cleanLine = trimmed.replace(/^export\s+/, "")
+    const eqIdx = cleanLine.indexOf("=")
+    if (eqIdx > 0) {
+      const key = cleanLine.slice(0, eqIdx).trim()
+      let value = cleanLine.slice(eqIdx + 1).trim()
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1)
+      }
+      if (/^[A-Za-z0-9_]+$/.test(key)) {
+        result[key] = value
+      }
+    }
+  }
+  return result
+}
+
+export function normalizeVersionString(
+  raw: string | undefined | null,
+  frameworkId?: string
+): string | null {
+  if (!raw) return null
+  const cleaned = raw.replace(/^[^\d]+/, "").trim()
+  const match = cleaned.match(/^(\d+)(?:\.(\d+))?/)
+  if (!match) return cleaned || null
+  const major = match[1]
+  const minor = match[2]
+  if (frameworkId === "laravel") {
+    return `${major}.x`
+  }
+  if (minor && minor !== "0") {
+    return `${major}.${minor}`
+  }
+  return `${major}.x`
+}
+
+export function extractFrameworkVersion(
+  frameworkId: string,
+  inventory: Inventory
+): string | null {
+  const composer = inventory.composerVersions ?? {}
+  const pkg = inventory.packageJsonVersions ?? {}
+
+  switch (frameworkId) {
+    case "laravel":
+      return normalizeVersionString(
+        composer["laravel/framework"] || composer["laravel/lumen-framework"],
+        "laravel"
+      )
+    case "nextjs":
+      return normalizeVersionString(pkg["next"], "nextjs")
+    case "react":
+      return normalizeVersionString(pkg["react"], "react")
+    case "vue":
+      return normalizeVersionString(pkg["vue"], "vue")
+    case "nuxt":
+      return normalizeVersionString(pkg["nuxt"] || pkg["nuxt3"], "nuxt")
+    case "nestjs":
+      return normalizeVersionString(pkg["@nestjs/core"], "nestjs")
+    case "express":
+      return normalizeVersionString(pkg["express"], "express")
+    case "remix":
+      return normalizeVersionString(
+        pkg["@remix-run/react"] || pkg["@remix-run/node"],
+        "remix"
+      )
+    case "astro":
+      return normalizeVersionString(pkg["astro"], "astro")
+    case "svelte":
+      return normalizeVersionString(
+        pkg["@sveltejs/kit"] || pkg["svelte"],
+        "svelte"
+      )
+    default:
+      return null
   }
 }
 
@@ -1721,6 +1835,10 @@ const fromInventory = async (
         isLaunchable: false,
       }
 
+  const frameworkVersion = selected
+    ? extractFrameworkVersion(selected.id, inventory)
+    : null
+
   return {
     primaryFramework,
     requiredDependencies,
@@ -1734,6 +1852,9 @@ const fromInventory = async (
       ref: input.ref,
       subdir: input.subdir,
     },
+    frameworkVersion,
+    defaultPort: selected ? (DEFAULT_PORT_MAP[selected.id] ?? null) : null,
+    envDefaults: inventory.envExampleVars,
   }
 }
 
@@ -1997,6 +2118,9 @@ export const detectFrameworkFromGithubApi = async (
       warnings,
       status: decision.status,
     })
+    const frameworkVersion = selected
+      ? extractFrameworkVersion(selected.id, inventory)
+      : null
     return {
       primaryFramework,
       requiredDependencies: enforced,
@@ -2009,9 +2133,10 @@ export const detectFrameworkFromGithubApi = async (
       warnings,
       source,
       inspectionLogId,
-      frameworkVersion: null,
+      frameworkVersion,
       defaultPort: DEFAULT_PORT_MAP[selected.id] ?? null,
       enforcedRuntimes,
+      envDefaults: inventory.envExampleVars,
     }
   }
   let aiDecision: AiDecision
@@ -2032,7 +2157,10 @@ export const detectFrameworkFromGithubApi = async (
     return fallback(error, classifyProviderFailure(error), trace)
   }
   const frameworkId = aiDecision.primaryFrameworkId
-  const frameworkVersion = aiDecision.frameworkVersion ?? null
+  const frameworkVersion =
+    aiDecision.frameworkVersion ||
+    extractFrameworkVersion(frameworkId, inventory) ||
+    null
   const normalizedConfidence = normalizeConfidence(aiDecision.confidence)
   const primaryFramework: DetectedFramework = {
     id: frameworkId,
@@ -2109,6 +2237,7 @@ export const detectFrameworkFromGithubApi = async (
     frameworkVersion,
     defaultPort: DEFAULT_PORT_MAP[frameworkId] ?? null,
     enforcedRuntimes,
+    envDefaults: inventory.envExampleVars,
   }
 }
 
@@ -2125,4 +2254,7 @@ export const __testables = {
   inferFrameworkEcosystem,
   summarizeDetectorRules,
   evaluateSupportDecision,
+  parseEnvFile,
+  normalizeVersionString,
+  extractFrameworkVersion,
 }

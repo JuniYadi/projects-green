@@ -181,7 +181,7 @@ describe("DeployPage Client", () => {
     })
 
     const continueBtn = view.getByRole("button", {
-      name: /continue to build settings/i,
+      name: /review ai blueprint/i,
     })
 
     await act(async () => {
@@ -219,7 +219,7 @@ describe("DeployPage Client", () => {
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /continue to build settings/i })
+        view.getByRole("button", { name: /review ai blueprint/i })
       )
     })
 
@@ -229,9 +229,14 @@ describe("DeployPage Client", () => {
       expect(view.getByText("$50.00 available")).toBeTruthy()
     })
 
+    // Verify auto-prefilled environment variables exist
+    expect(view.getByText("NODE_ENV")).toBeTruthy()
+    expect(view.getByText("3 variables configured")).toBeTruthy()
+
     // Add env var
     const keyInput = view.getByPlaceholderText("VARIABLE_NAME")
-    const valInput = view.getByPlaceholderText("Value")
+    const valInputs = view.getAllByPlaceholderText("Value")
+    const valInput = valInputs[valInputs.length - 1]
     const addBtn = view.getByRole("button", { name: /add variable/i })
 
     await act(async () => {
@@ -243,7 +248,7 @@ describe("DeployPage Client", () => {
     })
 
     expect(view.getByText("DATABASE_URL")).toBeTruthy()
-    expect(view.getByText("1 variable configured")).toBeTruthy()
+    expect(view.getByText("4 variables configured")).toBeTruthy()
 
     // Test start over
     const startOverBtn = view.getByRole("button", { name: /start over/i })
@@ -276,7 +281,7 @@ describe("DeployPage Client", () => {
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /continue to build settings/i })
+        view.getByRole("button", { name: /review ai blueprint/i })
       )
     })
 
@@ -315,7 +320,7 @@ describe("DeployPage Client", () => {
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /continue to build settings/i })
+        view.getByRole("button", { name: /review ai blueprint/i })
       )
     })
 
@@ -392,7 +397,7 @@ describe("DeployPage Client", () => {
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /continue to build settings/i })
+        view.getByRole("button", { name: /review ai blueprint/i })
       )
     })
 
@@ -533,7 +538,7 @@ describe("DeployPage Client", () => {
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /continue to build settings/i })
+        view.getByRole("button", { name: /review ai blueprint/i })
       )
     })
 
