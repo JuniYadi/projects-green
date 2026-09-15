@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { CountryFlag } from "@/components/ui/country-flag"
 import { toast } from "sonner"
 import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   cancelVpnSubscription,
   reinstateVpnSubscription,
@@ -129,7 +130,7 @@ function ProxyCredentialCell({
   account: VpnServerAccount
   locale?: string
 }) {
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const [password, setPassword] = useState<string | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -220,7 +221,7 @@ function WireGuardQrAction({
   accountId: string
   locale?: string
 }) {
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const [open, setOpen] = useState(false)
   const [qrData, setQrData] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -290,7 +291,7 @@ function WireGuardConfigQrModal({
   onClose: () => void
   locale?: string
 }) {
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const [qrData, setQrData] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -372,7 +373,7 @@ function ConfigCell({
   subStatus: VpnSubscription["status"]
   locale?: string
 }) {
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   if (account.provisioningStatus === "REVOKED") {
     return <span className="text-xs text-muted-foreground">{t.revoked}</span>
   }
@@ -444,7 +445,7 @@ function ProtocolControl({
   locale?: string
 }) {
   const isFailed = account.provisioningStatus === "FAILED"
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
 
   return (
     <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
@@ -587,7 +588,7 @@ function _RegionSummary({
   sub: VpnSubscription
   locale?: string
 }) {
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const regions = uniqueRegionNames(sub)
   const visible = regions.slice(0, 2).join(", ") || t.noRegions
   const more =
@@ -609,7 +610,7 @@ function SubscriptionStatusBadge({
   locale?: string
 }) {
   const status = billingStatus(sub)
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
 
   const statusLabel =
     status === "CANCELLING"
@@ -641,7 +642,7 @@ function ConnectionSummaryCell({
   sub: VpnSubscription
   locale?: string
 }) {
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const groups = groupByServer(sub.serverAccounts)
   const visibleGroups = groups.slice(0, 2)
   const extraCount = groups.length - visibleGroups.length
@@ -682,7 +683,7 @@ function DeviceSummaryCell({
   devices: Array<{ deviceName: string; platform: string; status: string }>
   locale?: string
 }) {
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const maxDevices =
     sub.serverAccounts.filter(
       (account) => account.provisioningStatus === "ACTIVE"
@@ -702,7 +703,7 @@ export function VpnServerAccountsDetail({
   subscription: VpnSubscription
   locale?: string
 }) {
-  const t = getMessages(locale).console.vpn.myServices
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const [search, setSearch] = useState("")
   const [regionFilter, setRegionFilter] = useState("all")
 
@@ -848,7 +849,10 @@ export function VpnMyServices({
   onChanged,
   locale = "en",
 }: Props) {
-  const messages = useMemo(() => getMessages(locale), [locale])
+  const messages = useMemo(
+    () => getMessages(resolveLocaleOrDefault(locale)),
+    [locale]
+  )
   const t = messages.console.vpn.myServices
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null)
