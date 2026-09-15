@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { mock } from "bun:test"
+
+mock.module("server-only", () => ({}))
+
+import { beforeEach, describe, expect, it } from "bun:test"
 import { createAdminPromotionsRoutes } from "./promotions.route"
 import { VoucherNotFoundError } from "@/modules/vouchers/vouchers.errors"
 

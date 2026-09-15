@@ -1,4 +1,8 @@
-import { describe, expect, it, mock } from "bun:test"
+import { mock } from "bun:test"
+
+mock.module("server-only", () => ({}))
+
+import { describe, expect, it } from "bun:test"
 import { Elysia } from "elysia"
 
 import { VoucherNotFoundError } from "../vouchers.errors"
