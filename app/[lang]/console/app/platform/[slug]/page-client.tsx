@@ -113,8 +113,10 @@ type AppSettingsClient = SettingsRouteClient & {
     get: SettingsMethod
     env: SettingsRouteClient
     mounts: MountRouteClient
+    build: SettingsRouteClient
   }
   domains: DomainRouteClient
+  scaling: SettingsRouteClient
 }
 
 const getAppClient = (slug: string): AppSettingsClient =>
@@ -232,7 +234,37 @@ const readSettingsData = (payload: SettingsApiPayload<unknown>) => {
       })),
     ])
   ) as Record<K8sEnvironmentId, VolumeMount[]>
-  return { envVars, mounts }
+  const persistentStorage =
+    settings &&
+    "persistentStorage" in settings &&
+    settings.persistentStorage &&
+    typeof settings.persistentStorage === "object"
+      ? (settings.persistentStorage as {
+          enabled: boolean
+          mountPath: string
+          sizeGb: number
+        })
+      : null
+
+  const build =
+    settings &&
+    "build" in settings &&
+    settings.build &&
+    typeof settings.build === "object"
+      ? (settings.build as {
+          buildCommand: string
+          rootDirectory: string
+          dockerfileDetected: boolean
+          framework: string
+        })
+      : {
+          buildCommand: "",
+          rootDirectory: "/",
+          dockerfileDetected: false,
+          framework: "",
+        }
+
+  return { envVars, mounts, persistentStorage, build }
 }
 const toPersistedMount = (mount: VolumeMount) => ({
   id: mount.id,
@@ -351,6 +383,22 @@ export default function PlatformInstanceWorkspacePage() {
   const [replicas, setReplicas] = useState(1)
   const [mounts, setMounts] =
     useState<Record<K8sEnvironmentId, VolumeMount[]>>(emptyMounts)
+  const [persistentStorage, setPersistentStorage] = useState<{
+    enabled: boolean
+    mountPath: string
+    sizeGb: number
+  } | null>(null)
+  const [buildSettings, setBuildSettings] = useState<{
+    buildCommand: string
+    rootDirectory: string
+    dockerfileDetected: boolean
+    framework: string
+  }>({
+    buildCommand: "",
+    rootDirectory: "/",
+    dockerfileDetected: false,
+    framework: "",
+  })
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
 
@@ -566,7 +614,51 @@ export default function PlatformInstanceWorkspacePage() {
     const settings = readSettingsData(payload)
     setEnvVars(settings.envVars)
     setMounts(settings.mounts)
+    setPersistentStorage(settings.persistentStorage ?? null)
+    if (settings.build) {
+      setBuildSettings(settings.build)
+    }
     setSettingsError(null)
+  }
+
+  const persistBuildSettings = async (data: {
+    buildCommand: string
+    rootDirectory: string
+    dockerfileDetected: boolean
+    framework: string
+  }) => {
+    const { data: payload } =
+      await getAppClient(slug).settings.build.patch(data)
+    if (!payload?.ok) {
+      throw new Error(payload?.message ?? "Unable to save build settings.")
+    }
+    toast.success(
+      locale === "id"
+        ? "Pengaturan build berhasil disimpan!"
+        : "Build settings saved successfully!"
+    )
+    await refreshSettings()
+  }
+
+  const persistScaling = async (
+    newReplicas: number,
+    cpuCores: number,
+    memoryMiB: number
+  ) => {
+    const { data: payload } = await getAppClient(slug).scaling.patch({
+      replicas: newReplicas,
+      cpu: Math.round(cpuCores * 1000),
+      memory: memoryMiB,
+    })
+    if (!payload?.ok) {
+      throw new Error(payload?.message ?? "Unable to save scaling settings.")
+    }
+    setReplicas(newReplicas)
+    toast.success(
+      locale === "id"
+        ? "Pengaturan resource berhasil disimpan!"
+        : "Resource scaling settings saved successfully!"
+    )
   }
 
   const persistEnvVars = async (rows: EnvVar[]) => {
@@ -1167,6 +1259,17 @@ export default function PlatformInstanceWorkspacePage() {
                       <TabScaling
                         replicas={replicas}
                         setReplicas={setReplicas}
+                        initialCpuLimit={
+                          overview?.stack?.cpu
+                            ? `${overview.stack.cpu}m`
+                            : "1000m"
+                        }
+                        initialMemLimit={
+                          overview?.stack?.memory
+                            ? `${overview.stack.memory}Mi`
+                            : "512Mi"
+                        }
+                        onSave={persistScaling}
                       />
                     )}
                     {settingsSubTab === "mounts" && (
@@ -1174,11 +1277,20 @@ export default function PlatformInstanceWorkspacePage() {
                         selectedEnv={selectedEnv}
                         mounts={mounts}
                         setMounts={setMounts}
+                        persistentStorage={persistentStorage}
                         onAddMount={persistMountAdd}
                         onDeleteMount={persistMountDelete}
                       />
                     )}
-                    {settingsSubTab === "build" && <TabBuild />}
+                    {settingsSubTab === "build" && (
+                      <TabBuild
+                        buildCommand={buildSettings.buildCommand}
+                        rootDirectory={buildSettings.rootDirectory}
+                        dockerfileDetected={buildSettings.dockerfileDetected}
+                        framework={buildSettings.framework}
+                        onSave={persistBuildSettings}
+                      />
+                    )}
                     {settingsSubTab === "danger" && (
                       <TabDanger stack={overview.stack} />
                     )}

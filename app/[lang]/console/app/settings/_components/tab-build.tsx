@@ -4,6 +4,7 @@ import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import {
   Card,
   CardContent,
@@ -12,17 +13,48 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-export function TabBuild() {
-  const [dockerfilePath, setDockerfilePath] = useState("Dockerfile")
-  const [engineVersion, setEngineVersion] = useState("latest")
-  const [buildCommand, setBuildCommand] = useState("")
+export type TabBuildProps = {
+  buildCommand?: string
+  rootDirectory?: string
+  dockerfileDetected?: boolean
+  framework?: string
+  onSave?: (data: {
+    buildCommand: string
+    rootDirectory: string
+    dockerfileDetected: boolean
+    framework: string
+  }) => Promise<void>
+}
+
+export function TabBuild({
+  buildCommand: initialBuildCommand = "",
+  rootDirectory: initialRootDirectory = "/",
+  dockerfileDetected: initialDockerfileDetected = false,
+  framework: initialFramework = "",
+  onSave,
+}: TabBuildProps) {
+  const [buildCommand, setBuildCommand] = useState(initialBuildCommand)
+  const [rootDirectory, setRootDirectory] = useState(initialRootDirectory)
+  const [dockerfileDetected, setDockerfileDetected] = useState(
+    initialDockerfileDetected
+  )
+  const [framework, setFramework] = useState(initialFramework)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     setSaving(true)
-    // ponytail: build settings API not yet implemented
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    setSaving(false)
+    try {
+      if (onSave) {
+        await onSave({
+          buildCommand,
+          rootDirectory,
+          dockerfileDetected,
+          framework,
+        })
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -34,42 +66,6 @@ export function TabBuild() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <label
-            htmlFor="dockerfile-path"
-            className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
-          >
-            Dockerfile Path
-          </label>
-          <Input
-            id="dockerfile-path"
-            value={dockerfilePath}
-            onChange={(e) => setDockerfilePath(e.target.value)}
-            placeholder="Dockerfile"
-          />
-          <p className="text-xs text-muted-foreground">
-            Path to the Dockerfile relative to the repository root.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label
-            htmlFor="engine-version"
-            className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
-          >
-            Engine Version
-          </label>
-          <Input
-            id="engine-version"
-            value={engineVersion}
-            onChange={(e) => setEngineVersion(e.target.value)}
-            placeholder="latest"
-          />
-          <p className="text-xs text-muted-foreground">
-            Container engine version to use for builds.
-          </p>
-        </div>
-
         <div className="space-y-2">
           <label
             htmlFor="build-command"
@@ -86,6 +82,58 @@ export function TabBuild() {
           <p className="text-xs text-muted-foreground">
             Custom build command. Leave empty to use auto-detected defaults.
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="root-directory"
+            className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+          >
+            Root Directory
+          </label>
+          <Input
+            id="root-directory"
+            value={rootDirectory}
+            onChange={(e) => setRootDirectory(e.target.value)}
+            placeholder="/"
+          />
+          <p className="text-xs text-muted-foreground">
+            The directory within your repository where source code lives.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="framework-name"
+            className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+          >
+            Framework
+          </label>
+          <Input
+            id="framework-name"
+            value={framework}
+            onChange={(e) => setFramework(e.target.value)}
+            placeholder="e.g. Next.js, Laravel, Docker"
+          />
+          <p className="text-xs text-muted-foreground">
+            Detected or configured runtime framework.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border border-border p-3.5">
+          <div className="space-y-0.5">
+            <span className="text-xs font-semibold text-foreground">
+              Dockerfile Build
+            </span>
+            <p className="text-xs text-muted-foreground">
+              Build container image directly using repository Dockerfile.
+            </p>
+          </div>
+          <Switch
+            checked={dockerfileDetected}
+            onCheckedChange={setDockerfileDetected}
+            aria-label="Toggle Dockerfile build"
+          />
         </div>
 
         <Button type="button" size="sm" onClick={handleSave} disabled={saving}>

@@ -241,38 +241,79 @@ export function TabDomains({
     const cname = domain.expectedCnameTarget || endpoint?.cnameTarget
     const ipv4 = endpoint?.ipv4Addresses ?? []
     const ipv6 = endpoint?.ipv6Addresses ?? []
-    const records = [
-      ...(cname ? [{ type: "CNAME", host: "@", value: cname }] : []),
+
+    const cnameRecords = cname
+      ? [{ type: "CNAME", host: "@", value: cname }]
+      : []
+    const ipRecords = [
       ...ipv4.map((value) => ({ type: "A", host: "@", value })),
       ...ipv6.map((value) => ({ type: "AAAA", host: "@", value })),
     ]
+    const allRecords = [...cnameRecords, ...ipRecords]
+
     return (
-      <div className="mt-3 space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+      <div className="mt-3 space-y-2.5 rounded-lg border border-border bg-muted/30 p-3">
         <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
           {t.dnsTargetsLabel}
         </p>
-        {records.length === 0 ? (
+        {allRecords.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t.dnsTargetsEmpty}</p>
         ) : (
           <>
             <p className="text-[11px] text-muted-foreground">
               {t.dnsTargetsHint}
             </p>
-            {records.map((record, index) => (
-              <div
-                key={`${domain.id}-${record.type}-${record.value}-${index}`}
-                className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
-              >
-                <span className="font-bold text-emerald-400">
-                  {record.type}
-                </span>
-                <span className="truncate text-foreground">{record.value}</span>
-                {renderCopyButton(
-                  record.value,
-                  `${domain.id}-${record.type}-${index}`
-                )}
+            {cnameRecords.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-[10px] font-semibold text-muted-foreground">
+                  Option 1: CNAME (Recommended for subdomains like{" "}
+                  {domain.hostname})
+                </p>
+                {cnameRecords.map((record, index) => (
+                  <div
+                    key={`${domain.id}-${record.type}-${record.value}-${index}`}
+                    className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
+                  >
+                    <span className="font-bold text-emerald-400">
+                      {record.type}
+                    </span>
+                    <span className="truncate text-foreground">
+                      {record.value}
+                    </span>
+                    {renderCopyButton(
+                      record.value,
+                      `${domain.id}-${record.type}-${index}`
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+            {ipRecords.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-[10px] font-semibold text-muted-foreground">
+                  {cnameRecords.length > 0
+                    ? "Option 2: Direct A / AAAA (For Apex / Root domain @)"
+                    : "Direct IP Records"}
+                </p>
+                {ipRecords.map((record, index) => (
+                  <div
+                    key={`${domain.id}-${record.type}-${record.value}-${index}`}
+                    className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
+                  >
+                    <span className="font-bold text-emerald-400">
+                      {record.type}
+                    </span>
+                    <span className="truncate text-foreground">
+                      {record.value}
+                    </span>
+                    {renderCopyButton(
+                      record.value,
+                      `${domain.id}-${record.type}-${index}`
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

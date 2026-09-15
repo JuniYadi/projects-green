@@ -116,6 +116,14 @@ export type TabScalingProps = {
   maxAllowedReplicas?: number
   maxCpuQuota?: string
   maxMemoryQuota?: string
+  initialCpuLimit?: string
+  initialMemLimit?: string
+  pods?: PodInfo[]
+  onSave?: (
+    replicas: number,
+    cpuCores: number,
+    memoryMiB: number
+  ) => Promise<void>
 }
 
 export function parseCpuToCores(cpuStr: string): number {
@@ -141,10 +149,15 @@ export function TabScaling({
   maxAllowedReplicas = 8,
   maxCpuQuota = "4000m",
   maxMemoryQuota = "4096Mi",
+  initialCpuLimit,
+  initialMemLimit,
+  pods: explicitPods,
+  onSave,
 }: TabScalingProps) {
-  const [cpuLimit, setCpuLimit] = useState("1000m")
+  const [cpuLimit, setCpuLimit] = useState(initialCpuLimit ?? "1000m")
   const [memRequest, setMemRequest] = useState("256Mi")
-  const [memLimit, setMemLimit] = useState("512Mi")
+  const [memLimit, setMemLimit] = useState(initialMemLimit ?? "512Mi")
+  const [saving, setSaving] = useState(false)
 
   const [hpaEnabled, setHpaEnabled] = useState(false)
   const [hpaMinReplicas, setHpaMinReplicas] = useState(2)
@@ -200,7 +213,17 @@ export function TabScaling({
     isAtMaxReplicas || wouldExceedCpu || wouldExceedMemory
   const isPlusDisabled = hpaEnabled || isQuotaCapReached
 
-  const pods = DUMMY_PODS
+  const pods = explicitPods ?? DUMMY_PODS
+
+  const handleSave = async () => {
+    if (!onSave) return
+    setSaving(true)
+    try {
+      await onSave(replicas, cpuLimitCores, memLimitMiB)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const podCounts = {
     total: pods.length,
@@ -602,11 +625,10 @@ export function TabScaling({
             <Button
               type="button"
               className="h-9 w-full rounded-lg bg-primary text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/95"
-              onClick={() =>
-                alert("Configurations updated! Initiating rolling restart...")
-              }
+              onClick={handleSave}
+              disabled={saving}
             >
-              Save Resource Settings
+              {saving ? "Saving..." : "Save Resource Settings"}
             </Button>
           </CardContent>
         </Card>

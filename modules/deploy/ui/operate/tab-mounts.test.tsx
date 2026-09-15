@@ -138,4 +138,23 @@ describe("TabMounts", () => {
 
     expect(offendingElements).toEqual([])
   })
+
+  it("renders Persistent Volume (PVC) card when persistentStorage is provided", () => {
+    const view = render(
+      <TabMounts
+        selectedEnv="dev"
+        mounts={{ dev: [], staging: [], prod: [] }}
+        setMounts={() => {}}
+        persistentStorage={{
+          enabled: true,
+          mountPath: "/app/data",
+          sizeGb: 10,
+        }}
+      />
+    )
+
+    expect(view.getByText("Persistent Volume (PVC)")).toBeDefined()
+    expect(view.getByText("/app/data")).toBeDefined()
+    expect(view.getByText("10 GB")).toBeDefined()
+  })
 })

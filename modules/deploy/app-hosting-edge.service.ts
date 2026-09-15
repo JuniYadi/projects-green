@@ -196,6 +196,7 @@ async function findStack(input: { organizationId: string; slug: string }) {
     },
   })) as {
     id: string
+    organizationId: string
     slug: string
     clusterId: string | null
     subdomain?: string | null
@@ -347,7 +348,7 @@ export async function createDomainForStack(
 export async function verifyDomain(
   input: DomainForStackInput
 ): Promise<ApplicationDomainDTO> {
-  const { domain, endpoint } = await findDomain(input)
+  const { stack, domain, endpoint } = await findDomain(input)
   const result = await verifyDnsTarget({
     hostname: String(domain.hostname),
     expectedCnameTarget: String(domain.expectedCnameTarget),
@@ -380,6 +381,25 @@ export async function verifyDomain(
     },
     include: { certificate: true, allowlistEntries: true },
   })) as Record<string, unknown>
+
+  if (dnsStatus === "VERIFIED") {
+    if (domain.kind === "CUSTOM" && (domain.isPrimary || !stack.customDomain)) {
+      await db.applicationStack.update({
+        where: { id: stack.id },
+        data: { customDomain: String(domain.hostname) },
+      })
+    }
+    try {
+      const { syncStackConfiguration } = await import("./sync-stack.service")
+      await syncStackConfiguration({
+        slug: stack.slug,
+        organizationId: stack.organizationId,
+      })
+    } catch {
+      // Non-fatal in testing or cluster-detached environments
+    }
+  }
+
   return mapDomain(updated, endpoint)
 }
 

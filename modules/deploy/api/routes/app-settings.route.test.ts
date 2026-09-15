@@ -64,6 +64,8 @@ const mockUpdate = mock(async ({ data }: { data: Record<string, unknown> }) => {
   if ("envVarsJson" in data) stack.envVarsJson = data.envVarsJson
   if ("metadataJson" in data) stack.metadataJson = data.metadataJson
   return {
+    ...stack,
+    ...data,
     envVarsJson: stack.envVarsJson,
     metadataJson: stack.metadataJson,
   }
@@ -206,6 +208,13 @@ describe("appSettingsRoutes", () => {
           ],
           staging: [],
           prod: [],
+        },
+        persistentStorage: null,
+        build: {
+          buildCommand: "",
+          rootDirectory: "/",
+          dockerfileDetected: false,
+          framework: "",
         },
       },
     })
@@ -442,6 +451,37 @@ describe("appSettingsRoutes", () => {
         },
       ],
       mounts: { dev: [], staging: [], prod: [] },
+      persistentStorage: null,
+      build: {
+        buildCommand: "",
+        rootDirectory: "/",
+        dockerfileDetected: false,
+        framework: "",
+      },
+    })
+  })
+
+  it("updates build settings via PATCH /settings/build", async () => {
+    const response = await request("/deploy/apps/demo/settings/build", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        buildCommand: "npm run build",
+        rootDirectory: "/app",
+        dockerfileDetected: true,
+        framework: "Next.js",
+      }),
+    })
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toEqual({
+      ok: true,
+      data: {
+        buildCommand: "npm run build",
+        rootDirectory: "/app",
+        dockerfileDetected: true,
+        framework: "Next.js",
+      },
     })
   })
 

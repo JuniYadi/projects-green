@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Key, Trash } from "@phosphor-icons/react"
+import { HardDrive, Key, Trash } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -26,6 +26,11 @@ type TabMountsProps = {
   setMounts: React.Dispatch<
     React.SetStateAction<Record<K8sEnvironmentId, VolumeMount[]>>
   >
+  persistentStorage?: {
+    enabled: boolean
+    mountPath: string
+    sizeGb: number
+  } | null
   onAddMount?: (
     environmentId: K8sEnvironmentId,
     mount: VolumeMount
@@ -40,6 +45,7 @@ export function TabMounts({
   selectedEnv,
   mounts,
   setMounts,
+  persistentStorage,
   onAddMount,
   onDeleteMount,
 }: TabMountsProps) {
@@ -147,6 +153,37 @@ export function TabMounts({
 
   return (
     <div className="space-y-6">
+      {persistentStorage && persistentStorage.enabled && (
+        <Card size="sm" className="border-border bg-card shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+              <HardDrive size={18} className="text-primary" /> Persistent Volume
+              (PVC)
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Managed persistent block storage volume attached to this
+              application
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-xs">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 p-3.5 font-mono text-xs">
+              <div className="space-y-1">
+                <span className="font-semibold text-foreground">
+                  {persistentStorage.mountPath}
+                </span>
+                <p className="font-sans text-[11px] font-normal text-muted-foreground">
+                  ReadWriteOnce persistent disk for application data and
+                  databases.
+                </p>
+              </div>
+              <span className="rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1 font-bold text-primary">
+                {persistentStorage.sizeGb} GB
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Active Mounts List */}
       <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
