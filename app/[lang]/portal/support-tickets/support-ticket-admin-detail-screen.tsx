@@ -42,6 +42,8 @@ import { MarkdownEditor } from "@/components/ui/markdown-editor"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { sanitizeHtml } from "@/lib/sanitize-html"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 type SupportTicketAdminDetailScreenProps = {
   ticketId: string
@@ -75,9 +77,15 @@ const apiClient = createSupportTicketsClient()
 function SecureDetailsViewer({
   content,
   label,
+  messages,
 }: {
   content: string
   label: string
+  messages?: {
+    encrypted: string
+    showSecureDetails: string
+    hideSecureDetails: string
+  }
 }) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -101,7 +109,7 @@ function SecureDetailsViewer({
           </svg>
           <span>{label}</span>
           <span className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-semibold">
-            Encrypted
+            {messages?.encrypted || "Encrypted"}
           </span>
         </div>
         <Button
@@ -111,7 +119,9 @@ function SecureDetailsViewer({
           className="h-7 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 hover:text-yellow-400"
           onClick={() => setIsOpen(!isOpen)}
         >
-          {isOpen ? "Hide secure details" : "Show secure details"}
+          {isOpen
+            ? messages?.hideSecureDetails || "Hide secure details"
+            : messages?.showSecureDetails || "Show secure details"}
         </Button>
       </div>
       {isOpen && (
@@ -187,6 +197,7 @@ export function SupportTicketAdminDetailScreen({
 }: SupportTicketAdminDetailScreenProps) {
   const router = useRouter()
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.supportTickets
   const listPath = localizePathname({
     pathname: "/portal/support-tickets",
     locale,
@@ -355,9 +366,7 @@ export function SupportTicketAdminDetailScreen({
     } catch (error) {
       if (requestSequenceRef.current === requestId) {
         setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Unable to load support ticket thread."
+          error instanceof Error ? error.message : messages.failedToLoad
         )
       }
     } finally {
@@ -462,7 +471,7 @@ export function SupportTicketAdminDetailScreen({
     const hasSecure = Boolean(replySecureForm.trim())
 
     if (!replyBody.trim() && !hasSecure) {
-      setErrorMessage("Reply message or secure details is required.")
+      setErrorMessage(messages.replyRequired)
       return
     }
 
@@ -501,12 +510,10 @@ export function SupportTicketAdminDetailScreen({
       setFiles([])
       setIsInternalNote(false)
       await loadThread()
-      setSuccessMessage("Reply posted successfully.")
+      setSuccessMessage(messages.replySuccess)
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to submit ticket reply."
+        error instanceof Error ? error.message : messages.unableToSubmitReply
       )
     } finally {
       setIsSubmittingReply(false)
@@ -523,9 +530,7 @@ export function SupportTicketAdminDetailScreen({
       status === "closed" && ticket?.status !== "closed"
 
     if (isTransitioningToClosed) {
-      const confirmClose = window.confirm(
-        "WARNING: Transitioning this ticket to CLOSED will permanently delete all secure credential details and reply credentials. This action is irreversible. Proceed?"
-      )
+      const confirmClose = window.confirm(messages.confirmCloseTransition)
       if (!confirmClose) {
         setIsUpdatingMetadata(false)
         return
@@ -547,7 +552,7 @@ export function SupportTicketAdminDetailScreen({
           ticket: updated,
         }
       })
-      setSuccessMessage("Ticket categorization updated successfully.")
+      setSuccessMessage(messages.categorizationUpdated)
 
       if (isTransitioningToClosed) {
         setSecureSavedMessage(null)
@@ -579,7 +584,7 @@ export function SupportTicketAdminDetailScreen({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Unable to update support ticket categorization."
+          : messages.unableToUpdateCategorization
       )
     } finally {
       setIsUpdatingMetadata(false)
@@ -592,9 +597,7 @@ export function SupportTicketAdminDetailScreen({
       return
     }
 
-    const shouldClose = window.confirm(
-      "WARNING: Closing this support ticket will permanently delete all secure credentials stored in the secure form segments. Proceed?"
-    )
+    const shouldClose = window.confirm(messages.confirmClose)
     if (!shouldClose) {
       return
     }
@@ -630,14 +633,10 @@ export function SupportTicketAdminDetailScreen({
         router.refresh()
       }
       setStatus("closed")
-      setSuccessMessage(
-        "Ticket closed and secure form data wiped successfully."
-      )
+      setSuccessMessage(messages.ticketClosedSuccess)
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to close support ticket."
+        error instanceof Error ? error.message : messages.unableToClose
       )
     } finally {
       setIsClosing(false)
@@ -667,9 +666,7 @@ export function SupportTicketAdminDetailScreen({
   const deleteTicket = async () => {
     if (!ticket) return
 
-    const confirmDelete = window.confirm(
-      "CRITICAL: Are you absolutely sure you want to delete this ticket and all associated replies and attachments? This action cannot be undone."
-    )
+    const confirmDelete = window.confirm(messages.confirmDelete)
     if (!confirmDelete) return
 
     setIsDeleting(true)
@@ -682,9 +679,7 @@ export function SupportTicketAdminDetailScreen({
       router.refresh()
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to delete support ticket."
+        error instanceof Error ? error.message : messages.unableToDelete
       )
       setIsDeleting(false)
     }
@@ -696,9 +691,7 @@ export function SupportTicketAdminDetailScreen({
 
   if (!thread || !ticket) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Support ticket thread is unavailable.
-      </p>
+      <p className="text-sm text-muted-foreground">{messages.failedToLoad}</p>
     )
   }
 
@@ -870,7 +863,7 @@ export function SupportTicketAdminDetailScreen({
               <dl className="grid gap-4 border-b border-border/50 pb-4 text-sm sm:grid-cols-2 md:grid-cols-4">
                 <div>
                   <dt className="text-xs font-semibold text-muted-foreground">
-                    Subject
+                    {messages.subject}
                   </dt>
                   <dd className="mt-0.5 font-medium text-foreground">
                     {ticket.subject}
@@ -878,7 +871,7 @@ export function SupportTicketAdminDetailScreen({
                 </div>
                 <div>
                   <dt className="text-xs font-semibold text-muted-foreground">
-                    Department
+                    {messages.department}
                   </dt>
                   <dd className="mt-0.5 text-foreground">
                     {SUPPORT_TICKET_DEPARTMENT_LABELS[ticket.department]}
@@ -886,7 +879,7 @@ export function SupportTicketAdminDetailScreen({
                 </div>
                 <div>
                   <dt className="text-xs font-semibold text-muted-foreground">
-                    Priority
+                    {messages.priority}
                   </dt>
                   <dd className="mt-0.5 text-foreground capitalize">
                     {SUPPORT_TICKET_PRIORITY_LABELS[ticket.priority]}
@@ -894,7 +887,7 @@ export function SupportTicketAdminDetailScreen({
                 </div>
                 <div>
                   <dt className="text-xs font-semibold text-muted-foreground">
-                    Service
+                    {messages.service}
                   </dt>
                   <dd className="mt-0.5 text-foreground">
                     {ticket.service
@@ -908,18 +901,18 @@ export function SupportTicketAdminDetailScreen({
                 Object.keys(ticket.organizationMetadata).length > 0 && (
                   <div className="space-y-1.5 rounded-lg border border-border/50 bg-muted/30 p-4 text-sm">
                     <p className="font-semibold text-foreground">
-                      Organization Billing/Support Details
+                      {messages.orgDetails}
                     </p>
                     <p className="text-xs font-medium text-foreground">
-                      Full Name:{" "}
+                      {messages.fullName}{" "}
                       {ticket.organizationMetadata.billing_full_name || "—"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Address:{" "}
+                      {messages.address}{" "}
                       {ticket.organizationMetadata.billing_address || "—"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      City, State:{" "}
+                      {messages.cityState}{" "}
                       {[
                         ticket.organizationMetadata.billing_city,
                         ticket.organizationMetadata.billing_state,
@@ -928,7 +921,7 @@ export function SupportTicketAdminDetailScreen({
                         .join(", ") || "—"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Country, Post Code:{" "}
+                      {messages.countryPostCode}{" "}
                       {[
                         ticket.organizationMetadata.billing_country,
                         ticket.organizationMetadata.billing_post_code,
@@ -941,7 +934,9 @@ export function SupportTicketAdminDetailScreen({
 
               {ticket.description ? (
                 <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm">
-                  <p className="font-semibold text-foreground">Message</p>
+                  <p className="font-semibold text-foreground">
+                    {messages.generalMessage}
+                  </p>
                   {ticket.descriptionHtml ? (
                     <div
                       className="mt-1.5 space-y-3 text-sm leading-relaxed text-muted-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
@@ -960,14 +955,19 @@ export function SupportTicketAdminDetailScreen({
               {ticket.secureForm ? (
                 <SecureDetailsViewer
                   content={ticket.secureForm}
-                  label="Secure details"
+                  label={messages.secureDetails}
+                  messages={{
+                    encrypted: messages.encrypted,
+                    showSecureDetails: messages.showSecureDetails,
+                    hideSecureDetails: messages.hideSecureDetails,
+                  }}
                 />
               ) : null}
 
               {ticket.attachmentMetadata.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground">
-                    Attachments
+                    {messages.attachments}
                   </p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {ticket.attachmentMetadata.map((attachment) => (
@@ -985,7 +985,7 @@ export function SupportTicketAdminDetailScreen({
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-border/50 pb-2">
                   <h3 className="font-heading text-base font-semibold">
-                    Thread
+                    {messages.thread}
                   </h3>
                   <p className="text-xs font-medium text-muted-foreground">
                     {replyCountLabel}
@@ -993,7 +993,7 @@ export function SupportTicketAdminDetailScreen({
                 </div>
                 {thread.replies.length === 0 ? (
                   <p className="py-4 text-center text-sm text-muted-foreground italic">
-                    No replies yet.
+                    {messages.noRepliesYet}
                   </p>
                 ) : (
                   <div className="space-y-4">
@@ -1042,15 +1042,15 @@ export function SupportTicketAdminDetailScreen({
                                   </span>
                                   {reply.isInternalNote ? (
                                     <span className="rounded border border-yellow-500/30 bg-yellow-500/20 px-1.5 py-0.5 text-[10px] font-bold text-yellow-600 uppercase dark:text-yellow-400">
-                                      Internal Note
+                                      {messages.internalNote}
                                     </span>
                                   ) : author.isStaff ? (
                                     <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                                      Support Team
+                                      {messages.supportTeam}
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground dark:bg-muted/30">
-                                      Customer
+                                      {messages.customer}
                                     </span>
                                   )}
                                 </div>
@@ -1109,26 +1109,25 @@ export function SupportTicketAdminDetailScreen({
               {/* Reply Composer */}
               {isClosed ? (
                 <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground">
-                  This ticket is closed. If you have a new issue, please open a
-                  new ticket.
+                  {messages.closedWarning}
                 </div>
               ) : (
                 <div className="space-y-4 border-t border-border/50 pt-5">
                   <h3 className="font-heading text-base font-semibold">
-                    Reply
+                    {messages.reply}
                   </h3>
                   <div className="space-y-2">
                     <Label
                       htmlFor="reply-body"
                       className="text-xs font-semibold text-muted-foreground"
                     >
-                      Message
+                      {messages.generalMessage}
                     </Label>
                     <MarkdownEditor
                       id="reply-body"
                       ref={replyBodyRef}
                       rows={4}
-                      placeholder="Write your reply"
+                      placeholder={messages.replyBodyPlaceholder}
                       disabled={isSubmittingReply}
                       onInput={(event) =>
                         updateCredentialWarning(
@@ -1150,30 +1149,27 @@ export function SupportTicketAdminDetailScreen({
                         <span className="relative flex h-2 w-2">
                           <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
                         </span>
-                        Secure details (encrypted)
+                        {messages.secureDetails} ({messages.encrypted})
                       </span>
                       <span className="text-xs font-semibold underline-offset-2 hover:underline">
                         {showSecureComposer
-                          ? "Hide secure details"
-                          : "Show secure details"}
+                          ? messages.hideSecureDetails
+                          : messages.showSecureDetails}
                       </span>
                     </button>
                     {showSecureComposer ? (
                       <>
                         <p className="text-xs leading-relaxed text-muted-foreground">
-                          Details entered here are encrypted end-to-end and only
-                          visible to engineers assigned to your ticket. Use this
-                          section for passwords, tokens, API keys, or sensitive
-                          credentials.
+                          {messages.secureDescription}
                         </p>
                         <Label htmlFor="reply-secure-form" className="sr-only">
-                          Secure Form (encrypted)
+                          {messages.secureFormLabel}
                         </Label>
                         <MarkdownEditor
                           id="reply-secure-form"
                           ref={replySecureFormRef}
                           rows={4}
-                          placeholder="Sensitive credentials, configurations, or secrets only"
+                          placeholder={messages.secureFormPlaceholder}
                           disabled={isSubmittingReply}
                           onInput={(event) =>
                             updateCredentialWarning(
@@ -1191,9 +1187,11 @@ export function SupportTicketAdminDetailScreen({
                       variant="destructive"
                       data-testid="credential-warning"
                     >
-                      <AlertTitle>Possible credential detected</AlertTitle>
+                      <AlertTitle>
+                        {messages.possibleCredentialTitle}
+                      </AlertTitle>
                       <AlertDescription>
-                        Looks like a credential. Move it to Secure details.{" "}
+                        {messages.possibleCredentialBody}{" "}
                         {credentialWarning.patterns.join(", ")}
                       </AlertDescription>
                     </Alert>
@@ -1213,7 +1211,7 @@ export function SupportTicketAdminDetailScreen({
                         htmlFor="reply-files"
                         className="text-xs font-semibold text-muted-foreground"
                       >
-                        Attachments (optional)
+                        {messages.attachmentsOptional}
                       </Label>
                       <Input
                         id="reply-files"
@@ -1308,7 +1306,9 @@ export function SupportTicketAdminDetailScreen({
                       onClick={submitReply}
                       disabled={isSubmittingReply}
                     >
-                      {isSubmittingReply ? "Sending..." : "Send Reply"}
+                      {isSubmittingReply
+                        ? messages.submitting
+                        : messages.sendReply}
                     </Button>
                   </div>
                 </div>
@@ -1322,7 +1322,7 @@ export function SupportTicketAdminDetailScreen({
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader>
               <CardTitle className="font-heading text-base font-semibold text-foreground">
-                Categorization & Control
+                {messages.categorization}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1331,7 +1331,7 @@ export function SupportTicketAdminDetailScreen({
                   htmlFor="ticket-status"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Status
+                  {messages.status}
                 </Label>
                 <Select
                   value={status}
@@ -1344,7 +1344,7 @@ export function SupportTicketAdminDetailScreen({
                     id="ticket-status"
                     className="w-full border-border bg-background/50 text-foreground"
                   >
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder={messages.selectStatus} />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-popover">
                     {SUPPORT_TICKET_STATUSES.map((statusValue) => (
@@ -1365,7 +1365,7 @@ export function SupportTicketAdminDetailScreen({
                   htmlFor="ticket-department"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Department
+                  {messages.department}
                 </Label>
                 <Select
                   value={department}
@@ -1378,7 +1378,7 @@ export function SupportTicketAdminDetailScreen({
                     id="ticket-department"
                     className="w-full border-border bg-background/50 text-foreground"
                   >
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder={messages.selectDepartment} />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-popover">
                     {SUPPORT_TICKET_DEPARTMENTS.map((departmentValue) => (
@@ -1399,7 +1399,7 @@ export function SupportTicketAdminDetailScreen({
                   htmlFor="ticket-service"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Service (optional)
+                  {messages.serviceOptional}
                 </Label>
                 <Select
                   value={service}
@@ -1412,7 +1412,7 @@ export function SupportTicketAdminDetailScreen({
                     id="ticket-service"
                     className="w-full border-border bg-background/50 text-foreground"
                   >
-                    <SelectValue placeholder="Select service" />
+                    <SelectValue placeholder={messages.selectService} />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-popover">
                     <SelectItem
@@ -1590,7 +1590,7 @@ export function SupportTicketAdminDetailScreen({
                       d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                     ></path>
                   </svg>
-                  <span>Download</span>
+                  <span>{messages.download}</span>
                 </Button>
                 <button
                   type="button"
@@ -1606,7 +1606,7 @@ export function SupportTicketAdminDetailScreen({
                 <div className="flex flex-col items-center gap-2 py-12">
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
                   <span className="text-xs text-muted-foreground">
-                    Loading preview...
+                    {messages.loadingPreview}
                   </span>
                 </div>
               ) : previewContent ? (
@@ -1658,11 +1658,10 @@ export function SupportTicketAdminDetailScreen({
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-foreground">
-                          Preview Unavailable
+                          {messages.previewUnavailable}
                         </p>
                         <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
-                          A preview {"isn't"} available for this file type.
-                          Please download the file to view its contents.
+                          {messages.previewUnavailableDesc}
                         </p>
                       </div>
                     </div>
@@ -1670,7 +1669,7 @@ export function SupportTicketAdminDetailScreen({
                 </>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  Unable to load preview
+                  {messages.unableToLoadPreview}
                 </span>
               )}
             </div>
