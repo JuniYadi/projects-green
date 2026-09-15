@@ -902,11 +902,17 @@ export class AiSourceInspectionService {
         branchOrRef: source.ref,
         environment: "production",
         envRequirements: detection.envDefaults
-          ? Object.entries(detection.envDefaults).map(([key, value]) => ({
-              key,
-              value,
-              required: true,
-            }))
+          ? Object.entries(detection.envDefaults).map(([key, value]) => {
+              const isSecret =
+                /secret|key|password|token|auth|credential/i.test(key)
+              return {
+                key,
+                required: false,
+                kind: isSecret ? ("secret" as const) : ("plain" as const),
+                status: value ? ("provided" as const) : ("missing" as const),
+                description: `Configured from .env.example: ${key}`,
+              }
+            })
           : [],
       },
       dependencies: [],

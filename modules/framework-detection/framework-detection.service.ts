@@ -728,10 +728,11 @@ export function parseEnvFile(text: string): Record<string, string> {
   for (const line of text.split("\n")) {
     const trimmed = line.trim()
     if (!trimmed || trimmed.startsWith("#")) continue
-    const eqIdx = trimmed.indexOf("=")
+    const cleanLine = trimmed.replace(/^export\s+/, "")
+    const eqIdx = cleanLine.indexOf("=")
     if (eqIdx > 0) {
-      const key = trimmed.slice(0, eqIdx).trim()
-      let value = trimmed.slice(eqIdx + 1).trim()
+      const key = cleanLine.slice(0, eqIdx).trim()
+      let value = cleanLine.slice(eqIdx + 1).trim()
       if (
         (value.startsWith('"') && value.endsWith('"')) ||
         (value.startsWith("'") && value.endsWith("'"))

@@ -2108,14 +2108,14 @@ describe("detectFrameworkFromGithubApi - deterministic fallback", () => {
     const { parseEnvFile, normalizeVersionString, extractFrameworkVersion } =
       __testables
 
-    it("parses .env.example into key-value map ignoring comments", () => {
+    it("parses .env.example into key-value map ignoring comments and export prefix", () => {
       const sample = `
 # Application config
 APP_NAME="My App"
-APP_ENV=production
-APP_KEY=base64:xyz123==
+export APP_ENV=production
+export APP_KEY=base64:xyz123==
 APP_DEBUG=false
-DB_HOST=127.0.0.1
+export DB_HOST=127.0.0.1
 `
       const parsed = parseEnvFile(sample)
       expect(parsed).toEqual({

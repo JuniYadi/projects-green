@@ -595,4 +595,56 @@ describe("AiSourceInspectionService", () => {
       })
     )
   })
+
+  it("maps template envDefaults to non-blocking optional envRequirements", async () => {
+    const harness = createHarness({
+      detectPublic: {
+        ...detection(),
+        envDefaults: {
+          APP_NAME: "storefront",
+          APP_KEY: "",
+          DB_HOST: "127.0.0.1",
+        },
+      },
+    })
+
+    const result = await harness.service.inspect({
+      actor,
+      request: inspectRequest(),
+    })
+
+    expect(result.status).toBe("plan_ready")
+    expect(harness.transition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "PLAN_READY",
+        plan: expect.objectContaining({
+          configuration: expect.objectContaining({
+            envRequirements: [
+              {
+                key: "APP_NAME",
+                required: false,
+                kind: "plain",
+                status: "provided",
+                description: "Configured from .env.example: APP_NAME",
+              },
+              {
+                key: "APP_KEY",
+                required: false,
+                kind: "secret",
+                status: "missing",
+                description: "Configured from .env.example: APP_KEY",
+              },
+              {
+                key: "DB_HOST",
+                required: false,
+                kind: "plain",
+                status: "provided",
+                description: "Configured from .env.example: DB_HOST",
+              },
+            ],
+          }),
+        }),
+      })
+    )
+  })
 })

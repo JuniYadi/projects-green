@@ -360,7 +360,7 @@ export function AiAgentSummaryCard({
     }
     return [
       { key: "NODE_ENV", value: "production" },
-      { key: "PORT", value: String(detectedPort || 3000) },
+      { key: "PORT", value: String(port || detectedPort || 3000) },
       {
         key: "NEXT_PUBLIC_APP_URL",
         value: `https://${initialSubdomain}.pfnapp.dev`,
@@ -373,6 +373,7 @@ export function AiAgentSummaryCard({
     initialSubdomain,
     plan,
     detection,
+    port,
     detectedPort,
   ])
 
