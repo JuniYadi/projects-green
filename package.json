@@ -29,6 +29,8 @@
     "test:functional": "bun run scripts/run-functional-tests.ts",
     "test:functional:all": "bun run scripts/run-functional-tests.ts --all",
     "test:nightly": "bun run scripts/run-nightly-tests.ts",
+    "i18n:scan": "bun run scripts/scan-i18n.ts",
+    "i18n:scan:changed": "bun run scripts/scan-i18n.ts --changed-only",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
