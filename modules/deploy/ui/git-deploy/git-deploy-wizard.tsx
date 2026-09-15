@@ -148,6 +148,7 @@ export function GitDeployWizard({
           inspectionData={inspectionData}
           currency={currency}
           lang={lang}
+          userName={userName}
           onStartOver={handleReset}
           onDeploy={handleDeployFromSummary}
         />

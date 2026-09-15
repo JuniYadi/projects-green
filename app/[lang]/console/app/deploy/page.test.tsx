@@ -359,4 +359,172 @@ describe("DeployPage Client", () => {
       expect(view.getByText("Could Not Verify Balance")).toBeTruthy()
     })
   })
+
+  it("correctly resolves Laravel detection with AI Copilot card and tailored commands", async () => {
+    const mockLaravelInspectResponse = {
+      ok: true,
+      data: {
+        status: "plan_ready",
+        access: {
+          state: "public",
+          displayLabel: "Public GitHub repository",
+        },
+        source: {
+          url: "https://github.com/laravel/laravel",
+          host: "github.com",
+          owner: "laravel",
+          repo: "laravel",
+          ref: "main",
+          subdir: "./",
+        },
+        detection: {
+          primaryFramework: {
+            id: "laravel",
+            name: "Laravel",
+            ecosystem: "php",
+            points: 100,
+            confidence: 1,
+            reasons: ["composer.json is present", "artisan entrypoint exists"],
+          },
+          requiredDependencies: [
+            { id: "php", name: "PHP", version: "8.2", kind: "runtime" },
+          ],
+          alternatives: [],
+          confidence: 0.98,
+          decision: {
+            status: "success",
+            message: "Supported",
+            isLaunchable: true,
+          },
+          evidence: [],
+          warnings: [],
+          source: {
+            repoUrl: "https://github.com/laravel/laravel",
+            ref: "main",
+          },
+          frameworkVersion: "11.x",
+          defaultPort: 8000,
+          enforcedRuntimes: [],
+        },
+        plan: {
+          version: 1,
+          source: {
+            kind: "git",
+            url: "https://github.com/laravel/laravel",
+            ref: "main",
+          },
+          access: { state: "public" },
+          detection: {
+            runtime: "php",
+            framework: "laravel",
+            version: "11.x",
+            commands: [
+              "composer install --no-dev --optimize-autoloader",
+              "php artisan serve --host=0.0.0.0 --port=8000",
+            ],
+            port: 8000,
+            confidence: 0.98,
+            evidence: [],
+          },
+          resources: { package: "medium", cpu: 1000, memory: 2048 },
+          domain: { mode: "auto", hostname: "laravel", tls: true },
+        },
+        session: { id: "sess-laravel" },
+      },
+    }
+
+    mockFetch.mockImplementation(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/deploy/ai-sessions/inspect")) {
+          return new Response(JSON.stringify(mockLaravelInspectResponse), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        }
+        if (url.includes("/api/billing/catalog/APP_HOSTING")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              product: {
+                code: "APP_HOSTING",
+                plans: [
+                  {
+                    code: "MEDIUM",
+                    name: "Standard Compute",
+                    resources: { cpu: 1000, memory: 2048 },
+                    offers: [
+                      {
+                        billingPeriod: "MONTHLY",
+                        periodPrice: "40.00",
+                        currency: "USD",
+                      },
+                    ],
+                  },
+                ],
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    )
+
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
+    const input = view.getByPlaceholderText(
+      "https://github.com/organization/repository"
+    )
+
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "https://github.com/laravel/laravel" },
+      })
+      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+    })
+
+    await act(async () => {
+      fireEvent.click(
+        view.getByRole("button", { name: /continue to build settings/i })
+      )
+    })
+
+    // Screen 2: AI Copilot and Laravel stack assertions
+    await waitFor(() => {
+      expect(view.getByText("AI Deployment Copilot")).toBeTruthy()
+      expect(view.getByText(/Blueprint Ready/i)).toBeTruthy()
+      expect(
+        view.getByText(/I've analyzed 'laravel\/laravel' on branch 'main'/i)
+      ).toBeTruthy()
+      expect(view.getByText("Laravel 11.x")).toBeTruthy()
+      expect(view.getByText("PHP 8.2")).toBeTruthy()
+      expect(view.getByText("Composer")).toBeTruthy()
+      expect(
+        view.getByDisplayValue(
+          "composer install --no-dev --optimize-autoloader"
+        )
+      ).toBeTruthy()
+      expect(
+        view.getByDisplayValue("php artisan serve --host=0.0.0.0 --port=8000")
+      ).toBeTruthy()
+      expect(view.getByDisplayValue("8000")).toBeTruthy()
+    })
+
+    // Pre-fill environment variables button
+    const prefillBtn = view.getByRole("button", { name: /pre-fill keys/i })
+    await act(async () => {
+      fireEvent.click(prefillBtn)
+    })
+
+    expect(view.getByText("APP_NAME")).toBeTruthy()
+    expect(view.getByText("APP_KEY")).toBeTruthy()
+    expect(view.getByText("DB_CONNECTION")).toBeTruthy()
+  })
 })

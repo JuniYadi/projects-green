@@ -6,9 +6,10 @@ import {
   Code,
   Cpu,
   GitBranch,
-  Globe,
+  Lightning,
   Plus,
   RocketLaunch,
+  Sparkle,
   Spinner,
   Trash,
   Wallet,
@@ -26,6 +27,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
 import {
   getCatalogProduct,
   getAccount,
@@ -62,6 +64,7 @@ type AiAgentSummaryCardProps = {
   inspectionData?: Record<string, unknown> | null
   currency?: "USD" | "IDR"
   lang?: string
+  userName?: string
   onStartOver: () => void
   onDeploy: (config: DeploymentSummaryConfig) => Promise<void>
 }
@@ -105,36 +108,162 @@ export function AiAgentSummaryCard({
   inspectionData,
   currency = "USD",
   lang = "en",
+  userName,
   onStartOver,
   onDeploy,
 }: AiAgentSummaryCardProps) {
   const messages = getMessagesForMaybeLocale(lang)
   const agentMessages = messages.console.app.deployAgent
 
-  const detected = (inspectionData?.detection ?? {}) as Record<string, unknown>
+  const detection = (inspectionData?.detection ?? {}) as Record<string, unknown>
+  const plan = (inspectionData?.plan ?? {}) as Record<string, unknown>
+  const planDetection = (plan?.detection ?? {}) as Record<string, unknown>
+  const primaryFramework = detection?.primaryFramework as
+    Record<string, unknown> | undefined
+
+  const detectedFrameworkId = (
+    (primaryFramework?.id as string) ||
+    (planDetection?.framework as string) ||
+    (detection.framework as string) ||
+    ""
+  ).toLowerCase()
+
+  const detectedFrameworkName =
+    (primaryFramework?.name as string) ||
+    (detectedFrameworkId === "laravel"
+      ? "Laravel"
+      : detectedFrameworkId === "nextjs"
+        ? "Next.js"
+        : detectedFrameworkId === "react"
+          ? "React"
+          : detectedFrameworkId === "django"
+            ? "Django"
+            : detectedFrameworkId === "fastapi"
+              ? "FastAPI"
+              : detectedFrameworkId === "express"
+                ? "Express"
+                : (detection.framework as string) || "Node.js")
+
+  const frameworkVersion =
+    (detection.frameworkVersion as string) ||
+    (planDetection.version as string) ||
+    (detection.version as string) ||
+    ""
+
+  const ecosystem = (
+    (primaryFramework?.ecosystem as string) ||
+    (planDetection.runtime as string) ||
+    (detectedFrameworkId === "laravel" ? "php" : "") ||
+    (detectedFrameworkId === "django" ? "python" : "") ||
+    ""
+  ).toLowerCase()
+
+  const requiredDeps =
+    (detection.requiredDependencies as Array<{
+      id?: string
+      name?: string
+      version?: string
+      kind?: string
+    }>) || []
+  const runtimeDep = requiredDeps.find((d) => d.kind === "runtime")
+
+  const runtimeName = runtimeDep?.name
+    ? `${runtimeDep.name}${runtimeDep.version ? ` ${runtimeDep.version}` : ""}`
+    : (detection.primaryEngine as string) ||
+      (ecosystem === "php"
+        ? "PHP 8.2"
+        : ecosystem === "python"
+          ? "Python 3.11"
+          : ecosystem === "go"
+            ? "Go 1.22"
+            : ecosystem === "ruby"
+              ? "Ruby 3.2"
+              : "Node.js 20")
+
+  const packageManager =
+    (detection.packageManager as string) ||
+    (ecosystem === "php" || detectedFrameworkId === "laravel"
+      ? "Composer"
+      : ecosystem === "python"
+        ? "pip"
+        : ecosystem === "go"
+          ? "go modules"
+          : ecosystem === "ruby"
+            ? "Bundler"
+            : "pnpm")
+
+  const detectedPort =
+    Number(detection.defaultPort) ||
+    Number(planDetection.port) ||
+    Number(detection.port) ||
+    (ecosystem === "php" || detectedFrameworkId === "laravel"
+      ? 8000
+      : ecosystem === "python"
+        ? 8000
+        : ecosystem === "go"
+          ? 8080
+          : 3000)
+
+  const planCommands = (planDetection.commands as string[]) || []
+  const defaultBuildCommand =
+    planCommands[0] ||
+    (detection.buildCommand as string) ||
+    (ecosystem === "php" || detectedFrameworkId === "laravel"
+      ? "composer install --no-dev --optimize-autoloader"
+      : detectedFrameworkId === "django"
+        ? "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+        : ["fastapi", "flask"].includes(detectedFrameworkId)
+          ? "pip install -r requirements.txt"
+          : ["gin", "echo"].includes(detectedFrameworkId)
+            ? "go build -o server ."
+            : "pnpm run build")
+
+  const defaultStartCommand =
+    planCommands[1] ||
+    (detection.startCommand as string) ||
+    (ecosystem === "php" || detectedFrameworkId === "laravel"
+      ? "php artisan serve --host=0.0.0.0 --port=8000"
+      : detectedFrameworkId === "django"
+        ? "python manage.py runserver 0.0.0.0:8000"
+        : detectedFrameworkId === "fastapi"
+          ? "uvicorn main:app --host 0.0.0.0 --port 8000"
+          : detectedFrameworkId === "flask"
+            ? "flask run --host=0.0.0.0 --port=8000"
+            : ["gin", "echo"].includes(detectedFrameworkId)
+              ? "./server"
+              : "pnpm start")
+
+  const rawConfidence =
+    typeof detection.confidence === "number"
+      ? detection.confidence
+      : typeof planDetection.confidence === "number"
+        ? planDetection.confidence
+        : 0.98
+  const confidencePercentage = Math.round(
+    rawConfidence <= 1 ? rawConfidence * 100 : rawConfidence
+  )
 
   // Step 1: Branch & Monorepo / App Directory
   const [branch, setBranch] = useState(
-    (detected.branch as string) || source.branch || "main"
+    ((inspectionData?.source as Record<string, unknown> | undefined)?.ref as
+      string | undefined) ||
+      (detection.branch as string) ||
+      source.branch ||
+      "main"
   )
   const [rootDir, setRootDir] = useState(
-    (detected.outputDir as string) || source.rootDir || "./"
+    ((inspectionData?.source as Record<string, unknown> | undefined)?.subdir as
+      string | undefined) ||
+      (detection.outputDir as string) ||
+      source.rootDir ||
+      "./"
   )
 
   // Step 2: Detected Stack & Runtime
-  const frameworkName = (detected.framework as string) || "Node.js"
-  const frameworkVersion = (detected.version as string) || ""
-  const runtimeName = (detected.primaryEngine as string) || "Node.js 20"
-  const packageManager = (detected.packageManager as string) || "pnpm"
-
-  // Step 3: Build & Network Overrides
-  const [port, setPort] = useState<number>(Number(detected.port) || 3000)
-  const [buildCommand, setBuildCommand] = useState(
-    (detected.buildCommand as string) || "pnpm run build"
-  )
-  const [startCommand, setStartCommand] = useState(
-    (detected.startCommand as string) || "pnpm start"
-  )
+  const frameworkName = detectedFrameworkName
+  const [port, setPort] = useState<number>(detectedPort)
+  const [buildCommand, setBuildCommand] = useState(defaultBuildCommand)
+  const [startCommand, setStartCommand] = useState(defaultStartCommand)
 
   // Step 4: Environment Variables
   const [envVars, setEnvVars] = useState<EnvVar[]>([])
@@ -199,6 +328,95 @@ export function AiAgentSummaryCard({
   }, [source.url])
 
   const [subdomain, setSubdomain] = useState(initialSubdomain)
+
+  const repoName = useMemo(() => {
+    try {
+      const parts = source.url.replace(/\.git$/i, "").split("/")
+      return parts.slice(-2).join("/") || parts[parts.length - 1] || source.url
+    } catch {
+      return source.url
+    }
+  }, [source.url])
+
+  const handlePrefillEnvKeys = () => {
+    const isPhp =
+      detectedFrameworkId === "laravel" ||
+      ecosystem === "php" ||
+      frameworkName.toLowerCase() === "laravel"
+    const isPython =
+      ["django", "fastapi", "flask"].includes(detectedFrameworkId) ||
+      ecosystem === "python"
+
+    const templateKeys: EnvVar[] = isPhp
+      ? [
+          { key: "APP_NAME", value: initialSubdomain || "Laravel" },
+          { key: "APP_ENV", value: "production" },
+          { key: "APP_KEY", value: "" },
+          { key: "APP_DEBUG", value: "false" },
+          { key: "APP_URL", value: `https://${subdomain}.pfnapp.dev` },
+          { key: "DB_CONNECTION", value: "mysql" },
+          { key: "DB_HOST", value: "127.0.0.1" },
+          { key: "DB_PORT", value: "3306" },
+          { key: "DB_DATABASE", value: initialSubdomain || "laravel" },
+          { key: "DB_USERNAME", value: "root" },
+          { key: "DB_PASSWORD", value: "" },
+        ]
+      : isPython
+        ? [
+            { key: "SECRET_KEY", value: "" },
+            { key: "DEBUG", value: "0" },
+            { key: "ALLOWED_HOSTS", value: `${subdomain}.pfnapp.dev` },
+            { key: "DATABASE_URL", value: "" },
+          ]
+        : [
+            { key: "NODE_ENV", value: "production" },
+            { key: "PORT", value: String(port) },
+            {
+              key: "NEXT_PUBLIC_APP_URL",
+              value: `https://${subdomain}.pfnapp.dev`,
+            },
+          ]
+
+    setEnvVars((prev) => {
+      const existingKeys = new Set(prev.map((e) => e.key))
+      const added = templateKeys.filter((t) => !existingKeys.has(t.key))
+      return [...prev, ...added]
+    })
+    toast.success(agentMessages.prefillSuccess)
+  }
+
+  const insightEntrypoint = useMemo(() => {
+    if (detectedFrameworkId === "laravel" || ecosystem === "php") {
+      return lang === "id"
+        ? "Terverifikasi aplikasi Laravel melalui file composer.json dan entrypoint artisan."
+        : "Verified Laravel application with composer.json dependencies and artisan entrypoint."
+    }
+    if (detectedFrameworkId === "django" || ecosystem === "python") {
+      return lang === "id"
+        ? "Terverifikasi aplikasi Python melalui requirements dan entrypoint WSGI/ASGI."
+        : "Verified Python application with requirements and WSGI/ASGI entrypoint."
+    }
+    return lang === "id"
+      ? `Terverifikasi stack ${frameworkName} dengan konfigurasi siap-pakai.`
+      : `Verified ${frameworkName} stack with production-ready defaults.`
+  }, [detectedFrameworkId, ecosystem, frameworkName, lang])
+
+  const insightCompute = useMemo(() => {
+    if (detectedFrameworkId === "laravel" || ecosystem === "php") {
+      return lang === "id"
+        ? "Disarankan ukuran Medium (2GB RAM) agar worker PHP-FPM dan cache Composer stabil."
+        : "Recommended Medium compute (2GB RAM) for smooth PHP-FPM workers and Composer caching."
+    }
+    return lang === "id"
+      ? "Disarankan ukuran Standard / Medium untuk isolasi container dan build yang optimal."
+      : "Recommended Standard compute (1024MB RAM) for optimal container execution and build isolation."
+  }, [detectedFrameworkId, ecosystem, lang])
+
+  const insightEnv = useMemo(() => {
+    return lang === "id"
+      ? "Deteksi template konfigurasi: Klik 'Pre-fill Kunci .env.example' untuk mengisi variabel standar dengan 1 klik."
+      : "Configuration template detected: Click 'Pre-fill Keys from .env.example' to populate standard variables with 1 click."
+  }, [lang])
 
   useEffect(() => {
     let isMounted = true
@@ -366,6 +584,62 @@ export function AiAgentSummaryCard({
         </Button>
       </div>
 
+      {/* AI Deployment Copilot Card (Persistent Persona & Blueprint Overview) */}
+      <div className="rounded-2xl border border-primary/20 bg-linear-to-b from-primary/5 via-card to-card p-5 shadow-xs sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-2xs">
+              <Sparkle className="h-6 w-6" weight="fill" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-semibold text-foreground sm:text-lg">
+                  {agentMessages.copilotTitle}
+                </h2>
+                <Badge
+                  variant="outline"
+                  className="border-primary/30 bg-primary/10 text-xs font-medium text-primary"
+                >
+                  {agentMessages.blueprintReady} ({confidencePercentage}%{" "}
+                  {agentMessages.confidence})
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {agentMessages.copilotGreeting
+                  .replace("{name}", userName || "Developer")
+                  .replace("{repo}", repoName)
+                  .replace("{branch}", branch)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Verified Stack Summary */}
+        <div className="mt-3.5 border-t border-border/50 pt-2.5">
+          <p className="font-mono text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              {agentMessages.verifiedStack}:
+            </span>{" "}
+            {frameworkName}
+            {frameworkVersion ? ` (${frameworkVersion})` : ""} · {runtimeName} ·{" "}
+            {packageManager} · Port {port}
+          </p>
+        </div>
+
+        {/* AI Proactive Insights Box */}
+        <div className="mt-4 rounded-xl border border-border/70 bg-muted/30 p-3.5 text-xs text-muted-foreground">
+          <div className="mb-1.5 flex items-center gap-1.5 font-medium text-foreground">
+            <Sparkle className="h-3.5 w-3.5 text-primary" weight="bold" />
+            <span>{agentMessages.proactiveInsights}</span>
+          </div>
+          <ul className="list-inside list-disc space-y-1">
+            <li>{insightEntrypoint}</li>
+            <li>{insightCompute}</li>
+            <li>{insightEnv}</li>
+          </ul>
+        </div>
+      </div>
+
       {/* Grid Layout: Left Column (Source & Build) and Right Column (Compute & Sizing) */}
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Left Column (7 cols) */}
@@ -374,7 +648,7 @@ export function AiAgentSummaryCard({
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                {agentMessages.sourceRepo}
+                {agentMessages.repoScopeHeading}
               </span>
               <Badge variant="secondary" className="text-xs">
                 {source.isPrivate
@@ -441,7 +715,7 @@ export function AiAgentSummaryCard({
           {/* Card 3: Build & Network Settings */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
             <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              {agentMessages.buildSettings}
+              {agentMessages.blueprintHeading}
             </span>
             <div className="mt-4 grid gap-4">
               <div>
@@ -485,10 +759,10 @@ export function AiAgentSummaryCard({
 
           {/* Card 4: Environment Variables Manager */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                  {agentMessages.envVarsLabel}
+                  {agentMessages.envHeading}
                 </span>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {envVars.length === 0
@@ -496,14 +770,29 @@ export function AiAgentSummaryCard({
                     : `${envVars.length} variable${envVars.length === 1 ? "" : "s"} configured`}
                 </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setBulkDialogOpen(true)}
-                className="h-8 gap-1 text-xs"
-              >
-                <span>{agentMessages.bulkPaste}</span>
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrefillEnvKeys}
+                  className="h-8 gap-1 text-xs"
+                >
+                  <Lightning
+                    className="h-3.5 w-3.5 text-primary"
+                    weight="fill"
+                  />
+                  <span>{agentMessages.prefillEnvKeys}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBulkDialogOpen(true)}
+                  className="h-8 gap-1 text-xs"
+                >
+                  <span>{agentMessages.bulkPaste}</span>
+                </Button>
+              </div>
             </div>
 
             {/* Variable Rows */}
@@ -568,7 +857,7 @@ export function AiAgentSummaryCard({
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                {agentMessages.computeSizingLabel}
+                {agentMessages.sizingHeading}
               </span>
               {catalogPlans.length > 0 && (
                 <Badge variant="outline" className="text-[10px]">
@@ -577,47 +866,44 @@ export function AiAgentSummaryCard({
               )}
             </div>
 
-            <div className="mt-3 grid gap-2.5">
-              {tiers.map((item) => {
-                const isSelected =
-                  item.code === selectedTier.code || item.id === selectedTier.id
+            <div className="mt-3 flex flex-col gap-2.5">
+              {tiers.map((t) => {
+                const isSelected = selectedTier.code === t.code
                 return (
                   <div
-                    key={item.id}
-                    onClick={() => setTier(item.code || item.id.toUpperCase())}
+                    key={t.code}
+                    onClick={() => setTier(t.code)}
                     className={`flex cursor-pointer items-center justify-between rounded-xl border p-3.5 transition-all ${
                       isSelected
-                        ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                        : "border-border bg-card hover:border-border/80"
+                        ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary"
+                        : "border-border bg-background hover:bg-muted/30"
                     }`}
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold">
-                          {item.name}
+                        <span className="text-sm font-semibold text-foreground">
+                          {t.name}
                         </span>
-                        {item.recommended && (
+                        {t.recommended && (
                           <Badge
                             variant="secondary"
-                            className="px-1.5 py-0 text-[10px]"
+                            className="bg-primary/10 text-[10px] text-primary"
                           >
                             {agentMessages.recommendedBadge}
                           </Badge>
                         )}
                       </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {item.cpu}m CPU · {item.memory}MB RAM
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t.cpu}m CPU · {t.memory}MB RAM
                       </p>
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-bold text-foreground">
-                        {currency === "IDR"
-                          ? `Rp ${(item.monthlyPrice ?? 0).toLocaleString("id-ID")}`
-                          : `$${(item.monthlyPrice ?? 0).toFixed(2)}`}
+                        {t.currency === "IDR"
+                          ? `Rp ${t.monthlyPrice.toLocaleString("id-ID")}`
+                          : `$${t.monthlyPrice}`}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        /mo
-                      </span>
+                      <span className="text-xs text-muted-foreground">/mo</span>
                     </div>
                   </div>
                 )
@@ -625,46 +911,41 @@ export function AiAgentSummaryCard({
             </div>
           </div>
 
-          {/* Card 6: Subdomain & Networking */}
+          {/* Card 6: Subdomain & Ingress */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
             <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               {agentMessages.subdomainLabel}
             </span>
-            <div className="mt-2 flex items-center rounded-lg border border-border bg-muted/20 px-3 py-2">
-              <Globe className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-              <input
-                type="text"
+            <div className="mt-2 flex items-center gap-1 font-mono text-sm">
+              <Input
                 value={subdomain}
-                onChange={(e) =>
-                  setSubdomain(
-                    e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")
-                  )
-                }
-                className="w-full bg-transparent font-mono text-sm font-medium focus:outline-none"
+                onChange={(e) => setSubdomain(e.target.value)}
+                placeholder="my-app"
+                className="h-9 font-mono text-sm"
               />
-              <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">
-                .pfnapp.dev
-              </span>
+              <span className="text-xs text-muted-foreground">.pfnapp.dev</span>
             </div>
           </div>
 
-          {/* Card 7: Balance Verification & Final CTA */}
+          {/* Card 7: Balance Verification Card & Deploy CTA */}
           <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase">
-                  {agentMessages.accountBalance}
-                </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                {agentMessages.accountBalance}
+              </span>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </div>
+
+            {accountStatus === "loading" && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Spinner className="h-3.5 w-3.5 animate-spin" />
+                <span>Checking balance…</span>
               </div>
-              {accountStatus === "loading" && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Spinner className="h-3 w-3 animate-spin" />
-                  <span>...</span>
-                </div>
-              )}
-              {accountStatus === "loaded" && account && (
-                <div className="text-right">
+            )}
+
+            {accountStatus === "loaded" && account && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
                   <Badge
                     variant={isBalanceSufficient ? "secondary" : "destructive"}
                     className="text-xs"
@@ -673,75 +954,85 @@ export function AiAgentSummaryCard({
                       ? agentMessages.balanceVerified
                       : agentMessages.insufficientBalance}
                   </Badge>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {account.formattedBalance} available
-                  </p>
                 </div>
-              )}
-              {accountStatus === "error" && (
-                <Badge
-                  variant="outline"
-                  className="text-xs text-muted-foreground"
-                >
-                  {agentMessages.balanceUnknown}
-                </Badge>
-              )}
-            </div>
+                <p className="mt-0.5 font-mono text-sm text-muted-foreground">
+                  {account.formattedBalance ||
+                    `${currency} ${account.balanceIdr || "0"}`}{" "}
+                  available
+                </p>
+                {!isBalanceSufficient && (
+                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400">
+                    <WarningCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                      <p>{agentMessages.balanceBelowCost}</p>
+                      <Button
+                        size="sm"
+                        variant="link"
+                        onClick={() => setTopUpOpen(true)}
+                        className="h-auto p-0 text-xs font-semibold text-amber-700 underline dark:text-amber-300"
+                      >
+                        {agentMessages.topUp} &rarr;
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {accountStatus === "loaded" && !isBalanceSufficient && (
-              <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs text-amber-600 dark:text-amber-400">
-                <div className="flex items-center gap-1.5">
-                  <WarningCircle className="h-4 w-4 shrink-0" />
-                  <span>{agentMessages.balanceBelowCost}</span>
-                </div>
+            {accountStatus === "error" && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{agentMessages.balanceUnknown}</span>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setTopUpOpen(true)}
-                  className="h-7 border-amber-500/30 text-xs"
+                  className="h-7 text-xs"
                 >
                   {agentMessages.topUp}
                 </Button>
               </div>
             )}
 
-            {/* Deploy CTA */}
+            {/* Deploy Trigger CTA */}
             <Button
               size="lg"
-              disabled={deploying || !subdomain.trim()}
               onClick={handleTriggerDeploy}
-              className="h-12 w-full gap-2 text-base font-semibold shadow-md"
+              disabled={deploying}
+              className="mt-2 w-full gap-2 font-semibold shadow-xs"
             >
               {deploying ? (
-                <Spinner className="h-5 w-5 animate-spin" />
+                <>
+                  <Spinner className="h-4 w-4 animate-spin" />
+                  <span>Initiating deployment…</span>
+                </>
               ) : (
-                <RocketLaunch className="h-5 w-5" weight="fill" />
+                <>
+                  <RocketLaunch className="h-4 w-4" weight="fill" />
+                  <span>{agentMessages.deployButton}</span>
+                </>
               )}
-              <span>{agentMessages.deployButton}</span>
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Bulk Paste Dialog */}
+      {/* Bulk Paste Environment Variables Dialog */}
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{agentMessages.bulkPasteTitle}</DialogTitle>
           </DialogHeader>
-          <div className="py-2">
-            <p className="mb-2 text-xs text-muted-foreground">
-              {agentMessages.bulkPasteDesc}
-            </p>
-            <Textarea
-              rows={8}
-              placeholder="DATABASE_URL=postgres://...&#10;API_KEY=xyz..."
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-              className="font-mono text-xs"
-            />
-          </div>
-          <DialogFooter>
+          <p className="text-xs text-muted-foreground">
+            {agentMessages.bulkPasteDesc}
+          </p>
+          <Textarea
+            rows={8}
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+            placeholder={`DB_HOST=127.0.0.1\nDB_PORT=5432\nAPI_KEY=secret_123`}
+            className="font-mono text-xs"
+          />
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               size="sm"
@@ -761,7 +1052,7 @@ export function AiAgentSummaryCard({
         open={topUpOpen}
         onOpenChange={setTopUpOpen}
         currency={currency}
-        onSuccess={() => void reloadAccount()}
+        onSuccess={reloadAccount}
       />
     </div>
   )

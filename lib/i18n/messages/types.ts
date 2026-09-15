@@ -1691,6 +1691,18 @@ export type AppMessages = {
         continueButton: string
         summaryHeading: string
         summarySubheading: string
+        copilotTitle: string
+        blueprintReady: string
+        copilotGreeting: string
+        verifiedStack: string
+        confidence: string
+        proactiveInsights: string
+        prefillEnvKeys: string
+        prefillSuccess: string
+        repoScopeHeading: string
+        blueprintHeading: string
+        envHeading: string
+        sizingHeading: string
         deployButton: string
         startOver: string
         branchLabel: string
