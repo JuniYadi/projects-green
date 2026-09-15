@@ -691,12 +691,16 @@ describe("resolveSidebarMenu", () => {
       "Dashboard",
       "Access Profiles",
       "Devices",
+      "Order VPN Plans",
     ])
     expect(
       navMain.find((item) => item.title === "Access Profiles")?.isActive
     ).toBe(true)
     expect(navMain.find((item) => item.title === "Access Profiles")?.url).toBe(
       "/en/console/vpn/profiles"
+    )
+    expect(navMain.find((item) => item.title === "Order VPN Plans")?.url).toBe(
+      "/en/console/billing/services/vpn"
     )
     expect(navMain.map((item) => item.title)).not.toContain("Order Package")
   })

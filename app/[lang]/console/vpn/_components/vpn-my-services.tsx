@@ -1117,7 +1117,10 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
   return (
     <>
       <div className="flex flex-col gap-4">
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <Button asChild size="sm">
+            <Link href="/console/billing/services/vpn">+ Pesan VPN Baru</Link>
+          </Button>
           {subscriptions.length === 1 ? (
             <Button asChild variant="outline" size="sm">
               <a

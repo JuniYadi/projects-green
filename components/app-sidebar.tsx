@@ -980,6 +980,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         icon: <DeviceMobileIcon />,
         isActive: startsWithRoute(path, "/console/vpn/devices"),
       },
+      {
+        title: locale === "id" ? "Beli Paket VPN" : "Order VPN Plans",
+        url: localizePathname({
+          pathname: "/console/billing/services/vpn",
+          locale,
+        }),
+        icon: <ShoppingBagOpen />,
+        isActive: startsWithRoute(path, "/console/billing/services/vpn"),
+      },
     ],
   },
   {

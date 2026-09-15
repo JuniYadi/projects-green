@@ -60,13 +60,22 @@ export default function ConsoleVpnProfilesPage() {
 
   return (
     <>
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">
-          {locale === "id" ? "Profil Akses VPN" : "Access Profiles"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your VPN connection profiles, server locations, and devices.
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">
+            {locale === "id" ? "Profil Akses VPN" : "Access Profiles"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {locale === "id"
+              ? "Kelola profil koneksi VPN, konfigurasi protokol, dan perangkat."
+              : "Manage your VPN connection profiles, server locations, and devices."}
+          </p>
+        </div>
+        <Button asChild size="sm">
+          <Link href={plansUrl}>
+            {locale === "id" ? "+ Beli Paket VPN" : "+ Order VPN Plan"}
+          </Link>
+        </Button>
       </header>
 
       {hasSubscriptions ? (
@@ -78,14 +87,20 @@ export default function ConsoleVpnProfilesPage() {
         </section>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            You don&apos;t have any VPN access profiles yet.
+          <p className="text-sm font-medium">
+            {locale === "id"
+              ? "Anda belum memiliki profil akses VPN."
+              : "You don't have any VPN access profiles yet."}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Browse VPN plans to provision your first access profile.
+            {locale === "id"
+              ? "Pilih paket VPN untuk membuat profil koneksi dan mulai terhubung."
+              : "Browse VPN plans to provision your first access profile."}
           </p>
           <Button asChild className="mt-4">
-            <Link href={plansUrl}>Browse VPN Plans</Link>
+            <Link href={plansUrl}>
+              {locale === "id" ? "Lihat Paket VPN" : "Browse VPN Plans"}
+            </Link>
           </Button>
         </div>
       )}
