@@ -33,11 +33,23 @@ export default function ConsoleMarketplacePage() {
         onDeploy={async (submission) => {
           setIsDeploying(true)
           try {
+            const secretKeys = new Set(
+              (selectedTemplate?.blueprint?.envSchema ?? [])
+                .filter((envDef) => envDef.isSecret)
+                .map((envDef) => envDef.key)
+            )
+
             const envVarsArray = Object.entries(submission.envVars).map(
-              ([key, value]) => ({
-                key,
-                value,
-              })
+              ([key, value]) => {
+                const isSecret = secretKeys.has(key)
+                return {
+                  key,
+                  value,
+                  type: isSecret ? ("secret" as const) : ("plain" as const),
+                  masked: isSecret,
+                  isStoredSecret: isSecret,
+                }
+              }
             )
 
             const { data: payload } = await eden.api.deploy.submit.post({

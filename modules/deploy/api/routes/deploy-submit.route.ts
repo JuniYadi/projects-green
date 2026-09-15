@@ -16,6 +16,7 @@ import type { AppManagedStock } from "@prisma/client"
 import { claimManagedStock } from "@/modules/deploy/app-managed-stock.service"
 import { assertDeployExecutionGates } from "../../deploy-execution-gates"
 import { DEPLOY_TEMPLATES } from "../../deploy.constants"
+import { inferEnvVarTypeFromKey } from "../../environment-vars"
 import {
   MANAGED_APP_TEMPLATES,
   type ManagedAppTemplate,
@@ -143,6 +144,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
     let resolvedDbTemplateId: string | null = null
     let dbTemplateVersion: string | null = null
     let resolvedTemplateDefaultPort: number | null = null
+    const templateSecretKeys = new Set<string>()
     if (sourceType === "MANAGED_TEMPLATE") {
       managedTemplate = MANAGED_APP_TEMPLATES.find(
         (template) => template.id === body.templateId
@@ -168,8 +170,16 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         if (dbTemplate) {
           resolvedDbTemplateId = dbTemplate.id
           const blueprint =
-            (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig) ??
-            null
+            (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig & {
+              envSchema?: Array<{ key: string; isSecret?: boolean }>
+            }) ?? null
+          if (Array.isArray(blueprint?.envSchema)) {
+            for (const item of blueprint.envSchema) {
+              if (item.isSecret) {
+                templateSecretKeys.add(item.key)
+              }
+            }
+          }
           dbTemplateImageRepository = blueprint?.runtime?.image ?? null
           dbTemplateDeploymentType = blueprint?.runtime?.deploymentType ?? null
           dbTemplateAdditionalPorts =
@@ -198,8 +208,16 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         if (dbTemplate) {
           resolvedDbTemplateId = dbTemplate.id
           const blueprint =
-            (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig) ??
-            null
+            (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig & {
+              envSchema?: Array<{ key: string; isSecret?: boolean }>
+            }) ?? null
+          if (Array.isArray(blueprint?.envSchema)) {
+            for (const item of blueprint.envSchema) {
+              if (item.isSecret) {
+                templateSecretKeys.add(item.key)
+              }
+            }
+          }
           dbTemplateImageRepository = blueprint?.runtime?.image ?? null
           dbTemplateDeploymentType = blueprint?.runtime?.deploymentType ?? null
           dbTemplateAdditionalPorts =
@@ -332,6 +350,26 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
     }
 
+    const processedEnvVars = (body.envVars ?? []).map((envItem) => {
+      const isSecretKey =
+        templateSecretKeys.has(envItem.key) ||
+        envItem.type === "secret" ||
+        inferEnvVarTypeFromKey(envItem.key) === "secret_ref"
+
+      if (
+        isSecretKey &&
+        (!envItem.type || envItem.type === "plain" || envItem.type === "secret")
+      ) {
+        return {
+          ...envItem,
+          type: "secret" as const,
+          masked: true,
+          isStoredSecret: true,
+        }
+      }
+      return envItem
+    })
+
     // Persist the stack as the single source of truth before any deploy.
     let stack
     try {
@@ -366,7 +404,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         memory: body.memory ?? null,
         customDomain: body.customDomain ?? null,
         subdomain: body.subdomain ?? null,
-        envVars: body.envVars ?? [],
+        envVars: processedEnvVars,
         imageRepository:
           managedTemplate?.imageRepository ?? dbTemplateImageRepository ?? null,
         deploymentType: dbTemplateDeploymentType,

@@ -9,6 +9,7 @@ import {
 } from "@/lib/encryption"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
+import { inferEnvVarTypeFromKey } from "@/modules/deploy/environment-vars"
 import { isValidEnvVarKey } from "@/modules/deploy/deploy.schema"
 import {
   hasScopedSuperAdminClaim,
@@ -119,7 +120,8 @@ function isSecret(variable: StoredEnvVar): boolean {
     variable.type === "secret_ref" ||
     variable.type === "secret_shared_ref" ||
     variable.masked === true ||
-    variable.isStoredSecret === true
+    variable.isStoredSecret === true ||
+    inferEnvVarTypeFromKey(variable.key) === "secret_ref"
   )
 }
 
@@ -189,14 +191,58 @@ function safeMount(mount: StoredMount): JsonRecord {
   return { ...safe }
 }
 
-function settingsData(stack: { envVarsJson: unknown; metadataJson: unknown }) {
+function settingsData(stack: {
+  envVarsJson: unknown
+  metadataJson: unknown
+  buildCommand?: string | null
+  rootDirectory?: string
+  dockerfileDetected?: boolean
+  framework?: string | null
+  template?: {
+    id: string
+    name: string
+    blueprintJson: unknown
+  } | null
+}) {
   const mounts = storageMounts(stack.metadataJson)
+  const templateBlueprint =
+    stack.template?.blueprintJson &&
+    typeof stack.template.blueprintJson === "object"
+      ? (stack.template.blueprintJson as Record<string, unknown>)
+      : null
+  const persistentStorage =
+    templateBlueprint && typeof templateBlueprint.storage === "object"
+      ? (templateBlueprint.storage as Record<string, unknown>)
+      : null
+
   return {
     envVars: parseArray(stack.envVarsJson).map(safeEnvVar),
     mounts: {
       dev: mounts.dev.map(safeMount),
       staging: mounts.staging.map(safeMount),
       prod: mounts.prod.map(safeMount),
+    },
+    persistentStorage:
+      persistentStorage && persistentStorage.enabled !== false
+        ? {
+            enabled: true,
+            mountPath:
+              typeof persistentStorage.mountPath === "string"
+                ? persistentStorage.mountPath
+                : typeof persistentStorage.path === "string"
+                  ? persistentStorage.path
+                  : "/data",
+            sizeGb:
+              typeof persistentStorage.sizeGbDefault === "number"
+                ? persistentStorage.sizeGbDefault
+                : 5,
+          }
+        : null,
+    build: {
+      buildCommand: stack.buildCommand ?? "",
+      rootDirectory: stack.rootDirectory ?? "/",
+      dockerfileDetected: Boolean(stack.dockerfileDetected),
+      framework: stack.framework ?? "",
     },
   }
 }
@@ -207,8 +253,20 @@ async function findStack(organizationId: string, slug: string) {
     select: {
       id: true,
       organizationId: true,
+      slug: true,
       envVarsJson: true,
       metadataJson: true,
+      buildCommand: true,
+      rootDirectory: true,
+      dockerfileDetected: true,
+      framework: true,
+      template: {
+        select: {
+          id: true,
+          name: true,
+          blueprintJson: true,
+        },
+      },
     },
   })
 }
@@ -494,4 +552,54 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
       }
     },
     { query: t.Object({ environmentId: environmentSchema }) }
+  )
+  .patch(
+    "/:slug/settings/build",
+    async ({ params, body, set }) => {
+      const auth = await authorize(set, true)
+      if ("error" in auth) return auth.error
+      const stack = await findStack(auth.organizationId, params.slug)
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application not found",
+        }
+      }
+      const updated = await prisma.applicationStack.update({
+        where: { id: stack.id },
+        data: {
+          ...(body.buildCommand !== undefined
+            ? { buildCommand: body.buildCommand }
+            : {}),
+          ...(body.rootDirectory !== undefined
+            ? { rootDirectory: body.rootDirectory }
+            : {}),
+          ...(body.dockerfileDetected !== undefined
+            ? { dockerfileDetected: body.dockerfileDetected }
+            : {}),
+          ...(body.framework !== undefined
+            ? { framework: body.framework }
+            : {}),
+        },
+      })
+      return {
+        ok: true,
+        data: {
+          buildCommand: updated.buildCommand ?? "",
+          rootDirectory: updated.rootDirectory ?? "/",
+          dockerfileDetected: Boolean(updated.dockerfileDetected),
+          framework: updated.framework ?? "",
+        },
+      }
+    },
+    {
+      body: t.Object({
+        buildCommand: t.Optional(t.String()),
+        rootDirectory: t.Optional(t.String()),
+        dockerfileDetected: t.Optional(t.Boolean()),
+        framework: t.Optional(t.String()),
+      }),
+    }
   )
