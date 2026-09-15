@@ -183,7 +183,7 @@ export function TabLogs({
 
   const activeLogs = propLogs ?? internalLogs
   const updateLogs = propSetLogs ?? setInternalLogs
-  const logConsoleEndRef = useRef<HTMLDivElement>(null)
+  const logContainerRef = useRef<HTMLDivElement>(null)
 
   // Dynamically discover all JSON fields across active logs
   const availableFields = useMemo(() => {
@@ -243,8 +243,8 @@ export function TabLogs({
   }, [appSlug, isLiveTailing, fetchRealLogs])
   // Scroll to bottom of logs when new logs arrive
   useEffect(() => {
-    if (logConsoleEndRef.current && isLiveTailing) {
-      logConsoleEndRef.current.scrollIntoView({ behavior: "smooth" })
+    if (logContainerRef.current && isLiveTailing) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
     }
   }, [activeLogs, isLiveTailing])
 
@@ -528,7 +528,10 @@ export function TabLogs({
 
           {/* Structured Log Explorer Table (Datadog & Kibana style) */}
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-            <div className="max-h-[520px] min-h-[240px] overflow-auto">
+            <div
+              ref={logContainerRef}
+              className="max-h-[520px] min-h-[240px] overflow-auto"
+            >
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-muted/70 text-[11px] backdrop-blur-xs">
                   <TableRow className="border-b border-border hover:bg-transparent">
@@ -661,7 +664,6 @@ export function TabLogs({
                   )}
                 </TableBody>
               </Table>
-              <div ref={logConsoleEndRef} />
             </div>
           </div>
         </CardContent>
