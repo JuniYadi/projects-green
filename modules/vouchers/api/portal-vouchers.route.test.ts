@@ -539,6 +539,22 @@ describe("Portal Voucher Routes", () => {
       expect(body.ok).toBe(false)
     })
 
+    it("returns 500 when expiration fails unexpectedly", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.expireVoucher = mock(() => {
+        throw new Error("database unavailable")
+      })
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(500)
+    })
+
     it("returns 422 for an invalid voucher id", async () => {
       const res = await toApp(createDeps()).handle(
         new Request("http://localhost/vouchers/portal/%20/expire", {
