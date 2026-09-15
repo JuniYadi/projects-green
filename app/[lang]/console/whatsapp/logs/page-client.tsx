@@ -46,23 +46,6 @@ export default function ConsoleWhatsAppLogsPage() {
     [pathname, router, searchParams]
   )
 
-  if (onboarding.isFeatureLocked("webhook_logs")) {
-    return (
-      <>
-        <LockedFeatureTeaser
-          featureTitle={tLocked.title}
-          featureDescription={tLocked.description}
-          unlockLevel={3}
-          prerequisiteDescription={tLocked.prerequisite}
-          activeMissionHref="/console/whatsapp/messages"
-          activeMissionLabel={tLocked.activeLabel}
-          locale={locale}
-        />
-        <FlightHudWidget onboarding={onboarding} locale={locale} />
-      </>
-    )
-  }
-
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <FlightHudWidget locale={locale} onboarding={onboarding} />
@@ -90,7 +73,19 @@ export default function ConsoleWhatsAppLogsPage() {
         </TabsList>
 
         <TabsContent value="webhooks" className="m-0 space-y-6">
-          <WebhookLogsTabContent locale={locale} messages={messages} />
+          {onboarding.isFeatureLocked("webhook_logs") ? (
+            <LockedFeatureTeaser
+              featureTitle={tLocked.title}
+              featureDescription={tLocked.description}
+              unlockLevel={3}
+              prerequisiteDescription={tLocked.prerequisite}
+              activeMissionHref="/console/whatsapp/messages"
+              activeMissionLabel={tLocked.activeLabel}
+              locale={locale}
+            />
+          ) : (
+            <WebhookLogsTabContent locale={locale} messages={messages} />
+          )}
         </TabsContent>
 
         <TabsContent value="audit" className="m-0 space-y-6">

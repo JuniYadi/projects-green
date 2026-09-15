@@ -48,6 +48,7 @@ export type AuditLogDTO = {
   adminId: string | null
   actorName?: string | null
   actorEmail?: string | null
+  isPlatformAdmin?: boolean
   correlationId: string | null
   action: string
   status: string | null
@@ -422,8 +423,20 @@ export function AuditLogTable({
                         {log.message ?? "—"}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {log.actorName ??
-                          (log.adminId ? log.adminId.slice(0, 10) : "System")}
+                        {log.isPlatformAdmin ? (
+                          <div className="flex items-center gap-1.5">
+                            <span>{log.actorName || "Platform Support"}</span>
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1.5 text-[10px] font-normal"
+                            >
+                              Platform Support
+                            </Badge>
+                          </div>
+                        ) : (
+                          (log.actorName ??
+                          (log.adminId ? log.adminId.slice(0, 10) : "System"))
+                        )}
                       </TableCell>
                       <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
                         {formatTime(log.createdAt)}

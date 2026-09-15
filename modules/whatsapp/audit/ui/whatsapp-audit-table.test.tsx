@@ -57,4 +57,21 @@ describe("AuditLogTable", () => {
 
     expect(html).toContain('href="/portal/whatsapp/messages/wamid.123"')
   })
+
+  it("renders Platform Support badge when isPlatformAdmin is true", () => {
+    const html = renderToString(
+      <AuditLogTable
+        logs={[
+          {
+            ...mockLog,
+            actorName: "Platform Support",
+            isPlatformAdmin: true,
+          },
+        ]}
+        isLoading={false}
+      />
+    )
+
+    expect(html).toContain("Platform Support")
+  })
 })

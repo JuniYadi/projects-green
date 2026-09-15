@@ -2,7 +2,7 @@ import { getCachedUser } from "@/lib/workos-directory"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { Elysia } from "elysia"
 import { prisma } from "@/lib/prisma"
-import { Prisma } from "@prisma/client"
+import { Prisma, type WhatsappAuditLog } from "@prisma/client"
 import {
   requireSuperAdmin,
   type AdminApiError,
@@ -83,6 +83,120 @@ function buildWhere(query: Record<string, unknown>, orgScope?: string) {
   return where
 }
 
+type EnrichedAuditLog = WhatsappAuditLog & {
+  deviceLabel: string | null
+  actorName: string | null
+  actorEmail: string | null
+  isPlatformAdmin: boolean
+}
+
+async function enrichAuditLogs(
+  rawLogs: WhatsappAuditLog[],
+  opts: { isConsole: boolean }
+): Promise<EnrichedAuditLog[]> {
+  if (rawLogs.length === 0) return []
+
+  const deviceIds = [
+    ...new Set(
+      rawLogs.map((l) => l.deviceId).filter((id): id is string => Boolean(id))
+    ),
+  ]
+  const adminIds = [
+    ...new Set(
+      rawLogs
+        .map((l) => l.adminId)
+        .filter((id): id is string => Boolean(id && id.startsWith("user_")))
+    ),
+  ]
+
+  const [devices, userEntries] = await Promise.all([
+    deviceIds.length > 0
+      ? prisma.whatsappDevice.findMany({
+          where: { id: { in: deviceIds } },
+          select: { id: true, phoneNumber: true },
+        })
+      : [],
+    Promise.all(
+      adminIds.map(async (id) => {
+        const u = await getCachedUser(id)
+        return [id, u] as const
+      })
+    ),
+  ])
+
+  const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
+  const userMap = new Map(
+    userEntries.filter(([, u]) => Boolean(u)).map(([id, u]) => [id, u!])
+  )
+
+  const emails = Array.from(userMap.values())
+    .map((u) => u.email?.toLowerCase())
+    .filter((e): e is string => Boolean(e))
+
+  let platformRoles: Array<{ workosUserId: string; email: string | null }> = []
+  if (adminIds.length > 0 || emails.length > 0) {
+    platformRoles = await prisma.authPlatformUserRole.findMany({
+      where: {
+        role: "SUPER_ADMIN",
+        OR: [
+          ...(adminIds.length > 0 ? [{ workosUserId: { in: adminIds } }] : []),
+          ...(emails.length > 0 ? [{ email: { in: emails } }] : []),
+        ],
+      },
+      select: { workosUserId: true, email: true },
+    })
+  }
+
+  const platformAdminWorkosIds = new Set(
+    platformRoles.map((p) => p.workosUserId)
+  )
+  const platformAdminEmails = new Set(
+    platformRoles
+      .map((p) => p.email?.toLowerCase())
+      .filter((e): e is string => Boolean(e))
+  )
+
+  const isPlatformUser = (
+    adminId: string | null,
+    userEmail?: string | null
+  ) => {
+    if (adminId && platformAdminWorkosIds.has(adminId)) return true
+    if (userEmail && platformAdminEmails.has(userEmail.toLowerCase()))
+      return true
+    return false
+  }
+
+  return rawLogs.map((log) => {
+    const user = log.adminId ? userMap.get(log.adminId) : null
+    const isPlatform = isPlatformUser(log.adminId, user?.email)
+
+    let actorName: string | null
+    let actorEmail: string | null
+
+    if (opts.isConsole && isPlatform) {
+      // In console workspace: mask platform admin details to prevent privacy leaks
+      actorName = "Platform Support"
+      actorEmail = null
+    } else {
+      actorName =
+        user?.name ??
+        user?.email ??
+        (log.adminId ? log.adminId.slice(0, 10) : null)
+      actorEmail = user?.email ?? null
+    }
+
+    return {
+      ...log,
+      deviceLabel: log.deviceId
+        ? (deviceMap.get(log.deviceId) ?? log.deviceId)
+        : null,
+      actorName,
+      actorEmail,
+      isPlatformAdmin: isPlatform,
+    }
+  })
+}
+
 export const createWhatsappAuditRoutes = (
   deps: {
     requireSuperAdmin?: (
@@ -109,55 +223,9 @@ export const createWhatsappAuditRoutes = (
           take: limit,
         }),
       ])
-      const deviceIds = [
-        ...new Set(
-          rawLogs
-            .map((l) => l.deviceId)
-            .filter((id): id is string => Boolean(id))
-        ),
-      ]
-      const adminIds = [
-        ...new Set(
-          rawLogs
-            .map((l) => l.adminId)
-            .filter((id): id is string => Boolean(id && id.startsWith("user_")))
-        ),
-      ]
 
-      const [devices, userEntries] = await Promise.all([
-        deviceIds.length > 0
-          ? prisma.whatsappDevice.findMany({
-              where: { id: { in: deviceIds } },
-              select: { id: true, phoneNumber: true },
-            })
-          : [],
-        Promise.all(
-          adminIds.map(async (id) => {
-            const u = await getCachedUser(id)
-            return [id, u] as const
-          })
-        ),
-      ])
+      const logs = await enrichAuditLogs(rawLogs, { isConsole: false })
 
-      const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
-      const userMap = new Map(
-        userEntries.filter(([, u]) => Boolean(u)).map(([id, u]) => [id, u!])
-      )
-
-      const logs = rawLogs.map((log) => {
-        const user = log.adminId ? userMap.get(log.adminId) : null
-        return {
-          ...log,
-          deviceLabel: log.deviceId
-            ? (deviceMap.get(log.deviceId) ?? log.deviceId)
-            : null,
-          actorName:
-            user?.name ??
-            user?.email ??
-            (log.adminId ? log.adminId.slice(0, 10) : null),
-          actorEmail: user?.email ?? null,
-        }
-      })
       return {
         ok: true,
         data: logs.map(toWhatsappAuditLogDTO),
@@ -189,7 +257,7 @@ export const createWhatsappAuditRoutes = (
         const where = buildWhere(query as any, device.organizationId)
         where.deviceId = deviceId
 
-        const [total, logs] = await Promise.all([
+        const [total, rawLogs] = await Promise.all([
           prisma.whatsappAuditLog.count({ where }),
           prisma.whatsappAuditLog.findMany({
             where,
@@ -198,6 +266,8 @@ export const createWhatsappAuditRoutes = (
             take: limit,
           }),
         ])
+
+        const logs = await enrichAuditLogs(rawLogs, { isConsole: false })
 
         return {
           ok: true,
@@ -241,53 +311,7 @@ export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
       }),
     ])
 
-    const deviceIds = [
-      ...new Set(
-        rawLogs.map((l) => l.deviceId).filter((id): id is string => Boolean(id))
-      ),
-    ]
-    const adminIds = [
-      ...new Set(
-        rawLogs
-          .map((l) => l.adminId)
-          .filter((id): id is string => Boolean(id && id.startsWith("user_")))
-      ),
-    ]
-
-    const [devices, userEntries] = await Promise.all([
-      deviceIds.length > 0
-        ? prisma.whatsappDevice.findMany({
-            where: { id: { in: deviceIds } },
-            select: { id: true, phoneNumber: true },
-          })
-        : [],
-      Promise.all(
-        adminIds.map(async (id) => {
-          const u = await getCachedUser(id)
-          return [id, u] as const
-        })
-      ),
-    ])
-
-    const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
-    const userMap = new Map(
-      userEntries.filter(([, u]) => Boolean(u)).map(([id, u]) => [id, u!])
-    )
-
-    const logs = rawLogs.map((log) => {
-      const user = log.adminId ? userMap.get(log.adminId) : null
-      return {
-        ...log,
-        deviceLabel: log.deviceId
-          ? (deviceMap.get(log.deviceId) ?? log.deviceId)
-          : null,
-        actorName:
-          user?.name ??
-          user?.email ??
-          (log.adminId ? log.adminId.slice(0, 10) : null),
-        actorEmail: user?.email ?? null,
-      }
-    })
+    const logs = await enrichAuditLogs(rawLogs, { isConsole: true })
 
     return {
       ok: true,
@@ -334,7 +358,7 @@ export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
       const where = buildWhere(query, auth.organizationId)
       where.deviceId = deviceId
 
-      const [total, logs] = await Promise.all([
+      const [total, rawLogs] = await Promise.all([
         prisma.whatsappAuditLog.count({ where }),
         prisma.whatsappAuditLog.findMany({
           where,
@@ -343,6 +367,8 @@ export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
           take: limit,
         }),
       ])
+
+      const logs = await enrichAuditLogs(rawLogs, { isConsole: true })
 
       return {
         ok: true,

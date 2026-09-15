@@ -317,9 +317,19 @@ export function AuditLogDetailSheet({
                   <span>{t.actor}</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-semibold text-foreground">
-                    {log.actorName || log.adminId || "System"}
-                  </p>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <p className="text-xs font-semibold text-foreground">
+                      {log.actorName || log.adminId || "System"}
+                    </p>
+                    {log.isPlatformAdmin && (
+                      <Badge
+                        variant="secondary"
+                        className="h-4 px-1.5 text-[10px] font-normal"
+                      >
+                        Platform Support
+                      </Badge>
+                    )}
+                  </div>
                   {log.actorEmail && (
                     <p className="font-mono text-[11px] text-muted-foreground">
                       {log.actorEmail}

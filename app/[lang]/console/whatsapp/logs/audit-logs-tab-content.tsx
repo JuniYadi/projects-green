@@ -29,6 +29,7 @@ export type AuditLogRecord = {
   adminId?: string | null
   actorName?: string | null
   actorEmail?: string | null
+  isPlatformAdmin?: boolean
   deviceId?: string | null
   deviceLabel?: string | null
   ip?: string | null
@@ -198,9 +199,19 @@ export function AuditLogsTabContent({
         ),
         cell: ({ row }) => (
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-foreground">
-              {row.original.actorName || "System"}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-foreground">
+                {row.original.actorName || "System"}
+              </span>
+              {row.original.isPlatformAdmin && (
+                <Badge
+                  variant="secondary"
+                  className="h-4 px-1.5 text-[10px] font-normal"
+                >
+                  Platform Support
+                </Badge>
+              )}
+            </div>
             {row.original.actorEmail && (
               <span className="text-[11px] text-muted-foreground">
                 {row.original.actorEmail}
