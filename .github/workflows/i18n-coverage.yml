@@ -1,0 +1,93 @@
+name: i18n Translation & Coverage Scan
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "components/**"
+      - "modules/**"
+      - "lib/i18n/**"
+      - "scripts/scan-i18n.ts"
+      - ".github/workflows/i18n-coverage.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "components/**"
+      - "modules/**"
+      - "lib/i18n/**"
+      - "scripts/scan-i18n.ts"
+      - ".github/workflows/i18n-coverage.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  i18n-scan:
+    name: i18n Coverage Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run i18n Scanner
+        run: |
+          bun run scripts/scan-i18n.ts --output=i18n-report.json --markdown-output=i18n-report.md --annotations
+
+      - name: Add Job Summary
+        if: always()
+        run: |
+          if [ -f i18n-report.md ]; then
+            cat i18n-report.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Post or Update Sticky PR Comment
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('i18n-report.md')) {
+              return;
+            }
+
+            const markdown = fs.readFileSync('i18n-report.md', 'utf8');
+            const botCommentTag = '<!-- i18n-coverage-report -->';
+            const fullBody = `${botCommentTag}\n${markdown}`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComment = comments.find(
+              (c) => c.body && c.body.includes(botCommentTag)
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: fullBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: fullBody,
+              });
+            }
