@@ -39,6 +39,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const POD_COLORS = ["#10b981", "#38bdf8", "#a855f7", "#f59e0b", "#f43f5e"]
 
@@ -241,6 +243,9 @@ export function TabMetrics({
   clusterCode,
   locale = "en",
 }: TabMetricsProps) {
+  const activeLocale = resolveLocaleOrDefault(locale)
+  const messages = getMessages(activeLocale).console.deploy.operateMetrics
+
   const [timeRange, setTimeRange] = useState<
     "1h" | "6h" | "24h" | "7d" | "30d"
   >("1h")
@@ -348,17 +353,16 @@ export function TabMetrics({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-bold text-foreground">
-            Live Telemetry & Observability
+            {messages.title}
           </h3>
           <p className="text-xs text-muted-foreground">
-            Track real-time resources, latency percentiles, and traffic
-            distribution
+            {messages.description}
           </p>
         </div>
         <div
           className="flex items-center gap-1 rounded-lg border border-border bg-muted/20 p-1"
           role="tablist"
-          aria-label="Time range"
+          aria-label={messages.timeRangeAria}
         >
           {TIME_RANGE_OPTIONS.map((option) => {
             const isActive = timeRange === option.value
