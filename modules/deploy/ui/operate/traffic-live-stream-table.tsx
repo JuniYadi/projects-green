@@ -24,7 +24,7 @@ export interface TrafficLiveStreamTableProps {
 export function TrafficLiveStreamTable({
   appSlug,
 }: TrafficLiveStreamTableProps) {
-  const [isLive, setIsLive] = useState(false)
+  const [isLive, setIsLive] = useState(true)
   const [statusFilter, setStatusFilter] = useState<
     "all" | "2xx" | "4xx" | "5xx"
   >("all")
@@ -144,11 +144,20 @@ export function TrafficLiveStreamTable({
       <CardContent>
         {logsBuffer.length === 0 ? (
           <div className="flex h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/5 text-center text-xs text-muted-foreground">
-            <p>
-              {isLive
-                ? "Menunggu request trafik masuk..."
-                : "Live stream sedang dijeda. Klik 'Mulai Live' untuk memantau request secara langsung."}
-            </p>
+            {isLive ? (
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </span>
+                <span>Mendengarkan lalu lintas request secara langsung...</span>
+              </div>
+            ) : (
+              <p>
+                Live stream sedang dijeda. Klik &apos;Mulai Live&apos; untuk
+                memantau request secara langsung.
+              </p>
+            )}
           </div>
         ) : (
           <div className="max-h-80 overflow-y-auto rounded-lg border border-border bg-muted/5 font-mono text-xs">

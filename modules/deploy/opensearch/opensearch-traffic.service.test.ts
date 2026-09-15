@@ -24,6 +24,7 @@ mock.module("../cluster-integration.service", () => ({
 // Dynamic import required after mock.module setup in Bun test
 const {
   formatBytes,
+  computeTopCountries,
   computeDailyTrafficSnapshotFromOpenSearch,
   getAppTrafficReport,
   getLiveTrafficLogs,
@@ -46,6 +47,45 @@ describe("opensearch-traffic.service", () => {
       expect(formatBytes(1024)).toBe("1.0 KB")
       expect(formatBytes(1048576)).toBe("1.0 MB")
       expect(formatBytes(BigInt(1073741824))).toBe("1.0 GB")
+    })
+  })
+
+  describe("computeTopCountries", () => {
+    it("aggregates requests per country and calculates percentage correctly", () => {
+      const topIps = [
+        {
+          ip: "1.1.1.1",
+          countryCode: "SG",
+          countryName: "Singapore",
+          requestsCount: 60,
+        },
+        {
+          ip: "1.1.1.2",
+          countryCode: "SG",
+          countryName: "Singapore",
+          requestsCount: 40,
+        },
+        {
+          ip: "2.2.2.2",
+          countryCode: "ID",
+          countryName: "Indonesia",
+          requestsCount: 100,
+        },
+      ]
+      const countries = computeTopCountries(topIps)
+      expect(countries.length).toBe(2)
+      expect(countries[0]).toEqual({
+        countryCode: "SG",
+        countryName: "Singapore",
+        requests: 100,
+        percentage: 50,
+      })
+      expect(countries[1]).toEqual({
+        countryCode: "ID",
+        countryName: "Indonesia",
+        requests: 100,
+        percentage: 50,
+      })
     })
   })
 
@@ -385,6 +425,7 @@ describe("opensearch-traffic.service", () => {
         hourlyTrend: [],
         topPaths: [],
         errorPaths: [],
+        topIps: [],
       })
       expect(
         mockPrisma.appHostingDailyTrafficSnapshot.upsert

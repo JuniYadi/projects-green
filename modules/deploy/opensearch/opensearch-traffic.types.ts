@@ -1,3 +1,5 @@
+import type { IpGeoInfo } from "./geoip-lookup.service"
+
 export interface TrafficTrendItem {
   label: string
   requests: number
@@ -15,6 +17,13 @@ export interface TrafficErrorPath {
   sampleStatus: number
 }
 
+export interface TrafficCountryCount {
+  countryCode: string
+  countryName: string
+  requests: number
+  percentage: number
+}
+
 export interface AppTrafficReportDTO {
   granularity: "daily" | "monthly" | "yearly"
   periodLabel: string
@@ -29,6 +38,8 @@ export interface AppTrafficReportDTO {
   trend: TrafficTrendItem[]
   topPages: TrafficPathCount[]
   troubledPages: TrafficErrorPath[]
+  topIps: IpGeoInfo[]
+  topCountries: TrafficCountryCount[]
 }
 
 export interface AppTrafficLogItemDTO {
@@ -58,4 +69,5 @@ export interface DailySnapshotComputeResult {
   hourlyTrend: Array<{ hour: number; requests: number; errors: number }>
   topPaths: TrafficPathCount[]
   errorPaths: TrafficErrorPath[]
+  topIps: IpGeoInfo[]
 }

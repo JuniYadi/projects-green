@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 import { logger } from "@/lib/logger"
 import { resolveClusterIntegrationByClusterCode } from "../cluster-integration.service"
+import { enrichTopIpsWithGeo, type IpGeoInfo } from "./geoip-lookup.service"
 import type {
   AppTrafficLogItemDTO,
   AppTrafficLogsDTO,
   AppTrafficReportDTO,
   DailySnapshotComputeResult,
+  TrafficCountryCount,
   TrafficErrorPath,
   TrafficPathCount,
   TrafficTrendItem,
@@ -43,6 +45,44 @@ export function formatBytes(bytes: bigint | number): string {
   return `${formatted} ${units[i] ?? "B"}`
 }
 
+export function computeTopCountries(
+  topIps: IpGeoInfo[]
+): TrafficCountryCount[] {
+  const countryMap = new Map<
+    string,
+    { countryCode: string; countryName: string; requests: number }
+  >()
+  let totalIpRequests = 0
+
+  for (const item of topIps) {
+    totalIpRequests += item.requestsCount
+    const code = item.countryCode || "UNKNOWN"
+    const name = item.countryName || "Tidak Diketahui"
+    const existing = countryMap.get(code)
+    if (existing) {
+      existing.requests += item.requestsCount
+    } else {
+      countryMap.set(code, {
+        countryCode: code,
+        countryName: name,
+        requests: item.requestsCount,
+      })
+    }
+  }
+
+  return Array.from(countryMap.values())
+    .map((c) => ({
+      countryCode: c.countryCode,
+      countryName: c.countryName,
+      requests: c.requests,
+      percentage:
+        totalIpRequests > 0
+          ? Math.round((c.requests / totalIpRequests) * 1000) / 10
+          : 0,
+    }))
+    .sort((a, b) => b.requests - a.requests)
+}
+
 export async function resolveOpenSearchForStack(
   stackIdOrSlug: string
 ): Promise<{
@@ -55,8 +95,10 @@ export async function resolveOpenSearchForStack(
     clusterId: string | null
     customDomain: string | null
     subdomain: string | null
+    domains?: Array<{ hostname: string }>
   }
   clusterCode: string
+  domainList: string[]
 }> {
   const stack = await prisma.applicationStack.findFirst({
     where: {
@@ -70,6 +112,11 @@ export async function resolveOpenSearchForStack(
       clusterId: true,
       customDomain: true,
       subdomain: true,
+      domains: {
+        select: {
+          hostname: true,
+        },
+      },
       cluster: {
         select: {
           code: true,
@@ -84,6 +131,16 @@ export async function resolveOpenSearchForStack(
     )
   }
 
+  const domainList = Array.from(
+    new Set(
+      [
+        stack.customDomain,
+        stack.subdomain,
+        ...(stack.domains?.map((d) => d.hostname) ?? []),
+      ].filter(Boolean) as string[]
+    )
+  )
+
   const clusterCode = stack.cluster?.code ?? "sgp"
   const config = await resolveClusterIntegrationByClusterCode(
     clusterCode,
@@ -96,7 +153,29 @@ export async function resolveOpenSearchForStack(
     config.sslVerify
   )
 
-  return { client, stack, clusterCode }
+  return { client, stack, clusterCode, domainList }
+}
+
+/**
+ * Builds OpenSearch query filter for matching an application stack's traffic.
+ * Prefers exact FQDN matching on `haproxy_host.keyword` with fallback to backend prefix.
+ */
+function buildStackFilterClause(
+  domainList: string[],
+  stackSlug: string
+): Record<string, unknown> {
+  if (domainList.length > 0) {
+    return {
+      terms: {
+        "haproxy_host.keyword": domainList,
+      },
+    }
+  }
+  return {
+    prefix: {
+      "haproxy_backend.keyword": `app-${stackSlug}`,
+    },
+  }
 }
 
 /**
@@ -111,11 +190,18 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   let client: Client
   let stackSlug: string
   let stackId: string
+  let domainList: string[] = []
 
   if (injectedClient) {
     const s = await prisma.applicationStack.findFirst({
       where: { OR: [{ id: stackIdOrSlug }, { slug: stackIdOrSlug }] },
-      select: { id: true, slug: true },
+      select: {
+        id: true,
+        slug: true,
+        customDomain: true,
+        subdomain: true,
+        domains: { select: { hostname: true } },
+      },
     })
     if (!s) {
       throw new Error(
@@ -125,12 +211,23 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     client = injectedClient
     stackSlug = s.slug
     stackId = s.id
+    domainList = Array.from(
+      new Set(
+        [
+          s.customDomain,
+          s.subdomain,
+          ...(s.domains?.map((d) => d.hostname) ?? []),
+        ].filter(Boolean) as string[]
+      )
+    )
   } else {
     const resolved = await resolveOpenSearchForStack(stackIdOrSlug)
     client = resolved.client
     stackSlug = resolved.stack.slug
     stackId = resolved.stack.id
+    domainList = resolved.domainList
   }
+
   const startOfDay = new Date(
     Date.UTC(
       targetDate.getUTCFullYear(),
@@ -154,8 +251,6 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     )
   )
 
-  const backendPrefix = `app-${stackSlug}_svc_`
-
   const queryPayload: Record<string, unknown> = {
     size: 0,
     query: {
@@ -169,11 +264,7 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
               },
             },
           },
-          {
-            prefix: {
-              "haproxy_backend.keyword": backendPrefix,
-            },
-          },
+          buildStackFilterClause(domainList, stackSlug),
         ],
       },
     },
@@ -208,6 +299,9 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
       top_paths: {
         terms: { field: "http_path.keyword", size: 5 },
       },
+      top_ips: {
+        terms: { field: "client_ip.keyword", size: 10 },
+      },
       error_paths: {
         filter: {
           range: { http_status: { gte: 400 } },
@@ -235,6 +329,8 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     []
   const topPaths: TrafficPathCount[] = []
   const errorPaths: TrafficErrorPath[] = []
+  const rawTopIps: Array<{ ip: string; count: number }> = []
+
   try {
     const rawClient = client as unknown as {
       search: (
@@ -261,6 +357,7 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
         }>
       }
       top_paths?: { buckets: Array<{ key: string; doc_count: number }> }
+      top_ips?: { buckets: Array<{ key: string; doc_count: number }> }
       error_paths?: {
         paths?: {
           buckets: Array<{
@@ -318,6 +415,15 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
       }
     }
 
+    if (aggs.top_ips?.buckets) {
+      for (const b of aggs.top_ips.buckets) {
+        rawTopIps.push({
+          ip: b.key,
+          count: b.doc_count,
+        })
+      }
+    }
+
     const errBuckets = aggs.error_paths?.paths?.buckets ?? []
     for (const b of errBuckets) {
       errorPaths.push({
@@ -339,6 +445,8 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     )
   }
 
+  const topIps = await enrichTopIpsWithGeo(rawTopIps)
+
   return {
     stackId,
     date: startOfDay,
@@ -350,6 +458,7 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     hourlyTrend,
     topPaths,
     errorPaths,
+    topIps,
   }
 }
 
@@ -375,6 +484,7 @@ export async function saveDailyTrafficSnapshot(
       hourlyTrendJson: snapshot.hourlyTrend,
       topPathsJson: snapshot.topPaths as unknown as Prisma.InputJsonValue,
       errorPathsJson: snapshot.errorPaths as unknown as Prisma.InputJsonValue,
+      topIpsJson: snapshot.topIps as unknown as Prisma.InputJsonValue,
     },
     create: {
       stackId: snapshot.stackId,
@@ -387,6 +497,7 @@ export async function saveDailyTrafficSnapshot(
       hourlyTrendJson: snapshot.hourlyTrend,
       topPathsJson: snapshot.topPaths as unknown as Prisma.InputJsonValue,
       errorPathsJson: snapshot.errorPaths as unknown as Prisma.InputJsonValue,
+      topIpsJson: snapshot.topIps as unknown as Prisma.InputJsonValue,
     },
   })
 }
@@ -517,6 +628,8 @@ export async function getAppTrafficReport(
         })),
         topPages: [],
         troubledPages: [],
+        topIps: [],
+        topCountries: [],
       }
     }
 
@@ -546,6 +659,9 @@ export async function getAppTrafficReport(
         ? Math.round((snapshot.successCount / totalRequests) * 1000) / 10
         : 100
 
+    const topIps = (snapshot.topIpsJson as unknown as IpGeoInfo[]) ?? []
+    const topCountries = computeTopCountries(topIps)
+
     return {
       granularity: "daily",
       periodLabel,
@@ -559,6 +675,8 @@ export async function getAppTrafficReport(
       topPages: (snapshot.topPathsJson as unknown as TrafficPathCount[]) ?? [],
       troubledPages:
         (snapshot.errorPathsJson as unknown as TrafficErrorPath[]) ?? [],
+      topIps,
+      topCountries,
     }
   }
 
@@ -606,6 +724,7 @@ export async function getAppTrafficReport(
 
     const pathViews = new Map<string, number>()
     const errorMap = new Map<string, { errors: number; sampleStatus: number }>()
+    const ipMap = new Map<string, IpGeoInfo>()
 
     const trend: TrafficTrendItem[] = []
 
@@ -644,6 +763,16 @@ export async function getAppTrafficReport(
             sampleStatus: e.sampleStatus ?? cur?.sampleStatus ?? 500,
           })
         }
+
+        const snapIps = (snap.topIpsJson as unknown as IpGeoInfo[]) ?? []
+        for (const ipItem of snapIps) {
+          const cur = ipMap.get(ipItem.ip)
+          if (cur) {
+            cur.requestsCount += ipItem.requestsCount
+          } else {
+            ipMap.set(ipItem.ip, { ...ipItem })
+          }
+        }
       }
     }
 
@@ -670,6 +799,12 @@ export async function getAppTrafficReport(
       .sort((a, b) => b.errors - a.errors)
       .slice(0, 5)
 
+    const topIps = Array.from(ipMap.values())
+      .sort((a, b) => b.requestsCount - a.requestsCount)
+      .slice(0, 10)
+
+    const topCountries = computeTopCountries(topIps)
+
     const periodLabel = startOfMonth.toLocaleDateString("id-ID", {
       timeZone: "UTC",
       month: "long",
@@ -688,6 +823,8 @@ export async function getAppTrafficReport(
       trend,
       topPages: sortedTopPages,
       troubledPages: sortedTroubledPages,
+      topIps,
+      topCountries,
     }
   }
 
@@ -724,6 +861,7 @@ export async function getAppTrafficReport(
 
   const pathViews = new Map<string, number>()
   const errorMap = new Map<string, { errors: number; sampleStatus: number }>()
+  const ipMap = new Map<string, IpGeoInfo>()
 
   for (const snap of snapshots) {
     const month = snap.date.getUTCMonth()
@@ -753,6 +891,16 @@ export async function getAppTrafficReport(
         errors: (cur?.errors ?? 0) + e.errors,
         sampleStatus: e.sampleStatus ?? cur?.sampleStatus ?? 500,
       })
+    }
+
+    const snapIps = (snap.topIpsJson as unknown as IpGeoInfo[]) ?? []
+    for (const ipItem of snapIps) {
+      const cur = ipMap.get(ipItem.ip)
+      if (cur) {
+        cur.requestsCount += ipItem.requestsCount
+      } else {
+        ipMap.set(ipItem.ip, { ...ipItem })
+      }
     }
   }
 
@@ -798,6 +946,12 @@ export async function getAppTrafficReport(
     .sort((a, b) => b.errors - a.errors)
     .slice(0, 5)
 
+  const topIps = Array.from(ipMap.values())
+    .sort((a, b) => b.requestsCount - a.requestsCount)
+    .slice(0, 10)
+
+  const topCountries = computeTopCountries(topIps)
+
   return {
     granularity: "yearly",
     periodLabel: `Tahun ${targetYear}`,
@@ -810,6 +964,8 @@ export async function getAppTrafficReport(
     trend,
     topPages: sortedTopPages,
     troubledPages: sortedTroubledPages,
+    topIps,
+    topCountries,
   }
 }
 
@@ -826,12 +982,15 @@ export async function getLiveTrafficLogs(
   },
   injectedClient?: Client
 ): Promise<AppTrafficLogsDTO> {
-  const { client: resolvedClient, stack } =
-    await resolveOpenSearchForStack(slug)
+  const {
+    client: resolvedClient,
+    stack,
+    domainList,
+  } = await resolveOpenSearchForStack(slug)
   const client = injectedClient ?? resolvedClient
   const limit = Math.min(Math.max(options?.limit ?? 25, 1), 50)
   const filterClauses: Record<string, unknown>[] = [
-    { prefix: { "haproxy_backend.keyword": `app-${stack.slug}_svc_` } },
+    buildStackFilterClause(domainList, stack.slug),
   ]
   if (options?.since) {
     filterClauses.push({
