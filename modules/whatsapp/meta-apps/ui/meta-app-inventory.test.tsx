@@ -20,10 +20,10 @@ const mockFetch = mock(async (input: string | Request, init?: RequestInit) => {
   const url = typeof input === "string" ? input : input.url
   const method = init?.method ?? "GET"
   if (url.includes("/api/admin/whatsapp/meta-apps") && method === "GET") {
-    return new Response(
-      JSON.stringify({ ok: true, data: [metaApp] }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    )
+    return new Response(JSON.stringify({ ok: true, data: [metaApp] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
   }
   return new Response(JSON.stringify({ ok: false }), { status: 404 })
 })
@@ -47,7 +47,9 @@ describe("WhatsappMetaAppInventory", () => {
     expect(await view.findByText("Primary")).toBeTruthy()
     expect(view.getByText("2")).toBeTruthy()
     expect(
-      view.getByText("https://app.example.com/api/whatsapp/meta-webhook/webhook-key")
+      view.getByText(
+        "https://app.example.com/api/whatsapp/meta-webhook/webhook-key"
+      )
     ).toBeTruthy()
     const allFetchedBodies = mockFetch.mock.results
     expect(JSON.stringify(allFetchedBodies)).not.toContain("appSecret")
@@ -56,8 +58,7 @@ describe("WhatsappMetaAppInventory", () => {
 
   it("access-denied state renders on a 403 response", async () => {
     mockFetch.mockImplementationOnce(
-      async () =>
-        new Response(JSON.stringify({ ok: false }), { status: 403 })
+      async () => new Response(JSON.stringify({ ok: false }), { status: 403 })
     )
     const view = render(
       <WhatsappMetaAppInventory baseUrl="https://app.example.com" />
@@ -77,10 +78,10 @@ describe("WhatsappMetaAppInventory", () => {
         )
       }
       if (url.includes("/meta-apps") && method === "GET") {
-        return new Response(
-          JSON.stringify({ ok: true, data: [metaApp] }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
-        )
+        return new Response(JSON.stringify({ ok: true, data: [metaApp] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
       }
       return new Response(JSON.stringify({ ok: false }), { status: 404 })
     })
@@ -96,9 +97,7 @@ describe("WhatsappMetaAppInventory", () => {
     await user.type(view.getByLabelText("Verify Token"), "t0ken")
     await user.click(view.getByRole("button", { name: "Create" }))
 
-    await waitFor(() =>
-      expect(view.queryByLabelText("App Secret")).toBeNull()
-    )
+    await waitFor(() => expect(view.queryByLabelText("App Secret")).toBeNull())
   })
 
   it("rotate dialog opens with blank credential fields", async () => {
@@ -128,15 +127,19 @@ describe("WhatsappMetaAppInventory", () => {
       const method = init?.method ?? "GET"
       if (method === "DELETE") {
         return new Response(
-          JSON.stringify({ ok: false, error: "CONFLICT", message: "Meta app conflicts with an existing resource." }),
+          JSON.stringify({
+            ok: false,
+            error: "CONFLICT",
+            message: "Meta app conflicts with an existing resource.",
+          }),
           { status: 409, headers: { "Content-Type": "application/json" } }
         )
       }
       if (url.includes("/meta-apps") && method === "GET") {
-        return new Response(
-          JSON.stringify({ ok: true, data: [metaApp] }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
-        )
+        return new Response(JSON.stringify({ ok: true, data: [metaApp] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
       }
       return new Response(JSON.stringify({ ok: false }), { status: 404 })
     })
@@ -153,5 +156,15 @@ describe("WhatsappMetaAppInventory", () => {
       )
     ).toBeTruthy()
     window.confirm = originalConfirm
+  })
+
+  it("renders localized UI in Indonesian when locale is set to id", async () => {
+    const view = render(
+      <WhatsappMetaAppInventory baseUrl="https://app.example.com" locale="id" />
+    )
+
+    expect(await view.findByText("Primary")).toBeTruthy()
+    expect(view.getByRole("button", { name: "Meta App Baru" })).toBeTruthy()
+    expect(view.getByText("Inventaris Meta App")).toBeTruthy()
   })
 })

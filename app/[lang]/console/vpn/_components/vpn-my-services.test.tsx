@@ -142,6 +142,12 @@ describe("VpnMyServices", () => {
     expect(
       view.getByRole("link", { name: "+ Pesan VPN Baru" })
     ).toHaveAttribute("href", "/console/billing/services/vpn")
+    expect(view.getByText("Cakupan Lokasi")).toBeInTheDocument()
+    expect(view.getByText("Perangkat")).toBeInTheDocument()
+    expect(view.getByText("Pengaturan & Sambungkan")).toBeInTheDocument()
+    expect(
+      view.getByRole("button", { name: "Dapatkan Konfigurasi" })
+    ).toBeInTheDocument()
   })
   it("focuses each row on connection details and quick actions", () => {
     const view = renderAsync(

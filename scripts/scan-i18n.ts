@@ -273,6 +273,7 @@ export function scanSourceFile(filePath: string, rootDir: string): FileReport {
     if (ts.isJsxAttribute(node)) {
       const attrName = node.name.getText(sourceFile)
       if (
+        !attrName.startsWith("data-") &&
         !CODE_ATTRIBUTE_NAMES.has(attrName) &&
         (TEXT_ATTRIBUTE_NAMES.has(attrName) || !attrName.startsWith("on"))
       ) {
