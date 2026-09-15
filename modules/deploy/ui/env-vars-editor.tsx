@@ -54,8 +54,8 @@ type EnvVarsEditorProps = {
   persistence?: "api" | "local"
   /** Existing stack id enables the audited Vault write/reveal endpoints. */
   stackId?: string
-  framework?: string
-  templateName?: string
+  framework?: string | null
+  templateName?: string | null
   presets?: readonly string[]
   sharedSecretOptions?: SharedSecretOption[]
   onRevealSecret?: (envVar: EnvVar) => Promise<string>

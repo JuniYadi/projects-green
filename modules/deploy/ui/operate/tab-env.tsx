@@ -24,8 +24,8 @@ type TabEnvProps = {
   >
   onPersist?: (rows: OperateEnvVar[]) => Promise<void>
   stackId?: string
-  framework?: string
-  templateName?: string
+  framework?: string | null
+  templateName?: string | null
   sharedSecretOptions?: SharedSecretOption[]
 }
 
