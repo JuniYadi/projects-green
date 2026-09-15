@@ -379,7 +379,7 @@ export type ListVouchersQuery = z.infer<typeof listVouchersQuerySchema>
 // ─── Params ──────────────────────────────────────────────────────────────────
 
 export const voucherIdParamSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().trim().min(1),
 })
 
 export type VoucherIdParam = z.infer<typeof voucherIdParamSchema>

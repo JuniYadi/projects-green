@@ -20,6 +20,24 @@ function createDefaultService(): any {
     createPromotion: () => Promise.resolve({ id: "v_1", code: "TEST1234" }),
     updateVoucher: () => Promise.resolve({ id: "v_1" }),
     disableVoucher: () => Promise.resolve({ id: "v_1", status: "DISABLED" }),
+    expireVoucher: () =>
+      Promise.resolve({
+        id: "v_1",
+        code: "TEST1234",
+        status: "EXPIRED",
+        prefix: null,
+        maxClaims: 10,
+        claimedCount: 0,
+        expiresAt: new Date(),
+        amount: { toFixed: () => "50000" },
+        currency: "IDR",
+        targetWorkosUserId: null,
+        targetOrganizationId: null,
+        createdByWorkosUserId: "user_1",
+        metadataJson: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
     getVoucherClaims: () => Promise.resolve([]),
   }
 }
@@ -480,6 +498,14 @@ describe("Portal Voucher Routes", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const deps = createDeps() as any
       deps.getPlatformRole = mock(() => Promise.resolve("none" as const))
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: { id: "user_1", email: "user@test.com" },
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+        })
+      )
 
       const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal/v_1/expire", {
