@@ -1307,6 +1307,9 @@ export default function PlatformInstanceWorkspacePage() {
                         rootDirectory={buildSettings.rootDirectory}
                         dockerfileDetected={buildSettings.dockerfileDetected}
                         framework={buildSettings.framework}
+                        sourceType={overview.stack.sourceType}
+                        templateName={overview.stack.templateName}
+                        templateId={overview.stack.templateId}
                         onSave={persistBuildSettings}
                       />
                     )}
