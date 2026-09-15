@@ -451,6 +451,41 @@ describe("Portal Voucher Routes", () => {
   })
 
   describe("POST /vouchers/portal/:id/expire", () => {
+    it("returns 401 when unauthenticated", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: null,
+          organizationId: null,
+          role: null,
+          roles: null,
+        })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 for non-admin users", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.getPlatformRole = mock(() => Promise.resolve("none" as const))
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(403)
+    })
+
     it("marks a voucher as expired", async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const deps = createDeps() as any

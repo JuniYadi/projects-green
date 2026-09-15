@@ -258,6 +258,16 @@ describe("admin promotions.route", () => {
 
       expect(res.status).toBe(404)
     })
+
+    it("returns 422 for an invalid promotion id", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/admin/promotions/%20/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(422)
+    })
   })
 
   describe("GET /admin/promotions/:id/claims", () => {
