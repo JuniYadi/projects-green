@@ -142,28 +142,42 @@ export default function BillingPromotionsPage() {
   }, [])
 
   const handleDisable = useCallback(async (id: string) => {
+    setError(null)
     try {
       const { data } = await eden.api.vouchers.portal[id].disable.post()
       if (data && "ok" in data && data.ok) {
         setVouchers((prev) =>
           prev.map((v) => (v.id === id ? { ...v, status: "DISABLED" } : v))
         )
+      } else {
+        setError(
+          (data && "message" in data ? (data.message as string) : null) ||
+            "Failed to disable voucher"
+        )
       }
     } catch (err) {
-      console.error("Failed to disable voucher", err)
+      setError(err instanceof Error ? err.message : "Failed to disable voucher")
     }
   }, [])
 
   const handleExpire = useCallback(async (id: string) => {
+    setError(null)
     try {
       const { data } = await eden.api.vouchers.portal[id].expire.post()
       if (data && "ok" in data && data.ok) {
         setVouchers((prev) =>
           prev.map((v) => (v.id === id ? { ...v, status: "EXPIRED" } : v))
         )
+      } else {
+        setError(
+          (data && "message" in data ? (data.message as string) : null) ||
+            "Failed to mark voucher as expired"
+        )
       }
     } catch (err) {
-      console.error("Failed to mark voucher expired", err)
+      setError(
+        err instanceof Error ? err.message : "Failed to mark voucher as expired"
+      )
     }
   }, [])
 
