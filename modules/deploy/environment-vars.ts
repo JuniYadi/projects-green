@@ -37,8 +37,8 @@ export const GENERIC_ENV_PRESETS = [
 ] as const
 
 export const getEnvPresets = (
-  framework?: string,
-  templateName?: string
+  framework?: string | null,
+  templateName?: string | null
 ): readonly string[] => {
   const target = `${framework ?? ""} ${templateName ?? ""}`.toLowerCase()
   if (target.includes("laravel") || target.includes("php")) {
