@@ -144,6 +144,50 @@ function VoucherEditorShell({
     [voucher, voucherId]
   )
 
+  const handleDisable = useCallback(async () => {
+    if (!voucherId) return
+    setIsSaving(true)
+    setError(null)
+    try {
+      const { data } = await eden.api.vouchers.portal[voucherId].disable.post()
+      if (data && "ok" in data && data.ok) {
+        setVoucher((prev) => (prev ? { ...prev, status: "DISABLED" } : prev))
+      } else {
+        setError(
+          (data && "message" in data ? (data.message as string) : null) ||
+            "Failed to disable voucher"
+        )
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to disable voucher")
+    } finally {
+      setIsSaving(false)
+    }
+  }, [voucherId])
+
+  const handleExpire = useCallback(async () => {
+    if (!voucherId) return
+    setIsSaving(true)
+    setError(null)
+    try {
+      const { data } = await eden.api.vouchers.portal[voucherId].expire.post()
+      if (data && "ok" in data && data.ok) {
+        setVoucher((prev) => (prev ? { ...prev, status: "EXPIRED" } : prev))
+      } else {
+        setError(
+          (data && "message" in data ? (data.message as string) : null) ||
+            "Failed to mark voucher as expired"
+        )
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to mark voucher as expired"
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }, [voucherId])
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -183,6 +227,8 @@ function VoucherEditorShell({
       onTabChange={onTabChange}
       onFieldUpdate={handleFieldUpdate}
       onSave={handleSave}
+      onDisable={handleDisable}
+      onExpire={handleExpire}
       isSaving={isSaving}
       validationErrors={validationErrors}
     />
@@ -197,6 +243,8 @@ type VoucherEditorLayoutProps = {
   onTabChange: (value: string) => void
   onFieldUpdate: (updates: Partial<Record<string, unknown>>) => void
   onSave: (draft: boolean) => void
+  onDisable: () => void
+  onExpire: () => void
   isSaving: boolean
   validationErrors: Record<string, string[]>
 }
@@ -209,8 +257,13 @@ function VoucherEditorLayout({
   onTabChange,
   onFieldUpdate,
   onSave,
+  onDisable,
+  onExpire,
   isSaving,
 }: VoucherEditorLayoutProps) {
+  const isExpired =
+    voucher.status === "EXPIRED" || new Date(voucher.expiresAt) <= new Date()
+
   return (
     <>
       <header className="space-y-1">
@@ -238,9 +291,30 @@ function VoucherEditorLayout({
         </div>
       </header>
 
-      {/* Sticky Save / Publish controls */}
+      {/* Sticky Save / Publish / Status controls */}
       <div className="sticky top-0 z-10 -mx-6 border-b border-border bg-background/95 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center justify-end gap-3">
+          {voucher.status === "ACTIVE" && (
+            <Button
+              variant="outline"
+              onClick={onDisable}
+              disabled={isSaving}
+              className="text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/20"
+            >
+              {isSaving ? "Updating..." : "Deactivate (Disable)"}
+            </Button>
+          )}
+
+          {voucher.status !== "EXPIRED" && isExpired && (
+            <Button
+              variant="destructive"
+              onClick={onExpire}
+              disabled={isSaving}
+            >
+              {isSaving ? "Updating..." : "Mark as Expired"}
+            </Button>
+          )}
+
           <Button
             variant="outline"
             onClick={() => void onSave(true)}
@@ -286,6 +360,8 @@ function VoucherEditorLayout({
             onUpdate={onFieldUpdate}
             onSaveDraft={() => void onSave(true)}
             onPublish={() => void onSave(false)}
+            onDisable={onDisable}
+            onExpire={onExpire}
             isSaving={isSaving}
           />
         </TabsContent>

@@ -130,6 +130,16 @@ export const CRON_JOB_DEFINITIONS: CronDefinitionConfig[] = [
     gracePeriodMins: 30,
   },
   {
+    code: "voucher-expiration",
+    name: "Voucher Expiration Sweep",
+    description:
+      "Marks active vouchers that have passed their expiration date as expired",
+    category: "billing",
+    cronExpression: "0 0 * * *",
+    timeoutSeconds: 600,
+    gracePeriodMins: 30,
+  },
+  {
     code: "invoice-status-transitions",
     name: "Invoice Status Manager",
     description:

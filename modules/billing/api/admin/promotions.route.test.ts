@@ -15,6 +15,7 @@ const mockGetVoucherById = mock(() => Promise.resolve(null))
 const mockUpdatePromotion = mock(() => Promise.resolve({}))
 const mockPublishVoucher = mock(() => Promise.resolve({}))
 const mockDisablePromotionVoucher = mock(() => Promise.resolve({}))
+const mockExpireVoucher = mock(() => Promise.resolve({}))
 const mockGetPromotionClaims = mock(() => Promise.resolve([]))
 
 const mockService = {
@@ -24,6 +25,7 @@ const mockService = {
   updatePromotion: mockUpdatePromotion,
   publishVoucher: mockPublishVoucher,
   disablePromotionVoucher: mockDisablePromotionVoucher,
+  expireVoucher: mockExpireVoucher,
   getPromotionClaims: mockGetPromotionClaims,
 } as unknown as never
 
@@ -221,6 +223,26 @@ describe("admin promotions.route", () => {
       expect(res.status).toBe(200)
       const data = await res.json()
       expect(data.ok).toBe(true)
+    })
+  })
+
+  describe("POST /admin/promotions/:id/expire", () => {
+    it("marks promotion as expired", async () => {
+      mockExpireVoucher.mockResolvedValueOnce({
+        ...sampleVoucher,
+        status: "EXPIRED",
+      } as unknown as never)
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/promotions/promo-1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.ok).toBe(true)
+      expect(data.data.status).toBe("EXPIRED")
     })
   })
 

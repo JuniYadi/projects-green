@@ -450,6 +450,43 @@ describe("Portal Voucher Routes", () => {
     })
   })
 
+  describe("POST /vouchers/portal/:id/expire", () => {
+    it("marks a voucher as expired", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.expireVoucher = mock(() =>
+        Promise.resolve({
+          id: "v_1",
+          code: "TEST1234",
+          status: "EXPIRED",
+          prefix: null,
+          maxClaims: 10,
+          claimedCount: 0,
+          expiresAt: new Date(),
+          amount: { toFixed: () => "50000" },
+          currency: "IDR",
+          targetWorkosUserId: null,
+          targetOrganizationId: null,
+          createdByWorkosUserId: "user_1",
+          metadataJson: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/expire", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.status).toBe("EXPIRED")
+    })
+  })
+
   describe("GET /vouchers/portal/:id/claims", () => {
     it("returns claim history", async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -9,11 +9,13 @@ import {
   BILLING_INVOICE_STATUS_JOB,
   BILLING_PAYMENT_REMINDER_JOB,
   BILLING_RENEWAL_LADDER_JOB,
+  BILLING_VOUCHER_EXPIRATION_JOB,
   BILLING_DAILY_RESET_QUEUE,
   BILLING_MONTHLY_RESET_QUEUE,
   BILLING_INVOICE_STATUS_QUEUE,
   BILLING_PAYMENT_REMINDER_QUEUE,
   BILLING_RENEWAL_LADDER_QUEUE,
+  BILLING_VOUCHER_EXPIRATION_QUEUE,
   type BillingCronJobData,
 } from "@/lib/queue/billing-cron"
 import { getRedisConnection } from "@/lib/queue/queue-config"
@@ -23,6 +25,7 @@ import { InvoiceStatusManager } from "@/modules/billing/invoice-status.service"
 import { RenewalCoordinatorService } from "@/modules/billing/renewal/renewal-coordinator.service"
 import { createVpnRenewalCallbacks } from "@/modules/vpn/billing/vpn-renewal-callbacks"
 import { invoiceEmailService } from "@/modules/invoices/email.service"
+import { VoucherService } from "@/modules/vouchers/vouchers.service"
 const redisConnection = getRedisConnection()
 
 /**
@@ -148,6 +151,15 @@ async function processRenewalLadder(): Promise<number> {
   })
   const result = await coordinator.runLadderTransitions()
   return result.suspended + result.terminated
+}
+
+/**
+ * Voucher expiration: mark active vouchers whose expiration date has passed as EXPIRED.
+ */
+async function processVoucherExpiration(): Promise<number> {
+  const voucherService = new VoucherService(prisma)
+  const expiredCount = await voucherService.sweepExpiredVouchers()
+  return expiredCount
 }
 
 const worker = new Worker<BillingCronJobData>(
@@ -279,6 +291,29 @@ const renewalLadderWorker = new Worker<BillingCronJobData>(
           transitioned,
         },
         `[billing-cron] renewal ladder: ${transitioned} transitioned`
+      )
+    }
+  },
+  {
+    connection: redisConnection,
+    concurrency: 1,
+  }
+)
+
+// Voucher expiration worker
+const voucherExpirationWorker = new Worker<BillingCronJobData>(
+  BILLING_VOUCHER_EXPIRATION_QUEUE,
+  async (job: Job<BillingCronJobData>) => {
+    if (job.name === BILLING_VOUCHER_EXPIRATION_JOB) {
+      const expired = await processVoucherExpiration()
+      logger.info(
+        {
+          event: "billing_cron.voucher_expiration_completed",
+          jobId: job.id,
+          jobName: job.name,
+          expiredCount: expired,
+        },
+        `[billing-cron] voucher expiration: marked ${expired} vouchers as expired`
       )
     }
   },
@@ -605,11 +640,25 @@ export async function registerRepeatableJobs() {
     }
   )
 
+  // Voucher expiration: daily at 00:00 UTC
+  const voucherExpirationQueue = new Queue(BILLING_VOUCHER_EXPIRATION_QUEUE, {
+    connection: redisConnection,
+  })
+  await voucherExpirationQueue.add(
+    BILLING_VOUCHER_EXPIRATION_JOB,
+    {},
+    {
+      repeat: { pattern: "0 0 * * *" },
+      jobId: "billing-voucher-expiration",
+    }
+  )
+
   await dailyQueue.close()
   await monthlyQueue.close()
   await statusQueue.close()
   await reminderQueue.close()
   await renewalLadderQueue.close()
+  await voucherExpirationQueue.close()
 
   logger.info(
     { event: "billing_cron.repeatable_jobs_registered" },
@@ -636,6 +685,7 @@ const shutdown = async (signal: string) => {
     await statusWorker.close()
     await reminderWorker.close()
     await renewalLadderWorker.close()
+    await voucherExpirationWorker.close()
     await prisma.$disconnect()
     process.exit(0)
   } catch (error) {

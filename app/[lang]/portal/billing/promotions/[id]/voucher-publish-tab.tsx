@@ -23,6 +23,8 @@ export function VoucherPublishTab({
   onUpdate,
   onSaveDraft,
   onPublish,
+  onDisable,
+  onExpire,
   isSaving,
   fieldErrors = {},
 }: {
@@ -30,6 +32,8 @@ export function VoucherPublishTab({
   onUpdate: (updates: Record<string, unknown>) => void
   onSaveDraft: () => void
   onPublish: () => void
+  onDisable?: () => void
+  onExpire?: () => void
   isSaving: boolean
   fieldErrors?: FieldErrors
 }) {
@@ -39,6 +43,8 @@ export function VoucherPublishTab({
   const hasErrors = errors.length > 0
   const hasWarnings = validation.warnings.length > 0
   const isNew = voucher.id === "new"
+  const isExpired =
+    voucher.status === "EXPIRED" || new Date(voucher.expiresAt) <= new Date()
 
   const statusLabel =
     voucher.status === "ACTIVE"
@@ -59,7 +65,7 @@ export function VoucherPublishTab({
           <CardDescription>
             {isNew
               ? "Choose whether to keep this promotion disabled as a draft or make it active after creation."
-              : "The current status is shown below. Use Save Draft or Publish to change it."}
+              : "The current status is shown below. You can activate, disable, or mark the voucher as expired."}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -99,17 +105,49 @@ export function VoucherPublishTab({
               </ToggleGroupItem>
             </ToggleGroup>
           ) : (
-            <div className="rounded-lg border border-border p-3">
-              <p className="text-sm">
-                <span className="font-medium">Current status:</span>{" "}
-                <Badge
-                  variant={
-                    voucher.status === "ACTIVE" ? "default" : "secondary"
-                  }
-                >
-                  {statusLabel}
-                </Badge>
-              </p>
+            <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm">
+                  <span className="font-medium">Current status:</span>{" "}
+                  <Badge
+                    variant={
+                      voucher.status === "ACTIVE" ? "default" : "secondary"
+                    }
+                  >
+                    {statusLabel}
+                  </Badge>
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {voucher.status === "ACTIVE" && onDisable && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onDisable}
+                      disabled={isSaving}
+                      className="text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/20"
+                    >
+                      Deactivate (Disable)
+                    </Button>
+                  )}
+                  {voucher.status !== "EXPIRED" && isExpired && onExpire && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={onExpire}
+                      disabled={isSaving}
+                    >
+                      Mark as Expired
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {isExpired && voucher.status !== "EXPIRED" && (
+                <p className="text-xs text-destructive">
+                  This voucher has passed its expiration date (
+                  {new Date(voucher.expiresAt).toLocaleString()}) but is still
+                  marked as {voucher.status}. You can mark it as Expired above.
+                </p>
+              )}
             </div>
           )}
         </CardContent>
