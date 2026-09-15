@@ -10,7 +10,9 @@ import {
   DeviceMobileIcon,
   GaugeIcon,
   MapPinIcon,
+  PlusIcon,
   ShieldCheckIcon,
+  ShoppingBagOpen,
   WarningCircleIcon,
 } from "@phosphor-icons/react"
 
@@ -234,28 +236,39 @@ function NextActions({
   subscriptionsUrl,
   devicesUrl,
   packagesUrl,
+  locale,
 }: {
   overview: VpnOverview
   subscriptionsUrl: string
   devicesUrl: string
   packagesUrl: string
+  locale: string
 }) {
   const actions: DashboardAction[] = []
 
   if (overview.activeSubscriptions === 0) {
     actions.push({
-      label: "Choose a VPN package",
-      description: "Provision your first VPN locations and protocols.",
+      label: locale === "id" ? "Pesan paket VPN baru" : "Choose a VPN package",
+      description:
+        locale === "id"
+          ? "Pilih lokasi dan protokol untuk mulai mengamankan koneksi."
+          : "Provision your first VPN locations and protocols.",
       href: packagesUrl,
-      icon: <ShieldCheckIcon className="h-4 w-4" />,
+      icon: <ShoppingBagOpen className="h-4 w-4" />,
       tone: "text-primary",
     })
   }
 
   if (overview.failedAccounts > 0) {
     actions.push({
-      label: `${overview.failedAccounts} VPN account failed`,
-      description: "Review failed provisioning and retry from subscriptions.",
+      label:
+        locale === "id"
+          ? `${overview.failedAccounts} akun VPN gagal dikonfigurasi`
+          : `${overview.failedAccounts} VPN account failed`,
+      description:
+        locale === "id"
+          ? "Tinjau kegagalan konfigurasi dan coba lagi dari langganan."
+          : "Review failed provisioning and retry from subscriptions.",
       href: subscriptionsUrl,
       icon: <WarningCircleIcon className="h-4 w-4" />,
       tone: "text-destructive",
@@ -264,8 +277,14 @@ function NextActions({
 
   if (overview.pendingAccounts > 0) {
     actions.push({
-      label: `${overview.pendingAccounts} VPN account provisioning`,
-      description: "Check setup progress and available configs.",
+      label:
+        locale === "id"
+          ? `${overview.pendingAccounts} akun VPN sedang disiapkan`
+          : `${overview.pendingAccounts} VPN account provisioning`,
+      description:
+        locale === "id"
+          ? "Cek progres setup dan konfigurasi yang tersedia."
+          : "Check setup progress and available configs.",
       href: subscriptionsUrl,
       icon: <GaugeIcon className="h-4 w-4" />,
       tone: "text-amber-600 dark:text-amber-400",
@@ -274,18 +293,46 @@ function NextActions({
 
   if (overview.activeSubscriptions > 0 && overview.activeDevices === 0) {
     actions.push({
-      label: "Pair your first device",
-      description: "Connect mobile devices to your active VPN service.",
+      label:
+        locale === "id"
+          ? "Hubungkan perangkat pertama"
+          : "Pair your first device",
+      description:
+        locale === "id"
+          ? "Sambungkan HP atau laptop ke layanan VPN aktif."
+          : "Connect mobile devices to your active VPN service.",
       href: devicesUrl,
       icon: <DeviceMobileIcon className="h-4 w-4" />,
       tone: "text-primary",
     })
   }
 
+  if (overview.activeSubscriptions > 0) {
+    actions.push({
+      label:
+        locale === "id"
+          ? "Tambah atau upgrade paket VPN"
+          : "Order additional VPN plan",
+      description:
+        locale === "id"
+          ? "Beli kapasitas tambahan atau sambungan VPN baru."
+          : "Get additional locations or multi-device connections.",
+      href: packagesUrl,
+      icon: <ShoppingBagOpen className="h-4 w-4" />,
+      tone: "text-primary",
+    })
+  }
+
   if (overview.cancellingSubscriptions > 0) {
     actions.push({
-      label: `${overview.cancellingSubscriptions} plan cancelling`,
-      description: "Review renewal status before the period ends.",
+      label:
+        locale === "id"
+          ? `${overview.cancellingSubscriptions} langganan akan berakhir`
+          : `${overview.cancellingSubscriptions} plan cancelling`,
+      description:
+        locale === "id"
+          ? "Tinjau status perpanjangan sebelum periode habis."
+          : "Review renewal status before the period ends.",
       href: subscriptionsUrl,
       icon: <CalendarIcon className="h-4 w-4" />,
       tone: "text-amber-600 dark:text-amber-400",
@@ -294,8 +341,12 @@ function NextActions({
 
   if (actions.length === 0) {
     actions.push({
-      label: "VPN service is ready",
-      description: "All current server accounts are available.",
+      label:
+        locale === "id" ? "Layanan VPN siap digunakan" : "VPN service is ready",
+      description:
+        locale === "id"
+          ? "Semua akun server dan tunnel aktif normal."
+          : "All current server accounts are available.",
       href: subscriptionsUrl,
       icon: <CheckCircleIcon className="h-4 w-4" />,
       tone: "text-emerald-600 dark:text-emerald-400",
@@ -401,12 +452,22 @@ export default function ConsoleVpnDashboardPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">VPN Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Monitor VPN service health, devices, coverage, and next actions.
+            {locale === "id"
+              ? "Pantau status layanan VPN, perangkat, jangkauan server, dan pemesanan paket."
+              : "Monitor VPN service health, devices, coverage, and package orders."}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load}>
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm">
+            <Link href={orderUrl}>
+              <PlusIcon className="mr-1.5 h-4 w-4" />
+              {locale === "id" ? "Pesan VPN" : "Order VPN"}
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={load}>
+            Refresh
+          </Button>
+        </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -491,6 +552,7 @@ export default function ConsoleVpnDashboardPage() {
           subscriptionsUrl={subscriptionsUrl}
           devicesUrl={devicesUrl}
           packagesUrl={orderUrl}
+          locale={locale}
         />
       </section>
 

@@ -125,6 +125,23 @@ describe("VpnMyServices", () => {
 
     expect(view.getByText("Pro VPN - SG Standard")).toBeInTheDocument()
     expect(view.getByText("Location Coverage")).toBeInTheDocument()
+    expect(
+      view.getByRole("link", { name: "+ Order VPN Plan" })
+    ).toHaveAttribute("href", "/console/billing/services/vpn")
+  })
+
+  it("renders Indonesian order button when locale is id", () => {
+    const view = renderAsync(
+      <VpnMyServices
+        subscriptions={[subscription()]}
+        onChanged={() => {}}
+        locale="id"
+      />
+    )
+
+    expect(
+      view.getByRole("link", { name: "+ Pesan VPN Baru" })
+    ).toHaveAttribute("href", "/console/billing/services/vpn")
   })
   it("focuses each row on connection details and quick actions", () => {
     const view = renderAsync(

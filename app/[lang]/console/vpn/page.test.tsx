@@ -85,6 +85,9 @@ describe("ConsoleVpnSubscriptionsPage", () => {
     )
 
     expect(
+      view.getByRole("link", { name: "+ Order VPN Plan" })
+    ).toHaveAttribute("href", "/en/console/billing/services/vpn")
+    expect(
       view.getByRole("link", { name: "Browse VPN Plans" })
     ).toHaveAttribute("href", "/en/console/billing/services/vpn")
   })
@@ -190,6 +193,9 @@ describe("ConsoleVpnSubscriptionsPage", () => {
       "href",
       "/console/vpn/subscriptions/sub_1"
     )
+    expect(
+      view.getAllByRole("link", { name: "+ Order VPN Plan" }).length
+    ).toBeGreaterThanOrEqual(1)
     expect(view.getByText("Location Coverage")).toBeInTheDocument()
     expect(view.getByRole("button", { name: "Get Config" })).toBeInTheDocument()
   }, 15000)
@@ -292,6 +298,10 @@ describe("ConsoleVpnDashboardPage", () => {
       { timeout: 10000 }
     )
 
+    expect(view.getByRole("link", { name: "Order VPN" })).toHaveAttribute(
+      "href",
+      "/en/console/vpn/order"
+    )
     expect(view.getByText("Ready Accounts")).toBeInTheDocument()
     expect(view.getByText("1 / 1")).toBeInTheDocument()
     expect(view.getByText("Region Coverage")).toBeInTheDocument()
