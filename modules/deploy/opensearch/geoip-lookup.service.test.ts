@@ -200,4 +200,41 @@ describe("geoip-lookup.service", () => {
     expect(enriched[0].status5xx).toBe(10)
     expect(enriched[0].successRatio).toBe(75)
   })
+
+  it("falls back to raw status data when enrichment rejects", async () => {
+    const mockFetch = mock(async () => ({
+      ok: true,
+      json: async () => ({
+        success: true,
+        geo: { country: "ID", city: "Jakarta" },
+      }),
+    }))
+    let status2xxReads = 0
+    const item = {
+      ip: "203.0.113.10",
+      count: 20,
+      get status2xx() {
+        status2xxReads += 1
+        if (status2xxReads === 1) throw new Error("invalid status data")
+        return 15
+      },
+      status3xx: 0,
+      status4xx: 0,
+      status5xx: 5,
+    }
+
+    const enriched = await enrichTopIpsWithGeo(
+      [item],
+      mockFetch as unknown as typeof fetch
+    )
+
+    expect(enriched[0]).toMatchObject({
+      ip: "203.0.113.10",
+      requestsCount: 20,
+      countryCode: "UNKNOWN",
+      status2xx: 15,
+      status5xx: 5,
+      successRatio: 75,
+    })
+  })
 })
