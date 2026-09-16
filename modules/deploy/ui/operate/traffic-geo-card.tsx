@@ -176,20 +176,30 @@ export function TrafficGeoCard({ topCountries, topIps }: TrafficGeoCardProps) {
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-muted/20">
-                        {segments.map((seg) => (
-                          <div
-                            key={seg.key}
-                            style={{ width: `${(seg.count / total) * 100}%` }}
-                            className={`h-full ${seg.className}`}
-                            title={`${seg.key}: ${seg.count.toLocaleString("id-ID")}`}
-                          />
-                        ))}
-                      </div>
+                    <div className="flex h-1.5 overflow-hidden rounded-full bg-muted/20">
+                      {segments.map((seg) => (
+                        <div
+                          key={seg.key}
+                          style={{ width: `${(seg.count / total) * 100}%` }}
+                          className={`h-full ${seg.className}`}
+                          role="img"
+                          aria-label={`${seg.key}: ${seg.count.toLocaleString("id-ID")} permintaan`}
+                          title={`${seg.key}: ${seg.count.toLocaleString("id-ID")}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
                         {item.successRatio}% sukses
                       </span>
+                      {segments.map((seg) => (
+                        <span
+                          key={seg.key}
+                          className="shrink-0 text-[10px] text-muted-foreground"
+                        >
+                          {seg.count.toLocaleString("id-ID")} {seg.key}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )
