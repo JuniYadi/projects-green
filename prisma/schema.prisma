@@ -494,6 +494,7 @@ model AppHostingDailyTrafficSnapshot {
   topPathsJson    Json             @default("[]")
   errorPathsJson  Json             @default("[]")
   topIpsJson      Json             @default("[]")
+  audienceJson    Json             @default("{}")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
