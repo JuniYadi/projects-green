@@ -1,3 +1,5 @@
+import { isIP } from "node:net"
+
 /**
  * Deterministic, explainable traffic classification. Per the Traffic
  * Visitor Intelligence issue's classification contract: thresholds live
@@ -37,6 +39,60 @@ const AUTOMATED_UA_RATIO_THRESHOLD = 0.6
 const HUMAN_SUCCESS_RATIO_THRESHOLD = 0.9
 const HIGH_ERROR_RATIO_THRESHOLD = 0.5
 const PROBE_PATH_RATIO_THRESHOLD = 0.1
+
+/**
+ * Common security probe, scanner, and exploit target path patterns.
+ */
+export const SENSITIVE_PROBE_PATTERNS = [
+  /^\/\.env(\..+)?$/i,
+  /^\/\.git(\/.*)?$/i,
+  /^\/\.aws(\/.*)?$/i,
+  /^\/\.ssh(\/.*)?$/i,
+  /^\/\.vscode(\/.*)?$/i,
+  /^\/\.docker(\/.*)?$/i,
+  /^\/\.kube(\/.*)?$/i,
+  /^\/\.ds_store$/i,
+  /^\/wp-(admin|login|includes|content|config)(\.php|\/.*)?$/i,
+  /^\/xmlrpc\.php$/i,
+  /^\/(phpmyadmin|pma|adminer|phpinfo)(\/.*)?$/i,
+  /^\/(actuator|telescope|_profiler)(\/.*)?$/i,
+  /^\/cgi-bin(\/.*)?$/i,
+  /^\/solr(\/.*)?$/i,
+  /\.(bak|sql|dump|tar|gz|zip|rar|yaml|yml|config|conf|ini|save|swp|old)$/i,
+]
+
+export function isProbePath(path: string): boolean {
+  if (!path) return false
+  const cleanPath = path.split("?")[0]
+  return SENSITIVE_PROBE_PATTERNS.some((pattern) => pattern.test(cleanPath))
+}
+
+export function isStaticAssetPath(path: string): boolean {
+  if (!path) return false
+  const cleanPath = path.split("?")[0].toLowerCase()
+  return (
+    cleanPath.startsWith("/_next/static/") ||
+    cleanPath.startsWith("/static/") ||
+    cleanPath.startsWith("/assets/") ||
+    cleanPath === "/favicon.ico" ||
+    /\.(css|js|mjs|map|json|jpg|jpeg|png|gif|svg|ico|webp|avif|woff|woff2|ttf|otf|eot)$/i.test(
+      cleanPath
+    )
+  )
+}
+
+export function isValidIpAddress(ip: string): boolean {
+  if (!ip || typeof ip !== "string") return false
+  const trimmed = ip.trim()
+  return isIP(trimmed) !== 0
+}
+
+export function normalizeIpAddress(ip: string): string {
+  if (!isValidIpAddress(ip)) {
+    throw new Error(`Invalid IP address format: '${ip}'`)
+  }
+  return ip.trim().toLowerCase()
+}
 
 export function classifyTraffic(
   input: ClassificationInput

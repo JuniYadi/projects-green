@@ -7,16 +7,22 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CountryFlag } from "@/components/ui/country-flag"
-import { GlobeHemisphereWest, Users } from "@phosphor-icons/react"
+import { GlobeHemisphereWest, Users, Eye } from "@phosphor-icons/react"
+import { Button } from "@/components/ui/button"
 import type { TrafficCountryCount } from "../../opensearch/opensearch-traffic.types"
 import type { IpGeoInfo } from "../../opensearch/geoip-lookup.service"
 
 export interface TrafficGeoCardProps {
   topCountries: TrafficCountryCount[]
   topIps: IpGeoInfo[]
+  onReviewIp?: (ip: string) => void
 }
 
-export function TrafficGeoCard({ topCountries, topIps }: TrafficGeoCardProps) {
+export function TrafficGeoCard({
+  topCountries,
+  topIps,
+  onReviewIp,
+}: TrafficGeoCardProps) {
   const maxCountryReqs = topCountries.length > 0 ? topCountries[0].requests : 1
 
   return (
@@ -167,13 +173,27 @@ export function TrafficGeoCard({ topCountries, topIps }: TrafficGeoCardProps) {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="font-semibold text-foreground">
-                          {item.requestsCount.toLocaleString("id-ID")}
-                        </span>
-                        <span className="ml-1 text-[11px] text-muted-foreground">
-                          req
-                        </span>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <span className="font-semibold text-foreground">
+                            {item.requestsCount.toLocaleString("id-ID")}
+                          </span>
+                          <span className="ml-1 text-[11px] text-muted-foreground">
+                            req
+                          </span>
+                        </div>
+                        {onReviewIp ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+                            onClick={() => onReviewIp(item.ip)}
+                            title="Review Jejak IP"
+                          >
+                            <Eye size={12} className="mr-1" />
+                            Review
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
                     <div className="flex h-1.5 overflow-hidden rounded-full bg-muted/20">

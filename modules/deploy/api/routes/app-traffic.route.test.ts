@@ -21,9 +21,13 @@ mock.module("@/lib/prisma", () => ({
 
 const mockGetAppTrafficReport = mock()
 const mockGetLiveTrafficLogs = mock()
+const mockGetAppTrafficIps = mock()
+const mockGetAppTrafficIpDetail = mock()
 mock.module("../../opensearch/opensearch-traffic.service", () => ({
   getAppTrafficReport: mockGetAppTrafficReport,
   getLiveTrafficLogs: mockGetLiveTrafficLogs,
+  getAppTrafficIps: mockGetAppTrafficIps,
+  getAppTrafficIpDetail: mockGetAppTrafficIpDetail,
 }))
 
 const { appTrafficRoutes } = await import("./app-traffic.route")
@@ -225,6 +229,179 @@ describe("app-traffic.route", () => {
       expect(res.status).toBe(500)
       const data = await res.json()
       expect(data.error).toBe("TRAFFIC_REPORT_FAILED")
+    })
+  })
+
+  describe("GET /deploy/apps/:slug/traffic/ips", () => {
+    it("returns 401 when not authenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({ user: null })
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/ips")
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 404 when stack is not found", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce(null)
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/unknown-app/traffic/ips")
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it("returns paginated traffic IPs with query filters", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        slug: "my-app",
+      })
+      mockGetAppTrafficIps.mockResolvedValueOnce({
+        items: [
+          {
+            ip: "10.0.0.1",
+            countryCode: "SG",
+            countryName: "Singapore",
+            requestsCount: 100,
+            percentage: 50,
+            status2xx: 90,
+            status3xx: 5,
+            status4xx: 5,
+            status5xx: 0,
+            successRatio: 90,
+            primaryClient: "Chrome",
+            primaryDevice: "desktop",
+            signal: "likely_human",
+            confidence: 80,
+            reasons: ["Normal navigation"],
+            isBlocked: false,
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 1,
+        otherRequestCount: 50,
+        coveragePercentage: 66.7,
+      })
+
+      const res = await appTrafficRoutes.handle(
+        new Request(
+          "http://localhost/deploy/apps/my-app/traffic/ips?page=1&limit=10&signal=likely_human"
+        )
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.items[0].ip).toBe("10.0.0.1")
+      expect(body.data.coveragePercentage).toBe(66.7)
+      expect(mockGetAppTrafficIps).toHaveBeenCalledWith(
+        "my-app",
+        expect.objectContaining({
+          page: 1,
+          limit: 10,
+          signal: "likely_human",
+        })
+      )
+    })
+
+    it("returns 500 when service throws an error", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        slug: "my-app",
+      })
+      mockGetAppTrafficIps.mockRejectedValueOnce(
+        new Error("OpenSearch query failure")
+      )
+
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/ips")
+      )
+      expect(res.status).toBe(500)
+      const body = await res.json()
+      expect(body.error).toBe("TRAFFIC_IPS_FAILED")
+    })
+  })
+
+  describe("GET /deploy/apps/:slug/traffic/ips/:ip", () => {
+    it("returns 401 when not authenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({ user: null })
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/ips/10.0.0.1")
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 400 for invalid IP address format", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        slug: "my-app",
+      })
+      mockGetAppTrafficIpDetail.mockRejectedValueOnce(
+        new Error("Invalid IP address: 'not-an-ip'.")
+      )
+
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/ips/not-an-ip")
+      )
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toBe("INVALID_IP_ADDRESS")
+    })
+
+    it("returns IP detailed evidence when valid", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        slug: "my-app",
+      })
+      mockGetAppTrafficIpDetail.mockResolvedValueOnce({
+        ip: "10.0.0.1",
+        countryCode: "SG",
+        countryName: "Singapore",
+        totalRequests: 50,
+        statusCounts: {
+          status2xx: 45,
+          status3xx: 0,
+          status4xx: 5,
+          status5xx: 0,
+        },
+        successRate: 90,
+        signal: {
+          classification: "likely_human",
+          confidence: 85,
+          reasons: ["Standard browser navigation"],
+        },
+        pathsByStatus: {
+          status2xx: [{ path: "/home", count: 45 }],
+          status3xx: [],
+          status4xx: [{ path: "/404", count: 5 }],
+          status5xx: [],
+        },
+        userAgents: [
+          {
+            raw: "Mozilla/5.0 ... Chrome/120",
+            browser: "Chrome",
+            os: "Windows",
+            device: "desktop",
+            count: 50,
+          },
+        ],
+        timeline: [
+          { timestamp: "2026-09-16T10:00:00.000Z", requests: 50, errors: 5 },
+        ],
+        firstSeen: "2026-09-16T10:00:00.000Z",
+        lastSeen: "2026-09-16T10:30:00.000Z",
+        velocity: { maxRpm: 1.5, isBurst: false },
+        staticAssetShare: 20,
+        blockInfo: null,
+      })
+
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/ips/10.0.0.1")
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.ip).toBe("10.0.0.1")
+      expect(body.data.signal.classification).toBe("likely_human")
+      expect(body.data.pathsByStatus.status2xx[0].path).toBe("/home")
     })
   })
 })

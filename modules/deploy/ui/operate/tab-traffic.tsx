@@ -8,6 +8,8 @@ import { TrafficHourlyChart } from "./traffic-hourly-chart"
 import { TrafficTopPagesCard } from "./traffic-top-pages-card"
 import { TrafficGeoCard } from "./traffic-geo-card"
 import { TrafficAudienceCard } from "./traffic-audience-card"
+import { TrafficIpInvestigationTable } from "./traffic-ip-investigation-table"
+import { TrafficIpReviewDrawer } from "./traffic-ip-review-drawer"
 import { TrafficLiveStreamTable } from "./traffic-live-stream-table"
 import { Button } from "@/components/ui/button"
 import { ArrowClockwise } from "@phosphor-icons/react"
@@ -25,6 +27,13 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
   const [targetDate, setTargetDate] = useState<string>("")
   const [targetMonth, setTargetMonth] = useState<string>("")
   const [targetYear, setTargetYear] = useState<string>("")
+  const [selectedReviewIp, setSelectedReviewIp] = useState<string | null>(null)
+  const [isReviewDrawerOpen, setIsReviewDrawerOpen] = useState(false)
+
+  const handleReviewIp = (ip: string) => {
+    setSelectedReviewIp(ip)
+    setIsReviewDrawerOpen(true)
+  }
 
   const { data, isLoading, isError, error, refetch, isFetching } =
     useQuery<AppTrafficReportDTO>({
@@ -200,6 +209,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
           <TrafficGeoCard
             topCountries={data.topCountries || []}
             topIps={data.topIps || []}
+            onReviewIp={handleReviewIp}
           />
 
           {/* 4b. Audience Breakdown: Device / Browser / OS */}
@@ -209,8 +219,30 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
             os={data.audience?.os || []}
           />
 
+          {/* 4c. Top 100 IP Investigation Table */}
+          <TrafficIpInvestigationTable
+            appSlug={appSlug}
+            granularity={granularity}
+            date={targetDate}
+            month={targetMonth}
+            year={targetYear}
+            onReviewIp={handleReviewIp}
+          />
+
           {/* 5. Live Feed Stream Section */}
           <TrafficLiveStreamTable appSlug={appSlug} />
+
+          {/* IP Review & Evidence Drawer */}
+          <TrafficIpReviewDrawer
+            appSlug={appSlug}
+            ip={selectedReviewIp}
+            open={isReviewDrawerOpen}
+            onOpenChange={setIsReviewDrawerOpen}
+            granularity={granularity}
+            date={targetDate}
+            month={targetMonth}
+            year={targetYear}
+          />
         </div>
       ) : null}
     </div>
