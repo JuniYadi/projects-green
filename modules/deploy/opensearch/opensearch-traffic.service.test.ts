@@ -480,6 +480,78 @@ describe("opensearch-traffic.service", () => {
       })
     })
 
+    it("excludes unevidenced legacy volume from the merged success ratio instead of diluting it", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+
+      mockPrisma.appHostingDailyTrafficSnapshot.findMany.mockResolvedValue([
+        {
+          id: "snap_1",
+          stackId: "st_123",
+          date: new Date(Date.UTC(2026, 8, 1)),
+          totalRequests: 1000,
+          successCount: 1000,
+          errorCount: 0,
+          totalBytes: BigInt(1000),
+          avgLatencyMs: 20,
+          topPathsJson: [],
+          errorPathsJson: [],
+          // Legacy row: real request volume, no status breakdown recorded.
+          topIpsJson: [
+            {
+              ip: "10.0.0.9",
+              requestsCount: 1000,
+              countryCode: "LOCAL",
+              countryName: "Jaringan Internal",
+            },
+          ],
+        },
+        {
+          id: "snap_2",
+          stackId: "st_123",
+          date: new Date(Date.UTC(2026, 8, 2)),
+          totalRequests: 10,
+          successCount: 8,
+          errorCount: 2,
+          totalBytes: BigInt(10),
+          avgLatencyMs: 20,
+          topPathsJson: [],
+          errorPathsJson: [],
+          topIpsJson: [
+            {
+              ip: "10.0.0.9",
+              requestsCount: 10,
+              countryCode: "LOCAL",
+              countryName: "Jaringan Internal",
+              status2xx: 8,
+              status3xx: 0,
+              status4xx: 2,
+              status5xx: 0,
+              successRatio: 80,
+            },
+          ],
+        },
+      ])
+
+      const report = await getAppTrafficReport("my-app", {
+        granularity: "monthly",
+        month: "2026-09",
+      })
+
+      // 8/10 evidenced requests succeeded -> 80%, not 8/1010 (~0.8%) diluted
+      // by the 1000 legacy requests that carry no status evidence at all.
+      expect(report.topIps[0]).toMatchObject({
+        ip: "10.0.0.9",
+        requestsCount: 1010,
+        status2xx: 8,
+        status4xx: 2,
+        successRatio: 80,
+      })
+    })
+
     it("returns empty default report when snapshot is absent", async () => {
       mockPrisma.applicationStack.findFirst.mockResolvedValue({
         id: "st_123",
