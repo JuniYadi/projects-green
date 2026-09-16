@@ -1,10 +1,21 @@
 import { mock } from "bun:test"
-import { useRouter, usePathname } from "next/navigation"
 
 const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})
 const mockConfirm = mock(() => true)
+const mockUseRouter = mock(() => ({
+  replace: mockRouterReplace,
+  refresh: mockRouterRefresh,
+  push: () => {},
+}))
+const mockUsePathname = mock(() => "/en/console/organization")
 
+mock.module("next/navigation", () => ({
+  useRouter: mockUseRouter,
+  usePathname: mockUsePathname,
+}))
+
+import { useRouter, usePathname } from "next/navigation"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 

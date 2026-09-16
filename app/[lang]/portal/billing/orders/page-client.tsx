@@ -54,6 +54,8 @@ import {
 } from "@/lib/billing-client"
 import { formatKey } from "@/lib/format-key"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   MoreHorizontal,
   Ban,
@@ -61,23 +63,6 @@ import {
   ExternalLink,
   Eye,
 } from "lucide-react"
-const STATUSES = [
-  { value: "all", label: "All statuses" },
-  { value: "PENDING", label: "Pending" },
-  { value: "CHARGED", label: "Charged" },
-  { value: "FULFILLED", label: "Fulfilled" },
-  { value: "FAILED", label: "Failed" },
-  { value: "CANCELLED", label: "Cancelled" },
-] as const
-
-const BILLING_PERIODS = [
-  { value: "all", label: "All periods" },
-  { value: "MONTHLY", label: "Monthly" },
-  { value: "QUARTERLY", label: "Quarterly" },
-  { value: "SEMI_ANNUAL", label: "Semi-Annual" },
-  { value: "ANNUAL", label: "Annual" },
-] as const
-
 const PAGE_SIZE = 20
 
 function paymentStatusVariant(
@@ -102,6 +87,8 @@ function fulfillmentStatus(fulfilledAt: string | null): string {
 export function BillingOrdersPage() {
   const params = useParams()
   const lang = (params?.lang as string) || "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.adminBillingOrders
 
   const [orders, setOrders] = useState<AdminOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -299,25 +286,25 @@ export function BillingOrdersPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header>
-        <h1 className="text-2xl font-bold">Orders</h1>
+        <h1 className="text-2xl font-bold">{messages.title}</h1>
         <p className="text-muted-foreground">
-          Trace charges, invoices, subscriptions, and fulfillment in one trail.
+          {messages.description}
         </p>
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle>Commercial orders</CardTitle>
+          <CardTitle>{messages.commercialOrders}</CardTitle>
         </CardHeader>
         <CardContent>
           {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading orders…</p>
+            <p className="text-sm text-muted-foreground">{messages.loadingOrders}</p>
           ) : (
             <>
               <div className="mb-4 flex flex-wrap gap-3">
                 <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Status</Label>
+                  <Label className="text-xs">{messages.statusLabel}</Label>
                   <Select
                     value={status}
                     onValueChange={(v) => handleFilterChange("status", v)}
@@ -326,18 +313,19 @@ export function BillingOrdersPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUSES.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="all">{messages.allStatuses}</SelectItem>
+                      <SelectItem value="PENDING">{messages.statusPending}</SelectItem>
+                      <SelectItem value="CHARGED">{messages.statusCharged}</SelectItem>
+                      <SelectItem value="FULFILLED">{messages.statusFulfilled}</SelectItem>
+                      <SelectItem value="FAILED">{messages.statusFailed}</SelectItem>
+                      <SelectItem value="CANCELLED">{messages.statusCancelled}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Product</Label>
+                  <Label className="text-xs">{messages.productLabel}</Label>
                   <Input
-                    placeholder="Package code…"
+                    placeholder={messages.packageCodePlaceholder}
                     value={packageCode}
                     onChange={(e) =>
                       handleFilterChange("packageCode", e.target.value)
@@ -346,7 +334,7 @@ export function BillingOrdersPage() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Billing Period</Label>
+                  <Label className="text-xs">{messages.billingPeriodLabel}</Label>
                   <Select
                     value={billingPeriod}
                     onValueChange={(v) =>
@@ -357,16 +345,16 @@ export function BillingOrdersPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {BILLING_PERIODS.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="all">{messages.allPeriods}</SelectItem>
+                      <SelectItem value="MONTHLY">Monthly</SelectItem>
+                      <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                      <SelectItem value="SEMI_ANNUAL">Semi-Annual</SelectItem>
+                      <SelectItem value="ANNUAL">Annual</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Label className="text-xs">From</Label>
+                  <Label className="text-xs">{messages.fromLabel}</Label>
                   <Input
                     type="date"
                     value={from}
@@ -375,7 +363,7 @@ export function BillingOrdersPage() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <Label className="text-xs">To</Label>
+                  <Label className="text-xs">{messages.toLabel}</Label>
                   <Input
                     type="date"
                     value={to}
@@ -385,7 +373,7 @@ export function BillingOrdersPage() {
                 </div>
                 <div className="flex items-end">
                   <Button variant="outline" size="sm" onClick={handleExportCsv}>
-                    Export CSV
+                    {messages.exportCsv}
                   </Button>
                 </div>
               </div>
@@ -394,14 +382,14 @@ export function BillingOrdersPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Order</TableHead>
-                      <TableHead>Product / plan</TableHead>
-                      <TableHead>Period</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Charge</TableHead>
-                      <TableHead>Fulfillment</TableHead>
-                      <TableHead>Invoice</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{messages.colOrder}</TableHead>
+                      <TableHead>{messages.colProduct}</TableHead>
+                      <TableHead>{messages.colPeriod}</TableHead>
+                      <TableHead>{messages.colAmount}</TableHead>
+                      <TableHead>{messages.colCharge}</TableHead>
+                      <TableHead>{messages.colFulfillment}</TableHead>
+                      <TableHead>{messages.colInvoice}</TableHead>
+                      <TableHead className="text-right">{messages.colActions}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -411,7 +399,7 @@ export function BillingOrdersPage() {
                           colSpan={8}
                           className="py-10 text-center text-muted-foreground"
                         >
-                          No orders found.
+                          {messages.noOrders}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -483,7 +471,7 @@ export function BillingOrdersPage() {
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="xs">
                                   <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Actions</span>
+                                  <span className="sr-only">{messages.colActions}</span>
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -491,7 +479,7 @@ export function BillingOrdersPage() {
                                   onClick={() => setActiveOrder(order)}
                                 >
                                   <Eye className="mr-2 h-4 w-4" />
-                                  View Details
+                                  {messages.viewDetails}
                                 </DropdownMenuItem>
                                 {order.status === "PENDING" && (
                                   <>
@@ -505,7 +493,7 @@ export function BillingOrdersPage() {
                                       }}
                                     >
                                       <Ban className="mr-2 h-4 w-4" />
-                                      Cancel Order
+                                      {messages.cancelOrder}
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -520,7 +508,7 @@ export function BillingOrdersPage() {
                                         }}
                                       >
                                         <PlayCircle className="mr-2 h-4 w-4" />
-                                        Fulfill / Provision
+                                        {messages.fulfillOrder}
                                       </DropdownMenuItem>
                                     </>
                                   )}
@@ -537,12 +525,16 @@ export function BillingOrdersPage() {
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Showing {Math.min(orders.length, PAGE_SIZE)} of {total}{" "}
-                    results
+                    {messages.showingResults
+                      .replace("{from}", "1")
+                      .replace("{to}", String(Math.min(orders.length, PAGE_SIZE)))
+                      .replace("{total}", String(total))}
                   </p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-muted-foreground">
-                      Page {page} of {totalPages}
+                      {messages.pageOf
+                        .replace("{current}", String(page))
+                        .replace("{total}", String(totalPages))}
                     </p>
                     <Button
                       variant="outline"
@@ -550,7 +542,7 @@ export function BillingOrdersPage() {
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page <= 1 || loading}
                     >
-                      Previous
+                      {messages.previous}
                     </Button>
                     <Button
                       variant="outline"
@@ -558,7 +550,7 @@ export function BillingOrdersPage() {
                       onClick={() => setPage((p) => p + 1)}
                       disabled={page >= totalPages || loading}
                     >
-                      Next
+                      {messages.next}
                     </Button>
                   </div>
                 </div>
@@ -577,14 +569,14 @@ export function BillingOrdersPage() {
         <SheetContent className="overflow-y-auto sm:max-w-lg">
           <SheetHeader>
             <SheetTitle className="text-left font-mono">
-              Order {activeOrder?.id}
+              {messages.drawerTitle} {activeOrder?.id}
             </SheetTitle>
             <SheetDescription className="text-left">
               <Link
                 href={`/${lang}/portal/billing/org/${activeOrder?.organizationId}`}
                 className="font-mono text-xs font-medium text-primary hover:underline"
               >
-                Organization: {activeOrder?.organizationId}
+                {messages.organizationLabel} {activeOrder?.organizationId}
               </Link>
             </SheetDescription>
           </SheetHeader>
@@ -593,25 +585,28 @@ export function BillingOrdersPage() {
               {/* Status Section */}
               <div className="rounded-lg border p-4">
                 <div className="text-xs font-semibold text-muted-foreground uppercase">
-                  Order Status
+                  {messages.orderStatusLabel}
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                   <Badge variant={paymentStatusVariant(activeOrder.status)}>
                     {activeOrder.status}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    Fulfillment: {fulfillmentStatus(activeOrder.fulfilledAt)}
+                    {messages.fulfillmentLabel}{" "}
+                    {activeOrder.fulfilledAt
+                      ? messages.statusFulfilled
+                      : messages.statusPending}
                   </span>
                 </div>
                 <div className="mt-3 text-xs text-muted-foreground">
-                  Created: {new Date(activeOrder.createdAt).toLocaleString()}
+                  {messages.createdLabel} {new Date(activeOrder.createdAt).toLocaleString()}
                 </div>
               </div>
 
               {/* Items & Billing Details */}
               <div className="rounded-lg border p-4">
                 <div className="text-xs font-semibold text-muted-foreground uppercase">
-                  Package & Pricing
+                  {messages.packagePricingLabel}
                 </div>
                 {activeOrder.line ? (
                   <div className="mt-2 flex flex-col gap-1">
@@ -620,11 +615,11 @@ export function BillingOrdersPage() {
                       {activeOrder.line.planCode})
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Period:{" "}
+                      {messages.periodLabel}{" "}
                       {billingPeriodLabel(activeOrder.line.billingPeriod)}
                     </div>
                     <div className="mt-2 text-base font-semibold">
-                      Total:{" "}
+                      {messages.totalLabel}{" "}
                       {formatBillingMoney(
                         activeOrder.totalAmount,
                         activeOrder.currency
@@ -638,14 +633,16 @@ export function BillingOrdersPage() {
                 {activeOrder.serviceSubscriptionId && (
                   <div className="mt-4 border-t pt-3">
                     <div className="text-xs text-muted-foreground">
-                      Linked Subscription
+                      {messages.linkedSubscriptionLabel}
                     </div>
                     <Link
                       href={`/${lang}/portal/billing/subscriptions?subscriptionId=${activeOrder.serviceSubscriptionId}`}
                       className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                     >
-                      View Subscription (
-                      {activeOrder.serviceSubscriptionId.slice(0, 12)}...)
+                      {messages.viewSubscriptionLabel.replace(
+                        "{id}",
+                        `${activeOrder.serviceSubscriptionId.slice(0, 12)}...`
+                      )}
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Link>
                   </div>
@@ -654,7 +651,7 @@ export function BillingOrdersPage() {
                 {activeOrder.invoice && (
                   <div className="mt-4 border-t pt-3">
                     <div className="text-xs text-muted-foreground">
-                      Linked Invoice
+                      {messages.linkedInvoiceLabel}
                     </div>
                     <Link
                       href={`/${lang}/portal/billing/invoices/${activeOrder.invoice.id}`}
@@ -695,19 +692,19 @@ export function BillingOrdersPage() {
                 return (
                   <div className="rounded-lg border p-4">
                     <div className="text-xs font-semibold text-muted-foreground uppercase">
-                      Form & Provisioning Responses
+                      {messages.formResponsesLabel}
                     </div>
                     <div className="mt-3 flex flex-col gap-2">
                       {deviceId && (
                         <div className="flex items-center justify-between rounded-md border bg-muted/20 p-2.5 text-xs">
                           <span className="font-medium text-muted-foreground">
-                            WhatsApp Device
+                            {messages.whatsAppDeviceLabel}
                           </span>
                           <Link
                             href={`/${lang}/portal/whatsapp/devices/${deviceId}`}
                             className="inline-flex items-center gap-1 font-mono font-semibold text-primary hover:underline"
                           >
-                            Open Device
+                            {messages.openDeviceLabel}
                             <ExternalLink className="h-3 w-3" />
                           </Link>
                         </div>
@@ -746,7 +743,7 @@ export function BillingOrdersPage() {
                     }}
                   >
                     <Ban className="mr-2 h-4 w-4" />
-                    Cancel Order
+                    {messages.cancelOrder}
                   </Button>
                 )}
                 {activeOrder.status === "CHARGED" &&
@@ -758,7 +755,7 @@ export function BillingOrdersPage() {
                       }}
                     >
                       <PlayCircle className="mr-2 h-4 w-4" />
-                      Fulfill / Provision Order
+                      {messages.fulfillOrder}
                     </Button>
                   )}
               </div>
@@ -779,22 +776,18 @@ export function BillingOrdersPage() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Cancel Order</DialogTitle>
+            <DialogTitle>{messages.cancelOrderTitle}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel Order{" "}
-              <span className="font-mono font-medium text-foreground">
-                {confirmCancelOrder?.id}
-              </span>
-              ? Any unpaid invoice associated with this order will be voided.
+              {messages.cancelOrderDesc.replace("{id}", confirmCancelOrder?.id ?? "")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <Label htmlFor="cancel-reason" className="text-xs">
-              Cancellation Reason (optional)
+              {messages.cancellationReasonLabel}
             </Label>
             <Input
               id="cancel-reason"
-              placeholder="Reason for cancellation"
+              placeholder={messages.cancellationReasonPlaceholder}
               value={actionReason}
               onChange={(e) => setActionReason(e.target.value)}
               className="mt-1.5"
@@ -809,14 +802,14 @@ export function BillingOrdersPage() {
               onClick={() => setConfirmCancelOrder(null)}
               disabled={actionLoading}
             >
-              Keep Order
+              {messages.keepOrder}
             </Button>
             <Button
               variant="destructive"
               onClick={handleCancelOrder}
               disabled={actionLoading}
             >
-              {actionLoading ? "Cancelling..." : "Confirm Cancel"}
+              {actionLoading ? messages.cancelling : messages.confirmCancel}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -834,14 +827,9 @@ export function BillingOrdersPage() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Fulfill Order</DialogTitle>
+            <DialogTitle>{messages.fulfillOrderTitle}</DialogTitle>
             <DialogDescription>
-              Manually trigger provisioning for Order{" "}
-              <span className="font-mono font-medium text-foreground">
-                {confirmFulfillOrder?.id}
-              </span>
-              . This will create or renew the associated subscription and
-              trigger deployment.
+              {messages.fulfillOrderDesc.replace("{id}", confirmFulfillOrder?.id ?? "")}
             </DialogDescription>
           </DialogHeader>
           {actionError && (
@@ -853,10 +841,10 @@ export function BillingOrdersPage() {
               onClick={() => setConfirmFulfillOrder(null)}
               disabled={actionLoading}
             >
-              Cancel
+              {messages.cancel}
             </Button>
             <Button onClick={handleFulfillOrder} disabled={actionLoading}>
-              {actionLoading ? "Provisioning..." : "Confirm Fulfill"}
+              {actionLoading ? messages.provisioning : messages.confirmFulfill}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -274,6 +274,177 @@ export type AppMessages = {
         steadyCpuMsg: string
         fetchFailed: string
       }
+      operateScaling: {
+        podStatusOverview: string
+        podStatusOverviewDesc: string
+        totalBadge: string
+        healthyBadge: string
+        warningBadge: string
+        crashedBadge: string
+        colPodName: string
+        colStatus: string
+        colCpu: string
+        colRam: string
+        colUptime: string
+        colRestarts: string
+        colNode: string
+        statusHealthy: string
+        statusWarning: string
+        statusCrashed: string
+        resourceTuning: string
+        resourceTuningDesc: string
+        memoryRequestMin: string
+        memoryLimitMax: string
+        adjustMemLimitOom: string
+        cpuLimitMax: string
+        coresFormat: string
+        totalCoresFormat: string
+        totalResourceFootprint: string
+        replicaSingular: string
+        replicaPlural: string
+        totalCpu: string
+        totalMemory: string
+        manualReplicas: string
+        decreaseReplicasAria: string
+        increaseReplicasAria: string
+        hpaActiveLocked: string
+        maxQuotaReached: string
+        saveResourceSettings: string
+        saving: string
+        autoscalingPolicies: string
+        autoscalingPoliciesDesc: string
+        hpaTitle: string
+        hpaDesc: string
+        toggleHpaAria: string
+        badgeActive: string
+        badgeDisabled: string
+        minReplicas: string
+        maxReplicas: string
+        cpuTargetUtilization: string
+        hpaCappedWarning: string
+        vpaTitle: string
+        vpaDesc: string
+        toggleVpaAria: string
+        vpaUpdateMode: string
+        vpaExplainAuto: string
+        vpaExplainInitial: string
+        vpaExplainOff: string
+      }
+      adminBillingOrders: {
+        title: string
+        description: string
+        commercialOrders: string
+        loadingOrders: string
+        statusLabel: string
+        productLabel: string
+        packageCodePlaceholder: string
+        billingPeriodLabel: string
+        fromLabel: string
+        toLabel: string
+        exportCsv: string
+        colOrder: string
+        colProduct: string
+        colPeriod: string
+        colAmount: string
+        colCharge: string
+        colFulfillment: string
+        colInvoice: string
+        colActions: string
+        noOrders: string
+        viewDetails: string
+        cancelOrder: string
+        fulfillOrder: string
+        showingResults: string
+        pageOf: string
+        previous: string
+        next: string
+        drawerTitle: string
+        organizationLabel: string
+        orderStatusLabel: string
+        fulfillmentLabel: string
+        createdLabel: string
+        packagePricingLabel: string
+        periodLabel: string
+        totalLabel: string
+        linkedSubscriptionLabel: string
+        viewSubscriptionLabel: string
+        linkedInvoiceLabel: string
+        formResponsesLabel: string
+        whatsAppDeviceLabel: string
+        openDeviceLabel: string
+        cancelOrderTitle: string
+        cancelOrderDesc: string
+        cancellationReasonLabel: string
+        cancellationReasonPlaceholder: string
+        keepOrder: string
+        fulfillOrderTitle: string
+        fulfillOrderDesc: string
+        cancel: string
+        confirmCancel: string
+        confirmFulfill: string
+        cancelling: string
+        provisioning: string
+        statusPending: string
+        statusCharged: string
+        statusFulfilled: string
+        statusFailed: string
+        statusCancelled: string
+        allStatuses: string
+        allPeriods: string
+      }
+      adminBillingSubscriptions: {
+        colOrganization: string
+        colProduct: string
+        colBillingPeriod: string
+        colType: string
+        colPrice: string
+        colService: string
+        colPayment: string
+        colInvoice: string
+        colRenews: string
+        unavailable: string
+        openVpnOperations: string
+        viewConfig: string
+        editRenewal: string
+        title: string
+        description: string
+        allCommercialSubscriptions: string
+        allCommercialSubscriptionsDesc: string
+        searchPlaceholder: string
+        noSubscriptionsFound: string
+        showingSubscriptions: string
+        pageOf: string
+        previous: string
+        next: string
+        detailDrawerAria: string
+        detailDrawerTitle: string
+        close: string
+        organizationLabel: string
+        serviceStatusLabel: string
+        paymentLabel: string
+        renewalLabel: string
+        lockedPriceLabel: string
+        nextTransitionLabel: string
+        cancellationScheduled: string
+        provisioningParametersTitle: string
+        provisioningParametersDesc: string
+        noCustomParameters: string
+        editRenewalModalTitle: string
+        editRenewalModalDesc: string
+        selectStatusPlaceholder: string
+        statusActive: string
+        statusSuspended: string
+        statusCancelled: string
+        selectPeriodPlaceholder: string
+        periodMonthly: string
+        periodQuarterly: string
+        periodSemiAnnual: string
+        periodAnnual: string
+        renewalExpiryLabel: string
+        renewalSyncNotice: string
+        cancel: string
+        saveChanges: string
+      }
     }
     overview: {
       heading: string
@@ -2384,6 +2555,8 @@ export type AppMessages = {
           notDetected: string
           selectLanguage: string
           selectFramework: string
+          languageSelector: string
+          frameworkSelector: string
           languageRequired: string
           frameworkRequired: string
           buildCommandRequired: string
@@ -2395,6 +2568,8 @@ export type AppMessages = {
           buildSettingsAttention: string
           readyDockerfile: string
           readyBuild: string
+          showTechnicalDetails: string
+          changeTechnicalSettings: string
           back: string
           next: string
         }
@@ -3449,3 +3624,5 @@ export type EnvVarsEditorMessages =
   AppMessages["console"]["deploy"]["envVarsEditor"]
 export type OperateMetricsMessages =
   AppMessages["console"]["deploy"]["operateMetrics"]
+export type OperateScalingMessages =
+  AppMessages["console"]["deploy"]["operateScaling"]

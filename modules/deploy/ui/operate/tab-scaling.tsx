@@ -20,6 +20,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type PodStatus = "healthy" | "warning" | "crashed"
 
@@ -36,7 +39,6 @@ type PodInfo = {
 const POD_STATUS_META: Record<
   PodStatus,
   {
-    label: string
     icon: React.ElementType
     color: string
     bg: string
@@ -45,7 +47,6 @@ const POD_STATUS_META: Record<
   }
 > = {
   healthy: {
-    label: "Healthy",
     icon: CheckCircle,
     color: "text-emerald-400",
     bg: "bg-emerald-500/10",
@@ -53,7 +54,6 @@ const POD_STATUS_META: Record<
     bar: "bg-emerald-400",
   },
   warning: {
-    label: "Warning",
     icon: Warning,
     color: "text-amber-400",
     bg: "bg-amber-500/10",
@@ -61,13 +61,26 @@ const POD_STATUS_META: Record<
     bar: "bg-amber-400",
   },
   crashed: {
-    label: "Crashed",
     icon: XCircle,
     color: "text-red-400",
     bg: "bg-red-500/10",
     border: "border-red-500/20",
     bar: "bg-red-500",
   },
+}
+
+function getPodStatusLabel(
+  status: PodStatus,
+  messages: ReturnType<typeof getMessages>["console"]["deploy"]["operateScaling"]
+) {
+  switch (status) {
+    case "healthy":
+      return messages.statusHealthy
+    case "warning":
+      return messages.statusWarning
+    case "crashed":
+      return messages.statusCrashed
+  }
 }
 
 export type TabScalingProps = {
@@ -84,6 +97,7 @@ export type TabScalingProps = {
     cpuCores: number,
     memoryMiB: number
   ) => Promise<void>
+  locale?: AppLocale
 }
 
 export function parseCpuToCores(cpuStr: string): number {
@@ -113,7 +127,10 @@ export function TabScaling({
   initialMemLimit,
   pods: explicitPods,
   onSave,
+  locale = "en",
 }: TabScalingProps) {
+  const activeLocale = resolveLocaleOrDefault(locale)
+  const messages = getMessages(activeLocale).console.deploy.operateScaling
   const [cpuLimit, setCpuLimit] = useState(initialCpuLimit ?? "1000m")
   const [memRequest, setMemRequest] = useState("256Mi")
   const [memLimit, setMemLimit] = useState(initialMemLimit ?? "512Mi")
@@ -203,28 +220,28 @@ export function TabScaling({
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-primary/20 bg-primary/10">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
                   </span>
-                  Pod Status Overview
+                  {messages.podStatusOverview}
                 </CardTitle>
                 <CardDescription className="mt-0.5 text-xs text-muted-foreground">
-                  Live view of all running pod instances and their health state
+                  {messages.podStatusOverviewDesc}
                 </CardDescription>
               </div>
               {/* Summary badges */}
               <div className="flex items-center gap-2 text-[10px] font-bold">
                 <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-muted-foreground">
-                  {podCounts.total} Total
+                  {messages.totalBadge.replace("{count}", String(podCounts.total))}
                 </span>
                 <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-400">
-                  {podCounts.healthy} Healthy
+                  {messages.healthyBadge.replace("{count}", String(podCounts.healthy))}
                 </span>
                 {podCounts.warning > 0 && (
                   <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-amber-400">
-                    {podCounts.warning} Warning
+                    {messages.warningBadge.replace("{count}", String(podCounts.warning))}
                   </span>
                 )}
                 {podCounts.crashed > 0 && (
                   <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-red-400">
-                    {podCounts.crashed} Crashed
+                    {messages.crashedBadge.replace("{count}", String(podCounts.crashed))}
                   </span>
                 )}
               </div>
@@ -236,13 +253,13 @@ export function TabScaling({
                 <thead>
                   <tr className="border-b border-border">
                     {[
-                      "Pod Name",
-                      "Status",
-                      "CPU",
-                      "RAM",
-                      "Uptime",
-                      "Restarts",
-                      "Node",
+                      messages.colPodName,
+                      messages.colStatus,
+                      messages.colCpu,
+                      messages.colRam,
+                      messages.colUptime,
+                      messages.colRestarts,
+                      messages.colNode,
                     ].map((col) => (
                       <th
                         key={col}
@@ -275,7 +292,7 @@ export function TabScaling({
                             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${meta.border} ${meta.bg} ${meta.color}`}
                           >
                             <StatusIcon size={10} weight="fill" />
-                            {meta.label}
+                            {getPodStatusLabel(pod.status, messages)}
                           </span>
                         </td>
 
@@ -361,10 +378,10 @@ export function TabScaling({
         <Card size="sm" className="border-border bg-card shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-              <Cpu size={18} className="text-primary" /> Resource Tuning
+              <Cpu size={18} className="text-primary" /> {messages.resourceTuning}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Allocate CPU and RAM quotas to your container pods
+              {messages.resourceTuningDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 text-xs">
@@ -374,7 +391,7 @@ export function TabScaling({
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 font-semibold text-foreground">
                     <HardDrive size={13} className="text-muted-foreground" />{" "}
-                    Memory Request (Min)
+                    {messages.memoryRequestMin}
                   </span>
                   <span className="rounded-lg border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">
                     {memRequest}
@@ -402,8 +419,8 @@ export function TabScaling({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 font-semibold text-foreground">
-                    <HardDrive size={13} className="text-red-400" /> Memory
-                    Limit (Max)
+                    <HardDrive size={13} className="text-red-400" />{" "}
+                    {messages.memoryLimitMax}
                   </span>
                   <span className="rounded-lg border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">
                     {memLimit}
@@ -427,7 +444,7 @@ export function TabScaling({
                   <span>4096Mi</span>
                 </div>
                 <span className="block text-[10px] leading-tight text-muted-foreground/80">
-                  Adjust Memory Limit to avoid Out-Of-Memory (OOM) status.
+                  {messages.adjustMemLimitOom}
                 </span>
               </div>
 
@@ -435,15 +452,15 @@ export function TabScaling({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 font-semibold text-foreground">
-                    <Cpu size={13} className="text-muted-foreground" /> CPU
-                    Limit (Max)
+                    <Cpu size={13} className="text-muted-foreground" />{" "}
+                    {messages.cpuLimitMax}
                   </span>
                   <span className="rounded-lg border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">
                     {cpuLimit === "500m"
-                      ? "0.5 Cores"
+                      ? messages.coresFormat.replace("{cores}", "0.5")
                       : cpuLimit === "1000m"
-                        ? "1.0 Core"
-                        : "2.0 Cores"}
+                        ? messages.coresFormat.replace("{cores}", "1.0")
+                        : messages.coresFormat.replace("{cores}", "2.0")}
                   </span>
                 </div>
                 <input
@@ -469,9 +486,9 @@ export function TabScaling({
                   className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary transition-all hover:bg-muted/80"
                 />
                 <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
-                  <span>0.5 Cores</span>
-                  <span>1.0 Cores</span>
-                  <span>2.0 Cores</span>
+                  <span>{messages.coresFormat.replace("{cores}", "0.5")}</span>
+                  <span>{messages.coresFormat.replace("{cores}", "1.0")}</span>
+                  <span>{messages.coresFormat.replace("{cores}", "2.0")}</span>
                 </div>
               </div>
             </div>
@@ -480,10 +497,12 @@ export function TabScaling({
             <div className="space-y-3.5 rounded-xl border border-border bg-muted/20 p-4">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-foreground">
-                  Total Resource Footprint
+                  {messages.totalResourceFootprint}
                 </span>
                 <span className="rounded-full border border-border bg-muted/40 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
-                  {replicas} {replicas === 1 ? "replica" : "replicas"}
+                  {replicas === 1
+                    ? messages.replicaSingular.replace("{count}", "1")
+                    : messages.replicaPlural.replace("{count}", String(replicas))}
                 </span>
               </div>
 
@@ -493,10 +512,12 @@ export function TabScaling({
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-muted-foreground">
                       <Cpu size={13} />
-                      Total CPU:
+                      {messages.totalCpu}
                     </span>
                     <span className="font-mono text-xs font-semibold text-foreground">
-                      {totalCores.toFixed(1)} / {maxCpuCores.toFixed(1)} Cores
+                      {messages.totalCoresFormat
+                        .replace("{used}", totalCores.toFixed(1))
+                        .replace("{max}", maxCpuCores.toFixed(1))}
                     </span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -514,7 +535,7 @@ export function TabScaling({
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-muted-foreground">
                       <HardDrive size={13} />
-                      Total Memory:
+                      {messages.totalMemory}
                     </span>
                     <span className="font-mono text-xs font-semibold text-foreground">
                       {totalMemoryMiB} MiB / {maxMemoryMiB} MiB
@@ -536,14 +557,14 @@ export function TabScaling({
             <div className="space-y-3.5 rounded-xl border border-border bg-muted/30 p-4">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-foreground">
-                  Manual Replicas
+                  {messages.manualReplicas}
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    aria-label="Decrease replicas"
+                    aria-label={messages.decreaseReplicasAria}
                     onClick={() => setReplicas(Math.max(1, replicas - 1))}
                     disabled={hpaEnabled || replicas <= 1}
                     className="h-7 w-7 rounded-lg border-border p-0 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
@@ -557,7 +578,7 @@ export function TabScaling({
                     type="button"
                     size="sm"
                     variant="outline"
-                    aria-label="Increase replicas"
+                    aria-label={messages.increaseReplicasAria}
                     onClick={() => setReplicas(replicas + 1)}
                     disabled={isPlusDisabled}
                     className="h-7 w-7 rounded-lg border-border p-0 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
@@ -570,15 +591,14 @@ export function TabScaling({
                 <div className="flex gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-[10px] text-amber-300">
                   <ShieldWarning size={14} className="mt-0.5 shrink-0" />
                   <span>
-                    Manual replicas are locked because Horizontal Pod Autoscaler
-                    (HPA) is currently active.
+                    {messages.hpaActiveLocked}
                   </span>
                 </div>
               )}
               {!hpaEnabled && isQuotaCapReached && (
                 <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-[10px] text-amber-400">
                   <Warning size={14} className="shrink-0" />
-                  <span>Maximum resource quota reached for this plan.</span>
+                  <span>{messages.maxQuotaReached}</span>
                 </div>
               )}
             </div>
@@ -589,7 +609,7 @@ export function TabScaling({
               onClick={handleSave}
               disabled={saving}
             >
-              {saving ? "Saving..." : "Save Resource Settings"}
+              {saving ? messages.saving : messages.saveResourceSettings}
             </Button>
           </CardContent>
         </Card>
@@ -598,10 +618,10 @@ export function TabScaling({
         <Card size="sm" className="border-border bg-card shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold text-foreground">
-              Autoscaling Policies (HPA / VPA)
+              {messages.autoscalingPolicies}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Automate horizontal scale-out and vertical limits optimizations
+              {messages.autoscalingPoliciesDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -610,15 +630,15 @@ export function TabScaling({
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <span className="block text-sm font-bold text-foreground">
-                    Horizontal Pod Autoscaler (HPA)
+                    {messages.hpaTitle}
                   </span>
                   <span className="block text-xs leading-normal text-muted-foreground">
-                    Dynamically scale replicas based on CPU/RAM thresholds
+                    {messages.hpaDesc}
                   </span>
                 </div>
                 <button
                   type="button"
-                  aria-label="Toggle Horizontal Pod Autoscaler"
+                  aria-label={messages.toggleHpaAria}
                   onClick={() => setHpaEnabled(!hpaEnabled)}
                   className={`relative inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold transition-all duration-200 focus:outline-none ${
                     hpaEnabled
@@ -633,7 +653,7 @@ export function TabScaling({
                         : "bg-neutral-500"
                     }`}
                   />
-                  {hpaEnabled ? "Active" : "Disabled"}
+                  {hpaEnabled ? messages.badgeActive : messages.badgeDisabled}
                 </button>
               </div>
 
@@ -642,7 +662,7 @@ export function TabScaling({
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div className="space-y-1.5">
                       <label className="block font-semibold text-muted-foreground">
-                        Min Replicas
+                        {messages.minReplicas}
                       </label>
                       <Input
                         type="number"
@@ -662,7 +682,7 @@ export function TabScaling({
                     </div>
                     <div className="space-y-1.5">
                       <label className="block font-semibold text-muted-foreground">
-                        Max Replicas
+                        {messages.maxReplicas}
                       </label>
                       <Input
                         type="number"
@@ -682,7 +702,7 @@ export function TabScaling({
                     </div>
                     <div className="space-y-1.5">
                       <label className="block font-semibold text-muted-foreground">
-                        CPU Target Utilization (%)
+                        {messages.cpuTargetUtilization}
                       </label>
                       <Input
                         type="number"
@@ -699,8 +719,7 @@ export function TabScaling({
                     <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-[10px] text-amber-400">
                       <Warning size={14} className="shrink-0" />
                       <span>
-                        HPA max replicas capped at {hpaQuotaCeiling} based on
-                        CPU limits and plan quota.
+                        {messages.hpaCappedWarning.replace("{ceiling}", String(hpaQuotaCeiling))}
                       </span>
                     </div>
                   )}
@@ -713,16 +732,15 @@ export function TabScaling({
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <span className="block text-sm font-bold text-foreground">
-                    Vertical Pod Autoscaler (VPA)
+                    {messages.vpaTitle}
                   </span>
                   <span className="block text-xs leading-normal text-muted-foreground">
-                    Let the Kubernetes engine tune memory and CPU parameters
-                    based on historic usage
+                    {messages.vpaDesc}
                   </span>
                 </div>
                 <button
                   type="button"
-                  aria-label="Toggle Vertical Pod Autoscaler"
+                  aria-label={messages.toggleVpaAria}
                   onClick={() => setVpaEnabled(!vpaEnabled)}
                   className={`relative inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold transition-all duration-200 focus:outline-none ${
                     vpaEnabled
@@ -737,7 +755,7 @@ export function TabScaling({
                         : "bg-neutral-500"
                     }`}
                   />
-                  {vpaEnabled ? "Active" : "Disabled"}
+                  {vpaEnabled ? messages.badgeActive : messages.badgeDisabled}
                 </button>
               </div>
 
@@ -745,7 +763,7 @@ export function TabScaling({
                 <div className="animate-fadeIn space-y-3 border-t border-border pt-3.5 text-xs">
                   <div className="space-y-1.5">
                     <label className="block font-semibold text-muted-foreground">
-                      VPA Update Mode
+                      {messages.vpaUpdateMode}
                     </label>
                     <div className="flex gap-2">
                       {(["Off", "Initial", "Auto"] as const).map((mode) => (
@@ -767,11 +785,9 @@ export function TabScaling({
                   <div className="flex gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-[11px] leading-normal text-blue-300">
                     <ShieldCheck size={16} className="mt-0.5 shrink-0" />
                     <p>
-                      <strong>Auto:</strong> Automatically updates pod sizes
-                      (recreates pods if required). <strong>Initial:</strong>{" "}
-                      Assigns optimal settings only on startup.{" "}
-                      <strong>Off:</strong> Recommendation engine runs in
-                      passive mode.
+                      <strong>Auto:</strong> {messages.vpaExplainAuto}{" "}
+                      <strong>Initial:</strong> {messages.vpaExplainInitial}{" "}
+                      <strong>Off:</strong> {messages.vpaExplainOff}
                     </p>
                   </div>
                 </div>
