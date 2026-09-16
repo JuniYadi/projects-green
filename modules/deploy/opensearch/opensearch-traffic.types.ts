@@ -24,6 +24,18 @@ export interface TrafficCountryCount {
   percentage: number
 }
 
+export interface AudienceBucket {
+  label: string
+  count: number
+  percentage: number
+}
+
+export interface TrafficAudienceBreakdown {
+  device: AudienceBucket[]
+  browser: AudienceBucket[]
+  os: AudienceBucket[]
+}
+
 export interface AppTrafficReportDTO {
   granularity: "daily" | "monthly" | "yearly"
   periodLabel: string
@@ -40,6 +52,7 @@ export interface AppTrafficReportDTO {
   troubledPages: TrafficErrorPath[]
   topIps: IpGeoInfo[]
   topCountries: TrafficCountryCount[]
+  audience: TrafficAudienceBreakdown
 }
 
 export interface AppTrafficLogItemDTO {
@@ -70,4 +83,5 @@ export interface DailySnapshotComputeResult {
   topPaths: TrafficPathCount[]
   errorPaths: TrafficErrorPath[]
   topIps: IpGeoInfo[]
+  audience: TrafficAudienceBreakdown
 }
