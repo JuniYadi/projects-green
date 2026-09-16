@@ -25,6 +25,7 @@ mock.module("../cluster-integration.service", () => ({
 const {
   formatBytes,
   computeTopCountries,
+  mergeAudienceBreakdown,
   computeDailyTrafficSnapshotFromOpenSearch,
   getAppTrafficReport,
   getLiveTrafficLogs,
@@ -89,6 +90,42 @@ describe("opensearch-traffic.service", () => {
     })
   })
 
+  describe("mergeAudienceBreakdown", () => {
+    it("sums matching labels across days and re-derives top 5 + Other", () => {
+      const merged = mergeAudienceBreakdown([
+        {
+          device: [{ label: "desktop", count: 80, percentage: 80 }],
+          browser: [{ label: "Chrome", count: 80, percentage: 80 }],
+          os: [{ label: "Windows", count: 80, percentage: 80 }],
+        },
+        {
+          device: [{ label: "desktop", count: 20, percentage: 100 }],
+          browser: [{ label: "Firefox", count: 20, percentage: 100 }],
+          os: [{ label: "Windows", count: 20, percentage: 100 }],
+        },
+      ])
+
+      expect(merged.device).toEqual([
+        { label: "desktop", count: 100, percentage: 100 },
+      ])
+      expect(merged.os).toEqual([
+        { label: "Windows", count: 100, percentage: 100 },
+      ])
+      expect(merged.browser).toEqual([
+        { label: "Chrome", count: 80, percentage: 80 },
+        { label: "Firefox", count: 20, percentage: 20 },
+      ])
+    })
+
+    it("returns empty buckets when given no data", () => {
+      expect(mergeAudienceBreakdown([])).toEqual({
+        device: [],
+        browser: [],
+        os: [],
+      })
+    })
+  })
+
   describe("computeDailyTrafficSnapshotFromOpenSearch", () => {
     it("computes calendar day traffic metrics from OpenSearch aggregations", async () => {
       mockPrisma.applicationStack.findFirst.mockResolvedValue({
@@ -130,6 +167,15 @@ describe("opensearch-traffic.service", () => {
               top_paths: {
                 buckets: [{ key: "/home", doc_count: 80 }],
               },
+              user_agent_buckets: {
+                buckets: [
+                  {
+                    key: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    doc_count: 90,
+                  },
+                  { key: "curl/7.68.0", doc_count: 10 },
+                ],
+              },
               error_paths: {
                 paths: {
                   buckets: [
@@ -162,6 +208,18 @@ describe("opensearch-traffic.service", () => {
       expect(result.topPaths).toEqual([{ path: "/home", views: 80 }])
       expect(result.errorPaths).toEqual([
         { path: "/missing", errors: 5, sampleStatus: 404 },
+      ])
+      expect(result.audience.device).toEqual([
+        { label: "desktop", count: 90, percentage: 90 },
+        { label: "bot", count: 10, percentage: 10 },
+      ])
+      expect(result.audience.browser).toEqual([
+        { label: "Chrome", count: 90, percentage: 90 },
+        { label: "CLI/HTTP Client", count: 10, percentage: 10 },
+      ])
+      expect(result.audience.os).toEqual([
+        { label: "Windows", count: 90, percentage: 90 },
+        { label: "Unknown", count: 10, percentage: 10 },
       ])
     })
 
@@ -221,6 +279,11 @@ describe("opensearch-traffic.service", () => {
         ],
         topPathsJson: [{ path: "/api", views: 500 }],
         errorPathsJson: [{ path: "/api/bad", errors: 10, sampleStatus: 400 }],
+        audienceJson: {
+          device: [{ label: "mobile", count: 700, percentage: 70 }],
+          browser: [{ label: "Safari", count: 700, percentage: 70 }],
+          os: [{ label: "iOS", count: 700, percentage: 70 }],
+        },
       })
 
       const report = await getAppTrafficReport("my-app", {
@@ -238,6 +301,38 @@ describe("opensearch-traffic.service", () => {
       expect(report.troubledPages).toEqual([
         { path: "/api/bad", errors: 10, sampleStatus: 400 },
       ])
+      expect(report.audience.device).toEqual([
+        { label: "mobile", count: 700, percentage: 70 },
+      ])
+    })
+
+    it("degrades a legacy snapshot with no audienceJson keys to empty buckets", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+      mockPrisma.appHostingDailyTrafficSnapshot.findUnique.mockResolvedValue({
+        id: "snap_legacy",
+        stackId: "st_123",
+        date: new Date(Date.UTC(2026, 8, 10)),
+        totalRequests: 500,
+        successCount: 500,
+        errorCount: 0,
+        totalBytes: BigInt(1000),
+        avgLatencyMs: 10,
+        hourlyTrendJson: [],
+        topPathsJson: [],
+        errorPathsJson: [],
+        audienceJson: {}, // the column default for pre-migration rows
+      })
+
+      const report = await getAppTrafficReport("my-app", {
+        granularity: "daily",
+        date: "2026-09-10",
+      })
+
+      expect(report.audience).toEqual({ device: [], browser: [], os: [] })
     })
 
     it("returns monthly rolled up report across daily snapshots", async () => {
@@ -502,6 +597,7 @@ describe("opensearch-traffic.service", () => {
         topPaths: [],
         errorPaths: [],
         topIps: [],
+        audience: { device: [], browser: [], os: [] },
       })
       expect(
         mockPrisma.appHostingDailyTrafficSnapshot.upsert
