@@ -18,6 +18,7 @@ import {
   Question,
 } from "@phosphor-icons/react"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
@@ -114,6 +115,8 @@ function StatCardSkeleton() {
 export default function PortalWhatsAppDashboardPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessagesForMaybeLocale(params?.lang).console.whatsapp
+    .overview
 
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")
@@ -231,11 +234,8 @@ export default function PortalWhatsAppDashboardPage() {
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">WhatsApp Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Central mission control for WhatsApp Business devices, traffic, and
-            daily operations.
-          </p>
+          <h1 className="text-2xl font-semibold">{messages.heading}</h1>
+          <p className="text-sm text-muted-foreground">{messages.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -246,7 +246,7 @@ export default function PortalWhatsAppDashboardPage() {
           >
             <Button variant="outline" size="sm">
               <Megaphone className="mr-1.5 size-4" />
-              Broadcast
+              {messages.actions.broadcast}
             </Button>
           </Link>
           <Link
@@ -257,7 +257,7 @@ export default function PortalWhatsAppDashboardPage() {
           >
             <Button size="sm">
               <Plus className="mr-1.5 size-4" />
-              Add Device
+              {messages.actions.addDevice}
             </Button>
           </Link>
         </div>
@@ -293,7 +293,7 @@ export default function PortalWhatsAppDashboardPage() {
               <Card className="h-full transition-colors group-hover:border-primary/50 group-hover:bg-muted/20">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Total Device
+                    {messages.stats.totalDevice}
                   </CardTitle>
                   <DeviceMobile
                     className="size-4 text-muted-foreground transition-colors group-hover:text-primary"
@@ -307,11 +307,12 @@ export default function PortalWhatsAppDashboardPage() {
                   <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className="inline-flex items-center text-emerald-600 dark:text-emerald-400">
                       <span className="mr-1 size-1.5 rounded-full bg-emerald-500" />
-                      {health.connected} Online
+                      {health.connected} {messages.stats.online}
                     </span>
                     {(health.disconnected > 0 || health.unknown > 0) && (
                       <span className="inline-flex items-center text-amber-600 dark:text-amber-400">
-                        • {health.disconnected + health.unknown} Attention
+                        • {health.disconnected + health.unknown}{" "}
+                        {messages.stats.attention}
                       </span>
                     )}
                   </p>
@@ -330,7 +331,7 @@ export default function PortalWhatsAppDashboardPage() {
               <Card className="h-full transition-colors group-hover:border-primary/50 group-hover:bg-muted/20">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Monthly Message (In / Out)
+                    {messages.stats.monthlyMessage}
                   </CardTitle>
                   <PaperPlaneTilt
                     className="size-4 text-muted-foreground transition-colors group-hover:text-primary"
@@ -341,16 +342,16 @@ export default function PortalWhatsAppDashboardPage() {
                   <div className="text-2xl font-bold">
                     {monthlyIn.toLocaleString()}{" "}
                     <span className="text-sm font-normal text-muted-foreground">
-                      In
+                      {messages.stats.in}
                     </span>{" "}
                     / {monthlyOut.toLocaleString()}{" "}
                     <span className="text-sm font-normal text-muted-foreground">
-                      Out
+                      {messages.stats.out}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {(monthlyIn + monthlyOut).toLocaleString()} Total messages
-                    this cycle
+                    {(monthlyIn + monthlyOut).toLocaleString()}{" "}
+                    {messages.stats.totalMessagesThisCycle}
                   </p>
                 </CardContent>
               </Card>
@@ -367,7 +368,7 @@ export default function PortalWhatsAppDashboardPage() {
               <Card className="h-full transition-colors group-hover:border-primary/50 group-hover:bg-muted/20">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Daily Message (In / Out)
+                    {messages.stats.dailyMessage}
                   </CardTitle>
                   <ChatCircle
                     className="size-4 text-muted-foreground transition-colors group-hover:text-primary"
@@ -378,15 +379,16 @@ export default function PortalWhatsAppDashboardPage() {
                   <div className="text-2xl font-bold">
                     {dailyIn.toLocaleString()}{" "}
                     <span className="text-sm font-normal text-muted-foreground">
-                      In
+                      {messages.stats.in}
                     </span>{" "}
                     / {dailyOut.toLocaleString()}{" "}
                     <span className="text-sm font-normal text-muted-foreground">
-                      Out
+                      {messages.stats.out}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {(dailyIn + dailyOut).toLocaleString()} Messages today
+                    {(dailyIn + dailyOut).toLocaleString()}{" "}
+                    {messages.stats.messagesToday}
                   </p>
                 </CardContent>
               </Card>
@@ -403,7 +405,7 @@ export default function PortalWhatsAppDashboardPage() {
               <Card className="h-full transition-colors group-hover:border-primary/50 group-hover:bg-muted/20">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Total PAYG Spending
+                    {messages.stats.totalPaygSpending}
                   </CardTitle>
                   <CurrencyDollar
                     className="size-4 text-muted-foreground transition-colors group-hover:text-primary"
@@ -415,7 +417,7 @@ export default function PortalWhatsAppDashboardPage() {
                     {formatCurrency(totalPaygSpending)}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Accumulated meter spend
+                    {messages.stats.accumulatedMeterSpend}
                   </p>
                 </CardContent>
               </Card>
@@ -431,10 +433,10 @@ export default function PortalWhatsAppDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">
-                  Messages by Category
+                  {messages.categories.heading}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Breakdown across 4 Meta conversation billing types.
+                  {messages.categories.subheading}
                 </p>
               </div>
               <TooltipProvider delayDuration={150}>
@@ -448,9 +450,7 @@ export default function PortalWhatsAppDashboardPage() {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="left" className="max-w-xs text-xs">
-                    Meta classifies conversation traffic into Marketing,
-                    Utility, Authentication, and Service with different unit
-                    pricing rules.
+                    {messages.categories.tooltip}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -507,9 +507,11 @@ export default function PortalWhatsAppDashboardPage() {
           {/* Quick Operations */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Quick Operations</CardTitle>
+              <CardTitle className="text-base">
+                {messages.quickOps.heading}
+              </CardTitle>
               <p className="text-xs text-muted-foreground">
-                Routine operational tasks and configuration shortcuts.
+                {messages.quickOps.subheading}
               </p>
             </CardHeader>
             <CardContent className="grid gap-2">
@@ -523,14 +525,16 @@ export default function PortalWhatsAppDashboardPage() {
                 <div className="flex items-center gap-2.5">
                   <DeviceMobile className="size-4 text-primary" />
                   <div>
-                    <div className="font-medium">Register Device</div>
+                    <div className="font-medium">
+                      {messages.quickOps.registerDevice.title}
+                    </div>
                     <div className="text-xs text-muted-foreground">
-                      Add a new WhatsApp Business phone number
+                      {messages.quickOps.registerDevice.desc}
                     </div>
                   </div>
                 </div>
                 <span className="text-xs font-medium text-primary">
-                  Add &rarr;
+                  {messages.quickOps.registerDevice.cta}
                 </span>
               </Link>
 
@@ -544,14 +548,16 @@ export default function PortalWhatsAppDashboardPage() {
                 <div className="flex items-center gap-2.5">
                   <ArrowsClockwise className="size-4 text-primary" />
                   <div>
-                    <div className="font-medium">Message Templates</div>
+                    <div className="font-medium">
+                      {messages.quickOps.messageTemplates.title}
+                    </div>
                     <div className="text-xs text-muted-foreground">
-                      Sync or compose Meta-approved HSM templates
+                      {messages.quickOps.messageTemplates.desc}
                     </div>
                   </div>
                 </div>
                 <span className="text-xs font-medium text-primary">
-                  Manage &rarr;
+                  {messages.quickOps.messageTemplates.cta}
                 </span>
               </Link>
 
@@ -565,14 +571,16 @@ export default function PortalWhatsAppDashboardPage() {
                 <div className="flex items-center gap-2.5">
                   <Megaphone className="size-4 text-primary" />
                   <div>
-                    <div className="font-medium">Launch Broadcast</div>
+                    <div className="font-medium">
+                      {messages.quickOps.launchBroadcast.title}
+                    </div>
                     <div className="text-xs text-muted-foreground">
-                      Send bulk campaigns to targeted contact groups
+                      {messages.quickOps.launchBroadcast.desc}
                     </div>
                   </div>
                 </div>
                 <span className="text-xs font-medium text-primary">
-                  Create &rarr;
+                  {messages.quickOps.launchBroadcast.cta}
                 </span>
               </Link>
 
@@ -586,14 +594,16 @@ export default function PortalWhatsAppDashboardPage() {
                 <div className="flex items-center gap-2.5">
                   <Key className="size-4 text-primary" />
                   <div>
-                    <div className="font-medium">API Keys &amp; Webhooks</div>
+                    <div className="font-medium">
+                      {messages.quickOps.apiKeys.title}
+                    </div>
                     <div className="text-xs text-muted-foreground">
-                      Inspect inbound webhooks and organization credentials
+                      {messages.quickOps.apiKeys.desc}
                     </div>
                   </div>
                 </div>
                 <span className="text-xs font-medium text-primary">
-                  Inspect &rarr;
+                  {messages.quickOps.apiKeys.cta}
                 </span>
               </Link>
             </CardContent>
@@ -602,19 +612,22 @@ export default function PortalWhatsAppDashboardPage() {
           {/* Device Health & Attention Alerts */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Device Attention</CardTitle>
+              <CardTitle className="text-base">
+                {messages.deviceAttention.heading}
+              </CardTitle>
               <p className="text-xs text-muted-foreground">
-                Devices requiring administrator review or reconnection.
+                {messages.deviceAttention.subheading}
               </p>
             </CardHeader>
             <CardContent>
               {alertDevices.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-6 text-center">
                   <CheckCircle className="mb-2 size-8 text-emerald-500" />
-                  <p className="text-sm font-medium">All devices healthy</p>
+                  <p className="text-sm font-medium">
+                    {messages.deviceAttention.allHealthyTitle}
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    Every registered WhatsApp phone number is connected and
-                    responsive.
+                    {messages.deviceAttention.allHealthyDesc}
                   </p>
                 </div>
               ) : (
@@ -659,7 +672,7 @@ export default function PortalWhatsAppDashboardPage() {
                               variant="ghost"
                               className="h-7 px-2 text-xs"
                             >
-                              Fix
+                              {messages.deviceAttention.fixButton}
                             </Button>
                           </Link>
                         </div>
@@ -674,7 +687,9 @@ export default function PortalWhatsAppDashboardPage() {
                       })}
                       className="block pt-1 text-center text-xs text-primary underline-offset-4 hover:underline"
                     >
-                      View all {alertDevices.length} flagged devices &rarr;
+                      {messages.deviceAttention.viewAllPrefix}{" "}
+                      {alertDevices.length}{" "}
+                      {messages.deviceAttention.viewAllSuffix}
                     </Link>
                   )}
                 </div>
@@ -689,10 +704,11 @@ export default function PortalWhatsAppDashboardPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Plugs className="mb-4 size-12 text-muted-foreground" />
-            <h3 className="mb-1 text-lg font-medium">No data yet</h3>
+            <h3 className="mb-1 text-lg font-medium">
+              {messages.emptyState.title}
+            </h3>
             <p className="max-w-md text-sm text-muted-foreground">
-              Once your WhatsApp devices are connected and start sending
-              messages, dashboard metrics will appear here.
+              {messages.emptyState.description}
             </p>
           </CardContent>
         </Card>
