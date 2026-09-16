@@ -4454,7 +4454,7 @@ export type AppMessages = {
       amount: string
       noInvoices: string
 
-      pdf?: InvoicePdfMessages
+      pdf: InvoicePdfMessages
     }
     vpn: {
       myServices: {
