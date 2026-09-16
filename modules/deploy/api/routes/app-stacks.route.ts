@@ -333,11 +333,20 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
             },
           })
         : null
+      const defaultCluster =
+        !stack.cluster && prisma.appHostingCluster?.findFirst
+          ? await prisma.appHostingCluster.findFirst({
+              where: { status: "ACTIVE", isDefault: true },
+              include: { region: true },
+            })
+          : null
+
       return {
         ok: true,
         data: {
           stack: toStackSummaryDTO({
             ...stack,
+            cluster: stack.cluster ?? defaultCluster,
             catalogPlan,
             events: latestDeployment?.events ?? [],
           }),
