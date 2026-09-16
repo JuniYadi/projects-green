@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { eden } from "@/lib/eden"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type SessionRow = {
@@ -65,6 +66,7 @@ export default function PortalAiSessionsPage() {
   const params = useParams()
   const lang = typeof params?.lang === "string" ? params.lang : "en"
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessagesForMaybeLocale(lang).console.aiSessions
 
   const [data, setData] = useState<SessionsResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -117,16 +119,15 @@ export default function PortalAiSessionsPage() {
               href={localizePathname({ pathname: "/portal/ai", locale })}
               className="text-sm font-medium text-muted-foreground hover:text-foreground"
             >
-              AI Governance
+              {messages.breadcrumbGovernance}
             </Link>
             <span className="text-muted-foreground">/</span>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Sessions Explorer
+              {messages.heading}
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Search, filter, and drill down into all AI chat sessions across
-            console, WhatsApp, and web livechat.
+            {messages.description}
           </p>
         </div>
       </header>
@@ -142,14 +143,14 @@ export default function PortalAiSessionsPage() {
               <div className="relative max-w-sm flex-1">
                 <MagnifyingGlass className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search Email, Org, IP, Phone, or Session ID..."
+                  placeholder={messages.searchPlaceholder}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-8"
                 />
               </div>
               <Button type="submit" size="sm" variant="secondary">
-                Search
+                {messages.searchButton}
               </Button>
             </div>
 
@@ -162,14 +163,20 @@ export default function PortalAiSessionsPage() {
                 }}
               >
                 <SelectTrigger className="h-9 w-[140px]">
-                  <SelectValue placeholder="Channel" />
+                  <SelectValue placeholder={messages.channelPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All Channels</SelectItem>
-                  <SelectItem value="CONSOLE">Console</SelectItem>
+                  <SelectItem value="ALL">{messages.allChannels}</SelectItem>
+                  <SelectItem value="CONSOLE">
+                    {messages.channelConsole}
+                  </SelectItem>
                   <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
-                  <SelectItem value="WEB_LIVECHAT">Web Livechat</SelectItem>
-                  <SelectItem value="TELEGRAM">Telegram</SelectItem>
+                  <SelectItem value="WEB_LIVECHAT">
+                    {messages.channelWebLivechat}
+                  </SelectItem>
+                  <SelectItem value="TELEGRAM">
+                    {messages.channelTelegram}
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
@@ -181,12 +188,14 @@ export default function PortalAiSessionsPage() {
                 }}
               >
                 <SelectTrigger className="h-9 w-[130px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={messages.statusPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All Status</SelectItem>
-                  <SelectItem value="CLEAN">Clean Only</SelectItem>
-                  <SelectItem value="FLAGGED">Flagged Only</SelectItem>
+                  <SelectItem value="ALL">{messages.allStatus}</SelectItem>
+                  <SelectItem value="CLEAN">{messages.cleanOnly}</SelectItem>
+                  <SelectItem value="FLAGGED">
+                    {messages.flaggedOnly}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -200,15 +209,23 @@ export default function PortalAiSessionsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Session ID</TableHead>
-                <TableHead>User / Caller</TableHead>
-                <TableHead>Organization</TableHead>
-                <TableHead>Channel</TableHead>
-                <TableHead className="text-center">Messages</TableHead>
-                <TableHead className="text-right">Tokens</TableHead>
-                <TableHead className="text-center">Strikes</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>{messages.thSessionId}</TableHead>
+                <TableHead>{messages.thUserCaller}</TableHead>
+                <TableHead>{messages.thOrganization}</TableHead>
+                <TableHead>{messages.thChannel}</TableHead>
+                <TableHead className="text-center">
+                  {messages.thMessages}
+                </TableHead>
+                <TableHead className="text-right">
+                  {messages.thTokens}
+                </TableHead>
+                <TableHead className="text-center">
+                  {messages.thStrikes}
+                </TableHead>
+                <TableHead>{messages.thCreated}</TableHead>
+                <TableHead className="text-right">
+                  {messages.thAction}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -218,7 +235,7 @@ export default function PortalAiSessionsPage() {
                     colSpan={9}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    Loading sessions...
+                    {messages.loadingSessions}
                   </TableCell>
                 </TableRow>
               ) : !data?.sessions || data.sessions.length === 0 ? (
@@ -227,7 +244,7 @@ export default function PortalAiSessionsPage() {
                     colSpan={9}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    No sessions found matching current filters.
+                    {messages.noSessionsFound}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -255,7 +272,7 @@ export default function PortalAiSessionsPage() {
                         </span>
                       ) : (
                         <Badge variant="outline" className="text-[10px]">
-                          Internal
+                          {messages.internalBadge}
                         </Badge>
                       )}
                     </TableCell>
@@ -273,7 +290,7 @@ export default function PortalAiSessionsPage() {
                     <TableCell className="text-center">
                       {s.strikeCount > 0 ? (
                         <Badge variant="destructive" className="text-[10px]">
-                          {s.strikeCount} Strike
+                          {s.strikeCount} {messages.strikeSuffix}
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">0</span>
@@ -294,7 +311,7 @@ export default function PortalAiSessionsPage() {
                           size="sm"
                           className="h-8 gap-1 text-xs"
                         >
-                          Inspect
+                          {messages.inspect}
                           <ArrowRight className="h-3 w-3" />
                         </Button>
                       </Link>
@@ -311,9 +328,10 @@ export default function PortalAiSessionsPage() {
       {data?.pagination && data.pagination.totalPages > 1 && (
         <div className="flex items-center justify-between px-2 text-xs text-muted-foreground">
           <div>
-            Showing {(page - 1) * data.pagination.limit + 1} to{" "}
-            {Math.min(page * data.pagination.limit, data.pagination.total)} of{" "}
-            {data.pagination.total} sessions
+            {messages.showing} {(page - 1) * data.pagination.limit + 1}{" "}
+            {messages.to}{" "}
+            {Math.min(page * data.pagination.limit, data.pagination.total)}{" "}
+            {messages.of} {data.pagination.total} {messages.sessionsUnit}
           </div>
           <div className="flex items-center gap-2">
             <Button
