@@ -4,6 +4,7 @@ import { TrafficSummaryCards } from "./traffic-summary-cards"
 import { TrafficHourlyChart } from "./traffic-hourly-chart"
 import { TrafficTopPagesCard } from "./traffic-top-pages-card"
 import { TrafficGeoCard } from "./traffic-geo-card"
+import { TrafficAudienceCard } from "./traffic-audience-card"
 
 describe("Frontend Traffic Components", () => {
   afterEach(() => {
@@ -180,6 +181,34 @@ describe("Frontend Traffic Components", () => {
       expect(
         view.getByText("Belum ada data client IP yang tercatat")
       ).toBeTruthy()
+    })
+  })
+
+  describe("TrafficAudienceCard", () => {
+    it("renders device, browser, and OS breakdowns", () => {
+      const view = render(
+        <TrafficAudienceCard
+          device={[{ label: "mobile", count: 700, percentage: 70 }]}
+          browser={[{ label: "Safari", count: 700, percentage: 70 }]}
+          os={[{ label: "iOS", count: 700, percentage: 70 }]}
+        />
+      )
+
+      expect(view.getByText("Perangkat")).toBeTruthy()
+      expect(view.getByText("mobile")).toBeTruthy()
+      expect(view.getByText("Browser")).toBeTruthy()
+      expect(view.getByText("Safari")).toBeTruthy()
+      expect(view.getByText("Sistem Operasi")).toBeTruthy()
+      expect(view.getByText("iOS")).toBeTruthy()
+      expect(view.getAllByText("70%").length).toBe(3)
+    })
+
+    it("renders an empty state per column when no data exists", () => {
+      const view = render(
+        <TrafficAudienceCard device={[]} browser={[]} os={[]} />
+      )
+
+      expect(view.getAllByText("Belum ada data").length).toBe(3)
     })
   })
 })
