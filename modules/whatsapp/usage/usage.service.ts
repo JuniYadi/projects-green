@@ -566,48 +566,97 @@ export class WhatsappUsageService {
       where.createdAt = dateFilter
     }
 
-    const [total, rows, summaryAgg, refundedAgg, basePrices] =
-      await Promise.all([
-        prisma.whatsappBillingLedger.count({ where }),
-        prisma.whatsappBillingLedger.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          skip,
-          take: limit,
-          include: {
-            whatsappDevice: {
-              select: {
-                phoneNumber: true,
-                whatsappProfile: true,
-              },
+    const [
+      total,
+      rows,
+      quotaActiveAgg,
+      quotaRefundedAgg,
+      paygActiveAgg,
+      paygRefundedAgg,
+      basePrices,
+    ] = await Promise.all([
+      prisma.whatsappBillingLedger.count({ where }),
+      prisma.whatsappBillingLedger.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: {
+          whatsappDevice: {
+            select: {
+              phoneNumber: true,
+              whatsappProfile: true,
             },
           },
-        }),
-        prisma.whatsappBillingLedger.aggregate({
-          where: {
-            ...(organizationId ? { organizationId } : {}),
-            isReverted: false,
-          },
-          _sum: { quotaValue: true },
-          _count: true,
-        }),
-        prisma.whatsappBillingLedger.aggregate({
-          where: {
-            ...(organizationId ? { organizationId } : {}),
-            isReverted: true,
-          },
-          _sum: { quotaValue: true },
-          _count: true,
-        }),
-        prisma.whatsappBasePrice.findMany({
-          where: { isActive: true },
-          orderBy: { effectiveFrom: "desc" },
-        }),
-      ])
-    const totalCredits =
-      toNum(summaryAgg._sum.quotaValue ?? 0) +
-      toNum(refundedAgg._sum.quotaValue ?? 0)
-    const totalRefundedCredits = toNum(refundedAgg._sum.quotaValue ?? 0)
+        },
+      }),
+      prisma.whatsappBillingLedger.aggregate({
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: false,
+          OR: [{ pricingBillable: false }, { pricingBillable: null }],
+        },
+        _sum: { quotaValue: true },
+        _count: true,
+      }),
+      prisma.whatsappBillingLedger.aggregate({
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: true,
+          OR: [{ pricingBillable: false }, { pricingBillable: null }],
+        },
+        _sum: { quotaValue: true },
+        _count: true,
+      }),
+      prisma.whatsappBillingLedger.findMany({
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: false,
+          pricingBillable: true,
+        },
+        select: { category: true, pricingCategory: true, quotaValue: true },
+      }),
+      prisma.whatsappBillingLedger.findMany({
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: true,
+          pricingBillable: true,
+        },
+        select: { category: true, pricingCategory: true, quotaValue: true },
+      }),
+      prisma.whatsappBasePrice.findMany({
+        where: { isActive: true },
+        orderBy: { effectiveFrom: "desc" },
+      }),
+    ])
+
+    const activeQuotaCredits = toNum(quotaActiveAgg._sum.quotaValue ?? 0)
+    const quotaRefundedCredits = toNum(quotaRefundedAgg._sum.quotaValue ?? 0)
+    const quotaCredits = activeQuotaCredits + quotaRefundedCredits
+
+    let paygAmount = 0
+    const paygCount = paygActiveAgg.length
+    for (const item of paygActiveAgg) {
+      const cat = (item.pricingCategory || item.category || "UTILITY").toUpperCase()
+      const bp = basePrices.find((p) => p.category === cat) ?? basePrices.find((p) => p.category === "UTILITY")
+      const price = bp ? toNum(bp.basePrice) : 357
+      paygAmount += price * toNum(item.quotaValue || 1)
+    }
+
+    let paygRefundedAmount = 0
+    const paygRefundedCount = paygRefundedAgg.length
+    for (const item of paygRefundedAgg) {
+      const cat = (item.pricingCategory || item.category || "UTILITY").toUpperCase()
+      const bp = basePrices.find((p) => p.category === cat) ?? basePrices.find((p) => p.category === "UTILITY")
+      const price = bp ? toNum(bp.basePrice) : 357
+      paygRefundedAmount += price * toNum(item.quotaValue || 1)
+    }
+
+    const totalCredits = quotaCredits + paygCount + paygRefundedCount
+    const totalRefundedCredits = quotaRefundedCredits + paygRefundedCount
+    const activeCredits = activeQuotaCredits + paygCount
+    const activePaygAmount = Math.max(0, paygAmount)
+    const activePaygCount = Math.max(0, paygCount)
 
     return {
       data: rows.map((r) => {
@@ -667,6 +716,15 @@ export class WhatsappUsageService {
         totalRefundedCredits: Math.round(totalRefundedCredits * 100) / 100,
         activeCredits:
           Math.round((totalCredits - totalRefundedCredits) * 100) / 100,
+        quotaCredits: Math.round(quotaCredits * 100) / 100,
+        quotaRefundedCredits: Math.round(quotaRefundedCredits * 100) / 100,
+        activeQuotaCredits: Math.round(activeQuotaCredits * 100) / 100,
+        paygAmount: Math.round(paygAmount),
+        paygRefundedAmount: Math.round(paygRefundedAmount),
+        activePaygAmount: Math.round(activePaygAmount),
+        paygCount,
+        paygRefundedCount,
+        activePaygCount,
       },
     }
   }

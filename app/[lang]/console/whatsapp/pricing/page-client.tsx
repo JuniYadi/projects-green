@@ -148,6 +148,15 @@ export default function WhatsAppPricingPage() {
     totalCredits: 0,
     totalRefundedCredits: 0,
     activeCredits: 0,
+    quotaCredits: 0,
+    quotaRefundedCredits: 0,
+    activeQuotaCredits: 0,
+    paygAmount: 0,
+    paygRefundedAmount: 0,
+    activePaygAmount: 0,
+    paygCount: 0,
+    paygRefundedCount: 0,
+    activePaygCount: 0,
   })
   const [ledgerTotal, setLedgerTotal] = React.useState(0)
   const [page, setPage] = React.useState(1)
@@ -1047,54 +1056,86 @@ export default function WhatsAppPricingPage() {
 
         {/* TAB 3: AUDIT LEDGER */}
         <TabsContent value="ledger" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-xs">
-                  <WhatsAppText id="s105" />
+                  {isIndonesian ? "Kuota Paket Terpakai" : "Package Quota Used"}
                 </CardDescription>
                 <CardTitle className="text-xl font-bold">
-                  {ledgerSummary.totalCredits.toLocaleString()}{" "}
+                  {(
+                    ledgerSummary.activeQuotaCredits ??
+                    ledgerSummary.activeCredits
+                  ).toLocaleString("id-ID")}{" "}
                   {isIndonesian ? "Kredit" : "Credits"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-[11px] text-muted-foreground">
-                  <WhatsAppText id="s106" />
+                  {isIndonesian
+                    ? `Total ${(ledgerSummary.quotaCredits ?? ledgerSummary.totalCredits).toLocaleString("id-ID")} dipotong, ${(ledgerSummary.quotaRefundedCredits ?? ledgerSummary.totalRefundedCredits).toLocaleString("id-ID")} dikembalikan`
+                    : `Total ${(ledgerSummary.quotaCredits ?? ledgerSummary.totalCredits).toLocaleString("id-ID")} deducted, ${(ledgerSummary.quotaRefundedCredits ?? ledgerSummary.totalRefundedCredits).toLocaleString("id-ID")} refunded`}
                 </p>
               </CardContent>
             </Card>
+
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-xs">
-                  {isIndonesian ? "Kredit Dikembalikan" : "Refunded / Reverted"}
+                  {isIndonesian ? "Biaya PAYG Saldo" : "PAYG Saldo Charges"}
                 </CardDescription>
-                <CardTitle className="text-xl font-bold text-amber-500">
-                  {ledgerSummary.totalRefundedCredits.toLocaleString()}{" "}
-                  {isIndonesian ? "Kredit" : "Credits"}
+                <CardTitle className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                  Rp{" "}
+                  {(ledgerSummary.activePaygAmount ?? 0).toLocaleString(
+                    "id-ID"
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-[11px] text-muted-foreground">
-                  <WhatsAppText id="s107" />
+                  {isIndonesian
+                    ? `${(ledgerSummary.activePaygCount ?? 0).toLocaleString("id-ID")} pesan ditagihkan ke Saldo`
+                    : `${(ledgerSummary.activePaygCount ?? 0).toLocaleString("id-ID")} messages billed to Balance`}
                 </p>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="text-xs">
+                  {isIndonesian ? "Total Dikembalikan / Revert" : "Refunded / Reverted"}
+                </CardDescription>
+                <CardTitle className="text-xl font-bold text-amber-500">
+                  {ledgerSummary.totalRefundedCredits.toLocaleString("id-ID")}{" "}
+                  {isIndonesian ? "Pesan" : "Messages"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-[11px] text-muted-foreground">
+                  {isIndonesian
+                    ? `${(ledgerSummary.quotaRefundedCredits ?? 0).toLocaleString("id-ID")} kuota + Rp ${(ledgerSummary.paygRefundedAmount ?? 0).toLocaleString("id-ID")} saldo`
+                    : `${(ledgerSummary.quotaRefundedCredits ?? 0).toLocaleString("id-ID")} quota + Rp ${(ledgerSummary.paygRefundedAmount ?? 0).toLocaleString("id-ID")} balance`}
+                </p>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-xs">
                   {isIndonesian
                     ? "Total Pemakaian Bersih"
-                    : "Net Billed Credits"}
+                    : "Net Active Messages"}
                 </CardDescription>
-                <CardTitle className="text-xl font-bold text-emerald-600">
-                  {ledgerSummary.activeCredits.toLocaleString()}{" "}
-                  {isIndonesian ? "Kredit" : "Credits"}
+                <CardTitle className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {ledgerSummary.activeCredits.toLocaleString("id-ID")}{" "}
+                  {isIndonesian ? "Pesan" : "Messages"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-[11px] text-muted-foreground">
-                  <WhatsAppText id="s108" />
+                  {isIndonesian
+                    ? `${(ledgerSummary.activeQuotaCredits ?? 0).toLocaleString("id-ID")} kuota + ${(ledgerSummary.activePaygCount ?? 0).toLocaleString("id-ID")} PAYG`
+                    : `${(ledgerSummary.activeQuotaCredits ?? 0).toLocaleString("id-ID")} quota + ${(ledgerSummary.activePaygCount ?? 0).toLocaleString("id-ID")} PAYG`}
                 </p>
               </CardContent>
             </Card>

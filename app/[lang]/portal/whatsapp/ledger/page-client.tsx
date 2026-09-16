@@ -67,6 +67,15 @@ interface LedgerSummary {
   totalCredits: number
   totalRefundedCredits: number
   activeCredits: number
+  quotaCredits?: number
+  quotaRefundedCredits?: number
+  activeQuotaCredits?: number
+  paygAmount?: number
+  paygRefundedAmount?: number
+  activePaygAmount?: number
+  paygCount?: number
+  paygRefundedCount?: number
+  activePaygCount?: number
 }
 
 interface OrganizationOption {
@@ -358,11 +367,11 @@ export default function PortalWhatsAppLedgerPage() {
       </header>
 
       {/* Summary KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Deducted Units
+              Package Quota Used
             </CardTitle>
             <Receipt className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -372,10 +381,20 @@ export default function PortalWhatsAppLedgerPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold">
-                  {summary.totalCredits.toLocaleString()}
+                  {(
+                    summary.activeQuotaCredits ?? summary.activeCredits
+                  ).toLocaleString("id-ID")}{" "}
+                  credits
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Total quota units / messages recorded
+                  {(
+                    summary.quotaCredits ?? summary.totalCredits
+                  ).toLocaleString("id-ID")}{" "}
+                  deducted,{" "}
+                  {(
+                    summary.quotaRefundedCredits ?? summary.totalRefundedCredits
+                  ).toLocaleString("id-ID")}{" "}
+                  refunded
                 </p>
               </>
             )}
@@ -385,7 +404,31 @@ export default function PortalWhatsAppLedgerPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Active Charges
+              PAYG Saldo Charges
+            </CardTitle>
+            <Tag className="size-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            {state === "loading" ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                  Rp {(summary.activePaygAmount ?? 0).toLocaleString("id-ID")}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {(summary.activePaygCount ?? 0).toLocaleString("id-ID")}{" "}
+                  messages billed to Saldo
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Net Active Messages
             </CardTitle>
             <CheckCircle className="size-4 text-emerald-500" />
           </CardHeader>
@@ -395,10 +438,12 @@ export default function PortalWhatsAppLedgerPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {summary.activeCredits.toLocaleString()}
+                  {summary.activeCredits.toLocaleString("id-ID")}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Net active billed quota units
+                  {(summary.activeQuotaCredits ?? 0).toLocaleString("id-ID")}{" "}
+                  quota + {(summary.activePaygCount ?? 0).toLocaleString("id-ID")}{" "}
+                  PAYG
                 </p>
               </>
             )}
@@ -418,10 +463,13 @@ export default function PortalWhatsAppLedgerPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                  {summary.totalRefundedCredits.toLocaleString()}
+                  {summary.totalRefundedCredits.toLocaleString("id-ID")}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Units restored due to delivery failures
+                  {(summary.quotaRefundedCredits ?? 0).toLocaleString("id-ID")}{" "}
+                  quota + Rp{" "}
+                  {(summary.paygRefundedAmount ?? 0).toLocaleString("id-ID")}{" "}
+                  balance
                 </p>
               </>
             )}
