@@ -802,19 +802,46 @@ export class AiSourceInspectionService {
       subdir: source.subdir ?? undefined,
     } satisfies FrameworkDetectionInput)
 
-    if (result.decision.message !== POLICY_UNAVAILABLE_MESSAGE) {
-      return result
+    let finalResult = result
+    if (result.decision.message === POLICY_UNAVAILABLE_MESSAGE) {
+      const rules = (await this.db.detectorRule.findMany({
+        where: { isActive: true },
+        orderBy: { priority: "desc" },
+      })) as DetectorRuleRecord[]
+
+      finalResult = {
+        ...result,
+        decision: evaluateSupportDecision(result, rules),
+      }
     }
 
-    const rules = (await this.db.detectorRule.findMany({
-      where: { isActive: true },
-      orderBy: { priority: "desc" },
-    })) as DetectorRuleRecord[]
-
-    return {
-      ...result,
-      decision: evaluateSupportDecision(result, rules),
+    if (!finalResult.inspectionLogId && this.db.detectorInspectionLog) {
+      try {
+        const log = await this.db.detectorInspectionLog.create({
+          data: {
+            repoUrl: source.url,
+            ref: source.ref ?? null,
+            detectedFramework: finalResult.primaryFramework?.id ?? null,
+            confidence: finalResult.confidence,
+            reasoning: finalResult.primaryFramework?.reasons ?? [],
+            warnings: finalResult.warnings ?? [],
+            status: finalResult.decision.status,
+            errorMessage:
+              finalResult.decision.status !== "success"
+                ? finalResult.decision.message
+                : null,
+          },
+        })
+        finalResult = {
+          ...finalResult,
+          inspectionLogId: log.id,
+        }
+      } catch {
+        // Non-fatal logging failure
+      }
     }
+
+    return finalResult
   }
 
   private getDecisionReason(

@@ -123,10 +123,49 @@ export function AiAgentIntake({
           | {
               status?: string
               access?: { state?: string; displayLabel?: string }
+              detection?: {
+                primaryFramework?: { id?: string; name?: string }
+                confidence?: number
+                decision?: {
+                  status?: string
+                  message?: string
+                  isLaunchable?: boolean
+                }
+              }
+              decision?: {
+                status?: string
+                message?: string
+                isLaunchable?: boolean
+              }
+              session?: {
+                status?: string
+                blockedReason?: string
+              }
+              source?: {
+                ref?: string
+                subdir?: string
+              }
               [key: string]: unknown
             }
           | undefined
         setInspectionResult(payload ?? null)
+
+        const isLaunchBlocked =
+          payload?.detection?.decision?.isLaunchable === false ||
+          payload?.decision?.isLaunchable === false ||
+          payload?.session?.status === "BLOCKED" ||
+          payload?.status === "blocked"
+
+        if (isLaunchBlocked) {
+          setAccessState("error")
+          setAccessMessage(
+            payload?.detection?.decision?.message ||
+              payload?.decision?.message ||
+              payload?.session?.blockedReason ||
+              "Framework is not currently supported for automated deployment."
+          )
+          return
+        }
 
         if (payload?.access?.state === "public") {
           setAccessState("public")
@@ -219,10 +258,14 @@ export function AiAgentIntake({
   }, [url, handleInspectUrl, refreshRepos])
 
   const handleContinue = () => {
+    const detectedBranch =
+      ((inspectionResult?.source as Record<string, unknown> | undefined)
+        ?.ref as string | undefined) || "main"
+
     onSourceVerified(
       {
         url: url.trim(),
-        branch: "main",
+        branch: detectedBranch,
         rootDir: "./",
         isPrivate: accessState !== "public",
       },

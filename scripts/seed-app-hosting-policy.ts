@@ -105,7 +105,7 @@ const POLICIES: LaunchPolicy[] = [
     },
     implicationsJson: {
       impact: "LAUNCH",
-      minConfidence: 0.65,
+      minConfidence: 0.55,
       framework: "react",
       ecosystem: "node",
       defaultPort: 3000,

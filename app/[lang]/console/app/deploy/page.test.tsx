@@ -573,4 +573,198 @@ describe("DeployPage Client", () => {
     expect(view.getByText("APP_KEY")).toBeTruthy()
     expect(view.getByText("DB_CONNECTION")).toBeTruthy()
   })
+
+  it("correctly resolves Vite React with tailored VITE_APP_URL and preview start command", async () => {
+    const mockViteInspectResponse = {
+      ok: true,
+      data: {
+        status: "plan_ready",
+        access: {
+          state: "public",
+          displayLabel: "Public GitHub repository",
+        },
+        source: {
+          url: "https://github.com/pfnapp/example-vite-react",
+          host: "github.com",
+          owner: "pfnapp",
+          repo: "example-vite-react",
+          ref: "main",
+          subdir: "./",
+        },
+        detection: {
+          primaryFramework: {
+            id: "react",
+            name: "React",
+            ecosystem: "node",
+            confidence: 0.6,
+            reasons: ["package.json is present", "react dependency is present"],
+          },
+          requiredDependencies: [
+            { id: "node", name: "Node.js", version: "20", kind: "runtime" },
+          ],
+          alternatives: [],
+          confidence: 0.6,
+          decision: {
+            status: "success",
+            message: "Ready to deploy.",
+            isLaunchable: true,
+          },
+          evidence: [],
+          warnings: [],
+          source: {
+            repoUrl: "https://github.com/pfnapp/example-vite-react",
+            ref: "main",
+          },
+          frameworkVersion: "19.1",
+          defaultPort: 3000,
+          enforcedRuntimes: [],
+        },
+        plan: {
+          version: 1,
+          source: {
+            kind: "git",
+            url: "https://github.com/pfnapp/example-vite-react",
+            ref: "main",
+          },
+          access: { state: "public" },
+          detection: {
+            runtime: "node",
+            framework: "react",
+            version: "19.1",
+            commands: [],
+            port: 3000,
+            confidence: 0.6,
+            evidence: [],
+          },
+          resources: { package: "medium", cpu: 500, memory: 1024 },
+          domain: { mode: "auto", hostname: "example-vite-react", tls: true },
+        },
+        session: { id: "sess-vite" },
+      },
+    }
+
+    mockFetch.mockImplementation(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/deploy/ai-sessions/inspect")) {
+          return new Response(JSON.stringify(mockViteInspectResponse), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    )
+
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
+    const input = view.getByPlaceholderText(
+      "https://github.com/organization/repository"
+    )
+
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "https://github.com/pfnapp/example-vite-react" },
+      })
+      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+    })
+
+    await act(async () => {
+      fireEvent.click(
+        view.getByRole("button", { name: /review ai blueprint/i })
+      )
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("VITE_APP_URL")).toBeTruthy()
+      expect(view.queryByText("NEXT_PUBLIC_APP_URL")).toBeNull()
+      expect(view.getByDisplayValue("pnpm run preview")).toBeTruthy()
+    })
+  })
+
+  it("shows inspection failure banner when framework is blocked or unsupported by detector rule", async () => {
+    const mockUnsupportedResponse = {
+      ok: true,
+      data: {
+        status: "blocked",
+        access: {
+          state: "public",
+          displayLabel: "Public GitHub repository",
+        },
+        source: {
+          url: "https://github.com/unknown/unsupported-app",
+          host: "github.com",
+          owner: "unknown",
+          repo: "unsupported-app",
+          ref: "main",
+          subdir: "./",
+        },
+        detection: {
+          primaryFramework: {
+            id: "ruby",
+            name: "Ruby on Rails",
+            ecosystem: "ruby",
+            confidence: 0.9,
+          },
+          confidence: 0.9,
+          decision: {
+            status: "unsupported",
+            message:
+              "Your framework was detected as Ruby on Rails, but we currently only support laravel, nextjs.",
+            isLaunchable: false,
+          },
+        },
+        session: {
+          id: "sess-blocked",
+          status: "BLOCKED",
+          blockedReason:
+            "Your framework was detected as Ruby on Rails, but we currently only support laravel, nextjs.",
+        },
+      },
+    }
+
+    mockFetch.mockImplementation(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/deploy/ai-sessions/inspect")) {
+          return new Response(JSON.stringify(mockUnsupportedResponse), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    )
+
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
+    const input = view.getByPlaceholderText(
+      "https://github.com/organization/repository"
+    )
+
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "https://github.com/unknown/unsupported-app" },
+      })
+      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Inspection Failed")).toBeTruthy()
+      expect(
+        view.getByText(
+          /Your framework was detected as Ruby on Rails, but we currently only support laravel, nextjs./i
+        )
+      ).toBeTruthy()
+      expect(view.queryByText("Review AI Blueprint")).toBeNull()
+    })
+  })
 })
