@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "AppHostingDailyTrafficSnapshot" ADD COLUMN IF NOT EXISTS "status2xxCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "AppHostingDailyTrafficSnapshot" ADD COLUMN IF NOT EXISTS "status3xxCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "AppHostingDailyTrafficSnapshot" ADD COLUMN IF NOT EXISTS "status4xxCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "AppHostingDailyTrafficSnapshot" ADD COLUMN IF NOT EXISTS "status5xxCount" INTEGER NOT NULL DEFAULT 0;

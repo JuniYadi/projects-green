@@ -16,6 +16,7 @@ import type {
   TrafficCountryCount,
   TrafficErrorPath,
   TrafficPathCount,
+  TrafficRequestQuality,
   TrafficTrendItem,
 } from "./opensearch-traffic.types"
 
@@ -117,6 +118,39 @@ export function computeTopCountries(
           : 0,
     }))
     .sort((a, b) => b.requests - a.requests)
+}
+
+/**
+ * Builds the period-wide request-quality breakdown. Percentages are against
+ * the sum of the 4 buckets, not totalRequests -- so a period mixing fresh
+ * (evidenced) data with pre-migration snapshots (no breakdown recorded)
+ * doesn't get its ratios diluted by the unevidenced volume. hasBreakdown is
+ * false only when nothing in the period was ever measured.
+ */
+export function computeRequestQuality(
+  rawStatus2xx: number,
+  rawStatus3xx: number,
+  rawStatus4xx: number,
+  rawStatus5xx: number
+): TrafficRequestQuality {
+  const status2xx = rawStatus2xx ?? 0
+  const status3xx = rawStatus3xx ?? 0
+  const status4xx = rawStatus4xx ?? 0
+  const status5xx = rawStatus5xx ?? 0
+  const total = status2xx + status3xx + status4xx + status5xx
+  const pct = (n: number) =>
+    total > 0 ? Math.round((n / total) * 1000) / 10 : 0
+  return {
+    status2xx,
+    status3xx,
+    status4xx,
+    status5xx,
+    status2xxPct: pct(status2xx),
+    status3xxPct: pct(status3xx),
+    status4xxPct: pct(status4xx),
+    status5xxPct: pct(status5xx),
+    hasBreakdown: total > 0,
+  }
 }
 
 export async function resolveOpenSearchForStack(
@@ -375,6 +409,10 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   let totalRequests = 0
   let successCount = 0
   let errorCount = 0
+  let status2xx = 0
+  let status3xx = 0
+  let status4xx = 0
+  let status5xx = 0
   let totalBytes = BigInt(0)
   let avgLatencyMs = 0
   const hourlyTrend: Array<{ hour: number; requests: number; errors: number }> =
@@ -439,6 +477,12 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     if (aggs.status_codes?.buckets) {
       for (const bucket of aggs.status_codes.buckets) {
         totalRequests += bucket.doc_count
+        if (bucket.key >= 200 && bucket.key < 300) status2xx += bucket.doc_count
+        else if (bucket.key >= 300 && bucket.key < 400)
+          status3xx += bucket.doc_count
+        else if (bucket.key >= 400 && bucket.key < 500)
+          status4xx += bucket.doc_count
+        else if (bucket.key >= 500) status5xx += bucket.doc_count
         if (bucket.key >= 400) {
           errorCount += bucket.doc_count
         } else {
@@ -527,6 +571,10 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     totalRequests,
     successCount,
     errorCount,
+    status2xx,
+    status3xx,
+    status4xx,
+    status5xx,
     totalBytes,
     avgLatencyMs,
     hourlyTrend,
@@ -553,6 +601,10 @@ export async function saveDailyTrafficSnapshot(
       totalRequests: snapshot.totalRequests,
       successCount: snapshot.successCount,
       errorCount: snapshot.errorCount,
+      status2xxCount: snapshot.status2xx,
+      status3xxCount: snapshot.status3xx,
+      status4xxCount: snapshot.status4xx,
+      status5xxCount: snapshot.status5xx,
       totalBytes: snapshot.totalBytes,
       avgLatencyMs: snapshot.avgLatencyMs,
       hourlyTrendJson: snapshot.hourlyTrend,
@@ -566,6 +618,10 @@ export async function saveDailyTrafficSnapshot(
       totalRequests: snapshot.totalRequests,
       successCount: snapshot.successCount,
       errorCount: snapshot.errorCount,
+      status2xxCount: snapshot.status2xx,
+      status3xxCount: snapshot.status3xx,
+      status4xxCount: snapshot.status4xx,
+      status5xxCount: snapshot.status5xx,
       totalBytes: snapshot.totalBytes,
       avgLatencyMs: snapshot.avgLatencyMs,
       hourlyTrendJson: snapshot.hourlyTrend,
@@ -704,6 +760,7 @@ export async function getAppTrafficReport(
         troubledPages: [],
         topIps: [],
         topCountries: [],
+        requestQuality: computeRequestQuality(0, 0, 0, 0),
       }
     }
 
@@ -753,6 +810,12 @@ export async function getAppTrafficReport(
         (snapshot.errorPathsJson as unknown as TrafficErrorPath[]) ?? [],
       topIps,
       topCountries,
+      requestQuality: computeRequestQuality(
+        snapshot.status2xxCount,
+        snapshot.status3xxCount,
+        snapshot.status4xxCount,
+        snapshot.status5xxCount
+      ),
     }
   }
 
@@ -794,6 +857,10 @@ export async function getAppTrafficReport(
     let totalRequests = 0
     let totalSuccess = 0
     let totalErrors = 0
+    let totalStatus2xx = 0
+    let totalStatus3xx = 0
+    let totalStatus4xx = 0
+    let totalStatus5xx = 0
     let totalBytesBig = BigInt(0)
     let latencySum = 0
     let latencyCount = 0
@@ -818,6 +885,10 @@ export async function getAppTrafficReport(
         totalRequests += snap.totalRequests
         totalSuccess += snap.successCount
         totalErrors += snap.errorCount
+        totalStatus2xx += snap.status2xxCount ?? 0
+        totalStatus3xx += snap.status3xxCount ?? 0
+        totalStatus4xx += snap.status4xxCount ?? 0
+        totalStatus5xx += snap.status5xxCount ?? 0
         totalBytesBig += snap.totalBytes
         if (snap.avgLatencyMs > 0) {
           latencySum += snap.avgLatencyMs * snap.totalRequests
@@ -908,6 +979,12 @@ export async function getAppTrafficReport(
       troubledPages: sortedTroubledPages,
       topIps,
       topCountries,
+      requestQuality: computeRequestQuality(
+        totalStatus2xx,
+        totalStatus3xx,
+        totalStatus4xx,
+        totalStatus5xx
+      ),
     }
   }
 
@@ -938,6 +1015,10 @@ export async function getAppTrafficReport(
 
   let totalRequests = 0
   let totalSuccess = 0
+  let totalStatus2xx = 0
+  let totalStatus3xx = 0
+  let totalStatus4xx = 0
+  let totalStatus5xx = 0
   let totalBytesBig = BigInt(0)
   let latencySum = 0
   let latencyCount = 0
@@ -954,6 +1035,10 @@ export async function getAppTrafficReport(
 
     totalRequests += snap.totalRequests
     totalSuccess += snap.successCount
+    totalStatus2xx += snap.status2xxCount ?? 0
+    totalStatus3xx += snap.status3xxCount ?? 0
+    totalStatus4xx += snap.status4xxCount ?? 0
+    totalStatus5xx += snap.status5xxCount ?? 0
     totalBytesBig += snap.totalBytes
 
     if (snap.avgLatencyMs > 0) {
@@ -1056,6 +1141,12 @@ export async function getAppTrafficReport(
     troubledPages: sortedTroubledPages,
     topIps,
     topCountries,
+    requestQuality: computeRequestQuality(
+      totalStatus2xx,
+      totalStatus3xx,
+      totalStatus4xx,
+      totalStatus5xx
+    ),
   }
 }
 
