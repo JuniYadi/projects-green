@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MarkdownEditor } from "@/components/ui/markdown-editor"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
 import {
@@ -45,6 +46,7 @@ export function SupportTicketAdminCreateScreen({
 }: SupportTicketAdminCreateScreenProps) {
   const router = useRouter()
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.supportTickets
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -249,11 +251,10 @@ export function SupportTicketAdminCreateScreen({
               </svg>
             </div>
             <h3 className="text-lg font-semibold text-foreground">
-              Creating Ticket
+              {messages.creatingTicket}
             </h3>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Please wait while we process your request and upload any
-              attachments. Do not refresh, close, or navigate away.
+              {messages.creatingDescription}
             </p>
           </div>
         </div>
@@ -278,7 +279,7 @@ export function SupportTicketAdminCreateScreen({
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-foreground">
-                Ticket Details
+                {messages.ticketDetails}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -288,7 +289,7 @@ export function SupportTicketAdminCreateScreen({
                   htmlFor="ticket-organization"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Organization
+                  {messages.targetOrgLabel}
                 </Label>
                 {isOrgsLoading ? (
                   <AdminOrgsSelectSkeleton />
@@ -302,7 +303,9 @@ export function SupportTicketAdminCreateScreen({
                       id="ticket-organization"
                       className="w-full border-border bg-background/50 text-foreground"
                     >
-                      <SelectValue placeholder="Select target organization" />
+                      <SelectValue
+                        placeholder={messages.selectTargetOrganization}
+                      />
                     </SelectTrigger>
                     <SelectContent className="border-border bg-popover">
                       {organizations.map((org) => (
@@ -324,12 +327,12 @@ export function SupportTicketAdminCreateScreen({
                   htmlFor="ticket-subject"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Subject
+                  {messages.subject}
                 </Label>
                 <Input
                   id="ticket-subject"
                   ref={subjectRef}
-                  placeholder="Describe the issue"
+                  placeholder={messages.subjectPlaceholderAdmin}
                   disabled={isSubmitting}
                   className="border-border bg-background/50 text-foreground focus-visible:ring-primary/50"
                 />
@@ -348,7 +351,7 @@ export function SupportTicketAdminCreateScreen({
                         : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    General Message
+                    {messages.generalMessageTab}
                   </button>
                   <button
                     type="button"
@@ -365,7 +368,7 @@ export function SupportTicketAdminCreateScreen({
                       )}
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
                     </span>
-                    Secure details
+                    {messages.secureDetails}
                   </button>
                 </div>
 
@@ -377,13 +380,13 @@ export function SupportTicketAdminCreateScreen({
                     htmlFor="ticket-description"
                     className="text-xs font-semibold text-muted-foreground"
                   >
-                    Message (optional)
+                    {messages.messageOptional}
                   </Label>
                   <MarkdownEditor
                     id="ticket-description"
                     ref={descriptionRef}
                     rows={6}
-                    placeholder="Add any details about this request"
+                    placeholder={messages.messagePlaceholderAdmin}
                     disabled={isSubmitting}
                   />
                 </div>
@@ -395,7 +398,7 @@ export function SupportTicketAdminCreateScreen({
                   <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
-                        Encrypted
+                        {messages.encrypted}
                       </span>
                       <span className="flex items-center gap-1 text-xs font-medium text-yellow-500/90">
                         <svg
@@ -412,25 +415,22 @@ export function SupportTicketAdminCreateScreen({
                             d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                           ></path>
                         </svg>
-                        End-to-End Secure Channel
+                        {messages.endToEndSecure}
                       </span>
                     </div>
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Details entered here are encrypted end-to-end and only
-                      visible to engineers assigned to this ticket. Use this
-                      section for passwords, tokens, API keys, or sensitive
-                      credentials.
+                      {messages.secureDescriptionAdmin}
                     </p>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="ticket-secure-form" className="sr-only">
-                      Secure Details (optional)
+                      {messages.secureDetailsOptional}
                     </Label>
                     <MarkdownEditor
                       id="ticket-secure-form"
                       ref={secureFormRef}
                       rows={6}
-                      placeholder="Sensitive credentials, configurations, or secrets only"
+                      placeholder={messages.securePlaceholder}
                       disabled={isSubmitting}
                     />
                   </div>
@@ -447,7 +447,7 @@ export function SupportTicketAdminCreateScreen({
                     htmlFor="ticket-files"
                     className="text-xs font-semibold text-muted-foreground"
                   >
-                    Attachments (optional)
+                    {messages.attachmentsOptional}
                   </Label>
                   <Input
                     id="ticket-files"
@@ -525,7 +525,7 @@ export function SupportTicketAdminCreateScreen({
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-foreground">
-                Categorization
+                {messages.categorization}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -534,7 +534,7 @@ export function SupportTicketAdminCreateScreen({
                   htmlFor="ticket-department"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Department
+                  {messages.department}
                 </Label>
                 <Select
                   value={department}
@@ -547,7 +547,7 @@ export function SupportTicketAdminCreateScreen({
                     id="ticket-department"
                     className="w-full border-border bg-background/50 text-foreground"
                   >
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder={messages.selectDepartment} />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-popover">
                     {SUPPORT_TICKET_DEPARTMENTS.map((departmentValue) => (
@@ -568,7 +568,7 @@ export function SupportTicketAdminCreateScreen({
                   htmlFor="ticket-service"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Service (optional)
+                  {messages.serviceOptional}
                 </Label>
                 <Select
                   value={service}
@@ -581,14 +581,14 @@ export function SupportTicketAdminCreateScreen({
                     id="ticket-service"
                     className="w-full border-border bg-background/50 text-foreground"
                   >
-                    <SelectValue placeholder="Select service" />
+                    <SelectValue placeholder={messages.selectService} />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-popover">
                     <SelectItem
                       value="none"
                       className="text-foreground hover:bg-muted"
                     >
-                      None
+                      {messages.none}
                     </SelectItem>
                     {SUPPORT_TICKET_SERVICES.map((serviceValue) => (
                       <SelectItem
@@ -608,7 +608,7 @@ export function SupportTicketAdminCreateScreen({
                   htmlFor="ticket-priority"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Priority
+                  {messages.priority}
                 </Label>
                 <Select
                   value={priority}
@@ -621,26 +621,26 @@ export function SupportTicketAdminCreateScreen({
                     id="ticket-priority"
                     className="w-full border-border bg-background/50 text-foreground"
                   >
-                    <SelectValue placeholder="Select priority" />
+                    <SelectValue placeholder={messages.selectPriority} />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-popover">
                     <SelectItem
                       value="low"
                       className="text-foreground hover:bg-muted"
                     >
-                      Low
+                      {messages.low}
                     </SelectItem>
                     <SelectItem
                       value="medium"
                       className="text-foreground hover:bg-muted"
                     >
-                      Medium
+                      {messages.medium}
                     </SelectItem>
                     <SelectItem
                       value="high"
                       className="text-foreground hover:bg-muted"
                     >
-                      High
+                      {messages.high}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -657,7 +657,7 @@ export function SupportTicketAdminCreateScreen({
                 onClick={onSubmitCreateTicket}
                 disabled={isSubmitting || isOrgsLoading}
               >
-                {isSubmitting ? "Submitting..." : "Submit Ticket"}
+                {isSubmitting ? messages.submitting : messages.submitTicket}
               </Button>
               <Button
                 type="button"
@@ -666,7 +666,7 @@ export function SupportTicketAdminCreateScreen({
                 onClick={() => router.push(listPath)}
                 disabled={isSubmitting}
               >
-                Cancel
+                {messages.cancel}
               </Button>
             </CardContent>
           </Card>
