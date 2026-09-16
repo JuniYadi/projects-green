@@ -55,19 +55,26 @@ export function formatBytes(bytes: bigint | number): string {
  * "no evidence" state instead of throwing on undefined.
  */
 function normalizeIpGeoInfo(item: IpGeoInfo): IpGeoInfo {
-  const status2xx = item.status2xx ?? 0
-  const status3xx = item.status3xx ?? 0
-  const status4xx = item.status4xx ?? 0
-  const status5xx = item.status5xx ?? 0
   return {
     ...item,
-    status2xx,
-    status3xx,
-    status4xx,
-    status5xx,
-    successRatio:
-      item.successRatio ?? computeSuccessRatio(status2xx, item.requestsCount),
+    status2xx: item.status2xx ?? 0,
+    status3xx: item.status3xx ?? 0,
+    status4xx: item.status4xx ?? 0,
+    status5xx: item.status5xx ?? 0,
+    // No recorded breakdown at all (pre-this-change snapshot) reads as 100,
+    // matching this file's existing "no data -> 100" successRate convention
+    // -- distinct from a *measured* 0% which requires real status evidence.
+    successRatio: item.successRatio ?? 100,
   }
+}
+
+/** Recomputes successRatio after summing status counts across snapshots, keeping the "no evidence -> 100" default when nothing was ever recorded. */
+function recomputeSuccessRatio(ip: IpGeoInfo): number {
+  const statusEvidence =
+    ip.status2xx + ip.status3xx + ip.status4xx + ip.status5xx
+  return statusEvidence > 0
+    ? computeSuccessRatio(ip.status2xx, ip.requestsCount)
+    : 100
 }
 
 export function computeTopCountries(
@@ -840,10 +847,7 @@ export async function getAppTrafficReport(
             cur.status3xx += ipItem.status3xx
             cur.status4xx += ipItem.status4xx
             cur.status5xx += ipItem.status5xx
-            cur.successRatio = computeSuccessRatio(
-              cur.status2xx,
-              cur.requestsCount
-            )
+            cur.successRatio = recomputeSuccessRatio(cur)
           } else {
             ipMap.set(ipItem.ip, { ...ipItem })
           }
@@ -979,7 +983,7 @@ export async function getAppTrafficReport(
         cur.status3xx += ipItem.status3xx
         cur.status4xx += ipItem.status4xx
         cur.status5xx += ipItem.status5xx
-        cur.successRatio = computeSuccessRatio(cur.status2xx, cur.requestsCount)
+        cur.successRatio = recomputeSuccessRatio(cur)
       } else {
         ipMap.set(ipItem.ip, { ...ipItem })
       }
