@@ -2401,6 +2401,7 @@ export const enMessages: AppMessages = {
         metaCost: "Meta Cost (COGS)",
         incTax: "Inc. 11% VAT:",
         grossProfit: "Gross Profit / Loss",
+        grossProfitDesc: "Net margin after Meta base cost & 11% VAT",
         marginHealth: "Margin Health",
         healthy: "Healthy",
         warning: "Warning",

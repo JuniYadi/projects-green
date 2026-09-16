@@ -111,7 +111,9 @@ function TopOrgCardList({
   orgs: OrgProfitabilityItem[]
   emptyMessage: string
   formatIdr: (val?: string | number) => string
-  messages?: ReturnType<typeof getMessages>["console"]["whatsapp"]["adminAnalytics"]
+  messages?: ReturnType<
+    typeof getMessages
+  >["console"]["whatsapp"]["adminAnalytics"]
 }) {
   if (orgs.length === 0) {
     return (
@@ -160,7 +162,7 @@ function TopOrgCardList({
             {/* Mini Bar */}
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className={`h-full rounded-full ${isDeficit ? "bg-destructive" : "bg-primary"}`}
+                className={`h-full rounded-full ${isDeficit ? "bg-destructive" : "bg-emerald-500"}`}
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -171,7 +173,7 @@ function TopOrgCardList({
                 {messages?.messagesUnit ?? "messages"}
               </span>
               <span
-                className={`font-mono font-medium ${isDeficit ? "text-destructive" : "text-primary"}`}
+                className={`font-mono font-medium ${isDeficit ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}
               >
                 {isDeficit ? "- " : "+ "}
                 {formatIdr(org.grossProfitIdr)} ({org.marginPct}%)
@@ -492,7 +494,9 @@ export function AdminWhatsappAnalyticsView() {
         {/* Total Revenue */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{messages.totalRevenue}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {messages.totalRevenue}
+            </CardTitle>
             <DollarSign className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -536,13 +540,13 @@ export function AdminWhatsappAnalyticsView() {
               className={`text-2xl font-bold ${
                 parseFloat(summary?.kpi?.grossProfitIdr ?? "0") < 0
                   ? "text-destructive"
-                  : "text-primary"
+                  : "text-emerald-600 dark:text-emerald-400"
               }`}
             >
               {formatIdr(summary?.kpi?.grossProfitIdr)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {formatIdr(summary?.kpi?.grossProfitIdr)}
+              {messages.grossProfitDesc}
             </p>
           </CardContent>
         </Card>
@@ -569,21 +573,22 @@ export function AdminWhatsappAnalyticsView() {
               {summary?.kpi?.status === "HEALTHY" ? (
                 <Badge
                   variant="outline"
-                  className="border-primary text-xs text-primary"
+                  className="border-emerald-500/40 bg-emerald-500/10 text-xs text-emerald-600 dark:text-emerald-400"
                 >
                   <CheckCircle2 className="mr-1 size-3" /> {messages.healthy}
                 </Badge>
               ) : (
                 <Badge
                   variant="outline"
-                  className="border-destructive text-xs text-destructive"
+                  className="border-destructive/40 bg-destructive/10 text-xs text-destructive"
                 >
                   <AlertTriangle className="mr-1 size-3" /> {messages.warning}
                 </Badge>
               )}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {summary?.kpi?.totalDeliveredMessages ?? 0} {messages.totalSentMessages}
+              {summary?.kpi?.totalDeliveredMessages ?? 0}{" "}
+              {messages.totalSentMessages}
             </p>
           </CardContent>
         </Card>
@@ -594,9 +599,7 @@ export function AdminWhatsappAnalyticsView() {
         <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>{messages.trendTitle}</CardTitle>
-            <CardDescription>
-              {messages.trendDesc}
-            </CardDescription>
+            <CardDescription>{messages.trendDesc}</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -693,21 +696,25 @@ export function AdminWhatsappAnalyticsView() {
       <Card>
         <CardHeader>
           <CardTitle>{messages.categorySummaryTitle}</CardTitle>
-          <CardDescription>
-            {messages.categorySummaryDesc}
-          </CardDescription>
+          <CardDescription>{messages.categorySummaryDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>{messages.thCategory}</TableHead>
-                <TableHead className="text-right">{messages.thMessageVolume}</TableHead>
-                <TableHead className="text-right">{messages.thInvoiceRevenue}</TableHead>
+                <TableHead className="text-right">
+                  {messages.thMessageVolume}
+                </TableHead>
+                <TableHead className="text-right">
+                  {messages.thInvoiceRevenue}
+                </TableHead>
                 <TableHead className="text-right">
                   {messages.thMetaCost}
                 </TableHead>
-                <TableHead className="text-right">{messages.thNetProfit}</TableHead>
+                <TableHead className="text-right">
+                  {messages.thNetProfit}
+                </TableHead>
                 <TableHead className="text-right">Margin (%)</TableHead>
               </TableRow>
             </TableHeader>
@@ -733,7 +740,9 @@ export function AdminWhatsappAnalyticsView() {
                     </TableCell>
                     <TableCell
                       className={`text-right font-mono font-medium ${
-                        isNegative ? "text-destructive" : "text-primary"
+                        isNegative
+                          ? "text-destructive"
+                          : "text-emerald-600 dark:text-emerald-400"
                       }`}
                     >
                       {formatIdr(item.grossProfitIdr)}
@@ -796,7 +805,7 @@ export function AdminWhatsappAnalyticsView() {
               </div>
               <Badge
                 variant="outline"
-                className="border-primary/40 text-xs text-primary"
+                className="border-emerald-500/40 bg-emerald-500/10 text-xs text-emerald-600 dark:text-emerald-400"
               >
                 {monthLabels.current || "Current Month"}
               </Badge>
@@ -817,9 +826,7 @@ export function AdminWhatsappAnalyticsView() {
       <Card>
         <CardHeader>
           <CardTitle>{messages.tenantHealthTitle}</CardTitle>
-          <CardDescription>
-            {messages.tenantHealthDesc}
-          </CardDescription>
+          <CardDescription>{messages.tenantHealthDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           {orgs.length === 0 ? (
@@ -831,15 +838,27 @@ export function AdminWhatsappAnalyticsView() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{messages.thTenantName}</TableHead>
-                  <TableHead className="text-right">{messages.thDevices}</TableHead>
-                  <TableHead className="text-right">{messages.thMessageVolume}</TableHead>
-                  <TableHead className="text-right">{messages.thInvoiceRevenue}</TableHead>
+                  <TableHead className="text-right">
+                    {messages.thDevices}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {messages.thMessageVolume}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {messages.thInvoiceRevenue}
+                  </TableHead>
                   <TableHead className="text-right">
                     {messages.thMetaCost}
                   </TableHead>
-                  <TableHead className="text-right">{messages.thNetProfit}</TableHead>
-                  <TableHead className="text-right">{messages.thMargin}</TableHead>
-                  <TableHead className="text-center">{messages.thStatus}</TableHead>
+                  <TableHead className="text-right">
+                    {messages.thNetProfit}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {messages.thMargin}
+                  </TableHead>
+                  <TableHead className="text-center">
+                    {messages.thStatus}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -872,7 +891,9 @@ export function AdminWhatsappAnalyticsView() {
                       </TableCell>
                       <TableCell
                         className={`text-right font-mono font-medium ${
-                          isNegative ? "text-destructive" : "text-primary"
+                          isNegative
+                            ? "text-destructive"
+                            : "text-emerald-600 dark:text-emerald-400"
                         }`}
                       >
                         {formatIdr(org.grossProfitIdr)}
@@ -888,14 +909,14 @@ export function AdminWhatsappAnalyticsView() {
                         {org.marginStatus === "HEALTHY" ? (
                           <Badge
                             variant="outline"
-                            className="border-primary text-primary"
+                            className="border-emerald-500/40 bg-emerald-500/10 text-xs text-emerald-600 dark:text-emerald-400"
                           >
                             {messages.statusHealthy}
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-destructive text-destructive"
+                            className="border-destructive/40 bg-destructive/10 text-xs text-destructive"
                           >
                             {messages.statusRisk}
                           </Badge>

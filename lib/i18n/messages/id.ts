@@ -2427,6 +2427,7 @@ export const idMessages: AppMessages = {
         metaCost: "Modal Meta (COGS)",
         incTax: "Inc. PPN 11%:",
         grossProfit: "Laba / Rugi Kotor",
+        grossProfitDesc: "Laba bersih setelah biaya modal Meta & PPN 11%",
         marginHealth: "Kesehatan Margin",
         healthy: "Sehat",
         warning: "Waspada",

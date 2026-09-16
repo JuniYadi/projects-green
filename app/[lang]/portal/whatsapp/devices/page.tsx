@@ -120,11 +120,6 @@ function QuotaUsageCell({ device }: { device: DeviceListItem }) {
               messages/day
             </p>
           )}
-          {Number(device.balance) > 0 && (
-            <p className="text-muted-foreground">
-              Balance: Rp {Number(device.balance).toLocaleString("id-ID")}
-            </p>
-          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -151,14 +146,6 @@ const formatDate = (date: string) => {
     month: "long",
     year: "numeric",
   }).format(new Date(date))
-}
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(amount)
 }
 
 const getDisplayName = (profile: unknown, fallback: string) => {
@@ -307,7 +294,6 @@ export default async function PortalWhatsAppDevicesPage({
                     <TableHead>Meta Name Status</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Health</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
                     <TableHead>Quota Usage</TableHead>
                     <TableHead className="text-right">Daily Limit</TableHead>
                     <TableHead>Created</TableHead>
@@ -350,9 +336,6 @@ export default async function PortalWhatsAppDevicesPage({
                           status={device.healthStatus}
                           lastHeartbeatAt={device.lastHeartbeatAt}
                         />
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(device.balance)}
                       </TableCell>
                       <TableCell>
                         <QuotaUsageCell device={device} />
