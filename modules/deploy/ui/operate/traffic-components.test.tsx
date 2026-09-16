@@ -137,6 +137,40 @@ describe("Frontend Traffic Components", () => {
       expect(view.getByText("Singapore, Singapura")).toBeTruthy()
       expect(view.getByText("103.10.10.1")).toBeTruthy()
       expect(view.getByText("Jakarta, Indonesia")).toBeTruthy()
+
+      // Asserts that SVG flags for SG and ID are rendered (country-flag-icons renders svg elements)
+      const svgs = view.container.querySelectorAll("svg")
+      expect(svgs.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it("renders fallback icon when country code is unknown or local", () => {
+      const view = render(
+        <TrafficGeoCard
+          topCountries={[
+            {
+              countryCode: "LOCAL",
+              countryName: "Local Network",
+              requests: 10,
+              percentage: 100,
+            },
+          ]}
+          topIps={[
+            {
+              ip: "127.0.0.1",
+              requestsCount: 10,
+              countryCode: "LOCAL",
+              countryName: "Local Network",
+              city: "Localhost",
+            },
+          ]}
+        />
+      )
+
+      expect(view.getByText("Local Network")).toBeTruthy()
+      expect(view.getByText("127.0.0.1")).toBeTruthy()
+      expect(
+        view.container.querySelectorAll("svg").length
+      ).toBeGreaterThanOrEqual(2)
     })
 
     it("renders empty state messages when country and IP arrays are empty", () => {

@@ -33,6 +33,9 @@ const mockPrisma = {
   servicePlan: {
     findFirst: mock(async () => null),
   },
+  appHostingCluster: {
+    findFirst: mock(async () => null),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
@@ -153,6 +156,7 @@ describe("appStacksRoutes", () => {
     mockPrisma.applicationDeployment.findMany.mockClear()
     mockPrisma.billingAccount.findUnique.mockClear()
     mockPrisma.servicePlan.findFirst.mockClear()
+    mockPrisma.appHostingCluster.findFirst.mockClear()
     mockPrisma.applicationStack.findMany.mockResolvedValue([] as never)
     mockPrisma.applicationStack.findUnique.mockResolvedValue(null as never)
     mockPrisma.applicationStack.update.mockResolvedValue(null as never)
@@ -160,6 +164,7 @@ describe("appStacksRoutes", () => {
     mockPrisma.applicationDeployment.findMany.mockResolvedValue([] as never)
     mockPrisma.billingAccount.findUnique.mockResolvedValue(null as never)
     mockPrisma.servicePlan.findFirst.mockResolvedValue(null as never)
+    mockPrisma.appHostingCluster.findFirst.mockResolvedValue(null as never)
   })
 
   afterEach(() => {
@@ -427,6 +432,11 @@ describe("appStacksRoutes", () => {
       orderBy: { updatedAt: "desc" },
       include: {
         template: true,
+        cluster: {
+          include: {
+            region: true,
+          },
+        },
         deployments: {
           orderBy: { createdAt: "desc" },
           take: 1,

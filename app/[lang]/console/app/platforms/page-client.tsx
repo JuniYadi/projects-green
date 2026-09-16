@@ -13,12 +13,14 @@ import {
   ArrowSquareOut,
   DotsThreeVertical,
   Globe,
+  GlobeHemisphereWest,
   GitBranch,
   Cube,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
@@ -182,6 +184,14 @@ export default function PlatformsFleetPage() {
         const matchesTemplate = app.templateName?.toLowerCase().includes(q)
         const matchesSubdomain = app.subdomain?.toLowerCase().includes(q)
         const matchesCustomDomain = app.customDomain?.toLowerCase().includes(q)
+        const matchesCluster = Boolean(
+          app.cluster?.name.toLowerCase().includes(q) ||
+          app.cluster?.code.toLowerCase().includes(q) ||
+          app.cluster?.regionName?.toLowerCase().includes(q)
+        )
+        const matchesDockerVersion = Boolean(
+          app.dockerVersion?.toLowerCase().includes(q)
+        )
         return (
           matchesName ||
           matchesSlug ||
@@ -189,7 +199,9 @@ export default function PlatformsFleetPage() {
           Boolean(matchesFramework) ||
           Boolean(matchesTemplate) ||
           Boolean(matchesSubdomain) ||
-          Boolean(matchesCustomDomain)
+          Boolean(matchesCustomDomain) ||
+          matchesCluster ||
+          matchesDockerVersion
         )
       }
 
@@ -356,10 +368,10 @@ export default function PlatformsFleetPage() {
                 <tr className="border-b border-border bg-muted/30 text-left text-xs tracking-wide text-muted-foreground uppercase">
                   <th className="px-4 py-3 font-medium">Platform</th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Region</th>
                   <th className="px-4 py-3 font-medium">Framework</th>
-                  <th className="px-4 py-3 font-medium">Branch</th>
+                  <th className="px-4 py-3 font-medium">Source</th>
                   <th className="px-4 py-3 font-medium">Last Deployed</th>
-                  <th className="px-4 py-3 font-medium">Current deployment</th>
                   <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
@@ -413,14 +425,45 @@ export default function PlatformsFleetPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                            STATUS_TONE[app.status] ?? STATUS_TONE.idle
-                          }`}
-                        >
-                          <span className="size-1.5 rounded-full bg-current" />
-                          {DEPLOY_STATUS_LABELS[app.status] ?? app.status}
-                        </span>
+                        <div className="space-y-1">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                              STATUS_TONE[app.status] ?? STATUS_TONE.idle
+                            }`}
+                          >
+                            <span className="size-1.5 rounded-full bg-current" />
+                            {DEPLOY_STATUS_LABELS[app.status] ?? app.status}
+                          </span>
+                          {app.status !== "running" && app.currentStepLabel ? (
+                            <div className="text-[11px] text-muted-foreground">
+                              {deploymentStatusText}
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <CountryFlag
+                            country={app.cluster?.countryCode}
+                            className="rounded-2xs h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                            fallback={
+                              <GlobeHemisphereWest
+                                size={14}
+                                className="shrink-0 text-muted-foreground"
+                              />
+                            }
+                          />
+                          <span className="font-medium text-foreground">
+                            {app.cluster?.regionName ||
+                              app.cluster?.name ||
+                              "Global"}
+                          </span>
+                          {app.cluster?.code ? (
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              ({app.cluster.code})
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 text-xs">
@@ -439,36 +482,110 @@ export default function PlatformsFleetPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground">
-                          <GitBranch size={12} className="shrink-0" />
-                          {app.branchName}
-                        </span>
+                        {app.sourceType === "TEMPLATE" ? (
+                          <span
+                            className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground"
+                            title={`Docker / Template: ${
+                              app.dockerVersion ?? "latest"
+                            }`}
+                          >
+                            <Cube
+                              size={12}
+                              className="shrink-0 text-muted-foreground"
+                            />
+                            <span>
+                              {app.dockerVersion
+                                ? `v${app.dockerVersion.replace(/^v/, "")}`
+                                : "latest"}
+                            </span>
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground"
+                            title={`Git Branch: ${app.branchName}`}
+                          >
+                            <GitBranch
+                              size={12}
+                              className="shrink-0 text-muted-foreground"
+                            />
+                            <span>{app.branchName}</span>
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {formatDate(app.lastDeployedAt, locale)}
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {deploymentStatusText}
-                      </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Contextual Primary CTA */}
+                          {app.status === "running" && targetDomain ? (
+                            <Button
+                              asChild
+                              size="xs"
+                              className="h-7 gap-1 px-2.5 text-xs font-medium"
+                            >
+                              <a
+                                href={`https://${targetDomain}`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <ArrowSquareOut
+                                  size={13}
+                                  className="shrink-0"
+                                />
+                                <span>
+                                  {locale === "id" ? "Buka Web" : "Open App"}
+                                </span>
+                              </a>
+                            </Button>
+                          ) : app.status === "failed" ||
+                            app.status === "building" ||
+                            app.status === "deploying" ||
+                            app.status === "queued" ? (
+                            <Button
+                              asChild
+                              variant={
+                                app.status === "failed"
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                              size="xs"
+                              className="h-7 gap-1 px-2.5 text-xs font-medium"
+                            >
+                              <Link href={logsHref}>
+                                <ListMagnifyingGlass
+                                  size={13}
+                                  className="shrink-0"
+                                />
+                                <span>
+                                  {locale === "id" ? "Cek Logs" : "View Logs"}
+                                </span>
+                              </Link>
+                            </Button>
+                          ) : null}
+
+                          {/* Secondary Action: Manage */}
                           <Button
                             asChild
                             variant="outline"
                             size="xs"
-                            className="h-7 text-xs"
+                            className="h-7 px-2.5 text-xs font-medium"
                           >
-                            <Link href={overviewHref}>Overview</Link>
+                            <Link href={overviewHref}>
+                              {locale === "id" ? "Kelola" : "Manage"}
+                            </Link>
                           </Button>
+
+                          {/* Dropdown Menu for Secondary Options */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="xs"
                                 className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                                 aria-label={`Actions for ${app.name}`}
                               >
-                                <DotsThreeVertical size={16} weight="bold" />
+                                <DotsThreeVertical size={14} weight="bold" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44">
@@ -482,7 +599,11 @@ export default function PlatformsFleetPage() {
                                       className="flex cursor-pointer items-center gap-2"
                                     >
                                       <ArrowSquareOut size={14} />
-                                      <span>Open Live App</span>
+                                      <span>
+                                        {locale === "id"
+                                          ? "Buka di Tab Baru"
+                                          : "Open in New Tab"}
+                                      </span>
                                     </a>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />

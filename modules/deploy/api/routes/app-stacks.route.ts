@@ -137,31 +137,46 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
       return { ok: false, error: "FORBIDDEN", message: "Organization required" }
     }
 
-    const stacks = await prisma.applicationStack.findMany({
-      where: { organizationId: auth.organizationId },
-      orderBy: { updatedAt: "desc" },
-      include: {
-        template: true,
-        deployments: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: {
-            createdAt: true,
-            id: true,
-            events: {
-              orderBy: { createdAt: "asc" },
-              select: { type: true, createdAt: true },
+    const [stacks, defaultCluster] = await Promise.all([
+      prisma.applicationStack.findMany({
+        where: { organizationId: auth.organizationId },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          template: true,
+          cluster: {
+            include: {
+              region: true,
+            },
+          },
+          deployments: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              createdAt: true,
+              id: true,
+              events: {
+                orderBy: { createdAt: "asc" },
+                select: { type: true, createdAt: true },
+              },
             },
           },
         },
-      },
-    })
+      }),
+      // Optional chaining allows safe fallback to null in mock or detached test harnesses where appHostingCluster is unmocked
+      prisma.appHostingCluster?.findFirst
+        ? prisma.appHostingCluster.findFirst({
+            where: { status: "ACTIVE", isDefault: true },
+            include: { region: true },
+          })
+        : Promise.resolve(null),
+    ])
 
     return {
       ok: true,
       data: stacks.map((stack) =>
         toStackSummaryDTO({
           ...stack,
+          cluster: stack.cluster ?? defaultCluster,
           events: stack.deployments[0]?.events ?? [],
         })
       ),
@@ -270,6 +285,11 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         },
         include: {
           template: true,
+          cluster: {
+            include: {
+              region: true,
+            },
+          },
           deployments: {
             orderBy: { createdAt: "desc" },
             take: 1,
@@ -314,11 +334,21 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
             },
           })
         : null
+      // Optional chaining allows safe fallback to null in mock or detached test harnesses where appHostingCluster is unmocked
+      const defaultCluster =
+        !stack.cluster && prisma.appHostingCluster?.findFirst
+          ? await prisma.appHostingCluster.findFirst({
+              where: { status: "ACTIVE", isDefault: true },
+              include: { region: true },
+            })
+          : null
+
       return {
         ok: true,
         data: {
           stack: toStackSummaryDTO({
             ...stack,
+            cluster: stack.cluster ?? defaultCluster,
             catalogPlan,
             events: latestDeployment?.events ?? [],
           }),

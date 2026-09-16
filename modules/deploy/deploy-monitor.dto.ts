@@ -332,6 +332,14 @@ export const toDeployEventDTOs = (
  */
 export type StackBillingState = "ACTIVE" | "PAYMENT_GRACE" | "SUSPENDED"
 
+export type StackClusterSummaryDTO = {
+  id: string
+  name: string
+  code: string
+  regionName: string | null
+  countryCode: string | null
+}
+
 export type StackSummaryDTO = {
   id: string
   name: string
@@ -345,6 +353,8 @@ export type StackSummaryDTO = {
   billingMode: string | null
   billingState: StackBillingState
   sourceType?: string | null
+  cluster?: StackClusterSummaryDTO | null
+  dockerVersion?: string | null
   templateId?: string | null
   templateName?: string | null
   templateUpdate?: {
@@ -413,6 +423,12 @@ export const toStackSummaryDTO = (stack: {
   sourceType?: string | null
   templateId?: string | null
   template?: { name?: string | null; version?: string | null } | null
+  cluster?: {
+    id: string
+    name: string
+    code: string
+    region?: { name?: string | null; country?: string | null } | null
+  } | null
   envVarsJson?: unknown
   cpu?: number | null
   memory?: number | null
@@ -456,6 +472,40 @@ export const toStackSummaryDTO = (stack: {
       hasUpdate: installedVersion !== latestVersion,
     }
   }
+
+  const resolvedCluster: StackClusterSummaryDTO | null = stack.cluster
+    ? {
+        id: stack.cluster.id,
+        name: stack.cluster.name,
+        code: stack.cluster.code,
+        regionName: stack.cluster.region?.name ?? null,
+        countryCode: stack.cluster.region?.country ?? null,
+      }
+    : null
+
+  const resolvedDockerVersion = (() => {
+    if (
+      typeof meta.imageRepository === "string" &&
+      meta.imageRepository.includes(":")
+    ) {
+      const tag = meta.imageRepository.split(":").pop()?.trim()
+      if (tag && tag.length > 0 && tag !== "latest") return tag
+    }
+    if (typeof meta.imageTag === "string" && meta.imageTag.trim()) {
+      return meta.imageTag.trim()
+    }
+    if (
+      typeof meta.templateVersion === "string" &&
+      meta.templateVersion.trim()
+    ) {
+      return meta.templateVersion.trim()
+    }
+    if (stack.template?.version) {
+      return stack.template.version
+    }
+    return null
+  })()
+
   return {
     id: stack.id,
     name: stack.name,
@@ -469,6 +519,8 @@ export const toStackSummaryDTO = (stack: {
     billingMode: stack.billingMode ?? null,
     billingState: resolveStackBillingState(stack.metadataJson),
     sourceType: stack.sourceType ?? null,
+    cluster: resolvedCluster,
+    dockerVersion: resolvedDockerVersion,
     templateId:
       ((stack.metadataJson as Record<string, unknown> | null)?.templateId as
         string | undefined) ??

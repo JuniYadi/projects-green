@@ -14,9 +14,13 @@ import {
   GearSix,
   ArrowsClockwise,
   TerminalWindow,
+  GitBranch,
+  Cube,
+  GlobeHemisphereWest,
 } from "@phosphor-icons/react"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
+import { CountryFlag } from "@/components/ui/country-flag"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,11 +167,32 @@ export function AppWorkspaceHeader({
                   : (selectedApp.framework ?? "Custom Workload")}
               </span>
               <span>&bull;</span>
-              <span>
-                branch{" "}
-                <strong className="font-mono text-foreground">
-                  {selectedApp.branchName}
-                </strong>
+              <span className="inline-flex items-center gap-1">
+                {selectedApp.sourceType === "TEMPLATE" ? (
+                  <>
+                    <Cube
+                      size={13}
+                      className="shrink-0 text-muted-foreground"
+                    />
+                    <span>source</span>
+                    <strong className="font-mono text-foreground">
+                      {selectedApp.dockerVersion
+                        ? `v${selectedApp.dockerVersion.replace(/^v/, "")}`
+                        : "latest"}
+                    </strong>
+                  </>
+                ) : (
+                  <>
+                    <GitBranch
+                      size={13}
+                      className="shrink-0 text-muted-foreground"
+                    />
+                    <span>source</span>
+                    <strong className="font-mono text-foreground">
+                      {selectedApp.branchName}
+                    </strong>
+                  </>
+                )}
               </span>
               {selectedApp.resourcePlanId ? (
                 <>
@@ -177,6 +202,33 @@ export function AppWorkspaceHeader({
                     <strong className="text-foreground">
                       {selectedApp.resourcePlanId}
                     </strong>
+                  </span>
+                </>
+              ) : null}
+              {selectedApp.cluster ? (
+                <>
+                  <span>&bull;</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span>cluster</span>
+                    <CountryFlag
+                      country={selectedApp.cluster.countryCode}
+                      className="rounded-2xs h-3 w-4.5 shrink-0 object-cover shadow-2xs"
+                      fallback={
+                        <GlobeHemisphereWest
+                          size={13}
+                          className="shrink-0 text-muted-foreground"
+                        />
+                      }
+                    />
+                    <strong className="text-foreground">
+                      {selectedApp.cluster.regionName ||
+                        selectedApp.cluster.name}
+                    </strong>
+                    {selectedApp.cluster.code ? (
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        ({selectedApp.cluster.code})
+                      </span>
+                    ) : null}
                   </span>
                 </>
               ) : null}

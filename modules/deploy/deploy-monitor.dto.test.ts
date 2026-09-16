@@ -570,5 +570,44 @@ describe("deploy-monitor.dto", () => {
       expect(dto.orderedAt).toBe(createdAt.toISOString())
       expect(dto.renewalAt).toBe("2026-10-07T15:50:27.570Z")
     })
+
+    it("maps cluster region and docker version correctly", () => {
+      const dto = toStackSummaryDTO({
+        id: "stack-docker",
+        name: "9router",
+        slug: "9router-app",
+        status: "RUNNING",
+        framework: null,
+        branchName: "main",
+        subdomain: "9router",
+        customDomain: null,
+        resourcePlanId: "medium",
+        billingMode: "PAYG",
+        sourceType: "TEMPLATE",
+        metadataJson: {
+          imageRepository: "docker.io/decolua/9router:0.5.75",
+          templateVersion: "1.0.0",
+        },
+        cluster: {
+          id: "cl_1",
+          name: "Singapore Production",
+          code: "sgp",
+          region: {
+            name: "Singapore",
+            country: "SG",
+          },
+        },
+        lastDeployedAt: new Date(),
+      })
+
+      expect(dto.cluster).toEqual({
+        id: "cl_1",
+        name: "Singapore Production",
+        code: "sgp",
+        regionName: "Singapore",
+        countryCode: "SG",
+      })
+      expect(dto.dockerVersion).toBe("0.5.75")
+    })
   })
 })

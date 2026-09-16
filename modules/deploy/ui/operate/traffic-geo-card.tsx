@@ -6,6 +6,7 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { CountryFlag } from "@/components/ui/country-flag"
 import { GlobeHemisphereWest, Users } from "@phosphor-icons/react"
 import type { TrafficCountryCount } from "../../opensearch/opensearch-traffic.types"
 import type { IpGeoInfo } from "../../opensearch/geoip-lookup.service"
@@ -13,17 +14,6 @@ import type { IpGeoInfo } from "../../opensearch/geoip-lookup.service"
 export interface TrafficGeoCardProps {
   topCountries: TrafficCountryCount[]
   topIps: IpGeoInfo[]
-}
-
-const getFlagEmoji = (countryCode: string) => {
-  if (!countryCode || countryCode.length !== 2 || countryCode === "LOCAL") {
-    return "🌐"
-  }
-  const codePoints = countryCode
-    .toUpperCase()
-    .split("")
-    .map((char) => 127397 + char.charCodeAt(0))
-  return String.fromCodePoint(...codePoints)
 }
 
 export function TrafficGeoCard({ topCountries, topIps }: TrafficGeoCardProps) {
@@ -62,7 +52,16 @@ export function TrafficGeoCard({ topCountries, topIps }: TrafficGeoCardProps) {
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5 font-medium text-foreground">
-                        <span>{getFlagEmoji(c.countryCode)}</span>
+                        <CountryFlag
+                          country={c.countryCode}
+                          className="rounded-2xs h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                          fallback={
+                            <GlobeHemisphereWest
+                              size={16}
+                              className="shrink-0 text-muted-foreground"
+                            />
+                          }
+                        />
                         <span>{c.countryName}</span>
                         <Badge
                           variant="outline"
@@ -122,9 +121,16 @@ export function TrafficGeoCard({ topCountries, topIps }: TrafficGeoCardProps) {
                   className="flex items-center justify-between rounded-md border border-border bg-muted/10 px-3 py-2 text-xs"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">
-                      {getFlagEmoji(item.countryCode)}
-                    </span>
+                    <CountryFlag
+                      country={item.countryCode}
+                      className="rounded-2xs h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                      fallback={
+                        <GlobeHemisphereWest
+                          size={16}
+                          className="shrink-0 text-muted-foreground"
+                        />
+                      }
+                    />
                     <div>
                       <div className="font-mono font-medium text-foreground">
                         {item.ip}

@@ -3137,6 +3137,11 @@ export type AppMessages = {
           ipResolutionBody2Suffix: string
           trustActive: string
           trustInactive: string
+          cnameRecordHeading: string
+          apexRecordHeading: string
+          sslStatusActive: string
+          sslStatusAuto: string
+          dnsStatusVerified: string
         }
       }
     }
