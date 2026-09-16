@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
+mock.module("server-only", () => ({}))
 // Mock WorkOS auth before imports
 const mockAuth = mock(() =>
   Promise.resolve({
@@ -30,7 +31,8 @@ mock.module("@/modules/ai/ai-ingestion.worker", () => ({
   enqueueDocumentIngestion: mockEnqueue,
 }))
 
-import { createConsoleAiKnowledgeRoutes } from "./console-ai-knowledge.route"
+const { createConsoleAiKnowledgeRoutes } =
+  await import("./console-ai-knowledge.route")
 
 describe("Console AI Knowledge Route", () => {
   let app: ReturnType<typeof createConsoleAiKnowledgeRoutes>
@@ -99,6 +101,7 @@ describe("Console AI Knowledge Route", () => {
           purpose: "SOP",
           category: "Support",
           sourceType: "PDF",
+          sourceUrl: "https://s3.example.com/docs/sop.pdf",
           contentMarkdown: "# SOP Retur Barang\n1. Sertakan bukti...",
         }),
       })
@@ -111,7 +114,13 @@ describe("Console AI Knowledge Route", () => {
     }
     expect(json.ok).toBe(true)
     expect(json.data.status).toBe("QUEUED")
-    expect(mockPrisma.aiKnowledgeDocument.create).toHaveBeenCalled()
+    expect(mockPrisma.aiKnowledgeDocument.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          sourceUrl: "https://s3.example.com/docs/sop.pdf",
+        }),
+      })
+    )
     expect(mockEnqueue).toHaveBeenCalled()
   })
   it("marks document as FAILED if queueing fails", async () => {

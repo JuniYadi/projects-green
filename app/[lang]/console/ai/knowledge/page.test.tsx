@@ -8,5 +8,6 @@ describe("AiKnowledgePage", () => {
     expect(html).toContain("Knowledge Base &amp; Dokumen Toko")
     expect(html).toContain("Kapasitas Storage Halaman PDF")
     expect(html).toContain("Unggah Dokumen PDF/DOCX")
+    expect(html).toContain("Kelola katalog produk, daftar harga, dan SOP")
   })
 })
