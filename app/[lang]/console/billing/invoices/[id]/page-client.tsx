@@ -266,10 +266,7 @@ export default function InvoiceDetailPage() {
   const discountAmount = invoice.discountAmountIdr ?? "0"
 
   const rawData: Record<string, unknown> = data
-  const rawConfirmations =
-    invoice.confirmations ??
-    (rawData.invoice as Record<string, unknown> | undefined)?.confirmations ??
-    rawData.confirmations
+  const rawConfirmations = invoice.confirmations ?? rawData.confirmations
   const confirmations = Array.isArray(rawConfirmations)
     ? (rawConfirmations as Array<{
         id: string

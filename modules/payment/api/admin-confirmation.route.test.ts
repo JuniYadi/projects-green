@@ -1,5 +1,8 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test"
+import { describe, it, expect, mock, beforeEach, spyOn } from "bun:test"
 import { Elysia } from "elysia"
+
+import { ConfirmationService } from "../services/confirmation.service"
+import { PaymentService } from "../services/payment.service"
 
 // ── Mock auth & platform-role ──────────────────────────
 
@@ -39,8 +42,27 @@ mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 const { createAdminConfirmationRoutes } =
   await import("./admin-confirmation.route")
+
 function app() {
   return new Elysia().use(createAdminConfirmationRoutes()).compile()
+}
+
+const sampleConfirmation = {
+  id: "conf-1",
+  amount: 50000,
+  currency: "IDR",
+  bankAccountId: "ba-1",
+  bankAccount: {
+    bankName: "BCA",
+    accountName: "encrypted-name",
+    accountNumber: "encrypted-num",
+    currency: "IDR",
+  },
+  invoice: { currency: "IDR", invoiceNumber: "INV-001", totalAmount: 50000 },
+  invoiceId: "inv-1",
+  status: "PENDING",
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  notes: null,
 }
 
 // ── Tests ───────────────────────────────────────────────
@@ -73,38 +95,217 @@ describe("AdminConfirmationRoute GET /", () => {
     expect(res.error).toBe("FORBIDDEN")
   })
 
-  it("returns confirmation array (not auth result) when authorized", async () => {
+  it("returns confirmation array when authorized with query params", async () => {
     mockAuthValue = { user: { id: "admin-1", email: "admin@test.com" } }
     mockPlatformRoleValue = "super_admin"
 
-    const mockConfirmation = {
-      id: "conf-1",
-      amount: 50000,
-      currency: "IDR",
-      bankAccountId: "ba-1",
-      bankAccount: {
-        bankName: "BCA",
-        accountName: "encrypted-name",
-        accountNumber: "encrypted-num",
-        currency: "IDR",
-      },
-      invoice: { currency: "IDR" },
-      status: "PENDING",
-      createdAt: new Date("2026-01-01T00:00:00Z"),
-      notes: null,
-    }
-
-    mockPaymentConfirmationFindMany.mockResolvedValue([mockConfirmation])
+    const listSpy = spyOn(
+      ConfirmationService.prototype,
+      "listPending"
+    ).mockResolvedValueOnce([sampleConfirmation as never])
 
     const res = await app()
-      .handle(new Request("http://localhost/confirmations"))
+      .handle(new Request("http://localhost/confirmations?limit=10&offset=5"))
       .then((r) => r.json())
 
-    // Must be an array, not { ok: true, user: ... }
+    expect(listSpy).toHaveBeenCalledWith(10, 5)
     expect(Array.isArray(res)).toBe(true)
     expect(res).toHaveLength(1)
     expect(res[0].id).toBe("conf-1")
     expect(res[0].amount).toBe(50000)
     expect(res[0].currency).toBe("IDR")
+  })
+})
+
+describe("AdminConfirmationRoute GET /:id", () => {
+  beforeEach(() => {
+    mockAuthValue = { user: null }
+    mockPlatformRoleValue = "none"
+  })
+
+  it("returns 401 when unauthenticated", async () => {
+    const res = await app()
+      .handle(new Request("http://localhost/confirmations/conf-1"))
+      .then((r) => r.json())
+
+    expect(res.ok).toBe(false)
+    expect(res.error).toBe("UNAUTHORIZED")
+  })
+
+  it("returns 404 when confirmation is not found", async () => {
+    mockAuthValue = { user: { id: "admin-1", email: "admin@test.com" } }
+    mockPlatformRoleValue = "super_admin"
+
+    spyOn(ConfirmationService.prototype, "findById").mockResolvedValueOnce(null)
+
+    const res = await app()
+      .handle(new Request("http://localhost/confirmations/conf-missing"))
+      .then((r) => r.json())
+
+    expect(res.ok).toBe(false)
+    expect(res.error).toBe("NOT_FOUND")
+  })
+
+  it("returns confirmation DTO when found", async () => {
+    mockAuthValue = { user: { id: "admin-1", email: "admin@test.com" } }
+    mockPlatformRoleValue = "super_admin"
+
+    spyOn(ConfirmationService.prototype, "findById").mockResolvedValueOnce(
+      sampleConfirmation as never
+    )
+
+    const res = await app()
+      .handle(new Request("http://localhost/confirmations/conf-1"))
+      .then((r) => r.json())
+
+    expect(res.id).toBe("conf-1")
+    expect(res.amount).toBe(50000)
+    expect(res.invoiceNumber).toBe("INV-001")
+  })
+})
+
+describe("AdminConfirmationRoute POST /:id/approve", () => {
+  beforeEach(() => {
+    mockAuthValue = { user: null }
+    mockPlatformRoleValue = "none"
+  })
+
+  it("returns 401 when unauthenticated", async () => {
+    const res = await app()
+      .handle(
+        new Request("http://localhost/confirmations/conf-1/approve", {
+          method: "POST",
+        })
+      )
+      .then((r) => r.json())
+
+    expect(res.ok).toBe(false)
+    expect(res.error).toBe("UNAUTHORIZED")
+  })
+
+  it("approves payment without body and fires email", async () => {
+    mockAuthValue = { user: { id: "admin-1", email: "admin@test.com" } }
+    mockPlatformRoleValue = "super_admin"
+
+    const approveSpy = spyOn(
+      ConfirmationService.prototype,
+      "approve"
+    ).mockResolvedValueOnce({
+      invoiceId: "inv-1",
+      invoiceNumber: "INV-001",
+      totalAmount: 50000,
+      currency: "IDR",
+      organizationId: "org-1",
+    })
+
+    const emailSpy = spyOn(
+      PaymentService.prototype,
+      "sendInvoicePaidEmail"
+    ).mockResolvedValueOnce(undefined as never)
+
+    const res = await app()
+      .handle(
+        new Request("http://localhost/confirmations/conf-1/approve", {
+          method: "POST",
+        })
+      )
+      .then((r) => r.json())
+
+    expect(approveSpy).toHaveBeenCalledWith("conf-1", "admin-1", undefined)
+    expect(emailSpy).toHaveBeenCalled()
+    expect(res.message).toBe("Payment approved and balance credited")
+  })
+
+  it("approves payment with verified amount and catches email error gracefully", async () => {
+    mockAuthValue = { user: { id: "admin-1", email: "admin@test.com" } }
+    mockPlatformRoleValue = "super_admin"
+
+    const approveSpy = spyOn(
+      ConfirmationService.prototype,
+      "approve"
+    ).mockResolvedValueOnce({
+      invoiceId: "inv-1",
+      invoiceNumber: "INV-001",
+      totalAmount: 55000,
+      currency: "IDR",
+      organizationId: "org-1",
+    })
+
+    const emailSpy = spyOn(
+      PaymentService.prototype,
+      "sendInvoicePaidEmail"
+    ).mockRejectedValueOnce(new Error("SMTP down"))
+
+    const res = await app()
+      .handle(
+        new Request("http://localhost/confirmations/conf-1/approve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "approve", amount: 55000 }),
+        })
+      )
+      .then((r) => r.json())
+
+    expect(approveSpy).toHaveBeenCalledWith("conf-1", "admin-1", 55000)
+    expect(emailSpy).toHaveBeenCalled()
+    expect(res.message).toBe("Payment approved and balance credited")
+  })
+})
+
+describe("AdminConfirmationRoute POST /:id/reject", () => {
+  beforeEach(() => {
+    mockAuthValue = { user: null }
+    mockPlatformRoleValue = "none"
+  })
+
+  it("returns 422 on invalid action body", async () => {
+    mockAuthValue = { user: { id: "admin-1", email: "admin@test.com" } }
+    mockPlatformRoleValue = "super_admin"
+
+    const res = await app()
+      .handle(
+        new Request("http://localhost/confirmations/conf-1/reject", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "unknown" }),
+        })
+      )
+      .then((r) => r.json())
+
+    expect(res.ok).toBe(false)
+    expect(res.error).toBe("VALIDATION_ERROR")
+  })
+
+  it("rejects confirmation with reason", async () => {
+    mockAuthValue = { user: { id: "admin-1", email: "admin@test.com" } }
+    mockPlatformRoleValue = "super_admin"
+
+    const rejectSpy = spyOn(
+      ConfirmationService.prototype,
+      "reject"
+    ).mockResolvedValueOnce({
+      id: "conf-1",
+      status: "REJECTED",
+    } as never)
+
+    const res = await app()
+      .handle(
+        new Request("http://localhost/confirmations/conf-1/reject", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reject",
+            reason: "Transfer not received",
+          }),
+        })
+      )
+      .then((r) => r.json())
+
+    expect(rejectSpy).toHaveBeenCalledWith(
+      "conf-1",
+      "admin-1",
+      "Transfer not received"
+    )
+    expect(res.message).toBe("Payment rejected")
   })
 })
