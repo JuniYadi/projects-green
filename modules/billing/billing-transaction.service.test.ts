@@ -14,6 +14,7 @@ const mockPrisma = {
     create: vi.fn(),
   },
   billingInvoice: {
+    findUnique: vi.fn(),
     findFirst: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
@@ -265,7 +266,7 @@ describe("BillingTransactionService", () => {
         balance: decimal("40.00"),
       })
       // No existing DRAFT service invoice — will create
-      mockPrisma.billingInvoice.findFirst.mockResolvedValue(null)
+      mockPrisma.billingInvoice.findUnique.mockResolvedValue(null)
       mockPrisma.billingInvoice.create.mockResolvedValue({
         id: "inv_svc_1",
         billingAccountId: "ba_1",
@@ -316,9 +317,102 @@ describe("BillingTransactionService", () => {
         },
       })
 
-      expect(mockPrisma.billingInvoice.findFirst).toHaveBeenCalled()
+      expect(mockPrisma.billingInvoice.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            billingAccountId_invoiceNumber: {
+              billingAccountId: "ba_1",
+              invoiceNumber: expect.stringMatching(/^SVC-\d{6}$/),
+            },
+          },
+        })
+      )
       expect(mockPrisma.billingInvoiceLine.create).toHaveBeenCalled()
       expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1)
+    })
+    it("reuses existing current-month service invoice when found via findUnique without creating new one", async () => {
+      const account = billingAccount({ balance: decimal("100.00") })
+      const now = new Date()
+      const periodStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+      )
+      const periodEnd = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999
+        )
+      )
+
+      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      mockPrisma.billingAdjustment.findFirst.mockResolvedValue(null)
+      mockPrisma.billingAccount.update.mockResolvedValue({
+        ...account,
+        balance: decimal("70.00"),
+      })
+      // Existing DRAFT service invoice found via compound key
+      mockPrisma.billingInvoice.findUnique.mockResolvedValue({
+        id: "inv_existing_1",
+        billingAccountId: "ba_1",
+        invoiceNumber: "SVC-202609",
+        type: "SERVICE",
+        status: "DRAFT",
+        currency: "IDR",
+        periodStart,
+        periodEnd,
+        subtotalAmount: decimal("20.00"),
+        totalAmount: decimal("20.00"),
+      })
+      mockPrisma.billingInvoiceLine.create.mockResolvedValue({
+        id: "line_2",
+        invoiceId: "inv_existing_1",
+        lineType: "USAGE",
+        description: "WhatsApp overage",
+        quantity: decimal("1"),
+        unitPrice: decimal("30.00"),
+        amount: decimal("30.00"),
+        currency: "IDR",
+      })
+      mockPrisma.billingInvoice.update.mockResolvedValue({
+        id: "inv_existing_1",
+        subtotalAmount: decimal("50.00"),
+        totalAmount: decimal("50.00"),
+      })
+      mockPrisma.billingAdjustment.create.mockResolvedValue({
+        id: "adj_4",
+        billingAccountId: "ba_1",
+        adjustmentType: "DEBIT",
+        amount: decimal("30.00"),
+        currency: "IDR",
+      })
+
+      await service.debitServiceBalance({
+        ...baseInput({
+          amount: decimal("30.00"),
+          source: "WHATSAPP",
+          reason: "WhatsApp message overage",
+        }),
+        line: {
+          description: "WhatsApp overage",
+          quantity: decimal("1"),
+          unitPrice: decimal("30.00"),
+          lineType: "USAGE",
+        },
+      })
+
+      expect(mockPrisma.billingInvoice.findUnique).toHaveBeenCalled()
+      expect(mockPrisma.billingInvoice.create).not.toHaveBeenCalled()
+      expect(mockPrisma.billingInvoiceLine.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            invoiceId: "inv_existing_1",
+          }),
+        })
+      )
     })
 
     it("locks the account before a credit idempotency lookup", async () => {

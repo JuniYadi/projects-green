@@ -486,7 +486,10 @@ const main = async () => {
     const invoiceNumber = `SEED-${scopeCode}-INV-${seed.key}`
     const existingInvoice = await prisma.billingInvoice.findUnique({
       where: {
-        invoiceNumber,
+        billingAccountId_invoiceNumber: {
+          billingAccountId: billingAccount.id,
+          invoiceNumber,
+        },
       },
       select: {
         id: true,

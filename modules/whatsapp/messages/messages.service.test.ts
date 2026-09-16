@@ -58,6 +58,7 @@ const mockTx = {
     create: mock(async () => ({ id: "adj-1" })),
   },
   billingInvoice: {
+    findUnique: mock(async () => null),
     findFirst: mock(async () => null),
     count: mock(async () => 0),
     create: mock(async () => ({
@@ -277,6 +278,7 @@ describe("messageService", () => {
     mockEnqueueWebhook.mockClear()
     mockTx.billingAdjustment.findFirst.mockClear()
     mockTx.billingAdjustment.create.mockClear()
+    mockTx.billingInvoice.findUnique.mockClear()
     mockTx.billingInvoice.findFirst.mockClear()
     mockTx.billingInvoice.count.mockClear()
     mockTx.billingInvoice.create.mockClear()
@@ -389,6 +391,7 @@ describe("messageService", () => {
       id: "adj-1",
     } as any)
     // Invoice defaults: no existing draft, creates new one
+    mockTx.billingInvoice.findUnique.mockResolvedValue(null)
     mockTx.billingInvoice.findFirst.mockResolvedValue(null)
     mockTx.billingInvoice.count.mockResolvedValue(0)
     mockTx.billingInvoice.create.mockResolvedValue({
