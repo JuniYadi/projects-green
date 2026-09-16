@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   Plus,
   ArrowsClockwise,
@@ -84,6 +85,10 @@ function formatRelativeTime(dateString: string | Date): string {
 }
 
 function TemplateStatusCell({ template }: { template: WhatsAppTemplate }) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.whatsapp.adminTemplates
   const metaStatus = template.metaStatus ?? "UNKNOWN"
   const syncStatus = template.syncStatus ?? "NOT_SYNCED"
 
@@ -173,7 +178,7 @@ function TemplateStatusCell({ template }: { template: WhatsAppTemplate }) {
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs text-xs">
               <p className="font-semibold text-destructive">
-                Meta Rejection Reason:
+                {messages.metaRejectionReason}
               </p>
               <p className="mt-0.5 text-muted-foreground">
                 {firstRejectReason.replace(/_/g, " ")}
@@ -201,7 +206,7 @@ function TemplateStatusCell({ template }: { template: WhatsAppTemplate }) {
           <TooltipContent side="top" className="text-xs">
             <p className="font-semibold">{currentSync.tooltip}</p>
             <p className="text-[10px] text-muted-foreground">
-              Local DB: {syncStatus}
+              {messages.localDbLabel} {syncStatus}
             </p>
           </TooltipContent>
         </Tooltip>
@@ -214,6 +219,10 @@ export function TemplatesPageClient({
   isSuperAdmin,
 }: TemplatesPageClientProps) {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.whatsapp.adminTemplates
   const searchParams = useSearchParams()
   const organizationId = searchParams.get("organizationId") ?? undefined
   const whatsappDeviceId = searchParams.get("whatsappDeviceId") ?? undefined
@@ -429,7 +438,7 @@ export function TemplatesPageClient({
     {
       accessorKey: "name",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Template" />
+        <DataTableColumnHeader column={column} title={messages.colTemplate} />
       ),
       cell: ({ row }) => (
         <div>
@@ -453,14 +462,14 @@ export function TemplatesPageClient({
         `${row.metaStatus ?? "UNKNOWN"}_${row.syncStatus ?? "NOT_SYNCED"}`,
       id: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader column={column} title={messages.colStatus} />
       ),
       cell: ({ row }) => <TemplateStatusCell template={row.original} />,
     },
     {
       accessorKey: "category",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Category" />
+        <DataTableColumnHeader column={column} title={messages.colCategory} />
       ),
       cell: ({ row }) => (
         <Badge variant="outline" className="text-xs">
@@ -472,7 +481,7 @@ export function TemplatesPageClient({
       accessorFn: (row) => row.languages?.map((l) => l.lang).join(", ") ?? "",
       id: "languages",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Languages" />
+        <DataTableColumnHeader column={column} title={messages.colLanguages} />
       ),
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
@@ -499,7 +508,7 @@ export function TemplatesPageClient({
       },
       id: "device",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Device" />
+        <DataTableColumnHeader column={column} title={messages.colDevice} />
       ),
       cell: ({ row }) => {
         const deviceId = row.original.whatsappDeviceId
@@ -509,7 +518,7 @@ export function TemplatesPageClient({
               variant="outline"
               className="text-xs font-normal text-muted-foreground"
             >
-              Any device
+              {messages.anyDevice}
             </Badge>
           )
         }
@@ -552,9 +561,11 @@ export function TemplatesPageClient({
               <TooltipContent side="top" className="text-xs">
                 <p className="font-semibold">{displayName}</p>
                 <p className="font-mono text-[10px] text-muted-foreground">
-                  Device ID: {deviceId}
+                  {messages.deviceIdLabel} {deviceId}
                 </p>
-                <p className="text-[10px] text-primary">Click to view device</p>
+                <p className="text-[10px] text-primary">
+                  {messages.clickToViewDevice}
+                </p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -564,7 +575,7 @@ export function TemplatesPageClient({
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created" />
+        <DataTableColumnHeader column={column} title={messages.colCreated} />
       ),
       cell: ({ row }) => {
         const date = new Date(row.original.createdAt)
@@ -602,7 +613,7 @@ export function TemplatesPageClient({
               }
             >
               <Eye className="mr-1.5 size-3.5" />
-              View
+              {messages.viewButton}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -610,7 +621,7 @@ export function TemplatesPageClient({
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  aria-label="More actions"
+                  aria-label={messages.moreActionsAria}
                 >
                   <DotsThreeVertical className="size-4" />
                 </Button>
@@ -622,7 +633,7 @@ export function TemplatesPageClient({
                   }
                 >
                   <PencilSimple className="mr-2 size-4" />
-                  Edit / Manage
+                  {messages.editManage}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>
@@ -632,7 +643,7 @@ export function TemplatesPageClient({
                   }
                 >
                   <Plus className="mr-2 size-4" />
-                  Duplicate
+                  {messages.duplicate}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -640,7 +651,7 @@ export function TemplatesPageClient({
                   onClick={() => setTemplateToDelete(tpl)}
                 >
                   <Trash className="mr-2 size-4" />
-                  Delete
+                  {messages.deleteAction}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -660,7 +671,7 @@ export function TemplatesPageClient({
             {isSuperAdmin && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-muted-foreground">
-                  Organization
+                  {messages.organizationLabel}
                 </label>
                 <select
                   className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs focus:outline-hidden"
@@ -669,9 +680,9 @@ export function TemplatesPageClient({
                     setParam("organizationId", e.target.value || undefined)
                   }
                   disabled={orgsLoading}
-                  aria-label="Filter by organization"
+                  aria-label={messages.filterByOrgAria}
                 >
-                  <option value="">All organizations</option>
+                  <option value="">{messages.allOrganizations}</option>
                   {orgsError ? (
                     <option value="" disabled>
                       {orgsError}
@@ -690,7 +701,7 @@ export function TemplatesPageClient({
             {/* Device filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Device
+                {messages.colDevice}
               </label>
               <select
                 className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs focus:outline-hidden"
@@ -699,9 +710,9 @@ export function TemplatesPageClient({
                   setParam("whatsappDeviceId", e.target.value || undefined)
                 }
                 disabled={devicesLoading}
-                aria-label="Filter by device"
+                aria-label={messages.filterByDeviceAria}
               >
-                <option value="">All devices</option>
+                <option value="">{messages.allDevices}</option>
                 {devicesError ? (
                   <option value="" disabled>
                     {devicesError}
@@ -720,7 +731,7 @@ export function TemplatesPageClient({
             {/* Status filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Status
+                {messages.colStatus}
               </label>
               <select
                 className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs focus:outline-hidden"
@@ -728,7 +739,7 @@ export function TemplatesPageClient({
                 onChange={(e) =>
                   setParam("syncStatus", e.target.value || undefined)
                 }
-                aria-label="Filter by sync status"
+                aria-label={messages.filterBySyncStatusAria}
               >
                 {SYNC_STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -746,7 +757,7 @@ export function TemplatesPageClient({
                 className="h-9 self-end"
                 onClick={clearFilters}
               >
-                Clear Filters
+                {messages.clearFilters}
               </Button>
             )}
           </div>
@@ -815,7 +826,7 @@ export function TemplatesPageClient({
               onClick={() => router.push("/portal/whatsapp/templates/new")}
             >
               <Plus weight="bold" className="mr-1.5 size-4" />
-              Create Template
+              {messages.createTemplate}
             </Button>
           </div>
         </div>
@@ -834,7 +845,7 @@ export function TemplatesPageClient({
             </p>
             <Button variant="outline" onClick={() => void reload()}>
               <ArrowsClockwise className="mr-2 size-4" />
-              Retry
+              {messages.retry}
             </Button>
           </div>
         ) : (
@@ -842,7 +853,7 @@ export function TemplatesPageClient({
             tableId="portal-whatsapp-templates"
             columns={columns}
             data={templates}
-            searchPlaceholder="Search templates..."
+            searchPlaceholder={messages.searchPlaceholder}
             searchableColumns={["name", "category"]}
           />
         )}
