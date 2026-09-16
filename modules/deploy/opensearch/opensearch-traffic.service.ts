@@ -4,11 +4,14 @@ import type { Prisma } from "@prisma/client"
 import { logger } from "@/lib/logger"
 import { resolveClusterIntegrationByClusterCode } from "../cluster-integration.service"
 import { enrichTopIpsWithGeo, type IpGeoInfo } from "./geoip-lookup.service"
+import { parseUserAgent } from "./ua-parser.service"
 import type {
   AppTrafficLogItemDTO,
   AppTrafficLogsDTO,
   AppTrafficReportDTO,
+  AudienceBucket,
   DailySnapshotComputeResult,
+  TrafficAudienceBreakdown,
   TrafficCountryCount,
   TrafficErrorPath,
   TrafficPathCount,
@@ -81,6 +84,73 @@ export function computeTopCountries(
           : 0,
     }))
     .sort((a, b) => b.requests - a.requests)
+}
+
+const EMPTY_AUDIENCE: TrafficAudienceBreakdown = {
+  device: [],
+  browser: [],
+  os: [],
+}
+
+/**
+ * Legacy snapshot rows have audienceJson: {} (the column default), not
+ * null -- missing device/browser/os keys, not a missing object. Normalize
+ * both cases the same way instead of relying on `?? EMPTY_AUDIENCE`, which
+ * only catches null/undefined and would let `{}` through with undefined
+ * arrays that break downstream .map() calls.
+ */
+function normalizeAudience(raw: unknown): TrafficAudienceBreakdown {
+  const a = (raw ?? {}) as Partial<TrafficAudienceBreakdown>
+  return {
+    device: a.device ?? [],
+    browser: a.browser ?? [],
+    os: a.os ?? [],
+  }
+}
+
+/** Top 5 labels by count, remainder rolled into a single "Other" bucket. */
+function buildTop5WithOther(counts: Map<string, number>): AudienceBucket[] {
+  const total = Array.from(counts.values()).reduce((a, b) => a + b, 0)
+  const pct = (n: number) =>
+    total > 0 ? Math.round((n / total) * 1000) / 10 : 0
+  const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+  const buckets: AudienceBucket[] = sorted
+    .slice(0, 5)
+    .map(([label, count]) => ({ label, count, percentage: pct(count) }))
+  const otherCount = sorted.slice(5).reduce((sum, [, c]) => sum + c, 0)
+  if (otherCount > 0) {
+    buckets.push({
+      label: "Other",
+      count: otherCount,
+      percentage: pct(otherCount),
+    })
+  }
+  return buckets
+}
+
+function mergeBucketLists(lists: AudienceBucket[][]): AudienceBucket[] {
+  const counts = new Map<string, number>()
+  for (const list of lists) {
+    for (const b of list)
+      counts.set(b.label, (counts.get(b.label) ?? 0) + b.count)
+  }
+  return buildTop5WithOther(counts)
+}
+
+/**
+ * Merges already-compacted (top-5 + Other) daily breakdowns into one. Each
+ * day already discarded detail beyond its own top 5, so a label that never
+ * made a single day's top 5 can't be recovered here -- same accepted
+ * lossy-rollup tradeoff this file already makes for topPaths/topIps.
+ */
+export function mergeAudienceBreakdown(
+  lists: TrafficAudienceBreakdown[]
+): TrafficAudienceBreakdown {
+  return {
+    device: mergeBucketLists(lists.map((a) => a.device)),
+    browser: mergeBucketLists(lists.map((a) => a.browser)),
+    os: mergeBucketLists(lists.map((a) => a.os)),
+  }
 }
 
 export async function resolveOpenSearchForStack(
@@ -305,6 +375,11 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
       top_ips: {
         terms: { field: "client_ip.keyword", size: 10 },
       },
+      user_agent_buckets: {
+        // Enough distinct UA strings to represent the day's audience without
+        // parsing every document; parsed once per unique string, server-side.
+        terms: { field: "user_agent.keyword", size: 100 },
+      },
       error_paths: {
         filter: {
           range: { http_status: { gte: 400 } },
@@ -333,6 +408,9 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   const topPaths: TrafficPathCount[] = []
   const errorPaths: TrafficErrorPath[] = []
   const rawTopIps: Array<{ ip: string; count: number }> = []
+  const deviceCounts = new Map<string, number>()
+  const browserCounts = new Map<string, number>()
+  const osCounts = new Map<string, number>()
 
   try {
     const rawClient = client as unknown as {
@@ -361,6 +439,9 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
       }
       top_paths?: { buckets: Array<{ key: string; doc_count: number }> }
       top_ips?: { buckets: Array<{ key: string; doc_count: number }> }
+      user_agent_buckets?: {
+        buckets: Array<{ key: string; doc_count: number }>
+      }
       error_paths?: {
         paths?: {
           buckets: Array<{
@@ -427,6 +508,21 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
       }
     }
 
+    if (aggs.user_agent_buckets?.buckets) {
+      for (const b of aggs.user_agent_buckets.buckets) {
+        const parsed = parseUserAgent(b.key)
+        const device = parsed.deviceClass
+        const browser = parsed.browserFamily
+        const os = parsed.osFamily
+        deviceCounts.set(device, (deviceCounts.get(device) ?? 0) + b.doc_count)
+        browserCounts.set(
+          browser,
+          (browserCounts.get(browser) ?? 0) + b.doc_count
+        )
+        osCounts.set(os, (osCounts.get(os) ?? 0) + b.doc_count)
+      }
+    }
+
     const errBuckets = aggs.error_paths?.paths?.buckets ?? []
     for (const b of errBuckets) {
       errorPaths.push({
@@ -449,6 +545,11 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   }
 
   const topIps = await enrichTopIpsWithGeo(rawTopIps)
+  const audience: TrafficAudienceBreakdown = {
+    device: buildTop5WithOther(deviceCounts),
+    browser: buildTop5WithOther(browserCounts),
+    os: buildTop5WithOther(osCounts),
+  }
 
   return {
     stackId,
@@ -462,6 +563,7 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     topPaths,
     errorPaths,
     topIps,
+    audience,
   }
 }
 
@@ -488,6 +590,7 @@ export async function saveDailyTrafficSnapshot(
       topPathsJson: snapshot.topPaths as unknown as Prisma.InputJsonValue,
       errorPathsJson: snapshot.errorPaths as unknown as Prisma.InputJsonValue,
       topIpsJson: snapshot.topIps as unknown as Prisma.InputJsonValue,
+      audienceJson: snapshot.audience as unknown as Prisma.InputJsonValue,
     },
     create: {
       stackId: snapshot.stackId,
@@ -501,6 +604,7 @@ export async function saveDailyTrafficSnapshot(
       topPathsJson: snapshot.topPaths as unknown as Prisma.InputJsonValue,
       errorPathsJson: snapshot.errorPaths as unknown as Prisma.InputJsonValue,
       topIpsJson: snapshot.topIps as unknown as Prisma.InputJsonValue,
+      audienceJson: snapshot.audience as unknown as Prisma.InputJsonValue,
     },
   })
 }
@@ -633,6 +737,7 @@ export async function getAppTrafficReport(
         troubledPages: [],
         topIps: [],
         topCountries: [],
+        audience: EMPTY_AUDIENCE,
       }
     }
 
@@ -680,6 +785,7 @@ export async function getAppTrafficReport(
         (snapshot.errorPathsJson as unknown as TrafficErrorPath[]) ?? [],
       topIps,
       topCountries,
+      audience: normalizeAudience(snapshot.audienceJson),
     }
   }
 
@@ -728,6 +834,7 @@ export async function getAppTrafficReport(
     const pathViews = new Map<string, number>()
     const errorMap = new Map<string, { errors: number; sampleStatus: number }>()
     const ipMap = new Map<string, IpGeoInfo>()
+    const audienceLists: TrafficAudienceBreakdown[] = []
 
     const trend: TrafficTrendItem[] = []
 
@@ -766,6 +873,8 @@ export async function getAppTrafficReport(
             sampleStatus: e.sampleStatus ?? cur?.sampleStatus ?? 500,
           })
         }
+
+        audienceLists.push(normalizeAudience(snap.audienceJson))
 
         const snapIps = (snap.topIpsJson as unknown as IpGeoInfo[]) ?? []
         for (const ipItem of snapIps) {
@@ -828,6 +937,7 @@ export async function getAppTrafficReport(
       troubledPages: sortedTroubledPages,
       topIps,
       topCountries,
+      audience: mergeAudienceBreakdown(audienceLists),
     }
   }
 
@@ -865,12 +975,14 @@ export async function getAppTrafficReport(
   const pathViews = new Map<string, number>()
   const errorMap = new Map<string, { errors: number; sampleStatus: number }>()
   const ipMap = new Map<string, IpGeoInfo>()
+  const audienceLists: TrafficAudienceBreakdown[] = []
 
   for (const snap of snapshots) {
     const month = snap.date.getUTCMonth()
     monthBuckets[month].requests += snap.totalRequests
     monthBuckets[month].errors += snap.errorCount
     monthBuckets[month].bytes += snap.totalBytes
+    audienceLists.push(normalizeAudience(snap.audienceJson))
 
     totalRequests += snap.totalRequests
     totalSuccess += snap.successCount
@@ -969,6 +1081,7 @@ export async function getAppTrafficReport(
     troubledPages: sortedTroubledPages,
     topIps,
     topCountries,
+    audience: mergeAudienceBreakdown(audienceLists),
   }
 }
 
