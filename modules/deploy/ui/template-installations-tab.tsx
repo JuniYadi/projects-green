@@ -1,7 +1,10 @@
 "use client"
 
 import React, { useEffect, useState, useTransition, useCallback } from "react"
+import { useParams } from "next/navigation"
 import { toast } from "sonner"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   ArrowsClockwise,
   CheckCircle,
@@ -73,6 +76,11 @@ export function TemplateInstallationsTab({
   templateName,
   targetDeploymentType,
 }: TemplateInstallationsTabProps) {
+  const params = useParams()
+  const lang = typeof params?.lang === "string" ? params.lang : "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.templateInstallations
+
   const [installations, setInstallations] = useState<TemplateInstallation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filterOutdatedOnly, setFilterOutdatedOnly] = useState(false)
@@ -205,14 +213,14 @@ export function TemplateInstallationsTab({
         <Card className="bg-card">
           <CardHeader className="pb-2">
             <CardDescription className="text-xs font-medium">
-              Total Active Installations
+              {messages.totalActiveInstallations}
             </CardDescription>
             <CardTitle className="text-2xl font-bold">
               {isLoading ? "..." : installations.length}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Applications instantiated from this template
+            {messages.totalActiveDesc}
           </CardContent>
         </Card>
 
@@ -220,14 +228,14 @@ export function TemplateInstallationsTab({
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1.5 text-xs font-medium">
               <CheckCircle className="size-3.5 text-emerald-500" />
-              Aligned Workloads (Up-to-Date)
+              {messages.alignedWorkloads}
             </CardDescription>
             <CardTitle className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {isLoading ? "..." : alignedCount}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Up-to-date with template ({targetDeploymentType})
+            {messages.alignedDesc} ({targetDeploymentType})
           </CardContent>
         </Card>
 
@@ -235,14 +243,14 @@ export function TemplateInstallationsTab({
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1.5 text-xs font-medium">
               <Warning className="size-3.5 text-amber-500" />
-              Outdated Workloads (Needs Sync)
+              {messages.outdatedWorkloads}
             </CardDescription>
             <CardTitle className="text-2xl font-bold text-amber-600 dark:text-amber-400">
               {isLoading ? "..." : outdatedCount}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Needs sync to latest template configuration
+            {messages.outdatedDesc}
           </CardContent>
         </Card>
       </div>
@@ -252,11 +260,10 @@ export function TemplateInstallationsTab({
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="text-base">
-              Installed Applications ({displayedInstallations.length})
+              {messages.installedApps} ({displayedInstallations.length})
             </CardTitle>
             <CardDescription className="text-xs">
-              Manage and synchronize customer applications deployed from &ldquo;
-              {templateName}&rdquo;.
+              {messages.manageAndSync}
             </CardDescription>
           </div>
 
@@ -279,7 +286,7 @@ export function TemplateInstallationsTab({
                 onClick={handleSelectAllOutdated}
                 className="text-xs"
               >
-                Select Outdated ({outdatedCount})
+                {messages.selectOutdated} ({outdatedCount})
               </Button>
             )}
 
@@ -290,7 +297,7 @@ export function TemplateInstallationsTab({
               disabled={isLoading}
               className="size-8 p-0"
               onClick={handleRefresh}
-              title="Refresh list"
+              title={messages.refreshList}
             >
               <ArrowsClockwise
                 className={`size-4 ${isLoading ? "animate-spin" : ""}`}
@@ -310,7 +317,7 @@ export function TemplateInstallationsTab({
                 ) : (
                   <ArrowsClockwise className="size-3.5" />
                 )}
-                Sync Selected ({selectedStackIds.length})
+                {messages.syncSelected} ({selectedStackIds.length})
               </Button>
             )}
           </div>
@@ -320,11 +327,11 @@ export function TemplateInstallationsTab({
           {isLoading ? (
             <div className="flex h-48 flex-col items-center justify-center gap-2 text-muted-foreground">
               <Spinner className="size-6 animate-spin text-primary" />
-              <span className="text-xs">Loading active installations...</span>
+              <span className="text-xs">{messages.loading}</span>
             </div>
           ) : displayedInstallations.length === 0 ? (
             <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-              <p className="text-sm font-medium">No installations found.</p>
+              <p className="text-sm font-medium">{messages.noInstallations}</p>
               <p className="mt-1 text-xs">
                 {filterOutdatedOnly
                   ? "All active installations are aligned with the latest template configuration."
@@ -345,15 +352,15 @@ export function TemplateInstallationsTab({
                           )
                         }
                         onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
+                        aria-label={messages.selectAll}
                       />
                     </TableHead>
-                    <TableHead>Application</TableHead>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Workload Kind</TableHead>
-                    <TableHead>Stack Status</TableHead>
-                    <TableHead>Last Deployed</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead>{messages.thApplication}</TableHead>
+                    <TableHead>{messages.thOrganization}</TableHead>
+                    <TableHead>{messages.thWorkloadKind}</TableHead>
+                    <TableHead>{messages.thStackStatus}</TableHead>
+                    <TableHead>{messages.thLastDeployed}</TableHead>
+                    <TableHead className="text-right">{messages.thAction}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -441,7 +448,7 @@ export function TemplateInstallationsTab({
                           className="gap-1 text-xs"
                         >
                           <ArrowsClockwise className="size-3" />
-                          Sync
+                          {messages.sync}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -459,53 +466,46 @@ export function TemplateInstallationsTab({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <ShieldCheck className="size-5 text-emerald-500" />
-              Sync Application Setup from Template?
+              {messages.dialogTitle}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3 pt-2 text-xs text-muted-foreground">
                 <p>
-                  You are about to align{" "}
+                  {messages.dialogAboutPrefix}{" "}
                   <strong className="text-foreground">
-                    {targetStacksForSync.length} application(s)
+                    {targetStacksForSync.length} {messages.dialogAboutMid}
                   </strong>{" "}
-                  with parent template &ldquo;{templateName}&rdquo;.
+                  &ldquo;{templateName}&rdquo;{messages.dialogAboutSuffix}
                 </p>
 
                 <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
                   <p className="font-semibold text-foreground">
-                    Safe Merge Rules:
+                    {messages.safeMergeRules}
                   </p>
                   <ul className="list-inside list-disc space-y-1.5">
                     <li>
                       <span className="font-medium text-foreground">
-                        Architecture update:
+                        {messages.archUpdateTitle}
                       </span>{" "}
-                      Controller updated to{" "}
-                      <strong className="text-foreground uppercase">
-                        {targetDeploymentType}
-                      </strong>
-                      , ports and healthcheck refreshed.
+                      {messages.archUpdateDesc}
                     </li>
                     <li>
                       <span className="font-medium text-foreground">
-                        Custom settings preserved:
+                        {messages.customSettingsTitle}
                       </span>{" "}
-                      Customer CPU/memory scaling, custom domains, and subdomain
-                      settings remain untouched.
+                      {messages.customSettingsDesc}
                     </li>
                     <li>
                       <span className="font-medium text-foreground">
-                        Env vars preserved:
+                        {messages.envVarsTitle}
                       </span>{" "}
-                      Customer-configured environment values stay intact; new
-                      template defaults are appended if missing.
+                      {messages.envVarsDesc}
                     </li>
                     <li>
                       <span className="font-medium text-amber-600 dark:text-amber-400">
-                        GitOps & ArgoCD:
+                        {messages.gitOpsTitle}
                       </span>{" "}
-                      Generates fresh Helm manifests and triggers a rolling
-                      sync.
+                      {messages.gitOpsDesc}
                     </li>
                   </ul>
                 </div>
@@ -524,7 +524,7 @@ export function TemplateInstallationsTab({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSyncing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSyncing}>{messages.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
@@ -534,7 +534,7 @@ export function TemplateInstallationsTab({
               className="gap-1.5 bg-primary text-primary-foreground"
             >
               {isSyncing && <Spinner className="size-3.5 animate-spin" />}
-              {isSyncing ? "Syncing..." : "Confirm & Trigger Sync"}
+              {isSyncing ? messages.syncing : messages.confirmSync}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

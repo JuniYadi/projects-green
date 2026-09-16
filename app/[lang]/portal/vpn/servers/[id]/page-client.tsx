@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
+import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { getMessages } from "@/lib/i18n/messages"
 import {
   Table,
   TableBody,
@@ -68,9 +70,19 @@ function MetricCard({
   )
 }
 
-function TrafficList({ rows }: { rows: VpnServerTrafficPoint[] }) {
+function TrafficList({
+  rows,
+  messages,
+}: {
+  rows: VpnServerTrafficPoint[]
+  messages?: ReturnType<typeof getMessages>["console"]["vpn"]["serverDetail"]
+}) {
   if (rows.length === 0) {
-    return <div className="text-sm text-muted-foreground">No vnStat data.</div>
+    return (
+      <div className="text-sm text-muted-foreground">
+        {messages?.noVnstatData ?? "No vnStat data."}
+      </div>
+    )
   }
   return (
     <div className="space-y-2">
@@ -100,12 +112,18 @@ function TrafficList({ rows }: { rows: VpnServerTrafficPoint[] }) {
 function ProcessList({
   rows,
   metric,
+  messages,
 }: {
   rows: VpnServerProcessItem[]
   metric: "cpu" | "memory"
+  messages?: ReturnType<typeof getMessages>["console"]["vpn"]["serverDetail"]
 }) {
   if (rows.length === 0) {
-    return <div className="text-sm text-muted-foreground">No process data.</div>
+    return (
+      <div className="text-sm text-muted-foreground">
+        {messages?.noProcessData ?? "No process data."}
+      </div>
+    )
   }
   return (
     <div className="space-y-2">
@@ -126,6 +144,8 @@ function ProcessList({
 
 export default function VpnServerDetailPage() {
   const params = useParams()
+  const locale = ((params?.lang as string) ?? defaultLocale) as AppLocale
+  const messages = getMessages(locale).console.vpn.serverDetail
   const serverId = params.id as string
 
   const [server, setServer] = useState<VpnServerItem | null>(null)
@@ -246,7 +266,7 @@ export default function VpnServerDetailPage() {
         <Button variant="ghost" size="sm" asChild className="mb-4">
           <Link href="/portal/vpn/servers">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to servers
+            {messages.backToServers}
           </Link>
         </Button>
         <header className="flex flex-wrap items-start justify-between gap-3">
@@ -257,8 +277,7 @@ export default function VpnServerDetailPage() {
                 : "VPN Server"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Realtime VPN server details, resource metrics, traffic usage,
-              processes, and OpenVPN users.
+              {messages.pageDescription}
             </p>
           </div>
           {server && (
@@ -268,7 +287,7 @@ export default function VpnServerDetailPage() {
               onClick={() => setFormOpen(true)}
             >
               <PencilSimpleIcon className="mr-2 h-4 w-4" />
-              Edit Server
+              {messages.editServer}
             </Button>
           )}
         </header>
@@ -326,7 +345,7 @@ export default function VpnServerDetailPage() {
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div>
                 <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  Public endpoint
+                  {messages.publicEndpointTitle}
                 </div>
                 <div className="mt-1 font-mono text-sm font-medium">
                   {server.hostname}
@@ -337,20 +356,20 @@ export default function VpnServerDetailPage() {
               </div>
               <div>
                 <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  SSH access
+                  {messages.sshAccessTitle}
                 </div>
                 <div className="mt-1 font-mono text-sm font-medium">
                   {server.sshUser}@{server.hostname}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Port {server.sshPort}
+                  {messages.portLabel} {server.sshPort}
                 </div>
               </div>
             </div>
 
             <div className="mt-5 rounded-md bg-muted/40 p-3">
               <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                SSH key
+                {messages.sshKeyLabel}
               </div>
               <div className="mt-1 text-sm font-medium">
                 {server.sshKey.name}
@@ -359,17 +378,16 @@ export default function VpnServerDetailPage() {
                 {server.sshKey.fingerprint}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Private key material is hidden. Only key name and fingerprint
-                are shown.
+                {messages.sshKeyNotice}
               </p>
             </div>
           </div>
 
           <div className="rounded-lg border p-5">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold">Protocol configuration</h2>
+              <h2 className="text-lg font-semibold">{messages.protocolConfigTitle}</h2>
               <p className="text-sm text-muted-foreground">
-                Enabled services and exposed ports for this server.
+                {messages.protocolConfigDesc}
               </p>
             </div>
             <div className="mt-5 space-y-3">
@@ -387,8 +405,8 @@ export default function VpnServerDetailPage() {
                     <div className="font-mono text-xs text-muted-foreground">
                       {(protocol as { enabled: boolean; port: number | null })
                         .enabled
-                        ? `:${(protocol as { port: number | null }).port ?? "?"}`
-                        : "No port configured"}
+                        ? `Port ${(protocol as { port: number | null }).port ?? "—"}`
+                        : "Disabled"}
                     </div>
                   </div>
                   <Badge
@@ -417,8 +435,7 @@ export default function VpnServerDetailPage() {
                 {syncing ? "Syncing..." : "Sync Protocols to Subscriptions"}
               </Button>
               <p className="mt-2 text-xs text-muted-foreground">
-                Creates server accounts for all ACTIVE subscriptions based on
-                enabled protocols.
+                {messages.provisionAccountsNotice}
               </p>
             </div>
           </div>
@@ -440,9 +457,9 @@ export default function VpnServerDetailPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Live server metrics</h2>
+            <h2 className="text-lg font-semibold">{messages.liveMetricsTitle}</h2>
             <p className="text-sm text-muted-foreground">
-              Ports, uptime, vnStat traffic, and top processes from SSH.
+              {messages.liveMetricsDesc}
             </p>
           </div>
           <Button
@@ -452,7 +469,7 @@ export default function VpnServerDetailPage() {
             disabled={metricsLoading}
           >
             <ArrowClockwise className="mr-2 h-4 w-4" />
-            {metricsLoading ? "Refreshing..." : "Refresh"}
+            {metricsLoading ? "..." : "Refresh"}
           </Button>
         </div>
 
@@ -462,7 +479,7 @@ export default function VpnServerDetailPage() {
           <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-4">
               <MetricCard
-                label="Uptime"
+                label={messages.uptime}
                 value={metrics.uptime ?? "Unavailable"}
               />
               <MetricCard
@@ -475,7 +492,7 @@ export default function VpnServerDetailPage() {
                 hint="usage / total"
               />
               <MetricCard
-                label="Memory"
+                label={messages.memory}
                 value={
                   metrics.resources.memory.used === null ||
                   metrics.resources.memory.total === null
@@ -485,38 +502,38 @@ export default function VpnServerDetailPage() {
                 hint="usage / total"
               />
               <MetricCard
-                label="Bandwidth this month"
+                label={messages.bandwidthMonth}
                 value={formatBytes(metrics.resources.currentMonthBandwidth)}
-                hint="vnStat total"
+                hint={messages.vnstatTotal}
               />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-lg border p-4">
-                <h3 className="mb-3 text-sm font-semibold">Daily traffic</h3>
-                <TrafficList rows={metrics.traffic.daily} />
+                <h3 className="mb-3 text-sm font-semibold">{messages.dailyTraffic}</h3>
+                <TrafficList rows={metrics.traffic.daily} messages={messages} />
               </div>
               <div className="rounded-lg border p-4">
-                <h3 className="mb-3 text-sm font-semibold">Monthly traffic</h3>
-                <TrafficList rows={metrics.traffic.monthly} />
-              </div>
-              <div className="rounded-lg border p-4">
-                <h3 className="mb-3 text-sm font-semibold">
-                  Top CPU processes
-                </h3>
-                <ProcessList rows={metrics.processes.cpu} metric="cpu" />
+                <h3 className="mb-3 text-sm font-semibold">{messages.monthlyTraffic}</h3>
+                <TrafficList rows={metrics.traffic.monthly} messages={messages} />
               </div>
               <div className="rounded-lg border p-4">
                 <h3 className="mb-3 text-sm font-semibold">
-                  Top memory processes
+                  {messages.topCpuProcesses}
                 </h3>
-                <ProcessList rows={metrics.processes.memory} metric="memory" />
+                <ProcessList rows={metrics.processes.cpu} metric="cpu" messages={messages} />
+              </div>
+              <div className="rounded-lg border p-4">
+                <h3 className="mb-3 text-sm font-semibold">
+                  {messages.topMemoryProcesses}
+                </h3>
+                <ProcessList rows={metrics.processes.memory} metric="memory" messages={messages} />
               </div>
             </div>
           </div>
         ) : (
           <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-            Metrics unavailable.
+            {messages.metricsUnavailable}
           </div>
         )}
       </section>
@@ -524,9 +541,9 @@ export default function VpnServerDetailPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">OpenVPN users</h2>
+            <h2 className="text-lg font-semibold">{messages.openvpnUsersTitle}</h2>
             <p className="text-sm text-muted-foreground">
-              Realtime list from the server, not from database.
+              {messages.openvpnUsersDesc}
             </p>
           </div>
           <Button
@@ -536,7 +553,7 @@ export default function VpnServerDetailPage() {
             disabled={usersLoading}
           >
             <ArrowClockwise className="mr-2 h-4 w-4" />
-            {usersLoading ? "Refreshing..." : "Refresh"}
+            {usersLoading ? "..." : "Refresh"}
           </Button>
         </div>
 
@@ -544,15 +561,15 @@ export default function VpnServerDetailPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Connection</TableHead>
-                <TableHead>VPN IP</TableHead>
-                <TableHead>Real Address</TableHead>
-                <TableHead>Traffic</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>IP Allocation</TableHead>
-                <TableHead>Serial</TableHead>
+                <TableHead>{messages.thUsername}</TableHead>
+                <TableHead>{messages.thStatus}</TableHead>
+                <TableHead>{messages.thConnection}</TableHead>
+                <TableHead>{messages.thVpnIp}</TableHead>
+                <TableHead>{messages.thRealAddress}</TableHead>
+                <TableHead>{messages.thTraffic}</TableHead>
+                <TableHead>{messages.thExpires}</TableHead>
+                <TableHead>{messages.thIpAllocation}</TableHead>
+                <TableHead>{messages.thSerial}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -614,7 +631,7 @@ export default function VpnServerDetailPage() {
                     colSpan={9}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    No OpenVPN users returned by server.
+                    {messages.noUsersReturned}
                   </TableCell>
                 </TableRow>
               )}

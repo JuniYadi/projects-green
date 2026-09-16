@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -15,6 +16,8 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Dialog,
   DialogContent,
@@ -85,6 +88,11 @@ const EMPTY_FORM: RegionFormData = {
 }
 
 export default function PortalBillingRegionsPage() {
+  const params = useParams()
+  const lang = typeof params?.lang === "string" ? params.lang : "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.billingRegions
+
   const [regions, setRegions] = useState<ServiceRegionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -317,7 +325,7 @@ export default function PortalBillingRegionsPage() {
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Region" />
+          <DataTableColumnHeader column={column} title={messages.thRegion} />
         ),
         cell: ({ row }) => {
           const region = row.original
@@ -347,7 +355,7 @@ export default function PortalBillingRegionsPage() {
       {
         accessorKey: "code",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Code" />
+          <DataTableColumnHeader column={column} title={messages.thCode} />
         ),
         cell: ({ row }) => (
           <Badge variant="outline" className="font-mono text-xs">
@@ -358,7 +366,7 @@ export default function PortalBillingRegionsPage() {
       {
         accessorKey: "country",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Country" />
+          <DataTableColumnHeader column={column} title={messages.thCountry} />
         ),
         cell: ({ row }) => (
           <span className="font-mono text-xs uppercase">
@@ -369,7 +377,7 @@ export default function PortalBillingRegionsPage() {
       {
         id: "clustersCount",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Active Clusters" />
+          <DataTableColumnHeader column={column} title={messages.thActiveClusters} />
         ),
         cell: ({ row }) => {
           const count = row.original._count?.appHostingClusters ?? 0
@@ -386,7 +394,7 @@ export default function PortalBillingRegionsPage() {
       {
         accessorKey: "isActive",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={messages.thStatus} />
         ),
         cell: ({ row }) => {
           const region = row.original
@@ -408,7 +416,7 @@ export default function PortalBillingRegionsPage() {
       },
       {
         id: "actions",
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => <span className="sr-only">{messages.thActions}</span>,
         cell: ({ row }) => {
           const region = row.original
           return (
@@ -420,7 +428,7 @@ export default function PortalBillingRegionsPage() {
                 aria-label={`Edit ${region.name}`}
               >
                 <PencilSimpleIcon className="h-4 w-4" />
-                <span className="sr-only">Edit</span>
+                <span className="sr-only">{messages.edit}</span>
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -434,10 +442,10 @@ export default function PortalBillingRegionsPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuLabel>{messages.thActions}</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => handleOpenEdit(region)}>
                     <PencilSimpleIcon className="mr-2 h-4 w-4" />
-                    Edit Region
+                    {messages.edit}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -445,7 +453,7 @@ export default function PortalBillingRegionsPage() {
                     onClick={() => handleOpenDelete(region)}
                   >
                     <TrashIcon className="mr-2 h-4 w-4" />
-                    Delete Region
+                    {messages.delete}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -454,7 +462,7 @@ export default function PortalBillingRegionsPage() {
         },
       },
     ],
-    [togglingId]
+    [togglingId, messages]
   )
 
   return (
@@ -462,16 +470,15 @@ export default function PortalBillingRegionsPage() {
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Master Regions
+            {messages.title}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Manage infrastructure regions, ISO country assignments, and regional
-            availability.
+            {messages.description}
           </p>
         </div>
         <Button onClick={handleOpenAdd} className="gap-2">
           <PlusIcon className="h-4 w-4" />
-          Add Region
+          {messages.addRegion}
         </Button>
       </div>
 
@@ -479,11 +486,10 @@ export default function PortalBillingRegionsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
             <MapPinIcon className="h-5 w-5 text-muted-foreground" />
-            Configured Regions
+            {messages.configuredTitle}
           </CardTitle>
           <CardDescription>
-            Master regions available for App Hosting Clusters and Billing
-            Service Packages.
+            {messages.configuredDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -498,7 +504,7 @@ export default function PortalBillingRegionsPage() {
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <p className="text-sm text-destructive">{error}</p>
               <Button variant="outline" onClick={() => refetchRegions()}>
-                Retry
+                {messages.retry}
               </Button>
             </div>
           ) : (
@@ -506,9 +512,9 @@ export default function PortalBillingRegionsPage() {
               tableId="portal-billing-regions"
               columns={columns}
               data={regions}
-              searchPlaceholder="Search regions..."
+              searchPlaceholder={messages.searchPlaceholder}
               searchableColumns={["name", "code", "country"]}
-              emptyMessage="No regions configured yet. Click 'Add Region' to create one."
+              emptyMessage={messages.noRegions}
             />
           )}
         </CardContent>
@@ -520,12 +526,12 @@ export default function PortalBillingRegionsPage() {
           <form onSubmit={handleSaveRegion}>
             <DialogHeader>
               <DialogTitle>
-                {editingRegion ? "Edit Region" : "Add Region"}
+                {editingRegion ? messages.edit : messages.addRegion}
               </DialogTitle>
               <DialogDescription>
                 {editingRegion
-                  ? "Update region details and operational status."
-                  : "Create a new master region for infrastructure clusters and packages."}
+                  ? messages.configuredDesc
+                  : messages.description}
               </DialogDescription>
             </DialogHeader>
 
@@ -538,11 +544,11 @@ export default function PortalBillingRegionsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="region-name">
-                  Name <span className="text-destructive">*</span>
+                  {messages.labelName} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="region-name"
-                  placeholder="e.g. Singapore"
+                  placeholder={messages.namePlaceholder}
                   value={formData.name}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, name: e.target.value }))
@@ -554,11 +560,11 @@ export default function PortalBillingRegionsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="region-code">
-                    Code <span className="text-destructive">*</span>
+                    {messages.labelCode} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="region-code"
-                    placeholder="e.g. SINGAPORE"
+                    placeholder={messages.codePlaceholder}
                     value={formData.code}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, code: e.target.value }))
@@ -570,11 +576,11 @@ export default function PortalBillingRegionsPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="region-country">
-                    Country (ISO) <span className="text-destructive">*</span>
+                    {messages.labelCountryIso} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="region-country"
-                    placeholder="e.g. SG"
+                    placeholder={messages.countryPlaceholder}
                     maxLength={2}
                     value={formData.country}
                     onChange={(e) =>
@@ -590,7 +596,7 @@ export default function PortalBillingRegionsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="region-flag">Flag Emoji</Label>
+                <Label htmlFor="region-flag">{messages.labelFlagEmoji}</Label>
                 <Input
                   id="region-flag"
                   placeholder="e.g. 🇸🇬"
@@ -631,14 +637,12 @@ export default function PortalBillingRegionsPage() {
                 onClick={() => setDialogOpen(false)}
                 disabled={saving}
               >
-                Cancel
+                {messages.cancel}
               </Button>
               <Button type="submit" disabled={saving}>
                 {saving
-                  ? "Saving..."
-                  : editingRegion
-                    ? "Save Changes"
-                    : "Create Region"}
+                  ? messages.saving
+                  : messages.save}
               </Button>
             </DialogFooter>
           </form>
@@ -649,11 +653,9 @@ export default function PortalBillingRegionsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Region</AlertDialogTitle>
+            <AlertDialogTitle>{messages.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <strong>{regionToDelete?.name}</strong> ({regionToDelete?.code})?
-              This action cannot be undone.
+              {messages.deleteConfirmMsg}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -664,7 +666,7 @@ export default function PortalBillingRegionsPage() {
           )}
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{messages.cancel}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={(e) => {
@@ -673,7 +675,7 @@ export default function PortalBillingRegionsPage() {
               }}
               disabled={deleting}
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? messages.saving : messages.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

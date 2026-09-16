@@ -1,3 +1,4 @@
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -14,6 +15,8 @@ import {
 } from "@/modules/deploy/deploy.constants"
 import { ConfidenceBadge } from "@/modules/deploy/ui/confidence-badge"
 import { RepositorySummaryBar } from "@/modules/deploy/ui/repository-summary-bar"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type {
   Branch,
   DetectionResult,
@@ -81,6 +84,10 @@ export function StepBuild({
   onNext,
   onBuildFieldChange,
 }: StepBuildProps) {
+  const params = useParams()
+  const lang = typeof params?.lang === "string" ? params.lang : "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.deploy.deployWizard.buildSettings
   const detectionStatusMessage = (() => {
     if (isDetecting) {
       return "Detecting framework..."
@@ -117,9 +124,9 @@ export function StepBuild({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Build Settings</CardTitle>
+        <CardTitle>{messages.title}</CardTitle>
         <CardDescription>
-          We detected your build setup. Confirm or adjust it.
+          {messages.description}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -132,7 +139,7 @@ export function StepBuild({
 
         <div className="space-y-2 border border-border p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium">Detection result</p>
+            <p className="text-sm font-medium">{messages.detectionResult}</p>
             <ConfidenceBadge detectionResult={detectionResult} />
           </div>
           <p className="text-xs text-muted-foreground">
@@ -142,19 +149,19 @@ export function StepBuild({
           {isDetecting ? (
             <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
               <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              Analyzing repository structure...
+              {messages.analyzingRepo}
             </div>
           ) : (
             <dl className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
               <div className="space-y-1">
                 <dt className="font-medium text-foreground">
-                  Detected language
+                  {messages.detectedLanguage}
                 </dt>
                 <dd>{detectionResult?.language ?? "Not detected"}</dd>
               </div>
               <div className="space-y-1">
                 <dt className="font-medium text-foreground">
-                  Detected framework
+                  {messages.detectedFramework}
                 </dt>
                 <dd>
                   {detectionResult?.framework ?? "Not detected"}
@@ -166,7 +173,7 @@ export function StepBuild({
               {detectionResult?.primaryEngine ? (
                 <div className="space-y-1">
                   <dt className="font-medium text-foreground">
-                    Primary engine
+                    {messages.primaryEngine}
                   </dt>
                   <dd>
                     {detectionResult.primaryEngine}
@@ -179,7 +186,7 @@ export function StepBuild({
               {detectionResult?.secondaryEngine ? (
                 <div className="space-y-1">
                   <dt className="font-medium text-foreground">
-                    Secondary engine
+                    {messages.secondaryEngine}
                   </dt>
                   <dd>
                     {detectionResult.secondaryEngine}
@@ -191,18 +198,18 @@ export function StepBuild({
               ) : null}
               <div className="space-y-1">
                 <dt className="font-medium text-foreground">
-                  Detected build command
+                  {messages.detectedBuildCmd}
                 </dt>
                 <dd>{detectionResult?.buildCommand ?? "Not detected"}</dd>
               </div>
               <div className="space-y-1">
                 <dt className="font-medium text-foreground">
-                  Dockerfile detected
+                  {messages.dockerfileDetected}
                 </dt>
                 <dd>{detectionResult?.dockerfileDetected ? "Yes" : "No"}</dd>
               </div>
               <div className="space-y-1">
-                <dt className="font-medium text-foreground">Default port</dt>
+                <dt className="font-medium text-foreground">{messages.defaultPort}</dt>
                 <dd>
                   {detectionResult?.defaultPort
                     ? detectionResult.defaultPort
@@ -214,7 +221,7 @@ export function StepBuild({
         </div>
 
         <div className="space-y-3 border border-border p-3">
-          <p className="text-sm font-medium">Manual override</p>
+          <p className="text-sm font-medium">{messages.manualOverride}</p>
           <p className="text-xs text-muted-foreground">
             {manualOverrideRequired
               ? "Manual setup is required before continuing."
@@ -222,9 +229,9 @@ export function StepBuild({
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <p className="text-xs font-medium">Language</p>
+              <p className="text-xs font-medium">{messages.language}</p>
               <select
-                aria-label="Language selector"
+                aria-label={messages.languageSelector}
                 aria-invalid={needsManualValues && missingLanguage}
                 className={cn(
                   "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
@@ -237,7 +244,7 @@ export function StepBuild({
                   onBuildFieldChange("language", event.target.value)
                 }}
               >
-                <option value="">Select language</option>
+                <option value="">{messages.selectLanguage}</option>
                 {MANUAL_LANGUAGE_OPTIONS.map((option) => {
                   return (
                     <option key={option} value={option}>
@@ -249,9 +256,9 @@ export function StepBuild({
             </div>
 
             <div className="space-y-1">
-              <p className="text-xs font-medium">Framework</p>
+              <p className="text-xs font-medium">{messages.framework}</p>
               <select
-                aria-label="Framework selector"
+                aria-label={messages.frameworkSelector}
                 aria-invalid={needsManualValues && missingFramework}
                 className={cn(
                   "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
@@ -264,7 +271,7 @@ export function StepBuild({
                   onBuildFieldChange("framework", event.target.value)
                 }}
               >
-                <option value="">Select framework</option>
+                <option value="">{messages.selectFramework}</option>
                 {MANUAL_FRAMEWORK_OPTIONS.map((option) => {
                   return (
                     <option key={option} value={option}>
@@ -278,9 +285,9 @@ export function StepBuild({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <p className="text-xs font-medium">Framework version</p>
+              <p className="text-xs font-medium">{messages.frameworkVersion}</p>
               <Input
-                aria-label="Framework version"
+                aria-label={messages.frameworkVersion}
                 value={frameworkVersion}
                 placeholder="e.g. 13.x"
                 className="h-8 text-xs"
@@ -290,10 +297,10 @@ export function StepBuild({
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium">Default port</p>
+              <p className="text-xs font-medium">{messages.defaultPort}</p>
               <Input
                 type="number"
-                aria-label="Default port"
+                aria-label={messages.defaultPort}
                 value={defaultPort || ""}
                 placeholder="e.g. 3000"
                 className="h-8 text-xs"
@@ -306,11 +313,11 @@ export function StepBuild({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <p className="text-xs font-medium">Primary engine</p>
+              <p className="text-xs font-medium">{messages.primaryEngine}</p>
               <Input
-                aria-label="Primary engine"
+                aria-label={messages.primaryEngine}
                 value={primaryEngine}
-                placeholder="e.g. node"
+                placeholder={messages.enginePlaceholder}
                 className="h-8 text-xs"
                 onChange={(event) => {
                   onBuildFieldChange("primaryEngine", event.target.value)
@@ -318,9 +325,9 @@ export function StepBuild({
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium">Engine version</p>
+              <p className="text-xs font-medium">{messages.engineVersion}</p>
               <Input
-                aria-label="Primary engine version"
+                aria-label={messages.primaryEngineVersion}
                 value={primaryEngineVersion}
                 placeholder="e.g. 24"
                 className="h-8 text-xs"
@@ -333,11 +340,11 @@ export function StepBuild({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <p className="text-xs font-medium">Secondary engine</p>
+              <p className="text-xs font-medium">{messages.secondaryEngine}</p>
               <Input
-                aria-label="Secondary engine"
+                aria-label={messages.secondaryEngine}
                 value={secondaryEngine}
-                placeholder="e.g. node"
+                placeholder={messages.enginePlaceholder}
                 className="h-8 text-xs"
                 onChange={(event) => {
                   onBuildFieldChange("secondaryEngine", event.target.value)
@@ -345,9 +352,9 @@ export function StepBuild({
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium">Engine version</p>
+              <p className="text-xs font-medium">{messages.engineVersion}</p>
               <Input
-                aria-label="Secondary engine version"
+                aria-label={messages.secondaryEngineVersion}
                 value={secondaryEngineVersion}
                 placeholder="e.g. 24"
                 className="h-8 text-xs"
@@ -362,9 +369,9 @@ export function StepBuild({
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs font-medium">Build command</p>
+            <p className="text-xs font-medium">{messages.buildCommand}</p>
             <Input
-              aria-label="Build command"
+              aria-label={messages.buildCommand}
               aria-invalid={needsManualValues && missingBuildCommand}
               value={buildCommand}
               disabled={useDockerfile}
@@ -393,7 +400,7 @@ export function StepBuild({
                 onBuildFieldChange("useDockerfile", event.target.checked)
               }}
             />
-            Use Dockerfile instead
+            {messages.useDockerfileInstead}
           </label>
           <p className="text-xs text-muted-foreground">
             {useDockerfile
@@ -406,7 +413,7 @@ export function StepBuild({
               className="space-y-1 border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive"
               role="alert"
             >
-              <p className="font-medium">Build settings need attention</p>
+              <p className="font-medium">{messages.settingsNeedAttention}</p>
               <ul className="list-disc pl-4">
                 {validationMessages.map((message) => {
                   return <li key={message}>{message}</li>
@@ -426,10 +433,10 @@ export function StepBuild({
       </CardContent>
       <div className="flex items-center justify-between border-t p-4">
         <Button type="button" variant="outline" onClick={onBack}>
-          Back
+          {messages.back}
         </Button>
         <Button type="button" onClick={onNext} disabled={!canProceed}>
-          Next
+          {messages.next}
         </Button>
       </div>
     </Card>

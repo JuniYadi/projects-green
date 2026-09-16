@@ -1,9 +1,12 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle, Plus } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { getMessages } from "@/lib/i18n/messages"
 import { eden } from "@/lib/eden"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -128,6 +131,9 @@ function validateAmount(value: string, label: string) {
 }
 
 export default function PortalWhatsappPricingPage() {
+  const params = useParams()
+  const locale = ((params?.lang as string) ?? defaultLocale) as AppLocale
+  const messages = getMessages(locale).console.whatsapp.pricingAdmin
   const queryClient = useQueryClient()
   const [countryFilter, setCountryFilter] = React.useState("all")
   const [categoryFilter, setCategoryFilter] = React.useState("all")
@@ -324,11 +330,10 @@ export default function PortalWhatsappPricingPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            WhatsApp Pricing &amp; Quota Matrix
+            {messages.title}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Temporal wholesale Base Prices and Quota Credit deductions per
-            message category.
+            {messages.description}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -339,7 +344,7 @@ export default function PortalWhatsappPricingPage() {
             }}
           >
             <Plus className="mr-2 size-4" />
-            Add Quota Rate
+            {messages.addQuotaRate}
           </Button>
           <Button
             variant="outline"
@@ -349,7 +354,7 @@ export default function PortalWhatsappPricingPage() {
             }}
           >
             <Plus className="mr-2 size-4" />
-            Add Base Price
+            {messages.addBasePrice}
           </Button>
         </div>
       </div>
@@ -361,7 +366,7 @@ export default function PortalWhatsappPricingPage() {
       )}
       {isError && (
         <p role="alert" className="text-sm text-destructive">
-          Failed to load WhatsApp pricing rates.
+          {messages.failedToLoad}
         </p>
       )}
 
@@ -369,41 +374,39 @@ export default function PortalWhatsappPricingPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Base Allowance
+              {messages.baseAllowanceTitle}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,000 credits</div>
+            <div className="text-2xl font-bold">{messages.baseAllowanceValue}</div>
             <p className="text-xs text-muted-foreground">
-              Monthly allocation per active device, resets on 1st of every
-              month.
+              {messages.baseAllowanceDesc}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Tax &amp; Margins
+              {messages.taxMarginsTitle}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">11% PPN</div>
+            <div className="text-2xl font-bold">{messages.taxMarginsValue}</div>
             <p className="text-xs text-muted-foreground">
-              BASE: +20% · T1: +15% · T2: +10% · T3: +5% margin
+              {messages.taxMarginsDesc}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Rate Policy</CardTitle>
+            <CardTitle className="text-sm font-medium">{messages.ratePolicyTitle}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-1 text-sm font-medium text-green-600 dark:text-green-400">
-              <CheckCircle className="size-4" /> Zero-Margin Protected
+              <CheckCircle className="size-4" /> {messages.zeroMarginProtected}
             </div>
             <p className="text-xs text-muted-foreground">
-              Quarterly price increases apply seamlessly via effective date
-              ranges.
+              {messages.ratePolicyDesc}
             </p>
           </CardContent>
         </Card>
@@ -413,19 +416,18 @@ export default function PortalWhatsappPricingPage() {
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <CardTitle>Category Quota Deductions (Quota Mode)</CardTitle>
+              <CardTitle>{messages.quotaSectionTitle}</CardTitle>
               <CardDescription>
-                Credits deducted per message while device quota balance is
-                positive.
+                {messages.quotaSectionDesc}
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
               <Select value={countryFilter} onValueChange={setCountryFilter}>
-                <SelectTrigger aria-label="Country">
-                  <SelectValue placeholder="All" />
+                <SelectTrigger aria-label={messages.filterCountryAria}>
+                  <SelectValue placeholder={messages.all} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">{messages.all}</SelectItem>
                   {countries.map((country) => (
                     <SelectItem key={country} value={country}>
                       {country}
@@ -434,11 +436,11 @@ export default function PortalWhatsappPricingPage() {
                 </SelectContent>
               </Select>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger aria-label="Category">
-                  <SelectValue placeholder="All" />
+                <SelectTrigger aria-label={messages.filterCategoryAria}>
+                  <SelectValue placeholder={messages.all} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">{messages.all}</SelectItem>
                   {CATEGORIES.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
@@ -457,11 +459,11 @@ export default function PortalWhatsappPricingPage() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b text-muted-foreground">
-                    <th className="pb-2 font-medium">Category</th>
-                    <th className="pb-2 font-medium">Country</th>
-                    <th className="pb-2 font-medium">Quota Deduction</th>
-                    <th className="pb-2 font-medium">Effective Range</th>
-                    <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">{messages.thCategory}</th>
+                    <th className="pb-2 font-medium">{messages.thCountry}</th>
+                    <th className="pb-2 font-medium">{messages.thQuotaDeduction}</th>
+                    <th className="pb-2 font-medium">{messages.thEffectiveRange}</th>
+                    <th className="pb-2 font-medium">{messages.thStatus}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -472,19 +474,19 @@ export default function PortalWhatsappPricingPage() {
                         <Badge variant="secondary">{rate.country}</Badge>
                       </td>
                       <td className="py-2.5 font-semibold text-primary">
-                        -{rate.quotaCredit} credits
+                        -{rate.quotaCredit} {messages.creditsUnit}
                       </td>
                       <td className="py-2.5 text-xs text-muted-foreground">
                         {formatDate(rate.effectiveFrom)}
                         {rate.effectiveTo
                           ? ` → ${formatDate(rate.effectiveTo)}`
-                          : " → Present"}
+                          : messages.presentRange}
                       </td>
                       <td className="py-2.5">
                         <Badge
                           variant={rate.isActive ? "default" : "secondary"}
                         >
-                          {rate.isActive ? "Active" : "Archived"}
+                          {rate.isActive ? messages.statusActive : messages.statusArchived}
                         </Badge>
                       </td>
                     </tr>
@@ -493,7 +495,7 @@ export default function PortalWhatsappPricingPage() {
               </table>
               {filteredQuotaRates.length === 0 && (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  No quota rates match the selected filters.
+                  {messages.noQuotaRates}
                 </p>
               )}
             </div>
@@ -503,10 +505,9 @@ export default function PortalWhatsappPricingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>PAYG Base Prices &amp; Tier Matrix</CardTitle>
+          <CardTitle>{messages.paygSectionTitle}</CardTitle>
           <CardDescription>
-            Wholesale base prices and calculated customer overage costs once
-            quota is exhausted.
+            {messages.paygSectionDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -517,14 +518,14 @@ export default function PortalWhatsappPricingPage() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b text-muted-foreground">
-                    <th className="pb-2 font-medium">Category</th>
-                    <th className="pb-2 font-medium">Country</th>
-                    <th className="pb-2 font-medium">Base Price</th>
-                    <th className="pb-2 font-medium">BASE (20%)</th>
-                    <th className="pb-2 font-medium">TIER 1 (15%)</th>
-                    <th className="pb-2 font-medium">TIER 2 (10%)</th>
-                    <th className="pb-2 font-medium">TIER 3 (5%)</th>
-                    <th className="pb-2 font-medium">Effective From</th>
+                    <th className="pb-2 font-medium">{messages.thCategory}</th>
+                    <th className="pb-2 font-medium">{messages.thCountry}</th>
+                    <th className="pb-2 font-medium">{messages.thBasePrice}</th>
+                    <th className="pb-2 font-medium">{messages.thBaseRate}</th>
+                    <th className="pb-2 font-medium">{messages.thTier1}</th>
+                    <th className="pb-2 font-medium">{messages.thTier2}</th>
+                    <th className="pb-2 font-medium">{messages.thTier3}</th>
+                    <th className="pb-2 font-medium">{messages.thEffectiveFrom}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -563,7 +564,7 @@ export default function PortalWhatsappPricingPage() {
               </table>
               {filteredBasePrices.length === 0 && (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  No base prices match the selected filters.
+                  {messages.noBasePrices}
                 </p>
               )}
             </div>
@@ -574,14 +575,14 @@ export default function PortalWhatsappPricingPage() {
       <Dialog open={quotaDialogOpen} onOpenChange={closeQuotaDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Quota Rate</DialogTitle>
+            <DialogTitle>{messages.addQuotaTitle}</DialogTitle>
             <DialogDescription>
-              Configure the quota credit deduction for a country and category.
+              {messages.addQuotaDesc}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleQuotaSubmit}>
             <div>
-              <Label htmlFor="quota-country">Country</Label>
+              <Label htmlFor="quota-country">{messages.labelCountry}</Label>
               <Input
                 id="quota-country"
                 value={quotaForm.country}
@@ -595,7 +596,7 @@ export default function PortalWhatsappPricingPage() {
               />
             </div>
             <div>
-              <Label htmlFor="quota-category">Category</Label>
+              <Label htmlFor="quota-category">{messages.labelCategory}</Label>
               <Select
                 value={quotaForm.category}
                 onValueChange={(category) =>
@@ -605,7 +606,7 @@ export default function PortalWhatsappPricingPage() {
                   }))
                 }
               >
-                <SelectTrigger id="quota-category" aria-label="Quota category">
+                <SelectTrigger id="quota-category" aria-label={messages.quotaCategoryAria}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -618,7 +619,7 @@ export default function PortalWhatsappPricingPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="quota-credit">Quota Credit deduction</Label>
+              <Label htmlFor="quota-credit">{messages.labelQuotaCredit}</Label>
               <Input
                 id="quota-credit"
                 type="number"
@@ -634,7 +635,7 @@ export default function PortalWhatsappPricingPage() {
               />
             </div>
             <div>
-              <Label htmlFor="quota-effective-from">Effective From</Label>
+              <Label htmlFor="quota-effective-from">{messages.labelEffectiveFrom}</Label>
               <Input
                 id="quota-effective-from"
                 type="date"
@@ -648,7 +649,7 @@ export default function PortalWhatsappPricingPage() {
               />
             </div>
             <div>
-              <Label htmlFor="quota-description">Description (optional)</Label>
+              <Label htmlFor="quota-description">{messages.labelDescriptionOptional}</Label>
               <Input
                 id="quota-description"
                 value={quotaForm.description}
@@ -671,10 +672,10 @@ export default function PortalWhatsappPricingPage() {
                 variant="outline"
                 onClick={() => closeQuotaDialog(false)}
               >
-                Cancel
+                {messages.cancel}
               </Button>
               <Button type="submit" disabled={quotaMutation.isPending}>
-                {quotaMutation.isPending ? "Saving..." : "Save Quota Rate"}
+                {quotaMutation.isPending ? messages.saving : messages.saveQuotaRate}
               </Button>
             </DialogFooter>
           </form>
@@ -684,14 +685,14 @@ export default function PortalWhatsappPricingPage() {
       <Dialog open={basePriceDialogOpen} onOpenChange={closeBasePriceDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Base Price</DialogTitle>
+            <DialogTitle>{messages.addBasePriceTitle}</DialogTitle>
             <DialogDescription>
-              Configure a PAYG wholesale base price for a country and category.
+              {messages.addBasePriceDesc}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleBasePriceSubmit}>
             <div>
-              <Label htmlFor="base-country">Country</Label>
+              <Label htmlFor="base-country">{messages.labelCountry}</Label>
               <Input
                 id="base-country"
                 value={basePriceForm.country}
@@ -705,7 +706,7 @@ export default function PortalWhatsappPricingPage() {
               />
             </div>
             <div>
-              <Label htmlFor="base-category">Category</Label>
+              <Label htmlFor="base-category">{messages.labelCategory}</Label>
               <Select
                 value={basePriceForm.category}
                 onValueChange={(category) =>
@@ -717,7 +718,7 @@ export default function PortalWhatsappPricingPage() {
               >
                 <SelectTrigger
                   id="base-category"
-                  aria-label="Base price category"
+                  aria-label={messages.baseCategoryAria}
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -731,7 +732,7 @@ export default function PortalWhatsappPricingPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="base-price">Base Price</Label>
+              <Label htmlFor="base-price">{messages.labelBasePrice}</Label>
               <Input
                 id="base-price"
                 type="number"
@@ -748,7 +749,7 @@ export default function PortalWhatsappPricingPage() {
               />
             </div>
             <div>
-              <Label htmlFor="meta-cost">Meta Cost (optional)</Label>
+              <Label htmlFor="meta-cost">{messages.labelMetaCostOptional}</Label>
               <Input
                 id="meta-cost"
                 type="number"
@@ -764,7 +765,7 @@ export default function PortalWhatsappPricingPage() {
               />
             </div>
             <div>
-              <Label htmlFor="currency">Currency</Label>
+              <Label htmlFor="currency">{messages.labelCurrency}</Label>
               <Input
                 id="currency"
                 value={basePriceForm.currency}
@@ -777,7 +778,7 @@ export default function PortalWhatsappPricingPage() {
               />
             </div>
             <div>
-              <Label htmlFor="base-effective-from">Effective From</Label>
+              <Label htmlFor="base-effective-from">{messages.labelEffectiveFrom}</Label>
               <Input
                 id="base-effective-from"
                 type="date"
@@ -801,10 +802,10 @@ export default function PortalWhatsappPricingPage() {
                 variant="outline"
                 onClick={() => closeBasePriceDialog(false)}
               >
-                Cancel
+                {messages.cancel}
               </Button>
               <Button type="submit" disabled={basePriceMutation.isPending}>
-                {basePriceMutation.isPending ? "Saving..." : "Save Base Price"}
+                {basePriceMutation.isPending ? messages.saving : messages.saveBasePrice}
               </Button>
             </DialogFooter>
           </form>

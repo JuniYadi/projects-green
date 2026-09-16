@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import {
   TrendingUp,
   DollarSign,
@@ -10,6 +11,8 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react"
+import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { getMessages } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -103,10 +106,12 @@ function TopOrgCardList({
   orgs,
   emptyMessage,
   formatIdr,
+  messages,
 }: {
   orgs: OrgProfitabilityItem[]
   emptyMessage: string
   formatIdr: (val?: string | number) => string
+  messages?: ReturnType<typeof getMessages>["console"]["whatsapp"]["adminAnalytics"]
 }) {
   if (orgs.length === 0) {
     return (
@@ -161,11 +166,14 @@ function TopOrgCardList({
             </div>
 
             <div className="flex items-center justify-between pt-0.5 text-[11px] text-muted-foreground">
-              <span>{org.totalDelivered.toLocaleString("id-ID")} pesan</span>
+              <span>
+                {org.totalDelivered.toLocaleString("id-ID")}{" "}
+                {messages?.messagesUnit ?? "messages"}
+              </span>
               <span
                 className={`font-mono font-medium ${isDeficit ? "text-destructive" : "text-primary"}`}
               >
-                {isDeficit ? "Defisit: " : "Laba: "}
+                {isDeficit ? "- " : "+ "}
                 {formatIdr(org.grossProfitIdr)} ({org.marginPct}%)
               </span>
             </div>
@@ -177,6 +185,9 @@ function TopOrgCardList({
 }
 
 export function AdminWhatsappAnalyticsView() {
+  const params = useParams()
+  const locale = ((params?.lang as string) ?? defaultLocale) as AppLocale
+  const messages = getMessages(locale).console.whatsapp.adminAnalytics
   const [syncing, setSyncing] = React.useState(false)
   const [summary, setSummary] = React.useState<FinancialSummary | null>(null)
   const [orgs, setOrgs] = React.useState<OrgProfitabilityItem[]>([])
@@ -392,11 +403,10 @@ export function AdminWhatsappAnalyticsView() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            WhatsApp Analytics & Profit
+            {messages.title}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Rekonsiliasi biaya riil Meta (+ PPN 11%), pendapatan langganan, dan
-            margin keuntungan platform.
+            {messages.description}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -405,21 +415,21 @@ export function AdminWhatsappAnalyticsView() {
             value={periodPreset}
             onChange={(e) => setPeriodPreset(e.target.value)}
           >
-            <optgroup label="Bulan Kalender (Snapshot)">
+            <optgroup label={messages.calendarMonth}>
               {monthOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
             </optgroup>
-            <optgroup label="Hari Terakhir">
-              <option value="7d">7 Hari Terakhir</option>
-              <option value="30d">30 Hari Terakhir</option>
-              <option value="60d">60 Hari Terakhir</option>
-              <option value="90d">90 Hari Terakhir</option>
+            <optgroup label={messages.lastDay}>
+              <option value="7d">{messages.last7Days}</option>
+              <option value="30d">{messages.last30Days}</option>
+              <option value="60d">{messages.last60Days}</option>
+              <option value="90d">{messages.last90Days}</option>
             </optgroup>
-            <optgroup label="Kustom">
-              <option value="custom">Rentang Tanggal Kustom</option>
+            <optgroup label={messages.custom}>
+              <option value="custom">{messages.customDateRange}</option>
             </optgroup>
           </select>
 
@@ -431,7 +441,7 @@ export function AdminWhatsappAnalyticsView() {
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
               />
-              <span className="text-xs text-muted-foreground">s/d</span>
+              <span className="text-xs text-muted-foreground">-</span>
               <input
                 type="date"
                 className="h-7 rounded border border-input bg-background px-2 font-mono text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
@@ -451,11 +461,11 @@ export function AdminWhatsappAnalyticsView() {
               <RefreshCw
                 className={`mr-2 size-4 ${syncing ? "animate-spin" : ""}`}
               />
-              {syncing ? "Menyinkronkan..." : "Sync Meta Pricing"}
+              {syncing ? "..." : "Sync Meta Pricing"}
             </Button>
             {lastSyncedAt && (
               <span className="text-[10px] text-muted-foreground">
-                Terakhir sinkron: {lastSyncedAt}
+                {messages.lastSync} {lastSyncedAt}
               </span>
             )}
           </div>
@@ -468,11 +478,10 @@ export function AdminWhatsappAnalyticsView() {
           <AlertTriangle className="size-5 shrink-0" />
           <div>
             <p className="text-sm font-semibold">
-              Peringatan Defisit Margin: Ditemukan tenant dengan margin negatif
+              {messages.marginWarningTitle}
             </p>
             <p className="text-xs text-destructive/80">
-              Terdapat organisasi dengan modal biaya Meta lebih besar daripada
-              omzet tagihan yang dibayarkan. Cek tabel di bawah.
+              {messages.marginWarningDesc}
             </p>
           </div>
         </div>
@@ -483,7 +492,7 @@ export function AdminWhatsappAnalyticsView() {
         {/* Total Revenue */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Omzet</CardTitle>
+            <CardTitle className="text-sm font-medium">{messages.totalRevenue}</CardTitle>
             <DollarSign className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -491,7 +500,7 @@ export function AdminWhatsappAnalyticsView() {
               {formatIdr(summary?.kpi?.totalRevenueIdr)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Dari alokasi kuota & overage pelanggan
+              {messages.totalRevenueDesc}
             </p>
           </CardContent>
         </Card>
@@ -500,7 +509,7 @@ export function AdminWhatsappAnalyticsView() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Modal Meta (COGS)
+              {messages.metaCost}
             </CardTitle>
             <Receipt className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -509,7 +518,7 @@ export function AdminWhatsappAnalyticsView() {
               {formatIdr(summary?.kpi?.totalMetaNetCostIdr)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Inc. PPN 11%: {formatIdr(summary?.kpi?.totalMetaVatCostIdr)}
+              {messages.incTax} {formatIdr(summary?.kpi?.totalMetaVatCostIdr)}
             </p>
           </CardContent>
         </Card>
@@ -518,7 +527,7 @@ export function AdminWhatsappAnalyticsView() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Laba / Rugi Kotor
+              {messages.grossProfit}
             </CardTitle>
             <TrendingUp className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -533,9 +542,7 @@ export function AdminWhatsappAnalyticsView() {
               {formatIdr(summary?.kpi?.grossProfitIdr)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {parseFloat(summary?.kpi?.grossProfitIdr ?? "0") < 0
-                ? "Rugi operasional biaya pesan"
-                : "Laba kotor sebelum biaya server"}
+              {formatIdr(summary?.kpi?.grossProfitIdr)}
             </p>
           </CardContent>
         </Card>
@@ -544,7 +551,7 @@ export function AdminWhatsappAnalyticsView() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Kesehatan Margin
+              {messages.marginHealth}
             </CardTitle>
             <Percent className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -564,19 +571,19 @@ export function AdminWhatsappAnalyticsView() {
                   variant="outline"
                   className="border-primary text-xs text-primary"
                 >
-                  <CheckCircle2 className="mr-1 size-3" /> Sehat
+                  <CheckCircle2 className="mr-1 size-3" /> {messages.healthy}
                 </Badge>
               ) : (
                 <Badge
                   variant="outline"
                   className="border-destructive text-xs text-destructive"
                 >
-                  <AlertTriangle className="mr-1 size-3" /> Waspada
+                  <AlertTriangle className="mr-1 size-3" /> {messages.warning}
                 </Badge>
               )}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {summary?.kpi?.totalDeliveredMessages ?? 0} total pesan terkirim
+              {summary?.kpi?.totalDeliveredMessages ?? 0} {messages.totalSentMessages}
             </p>
           </CardContent>
         </Card>
@@ -586,17 +593,16 @@ export function AdminWhatsappAnalyticsView() {
       <Card>
         <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Tren Keuntungan & Biaya 12 Bulan Terakhir</CardTitle>
+            <CardTitle>{messages.trendTitle}</CardTitle>
             <CardDescription>
-              Perbandingan Omzet Tagihan, Modal Riil Meta (+PPN), dan Laba
-              Bersih per bulan kalender untuk evaluasi performa bisnis tahunan.
+              {messages.trendDesc}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           {monthlyTrends.length === 0 ? (
             <div className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
-              Belum ada data rekonsiliasi bulanan untuk 12 bulan terakhir.
+              {messages.noTrendData}
             </div>
           ) : (
             <div className="h-[320px] w-full pt-4">
@@ -660,19 +666,19 @@ export function AdminWhatsappAnalyticsView() {
                   />
                   <Bar
                     dataKey="revenueIdr"
-                    name="Omzet Tagihan"
+                    name={messages.thInvoiceRevenue}
                     fill="#3b82f6"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
                     dataKey="metaTotalCostIdr"
-                    name="Modal Meta (+PPN)"
+                    name={messages.thMetaCost}
                     fill="#ef4444"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
                     dataKey="grossProfitIdr"
-                    name="Laba Kotor"
+                    name={messages.thNetProfit}
                     fill="#10b981"
                     radius={[4, 4, 0, 0]}
                   />
@@ -686,23 +692,22 @@ export function AdminWhatsappAnalyticsView() {
       {/* Category Breakdown Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Ringkasan per Kategori Pesan</CardTitle>
+          <CardTitle>{messages.categorySummaryTitle}</CardTitle>
           <CardDescription>
-            Perbandingan omzet tagihan vs modal riil Meta (termasuk PPN 11%) per
-            kategori.
+            {messages.categorySummaryDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Kategori</TableHead>
-                <TableHead className="text-right">Volume Pesan</TableHead>
-                <TableHead className="text-right">Omzet Tagihan</TableHead>
+                <TableHead>{messages.thCategory}</TableHead>
+                <TableHead className="text-right">{messages.thMessageVolume}</TableHead>
+                <TableHead className="text-right">{messages.thInvoiceRevenue}</TableHead>
                 <TableHead className="text-right">
-                  Modal Meta (Inc. PPN)
+                  {messages.thMetaCost}
                 </TableHead>
-                <TableHead className="text-right">Laba / Rugi (Net)</TableHead>
+                <TableHead className="text-right">{messages.thNetProfit}</TableHead>
                 <TableHead className="text-right">Margin (%)</TableHead>
               </TableRow>
             </TableHeader>
@@ -756,23 +761,23 @@ export function AdminWhatsappAnalyticsView() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-semibold">
-                  🥇 Top Organisasi: Bulan Lalu
+                  {messages.topLastMonthTitle}
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Performa tutup buku bulan sebelumnya berdasarkan total omzet
-                  tagihan
+                  {messages.topLastMonthDesc}
                 </CardDescription>
               </div>
               <Badge variant="outline" className="text-xs">
-                {monthLabels.last || "Bulan Lalu"}
+                {monthLabels.last || "Past Month"}
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <TopOrgCardList
               orgs={lastMonthOrgs}
-              emptyMessage="Belum ada data rekonsiliasi bulan lalu."
+              emptyMessage={messages.noLastMonthData}
               formatIdr={formatIdr}
+              messages={messages}
             />
           </CardContent>
         </Card>
@@ -783,26 +788,26 @@ export function AdminWhatsappAnalyticsView() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-semibold">
-                  ⚡ Top Organisasi: Bulan Berjalan
+                  {messages.topCurrentMonthTitle}
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Aktivitas dan kesehatan margin tenant pada bulan ini
-                  (real-time/M-t-D)
+                  {messages.topCurrentMonthDesc}
                 </CardDescription>
               </div>
               <Badge
                 variant="outline"
                 className="border-primary/40 text-xs text-primary"
               >
-                {monthLabels.current || "Bulan Ini"}
+                {monthLabels.current || "Current Month"}
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <TopOrgCardList
               orgs={curMonthOrgs}
-              emptyMessage="Belum ada aktivitas pesan terkirim di bulan ini."
+              emptyMessage={messages.noCurrentMonthData}
               formatIdr={formatIdr}
+              messages={messages}
             />
           </CardContent>
         </Card>
@@ -811,32 +816,30 @@ export function AdminWhatsappAnalyticsView() {
       {/* Organization Leaderboard Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Kesehatan Margin per Tenant / Perusahaan</CardTitle>
+          <CardTitle>{messages.tenantHealthTitle}</CardTitle>
           <CardDescription>
-            Evaluasi unit ekonomi per organisasi untuk memantau tenant yang
-            ber-margin tinggi vs margin berisiko.
+            {messages.tenantHealthDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {orgs.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              Belum ada data rekonsiliasi organisasi pada periode ini. Klik
-              &quot;Sync Meta Pricing&quot; untuk memperbarui data.
+              {messages.noTenantData}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nama Tenant / Organisasi</TableHead>
-                  <TableHead className="text-right">Devices</TableHead>
-                  <TableHead className="text-right">Volume Pesan</TableHead>
-                  <TableHead className="text-right">Total Tagihan</TableHead>
+                  <TableHead>{messages.thTenantName}</TableHead>
+                  <TableHead className="text-right">{messages.thDevices}</TableHead>
+                  <TableHead className="text-right">{messages.thMessageVolume}</TableHead>
+                  <TableHead className="text-right">{messages.thInvoiceRevenue}</TableHead>
                   <TableHead className="text-right">
-                    Modal Meta (+PPN)
+                    {messages.thMetaCost}
                   </TableHead>
-                  <TableHead className="text-right">Laba / Rugi</TableHead>
-                  <TableHead className="text-right">Margin (%)</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">{messages.thNetProfit}</TableHead>
+                  <TableHead className="text-right">{messages.thMargin}</TableHead>
+                  <TableHead className="text-center">{messages.thStatus}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -887,14 +890,14 @@ export function AdminWhatsappAnalyticsView() {
                             variant="outline"
                             className="border-primary text-primary"
                           >
-                            Healthy
+                            {messages.statusHealthy}
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
                             className="border-destructive text-destructive"
                           >
-                            Risk
+                            {messages.statusRisk}
                           </Badge>
                         )}
                       </TableCell>

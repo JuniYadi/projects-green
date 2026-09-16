@@ -29,6 +29,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { toast } from "sonner"
+import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { getMessages } from "@/lib/i18n/messages"
 
 import {
   getVpnAdminSubscription,
@@ -337,6 +339,8 @@ function SummaryBadges({ summary }: { summary: ProvisioningStatusSummary }) {
 
 export default function SubscriptionDetailPage() {
   const params = useParams()
+  const locale = ((params?.lang as string) ?? defaultLocale) as AppLocale
+  const messages = getMessages(locale).console.vpn.subscriptionDetail
   const subscriptionId = params.id as string
 
   const [subscription, setSubscription] = useState<VpnSubscriptionItem | null>(
@@ -476,10 +480,10 @@ export default function SubscriptionDetailPage() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">Subscription Not Found</h1>
+          <h1 className="text-2xl font-semibold">{messages.notFoundTitle}</h1>
         </div>
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-          {error ?? "Subscription not found."}
+          {error ?? messages.notFoundDefault}
         </div>
       </main>
     )
@@ -498,7 +502,7 @@ export default function SubscriptionDetailPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-semibold">
-            VPN Service Operation Details
+            {messages.operationDetailsTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
             {subscription.packageName} ·{" "}
@@ -519,7 +523,7 @@ export default function SubscriptionDetailPage() {
               disabled={busy === subscriptionId}
               onClick={retryAllFailed}
             >
-              {busy === subscriptionId ? "Retrying..." : "Retry All Failed"}
+              {busy === subscriptionId ? messages.retrying : messages.retryAllFailed}
             </Button>
           )}
         </div>
@@ -529,23 +533,23 @@ export default function SubscriptionDetailPage() {
         {/* Subscription Info */}
         <Card>
           <CardHeader>
-            <CardTitle>Subscription Information</CardTitle>
-            <CardDescription>Basic subscription details</CardDescription>
+            <CardTitle>{messages.subscriptionInfoTitle}</CardTitle>
+            <CardDescription>{messages.subscriptionInfoDesc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1">
-            <InfoRow label="ID" value={subscription.id} copyable />
+            <InfoRow label={messages.labelId} value={subscription.id} copyable />
             <Separator />
             <InfoRow
-              label="Organization"
+              label={messages.labelOrganization}
               value={
                 subscription.organizationName ?? subscription.organizationId
               }
             />
             <Separator />
-            <InfoRow label="Package" value={subscription.packageName} />
+            <InfoRow label={messages.labelPackage} value={subscription.packageName} />
             <Separator />
             <InfoRow
-              label="Status"
+              label={messages.labelStatus}
               value={
                 <Badge variant={STATUS_VARIANT[subscription.status]}>
                   {subscription.status}
@@ -554,7 +558,7 @@ export default function SubscriptionDetailPage() {
             />
             <Separator />
             <InfoRow
-              label="Devices"
+              label={messages.labelDevices}
               value={
                 <Link
                   href={`/portal/vpn/devices?subscriptionId=${subscription.id}`}
@@ -571,44 +575,44 @@ export default function SubscriptionDetailPage() {
         {/* Billing Info */}
         <Card>
           <CardHeader>
-            <CardTitle>Commercial Subscription Context</CardTitle>
+            <CardTitle>{messages.commercialContextTitle}</CardTitle>
             <CardDescription>
-              Payment, orders, and renewals are managed in Billing.
+              {messages.commercialContextDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1">
             <InfoRow
-              label="Billing record"
+              label={messages.labelBillingRecord}
               value={
                 subscription.serviceSubscriptionId ? (
                   <Link
                     href={`/portal/billing/subscriptions?subscriptionId=${encodeURIComponent(subscription.serviceSubscriptionId)}`}
                     className="text-sm font-medium text-primary hover:underline"
                   >
-                    View in Billing
+                    {messages.viewInBilling}
                   </Link>
                 ) : (
                   <span className="text-sm text-muted-foreground">
-                    Unavailable (legacy record)
+                    {messages.billingUnavailable}
                   </span>
                 )
               }
             />
             <Separator />
             <InfoRow
-              label="Price"
+              label={messages.labelPrice}
               value={formatCurrency(
                 subscription.priceLocked,
                 subscription.currency
               )}
             />
             <Separator />
-            <InfoRow label="Currency" value={subscription.currency} />
+            <InfoRow label={messages.labelCurrency} value={subscription.currency} />
             {subscription.originalPrice && subscription.originalCurrency && (
               <>
                 <Separator />
                 <InfoRow
-                  label="Original Price"
+                  label={messages.labelOriginalPrice}
                   value={`${formatCurrency(subscription.originalPrice, subscription.originalCurrency)} (${subscription.originalCurrency})`}
                 />
               </>
@@ -617,41 +621,41 @@ export default function SubscriptionDetailPage() {
               <>
                 <Separator />
                 <InfoRow
-                  label="Exchange Rate"
+                  label={messages.labelExchangeRate}
                   value={subscription.exchangeRate.toFixed(4)}
                 />
               </>
             )}
             <Separator />
             <InfoRow
-              label="Period Start"
+              label={messages.labelPeriodStart}
               value={formatDate(subscription.currentPeriodStart)}
             />
             <Separator />
             <InfoRow
-              label="Period End"
+              label={messages.labelPeriodEnd}
               value={formatDate(subscription.currentPeriodEnd)}
             />
             <Separator />
             <InfoRow
-              label="Created"
+              label={messages.labelCreated}
               value={formatDate(subscription.createdAt)}
             />
             <Separator />
             <InfoRow
-              label="Updated"
+              label={messages.labelUpdated}
               value={formatDate(subscription.updatedAt)}
             />
           </CardContent>
         </Card>
       </div>
 
-      {/* Mobile Pairing — ponytail: subscription.id on VpnSubscriptionItem, no API change */}
+      {/* Mobile Pairing */}
       <Card>
         <CardHeader>
-          <CardTitle>Mobile Pairing</CardTitle>
+          <CardTitle>{messages.mobilePairingTitle}</CardTitle>
           <CardDescription>
-            Pair a mobile device or share your subscription ID
+            {messages.mobilePairingDesc}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -668,8 +672,7 @@ export default function SubscriptionDetailPage() {
             <CopyButton text={subscription.id} />
           </div>
           <p className="text-sm text-muted-foreground">
-            Scan the QR code or enter this ID in the mobile app to pair a
-            device.
+            {messages.scanQrPrompt}
           </p>
           <Button
             variant="outline"
@@ -678,7 +681,7 @@ export default function SubscriptionDetailPage() {
             onClick={() => setPairingOpen(true)}
           >
             <DeviceMobileIcon className="mr-1.5 h-4 w-4" />
-            Pair New Device
+            {messages.pairNewDevice}
           </Button>
         </CardContent>
       </Card>
@@ -695,9 +698,9 @@ export default function SubscriptionDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Provisioning Summary</CardTitle>
+              <CardTitle>{messages.provisioningSummaryTitle}</CardTitle>
               <CardDescription>
-                Status of server account provisioning
+                {messages.provisioningSummaryDesc}
               </CardDescription>
             </div>
             {provisioningSummary.failed > 0 && (
@@ -707,7 +710,7 @@ export default function SubscriptionDetailPage() {
                 disabled={busy === subscriptionId}
                 onClick={retryAllFailed}
               >
-                {busy === subscriptionId ? "Retrying..." : "Retry All Failed"}
+                {busy === subscriptionId ? messages.retrying : messages.retryAllFailed}
               </Button>
             )}
           </div>
@@ -718,25 +721,25 @@ export default function SubscriptionDetailPage() {
               <div className="text-2xl font-bold text-green-600">
                 {provisioningSummary.active}
               </div>
-              <div className="text-xs text-muted-foreground">Active</div>
+              <div className="text-xs text-muted-foreground">{messages.statusActive}</div>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <div className="text-2xl font-bold text-yellow-600">
                 {provisioningSummary.pending}
               </div>
-              <div className="text-xs text-muted-foreground">Pending</div>
+              <div className="text-xs text-muted-foreground">{messages.statusPending}</div>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <div className="text-2xl font-bold text-red-600">
                 {provisioningSummary.failed}
               </div>
-              <div className="text-xs text-muted-foreground">Failed</div>
+              <div className="text-xs text-muted-foreground">{messages.statusFailed}</div>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <div className="text-2xl font-bold text-gray-600">
                 {provisioningSummary.revoked}
               </div>
-              <div className="text-xs text-muted-foreground">Revoked</div>
+              <div className="text-xs text-muted-foreground">{messages.statusRevoked}</div>
             </div>
           </div>
         </CardContent>
@@ -769,13 +772,13 @@ export default function SubscriptionDetailPage() {
                             <span>{group.region.name}</span>
                           </>
                         ) : (
-                          <span>No region</span>
+                          <span>{messages.noRegion}</span>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span>Host: {group.hostname || "—"}</span>
-                        <span>IP: {group.ipAddress || "—"}</span>
-                        <span>Protocols: {protocols.join(" + ")}</span>
+                        <span>{messages.labelHost} {group.hostname || "—"}</span>
+                        <span>{messages.labelIp} {group.ipAddress || "—"}</span>
+                        <span>{messages.labelProtocols} {protocols.join(" + ")}</span>
                       </div>
                     </div>
                   </CollapsibleTrigger>

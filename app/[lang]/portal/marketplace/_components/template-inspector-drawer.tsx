@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useParams } from "next/navigation"
 import {
   Sheet,
   SheetContent,
@@ -23,6 +24,8 @@ import {
   Package,
 } from "@phosphor-icons/react"
 import type { AppTemplateBlueprint } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export interface AdminTemplateRecord {
   id: string
@@ -67,6 +70,11 @@ export function TemplateInspectorDrawer({
   onReject,
   onToggleFeatured,
 }: TemplateInspectorDrawerProps) {
+  const params = useParams()
+  const lang = typeof params?.lang === "string" ? params.lang : "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.templateInspectorDrawer
+
   const [rejectNote, setRejectNote] = useState("")
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -130,12 +138,12 @@ export function TemplateInspectorDrawer({
               </Badge>
               {template.isOfficial && (
                 <Badge variant="secondary" className="text-xs">
-                  Official
+                  {messages.official}
                 </Badge>
               )}
               {template.isFeatured && (
                 <Badge variant="default" className="text-xs">
-                  Featured
+                  {messages.featured}
                 </Badge>
               )}
               <Badge
@@ -160,7 +168,7 @@ export function TemplateInspectorDrawer({
               <Star
                 className={`size-4 ${template.isFeatured ? "fill-amber-400" : ""}`}
               />
-              {template.isFeatured ? "Featured" : "Feature on Marketplace"}
+              {template.isFeatured ? messages.featured : messages.featureOnMarketplace}
             </Button>
           </div>
           <SheetTitle className="text-xl font-bold">{template.name}</SheetTitle>
@@ -174,7 +182,7 @@ export function TemplateInspectorDrawer({
             {/* Description */}
             <div className="space-y-2">
               <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Overview & Description
+                {messages.overviewDescription}
               </h4>
               <p className="text-sm leading-relaxed">{template.description}</p>
             </div>
@@ -184,7 +192,7 @@ export function TemplateInspectorDrawer({
             {/* Container & Runtime Blueprint */}
             <div className="space-y-3">
               <h4 className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                <Package className="size-4" /> Container Runtime
+                <Package className="size-4" /> {messages.containerRuntime}
               </h4>
               <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
                 <div>
@@ -239,7 +247,7 @@ export function TemplateInspectorDrawer({
             {/* Resource Limits */}
             <div className="space-y-3">
               <h4 className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                <Cpu className="size-4" /> Resource Allocation
+                <Cpu className="size-4" /> {messages.resourceAllocation}
               </h4>
               <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
                 <div>
@@ -274,11 +282,11 @@ export function TemplateInspectorDrawer({
             {/* Database Dependencies / Managed Stocks */}
             <div className="space-y-3">
               <h4 className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                <Database className="size-4" /> Required Database Stocks
+                <Database className="size-4" /> {messages.requiredDatabases}
               </h4>
               {dependencies.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">
-                  No managed database dependencies required.
+                  {messages.noDatabasesRequired}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -305,12 +313,12 @@ export function TemplateInspectorDrawer({
             {/* Environment Variables Schema */}
             <div className="space-y-3">
               <h4 className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                <Lock className="size-4" /> Environment Schema (
+                <Lock className="size-4" /> {messages.environmentSchema} (
                 {envSchema.length})
               </h4>
               {envSchema.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">
-                  No additional environment variables declared.
+                  {messages.noEnvDeclared}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -329,7 +337,7 @@ export function TemplateInspectorDrawer({
                               variant="destructive"
                               className="h-4 px-1 text-[10px]"
                             >
-                              Required
+                              {messages.required}
                             </Badge>
                           )}
                           {env.isSecret && (
@@ -337,7 +345,7 @@ export function TemplateInspectorDrawer({
                               variant="secondary"
                               className="h-4 px-1 text-[10px]"
                             >
-                              Secret
+                              {messages.secret}
                             </Badge>
                           )}
                           {env.isFixed && (
@@ -345,7 +353,7 @@ export function TemplateInspectorDrawer({
                               variant="outline"
                               className="h-4 border-amber-500/30 px-1 text-[10px] text-amber-600 dark:text-amber-400"
                             >
-                              Fixed
+                              {messages.fixed}
                             </Badge>
                           )}
                           {env.isHidden && (
@@ -353,7 +361,7 @@ export function TemplateInspectorDrawer({
                               variant="outline"
                               className="h-4 border-purple-500/30 px-1 text-[10px] text-purple-600 dark:text-purple-400"
                             >
-                              Hidden
+                              {messages.hidden}
                             </Badge>
                           )}
                           {Boolean(env.generateRandomHex) && (
@@ -396,10 +404,10 @@ export function TemplateInspectorDrawer({
             {showRejectForm && (
               <div className="space-y-3 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
                 <h4 className="text-xs font-semibold text-destructive">
-                  Reason for Rejection
+                  {messages.reasonForRejection}
                 </h4>
                 <Textarea
-                  placeholder="Provide detailed feedback on why this template was rejected..."
+                  placeholder={messages.rejectionPlaceholder}
                   value={rejectNote}
                   onChange={(e) => setRejectNote(e.target.value)}
                   className="text-xs"
@@ -412,7 +420,7 @@ export function TemplateInspectorDrawer({
                     onClick={() => setShowRejectForm(false)}
                     disabled={isSubmitting}
                   >
-                    Cancel
+                    {messages.cancel}
                   </Button>
                   <Button
                     size="sm"
@@ -420,7 +428,7 @@ export function TemplateInspectorDrawer({
                     onClick={handleReject}
                     disabled={!rejectNote.trim() || isSubmitting}
                   >
-                    Confirm Rejection
+                    {messages.confirmRejection}
                   </Button>
                 </div>
               </div>
@@ -430,7 +438,7 @@ export function TemplateInspectorDrawer({
             {template.reviewNotes && (
               <div className="space-y-1 rounded border border-destructive/30 bg-destructive/10 p-3 text-xs">
                 <span className="font-semibold text-destructive">
-                  Past Review Notes:
+                  {messages.pastReviewNotes}
                 </span>
                 <p className="text-muted-foreground">{template.reviewNotes}</p>
               </div>
@@ -452,7 +460,7 @@ export function TemplateInspectorDrawer({
                   template.isFeatured ? "fill-amber-400 text-amber-500" : ""
                 }`}
               />
-              {template.isFeatured ? "Unfeature" : "Feature"}
+              {template.isFeatured ? messages.unfeature : messages.feature}
             </Button>
 
             <div className="flex items-center gap-2">
@@ -464,7 +472,7 @@ export function TemplateInspectorDrawer({
                   disabled={isSubmitting}
                   className="gap-1.5 text-destructive hover:bg-destructive/10"
                 >
-                  <XCircle className="size-4" /> Reject
+                  <XCircle className="size-4" /> {messages.reject}
                 </Button>
               )}
 
@@ -475,7 +483,7 @@ export function TemplateInspectorDrawer({
                   disabled={isSubmitting}
                   className="gap-1.5"
                 >
-                  <CheckCircle className="size-4" /> Approve Template
+                  <CheckCircle className="size-4" /> {messages.approveTemplate}
                 </Button>
               )}
             </div>
