@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -121,11 +122,14 @@ const downloadFailedRecipientsCsv = (
 export default function PortalWhatsAppBroadcastDetailPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string; id: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.whatsapp.broadcasts.portalDetail
   const recipientFilters: Array<{ value: RecipientFilter; label: string }> = [
-    { value: "ALL", label: "All" },
-    { value: "QUEUED", label: "Queued" },
-    { value: "SENT", label: "Sent" },
-    { value: "FAILED", label: "Failed" },
+    { value: "ALL", label: messages.filterAll },
+    { value: "QUEUED", label: messages.queued },
+    { value: "SENT", label: messages.sent },
+    { value: "FAILED", label: messages.failed },
   ]
   const [broadcast, setBroadcast] = React.useState<Broadcast | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -200,17 +204,15 @@ export default function PortalWhatsAppBroadcastDetailPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {broadcast?.templateName ?? "Broadcast details"}
+            {broadcast?.templateName ?? messages.fallbackTitle}
           </h1>
-          <p className="text-muted-foreground">
-            Monitor delivery progress and recipient status.
-          </p>
+          <p className="text-muted-foreground">{messages.description}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isDraft && (
             <Button disabled={isSending} onClick={() => void handleSend()}>
               <PaperPlaneTilt weight="bold" className="mr-1 size-4" />
-              {isSending ? "Sending..." : "Send Broadcast"}
+              {isSending ? messages.sending : messages.sendBroadcast}
             </Button>
           )}
           <Button
@@ -222,10 +224,10 @@ export default function PortalWhatsAppBroadcastDetailPage() {
             }}
           >
             <DownloadSimple weight="bold" className="mr-1 size-4" />
-            Download failed
+            {messages.downloadFailed}
           </Button>
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            {messages.back}
           </Button>
         </div>
       </div>
@@ -236,12 +238,11 @@ export default function PortalWhatsAppBroadcastDetailPage() {
             <Info className="size-5 shrink-0" />
             <div>
               <p className="font-medium text-foreground">
-                Broadcast Draft Ready to Send
+                {messages.draftBannerTitle}
               </p>
               <p className="text-sm text-muted-foreground">
-                This campaign has {broadcast?.total ?? 0} queued recipient(s).
-                Click &quot;Send Broadcast&quot; when you are ready to initiate
-                message delivery.
+                {messages.draftBannerBeforeCount} {broadcast?.total ?? 0}{" "}
+                {messages.draftBannerAfterCount}
               </p>
             </div>
           </div>
@@ -251,33 +252,31 @@ export default function PortalWhatsAppBroadcastDetailPage() {
             onClick={() => void handleSend()}
           >
             <PaperPlaneTilt className="mr-1 size-4" />
-            {isSending ? "Sending..." : "Send Broadcast"}
+            {isSending ? messages.sending : messages.sendBroadcast}
           </Button>
         </div>
       )}
 
       {loading ? (
         <Card>
-          <CardContent className="py-8">
-            Loading broadcast details...
-          </CardContent>
+          <CardContent className="py-8">{messages.loading}</CardContent>
         </Card>
       ) : !broadcast ? (
         <Card>
-          <CardContent className="py-8">Broadcast not found.</CardContent>
+          <CardContent className="py-8">{messages.notFound}</CardContent>
         </Card>
       ) : (
         <>
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <CardTitle>Campaign Progress</CardTitle>
+                <CardTitle>{messages.campaignProgress}</CardTitle>
                 <Badge variant={isDraft ? "secondary" : "default"}>
                   {formatBroadcastStatus(broadcast)}
                 </Badge>
               </div>
               <CardDescription>
-                {broadcast.templateLanguage} • Created at{" "}
+                {broadcast.templateLanguage} {messages.createdAtBullet}{" "}
                 {formatDate(broadcast.createdAt)}
               </CardDescription>
             </CardHeader>
@@ -285,7 +284,7 @@ export default function PortalWhatsAppBroadcastDetailPage() {
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">
-                    Total Recipients
+                    {messages.totalRecipients}
                   </p>
                   <p className="mt-2 text-2xl font-semibold">
                     {broadcast.total}
@@ -293,12 +292,14 @@ export default function PortalWhatsAppBroadcastDetailPage() {
                 </div>
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">Sent</p>
+                    <p className="text-sm text-muted-foreground">
+                      {messages.sent}
+                    </p>
                     <Badge
                       variant="outline"
                       className="text-emerald-600 dark:text-emerald-400"
                     >
-                      Sent
+                      {messages.sent}
                     </Badge>
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
@@ -307,12 +308,14 @@ export default function PortalWhatsAppBroadcastDetailPage() {
                 </div>
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">Queued</p>
+                    <p className="text-sm text-muted-foreground">
+                      {messages.queued}
+                    </p>
                     <Badge
                       variant="outline"
                       className="text-amber-600 dark:text-amber-400"
                     >
-                      Queued
+                      {messages.queued}
                     </Badge>
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">
@@ -321,9 +324,11 @@ export default function PortalWhatsAppBroadcastDetailPage() {
                 </div>
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">Failed</p>
+                    <p className="text-sm text-muted-foreground">
+                      {messages.failed}
+                    </p>
                     <Badge variant="outline" className="text-destructive">
-                      Failed
+                      {messages.failed}
                     </Badge>
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-destructive">
@@ -335,7 +340,7 @@ export default function PortalWhatsAppBroadcastDetailPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Delivery Progress
+                    {messages.deliveryProgress}
                   </span>
                   <span className="font-medium">{progress}%</span>
                 </div>
@@ -346,9 +351,9 @@ export default function PortalWhatsAppBroadcastDetailPage() {
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {progress}% complete (Started:{" "}
-                  {formatDate(broadcast.startedAt)}, Ended:{" "}
-                  {formatDate(broadcast.endedAt)})
+                  {progress}
+                  {messages.progressComplete} {formatDate(broadcast.startedAt)}
+                  {messages.progressEnded} {formatDate(broadcast.endedAt)})
                 </p>
               </div>
             </CardContent>
@@ -357,9 +362,9 @@ export default function PortalWhatsAppBroadcastDetailPage() {
           <TooltipProvider>
             <Card>
               <CardHeader>
-                <CardTitle>Recipient list</CardTitle>
+                <CardTitle>{messages.recipientList}</CardTitle>
                 <CardDescription>
-                  List of recipients, message dispatch status, and errors.
+                  {messages.recipientListDescription}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -367,7 +372,7 @@ export default function PortalWhatsAppBroadcastDetailPage() {
                   <div className="relative w-full sm:max-w-xs">
                     <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Search recipient..."
+                      placeholder={messages.searchRecipientPlaceholder}
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
                       className="pl-9"
@@ -379,7 +384,7 @@ export default function PortalWhatsAppBroadcastDetailPage() {
                       setFilter(value as RecipientFilter)
                     }
                   >
-                    <TabsList aria-label="Recipient filter">
+                    <TabsList aria-label={messages.recipientFilterLabel}>
                       {recipientFilters.map(({ value, label }) => (
                         <TabsTrigger key={value} value={value} className="px-3">
                           {label}
@@ -392,18 +397,20 @@ export default function PortalWhatsAppBroadcastDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Phone number</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Attempts</TableHead>
-                      <TableHead>Message ID</TableHead>
-                      <TableHead>Error</TableHead>
+                      <TableHead>{messages.thPhoneNumber}</TableHead>
+                      <TableHead>{messages.thName}</TableHead>
+                      <TableHead>{messages.thStatus}</TableHead>
+                      <TableHead>{messages.thAttempts}</TableHead>
+                      <TableHead>{messages.thMessageId}</TableHead>
+                      <TableHead>{messages.thError}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {recipients.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6}>No recipients found.</TableCell>
+                        <TableCell colSpan={6}>
+                          {messages.noRecipientsFound}
+                        </TableCell>
                       </TableRow>
                     ) : (
                       recipients.map((recipient) => (
