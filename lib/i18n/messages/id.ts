@@ -2884,6 +2884,11 @@ export const idMessages: AppMessages = {
             "Trust proxies aktif. IP klien asli akan tersedia untuk kode aplikasi.",
           trustInactive:
             "Nonaktif secara default. Aktifkan hanya jika kamu berada di belakang proxy dan butuh IP klien asli di aplikasimu.",
+          cnameRecordHeading: "Catatan CNAME untuk {hostname}:",
+          apexRecordHeading: "Catatan A / AAAA (Domain Utama @):",
+          sslStatusActive: "SSL Aktif",
+          sslStatusAuto: "Otomatis (Let's Encrypt)",
+          dnsStatusVerified: "Terverifikasi",
         },
       },
     },

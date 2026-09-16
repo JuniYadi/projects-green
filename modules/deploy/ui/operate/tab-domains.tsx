@@ -293,8 +293,11 @@ export function TabDomains({
               <div className="space-y-1.5 pt-1">
                 <p className="text-[10px] font-semibold text-muted-foreground">
                   {!isApex && cnameRecords.length > 0
-                    ? `Catatan CNAME untuk ${domain.hostname}:`
-                    : "Catatan A / AAAA (Domain Utama @):"}
+                    ? t.cnameRecordHeading.replace(
+                        "{hostname}",
+                        domain.hostname
+                      )
+                    : t.apexRecordHeading}
                 </p>
                 <div className="space-y-1">
                   {targetRecords.map((record, index) => (
@@ -374,7 +377,9 @@ export function TabDomains({
                     )}
                   >
                     <span className="size-1.5 rounded-full bg-current" />
-                    {domain.dnsStatus}
+                    {domain.dnsStatus === "VERIFIED"
+                      ? t.dnsStatusVerified
+                      : domain.dnsStatus}
                   </span>
                 </div>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">
@@ -398,8 +403,8 @@ export function TabDomains({
                     <span className="size-1.5 rounded-full bg-current" />
                     {domain.certificate?.status === "READY" ||
                     domain.certificate?.status === "ACTIVE"
-                      ? "SSL Aktif"
-                      : "Otomatis (Let's Encrypt)"}
+                      ? t.sslStatusActive
+                      : t.sslStatusAuto}
                   </span>
                 </div>
                 {domain.certificate?.expiresAt ? (

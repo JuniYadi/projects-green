@@ -162,6 +162,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           },
         },
       }),
+      // Optional chaining allows safe fallback to null in mock or detached test harnesses where appHostingCluster is unmocked
       prisma.appHostingCluster?.findFirst
         ? prisma.appHostingCluster.findFirst({
             where: { status: "ACTIVE", isDefault: true },
@@ -333,6 +334,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
             },
           })
         : null
+      // Optional chaining allows safe fallback to null in mock or detached test harnesses where appHostingCluster is unmocked
       const defaultCluster =
         !stack.cluster && prisma.appHostingCluster?.findFirst
           ? await prisma.appHostingCluster.findFirst({

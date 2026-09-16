@@ -2863,6 +2863,11 @@ export const enMessages: AppMessages = {
             "Trust proxies is active. Real client IPs will be available to application code.",
           trustInactive:
             "Off by default. Turn this on only if you're behind a proxy and need real client IPs in your app.",
+          cnameRecordHeading: "CNAME record for {hostname}:",
+          apexRecordHeading: "A / AAAA records (Apex Domain @):",
+          sslStatusActive: "SSL Active",
+          sslStatusAuto: "Automatic (Let's Encrypt)",
+          dnsStatusVerified: "Verified",
         },
       },
     },
