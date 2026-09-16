@@ -115,43 +115,85 @@ export function TrafficGeoCard({ topCountries, topIps }: TrafficGeoCardProps) {
             </div>
           ) : (
             <div className="max-h-[280px] space-y-2 overflow-y-auto">
-              {topIps.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between rounded-md border border-border bg-muted/10 px-3 py-2 text-xs"
-                >
-                  <div className="flex items-center gap-2">
-                    <CountryFlag
-                      country={item.countryCode}
-                      className="rounded-2xs h-3.5 w-5 shrink-0 object-cover shadow-2xs"
-                      fallback={
-                        <GlobeHemisphereWest
-                          size={16}
-                          className="shrink-0 text-muted-foreground"
+              {topIps.map((item, idx) => {
+                const total = item.requestsCount || 1
+                const segments = [
+                  {
+                    key: "2xx",
+                    count: item.status2xx,
+                    className: "bg-emerald-500",
+                  },
+                  {
+                    key: "3xx",
+                    count: item.status3xx,
+                    className: "bg-sky-500",
+                  },
+                  {
+                    key: "4xx",
+                    count: item.status4xx,
+                    className: "bg-amber-500",
+                  },
+                  {
+                    key: "5xx",
+                    count: item.status5xx,
+                    className: "bg-rose-500",
+                  },
+                ].filter((seg) => seg.count > 0)
+                return (
+                  <div
+                    key={idx}
+                    className="space-y-1.5 rounded-md border border-border bg-muted/10 px-3 py-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CountryFlag
+                          country={item.countryCode}
+                          className="rounded-2xs h-3.5 w-5 shrink-0 object-cover shadow-2xs"
+                          fallback={
+                            <GlobeHemisphereWest
+                              size={16}
+                              className="shrink-0 text-muted-foreground"
+                            />
+                          }
                         />
-                      }
-                    />
-                    <div>
-                      <div className="font-mono font-medium text-foreground">
-                        {item.ip}
+                        <div>
+                          <div className="font-mono font-medium text-foreground">
+                            {item.ip}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {[item.city, item.countryName]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {[item.city, item.countryName]
-                          .filter(Boolean)
-                          .join(", ")}
+                      <div className="text-right">
+                        <span className="font-semibold text-foreground">
+                          {item.requestsCount.toLocaleString("id-ID")}
+                        </span>
+                        <span className="ml-1 text-[11px] text-muted-foreground">
+                          req
+                        </span>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-muted/20">
+                        {segments.map((seg) => (
+                          <div
+                            key={seg.key}
+                            style={{ width: `${(seg.count / total) * 100}%` }}
+                            className={`h-full ${seg.className}`}
+                            title={`${seg.key}: ${seg.count.toLocaleString("id-ID")}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+                        {item.successRatio}% sukses
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="font-semibold text-foreground">
-                      {item.requestsCount.toLocaleString("id-ID")}
-                    </span>
-                    <span className="ml-1 text-[11px] text-muted-foreground">
-                      req
-                    </span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>
