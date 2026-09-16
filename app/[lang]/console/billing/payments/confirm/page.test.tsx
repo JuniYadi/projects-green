@@ -1,4 +1,4 @@
-import { describe, expect, it, mock, afterEach } from "bun:test"
+import { describe, expect, it, mock, afterEach, beforeEach } from "bun:test"
 
 // ─── Mock modules before any imports ─────────────────────────────────────────
 
@@ -54,30 +54,11 @@ const mockBankAccounts = [
   },
 ]
 
-const mockPost = mock(() => Promise.resolve({ data: { ok: true } }))
+const mockPost = mock((_body?: unknown) =>
+  Promise.resolve({ data: { ok: true } })
+)
 
-mock.module("@/lib/eden", () => ({
-  eden: {
-    api: {
-      payments: {
-        topup: {
-          "bank-accounts": {
-            get: mock(() =>
-              Promise.resolve({
-                data: { ok: true, data: mockBankAccounts },
-              })
-            ),
-          },
-          confirm: {
-            "inv-1": {
-              post: mockPost,
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+const originalFetch = globalThis.fetch
 
 // ─── Dynamic imports after mocks ─────────────────────────────────────────────
 
@@ -89,9 +70,39 @@ const {
 const { fireEvent } = await import("@testing-library/react")
 const { default: ConfirmPaymentPage } = await import("./page")
 
+beforeEach(() => {
+  globalThis.fetch = mock(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes("bank-accounts")) {
+        return new Response(
+          JSON.stringify({ ok: true, data: mockBankAccounts }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      }
+      if (url.includes("confirm")) {
+        const body = init?.body ? JSON.parse(String(init.body)) : {}
+        mockPost(body)
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  ) as unknown as typeof fetch
+})
+
 afterEach(() => {
   rtlCleanup()
   mockPost.mockClear()
+  globalThis.fetch = originalFetch
 })
 
 describe("ConfirmPaymentPage", () => {
@@ -134,5 +145,38 @@ describe("ConfirmPaymentPage", () => {
     expect(mockPost).toHaveBeenCalledWith(
       expect.objectContaining({ bankAccountId: "bank-2" })
     )
+  })
+
+  it("submits overpaid transfer amount and displays notice", async () => {
+    const view = render(<ConfirmPaymentPage />)
+
+    await waitFor(() => {
+      expect(view.getByText("Bank Rakyat Indonesia")).toBeInTheDocument()
+    })
+
+    const transferAmountInput = view.getByLabelText(
+      /actual transferred amount/i
+    )
+    expect(transferAmountInput).toBeInTheDocument()
+
+    fireEvent.change(transferAmountInput, { target: { value: "305000" } })
+
+    expect(
+      view.getByText(/Overpayment will be automatically credited/i)
+    ).toBeInTheDocument()
+
+    const submitButton = view.getByRole("button", {
+      name: /submit confirmation/i,
+    })
+    fireEvent.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bankAccountId: "bank-2",
+          amount: 305000,
+        })
+      )
+    })
   })
 })

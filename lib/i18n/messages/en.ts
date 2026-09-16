@@ -777,6 +777,11 @@ export const enMessages: AppMessages = {
         amount: "Amount",
         destination: "Destination",
         amountToConfirm: "Amount to Confirm",
+        actualTransferAmount: "Actual Transferred Amount",
+        overpaymentNotice:
+          "Overpayment will be automatically credited to your account balance once approved.",
+        underpaymentError:
+          "Transfer amount cannot be less than the invoice amount.",
         invoice: "Invoice:",
         invoiceLabel: "Invoice:",
         destinationBankAccount: "Destination Bank Account",

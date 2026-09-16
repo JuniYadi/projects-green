@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -94,6 +95,7 @@ function ConfirmationPageContent() {
 
   // Form fields
   const [bankAccountId, setBankAccountId] = useState<string>("")
+  const [customAmount, setCustomAmount] = useState<string>("")
   const [senderBankName, setSenderBankName] = useState<string>("")
   const [senderName, setSenderName] = useState<string>("")
   const [senderAccount, setSenderAccount] = useState<string>("")
@@ -177,9 +179,17 @@ function ConfirmationPageContent() {
     }
   }, [searchParams])
 
-  const displayAmount = urlAmount > 0 ? urlAmount : invoiceAmount
+  const invoiceTotal = urlAmount > 0 ? urlAmount : invoiceAmount
   const displayCurrency = urlCurrency || invoiceCurrency
-  const isValid = bankAccountId && initialPaymentDateTime && displayAmount > 0
+  const actualAmount = customAmount ? parseFloat(customAmount) : invoiceTotal
+  const isUnderpaid = !isNaN(actualAmount) && actualAmount < invoiceTotal
+  const isOverpaid = !isNaN(actualAmount) && actualAmount > invoiceTotal
+  const isValid =
+    Boolean(bankAccountId) &&
+    Boolean(initialPaymentDateTime) &&
+    !isNaN(actualAmount) &&
+    actualAmount >= invoiceTotal &&
+    actualAmount > 0
 
   // ── Screenshot upload handler ──
   const uploadScreenshot = useCallback(
@@ -275,7 +285,7 @@ function ConfirmationPageContent() {
         invoiceId
       ].post({
         bankAccountId,
-        amount: displayAmount,
+        amount: actualAmount,
         paymentDateTime: new Date(initialPaymentDateTime).toISOString(),
         senderBankName: senderBankName || undefined,
         senderName: senderName || undefined,
@@ -332,7 +342,7 @@ function ConfirmationPageContent() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.amount}</span>
                   <span className="font-medium">
-                    {formatCurrency(displayAmount, displayCurrency)}
+                    {formatCurrency(actualAmount, displayCurrency)}
                   </span>
                 </div>
                 {selectedBank && (
@@ -415,21 +425,54 @@ function ConfirmationPageContent() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Amount Display */}
-                <div className="rounded-lg border bg-muted/30 p-4">
+                {/* Amount Display & Input */}
+                <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
                       {t.amountToConfirm}
                     </span>
                     <span className="text-xl font-semibold">
-                      {formatCurrency(displayAmount, displayCurrency)}
+                      {formatCurrency(invoiceTotal, displayCurrency)}
                     </span>
                   </div>
                   {invoiceId && (
-                    <div className="mt-1 text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground">
                       {t.invoiceLabel} {invoiceId}
                     </div>
                   )}
+                  <div className="space-y-1.5 border-t border-border/60 pt-3">
+                    <Label
+                      htmlFor="transfer-amount"
+                      className="text-xs font-medium text-foreground"
+                    >
+                      {t.actualTransferAmount}
+                    </Label>
+                    <Input
+                      id="transfer-amount"
+                      type="number"
+                      min={invoiceTotal}
+                      step="any"
+                      placeholder={String(invoiceTotal)}
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      className="font-mono text-sm"
+                    />
+                    {isOverpaid && (
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        {t.overpaymentNotice} (+
+                        {formatCurrency(
+                          actualAmount - invoiceTotal,
+                          displayCurrency
+                        )}
+                        )
+                      </p>
+                    )}
+                    {isUnderpaid && (
+                      <p className="text-xs text-destructive">
+                        {t.underpaymentError}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Bank Account Selection */}

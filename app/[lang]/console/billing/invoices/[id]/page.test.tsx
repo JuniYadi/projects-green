@@ -129,7 +129,9 @@ describe("Billing InvoiceDetailPage", () => {
     )
 
     expect(view.getByText("1234567890")).toBeInTheDocument()
-    expect(view.getAllByText("PT. Premium Fast Network").length).toBeGreaterThan(0)
+    expect(
+      view.getAllByText("PT. Premium Fast Network").length
+    ).toBeGreaterThan(0)
     expect(
       view.getByRole("link", { name: "Confirm Payment" })
     ).toBeInTheDocument()
@@ -622,6 +624,71 @@ describe("Billing InvoiceDetailPage", () => {
       expect(
         view.queryByRole("link", { name: "Confirm Payment" })
       ).not.toBeInTheDocument()
+    })
+  })
+
+  it("detects pending payment confirmation, displays pending notice, and disables re-confirmation", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.includes("/api/billing/invoices/")) {
+        return jsonResponse(
+          invoicePayload({
+            confirmations: [
+              {
+                id: "conf-1",
+                status: "PENDING",
+                createdAt: "2026-05-02T10:00:00.000Z",
+                amount: 299000,
+              },
+            ],
+          })
+        )
+      }
+
+      if (url.includes("/api/billing/account")) {
+        return jsonResponse(accountPayload("IDR"))
+      }
+
+      if (url.includes("/api/payments/bank-accounts")) {
+        return jsonResponse({
+          ok: true,
+          accounts: [
+            {
+              id: "bank-1",
+              bankCode: "BCA",
+              bankName: "Bank Central Asia",
+              accountName: "PT Projects Green",
+              accountNumber: "1234567890",
+              isActive: true,
+              isDefault: true,
+              supportedCurrencies: ["IDR"],
+            },
+          ],
+        })
+      }
+
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<InvoiceDetailPage />)
+
+    await waitFor(() => {
+      // Pending confirmation banner is displayed
+      expect(
+        view.getByText(/Payment Confirmation — PENDING/i)
+      ).toBeInTheDocument()
+      // Transfer prompt card is hidden when already pending
+      expect(
+        view.queryByText(
+          /Transfer already sent\? Confirm payment and upload receipt/i
+        )
+      ).not.toBeInTheDocument()
+      // Re-confirmation button is disabled
+      const alreadyConfirmedBtn = view.getByRole("button", {
+        name: /This payment has already been confirmed/i,
+      })
+      expect(alreadyConfirmedBtn).toBeDisabled()
     })
   })
 })

@@ -61,6 +61,16 @@ export const createConfirmRoutes = () =>
         }
       }
 
+      const invoiceTotal = Number(invoice.totalAmount)
+      if (amount < invoiceTotal) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: "Transfer amount cannot be less than the invoice amount",
+        }
+      }
+
       try {
         const confirmation = await confirmationService.create({
           invoiceId: params.id,

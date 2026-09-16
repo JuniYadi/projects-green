@@ -117,7 +117,7 @@ export default function InvoiceDetailPage() {
       cancelled = true
       controller.abort()
     }
-  }, [invoiceId])
+  }, [invoiceId, billing.failedToLoadInvoices])
 
   useEffect(() => {
     if (!data?.invoice || !account) return
@@ -266,7 +266,7 @@ export default function InvoiceDetailPage() {
   const discountAmount = invoice.discountAmountIdr ?? "0"
 
   const rawData: Record<string, unknown> = data
-  const rawConfirmations = rawData.confirmations
+  const rawConfirmations = invoice.confirmations ?? rawData.confirmations
   const confirmations = Array.isArray(rawConfirmations)
     ? (rawConfirmations as Array<{
         id: string
@@ -277,10 +277,14 @@ export default function InvoiceDetailPage() {
     : []
   const latestConfirmation =
     confirmations.length > 0 ? confirmations[confirmations.length - 1] : null
+  const isPendingConfirmation =
+    latestConfirmation?.status?.toUpperCase() === "PENDING"
+  const isApprovedConfirmation =
+    latestConfirmation?.status?.toUpperCase() === "APPROVED"
+  const isRejectedConfirmation =
+    latestConfirmation?.status?.toUpperCase() === "REJECTED"
   const activeConfirmation =
-    latestConfirmation &&
-    (latestConfirmation.status === "PENDING" ||
-      latestConfirmation.status === "APPROVED")
+    latestConfirmation && (isPendingConfirmation || isApprovedConfirmation)
       ? latestConfirmation
       : null
 
@@ -396,64 +400,74 @@ export default function InvoiceDetailPage() {
       {latestConfirmation && (
         <div
           className={`flex items-center gap-3 rounded-lg border p-4 ${
-            latestConfirmation.status === "APPROVED"
+            isApprovedConfirmation
               ? "border-green-500/20 bg-green-500/10"
-              : latestConfirmation.status === "REJECTED"
+              : isRejectedConfirmation
                 ? "border-red-500/20 bg-red-500/10"
                 : "border-yellow-500/20 bg-yellow-500/10"
           }`}
         >
-          <CheckCircleIcon
-            className={`h-5 w-5 ${
-              latestConfirmation.status === "APPROVED"
-                ? "text-green-600 dark:text-green-400"
-                : latestConfirmation.status === "REJECTED"
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-yellow-600 dark:text-yellow-400"
-            }`}
-          />
+          {isPendingConfirmation ? (
+            <ClockIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+          ) : (
+            <CheckCircleIcon
+              className={`h-5 w-5 ${
+                isApprovedConfirmation
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            />
+          )}
           <div>
             <p
               className={`font-medium ${
-                latestConfirmation.status === "APPROVED"
+                isApprovedConfirmation
                   ? "text-green-600 dark:text-green-400"
-                  : latestConfirmation.status === "REJECTED"
+                  : isRejectedConfirmation
                     ? "text-red-600 dark:text-red-400"
                     : "text-yellow-600 dark:text-yellow-400"
               }`}
             >
-              {billing.invoices.paymentConfirmation} —{" "}
+              {billing.invoices.paymentConfirmation.replace(/\s*—\s*$/, "")} —{" "}
               {latestConfirmation.status}
             </p>
             <p className="text-sm text-muted-foreground">
               {billing.invoices.submitted}{" "}
               {formatDate(latestConfirmation.createdAt)}
+              {isPendingConfirmation && (
+                <span className="mt-1 block text-xs font-normal text-yellow-700 dark:text-yellow-300">
+                  {billing.paymentsConfirm.successDesc}
+                </span>
+              )}
             </p>
           </div>
         </div>
       )}
-      {isManualPayment && invoice.status === "OPEN" && (
-        <Card className="border-2 border-primary bg-primary/5 shadow-md">
-          <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div className="flex items-start gap-3">
-              <CheckCircleIcon className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
-              <div className="space-y-1">
-                <p className="font-semibold text-primary">
-                  {billing.invoices.transferSubmittedTitle}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {billing.invoices.transferSubmittedDescription}
-                </p>
+      {isManualPayment &&
+        invoice.status === "OPEN" &&
+        !isPendingConfirmation &&
+        !isApprovedConfirmation && (
+          <Card className="border-2 border-primary bg-primary/5 shadow-md">
+            <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+              <div className="flex items-start gap-3">
+                <CheckCircleIcon className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-primary">
+                    {billing.invoices.transferSubmittedTitle}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {billing.invoices.transferSubmittedDescription}
+                  </p>
+                </div>
               </div>
-            </div>
-            <Button asChild size="lg" className="w-full shrink-0 sm:w-auto">
-              <Link href={confirmPaymentHref}>
-                {billing.invoices.confirmAndUploadReceipt}
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+              <Button asChild size="lg" className="w-full shrink-0 sm:w-auto">
+                <Link href={confirmPaymentHref}>
+                  {billing.invoices.confirmAndUploadReceipt}
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Main Responsive Workspace */}
       <div className="grid gap-6 lg:grid-cols-12">
@@ -754,18 +768,31 @@ export default function InvoiceDetailPage() {
                               </div>
                             </div>
                           )}
-                          <Button
-                            asChild
-                            className="w-full"
-                            disabled={!!activeConfirmation}
-                          >
-                            <Link href={finalConfirmHref}>
-                              <CheckCircleIcon className="mr-2 h-4 w-4" />
-                              {activeConfirmation
-                                ? billing.paymentsConfirm.alreadyConfirmed
-                                : billing.confirmPayment}
-                            </Link>
-                          </Button>
+                          {activeConfirmation ? (
+                            <div className="space-y-2">
+                              <Button
+                                type="button"
+                                className="w-full"
+                                disabled
+                                variant="outline"
+                              >
+                                <CheckCircleIcon className="mr-2 h-4 w-4" />
+                                {billing.paymentsConfirm.alreadyConfirmed}
+                              </Button>
+                              {isPendingConfirmation && (
+                                <p className="text-center text-xs text-yellow-600 dark:text-yellow-400">
+                                  {billing.paymentsConfirm.successDesc}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <Button asChild className="w-full">
+                              <Link href={finalConfirmHref}>
+                                <CheckCircleIcon className="mr-2 h-4 w-4" />
+                                {billing.confirmPayment}
+                              </Link>
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-300">

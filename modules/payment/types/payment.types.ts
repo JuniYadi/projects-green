@@ -49,6 +49,7 @@ export const ConfirmPaymentSchema = z.object({
 export const ReviewConfirmationSchema = z.object({
   action: z.enum(["approve", "reject"]),
   reason: z.string().optional(),
+  amount: z.number().positive().optional(),
 })
 
 // Types for API responses

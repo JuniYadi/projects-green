@@ -6,6 +6,9 @@ export interface PaymentConfirmationDTO {
   id: string
   amount: number
   currency: string
+  invoiceId: string
+  invoiceNumber?: string | null
+  invoiceTotal?: number | null
   bankAccountId: string
   bankName: string
   accountName: string
@@ -37,6 +40,11 @@ export function toPaymentConfirmationDTO(
     amount: Number(confirmation.amount),
     currency:
       confirmation.invoice?.currency ?? confirmation.bankAccount.currency,
+    invoiceId: confirmation.invoiceId,
+    invoiceNumber: confirmation.invoice?.invoiceNumber ?? null,
+    invoiceTotal: confirmation.invoice?.totalAmount
+      ? Number(confirmation.invoice.totalAmount)
+      : null,
     bankAccountId: confirmation.bankAccountId,
     bankName: confirmation.bankAccount.bankName,
     accountName: decryptPaymentField(confirmation.bankAccount.accountName),

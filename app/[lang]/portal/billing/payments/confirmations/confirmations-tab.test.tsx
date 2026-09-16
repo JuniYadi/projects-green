@@ -1,5 +1,5 @@
-import { describe, expect, it } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { afterEach, describe, expect, it } from "bun:test"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 
 import { ConfirmationsTab } from "./confirmations-tab"
 
@@ -8,6 +8,8 @@ const confirmationPayload = [
     id: "pc-1",
     amount: 100000,
     currency: "IDR",
+    invoiceId: "inv-100",
+    invoiceNumber: "TOP-D16B8E60",
     bankAccountId: "ba-1",
     bankName: "BCA",
     accountName: "PT Projects Green",
@@ -19,6 +21,10 @@ const confirmationPayload = [
 ]
 
 describe("ConfirmationsTab", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   it("renders confirmations in a filterable table and opens a review modal", async () => {
     globalThis.fetch = Object.assign(
       async () =>
@@ -32,12 +38,16 @@ describe("ConfirmationsTab", () => {
 
     expect(await view.findByRole("table")).toBeInTheDocument()
     expect(
+      view.getByRole("columnheader", { name: /invoice/i })
+    ).toBeInTheDocument()
+    expect(
       view.getByRole("columnheader", { name: /amount/i })
     ).toBeInTheDocument()
     expect(
       view.getByRole("columnheader", { name: /bank account/i })
     ).toBeInTheDocument()
     expect(view.getByLabelText("Filter confirmations...")).toBeInTheDocument()
+    expect(view.getByText("TOP-D16B8E60")).toBeInTheDocument()
 
     fireEvent.click(view.getByRole("button", { name: "Review" }))
 
@@ -73,6 +83,55 @@ describe("ConfirmationsTab", () => {
             call.init?.method === "POST"
         )
       ).toBe(true)
+    })
+  })
+
+  it("displays overpayment notice and sends verified amount on approval", async () => {
+    const overpaymentPayload = [
+      {
+        ...confirmationPayload[0],
+        id: "pc-over",
+        amount: 305000,
+        invoiceTotal: 300000,
+      },
+    ]
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    globalThis.fetch = Object.assign(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(url), init })
+        return new Response(JSON.stringify(overpaymentPayload), {
+          status: 200,
+        })
+      },
+      { preconnect: () => {} }
+    ) as typeof fetch
+
+    const view = render(<ConfirmationsTab />)
+    fireEvent.click(await view.findByRole("button", { name: "Review" }))
+
+    expect(await view.findByRole("dialog")).toBeInTheDocument()
+    expect(view.getByText(/Overpayment detected/i)).toBeInTheDocument()
+
+    // Change verified amount
+    const verifiedInput = view.getByLabelText(/verified received amount/i)
+    fireEvent.change(verifiedInput, { target: { value: "305000" } })
+
+    fireEvent.click(
+      view.getByRole("button", { name: "Approve received payment" })
+    )
+
+    await waitFor(() => {
+      const approveCall = calls.find(
+        (call) =>
+          new URL(call.url, "http://localhost").pathname ===
+            "/api/portal/payments/confirmations/pc-over/approve" &&
+          call.init?.method === "POST"
+      )
+      expect(approveCall).toBeDefined()
+      expect(JSON.parse(String(approveCall?.init?.body))).toEqual({
+        action: "approve",
+        amount: 305000,
+      })
     })
   })
 

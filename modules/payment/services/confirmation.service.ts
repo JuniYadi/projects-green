@@ -148,7 +148,8 @@ export class ConfirmationService {
 
   async approve(
     id: string,
-    adminUserId: string
+    adminUserId: string,
+    verifiedAmount?: number
   ): Promise<{
     invoiceId: string
     invoiceNumber: string
@@ -162,7 +163,9 @@ export class ConfirmationService {
     const result = await prisma.$transaction(async (tx) => {
       const confirmation = await tx.paymentConfirmation.findUnique({
         where: { id },
-        include: { invoice: { include: { billingAccount: true } } },
+        include: {
+          invoice: { include: { billingAccount: true, lines: true } },
+        },
       })
 
       if (!confirmation) throw new Error("Confirmation not found")
@@ -170,7 +173,7 @@ export class ConfirmationService {
         throw new Error("Confirmation already processed")
 
       const invoice = confirmation.invoice
-      const amount = confirmation.amount
+      const finalAmount = verifiedAmount ?? Number(confirmation.amount)
 
       if (!invoice?.billingAccount?.organizationId) {
         throw new Error("Billing account not found for invoice")
@@ -180,17 +183,65 @@ export class ConfirmationService {
 
       // Only credit balance and transition invoice if not already paid
       if (!isInvoiceAlreadyPaid) {
+        const invoiceTotal =
+          typeof invoice.totalAmount === "number"
+            ? invoice.totalAmount
+            : (invoice.totalAmount?.toNumber?.() ?? Number(invoice.totalAmount))
+        const isTopUp = invoice.type === "TOP_UP"
+        const finalDecimal = new Decimal(finalAmount)
+        const hasDifference = Math.abs(finalAmount - invoiceTotal) > 0.001
+
+        // For TOP_UP invoices, if the credited amount differs from original invoice total,
+        // update invoice total and line items so accounting records match actual money received
+        if (isTopUp && hasDifference) {
+          await tx.billingInvoice.update({
+            where: { id: invoice.id },
+            data: {
+              subtotalAmount: finalDecimal,
+              totalAmount: finalDecimal,
+            },
+          })
+          if (invoice.lines && invoice.lines.length > 0) {
+            await tx.billingInvoiceLine.update({
+              where: { id: invoice.lines[0].id },
+              data: {
+                unitPrice: finalDecimal,
+                amount: finalDecimal,
+              },
+            })
+          }
+        }
+
+        // If verifiedAmount was explicitly provided and differs from confirmation.amount, update confirmation too
+        if (
+          verifiedAmount &&
+          Math.abs(verifiedAmount - Number(confirmation.amount)) > 0.001
+        ) {
+          await tx.paymentConfirmation.update({
+            where: { id },
+            data: { amount: finalDecimal },
+          })
+        }
+
         // Credit balance within the same transaction via the injected service.
         await this.billingTransactions.creditBalance(
           {
             organizationId: invoice.billingAccount.organizationId,
-            amount: new Decimal(amount),
+            amount: finalDecimal,
             currency: invoice.billingAccount.currency,
             source: "TOPUP",
-            reason: "Manual payment confirmed",
+            reason:
+              finalAmount > invoiceTotal
+                ? "Manual payment confirmed with overpayment"
+                : "Manual payment confirmed",
             idempotencyKey: `manual:${id}`,
             invoiceId: invoice.id,
-            metadata: { confirmedBy: adminUserId, confirmationId: id },
+            metadata: {
+              confirmedBy: adminUserId,
+              confirmationId: id,
+              originalInvoiceTotal: invoiceTotal,
+              creditedAmount: finalAmount,
+            },
           },
           tx
         )
@@ -218,7 +269,7 @@ export class ConfirmationService {
           entityType: "PaymentConfirmation",
           entityId: id,
           actorId: adminUserId,
-          details: { amount, invoiceId: confirmation.invoiceId },
+          details: { amount: finalAmount, invoiceId: confirmation.invoiceId },
         },
       })
 
@@ -226,7 +277,7 @@ export class ConfirmationService {
         billingAccountId: invoice.billingAccountId,
         invoiceId: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
-        totalAmount: invoice.totalAmount.toNumber(),
+        totalAmount: finalAmount,
         currency: invoice.billingAccount.currency,
         organizationId: invoice.billingAccount.organizationId,
       }

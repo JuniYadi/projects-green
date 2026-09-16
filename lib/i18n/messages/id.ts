@@ -790,6 +790,11 @@ export const idMessages: AppMessages = {
         amount: "Jumlah",
         destination: "Tujuan",
         amountToConfirm: "Jumlah yang Dikonfirmasi",
+        actualTransferAmount: "Jumlah Riil yang Ditransfer",
+        overpaymentNotice:
+          "Kelebihan transfer akan otomatis ditambahkan ke saldo akun Anda setelah disetujui.",
+        underpaymentError:
+          "Jumlah transfer tidak boleh kurang dari jumlah tagihan invoice.",
         invoice: "Invoice:",
         invoiceLabel: "Invoice:",
         destinationBankAccount: "Rekening Bank Tujuan",

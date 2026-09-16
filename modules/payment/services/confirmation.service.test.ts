@@ -16,6 +16,9 @@ const mockInvoice = {
   findFirst: mock((): Promise<MockVal> => Promise.resolve(null)),
   update: mock(() => Promise.resolve({})),
 }
+const mockInvoiceLine = {
+  update: mock(() => Promise.resolve({})),
+}
 
 const mockBillingAccount = {
   findUnique: mock(() => Promise.resolve(null)),
@@ -55,6 +58,7 @@ mock.module("@/lib/prisma", () => ({
   prisma: {
     paymentConfirmation: mockPaymentConfirmation,
     billingInvoice: mockInvoice,
+    billingInvoiceLine: mockInvoiceLine,
     billingAccount: mockBillingAccount,
     paymentAuditLog: mockAuditLog,
     $transaction: mock(
@@ -62,6 +66,7 @@ mock.module("@/lib/prisma", () => ({
         fn({
           paymentConfirmation: mockPaymentConfirmation,
           billingInvoice: mockInvoice,
+          billingInvoiceLine: mockInvoiceLine,
           paymentAuditLog: mockAuditLog,
         })
     ),
@@ -88,12 +93,13 @@ describe("ConfirmationService", () => {
 
   function resetMocks() {
     mockPaymentConfirmation.findFirst.mockClear()
-    mockPaymentConfirmation.findUnique.mockClear()
+    mockPaymentConfirmation.findUnique.mockReset()
     mockPaymentConfirmation.create.mockClear()
     mockPaymentConfirmation.update.mockClear()
     mockPaymentConfirmation.findMany.mockClear()
     mockInvoice.findFirst.mockClear()
     mockInvoice.update.mockClear()
+    mockInvoiceLine.update.mockClear()
     mockBillingAccount.findUnique.mockClear()
     mockAuditLog.create.mockClear()
     mockSendPaymentConfirmationSubmitted.mockClear()
@@ -107,7 +113,9 @@ describe("ConfirmationService", () => {
     mockSendPaymentConfirmationSubmitted.mockResolvedValue(undefined)
     resetMocks()
     mockInvoice.findFirst.mockResolvedValue(null)
+    mockInvoiceLine.update.mockResolvedValue({})
     mockPaymentConfirmation.findFirst.mockResolvedValue(null)
+    mockPaymentConfirmation.findUnique.mockResolvedValue(null)
     mockPaymentConfirmation.create.mockResolvedValue({
       id: "conf-1",
       status: "PENDING",
@@ -149,6 +157,53 @@ describe("ConfirmationService", () => {
         expect.objectContaining({
           where: { id: "conf-123" },
           data: expect.objectContaining({ status: "APPROVED" }),
+        })
+      )
+    })
+
+    it("approves TOP_UP invoice with overpayment, updates invoice total and credits full overpaid amount", async () => {
+      mockPaymentConfirmation.findUnique.mockResolvedValueOnce({
+        id: "conf-over",
+        status: "PENDING",
+        amount: 305000,
+        invoiceId: "inv-topup",
+        invoice: {
+          id: "inv-topup",
+          type: "TOP_UP",
+          invoiceNumber: "TOP-OVER123",
+          totalAmount: 300000,
+          lines: [{ id: "line-1", unitPrice: 300000, amount: 300000 }],
+          billingAccount: {
+            organizationId: "org-over",
+            currency: "IDR",
+          },
+        },
+      })
+
+      mockInvoice.update.mockResolvedValue({})
+      mockInvoiceLine.update.mockResolvedValue({})
+      mockAuditLog.create.mockResolvedValue({})
+
+      const mockCreditBalance = mock(() => Promise.resolve({}))
+      const customService = new ConfirmationService({
+        creditBalance: mockCreditBalance,
+      } as unknown as BillingTransactionService)
+
+      const result = await customService.approve("conf-over", "admin-1")
+
+      expect(result.totalAmount).toBe(305000)
+      expect(mockCreditBalance).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org-over",
+          amount: expect.objectContaining({}),
+          reason: "Manual payment confirmed with overpayment",
+        }),
+        expect.anything()
+      )
+      expect(mockInvoice.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "inv-topup" },
+          data: expect.objectContaining({ status: "PAID" }),
         })
       )
     })
