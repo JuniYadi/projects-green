@@ -150,17 +150,22 @@ describe("opensearch-traffic.service", () => {
               },
               avg_latency: { value: 45.4 },
               total_bytes: { value: 204800 },
+              visitor_cardinality: { value: 42 },
               hourly_trend: {
                 buckets: [
                   {
                     key_as_string: "2026-09-10T00:00:00.000Z",
                     doc_count: 10,
                     errors: { doc_count: 0 },
+                    automated: { doc_count: 1 },
+                    visitor_cardinality: { value: 8 },
                   },
                   {
                     key_as_string: "2026-09-10T01:00:00.000Z",
                     doc_count: 20,
                     errors: { doc_count: 1 },
+                    automated: { doc_count: 3 },
+                    visitor_cardinality: { value: 15 },
                   },
                 ],
               },
@@ -205,6 +210,16 @@ describe("opensearch-traffic.service", () => {
       expect(result.avgLatencyMs).toBe(45)
       expect(result.totalBytes).toBe(BigInt(204800))
       expect(result.hourlyTrend.length).toBe(2)
+      expect(result.hourlyTrend[0]).toEqual({
+        hour: 0,
+        requests: 10,
+        errors: 0,
+        visitors: 8,
+        automated: 1,
+      })
+      expect(result.visitorEstimate).toBe(42)
+      expect(result.visitorEstimateMethod).toBe("ip_cardinality_v1")
+      expect(result.automatedRequests).toBe(4) // 1 + 3 across the 2 hourly buckets
       expect(result.topPaths).toEqual([{ path: "/home", views: 80 }])
       expect(result.errorPaths).toEqual([
         { path: "/missing", errors: 5, sampleStatus: 404 },
@@ -284,6 +299,8 @@ describe("opensearch-traffic.service", () => {
           browser: [{ label: "Safari", count: 700, percentage: 70 }],
           os: [{ label: "iOS", count: 700, percentage: 70 }],
         },
+        visitorEstimate: 250,
+        visitorEstMethod: "ip_cardinality_v1",
       })
 
       const report = await getAppTrafficReport("my-app", {
@@ -297,6 +314,11 @@ describe("opensearch-traffic.service", () => {
       expect(report.avgLatencyMs).toBe(30)
       expect(report.trend[0].requests).toBe(50)
       expect(report.trend[1].requests).toBe(100)
+      // hourlyTrendJson here predates the visitors/automated fields --
+      // must degrade to 0/humanLike=requests, not crash or read undefined.
+      expect(report.trend[0].visitors).toBe(0)
+      expect(report.trend[0].automated).toBe(0)
+      expect(report.trend[0].humanLike).toBe(50)
       expect(report.topPages).toEqual([{ path: "/api", views: 500 }])
       expect(report.troubledPages).toEqual([
         { path: "/api/bad", errors: 10, sampleStatus: 400 },
@@ -304,6 +326,8 @@ describe("opensearch-traffic.service", () => {
       expect(report.audience.device).toEqual([
         { label: "mobile", count: 700, percentage: 70 },
       ])
+      expect(report.visitorEstimate).toBe(250)
+      expect(report.visitorEstimateMethod).toBe("ip_cardinality_v1")
     })
 
     it("degrades a legacy snapshot with no audienceJson keys to empty buckets", async () => {
@@ -448,11 +472,17 @@ describe("opensearch-traffic.service", () => {
         label: "Jan",
         requests: 1000,
         errors: 10,
+        visitors: 0,
+        automated: 0,
+        humanLike: 1000,
       })
       expect(report.trend[1]).toEqual({
         label: "Feb",
         requests: 2000,
         errors: 40,
+        visitors: 0,
+        automated: 0,
+        humanLike: 2000,
       })
       expect(report.topIps[0].requestsCount).toBe(300)
     })
@@ -598,10 +628,18 @@ describe("opensearch-traffic.service", () => {
         errorPaths: [],
         topIps: [],
         audience: { device: [], browser: [], os: [] },
+        automatedRequests: 3,
+        visitorEstimate: 20,
+        visitorEstimateMethod: "ip_cardinality_v1",
       })
       expect(
         mockPrisma.appHostingDailyTrafficSnapshot.upsert
       ).toHaveBeenCalled()
+      const call = mockPrisma.appHostingDailyTrafficSnapshot.upsert.mock
+        .calls[0][0] as { create: Record<string, unknown> }
+      expect(call.create.automatedCount).toBe(3)
+      expect(call.create.visitorEstimate).toBe(20)
+      expect(call.create.visitorEstMethod).toBe("ip_cardinality_v1")
     })
 
     it("processes all running stacks in daily cron job", async () => {
