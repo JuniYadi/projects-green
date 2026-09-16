@@ -3,7 +3,11 @@ import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 import { logger } from "@/lib/logger"
 import { resolveClusterIntegrationByClusterCode } from "../cluster-integration.service"
-import { enrichTopIpsWithGeo, type IpGeoInfo } from "./geoip-lookup.service"
+import {
+  computeSuccessRatio,
+  enrichTopIpsWithGeo,
+  type IpGeoInfo,
+} from "./geoip-lookup.service"
 import type {
   AppTrafficLogItemDTO,
   AppTrafficLogsDTO,
@@ -43,6 +47,27 @@ export function formatBytes(bytes: bigint | number): string {
   const i = Math.floor(Math.log(num) / Math.log(1024))
   const formatted = (num / Math.pow(1024, i)).toFixed(1)
   return `${formatted} ${units[i] ?? "B"}`
+}
+
+/**
+ * Fills in status2xx/3xx/4xx/5xx/successRatio for IpGeoInfo rows persisted
+ * before those fields existed, so old snapshots degrade to an honest
+ * "no evidence" state instead of throwing on undefined.
+ */
+function normalizeIpGeoInfo(item: IpGeoInfo): IpGeoInfo {
+  const status2xx = item.status2xx ?? 0
+  const status3xx = item.status3xx ?? 0
+  const status4xx = item.status4xx ?? 0
+  const status5xx = item.status5xx ?? 0
+  return {
+    ...item,
+    status2xx,
+    status3xx,
+    status4xx,
+    status5xx,
+    successRatio:
+      item.successRatio ?? computeSuccessRatio(status2xx, item.requestsCount),
+  }
 }
 
 export function computeTopCountries(
@@ -304,6 +329,19 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
       },
       top_ips: {
         terms: { field: "client_ip.keyword", size: 10 },
+        aggs: {
+          status_class: {
+            range: {
+              field: "http_status",
+              ranges: [
+                { key: "2xx", from: 200, to: 300 },
+                { key: "3xx", from: 300, to: 400 },
+                { key: "4xx", from: 400, to: 500 },
+                { key: "5xx", from: 500 },
+              ],
+            },
+          },
+        },
       },
       error_paths: {
         filter: {
@@ -332,7 +370,14 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     []
   const topPaths: TrafficPathCount[] = []
   const errorPaths: TrafficErrorPath[] = []
-  const rawTopIps: Array<{ ip: string; count: number }> = []
+  const rawTopIps: Array<{
+    ip: string
+    count: number
+    status2xx: number
+    status3xx: number
+    status4xx: number
+    status5xx: number
+  }> = []
 
   try {
     const rawClient = client as unknown as {
@@ -360,7 +405,15 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
         }>
       }
       top_paths?: { buckets: Array<{ key: string; doc_count: number }> }
-      top_ips?: { buckets: Array<{ key: string; doc_count: number }> }
+      top_ips?: {
+        buckets: Array<{
+          key: string
+          doc_count: number
+          status_class?: {
+            buckets: Array<{ key: string; doc_count: number }>
+          }
+        }>
+      }
       error_paths?: {
         paths?: {
           buckets: Array<{
@@ -420,9 +473,16 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
 
     if (aggs.top_ips?.buckets) {
       for (const b of aggs.top_ips.buckets) {
+        const statusBuckets = b.status_class?.buckets ?? []
+        const statusCount = (key: string) =>
+          statusBuckets.find((s) => s.key === key)?.doc_count ?? 0
         rawTopIps.push({
           ip: b.key,
           count: b.doc_count,
+          status2xx: statusCount("2xx"),
+          status3xx: statusCount("3xx"),
+          status4xx: statusCount("4xx"),
+          status5xx: statusCount("5xx"),
         })
       }
     }
@@ -662,7 +722,9 @@ export async function getAppTrafficReport(
         ? Math.round((snapshot.successCount / totalRequests) * 1000) / 10
         : 100
 
-    const topIps = (snapshot.topIpsJson as unknown as IpGeoInfo[]) ?? []
+    const topIps = ((snapshot.topIpsJson as unknown as IpGeoInfo[]) ?? []).map(
+      normalizeIpGeoInfo
+    )
     const topCountries = computeTopCountries(topIps)
 
     return {
@@ -767,11 +829,21 @@ export async function getAppTrafficReport(
           })
         }
 
-        const snapIps = (snap.topIpsJson as unknown as IpGeoInfo[]) ?? []
+        const snapIps = ((snap.topIpsJson as unknown as IpGeoInfo[]) ?? []).map(
+          normalizeIpGeoInfo
+        )
         for (const ipItem of snapIps) {
           const cur = ipMap.get(ipItem.ip)
           if (cur) {
             cur.requestsCount += ipItem.requestsCount
+            cur.status2xx += ipItem.status2xx
+            cur.status3xx += ipItem.status3xx
+            cur.status4xx += ipItem.status4xx
+            cur.status5xx += ipItem.status5xx
+            cur.successRatio = computeSuccessRatio(
+              cur.status2xx,
+              cur.requestsCount
+            )
           } else {
             ipMap.set(ipItem.ip, { ...ipItem })
           }
@@ -896,11 +968,18 @@ export async function getAppTrafficReport(
       })
     }
 
-    const snapIps = (snap.topIpsJson as unknown as IpGeoInfo[]) ?? []
+    const snapIps = ((snap.topIpsJson as unknown as IpGeoInfo[]) ?? []).map(
+      normalizeIpGeoInfo
+    )
     for (const ipItem of snapIps) {
       const cur = ipMap.get(ipItem.ip)
       if (cur) {
         cur.requestsCount += ipItem.requestsCount
+        cur.status2xx += ipItem.status2xx
+        cur.status3xx += ipItem.status3xx
+        cur.status4xx += ipItem.status4xx
+        cur.status5xx += ipItem.status5xx
+        cur.successRatio = computeSuccessRatio(cur.status2xx, cur.requestsCount)
       } else {
         ipMap.set(ipItem.ip, { ...ipItem })
       }
