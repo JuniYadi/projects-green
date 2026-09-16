@@ -11,14 +11,55 @@ export interface ParsedUserAgent {
   automationReason?: string
 }
 
-// ponytail: a fixed regex list, not a maintained bot database (that's what
+// ponytail: fixed fragment lists, not a maintained bot database (that's what
 // UAParser v2 PRO sells) -- covers common search/social crawlers and CLI/
-// HTTP-library clients. Extend the list if a real scanner slips through.
-const KNOWN_BOT_PATTERNS =
-  /bot|crawl|spider|slurp|facebookexternalhit|slackbot|twitterbot|discordbot|telegrambot|whatsapp|preview|headlesschrome|phantomjs|selenium|puppeteer|playwright/i
+// HTTP-library clients. Extend the lists if a real scanner slips through.
+// Exported (not just the derived regex) so the OpenSearch query layer can
+// build an equivalent "automated" filter from the SAME source instead of a
+// second, independently-drifting pattern list -- see traffic-classification.service.ts.
+export const BOT_SIGNAL_FRAGMENTS = [
+  "bot",
+  "crawl",
+  "spider",
+  "slurp",
+  "facebookexternalhit",
+  "slackbot",
+  "twitterbot",
+  "discordbot",
+  "telegrambot",
+  "whatsapp",
+  "preview",
+  "headlesschrome",
+  "phantomjs",
+  "selenium",
+  "puppeteer",
+  "playwright",
+]
 
-const KNOWN_CLI_CLIENT_PATTERNS =
-  /^curl\/|^wget\/|^python-(requests|urllib)|^go-http-client|^okhttp|^axios\/|^node-fetch|^postmanruntime|^insomnia|^apache-httpclient|^libwww-perl|^scrapy|^java\/|^ruby$|^go-resty/i
+export const CLI_CLIENT_SIGNAL_FRAGMENTS = [
+  "curl/",
+  "wget/",
+  "python-requests",
+  "python-urllib",
+  "go-http-client",
+  "okhttp",
+  "axios/",
+  "node-fetch",
+  "postmanruntime",
+  "insomnia",
+  "apache-httpclient",
+  "libwww-perl",
+  "scrapy",
+  "go-resty",
+]
+
+function fragmentsToRegex(fragments: string[]): RegExp {
+  const escaped = fragments.map((f) => f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+  return new RegExp(escaped.join("|"), "i")
+}
+
+const KNOWN_BOT_PATTERNS = fragmentsToRegex(BOT_SIGNAL_FRAGMENTS)
+const KNOWN_CLI_CLIENT_PATTERNS = fragmentsToRegex(CLI_CLIENT_SIGNAL_FRAGMENTS)
 
 export function parseUserAgent(
   rawUserAgent: string | undefined | null
