@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { formatWhatsappPaygCost } from "@/modules/whatsapp/usage/usage.dto"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import {
   Card,
@@ -52,9 +53,14 @@ interface LedgerEntry {
   revertedAt: string | null
   lastStatus: string | null
   whatsappDeviceId: string | null
+  pricingBillable?: boolean | null
+  pricingCategory?: string | null
+  unitPrice?: number | null
+  currency?: string | null
   createdAt: string
   updatedAt: string
   devicePhoneNumber?: string | null
+  deviceName?: string | null
 }
 
 interface LedgerSummary {
@@ -689,8 +695,42 @@ export default function PortalWhatsAppLedgerPage() {
                         <TableCell>
                           <CategoryBadge category={entry.category} />
                         </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {entry.quotaValue} {entry.quotaKey || "unit"}
+                        <TableCell
+                          className={`text-right font-medium ${
+                            entry.isReverted
+                              ? "text-amber-500"
+                              : entry.pricingBillable
+                                ? "text-amber-600 dark:text-amber-400"
+                                : ""
+                          }`}
+                        >
+                          {entry.pricingBillable ? (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span>
+                                {entry.isReverted ? "+" : "-"}
+                                {formatWhatsappPaygCost(
+                                  entry.unitPrice,
+                                  entry.currency ?? "IDR"
+                                )}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className="border-amber-500/30 bg-amber-500/10 text-[9px] font-normal text-amber-600 dark:text-amber-400"
+                              >
+                                PAYG Saldo
+                              </Badge>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span>
+                                {entry.isReverted ? "+" : "-"}
+                                {entry.quotaValue} {entry.quotaKey || "unit"}
+                              </span>
+                              <span className="text-[9px] font-normal text-muted-foreground">
+                                Package Quota
+                              </span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <StatusBadge

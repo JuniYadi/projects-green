@@ -1,6 +1,6 @@
 import "@/test/register"
-import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { render, fireEvent, waitFor } from "@testing-library/react"
+import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test"
+import { render, fireEvent, waitFor, cleanup } from "@testing-library/react"
 
 const mockLedgerList = mock(() =>
   Promise.resolve({
@@ -38,6 +38,9 @@ const mockLedgerList = mock(() =>
         revertedAt: "2026-06-15T11:00:00.000Z",
         lastStatus: "FAILED",
         whatsappDeviceId: "dev_2",
+        pricingBillable: true,
+        unitPrice: 587,
+        currency: "IDR",
         createdAt: "2026-06-15T10:30:00.000Z",
         updatedAt: "2026-06-15T11:00:00.000Z",
         devicePhoneNumber: "+628222222222",
@@ -113,6 +116,10 @@ describe("PortalWhatsAppLedgerPage", () => {
     mockLedgerList.mockClear()
   })
 
+  afterEach(() => {
+    cleanup()
+  })
+
   it("renders page header, summary KPI cards, and ledger rows", async () => {
     const view = render(<PortalWhatsAppLedgerPage />)
 
@@ -128,6 +135,10 @@ describe("PortalWhatsAppLedgerPage", () => {
     expect(view.getAllByText("Confirmed").length).toBeGreaterThanOrEqual(1)
     expect(view.getAllByText("Refunded").length).toBeGreaterThanOrEqual(1)
     expect(view.getAllByText("Acme Corp").length).toBeGreaterThanOrEqual(1)
+    expect(view.getByText("PAYG Saldo")).toBeTruthy()
+    expect(view.getByText("Package Quota")).toBeTruthy()
+    expect(view.getByText("+Rp 587")).toBeTruthy()
+    expect(view.getByText("-1 unit")).toBeTruthy()
   })
 
   it("filters ledger entries when organization filter is changed", async () => {
