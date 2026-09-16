@@ -2129,6 +2129,7 @@ export type AppMessages = {
     adminCronjobs: {
       heading: string
       description: string
+      refresh: string
       tabs: {
         overview: string
         history: string
@@ -2140,11 +2141,20 @@ export type AppMessages = {
         failedRuns: string
         activeSchedules: string
         totalCompleted: string
+        healthyJobs: string
+        healthyJobsDesc: string
+        needsAttention: string
+        needsAttentionDesc: string
+        activePods: string
+        activePodsDesc: string
       }
       filters: {
         searchPlaceholder: string
         allCategories: string
         allStatuses: string
+        statusSuccess: string
+        statusFailed: string
+        statusRunning: string
       }
       table: {
         jobName: string
@@ -2166,6 +2176,7 @@ export type AppMessages = {
       modal: {
         triggerTitle: string
         triggerDescription: string
+        auditNotice: string
         reasonLabel: string
         reasonPlaceholder: string
         cancel: string

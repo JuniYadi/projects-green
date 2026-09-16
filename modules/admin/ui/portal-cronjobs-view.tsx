@@ -141,7 +141,7 @@ export function CronJobsManagementView({
     return () => {
       ignore = true
     }
-  }, [activeTab, statusFilter, page, messages])
+  }, [activeTab, statusFilter, page, messages.messages.loadFailed])
 
   const refreshData = () => {
     if (activeTab === "overview") {
@@ -300,7 +300,7 @@ export function CronJobsManagementView({
             <RotateCw
               className={`mr-1.5 h-4 w-4 ${loading ? "animate-spin" : ""}`}
             />
-            {messages.table.actions}
+            {messages.refresh}
           </Button>
         </div>
       </div>
@@ -326,7 +326,7 @@ export function CronJobsManagementView({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {messages.metrics.successRate}
+              {messages.metrics.healthyJobs}
             </CardTitle>
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </CardHeader>
@@ -335,14 +335,14 @@ export function CronJobsManagementView({
               {metrics?.healthyJobs ?? "-"}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {messages.metrics.totalCompleted}
+              {messages.metrics.healthyJobsDesc}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {messages.metrics.failedRuns}
+              {messages.metrics.needsAttention}
             </CardTitle>
             <AlertCircle className="h-4 w-4 text-rose-500" />
           </CardHeader>
@@ -351,14 +351,14 @@ export function CronJobsManagementView({
               {metrics?.failingJobs ?? "-"}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {messages.metrics.failedRuns}
+              {messages.metrics.needsAttentionDesc}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {messages.metrics.executions24h}
+              {messages.metrics.activePods}
             </CardTitle>
             <Activity className="h-4 w-4 text-blue-500" />
           </CardHeader>
@@ -367,7 +367,7 @@ export function CronJobsManagementView({
               {metrics?.runningJobs ?? "-"}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {messages.metrics.executions24h}
+              {messages.metrics.activePodsDesc}
             </p>
           </CardContent>
         </Card>
@@ -495,9 +495,9 @@ export function CronJobsManagementView({
               }}
             >
               <option value="ALL">{messages.filters.allStatuses}</option>
-              <option value="SUCCESS">SUCCESS</option>
-              <option value="FAILED">FAILED</option>
-              <option value="RUNNING">RUNNING</option>
+              <option value="SUCCESS">{messages.filters.statusSuccess}</option>
+              <option value="FAILED">{messages.filters.statusFailed}</option>
+              <option value="RUNNING">{messages.filters.statusRunning}</option>
             </select>
           </div>
 
@@ -614,6 +614,13 @@ export function CronJobsManagementView({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-600">
+              ⚠️ <strong>{messages.modal.auditNotice.split(":")[0]}:</strong>
+              {messages.modal.auditNotice.slice(
+                messages.modal.auditNotice.indexOf(":") + 1
+              )}
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 {messages.modal.reasonLabel}

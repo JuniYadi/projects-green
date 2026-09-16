@@ -2339,6 +2339,7 @@ export const enMessages: AppMessages = {
       heading: "CronJob & Worker Monitoring",
       description:
         "Kubernetes cronjob telemetry, execution logs, schedule overview, and manual trigger controls",
+      refresh: "Refresh",
       tabs: {
         overview: "Overview & Schedules",
         history: "Execution History",
@@ -2348,13 +2349,22 @@ export const enMessages: AppMessages = {
         executions24h: "24h Executions",
         successRate: "24h Success Rate",
         failedRuns: "24h Failed Runs",
-        activeSchedules: "Active schedules",
+        activeSchedules: "Code & K8s Registry Definitions",
         totalCompleted: "Total completed",
+        healthyJobs: "Healthy Jobs",
+        healthyJobsDesc: "Operating within normal schedule",
+        needsAttention: "Needs Attention",
+        needsAttentionDesc: "Failed or missed executions",
+        activePods: "Active Pods",
+        activePodsDesc: "Currently executing runners",
       },
       filters: {
         searchPlaceholder: "Search cronjobs...",
         allCategories: "All Categories",
         allStatuses: "All Statuses",
+        statusSuccess: "Success",
+        statusFailed: "Failed",
+        statusRunning: "Running",
       },
       table: {
         jobName: "Job Name",
@@ -2377,6 +2387,8 @@ export const enMessages: AppMessages = {
         triggerTitle: "Trigger CronJob Manually",
         triggerDescription:
           "This will dispatch a manual execution run for this worker/job.",
+        auditNotice:
+          "Audit Notice: Manual runs bypass scheduled cron time-windows and are logged permanently for audit trails.",
         reasonLabel: "Trigger Reason (Optional)",
         reasonPlaceholder: "e.g. Manual test or backfill run",
         cancel: "Cancel",

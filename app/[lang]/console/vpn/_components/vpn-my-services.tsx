@@ -75,17 +75,6 @@ const STATUS_VARIANT: Record<
   EXPIRED: "destructive",
 }
 
-const _PROVISIONING_VARIANT: Record<
-  VpnServerAccount["provisioningStatus"],
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  ACTIVE: "default",
-  PENDING: "secondary",
-  PROVISIONING: "secondary",
-  FAILED: "destructive",
-  REVOKED: "outline",
-}
-
 function normalizeCountryCode(countryCode: string | undefined): string {
   return countryCode?.trim().toUpperCase() ?? ""
 }
@@ -569,37 +558,6 @@ async function copySubscriptionId(
       toast.error(errorText)
     }
   }
-}
-
-function uniqueRegionNames(sub: VpnSubscription): string[] {
-  return [
-    ...new Set(
-      sub.serverAccounts
-        .map((account) => account.region?.name)
-        .filter((name): name is string => Boolean(name))
-    ),
-  ]
-}
-
-function _RegionSummary({
-  sub,
-  locale = "en",
-}: {
-  sub: VpnSubscription
-  locale?: string
-}) {
-  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
-  const regions = uniqueRegionNames(sub)
-  const visible = regions.slice(0, 2).join(", ") || t.noRegions
-  const more =
-    regions.length > 2 ? ` +${regions.length - 2} ${t.moreCount}` : ""
-
-  return (
-    <p className="max-w-[220px] truncate text-xs text-muted-foreground">
-      {visible}
-      {more}
-    </p>
-  )
 }
 
 function SubscriptionStatusBadge({

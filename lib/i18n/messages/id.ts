@@ -2369,6 +2369,7 @@ export const idMessages: AppMessages = {
       heading: "Pemantauan CronJob & Worker",
       description:
         "Telemetri cronjob Kubernetes, log eksekusi, ringkasan jadwal, dan kontrol pemicu manual",
+      refresh: "Segarkan",
       tabs: {
         overview: "Ringkasan & Jadwal",
         history: "Riwayat Eksekusi",
@@ -2378,13 +2379,22 @@ export const idMessages: AppMessages = {
         executions24h: "Eksekusi 24 Jam",
         successRate: "Tingkat Keberhasilan 24 Jam",
         failedRuns: "Kegagalan 24 Jam",
-        activeSchedules: "Jadwal aktif",
+        activeSchedules: "Definisi Registri Kode & K8s",
         totalCompleted: "Total selesai",
+        healthyJobs: "Pekerjaan Sehat",
+        healthyJobsDesc: "Beroperasi dalam jadwal normal",
+        needsAttention: "Perlu Perhatian",
+        needsAttentionDesc: "Eksekusi gagal atau terlewat",
+        activePods: "Pod Aktif",
+        activePodsDesc: "Runner yang sedang berjalan",
       },
       filters: {
         searchPlaceholder: "Cari cronjob...",
         allCategories: "Semua Kategori",
         allStatuses: "Semua Status",
+        statusSuccess: "Berhasil",
+        statusFailed: "Gagal",
+        statusRunning: "Berjalan",
       },
       table: {
         jobName: "Nama Pekerjaan",
@@ -2407,6 +2417,8 @@ export const idMessages: AppMessages = {
         triggerTitle: "Jalankan CronJob Secara Manual",
         triggerDescription:
           "Ini akan mengirimkan eksekusi manual untuk worker/pekerjaan ini.",
+        auditNotice:
+          "Pemberitahuan Audit: Eksekusi manual mengabaikan rentang waktu cron terjadwal dan dicatat secara permanen untuk jejak audit.",
         reasonLabel: "Alasan Pemicu (Opsional)",
         reasonPlaceholder: "contoh: Uji coba manual atau backfill data",
         cancel: "Batal",
