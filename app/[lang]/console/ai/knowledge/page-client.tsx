@@ -7,6 +7,7 @@ import {
   CheckCircle,
   Clock,
   Trash,
+  PencilSimple,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  StorageDropzone,
+  type UploadedStorageResult,
+} from "@/modules/storage/ui/storage-dropzone"
 
 export type KnowledgeDoc = {
   id: string
@@ -51,6 +57,9 @@ export default function AiKnowledgePage() {
   const [contentMarkdown, setContentMarkdown] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<"upload" | "manual">("upload")
+  const [uploadedFile, setUploadedFile] =
+    useState<UploadedStorageResult | null>(null)
 
   const loadDocs = useCallback(async () => {
     try {
@@ -71,16 +80,24 @@ export default function AiKnowledgePage() {
   const maxQuota = 100 // Starter tier default
 
   const handleUpload = async () => {
-    if (!title.trim()) return
+    const docTitle =
+      title.trim() ||
+      (uploadedFile ? uploadedFile.filename.replace(/\.[^/.]+$/, "") : "")
+    if (!docTitle) return
+
+    const isFileTab = activeTab === "upload" && uploadedFile
+    const ext = uploadedFile?.filename.split(".").pop()?.toUpperCase()
+    const sourceType = isFileTab ? (ext === "DOCX" ? "DOCX" : "PDF") : "MANUAL"
 
     setIsUploading(true)
     setSaving(true)
     try {
       const res = await eden.api.console.ai.knowledge.upload.post({
-        title: title.trim(),
-        category: category.trim(),
+        title: docTitle,
+        category: category.trim() || "General",
         purpose: "Tenant Knowledge Document",
-        sourceType: "MANUAL",
+        sourceType,
+        sourceUrl: uploadedFile?.url || undefined,
         contentMarkdown: contentMarkdown.trim() || undefined,
       })
 
@@ -89,6 +106,8 @@ export default function AiKnowledgePage() {
         setIsOpen(false)
         setTitle("")
         setContentMarkdown("")
+        setUploadedFile(null)
+        setActiveTab("upload")
       }
     } catch (err) {
       console.error("[ai-knowledge] upload error:", err)
@@ -109,6 +128,11 @@ export default function AiKnowledgePage() {
     }
   }
 
+  const isFormValid =
+    activeTab === "upload"
+      ? Boolean(uploadedFile || title.trim())
+      : Boolean(title.trim() && contentMarkdown.trim())
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between">
@@ -117,8 +141,8 @@ export default function AiKnowledgePage() {
             Knowledge Base & Dokumen Toko
           </h1>
           <p className="text-sm text-muted-foreground">
-            Unggah PDF katalog, tabel harga, dan SOP. Dokumen diproses otomatis
-            oleh parser AnyDoc ke vektor pgvector.
+            Kelola katalog produk, daftar harga, dan SOP. AI akan mempelajari
+            isi dokumen untuk menjawab chat WhatsApp pelanggan secara otomatis.
           </p>
         </div>
 
@@ -129,54 +153,129 @@ export default function AiKnowledgePage() {
               <span>Unggah Dokumen PDF/DOCX</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-xl">
             <DialogHeader>
               <DialogTitle>Unggah Dokumen Knowledge Base</DialogTitle>
               <DialogDescription>
-                Parser AnyDoc akan mengekstrak tabel harga dan hierarki dokumen
-                secara terstruktur untuk bot WhatsApp.
+                AI akan membaca informasi dan tabel harga dokumen secara
+                terstruktur untuk asisten bot WhatsApp.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>Judul Dokumen / Nama File</Label>
-                <Input
-                  placeholder="Misal: Brosur_Promo_Agustus_2026.pdf"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
+            <Tabs
+              value={activeTab}
+              onValueChange={(val) => setActiveTab(val as "upload" | "manual")}
+              className="w-full pt-1"
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="upload" className="gap-1.5 text-xs">
+                  <UploadSimple size={14} weight="bold" />
+                  <span>Upload File (PDF / DOCX)</span>
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="gap-1.5 text-xs">
+                  <PencilSimple size={14} weight="bold" />
+                  <span>Tulis / Tempel Teks</span>
+                </TabsTrigger>
+              </TabsList>
 
-              <div className="space-y-2">
-                <Label>Kategori</Label>
-                <Input
-                  placeholder="Pricelist / SOP / FAQ"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                />
-              </div>
+              <TabsContent value="upload" className="space-y-4 pt-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">
+                    File Dokumen (PDF / DOCX)
+                  </Label>
+                  <StorageDropzone
+                    accept=".pdf,.docx,application/pdf"
+                    maxSizeBytes={10 * 1024 * 1024}
+                    purpose="knowledge"
+                    mediaType="DOCUMENT"
+                    label="Pilih atau tarik file dokumen ke sini"
+                    description="Mendukung format PDF atau DOCX (Maks. 10MB)"
+                    value={uploadedFile?.url}
+                    onUploadSuccess={(result) => {
+                      setUploadedFile(result)
+                      if (!title.trim()) {
+                        setTitle(result.filename.replace(/\.[^/.]+$/, ""))
+                      }
+                    }}
+                    onClear={() => {
+                      setUploadedFile(null)
+                    }}
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label>Konten Markdown / Teks (Opsional)</Label>
-                <Textarea
-                  placeholder="Ketik atau tempel teks/markdown dokumen..."
-                  rows={4}
-                  value={contentMarkdown}
-                  onChange={(e) => setContentMarkdown(e.target.value)}
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Judul Dokumen</Label>
+                    <Input
+                      placeholder="Misal: Katalog Produk Herbal 2026"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Kategori</Label>
+                    <Input
+                      placeholder="Pricelist / SOP / FAQ"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
 
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setIsOpen(false)}>
+              <TabsContent value="manual" className="space-y-3 pt-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Judul Dokumen</Label>
+                    <Input
+                      placeholder="Misal: FAQ Layanan Pelanggan"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Kategori</Label>
+                    <Input
+                      placeholder="Pricelist / SOP / FAQ"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">
+                      Konten Dokumen / Markdown
+                    </Label>
+                    <span className="text-[11px] text-muted-foreground">
+                      Mendukung format Heading (#), Tabel, dan Daftar
+                    </span>
+                  </div>
+                  <Textarea
+                    placeholder={`# Panduan & FAQ Toko\n\n## Jam Operasional\n- Senin - Sabtu: 08.00 - 17.00 WIB\n\n## Daftar Produk & Harga\n1. Madu Murni (500ml) - Rp 120.000\n2. Habbatussauda (100 kapsul) - Rp 85.000`}
+                    rows={10}
+                    className="min-h-[220px] font-mono text-xs leading-relaxed"
+                    value={contentMarkdown}
+                    onChange={(e) => setContentMarkdown(e.target.value)}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            <DialogFooter className="pt-2">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setIsOpen(false)}
+              >
                 Batal
               </Button>
               <Button
                 onClick={handleUpload}
-                disabled={isUploading || !title.trim() || saving}
+                disabled={isUploading || saving || !isFormValid}
               >
-                {isUploading ? "Mengunggah..." : "Mulai Parsing Dokumen"}
+                {isUploading ? "Memproses Dokumen..." : "Mulai Parsing Dokumen"}
               </Button>
             </DialogFooter>
           </DialogContent>

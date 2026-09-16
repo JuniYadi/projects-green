@@ -50,6 +50,7 @@ export function createConsoleAiKnowledgeRoutes() {
           purpose = "Tenant Document",
           category = "General",
           sourceType = "PDF",
+          sourceUrl,
           contentMarkdown,
           agentProfileId,
         } = body
@@ -72,6 +73,7 @@ export function createConsoleAiKnowledgeRoutes() {
             purpose: purpose.trim(),
             category: category.trim(),
             sourceType: sourceType,
+            sourceUrl: sourceUrl?.trim() || null,
             status: "QUEUED",
             contentMarkdown: contentMarkdown?.trim() || null,
             searchText: title.trim(),
@@ -88,10 +90,7 @@ export function createConsoleAiKnowledgeRoutes() {
             filename: `${title.trim()}.${sourceType.toLowerCase()}`,
             rawContent: contentMarkdown?.trim(),
             sourceType: sourceType as
-              | "PDF"
-              | "DOCX"
-              | "URL_FIRECRAWL"
-              | "MANUAL",
+              "PDF" | "DOCX" | "URL_FIRECRAWL" | "MANUAL",
           })
         } catch (queueErr) {
           const errorMessage =
@@ -139,6 +138,7 @@ export function createConsoleAiKnowledgeRoutes() {
               t.Literal("MANUAL"),
             ])
           ),
+          sourceUrl: t.Optional(t.String()),
           contentMarkdown: t.Optional(t.String()),
           agentProfileId: t.Optional(t.String()),
         }),
