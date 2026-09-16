@@ -17,6 +17,11 @@ const WHATSAPP_CATEGORIES = [
   USAGE_CATEGORY_WHATSAPP_OUT,
 ]
 
+// Fallback per-message PAYG price (IDR) when no active base price row matches.
+// Matches the seeded UTILITY base price; surfaced as a named constant so a
+// missing pricing row stays visible instead of a silent magic number.
+const FALLBACK_PAYG_UNIT_PRICE_IDR = 357
+
 function toNum(v: any): number {
   if (v == null) return 0
   if (typeof v === "number") return v
@@ -566,6 +571,10 @@ export class WhatsappUsageService {
       where.createdAt = dateFilter
     }
 
+    const summaryDateFilter = where.createdAt
+      ? { createdAt: where.createdAt }
+      : {}
+
     const [
       total,
       rows,
@@ -594,6 +603,7 @@ export class WhatsappUsageService {
         where: {
           ...(organizationId ? { organizationId } : {}),
           isReverted: false,
+          ...summaryDateFilter,
           OR: [{ pricingBillable: false }, { pricingBillable: null }],
         },
         _sum: { quotaValue: true },
@@ -603,6 +613,7 @@ export class WhatsappUsageService {
         where: {
           ...(organizationId ? { organizationId } : {}),
           isReverted: true,
+          ...summaryDateFilter,
           OR: [{ pricingBillable: false }, { pricingBillable: null }],
         },
         _sum: { quotaValue: true },
@@ -613,6 +624,7 @@ export class WhatsappUsageService {
           ...(organizationId ? { organizationId } : {}),
           isReverted: false,
           pricingBillable: true,
+          ...summaryDateFilter,
         },
         select: { category: true, pricingCategory: true, quotaValue: true },
       }),
@@ -621,6 +633,7 @@ export class WhatsappUsageService {
           ...(organizationId ? { organizationId } : {}),
           isReverted: true,
           pricingBillable: true,
+          ...summaryDateFilter,
         },
         select: { category: true, pricingCategory: true, quotaValue: true },
       }),
@@ -639,7 +652,7 @@ export class WhatsappUsageService {
     for (const item of paygActiveAgg) {
       const cat = (item.pricingCategory || item.category || "UTILITY").toUpperCase()
       const bp = basePrices.find((p) => p.category === cat) ?? basePrices.find((p) => p.category === "UTILITY")
-      const price = bp ? toNum(bp.basePrice) : 357
+      const price = bp ? toNum(bp.basePrice) : FALLBACK_PAYG_UNIT_PRICE_IDR
       paygAmount += price * toNum(item.quotaValue || 1)
     }
 
@@ -648,7 +661,7 @@ export class WhatsappUsageService {
     for (const item of paygRefundedAgg) {
       const cat = (item.pricingCategory || item.category || "UTILITY").toUpperCase()
       const bp = basePrices.find((p) => p.category === cat) ?? basePrices.find((p) => p.category === "UTILITY")
-      const price = bp ? toNum(bp.basePrice) : 357
+      const price = bp ? toNum(bp.basePrice) : FALLBACK_PAYG_UNIT_PRICE_IDR
       paygRefundedAmount += price * toNum(item.quotaValue || 1)
     }
 
