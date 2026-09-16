@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 import { MetaAppSelector } from "@/components/whatsapp/meta-app-selector"
 import { localizePathname } from "@/lib/i18n/pathname"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import type { AppLocale } from "@/lib/i18n/config"
 import { updateDeviceSchema } from "@/modules/whatsapp/devices/devices.schemas"
 import { Button } from "@/components/ui/button"
@@ -123,6 +124,7 @@ export function DeviceEditForm({
   backHref,
 }: DeviceEditFormProps) {
   const router = useRouter()
+  const messages = getMessagesForMaybeLocale(locale).console.whatsapp.deviceEdit
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [form, setForm] = useState<FormState>({
     phoneNumber: device.phoneNumber,
@@ -239,14 +241,12 @@ export function DeviceEditForm({
     <div className="grid gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Meta Configuration</CardTitle>
-          <CardDescription>
-            WhatsApp Cloud API identifiers, callback, and token.
-          </CardDescription>
+          <CardTitle>{messages.metaConfigHeading}</CardTitle>
+          <CardDescription>{messages.metaConfigDescription}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
+            <Label htmlFor="phoneNumber">{messages.phoneNumberLabel}</Label>
             <Input
               id="phoneNumber"
               value={form.phoneNumber}
@@ -258,7 +258,7 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status">{messages.statusLabel}</Label>
             <Select
               value={form.status}
               onValueChange={(value) =>
@@ -269,14 +269,16 @@ export function DeviceEditForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="NON_ACTIVE">Non-active</SelectItem>
+                <SelectItem value="ACTIVE">{messages.statusActive}</SelectItem>
+                <SelectItem value="NON_ACTIVE">
+                  {messages.statusNonActive}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="wabaId">WhatsApp Business Account ID</Label>
+            <Label htmlFor="wabaId">{messages.wabaIdLabel}</Label>
             <Input
               id="wabaId"
               value={form.whatsappBusinessAccountId}
@@ -289,7 +291,7 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="phoneId">WhatsApp Phone Number ID</Label>
+            <Label htmlFor="phoneId">{messages.phoneIdLabel}</Label>
             <Input
               id="phoneId"
               value={form.whatsappPhoneId}
@@ -300,7 +302,9 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="edit-environment">Environment</Label>
+            <Label htmlFor="edit-environment">
+              {messages.environmentLabel}
+            </Label>
             <select
               id="edit-environment"
               value={form.environment}
@@ -311,8 +315,8 @@ export function DeviceEditForm({
               }
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
             >
-              <option value="LIVE">Live</option>
-              <option value="SANDBOX">Sandbox</option>
+              <option value="LIVE">{messages.environmentLive}</option>
+              <option value="SANDBOX">{messages.environmentSandbox}</option>
             </select>
           </div>
 
@@ -325,7 +329,7 @@ export function DeviceEditForm({
           />
 
           <div className="grid gap-2">
-            <Label htmlFor="applicationId">WhatsApp Application ID</Label>
+            <Label htmlFor="applicationId">{messages.applicationIdLabel}</Label>
             <Input
               id="applicationId"
               value={form.whatsappApplicationId}
@@ -336,22 +340,22 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="version">Graph API Version</Label>
+            <Label htmlFor="version">{messages.graphApiVersionLabel}</Label>
             <Input
               id="version"
               value={form.whatsappVersion}
               onChange={(event) =>
                 updateForm({ whatsappVersion: event.target.value })
               }
-              placeholder="v24.0 (leave blank to inherit from Meta App)"
+              placeholder={messages.graphApiVersionPlaceholder}
             />
             <p className="text-[11px] text-muted-foreground">
-              Leave blank to inherit default version from linked Meta App.
+              {messages.graphApiVersionHint}
             </p>
           </div>
 
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="callbackUrl">Callback URL</Label>
+            <Label htmlFor="callbackUrl">{messages.callbackUrlLabel}</Label>
             <Input
               id="callbackUrl"
               value={form.callbackUrl}
@@ -363,18 +367,16 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="token">Meta Access Token</Label>
+            <Label htmlFor="token">{messages.metaAccessTokenLabel}</Label>
             <Textarea
               id="token"
               value={form.token}
               onChange={(event) => updateForm({ token: event.target.value })}
-              placeholder="Leave empty to inherit Master Token from Meta App (or keep current token)"
+              placeholder={messages.metaAccessTokenPlaceholder}
               className="min-h-24 font-mono"
             />
             <p className="text-[11px] text-muted-foreground">
-              Leave blank to inherit default System User token from linked Meta
-              App (or keep existing token). Enter a new token to override for
-              this device.
+              {messages.metaAccessTokenHint}
             </p>
           </div>
         </CardContent>
@@ -382,14 +384,12 @@ export function DeviceEditForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Quota and Billing</CardTitle>
-          <CardDescription>
-            Limits, balances, rates, and expiry for the device.
-          </CardDescription>
+          <CardTitle>{messages.quotaBillingHeading}</CardTitle>
+          <CardDescription>{messages.quotaBillingDescription}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="grid gap-2">
-            <Label htmlFor="quotaBase">Quota Base</Label>
+            <Label htmlFor="quotaBase">{messages.quotaBaseLabel}</Label>
             <Input
               id="quotaBase"
               type="number"
@@ -402,7 +402,7 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="quotaBaseOut">Quota Base Out</Label>
+            <Label htmlFor="quotaBaseOut">{messages.quotaBaseOutLabel}</Label>
             <Input
               id="quotaBaseOut"
               type="number"
@@ -415,7 +415,9 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="dailyLimitMessage">Daily Limit Message</Label>
+            <Label htmlFor="dailyLimitMessage">
+              {messages.dailyLimitMessageLabel}
+            </Label>
             <Input
               id="dailyLimitMessage"
               type="number"
@@ -428,7 +430,7 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="balance">Balance</Label>
+            <Label htmlFor="balance">{messages.balanceLabel}</Label>
             <Input
               id="balance"
               type="number"
@@ -440,7 +442,7 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="expiredAt">Expired At</Label>
+            <Label htmlFor="expiredAt">{messages.expiredAtLabel}</Label>
             <Input
               id="expiredAt"
               type="datetime-local"
@@ -452,25 +454,25 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="rates">Rate Tier (Fee Margin)</Label>
+            <Label htmlFor="rates">{messages.rateTierLabel}</Label>
             <Select
               value={form.rates || "BASE"}
               onValueChange={(value) => updateForm({ rates: value })}
             >
               <SelectTrigger id="rates">
-                <SelectValue placeholder="Select rate tier" />
+                <SelectValue placeholder={messages.rateTierPlaceholder} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="BASE">BASE (20% Fee Margin)</SelectItem>
-                <SelectItem value="TIER_1">TIER_1 (15% Fee Margin)</SelectItem>
-                <SelectItem value="TIER_2">TIER_2 (10% Fee Margin)</SelectItem>
-                <SelectItem value="TIER_3">TIER_3 (5% Fee Margin)</SelectItem>
+                <SelectItem value="BASE">{messages.rateTierBase}</SelectItem>
+                <SelectItem value="TIER_1">{messages.rateTier1}</SelectItem>
+                <SelectItem value="TIER_2">{messages.rateTier2}</SelectItem>
+                <SelectItem value="TIER_3">{messages.rateTier3}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="s3">S3 Path</Label>
+            <Label htmlFor="s3">{messages.s3PathLabel}</Label>
             <Input
               id="s3"
               value={form.s3}
@@ -482,14 +484,14 @@ export function DeviceEditForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>WhatsApp Profile</CardTitle>
+          <CardTitle>{messages.whatsappProfileHeading}</CardTitle>
           <CardDescription>
-            Fixed profile shape saved to the WhatsApp profile field.
+            {messages.whatsappProfileDescription}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="displayName">Display Name</Label>
+            <Label htmlFor="displayName">{messages.displayNameLabel}</Label>
             <Input
               id="displayName"
               value={form.displayName}
@@ -500,7 +502,7 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="profileCategory">Category</Label>
+            <Label htmlFor="profileCategory">{messages.categoryLabel}</Label>
             <Input
               id="profileCategory"
               value={form.profileCategory}
@@ -512,7 +514,9 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="profileDescription">Description</Label>
+            <Label htmlFor="profileDescription">
+              {messages.descriptionLabel}
+            </Label>
             <Input
               id="profileDescription"
               value={form.profileDescription}
@@ -523,7 +527,7 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="profileEmail">Email</Label>
+            <Label htmlFor="profileEmail">{messages.emailLabel}</Label>
             <Input
               id="profileEmail"
               type="email"
@@ -536,19 +540,21 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="profilePicture">Profile Picture</Label>
+            <Label htmlFor="profilePicture">
+              {messages.profilePictureLabel}
+            </Label>
             <Input
               id="profilePicture"
               value={form.profilePicture}
               onChange={(event) =>
                 updateForm({ profilePicture: event.target.value })
               }
-              placeholder="ok"
+              placeholder={messages.profilePicturePlaceholder}
             />
           </div>
 
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="profileWebsite">Website</Label>
+            <Label htmlFor="profileWebsite">{messages.websiteLabel}</Label>
             <Textarea
               id="profileWebsite"
               value={form.profileWebsiteLines}
@@ -559,8 +565,7 @@ export function DeviceEditForm({
               className="min-h-20"
             />
             <p className="text-xs text-muted-foreground">
-              Enter one URL per line. Each line is saved as one item in the
-              website array.
+              {messages.websiteHint}
             </p>
           </div>
 
@@ -572,7 +577,9 @@ export function DeviceEditForm({
                 updateForm({ isGreenVerified: checked === true })
               }
             />
-            <Label htmlFor="isGreenVerified">Green Verified</Label>
+            <Label htmlFor="isGreenVerified">
+              {messages.greenVerifiedLabel}
+            </Label>
           </div>
 
           <div className="flex items-center gap-3 rounded-md border p-3">
@@ -584,7 +591,7 @@ export function DeviceEditForm({
               }
             />
             <Label htmlFor="isOfficialBusinessAccount">
-              Official Business Account
+              {messages.officialBusinessAccountLabel}
             </Label>
           </div>
         </CardContent>
@@ -594,7 +601,7 @@ export function DeviceEditForm({
         <Button variant="outline" asChild>
           <Link href={backHref}>
             <X className="mr-1.5 size-4" />
-            Cancel
+            {messages.cancelButton}
           </Link>
         </Button>
         <Button onClick={() => void handleSubmit()} disabled={isSubmitting}>
