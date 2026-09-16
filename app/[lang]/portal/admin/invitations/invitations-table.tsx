@@ -1,8 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
 import Link from "next/link"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -82,6 +85,11 @@ const formatExpiresAt = (date: string) => {
 }
 
 export function InvitationsTable() {
+  const params = useParams()
+  const lang = typeof params?.lang === "string" ? params.lang : "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.adminInvitations
+
   const [invitations, setInvitations] = useState<AdminInvitation[]>([])
   const [listMetadata, setListMetadata] = useState<ListMetadata>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -280,7 +288,7 @@ export function InvitationsTable() {
       {
         accessorKey: "email",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Recipient" />
+          <DataTableColumnHeader column={column} title={messages.thRecipient} />
         ),
         cell: ({ row }) => (
           <span className="font-medium text-foreground">
@@ -291,7 +299,7 @@ export function InvitationsTable() {
       {
         id: "organization",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Organization" />
+          <DataTableColumnHeader column={column} title={messages.thOrganization} />
         ),
         cell: ({ row }) => {
           const orgId = row.original.organizationId
@@ -313,7 +321,7 @@ export function InvitationsTable() {
       {
         accessorKey: "roleSlug",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Role" />
+          <DataTableColumnHeader column={column} title={messages.thRole} />
         ),
         cell: ({ row }) => (
           <Badge variant="outline" className="text-xs">
@@ -324,7 +332,7 @@ export function InvitationsTable() {
       {
         accessorKey: "state",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={messages.thStatus} />
         ),
         cell: ({ row }) => {
           const state = row.original.state
@@ -345,7 +353,7 @@ export function InvitationsTable() {
         id: "createdAt",
         accessorFn: (row) => row.createdAt,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Sent" />
+          <DataTableColumnHeader column={column} title={messages.thSent} />
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
@@ -356,7 +364,7 @@ export function InvitationsTable() {
       {
         accessorKey: "expiresAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Expires" />
+          <DataTableColumnHeader column={column} title={messages.thExpires} />
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
@@ -368,7 +376,7 @@ export function InvitationsTable() {
       },
       {
         id: "actions",
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => <span className="sr-only">{messages.thActions}</span>,
         cell: ({ row }) => {
           if (row.original.state !== "pending") return null
           return (
@@ -379,13 +387,13 @@ export function InvitationsTable() {
               onClick={() => setRevokingId(row.original.id)}
             >
               <Trash className="h-3.5 w-3.5" />
-              <span>Revoke</span>
+              <span>{messages.revoke}</span>
             </Button>
           )
         },
       },
     ],
-    []
+    [messages]
   )
 
   if (isLoading && invitations.length === 0) {
@@ -412,7 +420,7 @@ export function InvitationsTable() {
           <div className="relative w-64">
             <MagnifyingGlassIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search invitations..."
+              placeholder={messages.searchPlaceholder}
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
               className="pl-9 text-sm"
@@ -421,23 +429,23 @@ export function InvitationsTable() {
 
           <Select value={selectedStatus} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-36 text-sm">
-              <SelectValue placeholder="All Statuses" />
+              <SelectValue placeholder={messages.allStatuses} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="accepted">Accepted</SelectItem>
-              <SelectItem value="expired">Expired</SelectItem>
-              <SelectItem value="revoked">Revoked</SelectItem>
+              <SelectItem value="all">{messages.allStatuses}</SelectItem>
+              <SelectItem value="pending">{messages.statusPending}</SelectItem>
+              <SelectItem value="accepted">{messages.statusAccepted}</SelectItem>
+              <SelectItem value="expired">{messages.statusExpired}</SelectItem>
+              <SelectItem value="revoked">{messages.statusRevoked}</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={selectedOrgId} onValueChange={handleOrgChange}>
             <SelectTrigger className="w-52 text-sm">
-              <SelectValue placeholder="All Organizations" />
+              <SelectValue placeholder={messages.allOrganizations} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Organizations</SelectItem>
+              <SelectItem value="all">{messages.allOrganizations}</SelectItem>
               {organizations.map((org) => (
                 <SelectItem key={org.id} value={org.id}>
                   {org.name}
@@ -453,7 +461,7 @@ export function InvitationsTable() {
           onClick={() => setIsInviteOpen(true)}
         >
           <Plus className="h-4 w-4" />
-          <span>Invite User</span>
+          <span>{messages.inviteUser}</span>
         </Button>
       </div>
 
@@ -473,7 +481,7 @@ export function InvitationsTable() {
           disabled={!listMetadata.before || isLoading}
         >
           <ArrowLeftIcon className="mr-1 h-4 w-4" />
-          Previous
+          {messages.previous}
         </Button>
         <Button
           variant="outline"
@@ -481,7 +489,7 @@ export function InvitationsTable() {
           onClick={handleNext}
           disabled={!listMetadata.after || isLoading}
         >
-          Next
+          {messages.next}
           <ArrowRightIcon className="ml-1 h-4 w-4" />
         </Button>
       </div>
@@ -490,9 +498,9 @@ export function InvitationsTable() {
       <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Send User Invitation</DialogTitle>
+            <DialogTitle>{messages.sendTitle}</DialogTitle>
             <DialogDescription>
-              Invite a new user to an organization on the platform.
+              {messages.sendDesc}
             </DialogDescription>
           </DialogHeader>
 
@@ -505,11 +513,11 @@ export function InvitationsTable() {
 
             <div className="space-y-1.5">
               <Label htmlFor="invite-org" className="text-xs font-medium">
-                Organization *
+                {messages.labelOrganization}
               </Label>
               <Select value={inviteOrgId} onValueChange={setInviteOrgId}>
                 <SelectTrigger id="invite-org" className="w-full text-sm">
-                  <SelectValue placeholder="Select target organization" />
+                  <SelectValue placeholder={messages.selectOrgPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {organizations.map((org) => (
@@ -523,7 +531,7 @@ export function InvitationsTable() {
 
             <div className="space-y-1.5">
               <Label htmlFor="invite-email" className="text-xs font-medium">
-                Email Address *
+                {messages.labelEmail}
               </Label>
               <Input
                 id="invite-email"
@@ -539,22 +547,22 @@ export function InvitationsTable() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="invite-role" className="text-xs font-medium">
-                  Role
+                  {messages.labelRole}
                 </Label>
                 <Select value={inviteRole} onValueChange={setInviteRole}>
                   <SelectTrigger id="invite-role" className="w-full text-sm">
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder={messages.selectRolePlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="member">Member</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">{messages.roleMember}</SelectItem>
+                    <SelectItem value="admin">{messages.roleAdmin}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="invite-expires" className="text-xs font-medium">
-                  Expires In
+                  {messages.labelExpiresIn}
                 </Label>
                 <Select
                   value={inviteExpiresDays}
@@ -564,9 +572,9 @@ export function InvitationsTable() {
                     <SelectValue placeholder="Days" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="7">7 Days</SelectItem>
-                    <SelectItem value="14">14 Days</SelectItem>
-                    <SelectItem value="30">30 Days</SelectItem>
+                    <SelectItem value="7">{messages.daysOption7}</SelectItem>
+                    <SelectItem value="14">{messages.daysOption14}</SelectItem>
+                    <SelectItem value="30">{messages.daysOption30}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -579,10 +587,10 @@ export function InvitationsTable() {
                 onClick={() => setIsInviteOpen(false)}
                 disabled={isSendingInvite}
               >
-                Cancel
+                {messages.cancel}
               </Button>
               <Button type="submit" disabled={isSendingInvite}>
-                {isSendingInvite ? "Sending..." : "Send Invitation"}
+                {isSendingInvite ? messages.sending : messages.sendInvite}
               </Button>
             </DialogFooter>
           </form>
@@ -596,10 +604,9 @@ export function InvitationsTable() {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Revoke Invitation</DialogTitle>
+            <DialogTitle>{messages.revokeTitle}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to revoke this invitation? The recipient
-              will no longer be able to use the link to join.
+              {messages.revokeDesc}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-2">
@@ -609,7 +616,7 @@ export function InvitationsTable() {
               onClick={() => setRevokingId(null)}
               disabled={isRevoking}
             >
-              Cancel
+              {messages.cancel}
             </Button>
             <Button
               type="button"
@@ -617,7 +624,7 @@ export function InvitationsTable() {
               onClick={() => revokingId && void handleRevoke(revokingId)}
               disabled={isRevoking}
             >
-              {isRevoking ? "Revoking..." : "Revoke"}
+              {isRevoking ? messages.revoking : messages.confirmRevoke}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,7 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import { Ban, Check, Copy, KeyRound, RotateCw } from "lucide-react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import {
   AlertDialog,
@@ -75,12 +78,6 @@ const formatDate = (value: string | null) => {
   }).format(new Date(value))
 }
 
-const statusLabel: Record<InventoryRow["status"], string> = {
-  ACTIVE: "Active",
-  REVOKED: "Revoked",
-  NOT_GENERATED: "Not generated",
-}
-
 const statusVariant = (status: InventoryRow["status"]) => {
   if (status === "ACTIVE") return "success" as const
   if (status === "REVOKED") return "secondary" as const
@@ -88,6 +85,11 @@ const statusVariant = (status: InventoryRow["status"]) => {
 }
 
 export function WhatsappOrganizationApiKeyInventory() {
+  const params = useParams()
+  const lang = typeof params?.lang === "string" ? params.lang : "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.whatsappOrgApiKeys
+
   const [rows, setRows] = React.useState<InventoryRow[]>([])
   const [summary, setSummary] = React.useState<InventoryResponse["summary"]>({
     generatedKeyTotal: 0,
@@ -163,9 +165,9 @@ export function WhatsappOrganizationApiKeyInventory() {
       <section className="flex flex-col gap-6 px-6 pb-6">
         <Card className="border-destructive">
           <CardHeader>
-            <CardTitle>Access denied</CardTitle>
+            <CardTitle>{messages.accessDenied}</CardTitle>
             <CardDescription>
-              Only super-admins can view organization API keys.
+              {messages.accessDeniedDesc}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -236,10 +238,9 @@ export function WhatsappOrganizationApiKeyInventory() {
   return (
     <section className="flex flex-col gap-6 px-6 pb-6">
       <header className="space-y-1">
-        <h2 className="text-xl font-semibold">Organization API keys</h2>
+        <h2 className="text-xl font-semibold">{messages.title}</h2>
         <p className="text-sm text-muted-foreground">
-          Super-admin inventory for stable WhatsApp system credentials. Raw
-          secrets are shown only once after generation or rotation.
+          {messages.description}
         </p>
       </header>
 
@@ -247,10 +248,10 @@ export function WhatsappOrganizationApiKeyInventory() {
         <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
           <CardHeader>
             <CardTitle className="text-base">
-              One-time secret for {secret.organizationName}
+              {messages.oneTimeSecretTitle} {secret.organizationName}
             </CardTitle>
             <CardDescription>
-              Copy this secret now. It cannot be recovered from the portal.
+              {messages.oneTimeSecretDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3">
@@ -280,19 +281,19 @@ export function WhatsappOrganizationApiKeyInventory() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Generated keys</CardDescription>
+            <CardDescription>{messages.generatedKeys}</CardDescription>
             <CardTitle>{summary.generatedKeyTotal}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Organizations with active key</CardDescription>
+            <CardDescription>{messages.orgsWithKey}</CardDescription>
             <CardTitle>{summary.organizationsWithActiveKey}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Organizations without active key</CardDescription>
+            <CardDescription>{messages.orgsWithoutKey}</CardDescription>
             <CardTitle>{summary.organizationsWithoutActiveKey}</CardTitle>
           </CardHeader>
         </Card>
@@ -301,10 +302,9 @@ export function WhatsappOrganizationApiKeyInventory() {
       <Card>
         <CardHeader className="gap-4">
           <div>
-            <CardTitle className="text-base">Key inventory</CardTitle>
+            <CardTitle className="text-base">{messages.inventoryTitle}</CardTitle>
             <CardDescription>
-              Fingerprints and lifecycle metadata only; secret material is never
-              included in this list.
+              {messages.inventoryDesc}
             </CardDescription>
           </div>
           <form
@@ -316,53 +316,60 @@ export function WhatsappOrganizationApiKeyInventory() {
           >
             <Input
               className="h-9 w-64"
-              placeholder="Search organization or fingerprint"
+              placeholder={messages.searchPlaceholder}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              aria-label="Search organization API keys"
+              aria-label={messages.searchAriaLabel}
             />
             <select
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
               value={status}
               onChange={(event) => setStatus(event.target.value)}
-              aria-label="Filter API-key status"
+              aria-label={messages.filterStatusAriaLabel}
             >
-              <option value="">All statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="REVOKED">Revoked</option>
-              <option value="NOT_GENERATED">Not generated</option>
+              <option value="">{messages.allStatuses}</option>
+              <option value="ACTIVE">{messages.statusActive}</option>
+              <option value="REVOKED">{messages.statusRevoked}</option>
+              <option value="NOT_GENERATED">{messages.statusNotGenerated}</option>
             </select>
             <Button type="submit" size="sm">
-              Apply filters
+              {messages.applyFilters}
             </Button>
           </form>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Loading organization keys...
+              {messages.loadingKeys}
             </p>
           ) : rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No organizations match the current filters.
+              {messages.noOrgsMatch}
             </p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Fingerprint</TableHead>
-                    <TableHead>Generated</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Last use</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{messages.thOrganization}</TableHead>
+                    <TableHead>{messages.thStatus}</TableHead>
+                    <TableHead>{messages.thFingerprint}</TableHead>
+                    <TableHead>{messages.thGenerated}</TableHead>
+                    <TableHead>{messages.thCreated}</TableHead>
+                    <TableHead>{messages.thLastUse}</TableHead>
+                    <TableHead className="text-right">{messages.thActions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((row) => {
                     const busy = busyOrganizationId === row.organizationId
+                    const rowStatusText =
+                      row.status === "ACTIVE"
+                        ? messages.statusActive
+                        : row.status === "REVOKED"
+                          ? messages.statusRevoked
+                          : messages.statusNotGenerated
+
                     return (
                       <TableRow key={row.organizationId}>
                         <TableCell>
@@ -375,7 +382,7 @@ export function WhatsappOrganizationApiKeyInventory() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={statusVariant(row.status)}>
-                            {statusLabel[row.status]}
+                            {rowStatusText}
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-52 font-mono text-xs">
@@ -406,7 +413,7 @@ export function WhatsappOrganizationApiKeyInventory() {
                                   }
                                 >
                                   <RotateCw className="mr-1.5 size-3.5" />
-                                  Rotate
+                                  {messages.rotate}
                                 </Button>
                                 <Button
                                   type="button"
@@ -422,7 +429,7 @@ export function WhatsappOrganizationApiKeyInventory() {
                                   }
                                 >
                                   <Ban className="mr-1.5 size-3.5" />
-                                  Revoke
+                                  {messages.revoke}
                                 </Button>
                               </>
                             ) : (
@@ -440,7 +447,7 @@ export function WhatsappOrganizationApiKeyInventory() {
                                 }
                               >
                                 <KeyRound className="mr-1.5 size-3.5" />
-                                Generate
+                                {messages.generate}
                               </Button>
                             )}
                           </div>
@@ -456,7 +463,9 @@ export function WhatsappOrganizationApiKeyInventory() {
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                Page {page} of {totalPages}
+                {messages.pagePagination
+                  .replace("{page}", String(page))
+                  .replace("{totalPages}", String(totalPages))}
               </span>
               <div className="flex gap-2">
                 <Button
@@ -466,7 +475,7 @@ export function WhatsappOrganizationApiKeyInventory() {
                   disabled={page <= 1 || loading}
                   onClick={() => setPage((current) => current - 1)}
                 >
-                  Previous
+                  {messages.previous}
                 </Button>
                 <Button
                   type="button"
@@ -475,7 +484,7 @@ export function WhatsappOrganizationApiKeyInventory() {
                   disabled={page >= totalPages || loading}
                   onClick={() => setPage((current) => current + 1)}
                 >
-                  Next
+                  {messages.next}
                 </Button>
               </div>
             </div>
@@ -508,7 +517,7 @@ export function WhatsappOrganizationApiKeyInventory() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{messages.cancel}</AlertDialogCancel>
             <AlertDialogAction
               asChild
               onClick={() => {

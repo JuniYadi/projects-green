@@ -45,6 +45,9 @@ import type {
   EnvVarType,
   SharedSecretOption,
 } from "@/modules/deploy/deploy.types"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type EnvVarsEditorProps = {
   envVars: EnvVar[]
@@ -59,6 +62,7 @@ type EnvVarsEditorProps = {
   presets?: readonly string[]
   sharedSecretOptions?: SharedSecretOption[]
   onRevealSecret?: (envVar: EnvVar) => Promise<string>
+  locale?: AppLocale
 }
 
 type EditorMode = "create" | "edit" | "import"
@@ -127,14 +131,17 @@ const normalizeType = (type: EnvVarType | undefined): EditableEnvVarType => {
   return type ?? "plain"
 }
 
-const getTypeLabel = (type: EnvVarType | undefined) => {
+const getTypeLabel = (
+  type: EnvVarType | undefined,
+  messages?: ReturnType<typeof getMessages>["console"]["deploy"]["envVarsEditor"]
+) => {
   switch (normalizeType(type)) {
     case "secret_ref":
-      return "Secret"
+      return messages ? messages.typeSecret : "Secret"
     case "secret_shared_ref":
-      return "Shared Secret"
+      return messages ? messages.typeSharedSecret : "Shared Secret"
     default:
-      return "Plain"
+      return messages ? messages.typePlainBadge : "Plain"
   }
 }
 
@@ -360,7 +367,10 @@ export function EnvVarsEditor({
   presets,
   sharedSecretOptions = [],
   onRevealSecret,
+  locale = "en",
 }: EnvVarsEditorProps) {
+  const activeLocale = resolveLocaleOrDefault(locale)
+  const messages = getMessages(activeLocale).console.deploy.envVarsEditor
   const apiClient = useMemo(() => createEnvironmentVariablesClient(), [])
   const sharedSecretById = useMemo(() => {
     return new Map(sharedSecretOptions.map((option) => [option.id, option]))
@@ -1057,9 +1067,9 @@ export function EnvVarsEditor({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Input
-          aria-label="Search environment variables"
+          aria-label={messages.searchLabel}
           value={searchQuery}
-          placeholder="Search key, type, or scope"
+          placeholder={messages.searchPlaceholder}
           onChange={(event) => setSearchQuery(event.target.value)}
         />
         <div className="flex items-center gap-2">
@@ -1070,18 +1080,18 @@ export function EnvVarsEditor({
             onClick={openImportPanel}
           >
             <KeyRound data-icon="inline-start" />
-            Import .env
+            {messages.importDotEnv}
           </Button>
           <Button type="button" size="sm" onClick={openCreatePanel}>
             <Plus data-icon="inline-start" />
-            Add variable
+            {messages.addVariable}
           </Button>
         </div>
       </div>
 
       {activePresets.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">Quick start:</span>
+          <span className="text-xs text-muted-foreground">{messages.quickStart}</span>
           {activePresets.map((preset) => (
             <button
               key={preset}
@@ -1099,12 +1109,12 @@ export function EnvVarsEditor({
         <table className="w-full border-collapse text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
-              <th className="px-3 py-2 font-medium">Key</th>
-              <th className="px-3 py-2 font-medium">Value</th>
-              <th className="px-3 py-2 font-medium">Type</th>
-              <th className="px-3 py-2 font-medium">Scope</th>
-              <th className="px-3 py-2 font-medium">Last updated</th>
-              <th className="px-3 py-2 font-medium">Actions</th>
+              <th className="px-3 py-2 font-medium">{messages.key}</th>
+              <th className="px-3 py-2 font-medium">{messages.value}</th>
+              <th className="px-3 py-2 font-medium">{messages.type}</th>
+              <th className="px-3 py-2 font-medium">{messages.scope}</th>
+              <th className="px-3 py-2 font-medium">{messages.lastUpdated}</th>
+              <th className="px-3 py-2 font-medium">{messages.actions}</th>
             </tr>
           </thead>
           <tbody>
@@ -1114,7 +1124,7 @@ export function EnvVarsEditor({
                   className="px-3 py-8 text-center text-xs text-muted-foreground"
                   colSpan={6}
                 >
-                  No variables match the current filters.
+                  {messages.noVariablesFound}
                 </td>
               </tr>
             ) : null}
@@ -1157,11 +1167,15 @@ export function EnvVarsEditor({
                       {isSharedReference ? (
                         <Link2 data-icon="inline-start" />
                       ) : null}
-                      {getTypeLabel(row.type)}
+                      {getTypeLabel(row.type, messages)}
                     </Badge>
                   </td>
                   <td className="px-3 py-2 text-xs capitalize">
-                    {row.scope ?? "runtime"}
+                    {row.scope === "build"
+                      ? messages.scopeBuild
+                      : row.scope === "all"
+                        ? messages.scopeAll
+                        : messages.scopeRuntime}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {formatUpdatedAt(row.lastUpdatedAt)}
@@ -1194,18 +1208,18 @@ export function EnvVarsEditor({
                             <Eye data-icon="inline-start" />
                           )}
                           {revealingById[row.id]
-                            ? "Revealing..."
+                            ? messages.revealing
                             : isSecret
                               ? isVisible
-                                ? "Hide"
-                                : "Reveal"
+                                ? messages.hide
+                                : messages.reveal
                               : isVisible
-                                ? "Hide"
-                                : "Show"}
+                                ? messages.hide
+                                : messages.show}
                         </Button>
                       ) : (
                         <span className="px-2 py-1 text-[11px] text-muted-foreground">
-                          Reference only
+                          {messages.referenceOnly}
                         </span>
                       )}
                       <Button
@@ -1215,7 +1229,7 @@ export function EnvVarsEditor({
                         onClick={() => openEditPanel(row)}
                       >
                         <Pencil data-icon="inline-start" />
-                        Edit
+                        {messages.edit}
                       </Button>
                       <Button
                         type="button"
@@ -1226,7 +1240,7 @@ export function EnvVarsEditor({
                         }}
                       >
                         <Trash2 data-icon="inline-start" />
-                        Delete
+                        {messages.delete}
                       </Button>
                     </div>
                   </td>
@@ -1238,7 +1252,7 @@ export function EnvVarsEditor({
       </div>
 
       {toasts.length > 0 ? (
-        <div className="flex flex-col gap-1" aria-label="Environment toasts">
+        <div className="flex flex-col gap-1" aria-label={messages.toastsLabel}>
           {toasts.map((toast) => (
             <p
               key={toast.id}
@@ -1255,10 +1269,10 @@ export function EnvVarsEditor({
       ) : null}
 
       <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-3">
-        <p className="text-xs font-medium">Activity timeline</p>
+        <p className="text-xs font-medium">{messages.activityTimeline}</p>
         {activities.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            No variable activity yet.
+            {messages.noActivityYet}
           </p>
         ) : (
           <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -1272,8 +1286,7 @@ export function EnvVarsEditor({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Key format: <code>UPPER_SNAKE_CASE</code>. Duplicate keys are blocked
-        per environment ({environmentId}).
+        {messages.keyFormatHelper.replace("{environmentId}", environmentId ?? "")}
       </p>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -1281,15 +1294,15 @@ export function EnvVarsEditor({
           <SheetHeader>
             <SheetTitle>
               {mode === "import"
-                ? "Import environment variables"
+                ? messages.importTitle
                 : mode === "edit"
-                  ? "Edit variable"
-                  : "Add environment variable"}
+                  ? messages.editTitle
+                  : messages.createTitle}
             </SheetTitle>
             <SheetDescription>
               {mode === "import"
-                ? "Paste .env content, review detected types, then import."
-                : "Plain text values are readable directly, while secrets are encrypted securely."}
+                ? messages.importDescription
+                : messages.formDescription}
             </SheetDescription>
           </SheetHeader>
 
@@ -1297,12 +1310,13 @@ export function EnvVarsEditor({
             {mode === "import" ? (
               <>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium">.env payload</span>
+                  <span className="text-xs font-medium">{messages.importPayloadLabel}</span>
                   <Textarea
-                    aria-label=".env payload"
+                    aria-label={messages.importPayloadLabel}
                     className="min-h-48 font-mono text-xs"
                     value={importRaw}
                     placeholder={
+                      messages.importPayloadPlaceholder ??
                       "APP_ENV=staging\nDATABASE_URL=postgres://...\nREDIS_URL=redis://..."
                     }
                     onChange={(event) => setImportRaw(event.target.value)}
@@ -1319,15 +1333,17 @@ export function EnvVarsEditor({
 
                 <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium">Import preview</p>
+                    <p className="text-xs font-medium">{messages.importPreview}</p>
                     <Badge variant="secondary">
-                      {parsedImport.entries.length} variable
-                      {parsedImport.entries.length === 1 ? "" : "s"}
+                      {parsedImport.entries.length}{" "}
+                      {parsedImport.entries.length === 1
+                        ? messages.variableSingular
+                        : messages.variablePlural}
                     </Badge>
                   </div>
                   {parsedImport.entries.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      Paste one `KEY=VALUE` entry per line.
+                      {messages.importEmptyNotice}
                     </p>
                   ) : (
                     <div className="flex max-h-56 flex-col gap-1 overflow-y-auto">
@@ -1352,7 +1368,7 @@ export function EnvVarsEditor({
                                   : "secondary"
                               }
                             >
-                              {getTypeLabel(entry.type)}
+                              {getTypeLabel(entry.type, messages)}
                             </Badge>
                           </span>
                         </div>
@@ -1362,17 +1378,15 @@ export function EnvVarsEditor({
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  Keys containing `SECRET`, `TOKEN`, `PASSWORD`, `PRIVATE`, or
-                  `CREDENTIAL` are treated as Vault secrets. Secret values are
-                  masked before they enter the saved row state.
+                  {messages.importVaultNotice}
                 </p>
               </>
             ) : (
               <>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium">Key</span>
+                  <span className="text-xs font-medium">{messages.keyLabel}</span>
                   <Input
-                    aria-label="Variable key"
+                    aria-label={messages.keyAriaLabel}
                     value={formState.key}
                     aria-invalid={Boolean(formError)}
                     onChange={(event) => {
@@ -1391,9 +1405,9 @@ export function EnvVarsEditor({
                 </label>
 
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium">Type</span>
+                  <span className="text-xs font-medium">{messages.typeLabel}</span>
                   <select
-                    aria-label="Variable type"
+                    aria-label={messages.typeAriaLabel}
                     className="h-8 w-full rounded-2xl border border-transparent bg-input/50 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
                     value={formState.type}
                     onChange={(event) => {
@@ -1406,10 +1420,10 @@ export function EnvVarsEditor({
                       }))
                     }}
                   >
-                    <option value="plain">Plain Text</option>
-                    <option value="secret_ref">Secret</option>
+                    <option value="plain">{messages.typePlain}</option>
+                    <option value="secret_ref">{messages.typeSecret}</option>
                     {sharedSecretOptions.length > 0 ? (
-                      <option value="secret_shared_ref">Shared Secret</option>
+                      <option value="secret_shared_ref">{messages.typeSharedSecret}</option>
                     ) : null}
                   </select>
                 </label>
@@ -1418,10 +1432,10 @@ export function EnvVarsEditor({
                   <div className="flex flex-col gap-2">
                     <label className="flex flex-col gap-1.5">
                       <span className="text-xs font-medium">
-                        Managed service secret
+                        {messages.managedSecretLabel}
                       </span>
                       <select
-                        aria-label="Shared secret reference"
+                        aria-label={messages.managedSecretAriaLabel}
                         className="h-8 w-full rounded-2xl border border-transparent bg-input/50 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
                         value={formState.sharedSecretOptionId}
                         onChange={(event) =>
@@ -1431,7 +1445,7 @@ export function EnvVarsEditor({
                           }))
                         }
                       >
-                        <option value="">Choose a managed service</option>
+                        <option value="">{messages.chooseManagedService}</option>
                         {sharedSecretOptions.map((option) => (
                           <option key={option.id} value={option.id}>
                             {option.label} ({option.serviceType})
@@ -1442,23 +1456,21 @@ export function EnvVarsEditor({
                     {sharedSecretOptions.length === 0 ? (
                       <Alert>
                         <AlertDescription>
-                          No managed service secret references are available for
-                          this tenant yet.
+                          {messages.noManagedServices}
                         </AlertDescription>
                       </Alert>
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        The selected connection string or password stays in the
-                        managed service. This row stores only its reference.
+                        {messages.managedSecretNotice}
                       </p>
                     )}
                   </div>
                 ) : (
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-xs font-medium">Value</span>
+                    <span className="text-xs font-medium">{messages.valueLabel}</span>
                     <div className="flex items-center gap-2">
                       <Input
-                        aria-label="Variable value"
+                        aria-label={messages.valueAriaLabel}
                         type={
                           formState.type === "secret_ref" &&
                           !formState.valueVisible
@@ -1468,8 +1480,8 @@ export function EnvVarsEditor({
                         value={formState.value}
                         placeholder={
                           mode === "edit" && formState.type === "secret_ref"
-                            ? "Enter a new value to rotate"
-                            : "Set variable value"
+                            ? messages.valueRotatePlaceholder
+                            : messages.valueSetPlaceholder
                         }
                         onChange={(event) =>
                           setFormState((current) => ({
@@ -1484,7 +1496,7 @@ export function EnvVarsEditor({
                           variant="outline"
                           size="icon-sm"
                           aria-label={
-                            formState.valueVisible ? "Hide value" : "Show value"
+                            formState.valueVisible ? messages.hideValue : messages.showValue
                           }
                           onClick={() =>
                             setFormState((current) => ({
@@ -1498,15 +1510,15 @@ export function EnvVarsEditor({
                       ) : null}
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      Maximum {ENV_VAR_MAX_VALUE_SIZE} characters.
+                      {messages.maxCharacters.replace("{max}", String(ENV_VAR_MAX_VALUE_SIZE))}
                     </span>
                   </label>
                 )}
 
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium">Scope</span>
+                  <span className="text-xs font-medium">{messages.scopeLabel}</span>
                   <select
-                    aria-label="Variable scope"
+                    aria-label={messages.scopeAriaLabel}
                     className="h-8 w-full rounded-2xl border border-transparent bg-input/50 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
                     value={formState.scope}
                     onChange={(event) =>
@@ -1516,9 +1528,9 @@ export function EnvVarsEditor({
                       }))
                     }
                   >
-                    <option value="runtime">Runtime</option>
-                    <option value="build">Build</option>
-                    <option value="all">All</option>
+                    <option value="runtime">{messages.scopeRuntime}</option>
+                    <option value="build">{messages.scopeBuild}</option>
+                    <option value="all">{messages.scopeAll}</option>
                   </select>
                 </label>
               </>
@@ -1538,7 +1550,7 @@ export function EnvVarsEditor({
               onClick={() => setSheetOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {messages.cancel}
             </Button>
             <Button
               type="button"
@@ -1557,12 +1569,12 @@ export function EnvVarsEditor({
               }
             >
               {isSubmitting
-                ? "Saving..."
+                ? messages.saving
                 : mode === "import"
-                  ? "Import variables"
+                  ? messages.importSubmit
                   : mode === "edit"
-                    ? "Save changes"
-                    : "Save variable"}
+                    ? messages.saveChanges
+                    : messages.saveSubmit}
             </Button>
           </SheetFooter>
         </SheetContent>

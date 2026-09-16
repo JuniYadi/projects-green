@@ -44,8 +44,8 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const POD_COLORS = ["#10b981", "#38bdf8", "#a855f7", "#f59e0b", "#f43f5e"]
 
-function formatUptime(seconds?: number): string {
-  if (!seconds || seconds <= 0) return "Just started"
+function formatUptime(seconds?: number, justStartedText = "Just started"): string {
+  if (!seconds || seconds <= 0) return justStartedText
   const d = Math.floor(seconds / 86400)
   const h = Math.floor((seconds % 86400) / 3600)
   const m = Math.floor((seconds % 3600) / 60)
@@ -407,10 +407,10 @@ export function TabMetrics({
         >
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold text-foreground">
-              Live Resource Monitoring
+              {messages.liveResourceMonitoring}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Track CPU, RAM, and Network HTTP traffic in real-time
+              {messages.liveResourceMonitoringDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -418,7 +418,8 @@ export function TabMetrics({
             <div className="space-y-3.5 rounded-xl border border-border bg-muted/20 p-4">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-xs font-bold text-foreground">
-                  <Cpu size={16} className="text-emerald-400" /> CPU Allocation
+                  <Cpu size={16} className="text-emerald-400" />{" "}
+                  {messages.cpuAllocation}
                 </span>
                 <span className="font-mono text-xs font-semibold text-foreground">
                   {cpuUsage} / {cpuLimit}{" "}
@@ -467,8 +468,8 @@ export function TabMetrics({
               </div>
 
               <div className="flex justify-between pt-0.5 text-[10px] font-medium text-muted-foreground">
-                <span>0% request</span>
-                <span>Limit: {cpuLimit}</span>
+                <span>{messages.zeroPercentRequest}</span>
+                <span>{messages.limitLabel.replace("{limit}", cpuLimit)}</span>
               </div>
             </div>
 
@@ -476,8 +477,8 @@ export function TabMetrics({
             <div className="space-y-3.5 rounded-xl border border-border bg-muted/20 p-4">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-xs font-bold text-foreground">
-                  <HardDrive size={16} className="text-red-400" /> RAM
-                  Allocation
+                  <HardDrive size={16} className="text-red-400" />{" "}
+                  {messages.ramAllocation}
                 </span>
                 <span className="font-mono text-xs font-semibold text-foreground">
                   {memoryUsage} / {memLimit}{" "}
@@ -526,8 +527,8 @@ export function TabMetrics({
               </div>
 
               <div className="flex justify-between pt-0.5 text-[10px] font-medium text-muted-foreground">
-                <span>0 MB request</span>
-                <span>Limit: {memLimit}</span>
+                <span>{messages.zeroMbRequest}</span>
+                <span>{messages.limitLabel.replace("{limit}", memLimit)}</span>
               </div>
             </div>
 
@@ -535,12 +536,12 @@ export function TabMetrics({
             <div className="space-y-3.5 rounded-xl border border-border bg-muted/20 p-4">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-xs font-bold text-foreground">
-                  <Pulse size={16} className="text-purple-400" /> Network
-                  Ingress
+                  <Pulse size={16} className="text-purple-400" />{" "}
+                  {messages.networkIngress}
                 </span>
                 <span className="font-mono text-xs font-semibold text-foreground">
-                  {networkHistory[networkHistory.length - 1]} rps{" "}
-                  <span className="text-purple-400">(Normal)</span>
+                  {networkHistory[networkHistory.length - 1]} {messages.rpsBadge}{" "}
+                  <span className="text-purple-400">{messages.normal}</span>
                 </span>
               </div>
 
@@ -585,8 +586,8 @@ export function TabMetrics({
               </div>
 
               <div className="flex justify-between pt-0.5 text-[10px] font-medium text-muted-foreground">
-                <span>0 rps</span>
-                <span>Max Capacity: 1000 rps</span>
+                <span>{messages.zeroRps}</span>
+                <span>{messages.maxCapacity}</span>
               </div>
             </div>
           </CardContent>
@@ -599,6 +600,7 @@ export function TabMetrics({
           memoryUsageValue={memoryUsageValue}
           memoryLimitValue={memoryLimitValue}
           memoryPercent={memoryPercent}
+          messages={messages}
         />
       </div>
 
@@ -607,8 +609,12 @@ export function TabMetrics({
         <LatencyPercentilesCard
           currentMetrics={currentMetrics}
           timeRange={timeRange}
+          messages={messages}
         />
-        <HttpStatusDistributionCard currentMetrics={currentMetrics} />
+        <HttpStatusDistributionCard
+          currentMetrics={currentMetrics}
+          messages={messages}
+        />
       </div>
     </div>
   )
@@ -621,6 +627,7 @@ function ResourceAdvisoryCard({
   memoryUsageValue,
   memoryLimitValue,
   memoryPercent,
+  messages,
 }: {
   cpuUsageValue: number
   cpuLimitValue: number
@@ -628,6 +635,7 @@ function ResourceAdvisoryCard({
   memoryUsageValue: number
   memoryLimitValue: number
   memoryPercent: number
+  messages: ReturnType<typeof getMessages>["console"]["deploy"]["operateMetrics"]
 }) {
   return (
     <Card
@@ -636,38 +644,38 @@ function ResourceAdvisoryCard({
     >
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-          <Warning size={18} className="text-amber-500" /> Resource Advisory
+          <Warning size={18} className="text-amber-500" />{" "}
+          {messages.resourceAdvisory}
         </CardTitle>
         <CardDescription className="text-xs text-muted-foreground">
-          Analytics recommendations based on historic metrics
+          {messages.resourceAdvisoryDesc}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 text-xs leading-relaxed">
         <div className="space-y-2 rounded-xl border border-destructive/20 bg-destructive/10 p-4">
           <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-destructive uppercase">
-            <Warning size={14} /> Low RAM Headroom
+            <Warning size={14} /> {messages.lowRamHeadroom}
           </span>
           <p className="pt-0.5 text-xs leading-relaxed text-foreground">
-            Your app is utilizing{" "}
-            <strong>{memoryPercent}% of allocated RAM</strong> (
-            {formatMemoryValue(memoryUsageValue)} of{" "}
-            {formatMemoryValue(memoryLimitValue)}). Under load, pods will suffer
-            OOMKilled restarts.
+            {messages.lowRamDesc
+              .replace("{percent}", String(memoryPercent))
+              .replace("{used}", formatMemoryValue(memoryUsageValue))
+              .replace("{limit}", formatMemoryValue(memoryLimitValue))}
           </p>
           <p className="rounded-lg border border-border bg-muted/30 p-3 font-mono text-[10px] leading-relaxed font-semibold text-foreground">
-            Recommendation: Scale Memory Limit to 1024MiB (1GiB) in the Tuning
-            tab.
+            {messages.lowRamRecommendation}
           </p>
         </div>
 
         <div className="space-y-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
           <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
-            <CheckCircle size={14} /> CPU Headroom Adequate
+            <CheckCircle size={14} /> {messages.cpuHeadroomAdequate}
           </span>
           <p className="pt-0.5 text-xs leading-relaxed text-foreground">
-            CPU usage is steady at {cpuPercent}% (
-            {formatCoreValue(cpuUsageValue)} of {formatCoreValue(cpuLimitValue)}{" "}
-            cores). Limit provides adequate buffer.
+            {messages.cpuHeadroomDesc
+              .replace("{percent}", String(cpuPercent))
+              .replace("{used}", formatCoreValue(cpuUsageValue))
+              .replace("{limit}", formatCoreValue(cpuLimitValue))}
           </p>
         </div>
       </CardContent>
@@ -678,9 +686,11 @@ function ResourceAdvisoryCard({
 function LatencyPercentilesCard({
   currentMetrics,
   timeRange,
+  messages,
 }: {
   currentMetrics: RangeMetrics
   timeRange: string
+  messages: ReturnType<typeof getMessages>["console"]["deploy"]["operateMetrics"]
 }) {
   return (
     <Card
@@ -690,14 +700,15 @@ function LatencyPercentilesCard({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-            <Timer size={18} className="text-primary" /> Latency Percentiles
+            <Timer size={18} className="text-primary" />{" "}
+            {messages.latencyPercentiles}
           </CardTitle>
           <span className="font-mono text-xs text-muted-foreground">
-            Window: {timeRange}
+            {messages.windowLabel.replace("{window}", timeRange)}
           </span>
         </div>
         <CardDescription className="text-xs text-muted-foreground">
-          End-to-end response latency distribution across percentiles
+          {messages.latencyPercentilesDesc}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -706,17 +717,17 @@ function LatencyPercentilesCard({
           <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-3.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">
-                p50 Median
+                {messages.p50Median}
               </span>
               <span className="inline-flex rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                Fast
+                {messages.p50Badge}
               </span>
             </div>
             <p className="font-mono text-xl font-bold text-foreground">
               {currentMetrics.latency.p50}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              50% of requests faster
+              {messages.p50Desc}
             </p>
           </div>
 
@@ -724,17 +735,17 @@ function LatencyPercentilesCard({
           <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-3.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">
-                p95 Threshold
+                {messages.p95Threshold}
               </span>
               <span className="inline-flex rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                Expected
+                {messages.p95Badge}
               </span>
             </div>
             <p className="font-mono text-xl font-bold text-foreground">
               {currentMetrics.latency.p95}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              95% within SLO target
+              {messages.p95Desc}
             </p>
           </div>
 
@@ -742,23 +753,23 @@ function LatencyPercentilesCard({
           <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-3.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">
-                p99 Tail Latency
+                {messages.p99TailLatency}
               </span>
               <span className="inline-flex rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                Tail
+                {messages.p99Badge}
               </span>
             </div>
             <p className="font-mono text-xl font-bold text-foreground">
               {currentMetrics.latency.p99}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              1% slowest outlier
+              {messages.p99Desc}
             </p>
           </div>
         </div>
 
         <div className="rounded-lg border border-border bg-muted/10 p-3 text-[11px] text-muted-foreground">
-          Response times measured at edge gateway before reverse-proxy ingress.
+          {messages.edgeGatewayNote}
         </div>
       </CardContent>
     </Card>
@@ -767,8 +778,10 @@ function LatencyPercentilesCard({
 
 function HttpStatusDistributionCard({
   currentMetrics,
+  messages,
 }: {
   currentMetrics: RangeMetrics
+  messages: ReturnType<typeof getMessages>["console"]["deploy"]["operateMetrics"]
 }) {
   return (
     <Card
@@ -778,21 +791,23 @@ function HttpStatusDistributionCard({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-            <ArrowsLeftRight size={18} className="text-primary" /> HTTP Status &
-            Error Rate
+            <ArrowsLeftRight size={18} className="text-primary" />{" "}
+            {messages.httpStatusAndErrorRate}
           </CardTitle>
           <span className="font-mono text-xs font-semibold text-foreground">
             {currentMetrics.http.totalRequests}
           </span>
         </div>
         <CardDescription className="text-xs text-muted-foreground">
-          Traffic volume, client errors, and server fault breakdown
+          {messages.httpStatusDesc}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Total Requests</span>
+            <span className="text-muted-foreground">
+              {messages.totalRequests}
+            </span>
             <span className="font-mono font-semibold text-foreground">
               {currentMetrics.http.totalRequests}
             </span>
@@ -823,10 +838,16 @@ function HttpStatusDistributionCard({
           <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
             <span className="flex items-center gap-2 font-medium text-foreground">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              2xx Successful ({currentMetrics.http.status2xx.percent})
+              {messages.status2xxSuccessful.replace(
+                "{percent}",
+                currentMetrics.http.status2xx.percent
+              )}
             </span>
             <span className="font-mono text-muted-foreground">
-              {currentMetrics.http.status2xx.count} reqs
+              {messages.reqs.replace(
+                "{count}",
+                String(currentMetrics.http.status2xx.count)
+              )}
             </span>
           </div>
 
@@ -834,10 +855,16 @@ function HttpStatusDistributionCard({
           <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
             <span className="flex items-center gap-2 font-medium text-foreground">
               <span className="h-2 w-2 rounded-full bg-amber-500" />
-              4xx Client Errors ({currentMetrics.http.status4xx.percent})
+              {messages.status4xxClientErrors.replace(
+                "{percent}",
+                currentMetrics.http.status4xx.percent
+              )}
             </span>
             <span className="font-mono text-muted-foreground">
-              {currentMetrics.http.status4xx.count} reqs
+              {messages.reqs.replace(
+                "{count}",
+                String(currentMetrics.http.status4xx.count)
+              )}
             </span>
           </div>
 
@@ -845,10 +872,16 @@ function HttpStatusDistributionCard({
           <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
             <span className="flex items-center gap-2 font-medium text-foreground">
               <span className="h-2 w-2 rounded-full bg-rose-500" />
-              5xx Server Errors ({currentMetrics.http.status5xx.percent})
+              {messages.status5xxServerErrors.replace(
+                "{percent}",
+                currentMetrics.http.status5xx.percent
+              )}
             </span>
             <span className="font-mono text-muted-foreground">
-              {currentMetrics.http.status5xx.count} reqs
+              {messages.reqs.replace(
+                "{count}",
+                String(currentMetrics.http.status5xx.count)
+              )}
             </span>
           </div>
         </div>
@@ -870,6 +903,10 @@ function PodObservabilityView({
   memLimitValue: number
   locale?: string
 }) {
+  const messages = getMessages(
+    resolveLocaleOrDefault(locale)
+  ).console.deploy.operateMetrics
+
   const [mountTime] = useState(() => Date.now())
   const [selectedPod, setSelectedPod] = useState<string>("all")
   const [timeSelection, setTimeSelection] = useState<TimeRangeSelection>({
@@ -920,7 +957,7 @@ function PodObservabilityView({
 
       const res = await eden.api.deploy.telemetry.get({ $query: queryParams })
       if (!res.data?.ok || !res.data.data) {
-        throw new Error(res.data?.message ?? "Failed to fetch telemetry")
+        throw new Error(res.data?.message ?? messages.fetchFailed)
       }
       return res.data.data
     },
@@ -987,7 +1024,7 @@ function PodObservabilityView({
   const httpStatusSeries: PodSeries[] = [
     {
       id: "2xx",
-      name: "2xx Success",
+      name: messages.status2xxSeries,
       color: "#10b981",
       values:
         telemetry?.ingress?.statusCodes
@@ -996,7 +1033,7 @@ function PodObservabilityView({
     },
     {
       id: "3xx",
-      name: "3xx Redir",
+      name: messages.status3xxSeries,
       color: "#38bdf8",
       values:
         telemetry?.ingress?.statusCodes
@@ -1005,7 +1042,7 @@ function PodObservabilityView({
     },
     {
       id: "4xx",
-      name: "4xx Client Err",
+      name: messages.status4xxSeries,
       color: "#f59e0b",
       values:
         telemetry?.ingress?.statusCodes
@@ -1014,7 +1051,7 @@ function PodObservabilityView({
     },
     {
       id: "5xx",
-      name: "5xx Server Err",
+      name: messages.status5xxSeries,
       color: "#f43f5e",
       values:
         telemetry?.ingress?.statusCodes
@@ -1026,7 +1063,7 @@ function PodObservabilityView({
   const latencySeries: PodSeries[] = [
     {
       id: "total",
-      name: "Total Roundtrip",
+      name: messages.totalRoundtripSeries,
       color: "#10b981",
       values:
         telemetry?.ingress?.latencyBreakdown
@@ -1036,7 +1073,7 @@ function PodObservabilityView({
     },
     {
       id: "app",
-      name: "App Response",
+      name: messages.appResponseSeries,
       color: "#818cf8",
       values:
         telemetry?.ingress?.latencyBreakdown
@@ -1046,7 +1083,7 @@ function PodObservabilityView({
     },
     {
       id: "connect",
-      name: "Connect Time",
+      name: messages.connectTimeSeries,
       color: "#fbbf24",
       values:
         telemetry?.ingress?.latencyBreakdown
@@ -1056,7 +1093,7 @@ function PodObservabilityView({
     },
     {
       id: "queue",
-      name: "Queue Time",
+      name: messages.queueTimeSeries,
       color: "#a78bfa",
       values:
         telemetry?.ingress?.latencyBreakdown
@@ -1092,16 +1129,15 @@ function PodObservabilityView({
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-foreground">
-              Workload Observability
+              {messages.workloadObservability}
             </h3>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500">
               <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
-              <span>LIVE</span>
+              <span>{messages.liveUpper}</span>
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Real-time telemetry for compute resources, replica pods, and edge
-            traffic
+            {messages.workloadObservabilityDesc}
           </p>
         </div>
 
@@ -1128,21 +1164,21 @@ function PodObservabilityView({
         <Card className="border-border bg-card p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
-              Service Traffic
+              {messages.serviceTraffic}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
-              RPS
+              {messages.rpsBadge}
             </span>
           </div>
           <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
             {telemetry?.ingress?.trafficRps ?? 0}
             <span className="text-xs font-normal text-muted-foreground">
               {" "}
-              req/s
+              {messages.reqPerSec}
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Edge gateway request rate
+            {messages.edgeGatewayRequestRate}
           </p>
         </Card>
 
@@ -1150,7 +1186,7 @@ function PodObservabilityView({
         <Card className="border-border bg-card p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
-              Error Rates
+              {messages.errorRates}
             </span>
             <span
               className={cn(
@@ -1163,10 +1199,10 @@ function PodObservabilityView({
               )}
             >
               {(telemetry?.ingress?.errorRate5xxPercent ?? 0) > 0
-                ? "5xx Detected"
+                ? messages.badge5xxDetected
                 : (telemetry?.ingress?.errorRate4xxPercent ?? 0) > 5
-                  ? "High 4xx"
-                  : "0% 5xx Errors"}
+                  ? messages.badgeHigh4xx
+                  : messages.badge0Percent5xx}
             </span>
           </div>
           <div className="mt-2 flex items-baseline gap-2 text-2xl font-bold tracking-tight text-foreground">
@@ -1176,7 +1212,7 @@ function PodObservabilityView({
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Server and client error percentages
+            {messages.serverAndClientErrorPercentages}
           </p>
         </Card>
 
@@ -1184,10 +1220,10 @@ function PodObservabilityView({
         <Card className="border-border bg-card p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
-              Avg Latency
+              {messages.avgLatency}
             </span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-              End-to-End
+              {messages.endToEndBadge}
             </span>
           </div>
           <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
@@ -1196,11 +1232,11 @@ function PodObservabilityView({
             )}
             <span className="text-xs font-normal text-muted-foreground">
               {" "}
-              ms
+              {messages.msUnit}
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Average backend application roundtrip
+            {messages.avgBackendRoundtrip}
           </p>
         </Card>
 
@@ -1208,23 +1244,22 @@ function PodObservabilityView({
         <Card className="border-border bg-card p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
-              Compute Saturation
+              {messages.computeSaturation}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
               {activePods.length}{" "}
-              {activePods.length === 1 ? "Replica" : "Replicas"}
+              {activePods.length === 1 ? messages.replicaCount.replace("{count}", "1") : messages.replicasCount.replace("{count}", String(activePods.length))}
             </span>
           </div>
           <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
             {cpuPercent}%
             <span className="text-xs font-normal text-muted-foreground">
               {" "}
-              CPU &bull; {memPercent}% RAM
+              {messages.cpuMemSaturation.replace("{cpuPercent}", String(cpuPercent)).replace("{memPercent}", String(memPercent))}
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {totalCpuCores.toFixed(3)} / {cpuLimitCores} cores &bull;{" "}
-            {formatBytes(totalMemBytes)} / {ramLimitMB} MB
+            {messages.saturationSubtext.replace("{usedCores}", totalCpuCores.toFixed(3)).replace("{limitCores}", String(cpuLimitCores)).replace("{usedMem}", formatBytes(totalMemBytes)).replace("{limitMem}", String(ramLimitMB))}
           </p>
         </Card>
       </div>
@@ -1236,19 +1271,18 @@ function PodObservabilityView({
           <CardHeader className="space-y-1 pb-2">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Pulse size={14} className="text-primary" /> Grouped HTTP
-                Response Codes
+                <Pulse size={14} className="text-primary" />{" "}
+                {messages.groupedHttpResponseCodes}
               </span>
               <span className="text-xs font-bold text-foreground">
-                Live Rates
+                {messages.liveRates}
               </span>
             </div>
             <CardTitle className="text-lg font-bold tracking-tight">
-              Status Code Breakdown (req/s)
+              {messages.statusCodeBreakdown}
             </CardTitle>
             <CardDescription className="text-[11px] text-muted-foreground">
-              2xx Success (Green), 3xx Redirect (Sky), 4xx Client (Amber), 5xx
-              Server (Rose)
+              {messages.statusCodeBreakdownDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -1266,18 +1300,18 @@ function PodObservabilityView({
           <CardHeader className="space-y-1 pb-2">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Timer size={14} className="text-primary" /> Latency Breakdown
+                <Timer size={14} className="text-primary" />{" "}
+                {messages.latencyBreakdown}
               </span>
               <span className="text-xs font-bold text-foreground">
-                Queue vs Connect vs App
+                {messages.latencyBreakdownBadge}
               </span>
             </div>
             <CardTitle className="text-lg font-bold tracking-tight">
-              Response Time Components (ms)
+              {messages.responseTimeComponents}
             </CardTitle>
             <CardDescription className="text-[11px] text-muted-foreground">
-              Total (Teal), App Response (Indigo), Connect (Amber), Queue Time
-              (Purple)
+              {messages.responseTimeComponentsDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -1298,23 +1332,23 @@ function PodObservabilityView({
           <CardHeader className="space-y-1 pb-2">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Cpu size={14} className="text-primary" /> CPU Usage per Pod
+                <Cpu size={14} className="text-primary" /> {messages.cpuUsagePerPod}
               </span>
               <span className="text-xs font-bold text-foreground">
-                {cpuPercent}% Allocated
+                {messages.allocatedBadge.replace("{percent}", String(cpuPercent))}
               </span>
             </div>
             <CardTitle className="text-lg font-bold tracking-tight">
               {totalCpuCores.toFixed(3)} vCPU
               <span className="text-xs font-normal text-muted-foreground">
                 {" "}
-                / {cpuLimitCores} Limit
+                / {messages.limitLabel.replace("{limit}", String(cpuLimitCores))}
               </span>
             </CardTitle>
             <CardDescription className="text-[11px] text-muted-foreground">
               {activePods.length}{" "}
-              {activePods.length === 1 ? "replica line" : "replica lines"}{" "}
-              &bull; Limit: {cpuLimitCores} vCPU
+              {activePods.length === 1 ? messages.replicaLine : messages.replicaLines}{" "}
+              &bull; {messages.limitVCpu.replace("{limit}", String(cpuLimitCores))}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -1333,24 +1367,24 @@ function PodObservabilityView({
           <CardHeader className="space-y-1 pb-2">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <HardDrive size={14} className="text-primary" /> RAM Working Set
-                per Pod
+                <HardDrive size={14} className="text-primary" />{" "}
+                {messages.ramWorkingSetPerPod}
               </span>
               <span className="text-xs font-bold text-foreground">
-                {memPercent}% Allocated
+                {messages.allocatedBadge.replace("{percent}", String(memPercent))}
               </span>
             </div>
             <CardTitle className="text-lg font-bold tracking-tight">
               {formatBytes(totalMemBytes)}
               <span className="text-xs font-normal text-muted-foreground">
                 {" "}
-                / {ramLimitMB} MB Limit
+                / {messages.limitLabel.replace("{limit}", `${ramLimitMB} MB`)}
               </span>
             </CardTitle>
             <CardDescription className="text-[11px] text-muted-foreground">
               {activePods.length}{" "}
-              {activePods.length === 1 ? "replica line" : "replica lines"}{" "}
-              &bull; Limit: {ramLimitMB} MB
+              {activePods.length === 1 ? messages.replicaLine : messages.replicaLines}{" "}
+              &bull; {messages.limitMb.replace("{limit}", String(ramLimitMB))}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -1369,20 +1403,22 @@ function PodObservabilityView({
           <CardHeader className="space-y-1 pb-2">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Pulse size={14} className="text-primary" /> Network Ingress per
-                Pod
+                <Pulse size={14} className="text-primary" />{" "}
+                {messages.networkIngressPerPod}
               </span>
-              <span className="text-xs font-bold text-foreground">Live Rx</span>
+              <span className="text-xs font-bold text-foreground">
+                {messages.liveRxBadge}
+              </span>
             </div>
             <CardTitle className="text-lg font-bold tracking-tight">
               {formatBytes(telemetry?.network.currentRxBytes ?? 0)}/s
               <span className="text-xs font-normal text-muted-foreground">
                 {" "}
-                Total In
+                {messages.totalIn}
               </span>
             </CardTitle>
             <CardDescription className="text-[11px] text-muted-foreground">
-              Throughput per pod replica (KB/s)
+              {messages.throughputPerPod}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -1402,11 +1438,10 @@ function PodObservabilityView({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-sm font-bold text-foreground">
-                Pod Replicas &amp; Health
+                {messages.podReplicasAndHealth}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Live container status, uptime, and compute saturation per
-                replica
+                {messages.podReplicasAndHealthDesc}
               </CardDescription>
             </div>
             {pods.length > 1 && (
@@ -1421,7 +1456,7 @@ function PodObservabilityView({
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   )}
                 >
-                  All ({pods.length})
+                  {messages.allReplicas.replace("{count}", String(pods.length))}
                 </button>
                 {pods.map((pod) => {
                   const isSelected = selectedPod === pod.pod
@@ -1455,12 +1490,20 @@ function PodObservabilityView({
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                 <tr>
-                  <th className="px-3.5 py-2.5">Pod Replica</th>
-                  <th className="px-3.5 py-2.5">Container Status</th>
-                  <th className="px-3.5 py-2.5">Uptime</th>
-                  <th className="px-3.5 py-2.5">CPU Consumption</th>
-                  <th className="px-3.5 py-2.5">RAM Working Set</th>
-                  <th className="px-3.5 py-2.5 text-right">Restarts</th>
+                  <th className="px-3.5 py-2.5">{messages.podReplicaCol}</th>
+                  <th className="px-3.5 py-2.5">
+                    {messages.containerStatusCol}
+                  </th>
+                  <th className="px-3.5 py-2.5">{messages.uptimeCol}</th>
+                  <th className="px-3.5 py-2.5">
+                    {messages.cpuConsumptionCol}
+                  </th>
+                  <th className="px-3.5 py-2.5">
+                    {messages.ramWorkingSetCol}
+                  </th>
+                  <th className="px-3.5 py-2.5 text-right">
+                    {messages.restartsCol}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -1490,18 +1533,29 @@ function PodObservabilityView({
                           <span
                             className={cn("size-1.5 rounded-full", badge.dot)}
                           />
-                          {badge.label}
+                          {badge.label === "Running"
+                            ? pod.ready
+                              ? messages.runningReady
+                              : messages.running
+                            : badge.label}
                         </span>
                       </td>
                       <td className="px-3.5 py-3 font-mono text-[11px] text-muted-foreground">
-                        {formatUptime(pod.uptimeSeconds)}
+                        {formatUptime(pod.uptimeSeconds, messages.justStarted)}
                       </td>
                       <td className="px-3.5 py-3">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
-                            <span>{pod.cpuUsageCores.toFixed(3)} cores</span>
+                            <span>
+                              {messages.coresCount.replace(
+                                "{cores}",
+                                pod.cpuUsageCores.toFixed(3)
+                              )}
+                            </span>
                             <span className="text-muted-foreground">
-                              {pod.cpuPercent}% of {pod.cpuLimitCores} Limit
+                              {messages.percentOfLimit
+                                .replace("{percent}", String(pod.cpuPercent))
+                                .replace("{limit}", String(pod.cpuLimitCores))}
                             </span>
                           </div>
                           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -1519,8 +1573,12 @@ function PodObservabilityView({
                           <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
                             <span>{formatBytes(pod.memoryUsageBytes)}</span>
                             <span className="text-muted-foreground">
-                              {pod.memoryPercent}% of{" "}
-                              {formatBytes(pod.memoryLimitBytes)} Limit
+                              {messages.percentOfLimit
+                                .replace("{percent}", String(pod.memoryPercent))
+                                .replace(
+                                  "{limit}",
+                                  formatBytes(pod.memoryLimitBytes)
+                                )}
                             </span>
                           </div>
                           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -1547,7 +1605,11 @@ function PodObservabilityView({
                               : "text-muted-foreground"
                           )}
                         >
-                          {pod.restarts} {pod.reason ? `(${pod.reason})` : ""}
+                          {pod.restarts > 0 && pod.reason
+                            ? messages.restartsReason
+                                .replace("{restarts}", String(pod.restarts))
+                                .replace("{reason}", pod.reason)
+                            : pod.restarts}
                         </span>
                       </td>
                     </tr>
@@ -1571,15 +1633,27 @@ function PodObservabilityView({
             )}
             <div className="space-y-0.5 leading-relaxed">
               <span className="font-semibold text-foreground">
-                Resource Advisory:{" "}
+                {messages.resourceAdvisoryPrefix}{" "}
               </span>
               <span className="text-muted-foreground">
                 {memPercent > 85
-                  ? `Elevated RAM utilization at ${memPercent}% (${formatBytes(totalMemBytes)} of ${ramLimitMB} MB). Under heavy load, container pods risk OOMKilled restarts. `
-                  : `RAM headroom adequate (${formatBytes(totalMemBytes)} of ${ramLimitMB} MB, ${memPercent}% allocated). `}
+                  ? messages.elevatedRamMsg
+                      .replace("{percent}", String(memPercent))
+                      .replace("{used}", formatBytes(totalMemBytes))
+                      .replace("{limit}", String(ramLimitMB))
+                  : messages.ramAdequateMsg
+                      .replace("{used}", formatBytes(totalMemBytes))
+                      .replace("{limit}", String(ramLimitMB))
+                      .replace("{percent}", String(memPercent))}
                 {cpuPercent > 85
-                  ? `High CPU consumption at ${cpuPercent}% (${totalCpuCores.toFixed(3)} of ${cpuLimitCores} cores), which may cause container throttling.`
-                  : `Steady CPU at ${totalCpuCores.toFixed(3)} cores (${cpuPercent}% of ${cpuLimitCores} Limit). Buffer is optimal.`}
+                  ? messages.highCpuMsg
+                      .replace("{percent}", String(cpuPercent))
+                      .replace("{used}", totalCpuCores.toFixed(3))
+                      .replace("{limit}", String(cpuLimitCores))
+                  : messages.steadyCpuMsg
+                      .replace("{used}", totalCpuCores.toFixed(3))
+                      .replace("{percent}", String(cpuPercent))
+                      .replace("{limit}", String(cpuLimitCores))}
               </span>
             </div>
           </div>

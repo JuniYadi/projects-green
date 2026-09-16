@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import {
   HardDrive,
   FileCheck,
@@ -12,6 +13,8 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -45,9 +48,14 @@ import type {
 } from "@/modules/storage/storage.dto"
 
 export function StorageAuditView() {
+  const params = useParams()
+  const lang = typeof params?.lang === "string" ? params.lang : "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.storageAudit
+
   const [metrics, setMetrics] = React.useState<StorageMetricsDTO | null>(null)
   const [files, setFiles] = React.useState<StorageFileDTO[]>([])
-  const [loading, setLoading] = React.useState(false)
+  const [loading] = React.useState(false)
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
   const [page, setPage] = React.useState(1)
@@ -147,7 +155,7 @@ export function StorageAuditView() {
       case "ACTIVE":
         return (
           <Badge className="border-emerald-500/20 bg-emerald-500/15 text-emerald-600">
-            Active
+            {messages.statusActive}
           </Badge>
         )
       case "PENDING":
@@ -156,13 +164,13 @@ export function StorageAuditView() {
             variant="outline"
             className="border-amber-500/30 text-amber-600"
           >
-            Pending
+            {messages.statusPending}
           </Badge>
         )
       case "DELETED":
         return (
           <Badge variant="secondary" className="text-muted-foreground">
-            Deleted
+            {messages.statusDeleted}
           </Badge>
         )
       default:
@@ -177,7 +185,7 @@ export function StorageAuditView() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Storage Used
+              {messages.totalStorageUsed}
             </CardTitle>
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -186,14 +194,14 @@ export function StorageAuditView() {
               {formatBytes(metrics?.totalBytes || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Across all organizations
+              {messages.acrossAllOrgs}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Files</CardTitle>
+            <CardTitle className="text-sm font-medium">{messages.activeFiles}</CardTitle>
             <FileCheck className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
@@ -201,7 +209,7 @@ export function StorageAuditView() {
               {metrics?.activeFiles || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Confirmed and stored
+              {messages.confirmedStored}
             </p>
           </CardContent>
         </Card>
@@ -209,7 +217,7 @@ export function StorageAuditView() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Pending Uploads
+              {messages.pendingUploads}
             </CardTitle>
             <Clock className="h-4 w-4 text-amber-500" />
           </CardHeader>
@@ -217,14 +225,14 @@ export function StorageAuditView() {
             <div className="text-2xl font-bold">
               {metrics?.pendingFiles || 0}
             </div>
-            <p className="text-xs text-muted-foreground">Expires in 15 mins</p>
+            <p className="text-xs text-muted-foreground">{messages.expiresIn15Mins}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Swept / Deleted
+              {messages.sweptDeleted}
             </CardTitle>
             <Trash2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -233,7 +241,7 @@ export function StorageAuditView() {
               {metrics?.deletedFiles || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Cleaned by background worker
+              {messages.cleanedByWorker}
             </p>
           </CardContent>
         </Card>
@@ -245,18 +253,17 @@ export function StorageAuditView() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base font-semibold">
-                Storage File Audit
+                {messages.title}
               </CardTitle>
               <CardDescription>
-                Live ledger of presigned uploads, tenant isolation paths, and
-                object sizes.
+                {messages.description}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative w-64">
                 <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search file, ID, or key..."
+                  placeholder={messages.searchPlaceholder}
                   className="h-9 pl-8 text-xs"
                   value={search}
                   onChange={(e) => {
@@ -292,13 +299,13 @@ export function StorageAuditView() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Filename & ID</TableHead>
-                <TableHead>Organization</TableHead>
-                <TableHead>Purpose</TableHead>
-                <TableHead>Size & MIME</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{messages.thFilenameId}</TableHead>
+                <TableHead>{messages.thOrganization}</TableHead>
+                <TableHead>{messages.thPurpose}</TableHead>
+                <TableHead>{messages.thSizeMime}</TableHead>
+                <TableHead>{messages.thStatus}</TableHead>
+                <TableHead>{messages.thCreated}</TableHead>
+                <TableHead className="text-right">{messages.thActions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -314,7 +321,7 @@ export function StorageAuditView() {
                     colSpan={7}
                     className="h-24 text-center text-xs text-muted-foreground"
                   >
-                    No storage records found matching filters.
+                    {messages.noRecords}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -358,7 +365,7 @@ export function StorageAuditView() {
                             size="sm"
                             className="h-7 w-7 p-0"
                             onClick={() => handleOpenPreview(file)}
-                            title="Preview file"
+                            title={messages.previewFile}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -367,7 +374,7 @@ export function StorageAuditView() {
                             size="sm"
                             className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                             onClick={() => setDeleteTarget(file)}
-                            title="Force Delete"
+                            title={messages.forceDelete}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -383,7 +390,9 @@ export function StorageAuditView() {
           {/* Pagination */}
           <div className="flex items-center justify-between pt-4 text-xs text-muted-foreground">
             <div>
-              Showing {files.length} of {total} records
+              {messages.showingCount
+                .replace("{count}", String(files.length))
+                .replace("{total}", String(total))}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -393,7 +402,7 @@ export function StorageAuditView() {
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Previous
+                {messages.previous}
               </Button>
               <Button
                 variant="outline"
@@ -402,7 +411,7 @@ export function StorageAuditView() {
                 disabled={page * 15 >= total}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Next
+                {messages.next}
               </Button>
             </div>
           </div>
@@ -420,7 +429,7 @@ export function StorageAuditView() {
               {previewFile?.originalFilename}
             </DialogTitle>
             <DialogDescription className="font-mono text-xs">
-              Storage Key: {previewFile?.storageKey}
+              {messages.storageKeyLabel} {previewFile?.storageKey}
             </DialogDescription>
           </DialogHeader>
           <div className="flex min-h-[250px] items-center justify-center rounded-lg border bg-muted/20 p-4">
@@ -444,18 +453,18 @@ export function StorageAuditView() {
                 <div className="flex flex-col items-center gap-3 text-center">
                   <ExternalLink className="h-10 w-10 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">
-                    Non-visual document ({previewFile?.mimeType})
+                    {messages.nonVisualDoc.replace("{mime}", previewFile?.mimeType ?? "")}
                   </span>
                   <Button size="sm" asChild>
                     <a href={previewUrl} target="_blank" rel="noreferrer">
-                      Open Document
+                      {messages.openDocument}
                     </a>
                   </Button>
                 </div>
               )
             ) : (
               <span className="text-xs text-destructive">
-                Preview unavailable
+                {messages.previewUnavailable}
               </span>
             )}
           </div>
@@ -465,7 +474,7 @@ export function StorageAuditView() {
               size="sm"
               onClick={() => setPreviewFile(null)}
             >
-              Close
+              {messages.close}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -479,11 +488,10 @@ export function StorageAuditView() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" /> Force Delete S3 Object
+              <AlertTriangle className="h-5 w-5" /> {messages.forceDeleteTitle}
             </DialogTitle>
             <DialogDescription>
-              This action will permanently delete the physical S3 object and
-              mark the database record as deleted.
+              {messages.forceDeleteDesc}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1 rounded bg-muted/40 p-3 py-2 font-mono text-xs">
@@ -503,7 +511,7 @@ export function StorageAuditView() {
               size="sm"
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {messages.cancel}
             </Button>
             <Button
               variant="destructive"
@@ -514,7 +522,7 @@ export function StorageAuditView() {
               {deleting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Delete Permanently"
+                messages.confirmDelete
               )}
             </Button>
           </DialogFooter>

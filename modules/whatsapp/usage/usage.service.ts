@@ -619,23 +619,27 @@ export class WhatsappUsageService {
         _sum: { quotaValue: true },
         _count: true,
       }),
-      prisma.whatsappBillingLedger.findMany({
+      prisma.whatsappBillingLedger.groupBy({
+        by: ["pricingCategory", "category"],
         where: {
           ...(organizationId ? { organizationId } : {}),
           isReverted: false,
           pricingBillable: true,
           ...summaryDateFilter,
         },
-        select: { category: true, pricingCategory: true, quotaValue: true },
+        _sum: { quotaValue: true },
+        _count: { _all: true },
       }),
-      prisma.whatsappBillingLedger.findMany({
+      prisma.whatsappBillingLedger.groupBy({
+        by: ["pricingCategory", "category"],
         where: {
           ...(organizationId ? { organizationId } : {}),
           isReverted: true,
           pricingBillable: true,
           ...summaryDateFilter,
         },
-        select: { category: true, pricingCategory: true, quotaValue: true },
+        _sum: { quotaValue: true },
+        _count: { _all: true },
       }),
       prisma.whatsappBasePrice.findMany({
         where: { isActive: true },
@@ -648,21 +652,39 @@ export class WhatsappUsageService {
     const quotaCredits = activeQuotaCredits + quotaRefundedCredits
 
     let paygAmount = 0
-    const paygCount = paygActiveAgg.length
-    for (const item of paygActiveAgg) {
-      const cat = (item.pricingCategory || item.category || "UTILITY").toUpperCase()
-      const bp = basePrices.find((p) => p.category === cat) ?? basePrices.find((p) => p.category === "UTILITY")
+    let paygCount = 0
+    for (const group of paygActiveAgg) {
+      const cat = (
+        group.pricingCategory ||
+        group.category ||
+        "UTILITY"
+      ).toUpperCase()
+      const bp =
+        basePrices.find((p) => p.category === cat) ??
+        basePrices.find((p) => p.category === "UTILITY")
       const price = bp ? toNum(bp.basePrice) : FALLBACK_PAYG_UNIT_PRICE_IDR
-      paygAmount += price * toNum(item.quotaValue || 1)
+      const count = group._count._all ?? 0
+      const quotaSum = toNum(group._sum.quotaValue ?? count)
+      paygCount += count
+      paygAmount += price * quotaSum
     }
 
     let paygRefundedAmount = 0
-    const paygRefundedCount = paygRefundedAgg.length
-    for (const item of paygRefundedAgg) {
-      const cat = (item.pricingCategory || item.category || "UTILITY").toUpperCase()
-      const bp = basePrices.find((p) => p.category === cat) ?? basePrices.find((p) => p.category === "UTILITY")
+    let paygRefundedCount = 0
+    for (const group of paygRefundedAgg) {
+      const cat = (
+        group.pricingCategory ||
+        group.category ||
+        "UTILITY"
+      ).toUpperCase()
+      const bp =
+        basePrices.find((p) => p.category === cat) ??
+        basePrices.find((p) => p.category === "UTILITY")
       const price = bp ? toNum(bp.basePrice) : FALLBACK_PAYG_UNIT_PRICE_IDR
-      paygRefundedAmount += price * toNum(item.quotaValue || 1)
+      const count = group._count._all ?? 0
+      const quotaSum = toNum(group._sum.quotaValue ?? count)
+      paygRefundedCount += count
+      paygRefundedAmount += price * quotaSum
     }
 
     const totalCredits = quotaCredits + paygCount + paygRefundedCount

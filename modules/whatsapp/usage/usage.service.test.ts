@@ -14,6 +14,7 @@ const mockLedgerAggregate = mock(async () => ({
   _sum: { quotaValue: 0 as number | null },
   _count: 0,
 }))
+const mockLedgerGroupBy = mock(async () => [] as unknown[])
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -33,6 +34,7 @@ mock.module("@/lib/prisma", () => ({
       findMany: mockFindManyWhatsappLedger,
       count: mockLedgerCount,
       aggregate: mockLedgerAggregate,
+      groupBy: mockLedgerGroupBy,
     },
     whatsappBasePrice: {
       findMany: mockFindManyBasePrices,
@@ -369,6 +371,8 @@ describe("getLedgerEntries", () => {
       _sum: { quotaValue: 0 as number | null },
       _count: 0,
     }))
+    mockLedgerGroupBy.mockReset()
+    mockLedgerGroupBy.mockImplementation(async () => [])
   })
 
   it("returns paginated ledger entries with summary", async () => {
@@ -471,5 +475,50 @@ describe("getLedgerEntries", () => {
     expect(result.summary.totalCredits).toBe(0)
     expect(result.summary.totalRefundedCredits).toBe(0)
     expect(result.summary.activeCredits).toBe(0)
+  })
+
+  it("calculates PAYG saldo and quota breakdowns in summary correctly", async () => {
+    mockFindManyWhatsappLedger.mockResolvedValue([])
+    mockLedgerCount.mockResolvedValue(4)
+    mockLedgerAggregate
+      .mockResolvedValueOnce({
+        _sum: { quotaValue: new Decimal(2) as unknown as number },
+        _count: 2,
+      })
+      .mockResolvedValueOnce({
+        _sum: { quotaValue: new Decimal(1) as unknown as number },
+        _count: 1,
+      })
+    mockLedgerGroupBy
+      .mockResolvedValueOnce([
+        {
+          category: "MARKETING",
+          pricingCategory: "MARKETING",
+          _count: { _all: 2 },
+          _sum: { quotaValue: new Decimal(2) as unknown as number },
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          category: "UTILITY",
+          pricingCategory: "UTILITY",
+          _count: { _all: 1 },
+          _sum: { quotaValue: new Decimal(1) as unknown as number },
+        },
+      ])
+
+    const service = new WhatsappUsageService()
+    const result = await service.getLedgerEntries("org-1")
+
+    expect(result.summary.activeQuotaCredits).toBe(2)
+    expect(result.summary.quotaRefundedCredits).toBe(1)
+    expect(result.summary.quotaCredits).toBe(3)
+    expect(result.summary.activePaygCount).toBe(2)
+    expect(result.summary.activePaygAmount).toBe(1174)
+    expect(result.summary.paygRefundedCount).toBe(1)
+    expect(result.summary.paygRefundedAmount).toBe(357)
+    expect(result.summary.totalCredits).toBe(6)
+    expect(result.summary.activeCredits).toBe(4)
+    expect(result.summary.totalRefundedCredits).toBe(2)
   })
 })

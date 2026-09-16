@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { getMessages } from "@/lib/i18n/messages"
 import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 import {
   Card,
@@ -179,6 +180,7 @@ export function OrganizationAdminSurface({
   const pathname = usePathname()
   const { locale } = getLocaleFromPathname(pathname)
   const activeLocale = (locale ?? defaultLocale) as AppLocale
+  const messages = getMessages(activeLocale).console.organizationAdmin
   const [activeTab, setActiveTab] = useState<TabKey>("members")
 
   const [authorization, setAuthorization] =
@@ -488,17 +490,17 @@ export function OrganizationAdminSurface({
     <div className="space-y-6 p-6 pt-0">
       <Card>
         <CardHeader>
-          <CardTitle>Organization Administration</CardTitle>
+          <CardTitle>{messages.heading}</CardTitle>
           <CardDescription>
-            Manage members, invitations, and tenant settings for{" "}
-            <span className="font-medium">
-              {organization?.name ?? organizationId}
-            </span>
-            .
+            {messages.description.replace(
+              "{name}",
+              organization?.name ?? organizationId
+            )}
           </CardDescription>
           <p className="text-xs text-muted-foreground">
-            Effective role: {authorization?.effectiveGlobalRole ?? "none"} /{" "}
-            {authorization?.effectiveTenantRole ?? "none"}
+            {messages.effectiveRole}{" "}
+            {authorization?.effectiveGlobalRole ?? messages.noneRole} /{" "}
+            {authorization?.effectiveTenantRole ?? messages.noneRole}
           </p>
         </CardHeader>
       </Card>
@@ -515,7 +517,7 @@ export function OrganizationAdminSurface({
               }}
               disabled={isRefreshing}
             >
-              Retry
+              {messages.retry}
             </Button>
           </div>
         </div>
@@ -530,6 +532,12 @@ export function OrganizationAdminSurface({
       <div className="flex flex-wrap gap-2 border-b border-border pb-2">
         {TAB_OPTIONS.map((tab) => {
           const isActive = activeTab === tab.key
+          const label =
+            tab.key === "members"
+              ? messages.tabs.members
+              : tab.key === "invitations"
+                ? messages.tabs.invitations
+                : messages.tabs.settings
 
           return (
             <Button
@@ -539,31 +547,33 @@ export function OrganizationAdminSurface({
               size="sm"
               onClick={() => setActiveTab(tab.key)}
             >
-              {tab.label}
+              {label}
             </Button>
           )
         })}
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {TAB_OPTIONS.find((option) => option.key === activeTab)?.description}
-        {isRefreshing ? " Refreshing..." : ""}
+        {activeTab === "members"
+          ? messages.tabs.membersDesc
+          : activeTab === "invitations"
+            ? messages.tabs.invitationsDesc
+            : messages.tabs.settingsDesc}
+        {isRefreshing ? messages.refreshing : ""}
       </p>
 
       {activeTab === "members" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Members</CardTitle>
+            <CardTitle>{messages.members.heading}</CardTitle>
             <CardDescription>
-              Promote, demote, transfer ownership, and remove organization
-              members.
+              {messages.members.description}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {!canManageTenant ? (
               <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
-                You do not have permission to manage members in this
-                organization.
+                {messages.members.noPermission}
               </p>
             ) : null}
 
@@ -575,8 +585,8 @@ export function OrganizationAdminSurface({
                     onChange={(event) =>
                       setMemberSearchQuery(event.target.value)
                     }
-                    placeholder="Search by name, email, or ID"
-                    aria-label="Search members"
+                    placeholder={messages.members.searchPlaceholder}
+                    aria-label={messages.members.searchAriaLabel}
                   />
                   <select
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -584,9 +594,11 @@ export function OrganizationAdminSurface({
                     onChange={(event) =>
                       setMemberRoleFilter(event.target.value)
                     }
-                    aria-label="Filter by role"
+                    aria-label={messages.members.filterRoleAriaLabel}
                   >
-                    <option value={ALL_MEMBER_ROLES_FILTER}>All roles</option>
+                    <option value={ALL_MEMBER_ROLES_FILTER}>
+                      {messages.members.allRoles}
+                    </option>
                     {memberDiscoveryOptions.roleOptions.map((role) => (
                       <option key={role} value={role}>
                         {role}
@@ -599,10 +611,10 @@ export function OrganizationAdminSurface({
                     onChange={(event) =>
                       setMemberStatusFilter(event.target.value)
                     }
-                    aria-label="Filter by status"
+                    aria-label={messages.members.filterStatusAriaLabel}
                   >
                     <option value={ALL_MEMBER_STATUSES_FILTER}>
-                      All statuses
+                      {messages.members.allStatuses}
                     </option>
                     {memberDiscoveryOptions.statusOptions.map((status) => (
                       <option key={status} value={status}>
@@ -616,29 +628,31 @@ export function OrganizationAdminSurface({
                     onClick={resetMemberDiscovery}
                     disabled={!hasMemberDiscoveryFilters}
                   >
-                    Reset
+                    {messages.members.resetFilters}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Showing {filteredMembers.length} of {members.length} members.
+                  {messages.members.showingCount
+                    .replace("{filtered}", String(filteredMembers.length))
+                    .replace("{total}", String(members.length))}
                 </p>
               </div>
             ) : null}
 
             {members.length === 0 ? (
               <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-                No members found.
+                {messages.members.noMembers}
               </p>
             ) : filteredMembers.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-                <p>No members match the current search and filters.</p>
+                <p>{messages.members.noMatchingMembers}</p>
                 <Button
                   type="button"
                   variant="link"
                   className="mt-1 h-auto p-0 text-sm"
                   onClick={resetMemberDiscovery}
                 >
-                  Clear search and filters
+                  {messages.members.clearFilters}
                 </Button>
               </div>
             ) : (
@@ -677,14 +691,15 @@ export function OrganizationAdminSurface({
                           {member.email ?? member.userId}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Member ID: {member.id}
+                          {messages.members.memberId.replace("{id}", member.id)}
                         </p>
                       </div>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">
-                        Role: {member.role ?? "unknown"} | Status:{" "}
-                        {member.status}
+                        {messages.members.roleAndStatus
+                          .replace("{role}", member.role ?? messages.unknownRole)
+                          .replace("{status}", member.status)}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -827,9 +842,9 @@ export function OrganizationAdminSurface({
       {activeTab === "invitations" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Invitations</CardTitle>
+            <CardTitle>{messages.invitations.heading}</CardTitle>
             <CardDescription>
-              Send, revoke, and resend organization invitations.
+              {messages.invitations.description}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -842,7 +857,7 @@ export function OrganizationAdminSurface({
                   type="email"
                   value={inviteEmail}
                   onChange={(event) => setInviteEmail(event.target.value)}
-                  placeholder="user@company.com"
+                  placeholder={messages.invitations.emailPlaceholder}
                   disabled={
                     !allowedInviteRoles.length || Boolean(pendingActionId)
                   }
@@ -871,19 +886,21 @@ export function OrganizationAdminSurface({
                     !allowedInviteRoles.length || Boolean(pendingActionId)
                   }
                 >
-                  {pendingActionId === "invite" ? "Sending..." : "Invite"}
+                  {pendingActionId === "invite"
+                    ? messages.invitations.sending
+                    : messages.invitations.invite}
                 </Button>
               </div>
               {!allowedInviteRoles.length ? (
                 <p className="text-xs text-muted-foreground">
-                  You do not have permission to send invitations.
+                  {messages.invitations.noPermission}
                 </p>
               ) : null}
             </form>
 
             {pendingInvitations.length === 0 ? (
               <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-                No pending invitations.
+                {messages.invitations.noPending}
               </p>
             ) : (
               <div className="space-y-3">
@@ -895,8 +912,12 @@ export function OrganizationAdminSurface({
                     <div>
                       <p className="text-sm font-medium">{invitation.email}</p>
                       <p className="text-xs text-muted-foreground">
-                        Role: {toActionLabel(invitation.roleSlug)} | Expires:{" "}
-                        {formatTimestamp(invitation.expiresAt)}
+                        {messages.invitations.roleAndExpires
+                          .replace("{role}", toActionLabel(invitation.roleSlug))
+                          .replace(
+                            "{expiresAt}",
+                            formatTimestamp(invitation.expiresAt)
+                          )}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -914,8 +935,8 @@ export function OrganizationAdminSurface({
                         }}
                       >
                         {pendingActionId === `resend-${invitation.id}`
-                          ? "Resending..."
-                          : "Resend"}
+                          ? messages.invitations.resending
+                          : messages.invitations.resend}
                       </Button>
                       <Button
                         size="sm"
@@ -939,8 +960,8 @@ export function OrganizationAdminSurface({
                         }}
                       >
                         {pendingActionId === `revoke-${invitation.id}`
-                          ? "Revoking..."
-                          : "Revoke"}
+                          ? messages.invitations.revoking
+                          : messages.invitations.revoke}
                       </Button>
                     </div>
                   </div>
@@ -955,9 +976,9 @@ export function OrganizationAdminSurface({
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Organization Profile</CardTitle>
+              <CardTitle>{messages.settings.profileHeading}</CardTitle>
               <CardDescription>
-                Keep your organization name and metadata current.
+                {messages.settings.profileDescription}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -989,7 +1010,7 @@ export function OrganizationAdminSurface({
                     htmlFor="org-name"
                     className="text-xs font-semibold text-muted-foreground"
                   >
-                    Organization Name
+                    {messages.settings.orgNameLabel}
                   </label>
                   <Input
                     id="org-name"
@@ -997,7 +1018,7 @@ export function OrganizationAdminSurface({
                     onChange={(event) =>
                       setOrganizationNameDraft(event.target.value)
                     }
-                    placeholder="Organization name"
+                    placeholder={messages.settings.orgNamePlaceholder}
                     disabled={Boolean(pendingActionId)}
                   />
                 </div>
@@ -1007,7 +1028,7 @@ export function OrganizationAdminSurface({
                     htmlFor="billing-full-name"
                     className="text-xs font-semibold text-muted-foreground"
                   >
-                    Full Organization Name (for Billing/Support)
+                    {messages.settings.billingFullNameLabel}
                   </label>
                   <Input
                     id="billing-full-name"
@@ -1015,7 +1036,7 @@ export function OrganizationAdminSurface({
                     onChange={(event) =>
                       setBillingFullNameDraft(event.target.value)
                     }
-                    placeholder="e.g. PT. Maju Jaya Bersama"
+                    placeholder={messages.settings.billingFullNamePlaceholder}
                     disabled={Boolean(pendingActionId)}
                   />
                 </div>
@@ -1025,7 +1046,7 @@ export function OrganizationAdminSurface({
                     htmlFor="billing-address"
                     className="text-xs font-semibold text-muted-foreground"
                   >
-                    Address
+                    {messages.settings.billingAddressLabel}
                   </label>
                   <Input
                     id="billing-address"
@@ -1033,7 +1054,7 @@ export function OrganizationAdminSurface({
                     onChange={(event) =>
                       setBillingAddressDraft(event.target.value)
                     }
-                    placeholder="e.g. Jl. Jend. Sudirman No. 12"
+                    placeholder={messages.settings.billingAddressPlaceholder}
                     disabled={Boolean(pendingActionId)}
                   />
                 </div>
@@ -1044,7 +1065,7 @@ export function OrganizationAdminSurface({
                       htmlFor="billing-city"
                       className="text-xs font-semibold text-muted-foreground"
                     >
-                      City
+                      {messages.settings.billingCityLabel}
                     </label>
                     <Input
                       id="billing-city"
@@ -1052,7 +1073,7 @@ export function OrganizationAdminSurface({
                       onChange={(event) =>
                         setBillingCityDraft(event.target.value)
                       }
-                      placeholder="e.g. Jakarta Selatan"
+                      placeholder={messages.settings.billingCityPlaceholder}
                       disabled={Boolean(pendingActionId)}
                     />
                   </div>
@@ -1061,7 +1082,7 @@ export function OrganizationAdminSurface({
                       htmlFor="billing-state"
                       className="text-xs font-semibold text-muted-foreground"
                     >
-                      State / Province
+                      {messages.settings.billingStateLabel}
                     </label>
                     <Input
                       id="billing-state"
@@ -1069,7 +1090,7 @@ export function OrganizationAdminSurface({
                       onChange={(event) =>
                         setBillingStateDraft(event.target.value)
                       }
-                      placeholder="e.g. DKI Jakarta"
+                      placeholder={messages.settings.billingStatePlaceholder}
                       disabled={Boolean(pendingActionId)}
                     />
                   </div>
@@ -1081,7 +1102,7 @@ export function OrganizationAdminSurface({
                       htmlFor="billing-country"
                       className="text-xs font-semibold text-muted-foreground"
                     >
-                      Country
+                      {messages.settings.billingCountryLabel}
                     </label>
                     <Input
                       id="billing-country"
@@ -1089,7 +1110,7 @@ export function OrganizationAdminSurface({
                       onChange={(event) =>
                         setBillingCountryDraft(event.target.value)
                       }
-                      placeholder="e.g. Indonesia"
+                      placeholder={messages.settings.billingCountryPlaceholder}
                       disabled={Boolean(pendingActionId)}
                     />
                   </div>
@@ -1098,7 +1119,7 @@ export function OrganizationAdminSurface({
                       htmlFor="billing-post-code"
                       className="text-xs font-semibold text-muted-foreground"
                     >
-                      Post Code
+                      {messages.settings.billingPostCodeLabel}
                     </label>
                     <Input
                       id="billing-post-code"
@@ -1106,7 +1127,7 @@ export function OrganizationAdminSurface({
                       onChange={(event) =>
                         setBillingPostCodeDraft(event.target.value)
                       }
-                      placeholder="e.g. 12190"
+                      placeholder={messages.settings.billingPostCodePlaceholder}
                       disabled={Boolean(pendingActionId)}
                     />
                   </div>
@@ -1119,20 +1140,32 @@ export function OrganizationAdminSurface({
                   className="mt-2"
                 >
                   {pendingActionId === "update-organization"
-                    ? "Saving..."
-                    : "Save Profile"}
+                    ? messages.settings.savingProfile
+                    : messages.settings.saveProfile}
                 </Button>
               </form>
 
               {organization ? (
                 <div className="space-y-1 border border-border p-3 text-xs text-muted-foreground">
-                  <p>Organization ID: {organization.id}</p>
-                  <p>Created: {formatTimestamp(organization.createdAt)}</p>
-                  <p>Last updated: {formatTimestamp(organization.updatedAt)}</p>
+                  <p>
+                    {messages.settings.orgId.replace("{id}", organization.id)}
+                  </p>
+                  <p>
+                    {messages.settings.created.replace(
+                      "{date}",
+                      formatTimestamp(organization.createdAt)
+                    )}
+                  </p>
+                  <p>
+                    {messages.settings.lastUpdated.replace(
+                      "{date}",
+                      formatTimestamp(organization.updatedAt)
+                    )}
+                  </p>
                 </div>
               ) : (
                 <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-                  Organization profile is not available.
+                  {messages.settings.profileUnavailable}
                 </p>
               )}
             </CardContent>
@@ -1140,16 +1173,17 @@ export function OrganizationAdminSurface({
 
           <Card>
             <CardHeader>
-              <CardTitle>Danger Zone</CardTitle>
+              <CardTitle>{messages.settings.dangerZoneHeading}</CardTitle>
               <CardDescription>
-                Delete this organization and all tenant-scoped data.
+                {messages.settings.dangerZoneDescription}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                To confirm deletion, type the organization name exactly:{" "}
+                {messages.settings.deleteNoticePrefix}
                 <span className="font-medium text-foreground">
-                  {organization?.name ?? "(organization name unavailable)"}
+                  {organization?.name ??
+                    messages.settings.deleteNoticeUnavailable}
                 </span>
                 .
               </p>
@@ -1204,7 +1238,7 @@ export function OrganizationAdminSurface({
                   onChange={(event) =>
                     setDeleteConfirmation(event.target.value)
                   }
-                  placeholder="Type organization name to confirm"
+                  placeholder={messages.settings.deleteConfirmPlaceholder}
                   disabled={Boolean(pendingActionId)}
                 />
                 <Button
@@ -1213,8 +1247,8 @@ export function OrganizationAdminSurface({
                   disabled={Boolean(pendingActionId) || !organization}
                 >
                   {pendingActionId === "delete-organization"
-                    ? "Deleting..."
-                    : "Delete Organization"}
+                    ? messages.settings.deletingOrganization
+                    : messages.settings.deleteOrganization}
                 </Button>
               </form>
             </CardContent>

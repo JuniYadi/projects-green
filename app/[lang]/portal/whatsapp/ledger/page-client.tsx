@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import {
   Receipt,
   Buildings,
@@ -13,6 +14,8 @@ import {
   MagnifyingGlass,
   Funnel,
 } from "@phosphor-icons/react"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import { eden } from "@/lib/eden"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { formatWhatsappPaygCost } from "@/modules/whatsapp/usage/usage.dto"
@@ -113,9 +116,13 @@ function formatDate(iso: string): string {
 function StatusBadge({
   status,
   isReverted,
+  messages,
 }: {
   status: string
   isReverted: boolean
+  messages?: ReturnType<
+    typeof getMessages
+  >["console"]["whatsapp"]["ledgerAdmin"]
 }) {
   if (isReverted || status === "REFUNDED" || status === "REVERTED") {
     return (
@@ -124,7 +131,7 @@ function StatusBadge({
         className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
       >
         <ArrowCounterClockwise className="mr-1 size-3" />
-        Refunded
+        {messages ? messages.statusRefunded : "Refunded"}
       </Badge>
     )
   }
@@ -136,7 +143,7 @@ function StatusBadge({
         className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
       >
         <CheckCircle className="mr-1 size-3" />
-        Confirmed
+        {messages ? messages.statusConfirmed : "Confirmed"}
       </Badge>
     )
   }
@@ -148,7 +155,7 @@ function StatusBadge({
         className="border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
       >
         <Clock className="mr-1 size-3" />
-        Pending
+        {messages ? messages.statusPending : "Pending"}
       </Badge>
     )
   }
@@ -176,6 +183,9 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 export default function PortalWhatsAppLedgerPage() {
+  const params = useParams()
+  const locale = resolveLocaleOrDefault(params?.lang as string)
+  const messages = getMessages(locale).console.whatsapp.ledgerAdmin
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")
   const [entries, setEntries] = React.useState<LedgerEntry[]>([])
@@ -357,13 +367,8 @@ export default function PortalWhatsAppLedgerPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">
-          WhatsApp Billing & Quota Ledger
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Itemized history of message charges, quota deductions, and refunds
-          across all organizations.
-        </p>
+        <h1 className="text-2xl font-semibold">{messages.title}</h1>
+        <p className="text-sm text-muted-foreground">{messages.description}</p>
       </header>
 
       {/* Summary KPI Cards */}
@@ -371,7 +376,7 @@ export default function PortalWhatsAppLedgerPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Package Quota Used
+              {messages.packageQuotaUsed}
             </CardTitle>
             <Receipt className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -404,7 +409,7 @@ export default function PortalWhatsAppLedgerPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              PAYG Saldo Charges
+              {messages.paygSaldoCharges}
             </CardTitle>
             <Tag className="size-4 text-amber-500" />
           </CardHeader>
@@ -428,7 +433,7 @@ export default function PortalWhatsAppLedgerPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Net Active Messages
+              {messages.netActiveMessages}
             </CardTitle>
             <CheckCircle className="size-4 text-emerald-500" />
           </CardHeader>
@@ -442,8 +447,8 @@ export default function PortalWhatsAppLedgerPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {(summary.activeQuotaCredits ?? 0).toLocaleString("id-ID")}{" "}
-                  quota + {(summary.activePaygCount ?? 0).toLocaleString("id-ID")}{" "}
-                  PAYG
+                  quota +{" "}
+                  {(summary.activePaygCount ?? 0).toLocaleString("id-ID")} PAYG
                 </p>
               </>
             )}
@@ -453,7 +458,7 @@ export default function PortalWhatsAppLedgerPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Refunded / Reverted
+              {messages.refundedReverted}
             </CardTitle>
             <ArrowCounterClockwise className="size-4 text-amber-500" />
           </CardHeader>
@@ -480,11 +485,8 @@ export default function PortalWhatsAppLedgerPage() {
       {/* Filter Bar */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Filters</CardTitle>
-          <CardDescription>
-            Narrow down transactions by organization, device, category, status,
-            or date range.
-          </CardDescription>
+          <CardTitle className="text-base">{messages.filtersTitle}</CardTitle>
+          <CardDescription>{messages.filtersDesc}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -492,10 +494,10 @@ export default function PortalWhatsAppLedgerPage() {
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Buildings className="size-3.5" />
-                Organization
+                {messages.organizationLabel}
               </label>
               <select
-                aria-label="Filter by organization"
+                aria-label={messages.filterByOrg}
                 value={selectedOrg}
                 onChange={(e) => {
                   setSelectedOrg(e.target.value)
@@ -503,7 +505,7 @@ export default function PortalWhatsAppLedgerPage() {
                 }}
                 className="w-full rounded-md border bg-background px-3 py-1.5 text-sm"
               >
-                <option value="all">All Organizations</option>
+                <option value="all">{messages.allOrganizations}</option>
                 {organizations.map((org) => (
                   <option key={org.id} value={org.id}>
                     {org.name}
@@ -516,10 +518,10 @@ export default function PortalWhatsAppLedgerPage() {
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <DeviceMobile className="size-3.5" />
-                Device
+                {messages.deviceLabel}
               </label>
               <select
-                aria-label="Filter by device"
+                aria-label={messages.filterByDevice}
                 value={effectiveSelectedDevice}
                 onChange={(e) => {
                   setSelectedDevice(e.target.value)
@@ -527,7 +529,7 @@ export default function PortalWhatsAppLedgerPage() {
                 }}
                 className="w-full rounded-md border bg-background px-3 py-1.5 text-sm"
               >
-                <option value="all">All Devices</option>
+                <option value="all">{messages.allDevices}</option>
                 {filteredDevices.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.phoneNumber ?? d.id}
@@ -540,10 +542,10 @@ export default function PortalWhatsAppLedgerPage() {
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Tag className="size-3.5" />
-                Category
+                {messages.categoryLabel}
               </label>
               <select
-                aria-label="Filter by category"
+                aria-label={messages.filterByCategory}
                 value={selectedCategory}
                 onChange={(e) => {
                   setSelectedCategory(e.target.value)
@@ -563,10 +565,10 @@ export default function PortalWhatsAppLedgerPage() {
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Funnel className="size-3.5" />
-                Status
+                {messages.statusLabel}
               </label>
               <select
-                aria-label="Filter by status"
+                aria-label={messages.filterByStatus}
                 value={selectedStatus}
                 onChange={(e) => {
                   setSelectedStatus(e.target.value)
@@ -588,10 +590,10 @@ export default function PortalWhatsAppLedgerPage() {
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <MagnifyingGlass className="size-3.5" />
-                Search Phone / WAMID
+                {messages.searchPhoneLabel}
               </label>
               <Input
-                placeholder="6281... or wamid.HBg..."
+                placeholder={messages.searchPhonePlaceholder}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value)
@@ -605,7 +607,7 @@ export default function PortalWhatsAppLedgerPage() {
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Calendar className="size-3.5" />
-                From Date
+                {messages.fromDate}
               </label>
               <Input
                 type="date"
@@ -622,7 +624,7 @@ export default function PortalWhatsAppLedgerPage() {
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Calendar className="size-3.5" />
-                To Date
+                {messages.toDate}
               </label>
               <Input
                 type="date"
@@ -643,7 +645,7 @@ export default function PortalWhatsAppLedgerPage() {
                 onClick={handleResetFilters}
                 className="h-8 w-full"
               >
-                Reset Filters
+                {messages.resetFilters}
               </Button>
             </div>
           </div>
@@ -654,9 +656,11 @@ export default function PortalWhatsAppLedgerPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div>
-            <CardTitle className="text-base">Ledger Entries</CardTitle>
+            <CardTitle className="text-base">{messages.entriesTitle}</CardTitle>
             <CardDescription>
-              Showing {entries.length} of {total} total transactions
+              {messages.showingCount
+                .replace("{count}", String(entries.length))
+                .replace("{total}", String(total))}
             </CardDescription>
           </div>
         </CardHeader>
@@ -670,7 +674,7 @@ export default function PortalWhatsAppLedgerPage() {
                 onClick={() => loadLedger()}
                 className="mt-3"
               >
-                Retry
+                {messages.retry}
               </Button>
             </div>
           )}
@@ -687,11 +691,9 @@ export default function PortalWhatsAppLedgerPage() {
           {state === "loaded" && entries.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Receipt className="mb-3 size-10 text-muted-foreground" />
-              <p className="text-sm font-medium">
-                No ledger transactions found
-              </p>
+              <p className="text-sm font-medium">{messages.noTransactions}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Try adjusting your filters or date range.
+                {messages.adjustFiltersPrompt}
               </p>
             </div>
           )}
@@ -701,15 +703,15 @@ export default function PortalWhatsAppLedgerPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Device / Recipient</TableHead>
-                    <TableHead>Category</TableHead>
+                    <TableHead>{messages.thDate}</TableHead>
+                    <TableHead>{messages.thOrganization}</TableHead>
+                    <TableHead>{messages.thDeviceRecipient}</TableHead>
+                    <TableHead>{messages.thCategory}</TableHead>
                     <TableHead className="text-right">
-                      Quantity / Value
+                      {messages.thQuantityValue}
                     </TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Notes / Reason</TableHead>
+                    <TableHead>{messages.thStatus}</TableHead>
+                    <TableHead>{messages.thNotesReason}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -733,7 +735,7 @@ export default function PortalWhatsAppLedgerPage() {
                           </div>
                           {entry.devicePhoneNumber && (
                             <div className="text-xs text-muted-foreground">
-                              via {entry.devicePhoneNumber}
+                              {messages.viaLabel} {entry.devicePhoneNumber}
                             </div>
                           )}
                           <div className="max-w-[180px] truncate font-mono text-[10px] text-muted-foreground">
@@ -784,12 +786,13 @@ export default function PortalWhatsAppLedgerPage() {
                           <StatusBadge
                             status={entry.status}
                             isReverted={entry.isReverted}
+                            messages={messages}
                           />
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
                           {entry.revertReason ? (
                             <span className="text-amber-600 dark:text-amber-400">
-                              Revert: {entry.revertReason}
+                              {messages.revertPrefix} {entry.revertReason}
                             </span>
                           ) : (
                             entry.lastStatus || "-"
@@ -805,7 +808,10 @@ export default function PortalWhatsAppLedgerPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t pt-4">
                   <p className="text-xs text-muted-foreground">
-                    Page {page} of {totalPages} ({total} items)
+                    {messages.pagePagination
+                      .replace("{page}", String(page))
+                      .replace("{totalPages}", String(totalPages))
+                      .replace("{totalItems}", String(total))}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -814,7 +820,7 @@ export default function PortalWhatsAppLedgerPage() {
                       disabled={page <= 1}
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                     >
-                      Previous
+                      {messages.prev}
                     </Button>
                     <Button
                       variant="outline"
@@ -824,7 +830,7 @@ export default function PortalWhatsAppLedgerPage() {
                         setPage((p) => Math.min(totalPages, p + 1))
                       }
                     >
-                      Next
+                      {messages.next}
                     </Button>
                   </div>
                 </div>

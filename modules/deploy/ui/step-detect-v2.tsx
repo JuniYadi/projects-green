@@ -308,7 +308,7 @@ export function StepDetectV2({
             role="status"
             aria-live="polite"
           >
-            <p className="font-medium">Checking your project…</p>
+            <p className="font-medium">{messages.detect.heading}</p>
             <p className="text-xs text-muted-foreground">
               {operations[activeOperation]?.label ?? "Preparing detection"}
             </p>
@@ -324,12 +324,12 @@ export function StepDetectV2({
         ) : (
           <details className="border border-border p-3">
             <summary className="cursor-pointer text-sm font-medium">
-              Show technical details
+              {messages.detect.showTechnicalDetails}
             </summary>
             <div className="mt-3 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
               <section className="space-y-2 border border-border p-3">
                 <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  Detection operations
+                  {messages.detect.operations}
                 </p>
                 <div className="space-y-2">
                   {operations.map((op) => (
@@ -368,7 +368,7 @@ export function StepDetectV2({
                       <span className="flex-1">{op.label}</span>
                       {op.status === "scanning" ? (
                         <span className="text-xs text-muted-foreground">
-                          Running…
+                          {messages.detect.running}
                         </span>
                       ) : null}
                     </div>
@@ -378,7 +378,7 @@ export function StepDetectV2({
 
               <section className="space-y-2 border border-border p-3">
                 <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  Evidence stream
+                  {messages.detect.evidence}
                 </p>
                 {detectionResult && !isDetecting ? (
                   evidenceItems.length > 0 ? (
@@ -402,26 +402,26 @@ export function StepDetectV2({
                     </ul>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      No evidence recorded.
+                      {messages.detect.noEvidence}
                     </p>
                   )
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Evidence appears as the AI scans the repository…
+                    {messages.detect.evidenceWaiting}
                   </p>
                 )}
               </section>
 
               <section className="space-y-2 border border-border p-3">
                 <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  Launch verdict
+                  {messages.detect.launchVerdict}
                 </p>
                 {detectionResult && !isDetecting ? (
                   <>
                     <ConfidenceBadge detectionResult={detectionResult} />
                     <div className="border border-border bg-muted/20 p-3 text-xs">
                       <p className="font-medium text-foreground">
-                        Detection status
+                        {messages.detect.detectionStatus}
                       </p>
                       <p className="text-muted-foreground capitalize">
                         {detectionResult.status.replace("_", " ")}
@@ -432,7 +432,7 @@ export function StepDetectV2({
                         </p>
                       ) : null}
                       <p className="mt-1 text-muted-foreground">
-                        Confidence: {detectionResult.confidence}%
+                        {messages.detect.confidence}: {detectionResult.confidence}%
                       </p>
                     </div>
                   </>
@@ -470,14 +470,13 @@ export function StepDetectV2({
               <p>{detectionError}</p>
               {isFinalFailure ? (
                 <p className="mt-1">
-                  Automatic detection stopped after two attempts. Manual
-                  configuration is available below.
+                  {messages.detect.retryFallback}
                 </p>
               ) : null}
             </div>
             {isFinalFailure ? (
               <Button variant="outline" size="sm" onClick={onRetry}>
-                Retry detection
+                {messages.detect.retryDetection}
               </Button>
             ) : null}
           </div>
@@ -489,20 +488,20 @@ export function StepDetectV2({
             className="border border-border p-3"
           >
             <summary className="cursor-pointer text-sm font-medium">
-              Change technical settings
+              {messages.detect.changeTechnicalSettings}
             </summary>
             <div className="mt-3 space-y-3">
-              <p className="text-sm font-medium">Manual override</p>
+              <p className="text-sm font-medium">{messages.detect.manualOverride}</p>
               <p className="text-xs text-muted-foreground">
                 {manualOverrideRequired
-                  ? "Manual setup is required before continuing."
-                  : "Optional: adjust settings if the detection is not exact."}
+                  ? messages.detect.manualRequired
+                  : messages.detect.optionalAdjust}
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">Language</p>
+                  <p className="text-xs font-medium">{messages.detect.language}</p>
                   <select
-                    aria-label="Language selector"
+                    aria-label={messages.detect.languageSelector}
                     aria-invalid={needsManualValues && missingLanguage}
                     className={cn(
                       "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
@@ -515,7 +514,7 @@ export function StepDetectV2({
                       onBuildFieldChange("language", event.target.value)
                     }}
                   >
-                    <option value="">Select language</option>
+                    <option value="">{messages.detect.selectLanguage}</option>
                     <option value="Node.js">Node.js</option>
                     <option value="Python">Python</option>
                     <option value="Ruby">Ruby</option>
@@ -528,9 +527,9 @@ export function StepDetectV2({
                 </div>
 
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">Framework</p>
+                  <p className="text-xs font-medium">{messages.detect.framework}</p>
                   <select
-                    aria-label="Framework selector"
+                    aria-label={messages.detect.frameworkSelector}
                     aria-invalid={needsManualValues && missingFramework}
                     className={cn(
                       "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
@@ -543,7 +542,7 @@ export function StepDetectV2({
                       onBuildFieldChange("framework", event.target.value)
                     }}
                   >
-                    <option value="">Select framework</option>
+                    <option value="">{messages.detect.selectFramework}</option>
                     <option value="Next.js">Next.js</option>
                     <option value="React">React</option>
                     <option value="Vue">Vue</option>
@@ -566,9 +565,9 @@ export function StepDetectV2({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">Framework version</p>
+                  <p className="text-xs font-medium">{messages.detect.frameworkVersion}</p>
                   <input
-                    aria-label="Framework version"
+                    aria-label={messages.detect.frameworkVersion}
                     value={buildState.frameworkVersion ?? ""}
                     placeholder="e.g. 13.x"
                     className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
@@ -578,9 +577,9 @@ export function StepDetectV2({
                   />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">Default port</p>
+                  <p className="text-xs font-medium">{messages.detect.defaultPort}</p>
                   <input
-                    aria-label="Default port"
+                    aria-label={messages.detect.defaultPort}
                     type="number"
                     value={buildState.defaultPort || ""}
                     placeholder="e.g. 3000"
@@ -597,9 +596,9 @@ export function StepDetectV2({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">Primary engine</p>
+                  <p className="text-xs font-medium">{messages.detect.primaryEngine}</p>
                   <input
-                    aria-label="Primary engine"
+                    aria-label={messages.detect.primaryEngine}
                     value={buildState.primaryEngine ?? ""}
                     placeholder="e.g. node"
                     className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
@@ -609,9 +608,9 @@ export function StepDetectV2({
                   />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">Engine version</p>
+                  <p className="text-xs font-medium">{messages.detect.engineVersion}</p>
                   <input
-                    aria-label="Primary engine version"
+                    aria-label={messages.detect.engineVersion}
                     value={buildState.primaryEngineVersion ?? ""}
                     placeholder="e.g. 24"
                     className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
@@ -627,9 +626,9 @@ export function StepDetectV2({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">Secondary engine</p>
+                  <p className="text-xs font-medium">{messages.detect.secondaryEngine}</p>
                   <input
-                    aria-label="Secondary engine"
+                    aria-label={messages.detect.secondaryEngine}
                     value={buildState.secondaryEngine ?? ""}
                     placeholder="e.g. node"
                     className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
@@ -639,9 +638,9 @@ export function StepDetectV2({
                   />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">Engine version</p>
+                  <p className="text-xs font-medium">{messages.detect.engineVersion}</p>
                   <input
-                    aria-label="Secondary engine version"
+                    aria-label={messages.detect.engineVersion}
                     value={buildState.secondaryEngineVersion ?? ""}
                     placeholder="e.g. 24"
                     className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
@@ -656,9 +655,9 @@ export function StepDetectV2({
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium">Build command</p>
+                <p className="text-xs font-medium">{messages.detect.buildCommand}</p>
                 <input
-                  aria-label="Build command"
+                  aria-label={messages.detect.buildCommand}
                   aria-invalid={needsManualValues && missingBuildCommand}
                   value={buildState.buildCommand}
                   disabled={buildState.useDockerfile}
@@ -676,8 +675,8 @@ export function StepDetectV2({
                 />
                 <p className="text-xs text-muted-foreground">
                   {buildState.useDockerfile
-                    ? "Build command is ignored because Dockerfile mode is enabled."
-                    : "This command runs in the selected root directory during build."}
+                    ? messages.detect.buildCommandDockerfile
+                    : messages.detect.buildCommandRoot}
                 </p>
               </div>
 
@@ -689,12 +688,12 @@ export function StepDetectV2({
                     onBuildFieldChange("useDockerfile", event.target.checked)
                   }}
                 />
-                Use Dockerfile instead
+                {messages.detect.useDockerfile}
               </label>
               <p className="text-xs text-muted-foreground">
                 {buildState.useDockerfile
-                  ? "Dockerfile mode is on. Platform detection and command settings are optional."
-                  : "Dockerfile mode is off. Build command and runtime settings are used."}
+                  ? messages.detect.dockerfileOn
+                  : messages.detect.dockerfileOff}
               </p>
 
               {showValidationErrors ? (
@@ -702,7 +701,7 @@ export function StepDetectV2({
                   className="space-y-1 border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive"
                   role="alert"
                 >
-                  <p className="font-medium">Build settings need attention</p>
+                  <p className="font-medium">{messages.detect.buildSettingsAttention}</p>
                   <ul className="list-disc pl-4">
                     {validationMessages.map((message) => {
                       return <li key={message}>{message}</li>
@@ -714,8 +713,8 @@ export function StepDetectV2({
               {!isPolicyBlocked && !showValidationErrors && canProceed ? (
                 <div className="border border-border bg-muted/40 p-2 text-xs text-foreground">
                   {buildState.useDockerfile
-                    ? "Ready: deployment will use your Dockerfile."
-                    : "Ready: build settings are complete."}
+                    ? messages.detect.readyDockerfile
+                    : messages.detect.readyBuild}
                 </div>
               ) : null}
             </div>
@@ -724,10 +723,10 @@ export function StepDetectV2({
       </div>
       <div className="flex items-center justify-between border-t p-4">
         <Button type="button" variant="outline" onClick={onBack}>
-          Back
+          {messages.detect.back}
         </Button>
         <Button type="button" onClick={onNext} disabled={!canProceed}>
-          Next
+          {messages.detect.next}
         </Button>
       </div>
     </div>

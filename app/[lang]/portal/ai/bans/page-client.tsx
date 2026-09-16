@@ -36,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type BanRow = {
@@ -56,6 +57,7 @@ export default function PortalAiBansPage() {
   const params = useParams()
   const lang = typeof params?.lang === "string" ? params.lang : "en"
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.aiBans
 
   const [bans, setBans] = useState<BanRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -159,16 +161,15 @@ export default function PortalAiBansPage() {
               href={localizePathname({ pathname: "/portal/ai", locale })}
               className="text-sm font-medium text-muted-foreground hover:text-foreground"
             >
-              AI Governance
+              {messages.governanceBreadcrumb}
             </Link>
             <span className="text-muted-foreground">/</span>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Active Bans & Blacklists
+              {messages.title}
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Multi-vector blacklists enforcing IP, User, Organization, and
-            WhatsApp phone blocks with 1-click pardon.
+            {messages.description}
           </p>
         </div>
 
@@ -176,21 +177,20 @@ export default function PortalAiBansPage() {
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" />
-              Add Manual Blacklist
+              {messages.addBlacklist}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Target Blacklist</DialogTitle>
+              <DialogTitle>{messages.addModalTitle}</DialogTitle>
               <DialogDescription>
-                Manually block an IP, user email/ID, organization, or WhatsApp
-                customer phone from querying AI models.
+                {messages.addModalDesc}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-2">
               <div className="space-y-1.5">
-                <Label htmlFor="banType">Ban Type</Label>
+                <Label htmlFor="banType">{messages.banTypeLabel}</Label>
                 <Select
                   value={banType}
                   onValueChange={(v) =>
@@ -201,16 +201,16 @@ export default function PortalAiBansPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="IP">IP Address</SelectItem>
-                    <SelectItem value="USER">User Account / Email</SelectItem>
-                    <SelectItem value="ORGANIZATION">Organization</SelectItem>
-                    <SelectItem value="PHONE">WhatsApp Phone Number</SelectItem>
+                    <SelectItem value="IP">{messages.typeIp}</SelectItem>
+                    <SelectItem value="USER">{messages.typeUser}</SelectItem>
+                    <SelectItem value="ORGANIZATION">{messages.typeOrg}</SelectItem>
+                    <SelectItem value="PHONE">{messages.typePhone}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="targetValue">Target Value</Label>
+                <Label htmlFor="targetValue">{messages.targetValueLabel}</Label>
                 <Input
                   id="targetValue"
                   placeholder={
@@ -228,7 +228,7 @@ export default function PortalAiBansPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="duration">Duration (Hours)</Label>
+                <Label htmlFor="duration">{messages.durationLabel}</Label>
                 <Select
                   value={isPermanent ? "PERMANENT" : String(durationHours)}
                   onValueChange={(val) => {
@@ -244,20 +244,20 @@ export default function PortalAiBansPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 Hour</SelectItem>
-                    <SelectItem value="12">12 Hours</SelectItem>
-                    <SelectItem value="24">24 Hours</SelectItem>
-                    <SelectItem value="168">7 Days (168 Hours)</SelectItem>
-                    <SelectItem value="PERMANENT">Permanent Ban</SelectItem>
+                    <SelectItem value="1">{messages.duration1h}</SelectItem>
+                    <SelectItem value="12">{messages.duration12h}</SelectItem>
+                    <SelectItem value="24">{messages.duration24h}</SelectItem>
+                    <SelectItem value="168">{messages.duration7d}</SelectItem>
+                    <SelectItem value="PERMANENT">{messages.durationPermanent}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="reason">Reason / Security Note</Label>
+                <Label htmlFor="reason">{messages.reasonLabel}</Label>
                 <Input
                   id="reason"
-                  placeholder="e.g. Prompt injection attack or abusive slurs"
+                  placeholder={messages.reasonPlaceholder}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                 />
@@ -266,13 +266,13 @@ export default function PortalAiBansPage() {
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancel
+                {messages.cancel}
               </Button>
               <Button
                 onClick={handleCreateBan}
                 disabled={createLoading || !targetValue.trim()}
               >
-                {createLoading ? "Creating..." : "Create Ban"}
+                {createLoading ? messages.creating : messages.createBan}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -282,19 +282,19 @@ export default function PortalAiBansPage() {
       {/* Tabs Filter */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="ALL">All ({bans.length})</TabsTrigger>
+          <TabsTrigger value="ALL">{messages.tabAll} ({bans.length})</TabsTrigger>
           <TabsTrigger value="ORGANIZATION">
-            Organization (
+            {messages.tabOrg} (
             {bans.filter((b) => b.banType === "ORGANIZATION").length})
           </TabsTrigger>
           <TabsTrigger value="IP">
-            IP Blacklist ({bans.filter((b) => b.banType === "IP").length})
+            {messages.tabIp} ({bans.filter((b) => b.banType === "IP").length})
           </TabsTrigger>
           <TabsTrigger value="USER">
-            User ({bans.filter((b) => b.banType === "USER").length})
+            {messages.tabUser} ({bans.filter((b) => b.banType === "USER").length})
           </TabsTrigger>
           <TabsTrigger value="PHONE">
-            Phone ({bans.filter((b) => b.banType === "PHONE").length})
+            {messages.tabPhone} ({bans.filter((b) => b.banType === "PHONE").length})
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -305,14 +305,14 @@ export default function PortalAiBansPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Target Value</TableHead>
-                <TableHead>Ban Type</TableHead>
-                <TableHead>Offense Level</TableHead>
-                <TableHead>Time Remaining</TableHead>
-                <TableHead>Strike Snapshot</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>{messages.thTargetValue}</TableHead>
+                <TableHead>{messages.thBanType}</TableHead>
+                <TableHead>{messages.thOffenseLevel}</TableHead>
+                <TableHead>{messages.thTimeRemaining}</TableHead>
+                <TableHead>{messages.thStrikeSnapshot}</TableHead>
+                <TableHead>{messages.thReason}</TableHead>
+                <TableHead>{messages.thCreated}</TableHead>
+                <TableHead className="text-right">{messages.thAction}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -322,7 +322,7 @@ export default function PortalAiBansPage() {
                     colSpan={8}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    Loading bans...
+                    {messages.loadingBans}
                   </TableCell>
                 </TableRow>
               ) : filteredBans.length === 0 ? (
@@ -331,7 +331,7 @@ export default function PortalAiBansPage() {
                     colSpan={8}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    No active bans matching current filter.
+                    {messages.noActiveBans}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -352,13 +352,13 @@ export default function PortalAiBansPage() {
                         }
                         className="text-[10px]"
                       >
-                        Level {b.offenseLevel}
+                        {messages.levelPrefix} {b.offenseLevel}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs font-medium">
                       {b.isPermanent ? (
                         <span className="font-semibold text-destructive">
-                          Permanent
+                          {messages.permanent}
                         </span>
                       ) : (
                         <span className="text-orange-600">
@@ -367,7 +367,7 @@ export default function PortalAiBansPage() {
                       )}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {b.strikeSnapshot} Strike(s)
+                      {b.strikeSnapshot} {messages.strikeSuffix}
                     </TableCell>
                     <TableCell
                       className="max-w-xs truncate text-xs"
@@ -386,7 +386,7 @@ export default function PortalAiBansPage() {
                         className="h-8 gap-1 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
                       >
                         <ArrowCounterClockwise className="h-3.5 w-3.5" />
-                        Pardon
+                        {messages.pardon}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -404,19 +404,18 @@ export default function PortalAiBansPage() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirm 1-Click Pardon</DialogTitle>
+            <DialogTitle>{messages.pardonModalTitle}</DialogTitle>
             <DialogDescription>
-              This will immediately lift the ban and allow the target to query
-              AI models again.
+              {messages.pardonModalDesc}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
             <div className="space-y-1">
-              <Label htmlFor="pardonReason">Pardon Audit Note</Label>
+              <Label htmlFor="pardonReason">{messages.pardonReasonLabel}</Label>
               <Input
                 id="pardonReason"
-                placeholder="e.g. Appeal approved by Security Admin"
+                placeholder={messages.pardonReasonPlaceholder}
                 value={pardonReason}
                 onChange={(e) => setPardonReason(e.target.value)}
               />
@@ -425,10 +424,10 @@ export default function PortalAiBansPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setPardonBanId(null)}>
-              Cancel
+              {messages.cancel}
             </Button>
             <Button onClick={handlePardon} disabled={pardonLoading}>
-              {pardonLoading ? "Pardoning..." : "Confirm Pardon"}
+              {pardonLoading ? messages.pardoning : messages.confirmPardon}
             </Button>
           </DialogFooter>
         </DialogContent>
