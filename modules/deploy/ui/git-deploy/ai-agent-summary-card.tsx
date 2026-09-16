@@ -237,7 +237,11 @@ export function AiAgentSummaryCard({
             ? "flask run --host=0.0.0.0 --port=8000"
             : ["gin", "echo"].includes(detectedFrameworkId)
               ? "./server"
-              : "pnpm start")
+              : detectedFrameworkId === "nestjs"
+                ? "pnpm run start:prod"
+                : detectedFrameworkId === "react"
+                  ? "pnpm run preview"
+                  : "pnpm start")
 
   const rawConfidence =
     typeof detection.confidence === "number"
@@ -358,13 +362,35 @@ export function AiAgentSummaryCard({
         { key: "DATABASE_URL", value: "" },
       ]
     }
+    if (
+      detectedFrameworkId === "nextjs" ||
+      frameworkName.toLowerCase().includes("next")
+    ) {
+      return [
+        { key: "NODE_ENV", value: "production" },
+        { key: "PORT", value: String(port || detectedPort || 3000) },
+        {
+          key: "NEXT_PUBLIC_APP_URL",
+          value: `https://${initialSubdomain}.pfnapp.dev`,
+        },
+      ]
+    }
+    if (
+      detectedFrameworkId === "react" ||
+      frameworkName.toLowerCase().includes("vite")
+    ) {
+      return [
+        { key: "NODE_ENV", value: "production" },
+        { key: "PORT", value: String(port || detectedPort || 3000) },
+        {
+          key: "VITE_APP_URL",
+          value: `https://${initialSubdomain}.pfnapp.dev`,
+        },
+      ]
+    }
     return [
       { key: "NODE_ENV", value: "production" },
       { key: "PORT", value: String(port || detectedPort || 3000) },
-      {
-        key: "NEXT_PUBLIC_APP_URL",
-        value: `https://${initialSubdomain}.pfnapp.dev`,
-      },
     ]
   }, [
     detectedFrameworkId,
@@ -714,7 +740,7 @@ export function AiAgentSummaryCard({
           {/* Card 1: Source & Monorepo Controls */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              <span className="text-xs font-medium text-muted-foreground">
                 {agentMessages.repoScopeHeading}
               </span>
               <Badge variant="secondary" className="text-xs">
@@ -758,7 +784,7 @@ export function AiAgentSummaryCard({
 
           {/* Card 2: Detected Framework & Runtime */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
-            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <span className="text-xs font-medium text-muted-foreground">
               {agentMessages.frameworkLabel}
             </span>
             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -782,7 +808,7 @@ export function AiAgentSummaryCard({
 
           {/* Card 3: Build & Network Settings */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
-            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <span className="text-xs font-medium text-muted-foreground">
               {agentMessages.blueprintHeading}
             </span>
             <div className="mt-4 grid gap-4">
@@ -829,7 +855,7 @@ export function AiAgentSummaryCard({
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                <span className="text-xs font-medium text-muted-foreground">
                   {agentMessages.envHeading}
                 </span>
                 <p className="mt-0.5 text-xs text-muted-foreground">
@@ -927,7 +953,7 @@ export function AiAgentSummaryCard({
           {/* Card 5: Compute Sizing */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              <span className="text-xs font-medium text-muted-foreground">
                 {agentMessages.sizingHeading}
               </span>
               {catalogPlans.length > 0 && (
@@ -967,7 +993,7 @@ export function AiAgentSummaryCard({
                       <p className="mt-1 text-xs text-muted-foreground">
                         {t.cpu >= 1000
                           ? `${(t.cpu / 1000).toFixed(t.cpu % 1000 === 0 ? 0 : 1)} vCPU`
-                          : `${(t.cpu / 1000).toFixed(1)} vCPU (${t.cpu}m)`}{" "}
+                          : `${(t.cpu / 1000).toFixed(1)} vCPU`}{" "}
                         · {t.memory}MB RAM
                       </p>
                     </div>
@@ -987,7 +1013,7 @@ export function AiAgentSummaryCard({
 
           {/* Card 6: Subdomain & Ingress */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-2xs">
-            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <span className="text-xs font-medium text-muted-foreground">
               {agentMessages.subdomainLabel}
             </span>
             <div className="mt-2 flex items-center gap-1 font-mono text-sm">
@@ -1008,7 +1034,7 @@ export function AiAgentSummaryCard({
           {/* Card 7: Balance Verification Card & Deploy CTA */}
           <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              <span className="text-xs font-medium text-muted-foreground">
                 {agentMessages.accountBalance}
               </span>
               <Wallet className="h-4 w-4 text-muted-foreground" />
@@ -1036,7 +1062,7 @@ export function AiAgentSummaryCard({
                 <p className="mt-0.5 font-mono text-sm text-muted-foreground">
                   {account.formattedBalance ||
                     `${currency} ${account.balanceIdr || "0"}`}{" "}
-                  available
+                  {lang === "id" ? "tersedia" : "available"}
                 </p>
                 {!isBalanceSufficient && (
                   <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400">
