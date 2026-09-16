@@ -306,6 +306,9 @@ const LineItemRow = ({
   </View>
 )
 
+// Invoice PDFs are always issued in English regardless of the viewer's UI
+// locale — matches the pre-existing hardcoded-English behavior of this
+// document (billing/legal documents are standardized on one language).
 const pdfMessages = getMessagesForMaybeLocale("en").console.invoices.pdf
 
 const BillToBlock = ({
