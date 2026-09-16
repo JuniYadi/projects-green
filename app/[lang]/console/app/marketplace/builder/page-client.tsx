@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   ArrowLeft,
   ArrowRight,
@@ -145,9 +146,11 @@ const INITIAL_STATE: TemplateBuilderState = {
 }
 
 export default function TemplateBuilderPage() {
-  const params = useParams()
+  const params = useParams<{ lang?: string }>()
   const router = useRouter()
-  const lang = (params?.lang as string) || "en"
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.app.marketplaceBuilder
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [formData, setFormData] = useState<TemplateBuilderState>(INITIAL_STATE)
@@ -521,17 +524,16 @@ export default function TemplateBuilderPage() {
               }
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
-              Templates
+              {messages.breadcrumb.templates}
             </Button>
             <span>/</span>
-            <span>Custom Visual Builder</span>
+            <span>{messages.breadcrumb.customVisualBuilder}</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Custom Template Builder
+            {messages.heading}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Design container stack blueprints, declare dependent managed
-            databases, and define configuration schemas.
+            {messages.description}
           </p>
         </div>
 
@@ -545,7 +547,7 @@ export default function TemplateBuilderPage() {
             className="gap-1.5 text-xs"
           >
             <Upload className="h-4 w-4" />
-            Import JSON
+            {messages.importJson}
           </Button>
           <Button
             type="button"
@@ -555,7 +557,7 @@ export default function TemplateBuilderPage() {
             className="gap-1.5 text-xs"
           >
             <Download className="h-4 w-4" />
-            Export JSON
+            {messages.exportJson}
           </Button>
           <Button
             variant="outline"
@@ -563,7 +565,7 @@ export default function TemplateBuilderPage() {
             onClick={() => handleSave(false)}
           >
             <Save className="mr-2 h-4 w-4" />
-            Save as Workspace Template
+            {messages.saveAsTemplate}
           </Button>
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -571,7 +573,7 @@ export default function TemplateBuilderPage() {
             onClick={() => handleSave(true)}
           >
             <Send className="mr-2 h-4 w-4" />
-            Submit for Review
+            {messages.submitForReview}
           </Button>
         </div>
       </div>
@@ -647,32 +649,33 @@ export default function TemplateBuilderPage() {
         {step === 1 && (
           <>
             <CardHeader>
-              <CardTitle className="text-lg">Step 1: General Info</CardTitle>
-              <CardDescription>
-                Provide catalog presentation details for your template.
-              </CardDescription>
+              <CardTitle className="text-lg">{messages.step1.title}</CardTitle>
+              <CardDescription>{messages.step1.description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">
-                    Template Name <span className="text-destructive">*</span>
+                    {messages.step1.templateName}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="name"
-                    placeholder="e.g. Next.js High Performance Stack"
+                    placeholder={messages.step1.templateNamePlaceholder}
                     value={formData.name}
                     onChange={(e) => updateField("name", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category">{messages.step1.category}</Label>
                   <Select
                     value={formData.category}
                     onValueChange={(val) => updateField("category", val)}
                   >
                     <SelectTrigger id="category">
-                      <SelectValue placeholder="Select Category" />
+                      <SelectValue
+                        placeholder={messages.step1.categoryPlaceholder}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {CATEGORIES.map((cat) => (
@@ -687,11 +690,12 @@ export default function TemplateBuilderPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="tagline">
-                  Short Tagline <span className="text-destructive">*</span>
+                  {messages.step1.tagline}{" "}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="tagline"
-                  placeholder="e.g. Production-ready Next.js 15 app with Redis caching and PostgreSQL"
+                  placeholder={messages.step1.taglinePlaceholder}
                   value={formData.tagline}
                   onChange={(e) => updateField("tagline", e.target.value)}
                 />
@@ -699,19 +703,20 @@ export default function TemplateBuilderPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="description">
-                  Full Description <span className="text-destructive">*</span>
+                  {messages.step1.fullDescription}{" "}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   id="description"
                   rows={4}
-                  placeholder="Explain what this stack does, architectural benefits, and included configurations..."
+                  placeholder={messages.step1.fullDescriptionPlaceholder}
                   value={formData.description}
                   onChange={(e) => updateField("description", e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="iconUrl">Icon or Logo URL (Optional)</Label>
+                <Label htmlFor="iconUrl">{messages.step1.iconUrl}</Label>
                 <Input
                   id="iconUrl"
                   placeholder="https://raw.githubusercontent.com/.../logo.png"
@@ -727,23 +732,18 @@ export default function TemplateBuilderPage() {
         {step === 2 && (
           <>
             <CardHeader>
-              <CardTitle className="text-lg">
-                Step 2: Container Runtime
-              </CardTitle>
-              <CardDescription>
-                Define the container image, networking ports, command overrides,
-                and health check probes.
-              </CardDescription>
+              <CardTitle className="text-lg">{messages.step2.title}</CardTitle>
+              <CardDescription>{messages.step2.description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="image">
-                  Docker Image Repository{" "}
+                  {messages.step2.dockerImage}{" "}
                   <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="image"
-                  placeholder="e.g. ghcr.io/org/my-app:v1.0.0 or node:20-alpine"
+                  placeholder={messages.step2.dockerImagePlaceholder}
                   value={formData.image}
                   onChange={(e) => updateField("image", e.target.value)}
                 />
@@ -752,7 +752,8 @@ export default function TemplateBuilderPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="defaultPort">
-                    Default Port <span className="text-destructive">*</span>
+                    {messages.step2.defaultPort}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="defaultPort"
@@ -768,11 +769,11 @@ export default function TemplateBuilderPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="healthCheckPath">
-                    Health Check HTTP Path (Optional)
+                    {messages.step2.healthCheckPath}
                   </Label>
                   <Input
                     id="healthCheckPath"
-                    placeholder="e.g. /healthz (leave empty for none)"
+                    placeholder={messages.step2.healthCheckPathPlaceholder}
                     value={formData.healthCheckPath}
                     onChange={(e) =>
                       updateField("healthCheckPath", e.target.value)
@@ -783,19 +784,21 @@ export default function TemplateBuilderPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="command">Command Override (Optional)</Label>
+                  <Label htmlFor="command">
+                    {messages.step2.commandOverride}
+                  </Label>
                   <Input
                     id="command"
-                    placeholder="e.g. npm start"
+                    placeholder={messages.step2.commandPlaceholder}
                     value={formData.command}
                     onChange={(e) => updateField("command", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="args">Command Arguments (Optional)</Label>
+                  <Label htmlFor="args">{messages.step2.commandArgs}</Label>
                   <Input
                     id="args"
-                    placeholder="e.g. --port 8080 --host 0.0.0.0"
+                    placeholder={messages.step2.commandArgsPlaceholder}
                     value={formData.args}
                     onChange={(e) => updateField("args", e.target.value)}
                   />
@@ -804,7 +807,9 @@ export default function TemplateBuilderPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="defaultCpu">Default CPU (mili-cores)</Label>
+                  <Label htmlFor="defaultCpu">
+                    {messages.step2.defaultCpu}
+                  </Label>
                   <Input
                     id="defaultCpu"
                     type="number"
@@ -817,7 +822,9 @@ export default function TemplateBuilderPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="defaultMemory">Default Memory (MiB)</Label>
+                  <Label htmlFor="defaultMemory">
+                    {messages.step2.defaultMemory}
+                  </Label>
                   <Input
                     id="defaultMemory"
                     type="number"
@@ -833,9 +840,9 @@ export default function TemplateBuilderPage() {
 
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div className="space-y-0.5">
-                  <Label htmlFor="nonRoot">Run as Non-Root User</Label>
+                  <Label htmlFor="nonRoot">{messages.step2.runAsNonRoot}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Enforce secure unprivileged user container execution.
+                    {messages.step2.runAsNonRootDescription}
                   </p>
                 </div>
                 <Switch
@@ -852,22 +859,16 @@ export default function TemplateBuilderPage() {
         {step === 3 && (
           <>
             <CardHeader>
-              <CardTitle className="text-lg">
-                Step 3: Dependencies & Storage
-              </CardTitle>
-              <CardDescription>
-                Configure automated managed database provisioning and persistent
-                disk volumes.
-              </CardDescription>
+              <CardTitle className="text-lg">{messages.step3.title}</CardTitle>
+              <CardDescription>{messages.step3.description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold tracking-tight">
-                  Managed Database Addons
+                  {messages.step3.managedDbAddons}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  When deployed, App Hosting will automatically provision these
-                  isolated managed services and inject connection variables.
+                  {messages.step3.managedDbAddonsDescription}
                 </p>
 
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -893,7 +894,7 @@ export default function TemplateBuilderPage() {
                     <div className="mt-3">
                       <p className="text-sm font-medium">PostgreSQL</p>
                       <p className="text-xs text-muted-foreground">
-                        Injects DB_HOST, DB_USER, DB_PASSWORD, DB_URL
+                        {messages.step3.postgresInjects}
                       </p>
                     </div>
                   </div>
@@ -920,7 +921,7 @@ export default function TemplateBuilderPage() {
                     <div className="mt-3">
                       <p className="text-sm font-medium">MySQL</p>
                       <p className="text-xs text-muted-foreground">
-                        Injects MYSQL_HOST, MYSQL_DATABASE, MYSQL_URL
+                        {messages.step3.mysqlInjects}
                       </p>
                     </div>
                   </div>
@@ -947,7 +948,7 @@ export default function TemplateBuilderPage() {
                     <div className="mt-3">
                       <p className="text-sm font-medium">Redis</p>
                       <p className="text-xs text-muted-foreground">
-                        Injects REDIS_HOST, REDIS_PORT, REDIS_URL
+                        {messages.step3.redisInjects}
                       </p>
                     </div>
                   </div>
@@ -960,11 +961,11 @@ export default function TemplateBuilderPage() {
                     <div className="flex items-center gap-2">
                       <HardDrive className="h-4 w-4 text-primary" />
                       <Label htmlFor="storageToggle" className="font-medium">
-                        Persistent Storage Volume
+                        {messages.step3.persistentStorageVolume}
                       </Label>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Attach a fast SSD PersistentVolume to the app container.
+                      {messages.step3.persistentStorageDescription}
                     </p>
                   </div>
                   <Switch
@@ -977,7 +978,9 @@ export default function TemplateBuilderPage() {
                 {formData.enableStorage && (
                   <div className="grid gap-4 pt-2 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="storageMountPath">Mount Path</Label>
+                      <Label htmlFor="storageMountPath">
+                        {messages.step3.mountPath}
+                      </Label>
                       <Input
                         id="storageMountPath"
                         placeholder="/data or /var/lib/app"
@@ -988,7 +991,9 @@ export default function TemplateBuilderPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="storageSizeGb">Default Size (GB)</Label>
+                      <Label htmlFor="storageSizeGb">
+                        {messages.step3.defaultSizeGb}
+                      </Label>
                       <Input
                         id="storageSizeGb"
                         type="number"
@@ -1013,12 +1018,9 @@ export default function TemplateBuilderPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg">
-                  Step 4: Environment Schema Builder
+                  {messages.step4.title}
                 </CardTitle>
-                <CardDescription>
-                  Define configurable variables, secrets, defaults, and input
-                  types for template consumers.
-                </CardDescription>
+                <CardDescription>{messages.step4.description}</CardDescription>
               </div>
               <Button
                 size="sm"
@@ -1027,7 +1029,7 @@ export default function TemplateBuilderPage() {
                 className="shrink-0"
               >
                 <Plus className="mr-1 h-4 w-4" />
-                Add Variable
+                {messages.step4.addVariable}
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1035,11 +1037,10 @@ export default function TemplateBuilderPage() {
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
                   <Key className="mb-2 h-8 w-8 text-muted-foreground/60" />
                   <p className="text-sm font-medium">
-                    No custom environment variables defined
+                    {messages.step4.noVariables}
                   </p>
                   <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                    Add required or optional environment keys that users must
-                    configure when launching stacks from this template.
+                    {messages.step4.noVariablesDescription}
                   </p>
                   <Button
                     size="sm"
@@ -1048,7 +1049,7 @@ export default function TemplateBuilderPage() {
                     onClick={addEnvVar}
                   >
                     <Plus className="mr-1 h-3.5 w-3.5" />
-                    Add First Variable
+                    {messages.step4.addFirstVariable}
                   </Button>
                 </div>
               ) : (
@@ -1060,9 +1061,11 @@ export default function TemplateBuilderPage() {
                     >
                       <div className="grid gap-3 sm:grid-cols-4">
                         <div className="space-y-1">
-                          <Label className="text-xs">Variable Key</Label>
+                          <Label className="text-xs">
+                            {messages.step4.variableKey}
+                          </Label>
                           <Input
-                            placeholder="e.g. API_KEY or PORT"
+                            placeholder={messages.step4.variableKeyPlaceholder}
                             value={item.key}
                             onChange={(e) =>
                               updateEnvVar(item.id, "key", e.target.value)
@@ -1070,9 +1073,11 @@ export default function TemplateBuilderPage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Display Label</Label>
+                          <Label className="text-xs">
+                            {messages.step4.displayLabel}
+                          </Label>
                           <Input
-                            placeholder="e.g. Master Secret Key"
+                            placeholder={messages.step4.displayLabelPlaceholder}
                             value={item.label}
                             onChange={(e) =>
                               updateEnvVar(item.id, "label", e.target.value)
@@ -1080,7 +1085,9 @@ export default function TemplateBuilderPage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Data Type</Label>
+                          <Label className="text-xs">
+                            {messages.step4.dataType}
+                          </Label>
                           <Select
                             value={item.dataType || "string"}
                             onValueChange={(val) =>
@@ -1091,17 +1098,27 @@ export default function TemplateBuilderPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="string">string</SelectItem>
-                              <SelectItem value="number">number</SelectItem>
-                              <SelectItem value="boolean">boolean</SelectItem>
-                              <SelectItem value="select">select</SelectItem>
+                              <SelectItem value="string">
+                                {messages.step4.dataTypeString}
+                              </SelectItem>
+                              <SelectItem value="number">
+                                {messages.step4.dataTypeNumber}
+                              </SelectItem>
+                              <SelectItem value="boolean">
+                                {messages.step4.dataTypeBoolean}
+                              </SelectItem>
+                              <SelectItem value="select">
+                                {messages.step4.dataTypeSelect}
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Default Value</Label>
+                          <Label className="text-xs">
+                            {messages.step4.defaultValue}
+                          </Label>
                           <Input
-                            placeholder="e.g. production"
+                            placeholder={messages.step4.defaultValuePlaceholder}
                             value={item.defaultValue || ""}
                             onChange={(e) =>
                               updateEnvVar(
@@ -1117,10 +1134,10 @@ export default function TemplateBuilderPage() {
                       <div className="grid gap-3 sm:grid-cols-3">
                         <div className="space-y-1 sm:col-span-2">
                           <Label className="text-xs text-muted-foreground">
-                            Description (Helper text)
+                            {messages.step4.descriptionHelperText}
                           </Label>
                           <Input
-                            placeholder="e.g. Description or instructions for users"
+                            placeholder={messages.step4.descriptionPlaceholder}
                             value={item.description || ""}
                             onChange={(e) =>
                               updateEnvVar(
@@ -1133,12 +1150,14 @@ export default function TemplateBuilderPage() {
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Random Hex Length
+                            {messages.step4.randomHexLength}
                           </Label>
                           <Input
                             type="number"
                             min={1}
-                            placeholder="e.g. 32 (auto-generate token)"
+                            placeholder={
+                              messages.step4.randomHexLengthPlaceholder
+                            }
                             value={item.generateRandomHex ?? ""}
                             onChange={(e) => {
                               const n = parseInt(e.target.value, 10)
@@ -1155,10 +1174,10 @@ export default function TemplateBuilderPage() {
                       {item.dataType === "select" && (
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">
-                            Options (Comma-separated)
+                            {messages.step4.optionsCommaSeparated}
                           </Label>
                           <Input
-                            placeholder="e.g. dev, staging, prod"
+                            placeholder={messages.step4.optionsPlaceholder}
                             value={item.options?.join(", ") || ""}
                             onChange={(e) => {
                               const opts = e.target.value
@@ -1185,7 +1204,7 @@ export default function TemplateBuilderPage() {
                               htmlFor={`required-${item.id}`}
                               className="cursor-pointer text-xs"
                             >
-                              Required
+                              {messages.step4.required}
                             </Label>
                           </div>
 
@@ -1201,7 +1220,7 @@ export default function TemplateBuilderPage() {
                               htmlFor={`secret-${item.id}`}
                               className="cursor-pointer text-xs"
                             >
-                              Store as Secret (Vault)
+                              {messages.step4.storeAsSecret}
                             </Label>
                           </div>
 
@@ -1217,7 +1236,7 @@ export default function TemplateBuilderPage() {
                               htmlFor={`fixed-${item.id}`}
                               className="cursor-pointer text-xs"
                             >
-                              Fixed (Locked)
+                              {messages.step4.fixedLocked}
                             </Label>
                           </div>
 
@@ -1233,7 +1252,7 @@ export default function TemplateBuilderPage() {
                               htmlFor={`hidden-${item.id}`}
                               className="cursor-pointer text-xs"
                             >
-                              Hidden
+                              {messages.step4.hidden}
                             </Label>
                           </div>
                         </div>
@@ -1244,7 +1263,7 @@ export default function TemplateBuilderPage() {
                           onClick={() => removeEnvVar(item.id)}
                         >
                           <Trash2 className="mr-1 h-4 w-4" />
-                          Remove
+                          {messages.step4.remove}
                         </Button>
                       </div>
                     </div>
@@ -1263,13 +1282,13 @@ export default function TemplateBuilderPage() {
             onClick={handlePrevious}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Previous
+            {messages.footer.previous}
           </Button>
 
           <div className="flex items-center gap-2">
             {step < 4 ? (
               <Button onClick={handleNext}>
-                Next
+                {messages.footer.next}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
@@ -1279,7 +1298,7 @@ export default function TemplateBuilderPage() {
                 onClick={() => handleSave(false)}
               >
                 <Save className="mr-2 h-4 w-4" />
-                Finish & Save Template
+                {messages.footer.finishAndSave}
               </Button>
             )}
           </div>
@@ -1290,10 +1309,9 @@ export default function TemplateBuilderPage() {
       <AlertDialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Import Template Configuration</AlertDialogTitle>
+            <AlertDialogTitle>{messages.importDialog.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              Paste a template package JSON exported from another environment
-              (e.g. dev/staging) or upload a .json file.
+              {messages.importDialog.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3 py-2">
@@ -1326,11 +1344,15 @@ export default function TemplateBuilderPage() {
                 }}
                 className="gap-1.5 text-xs"
               >
-                <Upload className="size-3.5" /> Upload File (.json)
+                <Upload className="size-3.5" />{" "}
+                {messages.importDialog.uploadFile}
               </Button>
               {importJsonText && (
                 <span className="text-xs text-muted-foreground">
-                  File loaded ({importJsonText.length} bytes)
+                  {messages.importDialog.fileLoaded.replace(
+                    "{count}",
+                    String(importJsonText.length)
+                  )}
                 </span>
               )}
             </div>
@@ -1338,20 +1360,20 @@ export default function TemplateBuilderPage() {
               rows={10}
               value={importJsonText}
               onChange={(e) => setImportJsonText(e.target.value)}
-              placeholder='{"exportVersion":"1.0.0","metadata":{"name":"..."},"blueprint":{...}}'
+              placeholder={messages.importDialog.jsonPlaceholder}
               className="font-mono text-xs"
             />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setImportJsonText("")}>
-              Cancel
+              {messages.importDialog.cancel}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleApplyImport(importJsonText)}
               disabled={!importJsonText.trim()}
               className="bg-primary text-primary-foreground"
             >
-              Apply Import
+              {messages.importDialog.applyImport}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

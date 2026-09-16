@@ -18,6 +18,7 @@ import {
   Cube,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { CountryFlag } from "@/components/ui/country-flag"
@@ -118,6 +119,7 @@ const getDeploymentStatusText = (app: StackSummaryDTO, locale: string) => {
 export default function PlatformsFleetPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessagesForMaybeLocale(locale).console.app.platforms
 
   const [apps, setApps] = useState<StackSummaryDTO[]>([])
   const [loading, setLoading] = useState(true)
@@ -224,10 +226,10 @@ export default function PlatformsFleetPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Platforms Fleet
+            {messages.heading}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Search, filter, and manage all your deployed platform instances.
+            {messages.description}
           </p>
         </header>
 
@@ -245,7 +247,7 @@ export default function PlatformsFleetPage() {
               })}
             >
               <Storefront size={14} />
-              <span>Marketplace</span>
+              <span>{messages.marketplaceLink}</span>
             </Link>
           </Button>
           <Button asChild size="sm" className="h-8 gap-1.5 text-xs">
@@ -256,7 +258,7 @@ export default function PlatformsFleetPage() {
               })}
             >
               <RocketLaunch size={14} />
-              <span>Deploy New App</span>
+              <span>{messages.deployNewApp}</span>
             </Link>
           </Button>
         </div>
@@ -271,7 +273,8 @@ export default function PlatformsFleetPage() {
             onClick={() => setStatusFilter("ALL")}
             className="h-7 text-xs"
           >
-            All ({apps.length})
+            {messages.allTab}
+            {apps.length})
           </Button>
           <Button
             variant={statusFilter === "RUNNING" ? "default" : "outline"}
@@ -279,7 +282,8 @@ export default function PlatformsFleetPage() {
             onClick={() => setStatusFilter("RUNNING")}
             className="h-7 text-xs"
           >
-            Running ({runningCount})
+            {messages.runningTab}
+            {runningCount})
           </Button>
           <Button
             variant={statusFilter === "QUEUED" ? "default" : "outline"}
@@ -287,7 +291,8 @@ export default function PlatformsFleetPage() {
             onClick={() => setStatusFilter("QUEUED")}
             className="h-7 text-xs"
           >
-            Deploying / Queued ({queuedCount})
+            {messages.queuedTab}
+            {queuedCount})
           </Button>
           <Button
             variant={statusFilter === "FAILED" ? "default" : "outline"}
@@ -295,7 +300,8 @@ export default function PlatformsFleetPage() {
             onClick={() => setStatusFilter("FAILED")}
             className="h-7 text-xs"
           >
-            Failed ({failedCount})
+            {messages.failedTab}
+            {failedCount})
           </Button>
         </div>
 
@@ -307,7 +313,7 @@ export default function PlatformsFleetPage() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search platforms..."
+            placeholder={messages.searchPlaceholder}
             className="h-8 pl-8 text-xs"
           />
         </div>
@@ -316,7 +322,7 @@ export default function PlatformsFleetPage() {
       {/* Content Area */}
       {loading ? (
         <div className="rounded-xl border border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-          Loading platforms fleet…
+          {messages.loadingFleet}
         </div>
       ) : error ? (
         <div
@@ -330,7 +336,7 @@ export default function PlatformsFleetPage() {
             size="sm"
             onClick={handleRetry}
           >
-            Retry
+            {messages.retry}
           </Button>
         </div>
       ) : apps.length === 0 ? (
@@ -338,11 +344,10 @@ export default function PlatformsFleetPage() {
           <RocketLaunch size={40} className="text-muted-foreground" />
           <div className="space-y-1">
             <p className="text-sm font-medium text-foreground">
-              No platforms found
+              {messages.emptyTitle}
             </p>
             <p className="text-xs text-muted-foreground">
-              Deploy your first application from Git or the Marketplace to get
-              started.
+              {messages.emptyHint}
             </p>
           </div>
           <Button asChild size="sm">
@@ -352,13 +357,13 @@ export default function PlatformsFleetPage() {
                 locale,
               })}
             >
-              Deploy Application
+              {messages.deployApplication}
             </Link>
           </Button>
         </div>
       ) : filteredApps.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/10 p-8 text-center text-sm text-muted-foreground">
-          No platforms match your filter criteria.
+          {messages.noMatchFilter}
         </div>
       ) : (
         <div className="rounded-xl border border-border bg-card">
@@ -366,13 +371,27 @@ export default function PlatformsFleetPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30 text-left text-xs tracking-wide text-muted-foreground uppercase">
-                  <th className="px-4 py-3 font-medium">Platform</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Region</th>
-                  <th className="px-4 py-3 font-medium">Framework</th>
-                  <th className="px-4 py-3 font-medium">Source</th>
-                  <th className="px-4 py-3 font-medium">Last Deployed</th>
-                  <th className="px-4 py-3 text-right font-medium">Actions</th>
+                  <th className="px-4 py-3 font-medium">
+                    {messages.colPlatform}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {messages.colStatus}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {messages.colRegion}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {messages.colFramework}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {messages.colSource}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {messages.colLastDeployed}
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    {messages.colActions}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -476,7 +495,7 @@ export default function PlatformsFleetPage() {
                           </span>
                           {typeInfo.isTemplate ? (
                             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                              Template
+                              {messages.templateBadge}
                             </span>
                           ) : null}
                         </div>
@@ -615,7 +634,7 @@ export default function PlatformsFleetPage() {
                                   className="flex cursor-pointer items-center gap-2"
                                 >
                                   <RocketLaunch size={14} />
-                                  <span>Deployments</span>
+                                  <span>{messages.deploymentsAction}</span>
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
@@ -624,7 +643,7 @@ export default function PlatformsFleetPage() {
                                   className="flex cursor-pointer items-center gap-2"
                                 >
                                   <ListMagnifyingGlass size={14} />
-                                  <span>Logs</span>
+                                  <span>{messages.logsAction}</span>
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
@@ -633,7 +652,7 @@ export default function PlatformsFleetPage() {
                                   className="flex cursor-pointer items-center gap-2"
                                 >
                                   <ChartLine size={14} />
-                                  <span>Metrics</span>
+                                  <span>{messages.metricsAction}</span>
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
@@ -643,7 +662,7 @@ export default function PlatformsFleetPage() {
                                   className="flex cursor-pointer items-center gap-2"
                                 >
                                   <GearSix size={14} />
-                                  <span>Settings</span>
+                                  <span>{messages.settingsAction}</span>
                                 </Link>
                               </DropdownMenuItem>
                             </DropdownMenuContent>

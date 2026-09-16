@@ -100,6 +100,7 @@ const CODE_ATTRIBUTE_NAMES = new Set([
   "class",
   "className",
   "clipRule",
+  "collapsible",
   "colorInterpolationFilters",
   "country",
   "cx",
@@ -108,14 +109,17 @@ const CODE_ATTRIBUTE_NAMES = new Set([
   "data-state",
   "data-testid",
   "dataKey",
+  "defaultTheme",
   "defaultValue",
   "diagnosticMode",
   "dir",
   "docKey",
   "dx",
   "dy",
+  "environmentId",
   "fill",
   "fillRule",
+  "filter",
   "filterUnits",
   "gradientTransform",
   "gradientUnits",
@@ -135,6 +139,7 @@ const CODE_ATTRIBUTE_NAMES = new Set([
   "markerHeight",
   "markerWidth",
   "mask",
+  "maskColor",
   "maskContentUnits",
   "maskUnits",
   "memLimit",
@@ -146,11 +151,14 @@ const CODE_ATTRIBUTE_NAMES = new Set([
   "orientation",
   "pattern",
   "patternUnits",
+  "persistence",
   "points",
   "preload",
   "preserveAspectRatio",
+  "purpose",
   "r",
   "rel",
+  "resource",
   "result",
   "role",
   "rootSegment",
@@ -166,6 +174,7 @@ const CODE_ATTRIBUTE_NAMES = new Set([
   "stackId",
   "stdDeviation",
   "step",
+  "strategy",
   "stroke",
   "strokeLinecap",
   "strokeLinejoin",
@@ -241,6 +250,7 @@ const TECHNICAL_TERMS = new Set([
   "NUXT",
   "OTP",
   "PDF",
+  "PFNAPP",
   "PGN",
   "PHP",
   "PNG",
@@ -460,9 +470,22 @@ export function scanSourceFile(filePath: string, rootDir: string): FileReport {
       if (
         calleeText === "getMessages" ||
         calleeText === "getMessagesForMaybeLocale" ||
+        calleeText === "getWhatsAppText" ||
+        calleeText === "formatWhatsAppText" ||
         calleeText === "t" ||
         calleeText === "formatMessage" ||
         calleeText === "useTranslations"
+      ) {
+        translatedCount++
+      }
+    } else if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tagName = ts.isJsxElement(node)
+        ? node.openingElement.tagName.getText(sourceFile)
+        : node.tagName.getText(sourceFile)
+      if (
+        tagName === "WhatsAppText" ||
+        tagName === "FormattedMessage" ||
+        tagName === "Trans"
       ) {
         translatedCount++
       }

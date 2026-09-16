@@ -13,6 +13,8 @@ import {
   type FormEvent,
   useMemo,
 } from "react"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -54,6 +56,10 @@ type BankAccountsRequestState =
   | { status: "error"; message: string }
 
 export function BankAccountsTab() {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingPayments.bankAccounts
   const [state, setState] = useState<BankAccountsRequestState>({
     status: "loading",
   })
@@ -67,7 +73,7 @@ export function BankAccountsTab() {
         id: "bank",
         accessorFn: (account) => account.bankName,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Bank" />
+          <DataTableColumnHeader column={column} title={messages.colBank} />
         ),
         cell: ({ row }) => (
           <div className="grid gap-1">
@@ -85,7 +91,7 @@ export function BankAccountsTab() {
             .filter(Boolean)
             .join(" "),
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Account" />
+          <DataTableColumnHeader column={column} title={messages.colAccount} />
         ),
         cell: ({ row }) => (
           <div className="grid gap-1">
@@ -100,7 +106,10 @@ export function BankAccountsTab() {
         id: "currencies",
         accessorFn: (account) => getAccountCurrencies(account).join(", "),
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Currencies" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.colCurrencies}
+          />
         ),
         cell: ({ row }) => (
           <Badge variant="outline" className="text-xs">
@@ -112,7 +121,7 @@ export function BankAccountsTab() {
         id: "status",
         accessorFn: (account) => (account.isActive ? "active" : "inactive"),
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={messages.colStatus} />
         ),
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-2">
@@ -124,7 +133,7 @@ export function BankAccountsTab() {
             </Badge>
             {row.original.isDefault && (
               <Badge variant="outline" className="text-xs">
-                Default
+                {messages.defaultBadge}
               </Badge>
             )}
           </div>
@@ -144,7 +153,7 @@ export function BankAccountsTab() {
               }
               onClick={() => void handleSetDefault(row.original.id)}
             >
-              Set as Default
+              {messages.setAsDefault}
             </Button>
             <Button
               type="button"
@@ -161,7 +170,7 @@ export function BankAccountsTab() {
               variant="outline"
               onClick={() => setEditingAccount(row.original)}
             >
-              Edit
+              {messages.edit}
             </Button>
             <Button
               type="button"
@@ -170,7 +179,7 @@ export function BankAccountsTab() {
               disabled={isSubmitting}
               onClick={() => void handleDeleteAccount(row.original.id)}
             >
-              Delete
+              {messages.delete}
             </Button>
           </div>
         ),
@@ -390,7 +399,7 @@ export function BankAccountsTab() {
             variant="outline"
             onClick={() => void fetchBankAccounts()}
           >
-            Retry
+            {messages.retry}
           </Button>
         </div>
       </div>
@@ -403,10 +412,10 @@ export function BankAccountsTab() {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Bank Accounts</CardTitle>
+          <CardTitle className="text-base">{messages.title}</CardTitle>
           {!editingAccount && (
             <Button type="button" size="sm" onClick={() => setIsCreating(true)}>
-              Add Bank Account
+              {messages.addBankAccount}
             </Button>
           )}
         </div>
@@ -419,27 +428,27 @@ export function BankAccountsTab() {
           >
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2 text-sm font-medium">
-                <span>Bank name</span>
+                <span>{messages.bankName}</span>
                 <Input
                   name="bankName"
-                  placeholder="Bank Central Asia"
+                  placeholder={messages.bankNamePlaceholder}
                   required
                 />
               </label>
               <label className="space-y-2 text-sm font-medium">
-                <span>Account number</span>
+                <span>{messages.accountNumber}</span>
                 <Input name="accountNumber" placeholder="1234567890" required />
               </label>
               <label className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Account holder</span>
+                <span>{messages.accountHolder}</span>
                 <Input
                   name="accountName"
-                  placeholder="PT Projects Green"
+                  placeholder={messages.accountHolderPlaceholder}
                   required
                 />
               </label>
               <fieldset className="space-y-2 text-sm font-medium">
-                <legend>Supported currencies</legend>
+                <legend>{messages.supportedCurrencies}</legend>
                 <div className="flex flex-wrap gap-3 rounded-md border p-3">
                   {CURRENCY_OPTIONS.map((code) => (
                     <label
@@ -458,14 +467,14 @@ export function BankAccountsTab() {
                 </div>
               </fieldset>
               <label className="space-y-2 text-sm font-medium">
-                <span>SWIFT/BIC code</span>
+                <span>{messages.swiftCode}</span>
                 <Input name="swiftCode" placeholder="CENAIDJA" />
               </label>
               <label className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Bank address</span>
+                <span>{messages.bankAddress}</span>
                 <Input
                   name="bankAddress"
-                  placeholder="Bank branch or registered bank address"
+                  placeholder={messages.bankAddressPlaceholder}
                 />
               </label>
             </div>
@@ -479,7 +488,7 @@ export function BankAccountsTab() {
                 variant="outline"
                 onClick={() => setIsCreating(false)}
               >
-                Cancel
+                {messages.cancel}
               </Button>
             </div>
           </form>
@@ -492,7 +501,7 @@ export function BankAccountsTab() {
           >
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2 text-sm font-medium">
-                <span>Bank name</span>
+                <span>{messages.bankName}</span>
                 <Input
                   name="bankName"
                   defaultValue={editingAccount.bankName}
@@ -500,7 +509,7 @@ export function BankAccountsTab() {
                 />
               </label>
               <label className="space-y-2 text-sm font-medium">
-                <span>Account number</span>
+                <span>{messages.accountNumber}</span>
                 <Input
                   name="accountNumber"
                   defaultValue={editingAccount.accountNumber}
@@ -508,7 +517,7 @@ export function BankAccountsTab() {
                 />
               </label>
               <label className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Account holder</span>
+                <span>{messages.accountHolder}</span>
                 <Input
                   name="accountName"
                   defaultValue={editingAccount.accountName}
@@ -516,7 +525,7 @@ export function BankAccountsTab() {
                 />
               </label>
               <fieldset className="space-y-2 text-sm font-medium">
-                <legend>Supported currencies</legend>
+                <legend>{messages.supportedCurrencies}</legend>
                 <div className="flex flex-wrap gap-3 rounded-md border p-3">
                   {CURRENCY_OPTIONS.map((code) => (
                     <label
@@ -537,7 +546,7 @@ export function BankAccountsTab() {
                 </div>
               </fieldset>
               <label className="space-y-2 text-sm font-medium">
-                <span>SWIFT/BIC code</span>
+                <span>{messages.swiftCode}</span>
                 <Input
                   name="swiftCode"
                   defaultValue={editingAccount.swiftCode ?? ""}
@@ -545,11 +554,11 @@ export function BankAccountsTab() {
                 />
               </label>
               <label className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Bank address</span>
+                <span>{messages.bankAddress}</span>
                 <Input
                   name="bankAddress"
                   defaultValue={editingAccount.bankAddress ?? ""}
-                  placeholder="Bank branch or registered bank address"
+                  placeholder={messages.bankAddressPlaceholder}
                 />
               </label>
             </div>
@@ -563,7 +572,7 @@ export function BankAccountsTab() {
                 variant="outline"
                 onClick={() => setEditingAccount(null)}
               >
-                Cancel
+                {messages.cancel}
               </Button>
             </div>
           </form>
@@ -573,14 +582,14 @@ export function BankAccountsTab() {
           <>
             {bankAccounts.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
-                No bank accounts added yet.
+                {messages.noAccountsYet}
               </div>
             ) : (
               <DataTable
                 tableId="portal-payments-bank-accounts"
                 columns={bankAccountColumns}
                 data={bankAccounts}
-                searchPlaceholder="Filter bank accounts..."
+                searchPlaceholder={messages.searchPlaceholder}
                 searchableColumns={["bank", "account", "currencies", "status"]}
                 facetFilters={[
                   {
@@ -593,7 +602,7 @@ export function BankAccountsTab() {
                     ],
                   },
                 ]}
-                emptyMessage="No bank accounts match your filters."
+                emptyMessage={messages.emptyMessage}
               />
             )}
           </>

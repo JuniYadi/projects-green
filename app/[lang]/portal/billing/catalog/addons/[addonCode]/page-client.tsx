@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -192,6 +193,8 @@ export default function AddonEditorPage() {
   const params = useParams<{ lang: string; addonCode?: string }>()
   const searchParams = useSearchParams()
   const addonCode = params?.addonCode
+  const messages = getMessagesForMaybeLocale(params?.lang).console
+    .adminBillingCatalog.addonDetail
   const isNew = searchParams.get("new") === "true" || !addonCode
 
   const addonQuery = useAdminAddonQuery(addonCode)
@@ -431,7 +434,7 @@ export default function AddonEditorPage() {
             variant="ghost"
             size="sm"
             onClick={() => removePrice(row.index)}
-            aria-label="Remove price"
+            aria-label={messages.removePrice}
           >
             <TrashIcon className="h-4 w-4 text-destructive" />
           </Button>
@@ -490,7 +493,7 @@ export default function AddonEditorPage() {
               {addon.name || addon.code || "New add-on"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Code:{" "}
+              {messages.code}{" "}
               <span className="font-mono">{addon.code || "(unspecified)"}</span>
             </p>
           </div>
@@ -506,7 +509,9 @@ export default function AddonEditorPage() {
       {/* Sticky actions */}
       <div className="sticky top-0 z-10 border-b bg-background/95 px-6 py-3 backdrop-blur">
         <div className="flex items-center justify-end gap-3">
-          {!addon.isActive && <Badge variant="secondary">Archived</Badge>}
+          {!addon.isActive && (
+            <Badge variant="secondary">{messages.archived}</Badge>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -518,25 +523,23 @@ export default function AddonEditorPage() {
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" disabled={saving}>
-                Archive
+                {messages.archive}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Archive add-on?</AlertDialogTitle>
+                <AlertDialogTitle>{messages.archiveTitle}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will deactivate the add-on. Existing subscriptions will
-                  retain their attached add-ons, but new subscriptions will not
-                  offer it.
+                  {messages.archiveDesc}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{messages.cancel}</AlertDialogCancel>
                 <AlertDialogAction
                   variant="destructive"
                   onClick={handleArchive}
                 >
-                  Archive
+                  {messages.archive}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -548,34 +551,34 @@ export default function AddonEditorPage() {
         <div className="space-y-4 md:col-span-1">
           <Card>
             <CardHeader>
-              <CardTitle>Identity</CardTitle>
-              <CardDescription>Add-on code and naming.</CardDescription>
+              <CardTitle>{messages.identity}</CardTitle>
+              <CardDescription>{messages.identityDesc}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="addon-code">Code *</Label>
+                <Label htmlFor="addon-code">{messages.codeLabel}</Label>
                 <Input
                   id="addon-code"
                   value={addon.code}
                   onChange={(e) =>
                     update({ code: e.target.value.toUpperCase() })
                   }
-                  placeholder="e.g. EXTRA_STORAGE"
+                  placeholder={messages.codePlaceholder}
                   aria-invalid={!addon.code.trim()}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="addon-name">Name *</Label>
+                <Label htmlFor="addon-name">{messages.name}</Label>
                 <Input
                   id="addon-name"
                   value={addon.name}
                   onChange={(e) => update({ name: e.target.value })}
-                  placeholder="Add-on display name"
+                  placeholder={messages.namePlaceholder}
                   aria-invalid={!addon.name.trim()}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Billing mode</Label>
+                <Label>{messages.billingMode}</Label>
                 <Select
                   value={addon.billingMode}
                   onValueChange={(value) =>
@@ -597,22 +600,24 @@ export default function AddonEditorPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="addon-description">Description</Label>
+                <Label htmlFor="addon-description">
+                  {messages.description}
+                </Label>
                 <Textarea
                   id="addon-description"
                   value={addon.description}
                   onChange={(e) => update({ description: e.target.value })}
-                  placeholder="What does this add-on provide?"
+                  placeholder={messages.descriptionPlaceholder}
                   rows={3}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Default currency</Label>
+                <Label>{messages.defaultCurrency}</Label>
                 <Select
                   value={defaultCurrency}
                   onValueChange={setDefaultCurrency}
                 >
-                  <SelectTrigger aria-label="Default currency">
+                  <SelectTrigger aria-label={messages.defaultCurrency}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -629,7 +634,7 @@ export default function AddonEditorPage() {
                   checked={addon.isActive}
                   onCheckedChange={(checked) => update({ isActive: checked })}
                 />
-                <Label className="text-sm">Active</Label>
+                <Label className="text-sm">{messages.active}</Label>
               </div>
             </CardContent>
           </Card>
@@ -640,21 +645,19 @@ export default function AddonEditorPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Pricing terms</CardTitle>
-                  <CardDescription>
-                    Configure multi-currency pricing per billing period.
-                  </CardDescription>
+                  <CardTitle>{messages.pricingTerms}</CardTitle>
+                  <CardDescription>{messages.pricingTermsDesc}</CardDescription>
                 </div>
                 <Button size="sm" onClick={addPrice}>
                   <PlusIcon className="mr-2 h-4 w-4" />
-                  Add term
+                  {messages.addTerm}
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               {addon.prices.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No pricing terms configured. Add a term to price this add-on.
+                  {messages.noPricingTerms}
                 </p>
               ) : (
                 <DataTable
@@ -662,8 +665,8 @@ export default function AddonEditorPage() {
                   columns={pricingColumns}
                   data={addon.prices}
                   searchableColumns={["billingPeriod", "currency", "amount"]}
-                  searchPlaceholder="Search pricing terms..."
-                  emptyMessage="No pricing terms configured."
+                  searchPlaceholder={messages.searchPricingTerms}
+                  emptyMessage={messages.noPricingTermsEmpty}
                 />
               )}
 
@@ -681,7 +684,7 @@ export default function AddonEditorPage() {
               {addon.prices.length > 0 && !hasErrors && (
                 <div className="mt-4 flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
                   <CheckCircleIcon className="h-4 w-4" />
-                  All pricing terms valid
+                  {messages.allTermsValid}
                 </div>
               )}
             </CardContent>
@@ -690,10 +693,8 @@ export default function AddonEditorPage() {
           {addon.prices.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Pricing preview</CardTitle>
-                <CardDescription>
-                  How this add-on will appear to customers.
-                </CardDescription>
+                <CardTitle>{messages.pricingPreview}</CardTitle>
+                <CardDescription>{messages.pricingPreviewDesc}</CardDescription>
               </CardHeader>
               <CardContent>
                 <DataTable
@@ -720,8 +721,8 @@ export default function AddonEditorPage() {
                   ]}
                   data={addon.prices.filter((price) => price.isActive)}
                   searchableColumns={["billingPeriod", "currency", "amount"]}
-                  searchPlaceholder="Search preview..."
-                  emptyMessage="No active prices."
+                  searchPlaceholder={messages.searchPreview}
+                  emptyMessage={messages.noActivePrices}
                 />
               </CardContent>
             </Card>

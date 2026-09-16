@@ -11,6 +11,7 @@ mock.module("sonner", () => ({
 mock.module("next/navigation", () => ({
   useRouter: () => ({ refresh: mock(() => {}) }),
   usePathname: () => "/en/console",
+  useParams: () => ({}),
 }))
 
 const { SubscriptionManager } = await import("./subscription-manager")

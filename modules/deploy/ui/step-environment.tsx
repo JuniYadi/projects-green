@@ -23,6 +23,8 @@ import {
   Globe,
   FileCode,
 } from "@phosphor-icons/react"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 type StepEnvironmentProps = {
   generatedSubdomain: string
   useGeneratedSubdomain: boolean
@@ -80,6 +82,10 @@ export function StepEnvironment({
   onEditBuildSettings,
   recommendedPlanId,
 }: StepEnvironmentProps) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.app.deployWizard.environment
   const targetDomain = useGeneratedSubdomain
     ? generatedSubdomain
     : customDomain.trim()
@@ -91,11 +97,9 @@ export function StepEnvironment({
     <Card className="border border-border bg-card shadow-sm">
       <CardHeader>
         <CardTitle className="text-xl font-bold">
-          Environment Settings
+          {messages.settingsTitle}
         </CardTitle>
-        <CardDescription>
-          Configure domain mode, environment variables, and compute allocation.
-        </CardDescription>
+        <CardDescription>{messages.settingsDesc}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Build Configuration Summary (Only visible if source & build state are passed) */}
@@ -105,12 +109,12 @@ export function StepEnvironment({
               <div>
                 <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                   <FileCode className="h-4.5 w-4.5 text-primary" />
-                  Build Configuration
+                  {messages.buildConfiguration}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isTemplate
-                    ? "Pre-configured template deployment settings."
-                    : "Current build configuration for this deployment."}
+                    ? messages.templateBuildDescription
+                    : messages.buildDescription}
                 </p>
               </div>
               {!isTemplate && onEditBuildSettings && (
@@ -122,7 +126,7 @@ export function StepEnvironment({
                   onClick={onEditBuildSettings}
                 >
                   <Gear className="mr-1 h-3.5 w-3.5" />
-                  Edit Build Settings
+                  {messages.editBuildSettings}
                 </Button>
               )}
             </div>
@@ -130,7 +134,7 @@ export function StepEnvironment({
             <div className="grid gap-4 rounded-lg border border-border/80 bg-background p-3 text-xs shadow-inner sm:grid-cols-3">
               <div className="space-y-1">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                  Language
+                  {messages.language}
                 </span>
                 <span className="block font-semibold text-foreground">
                   {buildState.language || "N/A"}
@@ -138,7 +142,7 @@ export function StepEnvironment({
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                  Framework
+                  {messages.framework}
                 </span>
                 <span className="block font-semibold text-foreground">
                   {buildState.framework || "N/A"}
@@ -146,7 +150,7 @@ export function StepEnvironment({
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                  Build Mode
+                  {messages.buildMode}
                 </span>
                 <span className="block font-semibold text-foreground">
                   {buildState.useDockerfile
@@ -162,10 +166,11 @@ export function StepEnvironment({
 
         {/* Domain Mode Selector */}
         <div className="space-y-3 rounded-xl border border-border p-4">
-          <p className="text-sm font-semibold text-foreground">Domain Mode</p>
+          <p className="text-sm font-semibold text-foreground">
+            {messages.domainMode}
+          </p>
           <p className="text-xs text-muted-foreground">
-            Choose a managed subdomain for immediate launch, or point your
-            custom domain.
+            {messages.domainDescription}
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -185,11 +190,10 @@ export function StepEnvironment({
                 onChange={() => onDomainToggleChange(true)}
               />
               <p className="text-sm font-semibold text-foreground">
-                Managed subdomain
+                {messages.managedSubdomain}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Use a generated <code>*.pfn.app</code> domain for immediate
-                launch.
+                {messages.managedSubdomainDescription}
               </p>
             </label>
 
@@ -209,10 +213,10 @@ export function StepEnvironment({
                 onChange={() => onDomainToggleChange(false)}
               />
               <p className="text-sm font-semibold text-foreground">
-                Custom domain
+                {messages.customDomain}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Point your own domain, for example <code>app.example.com</code>.
+                {messages.customDomainDescription}
               </p>
             </label>
           </div>
@@ -229,10 +233,10 @@ export function StepEnvironment({
           {!useGeneratedSubdomain && (
             <label className="block space-y-1 pt-1">
               <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Custom domain
+                {messages.customDomain}
               </span>
               <Input
-                aria-label="Custom domain"
+                aria-label={messages.customDomain}
                 aria-invalid={hasMissingCustomDomain || hasInvalidCustomDomain}
                 value={customDomain}
                 className={cn(
@@ -247,20 +251,18 @@ export function StepEnvironment({
           )}
           {hasMissingCustomDomain ? (
             <p className="text-xs text-destructive">
-              Custom domain is required when generated subdomain is off.
+              {messages.customDomainRequired}
             </p>
           ) : null}
           {hasInvalidCustomDomain ? (
-            <p className="text-xs text-destructive">
-              Enter a valid domain such as <code>app.example.com</code>.
-            </p>
+            <p className="text-xs text-destructive">{messages.invalidDomain}</p>
           ) : null}
         </div>
 
         {/* Environment Variables */}
         <div className="space-y-3 rounded-xl border border-border p-4">
           <p className="text-sm font-semibold text-foreground">
-            Environment Variables
+            {messages.environmentVariables}
           </p>
           <EnvVarsEditor
             envVars={envVars}
@@ -270,7 +272,9 @@ export function StepEnvironment({
         </div>
 
         <div className="space-y-3 rounded-xl border border-border p-4">
-          <p className="text-sm font-semibold text-foreground">Resource Plan</p>
+          <p className="text-sm font-semibold text-foreground">
+            {messages.resourcePlan}
+          </p>
           <ResourcePlanSelector
             selectedPlanId={resourcePlanId}
             cpu={cpu}
@@ -292,11 +296,10 @@ export function StepEnvironment({
         {/* Attached Resources */}
         <div className="space-y-2 rounded-xl border border-dashed border-border bg-muted/10 p-4">
           <p className="text-sm font-semibold text-foreground">
-            Attached Resources
+            {messages.attachedResources}
           </p>
           <p className="text-xs text-muted-foreground">
-            No databases attached. You can provision and attach PostgreSQL or
-            Redis in one click after deployment.
+            {messages.noDatabases}
           </p>
         </div>
 
@@ -306,7 +309,7 @@ export function StepEnvironment({
             className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
             role="alert"
           >
-            <p className="font-semibold">Environment settings need attention</p>
+            <p className="font-semibold">{messages.validationHeading}</p>
             <ul className="list-disc space-y-0.5 pl-4">
               {validationMessages.map((message) => {
                 return <li key={message}>{message}</li>
@@ -315,14 +318,18 @@ export function StepEnvironment({
           </div>
         ) : (
           <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
-            Ready to deploy to <code>{targetDomain}</code> with {envVars.length}{" "}
-            environment variable{envVars.length === 1 ? "" : "s"} on the{" "}
+            {messages.readySummary} <code>{targetDomain}</code> (
+            {envVars.length}{" "}
+            {envVars.length === 1
+              ? messages.variableSingular
+              : messages.variablePlural}{" "}
+            -{" "}
             {resourcePlanId === "starter"
-              ? "Starter"
+              ? messages.planStarter
               : resourcePlanId === "pro"
-                ? "Pro"
-                : "Pay-As-You-Go"}{" "}
-            plan.
+                ? messages.planPro
+                : messages.planPayg}
+            )
           </div>
         )}
 
@@ -331,7 +338,7 @@ export function StepEnvironment({
             className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
             role="alert"
           >
-            <p className="font-semibold">Unable to start deployment</p>
+            <p className="font-semibold">{messages.submitHeading}</p>
             <p>{submitError}</p>
           </div>
         ) : null}
@@ -344,7 +351,7 @@ export function StepEnvironment({
           className="flex h-9 items-center gap-1 border-border px-4 text-xs font-semibold shadow-sm"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back
+          {messages.back}
         </Button>
         <Button
           type="button"

@@ -17,6 +17,7 @@ import {
   ArrowsClockwise,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -77,6 +78,7 @@ export default function AiAgentsPage() {
   const params = useParams<{ lang?: string }>()
   const router = useRouter()
   const lang = params?.lang || "id"
+  const messages = getMessagesForMaybeLocale(lang).console.aiAgents
 
   const [agents, setAgents] = useState<AgentProfile[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -93,7 +95,9 @@ export default function AiAgentsPage() {
   const [generationError, setGenerationError] = useState("")
   const [workflowSummary, setWorkflowSummary] = useState("")
   const [workflowSteps, setWorkflowSteps] = useState<GeneratedStep[]>([])
-  const [generatedWorkflowRaw, setGeneratedWorkflowRaw] = useState<unknown | null>(null)
+  const [generatedWorkflowRaw, setGeneratedWorkflowRaw] = useState<
+    unknown | null
+  >(null)
   const [simulatedChat, setSimulatedChat] = useState<
     { role: "user" | "bot"; text: string }[]
   >([])
@@ -323,7 +327,11 @@ export default function AiAgentsPage() {
     setLoadingDevices(true)
     try {
       const res = await eden.api.whatsapp.devices.get()
-      if (res.data && "devices" in res.data && Array.isArray(res.data.devices)) {
+      if (
+        res.data &&
+        "devices" in res.data &&
+        Array.isArray(res.data.devices)
+      ) {
         const devList = (
           res.data.devices as Array<{
             id: string
@@ -359,10 +367,16 @@ export default function AiAgentsPage() {
       if (res.data && res.data.ok) {
         toast.success(`WhatsApp (${device.phoneNumber}) berhasil dihubungkan!`)
         const updated = await eden.api.console.ai.agents.get()
-        if (updated.data && updated.data.ok && Array.isArray(updated.data.data)) {
+        if (
+          updated.data &&
+          updated.data.ok &&
+          Array.isArray(updated.data.data)
+        ) {
           const allAgents = updated.data.data as AgentProfile[]
           setAgents(allAgents)
-          const curr = allAgents.find((a) => a.id === selectedAgentForBinding.id)
+          const curr = allAgents.find(
+            (a) => a.id === selectedAgentForBinding.id
+          )
           if (curr) setSelectedAgentForBinding(curr)
         }
       } else {
@@ -380,16 +394,23 @@ export default function AiAgentsPage() {
     if (!selectedAgentForBinding) return
     setBindingActionLoadingId(bindingId)
     try {
-      const res = await eden.api.console.ai.agents[
-        selectedAgentForBinding.id
-      ].bindings[bindingId].delete()
+      const res =
+        await eden.api.console.ai.agents[selectedAgentForBinding.id].bindings[
+          bindingId
+        ].delete()
       if (res.data && res.data.ok) {
         toast.success(`Hubungan WhatsApp (${phoneNumber}) berhasil diputus.`)
         const updated = await eden.api.console.ai.agents.get()
-        if (updated.data && updated.data.ok && Array.isArray(updated.data.data)) {
+        if (
+          updated.data &&
+          updated.data.ok &&
+          Array.isArray(updated.data.data)
+        ) {
           const allAgents = updated.data.data as AgentProfile[]
           setAgents(allAgents)
-          const curr = allAgents.find((a) => a.id === selectedAgentForBinding.id)
+          const curr = allAgents.find(
+            (a) => a.id === selectedAgentForBinding.id
+          )
           if (curr) setSelectedAgentForBinding(curr)
         }
       } else {
@@ -408,30 +429,26 @@ export default function AiAgentsPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            AI Studio & Asisten WhatsApp
+            {messages.heading}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Rancang alur otomatis & asisten cerdas WhatsApp tanpa coding. Cukup
-            ketik apa yang Anda inginkan ke AI.
-          </p>
+          <p className="text-sm text-muted-foreground">{messages.subtitle}</p>
         </div>
 
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700">
               <Plus size={16} weight="bold" />
-              <span>Buat Alur / Asisten AI Baru</span>
+              <span>{messages.createButton}</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Sparkle className="text-emerald-500" size={20} weight="fill" />
-                <span>Rancang Asisten & Alur Otomatis</span>
+                <span>{messages.dialog.title}</span>
               </DialogTitle>
               <DialogDescription>
-                Pilih bantuan AI untuk merancang alur otomatis secara instan,
-                atau atur instruksi secara manual.
+                {messages.dialog.description}
               </DialogDescription>
             </DialogHeader>
 
@@ -439,18 +456,18 @@ export default function AiAgentsPage() {
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="ai-assistant" className="gap-2">
                   <Sparkle size={14} />
-                  <span>Bantuan AI (Auto-Generate)</span>
+                  <span>{messages.tabs.aiAssistant}</span>
                 </TabsTrigger>
                 <TabsTrigger value="manual" className="gap-2">
                   <Robot size={14} />
-                  <span>Konfigurasi Manual</span>
+                  <span>{messages.tabs.manual}</span>
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="ai-assistant" className="space-y-4 pt-2">
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                   <Label className="text-xs font-semibold text-emerald-600">
-                    💡 Rekomendasi Alur Instan (Klik untuk coba):
+                    {messages.aiAssistant.presetsLabel}
                   </Label>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Button
@@ -467,7 +484,7 @@ export default function AiAgentsPage() {
                         )
                       }}
                     >
-                      📦 Cek Status Resi
+                      {messages.aiAssistant.presetTrackingLabel}
                     </Button>
                     <Button
                       type="button"
@@ -483,7 +500,7 @@ export default function AiAgentsPage() {
                         )
                       }}
                     >
-                      📝 Formulir Pendaftaran
+                      {messages.aiAssistant.presetRegistrationLabel}
                     </Button>
                     <Button
                       type="button"
@@ -499,16 +516,16 @@ export default function AiAgentsPage() {
                         )
                       }}
                     >
-                      👋 Menu Tombol Sapaan
+                      {messages.aiAssistant.presetGreetingLabel}
                     </Button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Ketik Kebutuhan Alur Bot Anda</Label>
+                  <Label>{messages.aiAssistant.promptLabel}</Label>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Contoh: Buatkan bot yang tanya nama lalu kirim daftar harga..."
+                      placeholder={messages.aiAssistant.promptPlaceholder}
                       value={assistantPrompt}
                       onChange={(e) => setAssistantPrompt(e.target.value)}
                     />
@@ -540,7 +557,7 @@ export default function AiAgentsPage() {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="space-y-2 rounded-lg border border-border bg-card p-3">
                         <Label className="text-xs font-semibold">
-                          Langkah Alur yang Dibuat:
+                          {messages.aiAssistant.generatedStepsLabel}
                         </Label>
                         <div className="space-y-2">
                           {workflowSteps.map((step, idx) => (
@@ -574,11 +591,11 @@ export default function AiAgentsPage() {
                               weight="fill"
                             />
                             <span className="text-xs font-medium">
-                              Simulator Chat WhatsApp
+                              {messages.aiAssistant.simulatorTitle}
                             </span>
                           </div>
                           <span className="text-[10px] text-zinc-400">
-                            Live Preview
+                            {messages.aiAssistant.livePreview}
                           </span>
                         </div>
 
@@ -603,7 +620,9 @@ export default function AiAgentsPage() {
 
                         <div className="mt-2 flex gap-1 border-t border-zinc-800 pt-2">
                           <Input
-                            placeholder="Ketik balasan untuk tes alur..."
+                            placeholder={
+                              messages.aiAssistant.testInputPlaceholder
+                            }
                             value={testInput}
                             onChange={(e) => setTestInput(e.target.value)}
                             onKeyDown={(e) =>
@@ -629,28 +648,28 @@ export default function AiAgentsPage() {
               <TabsContent value="manual" className="space-y-4 pt-2">
                 <div className="space-y-4 py-2">
                   <div className="space-y-2">
-                    <Label>Nama Asisten / Alur</Label>
+                    <Label>{messages.manual.nameLabel}</Label>
                     <Input
-                      placeholder="Misal: Asisten CS & Penjualan Toko"
+                      placeholder={messages.manual.namePlaceholder}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Deskripsi Singkat</Label>
+                    <Label>{messages.manual.descriptionLabel}</Label>
                     <Input
-                      placeholder="Misal: Menangani chat masuk WhatsApp pelanggan"
+                      placeholder={messages.manual.descriptionPlaceholder}
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Petunjuk & Aturan Jawaban Bot (System Prompt)</Label>
+                    <Label>{messages.manual.systemPromptLabel}</Label>
                     <Textarea
                       rows={3}
-                      placeholder="Misal: Anda adalah asisten resmi toko. Jawab dengan ramah dan ringkas..."
+                      placeholder={messages.manual.systemPromptPlaceholder}
                       value={systemPrompt}
                       onChange={(e) => setSystemPrompt(e.target.value)}
                     />
@@ -658,7 +677,7 @@ export default function AiAgentsPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Batas Pertanyaan / User / Hari</Label>
+                      <Label>{messages.manual.dailyLimitLabel}</Label>
                       <Input
                         type="number"
                         value={dailyLimit}
@@ -670,7 +689,7 @@ export default function AiAgentsPage() {
                     <div className="flex flex-col justify-end space-y-2 pb-1">
                       <div className="flex items-center justify-between">
                         <Label className="text-xs">
-                          Filter Kata Kasar & Spam
+                          {messages.manual.profanityFilterLabel}
                         </Label>
                         <Switch
                           checked={enableProfanity}
@@ -685,7 +704,7 @@ export default function AiAgentsPage() {
 
             <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="ghost" onClick={() => setIsOpen(false)}>
-                Batal
+                {messages.dialog.cancelButton}
               </Button>
               {generatedWorkflowRaw ? (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -694,7 +713,7 @@ export default function AiAgentsPage() {
                     onClick={() => handleSave(false)}
                     disabled={!name.trim() || saving}
                   >
-                    Simpan Profil Saja
+                    {messages.dialog.saveProfileOnlyButton}
                   </Button>
                   <Button
                     onClick={() => handleSave(true)}
@@ -702,7 +721,7 @@ export default function AiAgentsPage() {
                     className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
                   >
                     <Sparkle size={15} weight="fill" />
-                    <span>Simpan & Buka di WhatsApp Canvas</span>
+                    <span>{messages.dialog.saveAndOpenCanvasButton}</span>
                   </Button>
                 </div>
               ) : (
@@ -727,12 +746,9 @@ export default function AiAgentsPage() {
               className="mb-2 text-emerald-500"
               weight="duotone"
             />
-            <p className="text-sm font-medium">
-              Belum ada alur / asisten AI dibuat
-            </p>
+            <p className="text-sm font-medium">{messages.emptyState.title}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Klik tombol &quot;Buat Alur / Asisten AI Baru&quot; di atas untuk
-              membuat alur otomatis pertama Anda.
+              {messages.emptyState.description}
             </p>
           </Card>
         ) : (
@@ -749,7 +765,7 @@ export default function AiAgentsPage() {
                         variant="secondary"
                         className="bg-emerald-500/10 text-emerald-500"
                       >
-                        Aktif
+                        {messages.badge.active}
                       </Badge>
                     )}
                   </div>
@@ -772,14 +788,16 @@ export default function AiAgentsPage() {
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="text-muted-foreground">Batas Harian:</span>
+                    <span className="text-muted-foreground">
+                      {messages.card.dailyLimitLabel}
+                    </span>
                     <span className="ml-1 font-mono font-medium">
-                      {agent.dailyUserLimit} req/user
+                      {agent.dailyUserLimit} {messages.card.reqPerUser}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-emerald-500">
                     <ShieldCheck size={14} />
-                    <span>Proteksi Anti-Spam</span>
+                    <span>{messages.card.antiSpamProtection}</span>
                   </div>
                 </div>
 
@@ -787,7 +805,10 @@ export default function AiAgentsPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <WhatsappLogo size={16} className="text-emerald-500" />
-                      <span>{agent.channelsCount || 0} Channel Terhubung</span>
+                      <span>
+                        {agent.channelsCount || 0}{" "}
+                        {messages.card.channelsConnectedLabel}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -796,7 +817,7 @@ export default function AiAgentsPage() {
                         className="h-8 text-xs"
                         onClick={() => handleOpenBindingModal(agent)}
                       >
-                        Kelola Nomor
+                        {messages.card.manageNumbersButton}
                       </Button>
                       <Button
                         variant="outline"
@@ -808,25 +829,26 @@ export default function AiAgentsPage() {
                           href={`/${lang}/console/whatsapp/workflows/new/canvas?agentProfileId=${agent.id}&agentProfileName=${encodeURIComponent(agent.name)}`}
                         >
                           <Sparkle size={13} weight="fill" />
-                          <span>Buka di Canvas</span>
+                          <span>{messages.card.openCanvasButton}</span>
                         </Link>
                       </Button>
                     </div>
                   </div>
 
-                  {agent.channelBindings && agent.channelBindings.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {agent.channelBindings.map((b) => (
-                        <Badge
-                          key={b.id}
-                          variant="secondary"
-                          className="border border-emerald-500/20 bg-emerald-500/5 text-[10px] text-emerald-600 dark:text-emerald-400"
-                        >
-                          📱 {b.targetName || b.targetId}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                  {agent.channelBindings &&
+                    agent.channelBindings.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {agent.channelBindings.map((b) => (
+                          <Badge
+                            key={b.id}
+                            variant="secondary"
+                            className="border border-emerald-500/20 bg-emerald-500/5 text-[10px] text-emerald-600 dark:text-emerald-400"
+                          >
+                            📱 {b.targetName || b.targetId}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                 </div>
               </CardContent>
             </Card>
@@ -844,12 +866,12 @@ export default function AiAgentsPage() {
                 className="text-emerald-500"
                 weight="fill"
               />
-              <span>Kelola Nomor WhatsApp Asisten</span>
+              <span>{messages.bindingModal.title}</span>
             </DialogTitle>
             <DialogDescription>
-              Tautkan nomor WhatsApp organisasi ke profil asisten{" "}
-              <strong>{selectedAgentForBinding?.name}</strong> untuk membalas
-              pesan masuk pelanggan secara otomatis.
+              {messages.bindingModal.descriptionPrefix}{" "}
+              <strong>{selectedAgentForBinding?.name}</strong>{" "}
+              {messages.bindingModal.descriptionSuffix}
             </DialogDescription>
           </DialogHeader>
 
@@ -860,13 +882,11 @@ export default function AiAgentsPage() {
                   size={16}
                   className="mr-2 animate-spin text-emerald-500"
                 />
-                <span>Memuat daftar nomor WhatsApp...</span>
+                <span>{messages.bindingModal.loadingDevices}</span>
               </div>
             ) : devices.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                <p>
-                  Belum ada nomor WhatsApp yang terhubung di organisasi ini.
-                </p>
+                <p>{messages.bindingModal.noDevices}</p>
                 <Button
                   variant="link"
                   size="sm"
@@ -874,7 +894,7 @@ export default function AiAgentsPage() {
                   className="mt-1 h-auto p-0 text-emerald-600"
                 >
                   <Link href={`/${lang}/console/whatsapp/devices`}>
-                    + Hubungkan nomor di menu WhatsApp Devices
+                    {messages.bindingModal.connectDeviceLink}
                   </Link>
                 </Button>
               </div>
@@ -907,14 +927,14 @@ export default function AiAgentsPage() {
                               variant="secondary"
                               className="border-emerald-500/20 bg-emerald-500/10 text-[10px] text-emerald-600"
                             >
-                              Terhubung
+                              {messages.bindingModal.connectedBadge}
                             </Badge>
                           ) : (
                             <Badge
                               variant="outline"
                               className="text-[10px] text-muted-foreground"
                             >
-                              Tersedia
+                              {messages.bindingModal.availableBadge}
                             </Badge>
                           )}
                         </div>
@@ -958,7 +978,7 @@ export default function AiAgentsPage() {
               variant="outline"
               onClick={() => setBindingModalOpen(false)}
             >
-              Selesai
+              {messages.bindingModal.doneButton}
             </Button>
           </DialogFooter>
         </DialogContent>

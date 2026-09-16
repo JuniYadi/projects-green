@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 
 import { ArrowLeftIcon } from "@phosphor-icons/react"
 import { Badge } from "@/components/ui/badge"
@@ -114,6 +115,10 @@ const EXPIRY_PRESET_OPTIONS: {
 ]
 export default function NewVoucherPage() {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingPromotions.new
   const [draft, setDraft] = useState<DraftVoucher>({
     codeMode: "RANDOM",
     customCode: "",
@@ -244,16 +249,15 @@ export default function NewVoucherPage() {
           <Button variant="ghost" size="sm" asChild>
             <Link
               href="/portal/billing/promotions"
-              aria-label="Back to promotions"
+              aria-label={messages.backLabel}
             >
               <ArrowLeftIcon />
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">New Promotion</h1>
+            <h1 className="text-2xl font-bold">{messages.heading}</h1>
             <p className="text-sm text-muted-foreground">
-              {voucherKindLabel(draft.kind)} &bull; Create and configure a new
-              voucher
+              {voucherKindLabel(draft.kind)} {messages.subtitle}
             </p>
           </div>
         </div>
@@ -273,7 +277,7 @@ export default function NewVoucherPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="font-mono text-xs">
-              Code: {codePreview}
+              {messages.codeLabel} {codePreview}
             </Badge>
             <Badge
               variant={
@@ -291,13 +295,13 @@ export default function NewVoucherPage() {
               onClick={() => void handleCreate("DISABLED")}
               disabled={isCreating}
             >
-              {isCreating ? "Saving..." : "Save Draft"}
+              {isCreating ? "Saving..." : messages.saveDraftButton}
             </Button>
             <Button
               onClick={() => handleOpenPreview("ACTIVE")}
               disabled={isCreating}
             >
-              Preview &amp; Publish
+              {messages.previewPublishButton}
             </Button>
           </div>
         </div>
@@ -309,17 +313,17 @@ export default function NewVoucherPage() {
         onValueChange={(val) => setActiveTab(val as "general" | "audience")}
       >
         <TabsList className="mb-2 grid w-full max-w-xs grid-cols-2">
-          <TabsTrigger value="general">Details &amp; Rules</TabsTrigger>
-          <TabsTrigger value="audience">Target Audience</TabsTrigger>
+          <TabsTrigger value="general">{messages.tabs.details}</TabsTrigger>
+          <TabsTrigger value="audience">{messages.tabs.audience}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="flex flex-col gap-6">
           {/* Card 1: Code Generation Rules */}
           <Card>
             <CardHeader>
-              <CardTitle>Voucher Code Generation</CardTitle>
+              <CardTitle>{messages.codeGeneration.heading}</CardTitle>
               <CardDescription>
-                Choose how the voucher code will be formatted.
+                {messages.codeGeneration.description}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">
@@ -344,10 +348,10 @@ export default function NewVoucherPage() {
                     />
                     <div className="space-y-1">
                       <div className="text-sm font-semibold">
-                        1. Full Random
+                        {messages.codeGeneration.randomTitle}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        8 alphanumeric random characters.
+                        {messages.codeGeneration.randomDesc}
                       </div>
                     </div>
                   </div>
@@ -376,15 +380,15 @@ export default function NewVoucherPage() {
                     />
                     <div className="space-y-1">
                       <div className="text-sm font-semibold">
-                        2. Prefix + Random
+                        {messages.codeGeneration.prefixTitle}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Targeted prefix + 6 random chars.
+                        {messages.codeGeneration.prefixDesc}
                       </div>
                     </div>
                   </div>
                   <div className="mt-3 font-mono text-[11px] text-muted-foreground">
-                    e.g. PMI-A7B8C9
+                    {messages.codeGeneration.prefixExample}
                   </div>
                 </label>
 
@@ -408,15 +412,15 @@ export default function NewVoucherPage() {
                     />
                     <div className="space-y-1">
                       <div className="text-sm font-semibold">
-                        3. Static Custom Code
+                        {messages.codeGeneration.staticTitle}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Exact uppercase code for mass promos.
+                        {messages.codeGeneration.staticDesc}
                       </div>
                     </div>
                   </div>
                   <div className="mt-3 font-mono text-[11px] text-muted-foreground">
-                    e.g. DISCOUNT100
+                    {messages.codeGeneration.staticExample}
                   </div>
                 </label>
               </div>
@@ -424,7 +428,8 @@ export default function NewVoucherPage() {
               {draft.codeMode === "PREFIX" && (
                 <div className="flex flex-col gap-2 rounded-lg border bg-muted/40 p-4">
                   <Label htmlFor="voucher-prefix">
-                    Prefix Code <span className="text-destructive">*</span>
+                    {messages.prefixCode.label}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="voucher-prefix"
@@ -436,13 +441,13 @@ export default function NewVoucherPage() {
                           .replace(/[^A-Z0-9]/g, ""),
                       })
                     }
-                    placeholder="e.g. PMI, SMAN1, TELKOM"
+                    placeholder={messages.prefixCode.placeholder}
                     maxLength={10}
                     className="font-mono uppercase"
                     aria-invalid={Boolean(fieldErrors.prefix?.length)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Only uppercase letters and numbers (max 10 chars). Result:{" "}
+                    {messages.prefixCode.hint}{" "}
                     <span className="font-mono font-semibold text-foreground">
                       {codePreview}
                     </span>
@@ -458,7 +463,7 @@ export default function NewVoucherPage() {
               {draft.codeMode === "STATIC" && (
                 <div className="flex flex-col gap-2 rounded-lg border bg-muted/40 p-4">
                   <Label htmlFor="voucher-custom-code">
-                    Custom Exact Code{" "}
+                    {messages.staticCode.label}{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -471,13 +476,13 @@ export default function NewVoucherPage() {
                           .replace(/[^A-Z0-9-]/g, ""),
                       })
                     }
-                    placeholder="e.g. DISCOUNT100, MERDEKA80"
+                    placeholder={messages.staticCode.placeholder}
                     maxLength={32}
                     className="font-mono uppercase"
                     aria-invalid={Boolean(fieldErrors.customCode?.length)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Uppercase alphanumeric and optional hyphens (3-32 chars).
+                    {messages.staticCode.hint}
                   </p>
                   {fieldErrors.customCode?.map((err, i) => (
                     <p key={i} className="text-xs text-destructive">
@@ -490,7 +495,8 @@ export default function NewVoucherPage() {
               <div className="grid gap-6 lg:grid-cols-10">
                 <div className="flex flex-col gap-2 lg:col-span-3">
                   <Label htmlFor="voucher-max-claims">
-                    Max Total Claims <span className="text-destructive">*</span>
+                    {messages.maxClaims.label}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="voucher-max-claims"
@@ -503,7 +509,7 @@ export default function NewVoucherPage() {
                     aria-invalid={Boolean(fieldErrors.maxClaims?.length)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Maximum claims across all customers.
+                    {messages.maxClaims.hint}
                   </p>
                   {fieldErrors.maxClaims?.map((err, i) => (
                     <p key={i} className="text-xs text-destructive">
@@ -514,7 +520,7 @@ export default function NewVoucherPage() {
 
                 <div className="flex flex-col gap-2 lg:col-span-7">
                   <Label>
-                    Masa Berlaku (Expiration){" "}
+                    {messages.expiry.label}{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <div className="flex flex-wrap gap-2">
@@ -550,7 +556,7 @@ export default function NewVoucherPage() {
                         htmlFor="voucher-expires-at"
                         className="text-xs text-muted-foreground"
                       >
-                        Pilih Tanggal &amp; Waktu Spesifik:
+                        {messages.expiry.specificDateTimeLabel}
                       </Label>
                       <Input
                         id="voucher-expires-at"
@@ -568,7 +574,7 @@ export default function NewVoucherPage() {
                     </div>
                   ) : (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Berlaku hingga:{" "}
+                      {messages.expiry.validUntilLabel}{" "}
                       <span className="font-semibold text-foreground">
                         {formatWibDateTime(draft.expiresAt)}
                       </span>
@@ -612,28 +618,34 @@ export default function NewVoucherPage() {
       <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Confirm Promotion Publication</DialogTitle>
+            <DialogTitle>{messages.confirmModal.title}</DialogTitle>
             <DialogDescription>
-              Review the promotion details before making it active.
+              {messages.confirmModal.description}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2 rounded-lg border bg-muted/30 p-4 text-xs">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Voucher Code</span>
+                <span className="text-muted-foreground">
+                  {messages.confirmModal.voucherCodeLabel}
+                </span>
                 <span className="font-mono font-bold text-foreground">
                   {codePreview}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Type</span>
+                <span className="text-muted-foreground">
+                  {messages.confirmModal.typeLabel}
+                </span>
                 <span className="font-medium text-foreground">
                   {voucherKindLabel(draft.kind)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Benefit</span>
+                <span className="text-muted-foreground">
+                  {messages.confirmModal.benefitLabel}
+                </span>
                 <span className="font-semibold text-primary">
                   {draft.kind === "BALANCE_CREDIT"
                     ? `${draft.currency} ${draft.amount.toLocaleString("id-ID")}`
@@ -643,19 +655,25 @@ export default function NewVoucherPage() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Max Claims</span>
+                <span className="text-muted-foreground">
+                  {messages.confirmModal.maxClaimsLabel}
+                </span>
                 <span className="text-foreground">
-                  {draft.maxClaims} claim(s)
+                  {draft.maxClaims} {messages.confirmModal.claimsUnit}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Expires At</span>
+                <span className="text-muted-foreground">
+                  {messages.confirmModal.expiresAtLabel}
+                </span>
                 <span className="text-foreground">
                   {formatWibDateTime(draft.expiresAt)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Target Audience</span>
+                <span className="text-muted-foreground">
+                  {messages.confirmModal.targetAudienceLabel}
+                </span>
                 <span className="text-foreground">
                   {draft.targetOrganizationId
                     ? "Specific Organization"
@@ -673,14 +691,14 @@ export default function NewVoucherPage() {
               onClick={() => setPreviewModalOpen(false)}
               disabled={isCreating}
             >
-              Cancel
+              {messages.confirmModal.cancelButton}
             </Button>
             <Button
               variant="secondary"
               onClick={() => void handleCreate("DISABLED")}
               disabled={isCreating}
             >
-              Save as Draft
+              {messages.confirmModal.saveAsDraftButton}
             </Button>
             <Button
               onClick={() => void handleCreate(confirmStatus)}

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import {
   ChatCircle,
   PaperPlaneTilt,
@@ -13,6 +14,7 @@ import {
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
@@ -164,6 +166,9 @@ interface OrganizationOption {
 }
 
 export default function PortalWhatsAppUsagePage() {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(params?.lang).console.whatsapp
+    .usageAnalytics
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")
   const [overview, setOverview] = React.useState<OverviewData | null>(null)
@@ -330,23 +335,22 @@ export default function PortalWhatsAppUsagePage() {
       <header className="space-y-1">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Usage Analytics</h1>
-            <p className="text-sm text-muted-foreground">
-              Track message volumes, costs, and trends for your WhatsApp
-              Business account.
-            </p>
+            <h1 className="text-2xl font-semibold">{messages.heading}</h1>
+            <p className="text-sm text-muted-foreground">{messages.subtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {organizations.length > 0 && (
               <div className="flex items-center gap-2">
                 <Buildings className="size-4 text-muted-foreground" />
                 <select
-                  aria-label="Filter by organization"
+                  aria-label={messages.filters.orgAriaLabel}
                   value={selectedOrganization}
                   onChange={(e) => handleOrgChange(e.target.value)}
                   className="rounded-md border bg-background px-3 py-1.5 text-sm"
                 >
-                  <option value="all">All Organizations</option>
+                  <option value="all">
+                    {messages.filters.allOrganizations}
+                  </option>
                   {organizations.map((org) => (
                     <option key={org.id} value={org.id}>
                       {org.name}
@@ -359,12 +363,12 @@ export default function PortalWhatsAppUsagePage() {
               <div className="flex items-center gap-2">
                 <Funnel className="size-4 text-muted-foreground" />
                 <select
-                  aria-label="Filter by device"
+                  aria-label={messages.filters.deviceAriaLabel}
                   value={selectedDevice}
                   onChange={(e) => setSelectedDevice(e.target.value)}
                   className="rounded-md border bg-background px-3 py-1.5 text-sm"
                 >
-                  <option value="all">All Devices</option>
+                  <option value="all">{messages.filters.allDevices}</option>
                   {filteredDevices.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.phoneNumber ?? d.id}
@@ -394,10 +398,10 @@ export default function PortalWhatsAppUsagePage() {
           <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
             <Warning className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
             <div className="text-sm text-yellow-600 dark:text-yellow-400">
-              <strong>Quota Warning:</strong> One or more devices are
-              approaching their monthly limit.
+              <strong>{messages.quotaWarning.label}</strong>{" "}
+              {messages.quotaWarning.message}
               <a href="/portal/whatsapp/usage" className="ml-1 underline">
-                View details
+                {messages.quotaWarning.viewDetails}
               </a>
             </div>
           </div>
@@ -417,7 +421,7 @@ export default function PortalWhatsAppUsagePage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Total Messages
+                  {messages.stats.totalMessages}
                 </CardTitle>
                 <ChartLine
                   className="size-4 text-muted-foreground"
@@ -428,14 +432,16 @@ export default function PortalWhatsAppUsagePage() {
                 <div className="text-2xl font-bold">
                   {totalMessages.toLocaleString()}
                 </div>
-                <p className="text-xs text-muted-foreground">This month</p>
+                <p className="text-xs text-muted-foreground">
+                  {messages.stats.thisMonth}
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Inbound Count
+                  {messages.stats.inboundCount}
                 </CardTitle>
                 <ChatCircle
                   className="size-4 text-muted-foreground"
@@ -447,7 +453,7 @@ export default function PortalWhatsAppUsagePage() {
                   {totalInbound.toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Messages received
+                  {messages.stats.messagesReceived}
                 </p>
               </CardContent>
             </Card>
@@ -455,7 +461,7 @@ export default function PortalWhatsAppUsagePage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Outbound Count
+                  {messages.stats.outboundCount}
                 </CardTitle>
                 <PaperPlaneTilt
                   className="size-4 text-muted-foreground"
@@ -466,14 +472,16 @@ export default function PortalWhatsAppUsagePage() {
                 <div className="text-2xl font-bold">
                   {totalOutbound.toLocaleString()}
                 </div>
-                <p className="text-xs text-muted-foreground">Messages sent</p>
+                <p className="text-xs text-muted-foreground">
+                  {messages.stats.messagesSent}
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Total Cost
+                  {messages.stats.totalCost}
                 </CardTitle>
                 <CurrencyDollar
                   className="size-4 text-muted-foreground"
@@ -485,7 +493,7 @@ export default function PortalWhatsAppUsagePage() {
                   {formatCurrency(totalCost)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {costData?.totalEntries ?? 0} ledger entries
+                  {costData?.totalEntries ?? 0} {messages.stats.ledgerEntries}
                 </p>
               </CardContent>
             </Card>
@@ -498,15 +506,17 @@ export default function PortalWhatsAppUsagePage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Cost Breakdown by Device</CardTitle>
+              <CardTitle>{messages.costBreakdown.heading}</CardTitle>
               {costBreakdown && (
                 <div className="flex items-center gap-4 text-sm">
                   <span className="text-muted-foreground">
-                    Projected: {formatCurrency(costBreakdown.projectedCost)}
+                    {messages.costBreakdown.projectedLabel}{" "}
+                    {formatCurrency(costBreakdown.projectedCost)}
                   </span>
                   {costBreakdown.balance !== null && (
                     <span className="text-muted-foreground">
-                      Balance: {formatCurrency(costBreakdown.balance)}
+                      {messages.costBreakdown.balanceLabel}{" "}
+                      {formatCurrency(costBreakdown.balance)}
                     </span>
                   )}
                 </div>
@@ -516,7 +526,7 @@ export default function PortalWhatsAppUsagePage() {
           <CardContent>
             {!costBreakdown || costBreakdown.byDevice.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No cost data available for this period.
+                {messages.costBreakdown.noData}
               </p>
             ) : (
               <div className="space-y-4">
@@ -531,7 +541,8 @@ export default function PortalWhatsAppUsagePage() {
                           {dev.phoneNumber ?? dev.deviceId}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {dev.messageCount.toLocaleString()} messages
+                          {dev.messageCount.toLocaleString()}{" "}
+                          {messages.costBreakdown.messagesUnit}
                         </p>
                       </div>
                       <div className="text-right">
@@ -558,7 +569,7 @@ export default function PortalWhatsAppUsagePage() {
                   </div>
                 ))}
                 <div className="flex justify-between rounded-lg bg-muted p-4 font-semibold">
-                  <span>Total</span>
+                  <span>{messages.costBreakdown.totalLabel}</span>
                   <span>{formatCurrency(costBreakdown.totalCost)}</span>
                 </div>
               </div>
@@ -571,7 +582,7 @@ export default function PortalWhatsAppUsagePage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Daily Message Trend</CardTitle>
+            <CardTitle>{messages.dailyTrend.heading}</CardTitle>
             <div className="flex items-center gap-2">
               <Calendar className="size-4 text-muted-foreground" />
               <input
@@ -585,7 +596,9 @@ export default function PortalWhatsAppUsagePage() {
                 }
                 className="rounded-md border bg-background px-2 py-1 text-sm"
               />
-              <span className="text-sm text-muted-foreground">to</span>
+              <span className="text-sm text-muted-foreground">
+                {messages.dailyTrend.to}
+              </span>
               <input
                 type="date"
                 value={dateRange.to}
@@ -606,7 +619,7 @@ export default function PortalWhatsAppUsagePage() {
           ) : dailyCounts.length === 0 ? (
             <div className="flex h-[300px] items-center justify-center">
               <p className="text-sm text-muted-foreground">
-                No message data for the selected date range.
+                {messages.dailyTrend.noData}
               </p>
             </div>
           ) : (
@@ -663,7 +676,7 @@ export default function PortalWhatsAppUsagePage() {
         {/* Category Breakdown */}
         <Card>
           <CardHeader>
-            <CardTitle>Cost by Category</CardTitle>
+            <CardTitle>{messages.categoryBreakdown.heading}</CardTitle>
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
@@ -674,7 +687,7 @@ export default function PortalWhatsAppUsagePage() {
               </div>
             ) : !costData || costData.byCategory.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No cost data available for this period.
+                {messages.costBreakdown.noData}
               </p>
             ) : (
               <div className="space-y-4">
@@ -694,7 +707,8 @@ export default function PortalWhatsAppUsagePage() {
                               .replace(/^\w/, (c) => c.toUpperCase())}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {cat.count.toLocaleString()} entries
+                            {cat.count.toLocaleString()}{" "}
+                            {messages.categoryBreakdown.entriesUnit}
                           </span>
                         </div>
                         <div className="text-right">
@@ -725,7 +739,7 @@ export default function PortalWhatsAppUsagePage() {
         {/* Monthly Comparison */}
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Comparison</CardTitle>
+            <CardTitle>{messages.monthlyComparison.heading}</CardTitle>
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
@@ -736,7 +750,7 @@ export default function PortalWhatsAppUsagePage() {
               </div>
             ) : monthlyCounts.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No monthly data available.
+                {messages.monthlyComparison.noData}
               </p>
             ) : (
               <div className="space-y-3">
@@ -752,8 +766,10 @@ export default function PortalWhatsAppUsagePage() {
                           {getMonthName(m.month)} {m.year}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {m.messageInboxCount.toLocaleString()} in /{" "}
-                          {m.messageOutboxCount.toLocaleString()} out
+                          {m.messageInboxCount.toLocaleString()}{" "}
+                          {messages.monthlyComparison.inSlash}{" "}
+                          {m.messageOutboxCount.toLocaleString()}{" "}
+                          {messages.monthlyComparison.out}
                           {m.messageFailedCount > 0 &&
                             ` · ${m.messageFailedCount} failed`}
                         </p>
@@ -763,7 +779,7 @@ export default function PortalWhatsAppUsagePage() {
                           {total.toLocaleString()}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          total messages
+                          {messages.monthlyComparison.totalMessages}
                         </p>
                       </div>
                     </div>
@@ -783,10 +799,11 @@ export default function PortalWhatsAppUsagePage() {
               className="mb-4 size-12 text-muted-foreground"
               weight="fill"
             />
-            <h3 className="mb-1 text-lg font-medium">No usage data yet</h3>
+            <h3 className="mb-1 text-lg font-medium">
+              {messages.emptyState.title}
+            </h3>
             <p className="max-w-md text-sm text-muted-foreground">
-              Once your WhatsApp devices start sending and receiving messages,
-              usage data will appear here with charts and cost breakdowns.
+              {messages.emptyState.description}
             </p>
           </CardContent>
         </Card>

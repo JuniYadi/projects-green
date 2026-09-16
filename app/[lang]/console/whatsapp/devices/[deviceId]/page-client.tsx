@@ -146,6 +146,9 @@ export function MetaNameStatusBadge({
   nameStatus,
   profile,
 }: MetaNameStatusBadgeProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.whatsapp.devices
   const syncState = getProfileString(
     profile,
     "meta_name_status_sync_state"
@@ -153,7 +156,11 @@ export function MetaNameStatusBadge({
   const normalizedStatus = nameStatus?.toUpperCase()
 
   if (syncState === "UNAVAILABLE") {
-    return <Badge variant="secondary">Meta unavailable</Badge>
+    return (
+      <Badge variant="secondary">
+        {t.metaUnavailable ?? "Meta unavailable"}
+      </Badge>
+    )
   }
 
   if (syncState === "UNKNOWN") {
@@ -165,15 +172,17 @@ export function MetaNameStatusBadge({
   }
 
   if (normalizedStatus === "APPROVED") {
-    return <Badge variant="success">Approved</Badge>
+    return <Badge variant="success">{t.nameApproved ?? "Approved"}</Badge>
   }
 
   if (normalizedStatus === "PENDING" || normalizedStatus === "PENDING_REVIEW") {
-    return <Badge variant="warning">Pending</Badge>
+    return <Badge variant="warning">{t.metaNamePending ?? "Pending"}</Badge>
   }
 
   if (normalizedStatus === "DECLINED" || normalizedStatus === "REJECTED") {
-    return <Badge variant="destructive">Rejected</Badge>
+    return (
+      <Badge variant="destructive">{t.metaNameRejected ?? "Rejected"}</Badge>
+    )
   }
 
   return (
@@ -263,7 +272,7 @@ function WhatsAppProfilePreview({
                   onClick={onEdit}
                 >
                   <PencilSimple className="mr-1 size-3.5" />
-                  Edit
+                  {messages.edit}
                 </Button>
               )}
               <Badge
@@ -298,7 +307,7 @@ function WhatsAppProfilePreview({
                 <CheckCircle
                   weight="fill"
                   className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                  aria-label="Official Business Account"
+                  aria-label={messages.officialBusinessAccountAria}
                 />
               )}
             </div>
@@ -321,7 +330,7 @@ function WhatsAppProfilePreview({
         {/* Description / Profile Info */}
         <div className="rounded-xl border bg-muted/30 p-3.5 text-xs">
           <p className="mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-            Description
+            {messages.descriptionLabel ?? "Description"}
           </p>
           {description ? (
             <p className="leading-relaxed font-medium break-words whitespace-pre-wrap text-foreground/90">
@@ -341,7 +350,9 @@ function WhatsAppProfilePreview({
           </p>
           <div className="space-y-2.5 rounded-xl border bg-card p-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Category</span>
+              <span className="text-muted-foreground">
+                {messages.categoryLabel}
+              </span>
               {category ? (
                 <span className="font-medium">{category}</span>
               ) : (
@@ -363,7 +374,9 @@ function WhatsAppProfilePreview({
               )}
             </div>
             <div className="flex items-start justify-between gap-2">
-              <span className="shrink-0 text-muted-foreground">Website</span>
+              <span className="shrink-0 text-muted-foreground">
+                {messages.websiteLabel}
+              </span>
               {websites.length > 0 ? (
                 <div className="flex max-w-[240px] flex-col items-end gap-0.5 text-right font-medium break-all">
                   {websites.map((w, idx) => (
@@ -382,7 +395,9 @@ function WhatsAppProfilePreview({
               )}
             </div>
             <div className="flex items-start justify-between gap-2">
-              <span className="shrink-0 text-muted-foreground">Address</span>
+              <span className="shrink-0 text-muted-foreground">
+                {messages.addressLabel}
+              </span>
               {address ? (
                 <span className="max-w-[240px] text-right font-medium break-words">
                   {address}
@@ -654,7 +669,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         <Card className="shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Inbound Received
+              {deviceMessages.inboundReceived}
             </CardTitle>
             <ChatCircle className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -688,7 +703,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         <Card className="shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Quota Consumption
+              {deviceMessages.quotaConsumption}
             </CardTitle>
             <ChartDonut className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -723,7 +738,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 href={`/${locale}/console/billing/alerts`}
                 className="text-primary hover:underline"
               >
-                Alert policy ↗
+                {deviceMessages.alertPolicyLink}
               </a>
             </div>
           </CardContent>
@@ -746,7 +761,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
             <CardContent className="pt-5">
               <dl className="space-y-3.5">
                 <InfoRow
-                  label="Phone Number"
+                  label={deviceMessages.phoneNumber}
                   value={
                     <div className="flex items-center gap-2">
                       <span className="font-mono">{device.phoneNumber}</span>
@@ -766,11 +781,11 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                   }
                 />
                 <InfoRow
-                  label="Display Name"
+                  label={deviceMessages.displayName}
                   value={device.verifiedName || device.name || "—"}
                 />
                 <InfoRow
-                  label="Meta Name Status"
+                  label={deviceMessages.metaNameStatusLabel}
                   value={
                     <MetaNameStatusBadge
                       nameStatus={device.nameStatus}
@@ -779,7 +794,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                   }
                 />
                 <InfoRow
-                  label="Device Status"
+                  label={deviceMessages.deviceStatusLabel}
                   value={
                     <Badge
                       variant={
@@ -791,7 +806,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                   }
                 />
                 <InfoRow
-                  label="Daily Limit"
+                  label={deviceMessages.dailyLimitLabel}
                   value={
                     device.dailyLimitMessage > 0
                       ? `${device.dailyLimitMessage.toLocaleString()} msgs / day`
@@ -800,7 +815,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 />
                 {Number(device.balance) > 0 && (
                   <InfoRow
-                    label="Device Balance"
+                    label={deviceMessages.deviceBalanceLabel}
                     value={`Rp${Number(device.balance).toLocaleString("id-ID")}`}
                   />
                 )}
@@ -814,10 +829,10 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <CreditCard className="size-4 text-emerald-600 dark:text-emerald-400" />
-                    Subscription & Renewal
+                    {deviceMessages.subscriptionRenewalHeading}
                   </CardTitle>
                   <CardDescription>
-                    Commercial plan, quota allowances, and renewal cycle.
+                    {deviceMessages.subscriptionRenewalDescription}
                   </CardDescription>
                 </div>
                 {matchingSubscription && (
@@ -838,7 +853,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 <>
                   <dl className="space-y-3.5">
                     <InfoRow
-                      label="Active Plan"
+                      label={deviceMessages.activePlanLabel}
                       value={
                         <span className="font-semibold">
                           {matchingSubscription.packageCode} —{" "}
@@ -847,11 +862,11 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                       }
                     />
                     <InfoRow
-                      label="Billing Period"
+                      label={deviceMessages.billingPeriodLabel}
                       value={matchingSubscription.billingPeriod || "MONTHLY"}
                     />
                     <InfoRow
-                      label="Next Renewal / Expiry"
+                      label={deviceMessages.nextRenewalLabel}
                       value={
                         matchingSubscription.currentPeriodEnd
                           ? formatDate(matchingSubscription.currentPeriodEnd)
@@ -861,7 +876,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                       }
                     />
                     <InfoRow
-                      label="Price per Period"
+                      label={deviceMessages.pricePerPeriodLabel}
                       value={formatBillingMoney(
                         matchingSubscription.periodPrice ??
                           matchingSubscription.monthlyRateIdr ??
@@ -873,10 +888,10 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                   <div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3">
                     <div className="space-y-0.5">
                       <p className="text-xs font-semibold text-foreground">
-                        Manage or Change Subscription
+                        {deviceMessages.manageOrChangeSubscription}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
-                        View invoices, change payment cycles, or renew.
+                        {deviceMessages.viewInvoicesDescription}
                       </p>
                     </div>
                     <Link
@@ -887,7 +902,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                         variant="outline"
                         className="gap-1.5 text-xs"
                       >
-                        Open Billing
+                        {deviceMessages.openBilling}
                         <ArrowSquareOut className="size-3.5" />
                       </Button>
                     </Link>
@@ -895,19 +910,16 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 </>
               ) : (
                 <div className="space-y-3 text-xs text-muted-foreground">
-                  <p>
-                    No linked subscription found for this device. Renewal is
-                    managed through your organization billing account.
-                  </p>
+                  <p>{deviceMessages.noLinkedSubscription}</p>
                   <div className="flex items-center gap-2">
                     <Link href={`/${locale}/console/billing/subscriptions`}>
                       <Button size="sm" variant="outline" className="text-xs">
-                        View Subscriptions
+                        {deviceMessages.viewSubscriptions}
                       </Button>
                     </Link>
                     <Link href={`/${locale}/console/billing/orders`}>
                       <Button size="sm" variant="ghost" className="text-xs">
-                        View Orders
+                        {deviceMessages.viewOrders}
                       </Button>
                     </Link>
                   </div>
@@ -918,7 +930,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           <Card className="shadow-xs">
             <CardHeader className="border-b pb-4">
               <CardTitle className="text-base font-semibold">
-                Lifecycle Timestamps
+                {deviceMessages.lifecycleTimestamps}
               </CardTitle>
               <CardDescription>
                 <WhatsAppText id="s82" />
@@ -927,11 +939,11 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
             <CardContent className="pt-5">
               <dl className="space-y-3.5">
                 <InfoRow
-                  label="Created At"
+                  label={deviceMessages.createdAtLabel}
                   value={formatDate(device.createdAt)}
                 />
                 <InfoRow
-                  label="Last Synchronized"
+                  label={deviceMessages.lastSynchronizedLabel}
                   value={formatDate(device.updatedAt)}
                 />
               </dl>
@@ -1062,7 +1074,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                   <Avatar className="size-18 border-2 border-border shadow-xs">
                     <AvatarImage
                       src={profilePictureUrl}
-                      alt="WhatsApp profile picture preview"
+                      alt={deviceMessages.profilePicturePreviewAlt}
                     />
                     <AvatarFallback className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
                       {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative placeholder icon */}
@@ -1075,7 +1087,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                   <label
                     htmlFor="profile-picture-file"
                     className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                    title="Change profile picture"
+                    title={deviceMessages.changeProfilePictureTitle}
                   >
                     <Camera className="size-5" />
                   </label>
@@ -1087,7 +1099,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                       className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-xs font-medium shadow-xs transition-colors hover:bg-muted/50"
                     >
                       <Camera className="size-3.5 text-muted-foreground" />
-                      <span>Upload New Photo</span>
+                      <span>{deviceMessages.uploadNewPhoto}</span>
                     </label>
                     {profilePictureFile && (
                       <Button
@@ -1098,7 +1110,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                         onClick={clearProfilePictureSelection}
                       >
                         <Trash className="mr-1 size-3.5" />
-                        Remove
+                        {deviceMessages.removeButton}
                       </Button>
                     )}
                   </div>
@@ -1110,7 +1122,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                     onChange={handleProfilePictureChange}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    JPEG/PNG, max 5MB. 640x640 px recommended.
+                    {deviceMessages.profilePictureHint}
                   </p>
                   {profilePictureFile && (
                     <p className="truncate text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -1126,11 +1138,11 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="about" className="text-xs">
                   <Info className="mr-1.5 size-3.5" />
-                  About & Info
+                  {deviceMessages.aboutInfoTab}
                 </TabsTrigger>
                 <TabsTrigger value="contact" className="text-xs">
                   <MapPin className="mr-1.5 size-3.5" />
-                  Contact & Links
+                  {deviceMessages.contactLinksTab}
                 </TabsTrigger>
               </TabsList>
 
@@ -1142,7 +1154,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                       htmlFor="profile-description"
                       className="text-xs font-medium"
                     >
-                      Description
+                      {deviceMessages.descriptionLabel ?? "Description"}
                     </Label>
                     <span className="text-[10px] text-muted-foreground">
                       {profileForm.description.length}/512
@@ -1169,7 +1181,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                     htmlFor="profile-vertical"
                     className="text-xs font-medium"
                   >
-                    Business Category
+                    {deviceMessages.businessCategoryLabel}
                   </Label>
                   <Select
                     value={profileForm.vertical}
@@ -1207,7 +1219,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                     className="flex items-center gap-1.5 text-xs font-medium"
                   >
                     <EnvelopeSimple className="size-3.5 text-muted-foreground" />
-                    <span>Business Email</span>
+                    <span>{deviceMessages.businessEmailLabel}</span>
                   </Label>
                   <Input
                     id="profile-email"
@@ -1227,7 +1239,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                     className="flex items-center gap-1.5 text-xs font-medium"
                   >
                     <Buildings className="size-3.5 text-muted-foreground" />
-                    <span>Address</span>
+                    <span>{deviceMessages.addressLabel}</span>
                   </Label>
                   <Input
                     id="profile-address"
@@ -1235,7 +1247,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                     onChange={(e) =>
                       setProfileForm((f) => ({ ...f, address: e.target.value }))
                     }
-                    placeholder="Building, street name, city, postal code"
+                    placeholder={deviceMessages.addressPlaceholder}
                     className="text-xs"
                   />
                 </div>
@@ -1243,7 +1255,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5 text-xs font-medium">
                     <Globe className="size-3.5 text-muted-foreground" />
-                    <span>Websites (Max 2 URLs)</span>
+                    <span>{deviceMessages.websitesMaxLabel}</span>
                   </Label>
                   <div className="space-y-2">
                     <Input
@@ -1302,10 +1314,10 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           <div className="flex flex-col justify-start bg-muted/20 p-6 lg:col-span-5">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Live Preview
+                {deviceMessages.livePreviewLabel}
               </p>
               <Badge variant="outline" className="bg-background text-[10px]">
-                Live updates
+                {deviceMessages.liveUpdatesBadge}
               </Badge>
             </div>
 

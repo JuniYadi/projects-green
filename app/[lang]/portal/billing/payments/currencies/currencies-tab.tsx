@@ -17,6 +17,8 @@ import {
   useState,
   type FormEvent,
 } from "react"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 
 interface Currency {
   id: string
@@ -36,6 +38,10 @@ type CurrenciesRequestState =
   | { status: "error"; message: string; fieldErrors?: Record<string, string[]> }
 
 export function CurrenciesTab() {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingPayments.currencies
   const [state, setState] = useState<CurrenciesRequestState>({
     status: "loading",
   })
@@ -53,7 +59,7 @@ export function CurrenciesTab() {
         id: "currency",
         accessorFn: (currency) => `${currency.code} ${currency.name}`,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Currency" />
+          <DataTableColumnHeader column={column} title={messages.colCurrency} />
         ),
         cell: ({ row }) => (
           <div className="grid gap-1">
@@ -67,7 +73,7 @@ export function CurrenciesTab() {
       {
         accessorKey: "ratePerBase",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Rate" />
+          <DataTableColumnHeader column={column} title={messages.colRate} />
         ),
         cell: ({ row }) =>
           row.original.isBase
@@ -78,7 +84,10 @@ export function CurrenciesTab() {
         id: "topupRange",
         accessorFn: (currency) => `${currency.minTopup} ${currency.maxTopup}`,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Top-up range" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.colTopUpRange}
+          />
         ),
         cell: ({ row }) =>
           `${row.original.symbol}${row.original.minTopup.toLocaleString()} – ${
@@ -89,13 +98,13 @@ export function CurrenciesTab() {
         id: "status",
         accessorFn: (currency) => (currency.isActive ? "active" : "inactive"),
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={messages.colStatus} />
         ),
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-2">
             {row.original.isBase && (
               <Badge variant="default" className="text-xs">
-                Base
+                {messages.baseBadge}
               </Badge>
             )}
             <Badge
@@ -130,7 +139,7 @@ export function CurrenciesTab() {
                 setEditing(row.original)
               }}
             >
-              Edit
+              {messages.edit}
             </Button>
           </div>
         ),
@@ -295,7 +304,7 @@ export function CurrenciesTab() {
             variant="outline"
             onClick={() => void fetchCurrencies()}
           >
-            Retry
+            {messages.retry}
           </Button>
         </div>
       </div>
@@ -310,11 +319,11 @@ export function CurrenciesTab() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-base">Currencies</CardTitle>
+            <CardTitle className="text-base">{messages.title}</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Prices are authored in the base currency
-              {base ? ` (${base.code})` : ""}. Rate = units of this currency per
-              1 base unit.
+              {messages.descriptionPrefix}
+              {base ? ` (${base.code})` : ""}
+              {messages.descriptionSuffix}
             </p>
           </div>
           {!editing && !isCreating && (
@@ -326,7 +335,7 @@ export function CurrenciesTab() {
                 setIsCreating(true)
               }}
             >
-              Add Currency
+              {messages.addCurrency}
             </Button>
           )}
         </div>
@@ -345,7 +354,7 @@ export function CurrenciesTab() {
               setSubmitError(null)
               setIsCreating(false)
             }}
-            submitLabel="Create currency"
+            submitLabel={messages.createSubmitLabel}
             withCode
             fieldErrors={submitError?.fieldErrors}
           />
@@ -359,7 +368,7 @@ export function CurrenciesTab() {
               setSubmitError(null)
               setEditing(null)
             }}
-            submitLabel="Save currency"
+            submitLabel={messages.saveSubmitLabel}
             current={editing}
             fieldErrors={submitError?.fieldErrors}
           />
@@ -370,7 +379,7 @@ export function CurrenciesTab() {
             tableId="portal-payments-currencies"
             columns={currencyColumns}
             data={currencies}
-            searchPlaceholder="Filter currencies..."
+            searchPlaceholder={messages.searchPlaceholder}
             searchableColumns={["currency", "status", "topupRange"]}
             facetFilters={[
               {
@@ -384,7 +393,7 @@ export function CurrenciesTab() {
               },
             ]}
             initialSorting={[{ id: "currency", desc: false }]}
-            emptyMessage="No currencies match your filters."
+            emptyMessage={messages.emptyMessage}
           />
         )}
       </CardContent>
@@ -409,12 +418,16 @@ function CurrencyForm({
   withCode?: boolean
   fieldErrors?: Record<string, string[]>
 }) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingPayments.currencies
   return (
     <form className="rounded-lg border bg-muted/20 p-4" onSubmit={onSubmit}>
       <div className="grid gap-4 md:grid-cols-2">
         {withCode && (
           <label className="space-y-2 text-sm font-medium">
-            <span>Code (ISO 4217)</span>
+            <span>{messages.codeIso}</span>
             <Input name="code" placeholder="USD" required />
             {fieldErrors?.code && (
               <p className="text-xs text-destructive">{fieldErrors.code[0]}</p>
@@ -422,11 +435,11 @@ function CurrencyForm({
           </label>
         )}
         <label className="space-y-2 text-sm font-medium">
-          <span>Name</span>
+          <span>{messages.name}</span>
           <Input
             name="name"
             defaultValue={current?.name}
-            placeholder="US Dollar"
+            placeholder={messages.namePlaceholder}
             required
           />
           {fieldErrors?.name && (
@@ -434,7 +447,7 @@ function CurrencyForm({
           )}
         </label>
         <label className="space-y-2 text-sm font-medium">
-          <span>Symbol</span>
+          <span>{messages.symbol}</span>
           <Input
             name="symbol"
             defaultValue={current?.symbol}
@@ -446,7 +459,7 @@ function CurrencyForm({
           )}
         </label>
         <label className="space-y-2 text-sm font-medium">
-          <span>Rate per base unit</span>
+          <span>{messages.ratePerBase}</span>
           <Input
             name="ratePerBase"
             type="number"
@@ -462,7 +475,7 @@ function CurrencyForm({
           )}
         </label>
         <label className="space-y-2 text-sm font-medium">
-          <span>Min top-up</span>
+          <span>{messages.minTopUp}</span>
           <Input
             name="minTopup"
             type="number"
@@ -478,7 +491,7 @@ function CurrencyForm({
           )}
         </label>
         <label className="space-y-2 text-sm font-medium">
-          <span>Max top-up</span>
+          <span>{messages.maxTopUp}</span>
           <Input
             name="maxTopup"
             type="number"
@@ -499,7 +512,7 @@ function CurrencyForm({
             name="isBase"
             defaultChecked={current?.isBase}
           />
-          <span>Base currency (rate pinned to 1)</span>
+          <span>{messages.baseCurrencyNotice}</span>
         </label>
       </div>
       <div className="mt-4 flex gap-2">
@@ -507,7 +520,7 @@ function CurrencyForm({
           {isSubmitting ? "Saving..." : submitLabel}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={onCancel}>
-          Cancel
+          {messages.cancel}
         </Button>
       </div>
     </form>

@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   formatInvoiceCurrency,
   formatInvoiceDate,
@@ -82,6 +83,7 @@ export function InvoiceDetailScreen({
   lang,
 }: InvoiceDetailScreenProps) {
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessagesForMaybeLocale(lang).console.invoices.detail
   const router = useRouter()
   const [state, setState] = useState<InvoiceDetailRequestState>({
     status: "loading",
@@ -102,9 +104,7 @@ export function InvoiceDetailScreen({
         })
 
         const payload = (await response.json().catch(() => null)) as
-          | InvoiceDetailSuccessResponse
-          | InvoiceErrorResponse
-          | null
+          InvoiceDetailSuccessResponse | InvoiceErrorResponse | null
 
         if (!response.ok || !payload || payload.ok !== true) {
           setState({
@@ -166,9 +166,7 @@ export function InvoiceDetailScreen({
       })
 
       const payload = (await response.json().catch(() => null)) as
-        | { ok: true; invoice: InvoiceDetail }
-        | InvoiceErrorResponse
-        | null
+        { ok: true; invoice: InvoiceDetail } | InvoiceErrorResponse | null
 
       if (!response.ok || !payload || payload.ok !== true) {
         setCancelErrorMessage(
@@ -212,7 +210,7 @@ export function InvoiceDetailScreen({
             variant="outline"
             onClick={() => void loadDetail()}
           >
-            Retry
+            {messages.retry}
           </Button>
         </div>
       </div>
@@ -226,7 +224,7 @@ export function InvoiceDetailScreen({
     <section className="grid gap-6">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Invoice Actions</CardTitle>
+          <CardTitle className="text-base">{messages.actionsHeading}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <InvoiceDownloadPdfAction
@@ -240,7 +238,7 @@ export function InvoiceDetailScreen({
             onClick={() => setIsPaymentDrawerOpen(true)}
             disabled={!canPay}
           >
-            Pay Invoice
+            {messages.payInvoice}
           </Button>
           {state.canMarkPaid ? (
             <Button
@@ -249,7 +247,7 @@ export function InvoiceDetailScreen({
               variant="outline"
               onClick={() => setIsMarkPaidOpen(true)}
             >
-              Mark as Paid
+              {messages.markAsPaid}
             </Button>
           ) : null}
           {state.canMarkCanceled ? (
@@ -262,7 +260,7 @@ export function InvoiceDetailScreen({
                 setIsCancelSheetOpen(true)
               }}
             >
-              Mark Invoice Canceled
+              {messages.markInvoiceCanceled}
             </Button>
           ) : null}
         </CardContent>
@@ -270,26 +268,34 @@ export function InvoiceDetailScreen({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Overview</CardTitle>
+          <CardTitle className="text-base">
+            {messages.overviewHeading}
+          </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm md:grid-cols-2">
           <div>
-            <p className="text-xs text-muted-foreground">Invoice Number</p>
+            <p className="text-xs text-muted-foreground">
+              {messages.invoiceNumberLabel}
+            </p>
             <p className="font-medium">{invoice.invoiceNumber}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Invoice ID</p>
+            <p className="text-xs text-muted-foreground">
+              {messages.invoiceIdLabel}
+            </p>
             <p className="font-medium">{invoice.id}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Status</p>
+            <p className="text-xs text-muted-foreground">
+              {messages.statusLabel}
+            </p>
             <div className="pt-1">
               <InvoiceStatusPill status={invoice.status} />
             </div>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              {locale === "id" ? "Periode Layanan" : "Service Period"}
+              {messages.servicePeriodLabel}
             </p>
             <p className="font-medium">
               {formatInvoiceDate(invoice.periodStart, locale)} -{" "}
@@ -298,7 +304,7 @@ export function InvoiceDetailScreen({
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              {locale === "id" ? "Layanan Berakhir" : "Service Ends"}
+              {messages.serviceEndsLabel}
             </p>
             <p className="font-medium">
               {formatInvoiceDate(invoice.periodEnd, locale)}
@@ -306,7 +312,7 @@ export function InvoiceDetailScreen({
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              {locale === "id" ? "Tanggal Perpanjangan" : "Next Renewal Date"}
+              {messages.nextRenewalDateLabel}
             </p>
             <p className="font-medium">
               {formatInvoiceDate(getNextRenewalDate(invoice.periodEnd), locale)}
@@ -314,7 +320,7 @@ export function InvoiceDetailScreen({
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              {locale === "id" ? "Tanggal Diterbitkan" : "Issued Date"}
+              {messages.issuedDateLabel}
             </p>
             <p className="font-medium">
               {formatInvoiceDate(invoice.issuedAt, locale)}
@@ -322,7 +328,7 @@ export function InvoiceDetailScreen({
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              {locale === "id" ? "Jatuh Tempo" : "Due Date"}
+              {messages.dueDateLabel}
             </p>
             <p className="font-medium">
               {formatInvoiceDate(invoice.dueAt, locale)}
@@ -335,7 +341,7 @@ export function InvoiceDetailScreen({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
-              {locale === "id" ? "Di Tagih Kepada" : "Billed To"}
+              {messages.billedToHeading}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5 text-sm">
@@ -369,19 +375,23 @@ export function InvoiceDetailScreen({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
-              {locale === "id" ? "Di Bayar Kepada" : "Paid To"}
+              {messages.paidToHeading}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5 text-sm">
             <p className="font-semibold text-foreground">
-              PT. Premium Fast Network
+              {messages.companyName}
             </p>
             <p className="text-muted-foreground">
-              Jl. Bungurasih Tengah No 70, Waru
+              {messages.companyAddressLine1}
             </p>
-            <p className="text-muted-foreground">Sidoarjo, Jawa Timur 61256</p>
-            <p className="text-muted-foreground">Email: support@pfnapp.id</p>
-            <p className="text-muted-foreground">Whatsapp: +6281216667996</p>
+            <p className="text-muted-foreground">
+              {messages.companyAddressLine2}
+            </p>
+            <p className="text-muted-foreground">{messages.companyEmailLine}</p>
+            <p className="text-muted-foreground">
+              {messages.companyWhatsappLine}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -396,16 +406,24 @@ export function InvoiceDetailScreen({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Line Items</CardTitle>
+          <CardTitle className="text-base">
+            {messages.lineItemsHeading}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Unit Price</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>{messages.descriptionColumn}</TableHead>
+                <TableHead className="text-right">
+                  {messages.qtyColumn}
+                </TableHead>
+                <TableHead className="text-right">
+                  {messages.unitPriceColumn}
+                </TableHead>
+                <TableHead className="text-right">
+                  {messages.amountColumn}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -440,11 +458,11 @@ export function InvoiceDetailScreen({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Totals</CardTitle>
+          <CardTitle className="text-base">{messages.totalsHeading}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-muted-foreground">Subtotal</p>
+            <p className="text-muted-foreground">{messages.subtotalLabel}</p>
             <p className="font-medium">
               {formatInvoiceCurrency(
                 invoice.subtotalAmount,
@@ -454,7 +472,7 @@ export function InvoiceDetailScreen({
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-muted-foreground">Tax</p>
+            <p className="text-muted-foreground">{messages.taxLabel}</p>
             <p className="font-medium">
               {formatInvoiceCurrency(
                 invoice.taxAmount,
@@ -464,7 +482,7 @@ export function InvoiceDetailScreen({
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-muted-foreground">Discount</p>
+            <p className="text-muted-foreground">{messages.discountLabel}</p>
             <p className="font-medium">
               {formatInvoiceCurrency(
                 invoice.discountAmount,
@@ -474,7 +492,7 @@ export function InvoiceDetailScreen({
             </p>
           </div>
           <div className="flex items-center justify-between gap-2 border-t pt-2">
-            <p className="font-semibold">Total</p>
+            <p className="font-semibold">{messages.totalLabel}</p>
             <p className="font-semibold">
               {formatInvoiceCurrency(
                 invoice.totalAmount,
@@ -489,7 +507,7 @@ export function InvoiceDetailScreen({
       <Sheet open={isPaymentDrawerOpen} onOpenChange={setIsPaymentDrawerOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Pay Invoice</SheetTitle>
+            <SheetTitle>{messages.payInvoice}</SheetTitle>
             <SheetDescription>
               {invoice.invoiceNumber} ·{" "}
               {formatInvoiceCurrency(
@@ -502,14 +520,15 @@ export function InvoiceDetailScreen({
 
           <div className="grid gap-4 px-4 pt-4 text-sm">
             <div className="grid gap-2">
-              <p className="text-xs text-muted-foreground">Invoice Status</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.invoiceStatusLabel}
+              </p>
               <p className="font-medium">
                 {getInvoiceStatusLabel(invoice.status)}
               </p>
             </div>
             <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-              After transferring the amount above to the destination account,
-              confirm your payment so we can verify and credit your balance.
+              {messages.confirmPaymentNote}
             </p>
           </div>
 
@@ -524,7 +543,7 @@ export function InvoiceDetailScreen({
                 )
               }}
             >
-              Confirm Payment
+              {messages.confirmPaymentButton}
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -541,18 +560,15 @@ export function InvoiceDetailScreen({
       <Sheet open={isCancelSheetOpen} onOpenChange={setIsCancelSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Mark Invoice Canceled</SheetTitle>
+            <SheetTitle>{messages.markInvoiceCanceled}</SheetTitle>
             <SheetDescription>
-              This action sets invoice {invoice.invoiceNumber} to canceled
-              status.
+              {messages.cancelNotePrefix} {invoice.invoiceNumber}{" "}
+              {messages.cancelNoteSuffix}
             </SheetDescription>
           </SheetHeader>
 
           <div className="grid gap-4 px-4 pt-4 text-sm">
-            <p>
-              Are you sure you want to mark this invoice as canceled? This
-              action is intended for billing corrections.
-            </p>
+            <p>{messages.cancelConfirmText}</p>
             {cancelErrorMessage ? (
               <p className="text-xs text-destructive">{cancelErrorMessage}</p>
             ) : null}
@@ -564,7 +580,7 @@ export function InvoiceDetailScreen({
               variant="outline"
               onClick={() => setIsCancelSheetOpen(false)}
             >
-              Keep Invoice
+              {messages.keepInvoice}
             </Button>
             <Button
               type="button"
@@ -572,7 +588,7 @@ export function InvoiceDetailScreen({
               onClick={() => void handleMarkCanceled()}
               disabled={isCanceling}
             >
-              {isCanceling ? "Canceling..." : "Confirm Canceled"}
+              {isCanceling ? messages.canceling : messages.confirmCanceled}
             </Button>
           </SheetFooter>
         </SheetContent>

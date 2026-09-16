@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -145,10 +146,17 @@ function partitionResources(
 
 export default function ProductDetailPage() {
   const router = useRouter()
-  const { catalogCode: rawCatalog, productCode: rawProduct } = useParams<{
+  const {
+    catalogCode: rawCatalog,
+    productCode: rawProduct,
+    lang,
+  } = useParams<{
     catalogCode: string
     productCode: string
+    lang?: string
   }>()
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingCatalog.productDetail
   const catalogCode = (rawCatalog || "").toUpperCase()
   const productCode = (rawProduct || "").toUpperCase()
   const isNew = productCode === "NEW"
@@ -657,7 +665,7 @@ export default function ProductDetailPage() {
             variant="ghost"
             size="sm"
             onClick={() => removePrice(row.index)}
-            aria-label="Remove price"
+            aria-label={messages.removePrice}
           >
             <TrashIcon className="h-4 w-4 text-destructive" />
           </Button>
@@ -696,7 +704,7 @@ export default function ProductDetailPage() {
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Back to products list"
+              aria-label={messages.backToProducts}
             >
               <ArrowLeftIcon className="h-4 w-4" />
             </Button>
@@ -708,11 +716,13 @@ export default function ProductDetailPage() {
                 : product?.name || productCode}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Catalog: <span className="font-semibold">{catalogCode}</span>
+              {messages.catalog}{" "}
+              <span className="font-semibold">{catalogCode}</span>
               {!isNew && (
                 <>
                   {" "}
-                  · Code: <span className="font-mono">{productCode}</span>
+                  {messages.code}{" "}
+                  <span className="font-mono">{productCode}</span>
                 </>
               )}
             </p>
@@ -728,7 +738,7 @@ export default function ProductDetailPage() {
                 disabled={saving || deleting || isDuplicating}
               >
                 <Copy className="mr-1.5 h-4 w-4" />
-                Duplicate
+                {messages.duplicate}
               </Button>
               <AlertDialog
                 open={deleteDialogOpen}
@@ -742,7 +752,7 @@ export default function ProductDetailPage() {
                     disabled={saving || deleting || isDuplicating}
                   >
                     <TrashIcon className="mr-1.5 h-4 w-4" />
-                    Delete Product
+                    {messages.deleteProduct}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="sm:max-w-md">
@@ -753,10 +763,10 @@ export default function ProductDetailPage() {
                       </div>
                       <div>
                         <AlertDialogTitle className="text-lg font-semibold">
-                          Delete product tier?
+                          {messages.deleteProductTierTitle}
                         </AlertDialogTitle>
                         <p className="text-xs text-muted-foreground">
-                          Plan code:{" "}
+                          {messages.planCode}{" "}
                           <span className="font-mono font-medium">
                             {productCode}
                           </span>
@@ -764,22 +774,22 @@ export default function ProductDetailPage() {
                       </div>
                     </div>
                     <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
-                      This action will permanently delete product plan{" "}
+                      {messages.deleteDescBefore}{" "}
                       <strong className="font-semibold text-foreground">
                         {product?.name || productCode}
                       </strong>{" "}
-                      and all configured pricing terms.
+                      {messages.deleteDescAfter}
                     </AlertDialogDescription>
                     <div className="rounded-md border border-amber-500/20 bg-amber-50/50 p-3 text-xs text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
-                      <span className="font-semibold">Note:</span> If active
-                      subscriptions are using this plan, deletion will be
-                      blocked to protect historical ledger data. You should
-                      deactivate (archive) the product instead.
+                      <span className="font-semibold">
+                        {messages.deleteNote}
+                      </span>{" "}
+                      {messages.deleteNoteDesc}
                     </div>
                   </AlertDialogHeader>
                   <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
                     <AlertDialogCancel disabled={deleting}>
-                      Cancel
+                      {messages.cancel}
                     </AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"
@@ -812,36 +822,38 @@ export default function ProductDetailPage() {
         {/* Product Identity */}
         <Card>
           <CardHeader>
-            <CardTitle>Product Identity</CardTitle>
-            <CardDescription>General naming and active status</CardDescription>
+            <CardTitle>{messages.productIdentity}</CardTitle>
+            <CardDescription>{messages.productIdentityDesc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isNew && (
               <div className="space-y-2">
-                <Label htmlFor="new-product-code">Product Code *</Label>
+                <Label htmlFor="new-product-code">{messages.productCode}</Label>
                 <Input
                   id="new-product-code"
                   value={customCode}
                   onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. STARTER, PRO, DEDICATED"
+                  placeholder={messages.productCodePlaceholder}
                   className="font-mono uppercase"
                 />
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="product-name">Product Name *</Label>
+              <Label htmlFor="product-name">{messages.productName}</Label>
               <Input
                 id="product-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Product display name"
+                placeholder={messages.productNamePlaceholder}
               />
             </div>
             <div className="flex items-center justify-between border-t pt-4">
               <div>
-                <p className="text-sm font-medium">Active in Catalog</p>
+                <p className="text-sm font-medium">
+                  {messages.activeInCatalog}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Controls whether customers can view and checkout this product.
+                  {messages.activeInCatalogDesc}
                 </p>
               </div>
               <Switch checked={isActive} onCheckedChange={setIsActive} />
@@ -852,14 +864,12 @@ export default function ProductDetailPage() {
         {/* Billing & Stock Control */}
         <Card>
           <CardHeader>
-            <CardTitle>Billing & Inventory</CardTitle>
-            <CardDescription>
-              Proration rules and stock allocation
-            </CardDescription>
+            <CardTitle>{messages.billingInventory}</CardTitle>
+            <CardDescription>{messages.billingInventoryDesc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-2">
-              <Label className="text-xs">Billing Strategy</Label>
+              <Label className="text-xs">{messages.billingStrategy}</Label>
               <div className="flex gap-4">
                 <label className="flex cursor-pointer items-center gap-2 text-sm">
                   <input
@@ -869,7 +879,7 @@ export default function ProductDetailPage() {
                     checked={billingStrategy === "FIXED_CYCLE"}
                     onChange={() => setBillingStrategy("FIXED_CYCLE")}
                   />
-                  Fixed Cycle (Full Term)
+                  {messages.fixedCycle}
                 </label>
                 <label className="flex cursor-pointer items-center gap-2 text-sm">
                   <input
@@ -879,7 +889,7 @@ export default function ProductDetailPage() {
                     checked={billingStrategy === "PRO_RATA"}
                     onChange={() => setBillingStrategy("PRO_RATA")}
                   />
-                  Pro-rata (Calendar Month)
+                  {messages.prorata}
                 </label>
               </div>
             </div>
@@ -888,10 +898,10 @@ export default function ProductDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-sm font-medium">
-                    Inventory Tracking
+                    {messages.inventoryTracking}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Enforce available slots at checkout
+                    {messages.enforceStock}
                   </p>
                 </div>
                 <Switch
@@ -906,7 +916,7 @@ export default function ProductDetailPage() {
                 <div className="space-y-3 rounded-md border p-3">
                   <div className="space-y-1">
                     <Label htmlFor="stock-count" className="text-xs">
-                      Available Stock Count
+                      {messages.availableStock}
                     </Label>
                     <Input
                       id="stock-count"
@@ -924,7 +934,7 @@ export default function ProductDetailPage() {
                       checked={allowBackorder}
                       onChange={(e) => setAllowBackorder(e.target.checked)}
                     />
-                    Allow backorder when out of stock
+                    {messages.allowBackorder}
                   </label>
                 </div>
               )}
@@ -971,12 +981,8 @@ export default function ProductDetailPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Checkout & Provisioning Form Fields</CardTitle>
-                <CardDescription>
-                  Define dynamic custom form fields (text, number, email, phone
-                  / tel, URL, dropdown, radio, checkbox) that users must fill
-                  out when checking out this plan.
-                </CardDescription>
+                <CardTitle>{messages.formFieldsTitle}</CardTitle>
+                <CardDescription>{messages.formFieldsDesc}</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 {provisioningFields.length > 0 &&
@@ -988,7 +994,9 @@ export default function ProductDetailPage() {
                       onClick={deleteSelectedFields}
                     >
                       <TrashIcon className="mr-1.5 h-4 w-4" />
-                      Delete Selected ({selectedFieldIndices.length})
+                      {messages.deleteSelectedBefore}
+                      {selectedFieldIndices.length}
+                      {messages.deleteSelectedAfter}
                     </Button>
                   )}
                 <Button
@@ -1010,7 +1018,7 @@ export default function ProductDetailPage() {
                   }
                 >
                   <PlusIcon className="mr-1.5 h-4 w-4" />
-                  Add Form Field
+                  {messages.addFormField}
                 </Button>
               </div>
             </div>
@@ -1018,8 +1026,7 @@ export default function ProductDetailPage() {
           <CardContent className="space-y-4">
             {provisioningFields.length === 0 ? (
               <p className="py-2 text-xs text-muted-foreground">
-                No custom form fields configured. Checkout will proceed without
-                prompting extra fields.
+                {messages.noFormFields}
               </p>
             ) : (
               <div className="space-y-3">
@@ -1033,7 +1040,9 @@ export default function ProductDetailPage() {
                       }
                       onCheckedChange={toggleSelectAllFields}
                     />
-                    Select All Fields ({provisioningFields.length})
+                    {messages.selectAllFieldsBefore}
+                    {provisioningFields.length}
+                    {messages.selectAllFieldsAfter}
                   </label>
                 </div>
                 {provisioningFields.map((field, idx) => (
@@ -1057,7 +1066,7 @@ export default function ProductDetailPage() {
                       </div>
 
                       <div className="min-w-[140px] flex-1 space-y-1">
-                        <Label className="text-xs">Field Label *</Label>
+                        <Label className="text-xs">{messages.fieldLabel}</Label>
                         <Input
                           value={field.label}
                           onChange={(e) =>
@@ -1069,14 +1078,14 @@ export default function ProductDetailPage() {
                               )
                             )
                           }
-                          placeholder="e.g. Phone Number, Domain"
+                          placeholder={messages.fieldLabelPlaceholder}
                           className="h-8 text-xs"
                         />
                       </div>
 
                       <div className="min-w-[140px] flex-1 space-y-1">
                         <Label className="text-xs">
-                          Attribute Key / Name *
+                          {messages.attributeKey}
                         </Label>
                         <Input
                           value={field.name}
@@ -1089,13 +1098,13 @@ export default function ProductDetailPage() {
                               )
                             )
                           }
-                          placeholder="e.g. phoneNumber, domain"
+                          placeholder={messages.attributeKeyPlaceholder}
                           className="h-8 font-mono text-xs"
                         />
                       </div>
 
                       <div className="w-[130px] space-y-1">
-                        <Label className="text-xs">Input Type</Label>
+                        <Label className="text-xs">{messages.inputType}</Label>
                         <Select
                           value={field.type}
                           onValueChange={(val: ProvisioningField["type"]) =>
@@ -1110,16 +1119,30 @@ export default function ProductDetailPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="text">Text</SelectItem>
-                            <SelectItem value="number">Number</SelectItem>
-                            <SelectItem value="email">Email</SelectItem>
-                            <SelectItem value="tel">
-                              Phone Number (Tel)
+                            <SelectItem value="text">
+                              {messages.types.text}
                             </SelectItem>
-                            <SelectItem value="url">Link / URL</SelectItem>
-                            <SelectItem value="select">Dropdown</SelectItem>
-                            <SelectItem value="radio">Radio Group</SelectItem>
-                            <SelectItem value="checkbox">Checkbox</SelectItem>
+                            <SelectItem value="number">
+                              {messages.types.number}
+                            </SelectItem>
+                            <SelectItem value="email">
+                              {messages.types.email}
+                            </SelectItem>
+                            <SelectItem value="tel">
+                              {messages.types.phone}
+                            </SelectItem>
+                            <SelectItem value="url">
+                              {messages.types.url}
+                            </SelectItem>
+                            <SelectItem value="select">
+                              {messages.types.dropdown}
+                            </SelectItem>
+                            <SelectItem value="radio">
+                              {messages.types.radio}
+                            </SelectItem>
+                            <SelectItem value="checkbox">
+                              {messages.types.checkbox}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1139,7 +1162,7 @@ export default function ProductDetailPage() {
                           }
                         />
                         <Label htmlFor={`req-${idx}`} className="text-xs">
-                          Required
+                          {messages.required}
                         </Label>
                       </div>
 
@@ -1158,7 +1181,7 @@ export default function ProductDetailPage() {
                               .map((i) => (i > idx ? i - 1 : i))
                           )
                         }}
-                        aria-label="Delete field"
+                        aria-label={messages.deleteFieldAria}
                       >
                         <TrashIcon className="h-4 w-4" />
                       </Button>
@@ -1187,7 +1210,7 @@ export default function ProductDetailPage() {
                               )
                             )
                           }}
-                          placeholder="e.g. Option A, Option B, Option C"
+                          placeholder={messages.optionsPlaceholder}
                           className="h-7 text-xs"
                         />
                       </div>
@@ -1203,7 +1226,7 @@ export default function ProductDetailPage() {
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         <div className="space-y-1">
                           <Label className="text-[11px] text-muted-foreground">
-                            Placeholder (Short format hint inside box)
+                            {messages.placeholderHint}
                           </Label>
                           <Input
                             value={field.placeholder ?? ""}
@@ -1228,7 +1251,7 @@ export default function ProductDetailPage() {
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[11px] text-muted-foreground">
-                            Helper Text (Instruction text below input)
+                            {messages.helperText}
                           </Label>
                           <Input
                             value={field.helperText ?? ""}
@@ -1241,7 +1264,7 @@ export default function ProductDetailPage() {
                                 )
                               )
                             }
-                            placeholder="e.g. Please provide your business WhatsApp number..."
+                            placeholder={messages.helperTextPlaceholder}
                             className="h-7 text-xs"
                           />
                         </div>
@@ -1250,7 +1273,7 @@ export default function ProductDetailPage() {
                       /* For radio/checkbox that doesn't have an input box, allow helperText if needed */
                       <div className="space-y-1">
                         <Label className="text-[11px] text-muted-foreground">
-                          Helper Text (Optional instruction text below)
+                          {messages.helperTextOptional}
                         </Label>
                         <Input
                           value={field.helperText ?? ""}
@@ -1263,7 +1286,7 @@ export default function ProductDetailPage() {
                               )
                             )
                           }
-                          placeholder="e.g. Terms must be agreed before checkout..."
+                          placeholder={messages.helperTextOptionalPlaceholder}
                           className="h-7 text-xs"
                         />
                       </div>
@@ -1276,7 +1299,7 @@ export default function ProductDetailPage() {
                       field.type === "url") && (
                       <div className="space-y-1">
                         <Label className="text-[11px] text-muted-foreground">
-                          Validation Pattern (Regex / Format Rule)
+                          {messages.validationPattern}
                         </Label>
                         <Input
                           value={field.validationPattern ?? ""}
@@ -1292,7 +1315,7 @@ export default function ProductDetailPage() {
                               )
                             )
                           }
-                          placeholder="e.g. ^\+?[0-9]{8,15}$ (Phone) or ^[A-Za-z0-9_]+$"
+                          placeholder={messages.validationPatternPlaceholder}
                           className="h-7 font-mono text-xs"
                         />
                       </div>
@@ -1308,11 +1331,9 @@ export default function ProductDetailPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Resources & Quotas</CardTitle>
+                <CardTitle>{messages.resourcesQuotas}</CardTitle>
                 <CardDescription>
-                  Commercial quotas and specs allocated to this product tier
-                  (e.g. devices, conversations, quotaIn, quotaOut,
-                  dailyPerDevice).
+                  {messages.resourcesQuotasDesc}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -1325,7 +1346,9 @@ export default function ProductDetailPage() {
                       onClick={deleteSelectedResources}
                     >
                       <TrashIcon className="mr-1.5 h-4 w-4" />
-                      Delete Selected ({selectedResourceIndices.length})
+                      {messages.deleteSelectedBefore}
+                      {selectedResourceIndices.length}
+                      {messages.deleteSelectedAfter}
                     </Button>
                   )}
                 <Button
@@ -1340,7 +1363,7 @@ export default function ProductDetailPage() {
                   }
                 >
                   <PlusIcon className="mr-1.5 h-4 w-4" />
-                  Add Resource
+                  {messages.addResource}
                 </Button>
               </div>
             </div>
@@ -1348,8 +1371,7 @@ export default function ProductDetailPage() {
           <CardContent className="space-y-3">
             {resourceEntries.length === 0 ? (
               <p className="py-2 text-xs text-muted-foreground">
-                No resources or quotas configured for this plan tier. Click
-                &quot;Add Resource&quot; to configure quotas.
+                {messages.noResources}
               </p>
             ) : (
               <div className="space-y-2">
@@ -1363,7 +1385,9 @@ export default function ProductDetailPage() {
                       }
                       onCheckedChange={toggleSelectAllResources}
                     />
-                    Select All Resources ({resourceEntries.length})
+                    {messages.selectAllResourcesBefore}
+                    {resourceEntries.length}
+                    {messages.selectAllResourcesAfter}
                   </label>
                 </div>
                 {resourceEntries.map((entry, idx) => (
@@ -1387,7 +1411,7 @@ export default function ProductDetailPage() {
 
                     <div className="flex-1 space-y-1">
                       <Label className="text-xs text-muted-foreground">
-                        Key / Attribute
+                        {messages.keyAttribute}
                       </Label>
                       <Input
                         value={entry.key}
@@ -1400,13 +1424,13 @@ export default function ProductDetailPage() {
                             )
                           )
                         }
-                        placeholder="e.g. devices, quotaIn, conversations"
+                        placeholder={messages.keyAttributePlaceholder}
                         className="h-8 font-mono text-xs"
                       />
                     </div>
                     <div className="flex-1 space-y-1">
                       <Label className="text-xs text-muted-foreground">
-                        Allocated Value
+                        {messages.allocatedValue}
                       </Label>
                       <Input
                         value={entry.value}
@@ -1438,7 +1462,7 @@ export default function ProductDetailPage() {
                             .map((i) => (i > idx ? i - 1 : i))
                         )
                       }}
-                      aria-label="Remove resource"
+                      aria-label={messages.removeResource}
                     >
                       <TrashIcon className="h-4 w-4" />
                     </Button>
@@ -1454,16 +1478,13 @@ export default function ProductDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Pricing Terms</CardTitle>
-              <CardDescription>
-                Configure multi-currency recurring pricing per billing period
-                for this product tier.
-              </CardDescription>
+              <CardTitle>{messages.pricingTerms}</CardTitle>
+              <CardDescription>{messages.pricingTermsDesc}</CardDescription>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Label className="text-xs text-muted-foreground">
-                  Default currency
+                  {messages.defaultCurrency}
                 </Label>
                 <Select
                   value={defaultCurrency}
@@ -1483,7 +1504,7 @@ export default function ProductDetailPage() {
               </div>
               <Button size="sm" onClick={addPrice}>
                 <PlusIcon className="mr-2 h-4 w-4" />
-                Add Term
+                {messages.addTerm}
               </Button>
             </div>
           </div>
@@ -1491,7 +1512,7 @@ export default function ProductDetailPage() {
         <CardContent className="space-y-4">
           {prices.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No pricing terms configured. Add a term to publish this product.
+              {messages.noPricingTerms}
             </p>
           ) : (
             <>
@@ -1499,7 +1520,7 @@ export default function ProductDetailPage() {
                 <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
                   <WarningIcon className="mt-0.5 h-4 w-4 shrink-0" />
                   <div>
-                    <p className="font-semibold">Missing currency pricing:</p>
+                    <p className="font-semibold">{messages.missingCurrency}</p>
                     <ul className="list-inside list-disc">
                       {missingPriceCells.map((cell) => (
                         <li key={`${cell.billingPeriod}-${cell.currency}`}>
@@ -1517,8 +1538,8 @@ export default function ProductDetailPage() {
                 columns={pricingColumns}
                 data={prices}
                 searchableColumns={[]}
-                searchPlaceholder="Filter terms..."
-                emptyMessage="No pricing terms configured."
+                searchPlaceholder={messages.filterTermsPlaceholder}
+                emptyMessage={messages.noTermsEmpty}
               />
             </>
           )}
@@ -1528,13 +1549,13 @@ export default function ProductDetailPage() {
       <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Duplicate Product</DialogTitle>
+            <DialogTitle>{messages.duplicateProduct}</DialogTitle>
             <DialogDescription>
-              Create a clone of{" "}
+              {messages.duplicateDescBefore}{" "}
               <span className="font-semibold text-foreground">
                 {name || productCode}
               </span>
-              . Enter a unique product code and name for the new copy.
+              {messages.duplicateDescAfter}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -1545,27 +1566,31 @@ export default function ProductDetailPage() {
             className="space-y-4 py-2"
           >
             <div className="space-y-2">
-              <Label htmlFor="dup-product-code">New Product Code *</Label>
+              <Label htmlFor="dup-product-code">
+                {messages.newProductCode}
+              </Label>
               <Input
                 id="dup-product-code"
                 value={duplicateCode}
                 onChange={(e) => setDuplicateCode(e.target.value.toUpperCase())}
-                placeholder="e.g. STARTER_V2"
+                placeholder={messages.newProductCodePlaceholder}
                 className="font-mono uppercase"
                 required
                 autoFocus
               />
               <p className="text-xs text-muted-foreground">
-                Must be unique within the {catalogCode} catalog.
+                {messages.mustBeUnique} {catalogCode} {messages.catalogSuffix}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dup-product-name">New Product Name *</Label>
+              <Label htmlFor="dup-product-name">
+                {messages.newProductName}
+              </Label>
               <Input
                 id="dup-product-name"
                 value={duplicateName}
                 onChange={(e) => setDuplicateName(e.target.value)}
-                placeholder="e.g. Starter Plan (Copy)"
+                placeholder={messages.newProductNamePlaceholder}
                 required
               />
             </div>
@@ -1576,7 +1601,7 @@ export default function ProductDetailPage() {
                 onClick={() => setDuplicateDialogOpen(false)}
                 disabled={isDuplicating}
               >
-                Cancel
+                {messages.cancel}
               </Button>
               <Button type="submit" disabled={isDuplicating}>
                 {isDuplicating ? "Duplicating..." : "Create Copy"}

@@ -12,9 +12,11 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import { X, Plus, Eye, EyeSlash } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -200,6 +202,9 @@ function ButtonsEditor({
   buttons: ButtonRow[]
   onChange: (b: ButtonRow[]) => void
 }) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(params?.lang || "en").console
+    .whatsapp.messages.interactiveComposer
   const update = (i: number, field: keyof ButtonRow, value: string) => {
     const next = buttons.map((b, idx) =>
       idx === i ? { ...b, [field]: value } : b
@@ -218,14 +223,14 @@ function ButtonsEditor({
   return (
     <div className="space-y-3">
       <Label>
-        Reply Buttons ({buttons.length}/{META.BUTTON_MAX})
+        {messages.replyButtonsLabel} ({buttons.length}/{META.BUTTON_MAX})
       </Label>
       {buttons.map((b, i) => (
         <div key={i} className="flex items-start gap-2">
           <div className="grid flex-1 grid-cols-2 gap-2">
             <div>
               <Input
-                placeholder="Button ID"
+                placeholder={messages.buttonIdPlaceholder}
                 value={b.id}
                 onChange={(e) => update(i, "id", e.target.value)}
                 maxLength={META.BUTTON_ID_MAX}
@@ -236,7 +241,7 @@ function ButtonsEditor({
             </div>
             <div>
               <Input
-                placeholder="Button title"
+                placeholder={messages.buttonTitlePlaceholder}
                 value={b.title}
                 onChange={(e) => update(i, "title", e.target.value)}
                 maxLength={META.BUTTON_TITLE_MAX}
@@ -255,7 +260,7 @@ function ButtonsEditor({
       ))}
       {buttons.length < META.BUTTON_MAX && (
         <Button variant="outline" size="sm" onClick={add}>
-          <Plus className="mr-1 size-3" /> Add Button
+          <Plus className="mr-1 size-3" /> {messages.addButton}
         </Button>
       )}
     </div>
@@ -269,6 +274,9 @@ function CtaUrlEditor({
   buttons: CtaUrlRow[]
   onChange: (b: CtaUrlRow[]) => void
 }) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(params?.lang || "en").console
+    .whatsapp.messages.interactiveComposer
   const update = (i: number, field: keyof CtaUrlRow, value: string) => {
     const next = buttons.map((b, idx) =>
       idx === i ? { ...b, [field]: value } : b
@@ -286,13 +294,13 @@ function CtaUrlEditor({
   return (
     <div className="space-y-3">
       <Label>
-        CTA URL Buttons ({buttons.length}/{META.BUTTON_MAX})
+        {messages.ctaUrlButtonsLabel} ({buttons.length}/{META.BUTTON_MAX})
       </Label>
       {buttons.map((b, i) => (
         <div key={i} className="flex items-start gap-2">
           <div className="grid flex-1 grid-cols-2 gap-2">
             <Input
-              placeholder="Display text"
+              placeholder={messages.displayTextPlaceholder}
               value={b.display_text}
               onChange={(e) => update(i, "display_text", e.target.value)}
             />
@@ -313,7 +321,7 @@ function CtaUrlEditor({
       ))}
       {buttons.length < META.BUTTON_MAX && (
         <Button variant="outline" size="sm" onClick={add}>
-          <Plus className="mr-1 size-3" /> Add Button
+          <Plus className="mr-1 size-3" /> {messages.addButton}
         </Button>
       )}
     </div>
@@ -333,6 +341,9 @@ function SectionEditor({
   onRemove: () => void
   canRemove: boolean
 }) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(params?.lang || "en").console
+    .whatsapp.messages.interactiveComposer
   const updateRow = (ri: number, field: keyof SectionRow, value: string) => {
     const rows = section.rows.map((r, idx) =>
       idx === ri ? { ...r, [field]: value } : r
@@ -354,7 +365,9 @@ function SectionEditor({
   return (
     <div className="rounded-lg border p-3">
       <div className="mb-2 flex items-center justify-between">
-        <Label>Section {index + 1}</Label>
+        <Label>
+          {messages.sectionLabel} {index + 1}
+        </Label>
         {canRemove && (
           <Button variant="ghost" size="icon" onClick={onRemove}>
             <X className="size-4" />
@@ -363,31 +376,32 @@ function SectionEditor({
       </div>
       <div className="space-y-2">
         <Input
-          placeholder="Section title (required if >1 section)"
+          placeholder={messages.sectionTitlePlaceholder}
           value={section.title}
           onChange={(e) => onChange({ ...section, title: e.target.value })}
           maxLength={META.SECTION_TITLE_MAX}
         />
         <p className="text-[10px] text-muted-foreground">
-          Title: {section.title.length}/{META.SECTION_TITLE_MAX}
+          {messages.titleColonLabel} {section.title.length}/
+          {META.SECTION_TITLE_MAX}
         </p>
         {section.rows.map((r, ri) => (
           <div key={ri} className="flex items-start gap-2">
             <div className="grid flex-1 grid-cols-3 gap-2">
               <Input
-                placeholder="Row ID"
+                placeholder={messages.rowIdPlaceholder}
                 value={r.id}
                 onChange={(e) => updateRow(ri, "id", e.target.value)}
                 maxLength={META.ROW_ID_MAX}
               />
               <Input
-                placeholder="Title"
+                placeholder={messages.titlePlaceholder}
                 value={r.title}
                 onChange={(e) => updateRow(ri, "title", e.target.value)}
                 maxLength={META.ROW_TITLE_MAX}
               />
               <Input
-                placeholder="Description (optional)"
+                placeholder={messages.descriptionOptionalPlaceholder}
                 value={r.description ?? ""}
                 onChange={(e) => updateRow(ri, "description", e.target.value)}
                 maxLength={META.ROW_DESC_MAX}
@@ -402,7 +416,7 @@ function SectionEditor({
         ))}
         {section.rows.length < META.ROW_MAX && (
           <Button variant="outline" size="sm" onClick={addRow}>
-            <Plus className="mr-1 size-3" /> Add Row
+            <Plus className="mr-1 size-3" /> {messages.addRow}
           </Button>
         )}
       </div>
@@ -421,6 +435,9 @@ function ListEditor({
   onButtonChange: (v: string) => void
   onSectionsChange: (s: SectionData[]) => void
 }) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(params?.lang || "en").console
+    .whatsapp.messages.interactiveComposer
   const updateSection = (i: number, s: SectionData) => {
     onSectionsChange(sections.map((sec, idx) => (idx === i ? s : sec)))
   }
@@ -439,7 +456,7 @@ function ListEditor({
   return (
     <div className="space-y-4">
       <div className="grid gap-2">
-        <Label>List Button Text</Label>
+        <Label>{messages.listButtonTextLabel}</Label>
         <Input
           value={buttonText}
           onChange={(e) => onButtonChange(e.target.value)}
@@ -451,7 +468,7 @@ function ListEditor({
       </div>
       <div className="space-y-3">
         <Label>
-          Sections ({sections.length}/{META.SECTION_MAX})
+          {messages.sectionsLabel} ({sections.length}/{META.SECTION_MAX})
         </Label>
         {sections.map((s, i) => (
           <SectionEditor
@@ -465,7 +482,7 @@ function ListEditor({
         ))}
         {sections.length < META.SECTION_MAX && (
           <Button variant="outline" size="sm" onClick={addSection}>
-            <Plus className="mr-1 size-3" /> Add Section
+            <Plus className="mr-1 size-3" /> {messages.addSection}
           </Button>
         )}
       </div>
@@ -503,6 +520,9 @@ export function InteractiveComposer({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
 }: InteractiveComposerProps) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(params?.lang || "en").console
+    .whatsapp.messages.interactiveComposer
   const [internalOpen, setInternalOpen] = React.useState(false)
   const open = controlledOpen ?? internalOpen
   const setOpen = controlledOnOpenChange ?? setInternalOpen
@@ -546,7 +566,7 @@ export function InteractiveComposer({
       return
     }
     if (!phoneNumber.trim()) {
-      toast.error("Phone number is required")
+      toast.error(messages.phoneNumberRequiredToast)
       return
     }
 
@@ -557,11 +577,13 @@ export function InteractiveComposer({
         deviceId: deviceId || undefined,
         interactive: payload,
       })
-      toast.success("Interactive message sent")
+      toast.success(messages.messageSentToast)
       setOpen(false)
       resetForm()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send")
+      toast.error(
+        err instanceof Error ? err.message : messages.failedToSendToast
+      )
     } finally {
       setSending(false)
     }
@@ -572,30 +594,30 @@ export function InteractiveComposer({
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2 size-4" weight="bold" />
-          Interactive Message
+          {messages.interactiveMessageButton}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Send Interactive Message</DialogTitle>
-          <DialogDescription>
-            Compose a Reply Buttons, List, or CTA URL message.
-          </DialogDescription>
+          <DialogTitle>{messages.sendInteractiveMessageTitle}</DialogTitle>
+          <DialogDescription>{messages.dialogDescription}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Mode selector */}
           <Tabs value={mode} onValueChange={(v) => setMode(v as ComposerMode)}>
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="buttons">Reply Buttons</TabsTrigger>
-              <TabsTrigger value="list">List</TabsTrigger>
-              <TabsTrigger value="cta_url">CTA URL</TabsTrigger>
+              <TabsTrigger value="buttons">
+                {messages.replyButtonsTab}
+              </TabsTrigger>
+              <TabsTrigger value="list">{messages.listTab}</TabsTrigger>
+              <TabsTrigger value="cta_url">{messages.ctaUrlTab}</TabsTrigger>
             </TabsList>
 
             {/* Common fields */}
             <div className="mt-4 space-y-4">
               <div className="grid gap-2">
-                <Label>Phone Number *</Label>
+                <Label>{messages.phoneNumberLabel}</Label>
                 <Input
                   placeholder="+628123456789"
                   value={phoneNumber}
@@ -603,9 +625,9 @@ export function InteractiveComposer({
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Header (optional)</Label>
+                <Label>{messages.headerOptionalLabel}</Label>
                 <Input
-                  placeholder="Header text"
+                  placeholder={messages.headerTextPlaceholder}
                   value={state.headerText}
                   onChange={(e) =>
                     setState({ ...state, headerText: e.target.value })
@@ -617,9 +639,9 @@ export function InteractiveComposer({
                 </p>
               </div>
               <div className="grid gap-2">
-                <Label>Body *</Label>
+                <Label>{messages.bodyLabel}</Label>
                 <Textarea
-                  placeholder="Message body text"
+                  placeholder={messages.messageBodyPlaceholder}
                   value={state.bodyText}
                   onChange={(e) =>
                     setState({ ...state, bodyText: e.target.value })
@@ -632,9 +654,9 @@ export function InteractiveComposer({
                 </p>
               </div>
               <div className="grid gap-2">
-                <Label>Footer (optional)</Label>
+                <Label>{messages.footerOptionalLabel}</Label>
                 <Input
-                  placeholder="Footer text"
+                  placeholder={messages.footerTextPlaceholder}
                   value={state.footerText}
                   onChange={(e) =>
                     setState({ ...state, footerText: e.target.value })
@@ -672,13 +694,13 @@ export function InteractiveComposer({
               {/* Device selector */}
               {devices.length > 0 && (
                 <div className="grid gap-2">
-                  <Label>Device (optional)</Label>
+                  <Label>{messages.deviceOptionalLabel}</Label>
                   <select
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
                     value={deviceId}
                     onChange={(e) => setDeviceId(e.target.value)}
                   >
-                    <option value="">Auto-select device</option>
+                    <option value="">{messages.autoSelectDeviceOption}</option>
                     {devices.map((d) => (
                       <option
                         key={d.id}
@@ -712,19 +734,25 @@ export function InteractiveComposer({
             ) : (
               <Eye className="mr-1 size-4" />
             )}
-            {showPreview ? "Hide Preview" : "Show Preview"}
+            {showPreview ? messages.hidePreview : messages.showPreview}
           </Button>
         </div>
         {showPreview && <JsonPreview payload={payload} />}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {messages.cancelButton}
           </Button>
           <Button onClick={handleSend} disabled={sending || !!validationError}>
             {sending
-              ? "Sending..."
-              : `Send ${mode === "buttons" ? "Buttons" : mode === "list" ? "List" : "CTA URL"}`}
+              ? messages.sendingLabel
+              : `${messages.sendPrefix}${
+                  mode === "buttons"
+                    ? messages.modeButtons
+                    : mode === "list"
+                      ? messages.listTab
+                      : messages.ctaUrlTab
+                }`}
           </Button>
         </DialogFooter>
       </DialogContent>

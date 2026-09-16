@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   ArrowLeft,
   ArrowRight,
@@ -31,6 +33,10 @@ export function GitBuildStep({
   onBack,
   onNext,
 }: GitBuildStepProps) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.deploy.gitDeploy.build
   // Extract detected framework details if available
   const detection = inspectionData?.detection as
     | {
@@ -151,7 +157,7 @@ export function GitBuildStep({
           <span className="font-mono text-sm font-medium">{source.url}</span>
         </div>
         <Button variant="ghost" size="sm" onClick={onBack}>
-          Change Repository
+          {messages.changeRepo}
         </Button>
       </div>
 
@@ -161,27 +167,30 @@ export function GitBuildStep({
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-emerald-600" />
             <h2 className="text-base font-semibold">
-              Automated Framework Detection
+              {messages.frameworkDetection}
             </h2>
           </div>
           <Badge
             variant="secondary"
             className="bg-emerald-500/10 text-emerald-700"
           >
-            {detectedConfidence}% Confidence
+            {detectedConfidence}
+            {messages.confidence}
           </Badge>
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border border-border p-3">
-            <p className="text-xs text-muted-foreground uppercase">Framework</p>
+            <p className="text-xs text-muted-foreground uppercase">
+              {messages.framework}
+            </p>
             <p className="mt-1 font-semibold text-foreground">
               {detectedFramework} {detectedVersion}
             </p>
           </div>
           <div className="rounded-lg border border-border p-3">
             <p className="text-xs text-muted-foreground uppercase">
-              Runtime Engine
+              {messages.runtimeEngine}
             </p>
             <p className="mt-1 font-semibold text-foreground">
               {detectedRuntime}
@@ -189,7 +198,7 @@ export function GitBuildStep({
           </div>
           <div className="rounded-lg border border-border p-3">
             <p className="text-xs text-muted-foreground uppercase">
-              Package Manager
+              {messages.packageManager}
             </p>
             <p className="mt-1 font-semibold text-foreground">
               {detectedPackageManager}
@@ -200,52 +209,51 @@ export function GitBuildStep({
 
       {/* Build & Runtime Settings */}
       <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-base font-semibold">Build & Runtime Settings</h2>
+        <h2 className="text-base font-semibold">{messages.settingsTitle}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Review and override build commands or output directories for your
-          application.
+          {messages.settingsDesc}
         </p>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase">
-              Build Command
+              {messages.buildCommand}
             </label>
             <Input
               className="mt-1 font-mono text-sm"
               value={buildCommand}
               onChange={(e) => setBuildCommand(e.target.value)}
-              placeholder="pnpm run build"
+              placeholder={messages.buildCommandPlaceholder}
             />
           </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase">
-              Output Directory
+              {messages.outputDirectory}
             </label>
             <Input
               className="mt-1 font-mono text-sm"
               value={outputDir}
               onChange={(e) => setOutputDir(e.target.value)}
-              placeholder=".next"
+              placeholder={messages.outputDirectoryPlaceholder}
             />
           </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase">
-              Start Command
+              {messages.startCommand}
             </label>
             <Input
               className="mt-1 font-mono text-sm"
               value={startCommand}
               onChange={(e) => setStartCommand(e.target.value)}
-              placeholder="pnpm start"
+              placeholder={messages.startCommandPlaceholder}
             />
           </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase">
-              Application Port
+              {messages.appPort}
             </label>
             <Input
               className="mt-1 font-mono text-sm"
@@ -260,10 +268,9 @@ export function GitBuildStep({
         <div className="mt-6 border-t border-border pt-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Use custom Dockerfile</p>
+              <p className="text-sm font-medium">{messages.customDockerfile}</p>
               <p className="text-xs text-muted-foreground">
-                Deploy using an existing Dockerfile in the repository instead of
-                cloud native buildpacks.
+                {messages.customDockerfileDesc}
               </p>
             </div>
             <Switch
@@ -275,7 +282,7 @@ export function GitBuildStep({
           {useDockerfile && (
             <div className="mt-3 max-w-sm">
               <label className="text-xs font-medium text-muted-foreground uppercase">
-                Dockerfile Path
+                {messages.dockerfilePath}
               </label>
               <Input
                 className="mt-1 font-mono text-sm"
@@ -292,15 +299,14 @@ export function GitBuildStep({
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold">Environment Variables</h2>
+            <h2 className="text-base font-semibold">{messages.envVars}</h2>
             <p className="text-xs text-muted-foreground">
-              Define runtime and build configuration values injected into the
-              container.
+              {messages.envVarsDesc}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={addEnvVar}>
             <Plus className="mr-1.5 h-4 w-4" />
-            Add Variable
+            {messages.addVariable}
           </Button>
         </div>
 
@@ -321,7 +327,7 @@ export function GitBuildStep({
                       ? "password"
                       : "text"
                   }
-                  placeholder="value"
+                  placeholder={messages.envValuePlaceholder}
                   value={env.value}
                   onChange={(e) =>
                     updateEnvVar(env.id, "value", e.target.value)
@@ -365,10 +371,10 @@ export function GitBuildStep({
       <div className="flex items-center justify-between pt-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="mr-1.5 h-4 w-4" />
-          Back to Source
+          {messages.backToSource}
         </Button>
         <Button onClick={handleContinue}>
-          Continue to Sizing & Domain
+          {messages.continueToSizing}
           <ArrowRight className="ml-1.5 h-4 w-4" />
         </Button>
       </div>

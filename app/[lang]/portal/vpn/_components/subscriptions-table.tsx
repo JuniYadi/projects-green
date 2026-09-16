@@ -2,7 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   type ColumnDef,
   type SortingState,
@@ -153,7 +154,13 @@ function ColumnHeader({
   )
 }
 
-function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
+type SubscriptionsTableMessages = ReturnType<
+  typeof getMessagesForMaybeLocale
+>["console"]["vpn"]["adminSubscriptionsTable"]
+
+function getColumns(
+  messages: SubscriptionsTableMessages
+): ColumnDef<VpnSubscriptionItem>[] {
   return [
     {
       accessorKey: "id",
@@ -167,7 +174,7 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     {
       accessorKey: "organizationName",
       header: ({ column }) => (
-        <ColumnHeader column={column} title="Organization" />
+        <ColumnHeader column={column} title={messages.colOrganization} />
       ),
       cell: ({ row }) => (
         <span className="text-sm font-medium">
@@ -177,7 +184,9 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     },
     {
       accessorKey: "packageName",
-      header: ({ column }) => <ColumnHeader column={column} title="Package" />,
+      header: ({ column }) => (
+        <ColumnHeader column={column} title={messages.colPackage} />
+      ),
       cell: ({ row }) => (
         <span className="text-sm">{row.original.packageName}</span>
       ),
@@ -192,17 +201,19 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
             className="text-sm font-medium text-primary hover:underline"
             onClick={(event) => event.stopPropagation()}
           >
-            View in Billing
+            {messages.viewInBilling}
           </Link>
         ) : (
           <span className="text-xs text-muted-foreground">
-            Unavailable (legacy)
+            {messages.unavailableLegacy}
           </span>
         ),
     },
     {
       accessorKey: "status",
-      header: ({ column }) => <ColumnHeader column={column} title="Status" />,
+      header: ({ column }) => (
+        <ColumnHeader column={column} title={messages.colStatus} />
+      ),
       cell: ({ row }) => (
         <Badge variant={STATUS_VARIANT[row.original.status]}>
           {row.original.status}
@@ -212,7 +223,9 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     },
     {
       accessorKey: "deviceCount",
-      header: ({ column }) => <ColumnHeader column={column} title="Devices" />,
+      header: ({ column }) => (
+        <ColumnHeader column={column} title={messages.colDevices} />
+      ),
       cell: ({ row }) => (
         <a
           href={`/portal/vpn/devices?subscriptionId=${row.original.id}`}
@@ -226,7 +239,9 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     },
     {
       accessorKey: "priceLocked",
-      header: ({ column }) => <ColumnHeader column={column} title="Price" />,
+      header: ({ column }) => (
+        <ColumnHeader column={column} title={messages.colPrice} />
+      ),
       cell: ({ row }) => (
         <span className="text-sm font-medium">
           {formatCurrency(row.original.priceLocked, row.original.currency)}
@@ -236,7 +251,7 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     {
       accessorKey: "currentPeriodStart",
       header: ({ column }) => (
-        <ColumnHeader column={column} title="Period Start" />
+        <ColumnHeader column={column} title={messages.colPeriodStart} />
       ),
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
@@ -248,7 +263,7 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     {
       accessorKey: "currentPeriodEnd",
       header: ({ column }) => (
-        <ColumnHeader column={column} title="Period End" />
+        <ColumnHeader column={column} title={messages.colPeriodEnd} />
       ),
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
@@ -267,7 +282,9 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => <ColumnHeader column={column} title="Created" />,
+      header: ({ column }) => (
+        <ColumnHeader column={column} title={messages.colCreated} />
+      ),
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
           {formatDate(row.original.createdAt)}
@@ -292,6 +309,10 @@ function extractUnique(
 
 export function SubscriptionsTable() {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.vpn.adminSubscriptionsTable
   const [subs, setSubs] = useState<VpnSubscriptionItem[]>([])
   const [pagination, setPagination] = useState<PaginationMeta>({
     page: 1,
@@ -368,7 +389,7 @@ export function SubscriptionsTable() {
     setPage(1)
   }, [orgFilter, pkgFilter, statusFilter, dateFrom, dateTo, searchQuery])
 
-  const columns = useMemo(() => getColumns(), [])
+  const columns = useMemo(() => getColumns(messages), [messages])
 
   // ponytail: useReactTable API is incompatible with React Compiler — this is a known TanStack Table limitation
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -440,17 +461,17 @@ export function SubscriptionsTable() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by ID, org..."
+            placeholder={messages.searchPlaceholder}
             className="w-full sm:max-w-sm"
-            aria-label="Search subscriptions"
+            aria-label={messages.searchAriaLabel}
           />
 
           <Select value={orgFilter} onValueChange={setOrgFilter}>
             <SelectTrigger className="w-[180px]" size="sm">
-              <SelectValue placeholder="All organizations" />
+              <SelectValue placeholder={messages.allOrganizations} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All organizations</SelectItem>
+              <SelectItem value="all">{messages.allOrganizations}</SelectItem>
               {orgOptions.map((name) => (
                 <SelectItem key={name} value={name}>
                   {name}
@@ -461,10 +482,10 @@ export function SubscriptionsTable() {
 
           <Select value={pkgFilter} onValueChange={setPkgFilter}>
             <SelectTrigger className="w-[180px]" size="sm">
-              <SelectValue placeholder="All packages" />
+              <SelectValue placeholder={messages.allPackages} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All packages</SelectItem>
+              <SelectItem value="all">{messages.allPackages}</SelectItem>
               {pkgOptions.map((name) => (
                 <SelectItem key={name} value={name}>
                   {name}
@@ -475,10 +496,10 @@ export function SubscriptionsTable() {
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]" size="sm">
-              <SelectValue placeholder="All status" />
+              <SelectValue placeholder={messages.allStatus} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All status</SelectItem>
+              <SelectItem value="all">{messages.allStatus}</SelectItem>
               {STATUS_FILTER_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
@@ -490,7 +511,9 @@ export function SubscriptionsTable() {
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">From</label>
+            <label className="text-xs text-muted-foreground">
+              {messages.fromLabel}
+            </label>
             <input
               type="date"
               value={dateFrom}
@@ -499,7 +522,9 @@ export function SubscriptionsTable() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">To</label>
+            <label className="text-xs text-muted-foreground">
+              {messages.toLabel}
+            </label>
             <input
               type="date"
               value={dateTo}
@@ -511,19 +536,19 @@ export function SubscriptionsTable() {
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
               <X className="mr-1 h-3.5 w-3.5" />
-              Clear filters
+              {messages.clearFilters}
             </Button>
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="ml-auto">
-                Columns
+                {messages.columnsButton}
                 <CaretDownIcon className="ml-1 h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+              <DropdownMenuLabel>{messages.toggleColumns}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {table
                 .getAllColumns()
@@ -604,7 +629,7 @@ export function SubscriptionsTable() {
       {pagination.totalPages > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">
-            Showing {start}-{end} of {pagination.total}
+            {messages.showing} {start}-{end} {messages.of} {pagination.total}
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -613,10 +638,11 @@ export function SubscriptionsTable() {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Previous
+              {messages.previous}
             </Button>
             <span className="text-sm text-muted-foreground">
-              Page {pagination.page} of {pagination.totalPages}
+              {messages.page} {pagination.page} {messages.of}{" "}
+              {pagination.totalPages}
             </span>
             <Button
               variant="outline"
@@ -624,7 +650,7 @@ export function SubscriptionsTable() {
               disabled={page >= pagination.totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {messages.next}
             </Button>
           </div>
         </div>

@@ -42,6 +42,7 @@ export function GitSourceStep({
 }: GitSourceStepProps) {
   const messages = getMessagesForMaybeLocale(lang)
   const agentMessages = messages.console.app.deployAgent
+  const sourceMessages = messages.console.deploy.gitDeploy.source
   const [tab, setTab] = useState<"url" | "connected">("url")
   const [url, setUrl] = useState(initialSource?.url ?? "")
   const [branch, setBranch] = useState(initialSource?.branch ?? "main")
@@ -281,7 +282,7 @@ export function GitSourceStep({
           onClick={() => setTab("url")}
         >
           <Globe className="mr-1.5 h-4 w-4" />
-          Git Repository URL
+          {sourceMessages.repoUrlTab}
         </Button>
         <Button
           variant={tab === "connected" ? "default" : "outline"}
@@ -294,7 +295,7 @@ export function GitSourceStep({
           }}
         >
           <GithubLogo className="mr-1.5 h-4 w-4" />
-          Connected Repositories
+          {sourceMessages.connectedTab}
           {repos.length > 0 && (
             <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
               {repos.length}
@@ -307,16 +308,17 @@ export function GitSourceStep({
       {tab === "url" && (
         <div className="flex flex-col gap-6">
           <div className="rounded-xl border border-border bg-card p-6">
-            <h2 className="text-base font-semibold">Repository Source</h2>
+            <h2 className="text-base font-semibold">
+              {sourceMessages.repoSourceTitle}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Enter any public or private GitHub repository URL. The system
-              automatically detects whether credentials are required.
+              {sourceMessages.repoSourceDesc}
             </p>
 
             <div className="mt-4 grid gap-4 md:grid-cols-12">
               <div className="md:col-span-6">
                 <label className="text-xs font-medium text-muted-foreground uppercase">
-                  Repository URL
+                  {sourceMessages.repoUrlLabel}
                 </label>
                 <div className="mt-1 flex items-center gap-2">
                   <Input
@@ -335,7 +337,7 @@ export function GitSourceStep({
 
               <div className="md:col-span-3">
                 <label className="text-xs font-medium text-muted-foreground uppercase">
-                  Branch
+                  {sourceMessages.branchLabel}
                 </label>
                 <div className="mt-1 flex items-center">
                   <Input
@@ -348,7 +350,7 @@ export function GitSourceStep({
 
               <div className="md:col-span-3">
                 <label className="text-xs font-medium text-muted-foreground uppercase">
-                  Root Directory
+                  {sourceMessages.rootDirLabel}
                 </label>
                 <div className="mt-1 flex items-center">
                   <Input
@@ -395,7 +397,7 @@ export function GitSourceStep({
                 {accessState === "inspecting" ? (
                   <>
                     <Spinner className="mr-1.5 h-4 w-4 animate-spin" />
-                    Inspecting Visibility…
+                    {sourceMessages.inspectingVisibility}
                   </>
                 ) : (
                   <>
@@ -413,11 +415,10 @@ export function GitSourceStep({
               <Spinner className="h-5 w-5 animate-spin text-primary" />
               <div>
                 <p className="text-sm font-medium">
-                  Detecting repository visibility and access permissions…
+                  {sourceMessages.detectingPermissions}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Checking if repository is public or requires GitHub App
-                  credentials.
+                  {sourceMessages.checkingPublicOrApp}
                 </p>
               </div>
             </div>
@@ -437,7 +438,7 @@ export function GitSourceStep({
                         variant="secondary"
                         className="bg-emerald-500/10 text-emerald-700"
                       >
-                        Public Access
+                        {sourceMessages.publicAccess}
                       </Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -467,7 +468,7 @@ export function GitSourceStep({
                         variant="secondary"
                         className="bg-emerald-500/10 text-emerald-700"
                       >
-                        Authorized via GitHub App
+                        {sourceMessages.authorizedViaApp}
                       </Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -497,7 +498,7 @@ export function GitSourceStep({
                       variant="secondary"
                       className="bg-amber-500/10 text-amber-700"
                     >
-                      Private Repository
+                      {sourceMessages.privateRepo}
                     </Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -527,7 +528,7 @@ export function GitSourceStep({
               <WarningCircle className="mt-0.5 h-5 w-5 text-destructive" />
               <div>
                 <h3 className="text-sm font-semibold text-destructive">
-                  Inspection Failed
+                  {sourceMessages.inspectionFailed}
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {accessMessage}
@@ -538,7 +539,7 @@ export function GitSourceStep({
                   className="mt-3"
                   onClick={() => void handleInspectUrl(url)}
                 >
-                  Retry Inspection
+                  {sourceMessages.retryInspection}
                 </Button>
               </div>
             </div>
@@ -552,18 +553,17 @@ export function GitSourceStep({
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div>
               <h2 className="text-base font-semibold">
-                Connected GitHub Repositories
+                {sourceMessages.connectedHeading}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Select a private or public repository authorized under your
-                organization’s GitHub App.
+                {sourceMessages.connectedDesc}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={openGithubInstall}>
                 <GithubLogo className="mr-1.5 h-4 w-4" />
-                Configure Repositories
+                {sourceMessages.configureRepos}
               </Button>
             </div>
           </div>
@@ -572,15 +572,14 @@ export function GitSourceStep({
             <div className="mt-6 flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12 text-center">
               <GithubLogo className="h-10 w-10 text-muted-foreground" />
               <h3 className="mt-3 text-sm font-semibold">
-                GitHub App Not Connected
+                {sourceMessages.appNotConnected}
               </h3>
               <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                Connect your GitHub account or organization to grant read access
-                to your private repositories.
+                {sourceMessages.connectPrompt}
               </p>
               <Button size="sm" className="mt-4" onClick={openGithubInstall}>
                 <GithubLogo className="mr-1.5 h-4 w-4" />
-                Connect GitHub
+                {sourceMessages.connectButton}
               </Button>
             </div>
           )}
@@ -591,7 +590,7 @@ export function GitSourceStep({
                 <MagnifyingGlass className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   className="pl-9"
-                  placeholder="Search repositories by name…"
+                  placeholder={sourceMessages.searchPlaceholder}
                   value={repoSearch}
                   onChange={(e) => setRepoSearch(e.target.value)}
                 />
@@ -649,7 +648,7 @@ export function GitSourceStep({
                           void handleInspectUrl(repo.htmlUrl)
                         }}
                       >
-                        Import
+                        {sourceMessages.importButton}
                         <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                       </Button>
                     </div>

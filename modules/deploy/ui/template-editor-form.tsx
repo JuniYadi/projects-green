@@ -76,6 +76,7 @@ import {
   exportTemplatePackage,
   validateTemplatePackage,
 } from "@/modules/deploy/blueprint/app-template-blueprint.service"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 export interface TemplateEditorFormProps {
   initialData?: AdminTemplateRecord | null
   isNew?: boolean
@@ -100,6 +101,7 @@ export function TemplateEditorForm({
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
   const lang = params?.lang || "en"
+  const messages = getMessagesForMaybeLocale(lang).console.deploy.templateEditor
 
   const [name, setName] = useState(initialData?.name || "")
   const [slug, setSlug] = useState(initialData?.slug || "")
@@ -608,24 +610,25 @@ export function TemplateEditorForm({
               {isOfficial && (
                 <Badge variant="secondary" className="gap-1 text-xs">
                   <ShieldCheck className="size-3 text-emerald-500" />
-                  Official
+                  {messages.official}
                 </Badge>
               )}
               {isFeatured && (
                 <Badge variant="default" className="gap-1 text-xs">
                   <Star className="size-3 fill-amber-400" />
-                  Featured
+                  {messages.featured}
                 </Badge>
               )}
             </div>
             {isNew ? (
               <p className="text-xs text-muted-foreground">
-                Author first-party stack or community blueprint with full
-                configuration specs.
+                {messages.subtitle}
               </p>
             ) : (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-medium">Version {version}</span>
+                <span className="font-medium">
+                  {messages.version} {version}
+                </span>
                 <span>•</span>
                 <button
                   type="button"
@@ -636,11 +639,11 @@ export function TemplateEditorForm({
                     }
                   }}
                   className="inline-flex cursor-pointer items-center gap-1 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-                  title="Click to copy full ID"
+                  title={messages.copyId}
                 >
                   <Copy className="size-3" />
                   <span>
-                    ID:{" "}
+                    {messages.idPrefix}{" "}
                     {initialData?.id ? `${initialData.id.slice(0, 12)}...` : ""}
                   </span>
                 </button>
@@ -657,7 +660,7 @@ export function TemplateEditorForm({
             onClick={() => setShowImportDialog(true)}
             className="gap-1.5 text-xs"
           >
-            <UploadSimple className="size-4" /> Import JSON
+            <UploadSimple className="size-4" /> {messages.importJson}
           </Button>
           <Button
             type="button"
@@ -666,7 +669,7 @@ export function TemplateEditorForm({
             onClick={handleExportJson}
             className="gap-1.5 text-xs"
           >
-            <DownloadSimple className="size-4" /> Export JSON
+            <DownloadSimple className="size-4" /> {messages.exportJson}
           </Button>
           {!isNew && initialData?.id && (
             <>
@@ -678,7 +681,7 @@ export function TemplateEditorForm({
                   onClick={() => onApprove(initialData.id)}
                   className="gap-1 text-emerald-600 hover:text-emerald-700"
                 >
-                  <CheckCircle className="size-4" /> Approve
+                  <CheckCircle className="size-4" /> {messages.approve}
                 </Button>
               )}
               {initialData.visibility === "PENDING_REVIEW" && onReject && (
@@ -689,7 +692,7 @@ export function TemplateEditorForm({
                   onClick={() => setShowRejectDialog(true)}
                   className="gap-1 text-destructive hover:text-destructive"
                 >
-                  <XCircle className="size-4" /> Reject
+                  <XCircle className="size-4" /> {messages.reject}
                 </Button>
               )}
               {onToggleFeatured && (
@@ -717,7 +720,7 @@ export function TemplateEditorForm({
                   onClick={() => setShowDeleteDialog(true)}
                   className="gap-1 text-destructive hover:bg-destructive/10"
                 >
-                  <Trash className="size-4" /> Delete
+                  <Trash className="size-4" /> {messages.delete}
                 </Button>
               )}
             </>
@@ -746,11 +749,15 @@ export function TemplateEditorForm({
         <TabsList
           className={`grid w-full ${!isNew && initialData?.id ? "grid-cols-4" : "grid-cols-3"}`}
         >
-          <TabsTrigger value="general">General &amp; Docs</TabsTrigger>
-          <TabsTrigger value="runtime">Runtime &amp; Services</TabsTrigger>
-          <TabsTrigger value="env">Env Schema</TabsTrigger>
+          <TabsTrigger value="general">{messages.tabs.generalDocs}</TabsTrigger>
+          <TabsTrigger value="runtime">
+            {messages.tabs.runtimeServices}
+          </TabsTrigger>
+          <TabsTrigger value="env">{messages.tabs.envSchema}</TabsTrigger>
           {!isNew && initialData?.id && (
-            <TabsTrigger value="installations">Installations</TabsTrigger>
+            <TabsTrigger value="installations">
+              {messages.tabs.installations}
+            </TabsTrigger>
           )}
         </TabsList>
 
@@ -760,27 +767,31 @@ export function TemplateEditorForm({
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
-                  Identity & Presentation
+                  {messages.identity.title}
                 </CardTitle>
                 <CardDescription>
-                  Primary marketplace catalog listing info
+                  {messages.identity.description}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="template-name">Display Name *</Label>
+                  <Label htmlFor="template-name">
+                    {messages.identity.displayName}
+                  </Label>
                   <Input
                     id="template-name"
                     data-testid="template-name-input"
                     value={name}
                     onChange={(e) => handleSlugAutoFill(e.target.value)}
-                    placeholder="e.g. n8n Automation"
+                    placeholder={messages.identity.displayNamePlaceholder}
                     required
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="template-slug">URL Slug *</Label>
+                  <Label htmlFor="template-slug">
+                    {messages.identity.slug}
+                  </Label>
                   <Input
                     id="template-slug"
                     value={slug}
@@ -792,31 +803,35 @@ export function TemplateEditorForm({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="template-tagline">Tagline / Short Hook</Label>
+                  <Label htmlFor="template-tagline">
+                    {messages.identity.tagline}
+                  </Label>
                   <Input
                     id="template-tagline"
                     value={tagline}
                     onChange={(e) => setTagline(e.target.value)}
-                    placeholder="e.g. Fair-code workflow automation platform"
+                    placeholder={messages.identity.taglinePlaceholder}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="template-desc">Description *</Label>
+                  <Label htmlFor="template-desc">
+                    {messages.identity.descriptionLabel}
+                  </Label>
                   <Textarea
                     id="template-desc"
                     data-testid="template-desc-input"
                     rows={4}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Detailed explanation of features and capabilities"
+                    placeholder={messages.identity.descriptionPlaceholder}
                     required
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="template-icon">
-                    Icon URL / SVG identifier
+                    {messages.identity.iconUrl}
                   </Label>
                   <div className="flex items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30 p-1.5">
@@ -831,7 +846,7 @@ export function TemplateEditorForm({
                       id="template-icon"
                       value={iconUrl}
                       onChange={(e) => setIconUrl(e.target.value)}
-                      placeholder="e.g. /app-hosting/icons/n8n.svg or https://..."
+                      placeholder={messages.identity.iconUrlPlaceholder}
                       className="flex-1 text-xs"
                     />
                   </div>
@@ -841,37 +856,51 @@ export function TemplateEditorForm({
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
-                  Catalog &amp; Pricing
+                  {messages.catalogPricing.title}
                 </CardTitle>
                 <CardDescription>
-                  Marketplace catalog, category, and commercial terms
+                  {messages.catalogPricing.description}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="template-category">Category</Label>
+                    <Label htmlFor="template-category">
+                      {messages.catalogPricing.category}
+                    </Label>
                     <Select value={category} onValueChange={setCategory}>
                       <SelectTrigger id="template-category">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="AI">AI</SelectItem>
-                        <SelectItem value="AUTOMATION">Automation</SelectItem>
-                        <SelectItem value="CMS">CMS</SelectItem>
-                        <SelectItem value="DATABASE">Database</SelectItem>
-                        <SelectItem value="DEVELOPER_TOOLS">
-                          Developer Tools
+                        <SelectItem value="AI">
+                          {messages.catalogPricing.categories.ai}
                         </SelectItem>
-                        <SelectItem value="ANALYTICS">Analytics</SelectItem>
-                        <SelectItem value="UTILITIES">Utilities</SelectItem>
+                        <SelectItem value="AUTOMATION">
+                          {messages.catalogPricing.categories.automation}
+                        </SelectItem>
+                        <SelectItem value="CMS">
+                          {messages.catalogPricing.categories.cms}
+                        </SelectItem>
+                        <SelectItem value="DATABASE">
+                          {messages.catalogPricing.categories.database}
+                        </SelectItem>
+                        <SelectItem value="DEVELOPER_TOOLS">
+                          {messages.catalogPricing.categories.developerTools}
+                        </SelectItem>
+                        <SelectItem value="ANALYTICS">
+                          {messages.catalogPricing.categories.analytics}
+                        </SelectItem>
+                        <SelectItem value="UTILITIES">
+                          {messages.catalogPricing.categories.utilities}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-1.5">
                     <Label htmlFor="template-visibility">
-                      Visibility Status
+                      {messages.catalogPricing.visibility}
                     </Label>
                     <Select
                       value={visibility}
@@ -888,7 +917,9 @@ export function TemplateEditorForm({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="PUBLIC">PUBLIC (Live)</SelectItem>
+                        <SelectItem value="PUBLIC">
+                          {messages.catalogPricing.publicLive}
+                        </SelectItem>
                         <SelectItem value="PENDING_REVIEW">
                           PENDING_REVIEW
                         </SelectItem>
@@ -902,7 +933,9 @@ export function TemplateEditorForm({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="template-version">Release Version</Label>
+                    <Label htmlFor="template-version">
+                      {messages.catalogPricing.releaseVersion}
+                    </Label>
                     <Input
                       id="template-version"
                       value={version}
@@ -913,7 +946,7 @@ export function TemplateEditorForm({
 
                   <div className="space-y-1.5">
                     <Label htmlFor="template-price">
-                      Monthly Price (USD $)
+                      {messages.catalogPricing.monthlyPrice}
                     </Label>
                     <div className="relative">
                       <span className="absolute top-1/2 left-3 -translate-y-1/2 text-xs font-medium text-muted-foreground">
@@ -936,10 +969,10 @@ export function TemplateEditorForm({
                   <div className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
                       <Label className="text-sm font-medium">
-                        Official Platform Template
+                        {messages.catalogPricing.officialBadgeTitle}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Verified and guaranteed first-party stack
+                        {messages.catalogPricing.officialBadgeDescription}
                       </p>
                     </div>
                     <Switch
@@ -951,10 +984,10 @@ export function TemplateEditorForm({
                   <div className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
                       <Label className="text-sm font-medium">
-                        Featured on Marketplace
+                        {messages.catalogPricing.featuredBadgeTitle}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Highlight template on marketplace top showcase
+                        {messages.catalogPricing.featuredBadgeDescription}
                       </p>
                     </div>
                     <Switch
@@ -970,11 +1003,10 @@ export function TemplateEditorForm({
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div>
                 <CardTitle className="text-base">
-                  Template Documentation (Markdown)
+                  {messages.documentation.title}
                 </CardTitle>
                 <CardDescription>
-                  Full readme and deployment manual shown in template detail
-                  view
+                  {messages.documentation.description}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 text-xs">
@@ -985,7 +1017,7 @@ export function TemplateEditorForm({
                   onClick={() => setReadmeTab("write")}
                   className="h-7 px-2.5 text-xs"
                 >
-                  Write
+                  {messages.documentation.writeTab}
                 </Button>
                 <Button
                   type="button"
@@ -994,7 +1026,7 @@ export function TemplateEditorForm({
                   onClick={() => setReadmeTab("preview")}
                   className="h-7 px-2.5 text-xs"
                 >
-                  Preview
+                  {messages.documentation.previewTab}
                 </Button>
               </div>
             </CardHeader>
@@ -1004,7 +1036,7 @@ export function TemplateEditorForm({
                   rows={12}
                   value={readmeMarkdown}
                   onChange={(e) => setReadmeMarkdown(e.target.value)}
-                  placeholder="# Getting Started with this Stack..."
+                  placeholder={messages.documentation.placeholder}
                   className="font-mono text-xs"
                 />
               ) : (
@@ -1019,7 +1051,7 @@ export function TemplateEditorForm({
                     />
                   ) : (
                     <p className="text-xs text-muted-foreground italic">
-                      No documentation written yet.
+                      {messages.documentation.empty}
                     </p>
                   )}
                 </div>
@@ -1034,25 +1066,29 @@ export function TemplateEditorForm({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Cpu className="size-4" /> Container Runtime
+                  <Cpu className="size-4" /> {messages.runtime.title}
                 </CardTitle>
                 <CardDescription>
-                  Docker image, container port, and health check path
+                  {messages.runtime.description}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="runtime-image">Docker Image *</Label>
+                  <Label htmlFor="runtime-image">
+                    {messages.runtime.dockerImage}
+                  </Label>
                   <Input
                     id="runtime-image"
                     value={runtimeImage}
                     onChange={(e) => setRuntimeImage(e.target.value)}
-                    placeholder="e.g. n8nio/n8n:latest"
+                    placeholder={messages.runtime.dockerImagePlaceholder}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="runtime-port">Default Port *</Label>
+                    <Label htmlFor="runtime-port">
+                      {messages.runtime.defaultPort}
+                    </Label>
                     <Input
                       id="runtime-port"
                       type="number"
@@ -1065,7 +1101,7 @@ export function TemplateEditorForm({
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="runtime-deployment-type">
-                      Workload Type
+                      {messages.runtime.workloadType}
                     </Label>
                     <Select
                       value={deploymentType}
@@ -1077,35 +1113,43 @@ export function TemplateEditorForm({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="deployment">Deployment</SelectItem>
-                        <SelectItem value="statefulset">StatefulSet</SelectItem>
+                        <SelectItem value="deployment">
+                          {messages.runtime.deployment}
+                        </SelectItem>
+                        <SelectItem value="statefulset">
+                          {messages.runtime.statefulSet}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="runtime-command">Container Command</Label>
+                    <Label htmlFor="runtime-command">
+                      {messages.runtime.containerCommand}
+                    </Label>
                     <Input
                       id="runtime-command"
                       value={runtimeCommand}
                       onChange={(e) => setRuntimeCommand(e.target.value)}
-                      placeholder="e.g. hermes gateway run"
+                      placeholder={messages.runtime.containerCommandPlaceholder}
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      Override container entrypoint (space-separated)
+                      {messages.runtime.containerCommandHelp}
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="runtime-args">Container Arguments</Label>
+                    <Label htmlFor="runtime-args">
+                      {messages.runtime.containerArgs}
+                    </Label>
                     <Input
                       id="runtime-args"
                       value={runtimeArgs}
                       onChange={(e) => setRuntimeArgs(e.target.value)}
-                      placeholder="e.g. gateway run"
+                      placeholder={messages.runtime.containerArgsPlaceholder}
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      Optional arguments passed to the entrypoint
+                      {messages.runtime.containerArgsHelp}
                     </p>
                   </div>
                 </div>
@@ -1113,22 +1157,21 @@ export function TemplateEditorForm({
                 <div className="space-y-3 rounded-lg border p-3">
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium">
-                      Health Checks &amp; Container Probes
+                      {messages.runtime.probesTitle}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Configure health endpoints to monitor container status and
-                      prevent boot loops.
+                      {messages.runtime.probesDescription}
                     </p>
                   </div>
                   <div className="space-y-1.5 pt-1">
                     <Label htmlFor="runtime-health" className="text-xs">
-                      Liveness Probe Path (Health Check Endpoint)
+                      {messages.runtime.livenessPath}
                     </Label>
                     <Input
                       id="runtime-health"
                       value={healthCheckPath}
                       onChange={(e) => setHealthCheckPath(e.target.value)}
-                      placeholder="e.g. /healthz or /api/ping (leave empty to disable all probes)"
+                      placeholder={messages.runtime.livenessPathPlaceholder}
                       className="h-8 text-xs"
                     />
                   </div>
@@ -1138,7 +1181,7 @@ export function TemplateEditorForm({
                       <div className="grid grid-cols-3 gap-2">
                         <div className="space-y-1.5">
                           <Label htmlFor="startup-probe" className="text-xs">
-                            Startup Probe Path
+                            {messages.runtime.startupPath}
                           </Label>
                           <Input
                             id="startup-probe"
@@ -1146,13 +1189,15 @@ export function TemplateEditorForm({
                             onChange={(e) =>
                               setStartupProbePath(e.target.value)
                             }
-                            placeholder="e.g. /health/startup (optional)"
+                            placeholder={
+                              messages.runtime.startupPathPlaceholder
+                            }
                             className="h-8 text-xs"
                           />
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="startup-delay" className="text-xs">
-                            Startup Delay (s)
+                            {messages.runtime.startupDelay}
                           </Label>
                           <Input
                             id="startup-delay"
@@ -1172,7 +1217,7 @@ export function TemplateEditorForm({
                             htmlFor="startup-threshold"
                             className="text-xs"
                           >
-                            Startup Threshold
+                            {messages.runtime.startupThreshold}
                           </Label>
                           <Input
                             id="startup-threshold"
@@ -1191,7 +1236,7 @@ export function TemplateEditorForm({
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                           <Label htmlFor="readiness-probe" className="text-xs">
-                            Readiness Probe Path
+                            {messages.runtime.readinessPath}
                           </Label>
                           <Input
                             id="readiness-probe"
@@ -1199,13 +1244,15 @@ export function TemplateEditorForm({
                             onChange={(e) =>
                               setReadinessProbePath(e.target.value)
                             }
-                            placeholder="e.g. /health/ready (optional)"
+                            placeholder={
+                              messages.runtime.readinessPathPlaceholder
+                            }
                             className="h-8 text-xs"
                           />
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="readiness-delay" className="text-xs">
-                            Readiness Initial Delay (s)
+                            {messages.runtime.readinessDelay}
                           </Label>
                           <Input
                             id="readiness-delay"
@@ -1224,8 +1271,7 @@ export function TemplateEditorForm({
                     </div>
                   ) : (
                     <div className="rounded border border-dashed border-muted p-2 text-center text-[11px] text-muted-foreground">
-                      Startup &amp; Readiness probes are inactive while Liveness
-                      Probe path is empty.
+                      {messages.runtime.probesHelp}
                     </div>
                   )}
                 </div>
@@ -1233,10 +1279,10 @@ export function TemplateEditorForm({
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-sm font-medium">
-                        Additional Ports
+                        {messages.runtime.additionalPortsTitle}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Extra container ports beyond the default port
+                        {messages.runtime.additionalPortsDescription}
                       </p>
                     </div>
                     <Button
@@ -1246,7 +1292,7 @@ export function TemplateEditorForm({
                       onClick={addAdditionalPort}
                       className="gap-1 text-xs"
                     >
-                      <Plus className="size-3.5" /> Add Port
+                      <Plus className="size-3.5" /> {messages.runtime.addPort}
                     </Button>
                   </div>
                   {additionalPorts.map((item, idx) => (
@@ -1267,7 +1313,7 @@ export function TemplateEditorForm({
                         onChange={(e) =>
                           updateAdditionalPort(idx, { name: e.target.value })
                         }
-                        placeholder="dashboard"
+                        placeholder={messages.runtime.portNamePlaceholder}
                         className="h-8 text-xs"
                       />
                       <Button
@@ -1285,10 +1331,10 @@ export function TemplateEditorForm({
                 <div className="flex items-center justify-between rounded-lg border p-3">
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium">
-                      Run as Non-Root
+                      {messages.runtime.runAsNonRoot}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Enforces pod security standards
+                      {messages.runtime.runAsNonRootDescription}
                     </p>
                   </div>
                   <Switch
@@ -1302,19 +1348,23 @@ export function TemplateEditorForm({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <HardDrive className="size-4" /> Resources & Storage
+                  <HardDrive className="size-4" />{" "}
+                  {messages.resourcesStorage.title}
                 </CardTitle>
                 <CardDescription>
-                  Compute allocations and persistent storage
+                  {messages.resourcesStorage.description}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="res-cpu">Default CPU (mCPU)</Label>
+                      <Label htmlFor="res-cpu">
+                        {messages.resourcesStorage.cpuLabel}
+                      </Label>
                       <span className="text-[11px] text-muted-foreground">
-                        = {(defaultCpu / 1000).toFixed(2)} vCPU (1000m = 1 vCPU)
+                        = {(defaultCpu / 1000).toFixed(2)}{" "}
+                        {messages.resourcesStorage.cpuHint}
                       </span>
                     </div>
                     <Input
@@ -1326,12 +1376,14 @@ export function TemplateEditorForm({
                       onChange={(e) =>
                         setDefaultCpu(parseInt(e.target.value) || 500)
                       }
-                      placeholder="500 mCPU"
+                      placeholder={messages.resourcesStorage.cpuPlaceholder}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="res-mem">Default Memory (MB)</Label>
+                      <Label htmlFor="res-mem">
+                        {messages.resourcesStorage.memoryLabel}
+                      </Label>
                       <span className="text-[11px] text-muted-foreground">
                         ={" "}
                         {defaultMemory >= 1024
@@ -1357,10 +1409,10 @@ export function TemplateEditorForm({
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-sm font-medium">
-                        Persistent Storage
+                        {messages.resourcesStorage.storageTitle}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Mount dedicated PVC for data persistence
+                        {messages.resourcesStorage.storageDescription}
                       </p>
                     </div>
                     <Switch
@@ -1371,7 +1423,9 @@ export function TemplateEditorForm({
                   {storageEnabled && (
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div className="space-y-1.5">
-                        <Label htmlFor="storage-mount">Mount Path</Label>
+                        <Label htmlFor="storage-mount">
+                          {messages.resourcesStorage.mountPath}
+                        </Label>
                         <Input
                           id="storage-mount"
                           value={storageMountPath}
@@ -1380,7 +1434,9 @@ export function TemplateEditorForm({
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="storage-size">Default Size (GB)</Label>
+                        <Label htmlFor="storage-size">
+                          {messages.resourcesStorage.sizeGb}
+                        </Label>
                         <Input
                           id="storage-size"
                           type="number"
@@ -1401,13 +1457,13 @@ export function TemplateEditorForm({
                     <Warning className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                     <div className="space-y-1">
                       <p className="font-semibold">
-                        Single-Node Storage Constraint:
+                        {messages.resourcesStorage.singleNodeConstraintTitle}
                       </p>
                       <p className="text-[11px] leading-relaxed">
-                        Workloads with dedicated persistent storage (RWO) cannot
-                        be scaled horizontally across multiple nodes (maximum
-                        replicas is locked to 1) to prevent volume attachment
-                        conflicts.
+                        {
+                          messages.resourcesStorage
+                            .singleNodeConstraintDescription
+                        }
                       </p>
                     </div>
                   </div>
@@ -1417,11 +1473,10 @@ export function TemplateEditorForm({
                 <div className="space-y-3 rounded-lg border p-3">
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium">
-                      Volume Mounts (ConfigMap, Secret, PVC, EmptyDir)
+                      {messages.resourcesStorage.volumeMountsTitle}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Mount configuration files, certificates, or additional
-                      storage volumes
+                      {messages.resourcesStorage.volumeMountsDescription}
                     </p>
                   </div>
 
@@ -1454,7 +1509,7 @@ export function TemplateEditorForm({
                                 variant="secondary"
                                 className="text-[10px]"
                               >
-                                RO
+                                {messages.resourcesStorage.readOnlyBadge}
                               </Badge>
                             )}
                           </div>
@@ -1475,11 +1530,13 @@ export function TemplateEditorForm({
                   {/* Add Mount Input Row */}
                   <div className="space-y-2 rounded border border-dashed bg-muted/10 p-2.5">
                     <p className="text-[11px] font-medium text-foreground">
-                      Add New Mount
+                      {messages.resourcesStorage.addMountButton}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Type</Label>
+                        <Label className="text-[11px]">
+                          {messages.resourcesStorage.mountType}
+                        </Label>
                         <Select
                           value={newMountType}
                           onValueChange={(
@@ -1490,19 +1547,31 @@ export function TemplateEditorForm({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="configmap">ConfigMap</SelectItem>
-                            <SelectItem value="secret">Secret</SelectItem>
-                            <SelectItem value="pvc">PVC</SelectItem>
-                            <SelectItem value="emptyDir">EmptyDir</SelectItem>
+                            <SelectItem value="configmap">
+                              {messages.resourcesStorage.mountTypes.configMap}
+                            </SelectItem>
+                            <SelectItem value="secret">
+                              {messages.resourcesStorage.mountTypes.secret}
+                            </SelectItem>
+                            <SelectItem value="pvc">
+                              {messages.resourcesStorage.mountTypes.pvc}
+                            </SelectItem>
+                            <SelectItem value="emptyDir">
+                              {messages.resourcesStorage.mountTypes.emptyDir}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Volume Name *</Label>
+                        <Label className="text-[11px]">
+                          {messages.resourcesStorage.volumeName}
+                        </Label>
                         <Input
                           value={newMountName}
                           onChange={(e) => setNewMountName(e.target.value)}
-                          placeholder="e.g. app-config"
+                          placeholder={
+                            messages.resourcesStorage.volumeNamePlaceholder
+                          }
                           className="h-7 text-xs"
                         />
                       </div>
@@ -1510,22 +1579,30 @@ export function TemplateEditorForm({
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Mount Path *</Label>
+                        <Label className="text-[11px]">
+                          {messages.resourcesStorage.mountPathLabel}
+                        </Label>
                         <Input
                           value={newMountPath}
                           onChange={(e) => setNewMountPath(e.target.value)}
-                          placeholder="e.g. /etc/config"
+                          placeholder={
+                            messages.resourcesStorage.mountPathPlaceholder
+                          }
                           className="h-7 text-xs"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Source Name</Label>
+                        <Label className="text-[11px]">
+                          {messages.resourcesStorage.sourceName}
+                        </Label>
                         <Input
                           value={newMountSourceName}
                           onChange={(e) =>
                             setNewMountSourceName(e.target.value)
                           }
-                          placeholder="ConfigMap/Secret name"
+                          placeholder={
+                            messages.resourcesStorage.sourceNamePlaceholder
+                          }
                           className="h-7 text-xs"
                         />
                       </div>
@@ -1544,7 +1621,7 @@ export function TemplateEditorForm({
                           htmlFor="mount-readonly"
                           className="cursor-pointer text-[11px]"
                         >
-                          Mount as Read-Only
+                          {messages.resourcesStorage.readOnlySwitch}
                         </Label>
                       </div>
                       <Button
@@ -1554,7 +1631,8 @@ export function TemplateEditorForm({
                         onClick={addMount}
                         className="h-7 gap-1 text-xs"
                       >
-                        <Plus className="size-3" /> Add Mount
+                        <Plus className="size-3" />{" "}
+                        {messages.resourcesStorage.submitMount}
                       </Button>
                     </div>
                   </div>
@@ -1565,12 +1643,10 @@ export function TemplateEditorForm({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Database className="size-4" /> Managed Database & Cache
-                Dependencies
+                <Database className="size-4" /> {messages.dependencies.title}
               </CardTitle>
               <CardDescription>
-                Select required add-on services that platform will automatically
-                provision and inject
+                {messages.dependencies.description}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1597,7 +1673,9 @@ export function TemplateEditorForm({
                       {isSelected && dep && (
                         <div className="mt-3 space-y-2 text-xs">
                           <div>
-                            <Label className="text-xs">ENV Prefix</Label>
+                            <Label className="text-xs">
+                              {messages.dependencies.envPrefix}
+                            </Label>
                             <Input
                               size={1}
                               value={dep.envPrefix}
@@ -1630,11 +1708,10 @@ export function TemplateEditorForm({
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Key className="size-4" /> Environment Variables Schema
+                  <Key className="size-4" /> {messages.envSchema.title}
                 </CardTitle>
                 <CardDescription>
-                  Define configurable environment variables with typing, default
-                  values, and secrets
+                  {messages.envSchema.description}
                 </CardDescription>
               </div>
               <Button
@@ -1644,13 +1721,13 @@ export function TemplateEditorForm({
                 onClick={addEnvVar}
                 className="gap-1 text-xs"
               >
-                <Plus className="size-3.5" /> Add Variable
+                <Plus className="size-3.5" /> {messages.envSchema.addVariable}
               </Button>
             </CardHeader>
             <CardContent>
               {envSchema.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-                  <p className="text-sm">No environment variables defined.</p>
+                  <p className="text-sm">{messages.envSchema.empty}</p>
                   <Button
                     type="button"
                     variant="ghost"
@@ -1658,7 +1735,7 @@ export function TemplateEditorForm({
                     onClick={addEnvVar}
                     className="mt-2 text-xs text-primary"
                   >
-                    + Add your first variable
+                    {messages.envSchema.addFirst}
                   </Button>
                 </div>
               ) : (
@@ -1672,32 +1749,36 @@ export function TemplateEditorForm({
                         <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                           <div className="space-y-1">
                             <Label className="text-xs font-medium">
-                              Key <span className="text-destructive">*</span>
+                              {messages.envSchema.key}{" "}
+                              <span className="text-destructive">*</span>
                             </Label>
                             <Input
                               value={item.key}
                               onChange={(e) =>
                                 updateEnvVar(idx, { key: e.target.value })
                               }
-                              placeholder="e.g. DATA_DIR"
+                              placeholder={messages.envSchema.keyPlaceholder}
                               className="h-8 font-mono text-xs"
                             />
                           </div>
                           <div className="space-y-1">
                             <Label className="text-xs font-medium">
-                              Label <span className="text-destructive">*</span>
+                              {messages.envSchema.label}{" "}
+                              <span className="text-destructive">*</span>
                             </Label>
                             <Input
                               value={item.label}
                               onChange={(e) =>
                                 updateEnvVar(idx, { label: e.target.value })
                               }
-                              placeholder="e.g. Data Directory"
+                              placeholder={messages.envSchema.labelPlaceholder}
                               className="h-8 text-xs"
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs font-medium">Type</Label>
+                            <Label className="text-xs font-medium">
+                              {messages.envSchema.type}
+                            </Label>
                             <Select
                               value={item.dataType}
                               onValueChange={(
@@ -1708,16 +1789,24 @@ export function TemplateEditorForm({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="string">string</SelectItem>
-                                <SelectItem value="number">number</SelectItem>
-                                <SelectItem value="boolean">boolean</SelectItem>
-                                <SelectItem value="select">select</SelectItem>
+                                <SelectItem value="string">
+                                  {messages.envSchema.types.string}
+                                </SelectItem>
+                                <SelectItem value="number">
+                                  {messages.envSchema.types.number}
+                                </SelectItem>
+                                <SelectItem value="boolean">
+                                  {messages.envSchema.types.boolean}
+                                </SelectItem>
+                                <SelectItem value="select">
+                                  {messages.envSchema.types.select}
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
                             <Label className="text-xs font-medium">
-                              Default Value
+                              {messages.envSchema.defaultValue}
                             </Label>
                             <Input
                               value={item.defaultValue || ""}
@@ -1726,7 +1815,9 @@ export function TemplateEditorForm({
                                   defaultValue: e.target.value,
                                 })
                               }
-                              placeholder="e.g. /app/data"
+                              placeholder={
+                                messages.envSchema.defaultValuePlaceholder
+                              }
                               className="h-8 font-mono text-xs"
                             />
                           </div>
@@ -1745,7 +1836,7 @@ export function TemplateEditorForm({
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <div className="space-y-1 lg:col-span-2">
                           <Label className="text-xs font-medium text-muted-foreground">
-                            Description (User Helper Text)
+                            {messages.envSchema.descriptionLabel}
                           </Label>
                           <Input
                             value={item.description || ""}
@@ -1754,13 +1845,15 @@ export function TemplateEditorForm({
                                 description: e.target.value,
                               })
                             }
-                            placeholder="e.g. Admin key for gateway configuration and key issuance"
+                            placeholder={
+                              messages.envSchema.descriptionPlaceholder
+                            }
                             className="h-8 text-xs"
                           />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs font-medium text-muted-foreground">
-                            Generate Random Hex (Length)
+                            {messages.envSchema.randomHex}
                           </Label>
                           <Input
                             type="number"
@@ -1773,7 +1866,9 @@ export function TemplateEditorForm({
                                   isNaN(num) || num <= 0 ? undefined : num,
                               })
                             }}
-                            placeholder="Length in chars (e.g. 32)"
+                            placeholder={
+                              messages.envSchema.randomHexPlaceholder
+                            }
                             className="h-8 font-mono text-xs"
                           />
                         </div>
@@ -1782,7 +1877,7 @@ export function TemplateEditorForm({
                       {item.dataType === "select" && (
                         <div className="space-y-1">
                           <Label className="text-xs font-medium text-muted-foreground">
-                            Options (Comma-separated)
+                            {messages.envSchema.options}
                           </Label>
                           <Input
                             value={item.options?.join(", ") || ""}
@@ -1793,7 +1888,7 @@ export function TemplateEditorForm({
                                 .filter(Boolean)
                               updateEnvVar(idx, { options: opts })
                             }}
-                            placeholder="e.g. dev, staging, production"
+                            placeholder={messages.envSchema.optionsPlaceholder}
                             className="h-8 text-xs"
                           />
                         </div>
@@ -1809,9 +1904,11 @@ export function TemplateEditorForm({
                               })
                             }
                           />
-                          <span className="font-medium">Required</span>
+                          <span className="font-medium">
+                            {messages.envSchema.required}
+                          </span>
                           <span className="text-[11px] text-muted-foreground">
-                            (Must be set)
+                            {messages.envSchema.requiredHint}
                           </span>
                         </label>
 
@@ -1826,10 +1923,10 @@ export function TemplateEditorForm({
                           />
                           <span className="flex items-center gap-1 font-medium">
                             <Lock className="size-3.5 text-muted-foreground" />
-                            Secret
+                            {messages.envSchema.secret}
                           </span>
                           <span className="text-[11px] text-muted-foreground">
-                            (Masked input)
+                            {messages.envSchema.secretHint}
                           </span>
                         </label>
 
@@ -1844,10 +1941,10 @@ export function TemplateEditorForm({
                           />
                           <span className="flex items-center gap-1 font-medium">
                             <PushPin className="size-3.5 text-muted-foreground" />
-                            Fixed
+                            {messages.envSchema.fixed}
                           </span>
                           <span className="text-[11px] text-muted-foreground">
-                            (Locked for tenant)
+                            {messages.envSchema.fixedHint}
                           </span>
                         </label>
 
@@ -1862,10 +1959,10 @@ export function TemplateEditorForm({
                           />
                           <span className="flex items-center gap-1 font-medium">
                             <EyeSlash className="size-3.5 text-muted-foreground" />
-                            Hidden
+                            {messages.envSchema.hidden}
                           </span>
                           <span className="text-[11px] text-muted-foreground">
-                            (Hidden in deploy drawer)
+                            {messages.envSchema.hiddenHint}
                           </span>
                         </label>
                       </div>
@@ -1877,11 +1974,10 @@ export function TemplateEditorForm({
                       <div className="mb-3 flex items-center gap-2">
                         <Eye className="size-4 text-primary" />
                         <span className="text-xs font-semibold tracking-wider text-foreground uppercase">
-                          Deploy Drawer Preview
+                          {messages.envSchema.previewTitle}
                         </span>
                         <span className="text-[11px] text-muted-foreground">
-                          — Live preview of how tenants will see these inputs
-                          during deployment
+                          {messages.envSchema.previewDescription}
                         </span>
                       </div>
 
@@ -1897,8 +1993,8 @@ export function TemplateEditorForm({
                                   {item.key || `VAR_${idx + 1}`}
                                 </span>
                                 <span className="inline-flex items-center gap-1 text-[11px] italic">
-                                  <EyeSlash className="size-3" /> Hidden from
-                                  tenant
+                                  <EyeSlash className="size-3" />{" "}
+                                  {messages.envSchema.hiddenBadge}
                                 </span>
                               </div>
                             )
@@ -1921,7 +2017,8 @@ export function TemplateEditorForm({
                                       variant="outline"
                                       className="h-4 gap-0.5 px-1 text-[10px] text-muted-foreground"
                                     >
-                                      <PushPin className="size-2.5" /> Locked
+                                      <PushPin className="size-2.5" />{" "}
+                                      {messages.envSchema.lockedBadge}
                                     </Badge>
                                   )}
                                   {item.isSecret && (
@@ -1929,7 +2026,8 @@ export function TemplateEditorForm({
                                       variant="outline"
                                       className="h-4 gap-0.5 px-1 text-[10px] text-amber-600 dark:text-amber-400"
                                     >
-                                      <Lock className="size-2.5" /> Secret
+                                      <Lock className="size-2.5" />{" "}
+                                      {messages.envSchema.secretBadge}
                                     </Badge>
                                   )}
                                 </div>
@@ -1984,20 +2082,22 @@ export function TemplateEditorForm({
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogTitle>{messages.dialogs.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete template &ldquo;{name}
-              &rdquo;? Existing deployed stacks will not be disrupted, but this
-              blueprint will be removed from marketplace.
+              {messages.dialogs.deleteDescriptionBefore}
+              {name}
+              {messages.dialogs.deleteDescriptionAfter}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {messages.dialogs.deleteCancel}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="text-destructive-foreground bg-destructive hover:bg-destructive/90"
             >
-              Delete
+              {messages.dialogs.deleteConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2007,10 +2107,9 @@ export function TemplateEditorForm({
       <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reject Template Submission</AlertDialogTitle>
+            <AlertDialogTitle>{messages.dialogs.rejectTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Provide clear feedback explaining why this template submission was
-              rejected.
+              {messages.dialogs.rejectDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-2">
@@ -2018,12 +2117,14 @@ export function TemplateEditorForm({
               rows={3}
               value={rejectNotes}
               onChange={(e) => setRejectNotes(e.target.value)}
-              placeholder="e.g. Container image runs as root user or invalid database prefix..."
+              placeholder={messages.dialogs.rejectPlaceholder}
               required
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {messages.dialogs.rejectCancel}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (initialData?.id && onReject && rejectNotes.trim()) {
@@ -2034,7 +2135,7 @@ export function TemplateEditorForm({
               disabled={!rejectNotes.trim()}
               className="text-destructive-foreground bg-destructive hover:bg-destructive/90"
             >
-              Confirm Rejection
+              {messages.dialogs.rejectConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2044,10 +2145,9 @@ export function TemplateEditorForm({
       <AlertDialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Import Template Configuration</AlertDialogTitle>
+            <AlertDialogTitle>{messages.dialogs.importTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              Paste a template package JSON exported from another environment
-              (e.g. dev/staging) or upload a .json file.
+              {messages.dialogs.importDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3 py-2">
@@ -2080,11 +2180,14 @@ export function TemplateEditorForm({
                 }}
                 className="gap-1.5 text-xs"
               >
-                <UploadSimple className="size-3.5" /> Upload File (.json)
+                <UploadSimple className="size-3.5" />{" "}
+                {messages.dialogs.uploadFile}
               </Button>
               {importJsonText && (
                 <span className="text-xs text-muted-foreground">
-                  File loaded ({importJsonText.length} bytes)
+                  {messages.dialogs.fileLoadedBefore}
+                  {importJsonText.length}
+                  {messages.dialogs.fileLoadedAfter}
                 </span>
               )}
             </div>
@@ -2092,20 +2195,20 @@ export function TemplateEditorForm({
               rows={10}
               value={importJsonText}
               onChange={(e) => setImportJsonText(e.target.value)}
-              placeholder='{"exportVersion":"1.0.0","metadata":{"name":"..."},"blueprint":{...}}'
+              placeholder={messages.dialogs.importPlaceholder}
               className="font-mono text-xs"
             />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setImportJsonText("")}>
-              Cancel
+              {messages.dialogs.importCancel}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleApplyImport(importJsonText)}
               disabled={!importJsonText.trim()}
               className="bg-primary text-primary-foreground"
             >
-              Apply Import
+              {messages.dialogs.importApply}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

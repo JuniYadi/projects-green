@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { eden } from "@/lib/eden"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -78,6 +79,10 @@ function SubscriptionCard({
   onUpdate: (id: string, updates: Partial<SubscriptionItem>) => Promise<void>
 }) {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.billing.adminOrgSubscriptionManager
   const [updateState, setUpdateState] = useState<"idle" | "submitting">("idle")
 
   // Local state for form values
@@ -205,8 +210,8 @@ function SubscriptionCard({
           )}
         </div>
         <CardDescription>
-          Package: {subscription.packageCode} | Region:{" "}
-          {subscription.regionCode}
+          {messages.packageLabel} {subscription.packageCode}{" "}
+          {messages.regionLabelSuffix} {subscription.regionCode}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -214,7 +219,9 @@ function SubscriptionCard({
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Plan</label>
+                <label className="text-sm font-medium">
+                  {messages.planLabel}
+                </label>
                 <Select value={planCode} onValueChange={setPlanCode}>
                   <SelectTrigger>
                     <SelectValue />
@@ -230,7 +237,9 @@ function SubscriptionCard({
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Billing Mode</label>
+                <label className="text-sm font-medium">
+                  {messages.billingModeLabel}
+                </label>
                 <Select value={billingMode} onValueChange={setBillingMode}>
                   <SelectTrigger>
                     <SelectValue />
@@ -249,13 +258,13 @@ function SubscriptionCard({
             {showResourceSliders && (
               <div className="space-y-4 rounded-lg border bg-muted/50 p-4">
                 <ResourceSlider
-                  label="CPU"
+                  label={messages.cpuLabel}
                   resource="cpu"
                   value={cpu}
                   onChange={setCpu}
                 />
                 <ResourceSlider
-                  label="Memory"
+                  label={messages.memoryLabel}
                   resource="memory"
                   value={memory}
                   onChange={setMemory}
@@ -270,8 +279,8 @@ function SubscriptionCard({
                 className="w-full"
               >
                 {updateState === "submitting"
-                  ? "Updating..."
-                  : "Update Subscription"}
+                  ? messages.updating
+                  : messages.updateSubscription}
               </Button>
             )}
           </>
@@ -280,7 +289,9 @@ function SubscriptionCard({
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Region</label>
+                  <label className="text-sm font-medium">
+                    {messages.regionLabel}
+                  </label>
                   <Select value={vpnRegion} onValueChange={setVpnRegion}>
                     <SelectTrigger>
                       <SelectValue />
@@ -291,34 +302,42 @@ function SubscriptionCard({
                           country="ID"
                           className="rounded-2xs mr-2 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
                         />
-                        Indonesia
+                        {messages.countryIndonesia}
                       </SelectItem>
                       <SelectItem value="SG">
                         <CountryFlag
                           country="SG"
                           className="rounded-2xs mr-2 inline-block h-3.5 w-5 shrink-0 object-cover shadow-2xs"
                         />
-                        Singapore
+                        {messages.countrySingapore}
                       </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
+                  <label className="text-sm font-medium">
+                    {messages.statusLabel}
+                  </label>
                   <Select value={vpnStatus} onValueChange={setVpnStatus}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ACTIVE">Active</SelectItem>
-                      <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                      <SelectItem value="ACTIVE">
+                        {messages.statusActive}
+                      </SelectItem>
+                      <SelectItem value="SUSPENDED">
+                        {messages.statusSuspended}
+                      </SelectItem>
+                      <SelectItem value="CANCELLED">
+                        {messages.statusCancelled}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Status changes take effect immediately.
+                {messages.statusChangeNotice}
               </p>
             </div>
 
@@ -329,8 +348,8 @@ function SubscriptionCard({
                 className="w-full"
               >
                 {updateState === "submitting"
-                  ? "Updating..."
-                  : "Update VPN Subscription"}
+                  ? messages.updating
+                  : messages.updateVpnSubscription}
               </Button>
             )}
           </>
@@ -339,28 +358,42 @@ function SubscriptionCard({
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Plan</label>
+                  <label className="text-sm font-medium">
+                    {messages.planLabel}
+                  </label>
                   <Select value={waPlan} onValueChange={setWaPlan}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="LITE">Lite</SelectItem>
-                      <SelectItem value="STANDARD">Standard</SelectItem>
-                      <SelectItem value="PROFESSIONAL">Professional</SelectItem>
-                      <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                      <SelectItem value="LITE">{messages.planLite}</SelectItem>
+                      <SelectItem value="STANDARD">
+                        {messages.planStandard}
+                      </SelectItem>
+                      <SelectItem value="PROFESSIONAL">
+                        {messages.planProfessional}
+                      </SelectItem>
+                      <SelectItem value="ENTERPRISE">
+                        {messages.planEnterprise}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
+                  <label className="text-sm font-medium">
+                    {messages.statusLabel}
+                  </label>
                   <Select value={waStatus} onValueChange={setWaStatus}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ACTIVE">Active</SelectItem>
-                      <SelectItem value="NON_ACTIVE">Non-Active</SelectItem>
+                      <SelectItem value="ACTIVE">
+                        {messages.statusActive}
+                      </SelectItem>
+                      <SelectItem value="NON_ACTIVE">
+                        {messages.statusNonActive}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -368,11 +401,14 @@ function SubscriptionCard({
               {subscription.quotaIn && subscription.quotaOut && (
                 <div className="rounded-lg bg-muted/50 p-3 text-sm">
                   <p>
-                    Quota: {subscription.quotaIn} in / {subscription.quotaOut}{" "}
-                    out per month
+                    {messages.quotaLabel} {subscription.quotaIn}{" "}
+                    {messages.inSlash} {subscription.quotaOut}{" "}
+                    {messages.outPerMonth}
                   </p>
                   {subscription.dailyPerDevice && (
-                    <p>Daily per device: {subscription.dailyPerDevice}</p>
+                    <p>
+                      {messages.dailyPerDevice} {subscription.dailyPerDevice}
+                    </p>
                   )}
                 </div>
               )}
@@ -385,20 +421,20 @@ function SubscriptionCard({
                 className="w-full"
               >
                 {updateState === "submitting"
-                  ? "Updating..."
-                  : "Update WhatsApp Subscription"}
+                  ? messages.updating
+                  : messages.updateWhatsappSubscription}
               </Button>
             )}
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Contact us for pricing and configuration options.
+            {messages.contactForPricing}
           </p>
         )}
 
         {subscription.currentPeriodEnd && (
           <p className="text-xs text-muted-foreground">
-            Current period ends:{" "}
+            {messages.currentPeriodEnds}{" "}
             {new Date(subscription.currentPeriodEnd).toLocaleDateString(
               "id-ID",
               {
@@ -432,11 +468,16 @@ async function updateSubscription(
 export function SubscriptionManager({
   subscriptions,
 }: SubscriptionManagerProps) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.billing.adminOrgSubscriptionManager
+
   if (subscriptions.length === 0) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          No active subscriptions
+          {messages.noActiveSubscriptions}
         </CardContent>
       </Card>
     )
@@ -453,7 +494,7 @@ export function SubscriptionManager({
       ))}
 
       <p className="text-center text-xs text-muted-foreground">
-        Changes take effect at the next billing cycle.
+        {messages.changesNextCycle}
       </p>
     </div>
   )

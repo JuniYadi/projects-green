@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 import { eden } from "@/lib/eden"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   Card,
   CardContent,
@@ -63,6 +64,8 @@ export function ClusterTelemetryCards({
   locale = "en",
 }: ClusterTelemetryCardsProps = {}) {
   const isId = locale.startsWith("id")
+  const messages =
+    getMessagesForMaybeLocale(locale).console.deploy.clusterTelemetryCards
   const compactCopy = isId
     ? {
         cpu: "Alokasi CPU",
@@ -229,15 +232,13 @@ export function ClusterTelemetryCards({
           className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-500"
           data-testid="telemetry-fallback-banner"
         >
-          <span>
-            Live Prometheus metrics unreachable. Displaying fallback telemetry.
-          </span>
+          <span>{messages.fallbackBanner}</span>
           <button
             type="button"
             onClick={() => void refetch()}
             className="font-medium underline hover:text-amber-400"
           >
-            Retry
+            {messages.retry}
           </button>
         </div>
       )}
@@ -260,7 +261,7 @@ export function ClusterTelemetryCards({
                 <>
                   <span className="size-1 rounded-full bg-emerald-400" />
                   <span className="text-[10px] text-emerald-400/80">
-                    Primary
+                    {messages.primary}
                   </span>
                 </>
               )}
@@ -306,7 +307,7 @@ export function ClusterTelemetryCards({
                   </span>
                   {telemetry.isPrimary && (
                     <span className="text-[10px] text-emerald-400/80">
-                      &bull; Primary
+                      {messages.primaryWithBullet}
                     </span>
                   )}
                 </span>
@@ -401,11 +402,12 @@ export function ClusterTelemetryCards({
                   {compactCopy.network}
                 </div>
                 <div className="font-mono text-[11px] text-muted-foreground">
-                  Rx{" "}
+                  {messages.rx}{" "}
                   <span className="font-bold text-foreground">
                     {formatThroughput(telemetry.network.currentRxBytes)}
                   </span>{" "}
-                  &bull; Tx {formatThroughput(telemetry.network.currentTxBytes)}
+                  {messages.txWithBullet}{" "}
+                  {formatThroughput(telemetry.network.currentTxBytes)}
                 </div>
               </div>
               <div className="h-9 w-28 shrink-0 sm:w-36">
@@ -443,7 +445,7 @@ export function ClusterTelemetryCards({
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Cpu size={14} className="text-primary" />
-                  CPU Utilization
+                  {messages.cpuUtilization}
                 </span>
                 <span className="text-xs font-bold text-foreground">
                   {cpuPercent}%
@@ -459,12 +461,12 @@ export function ClusterTelemetryCards({
                 {formatCores(telemetry.cpu.currentCores)}
                 <span className="text-xs font-normal text-muted-foreground">
                   {" "}
-                  / {formatCores(telemetry.cpu.limitCores)} Limit
+                  / {formatCores(telemetry.cpu.limitCores)} {messages.limit}
                 </span>
               </CardTitle>
               <CardDescription className="text-[11px] text-muted-foreground">
-                Peak: {formatCores(telemetry.cpu.peakCores)} &bull; Avg:{" "}
-                {formatCores(telemetry.cpu.avgCores)}
+                {messages.peak} {formatCores(telemetry.cpu.peakCores)}{" "}
+                {messages.avgWithBullet} {formatCores(telemetry.cpu.avgCores)}
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
@@ -485,7 +487,7 @@ export function ClusterTelemetryCards({
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <HardDrive size={14} className="text-primary" />
-                  Memory Utilization
+                  {messages.memoryUtilization}
                 </span>
                 <span className="text-xs font-bold text-foreground">
                   {memoryPercent}%
@@ -501,11 +503,12 @@ export function ClusterTelemetryCards({
                 {formatBytes(telemetry.memory.currentBytes)}
                 <span className="text-xs font-normal text-muted-foreground">
                   {" "}
-                  / {formatBytes(telemetry.memory.limitBytes)} Limit
+                  / {formatBytes(telemetry.memory.limitBytes)} {messages.limit}
                 </span>
               </CardTitle>
               <CardDescription className="text-[11px] text-muted-foreground">
-                Peak: {formatBytes(telemetry.memory.peakBytes)} &bull; Avg:{" "}
+                {messages.peak} {formatBytes(telemetry.memory.peakBytes)}{" "}
+                {messages.avgWithBullet}{" "}
                 {formatBytes(telemetry.memory.avgBytes)}
               </CardDescription>
             </CardHeader>
@@ -527,14 +530,16 @@ export function ClusterTelemetryCards({
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <ArrowsLeftRight size={14} className="text-sky-400" />
-                  Network I/O Throughput
+                  {messages.networkThroughput}
                 </span>
                 <div className="flex items-center gap-2 text-[10px]">
                   <span className="inline-flex items-center gap-1 font-medium text-emerald-400">
-                    <span className="size-1.5 rounded-full bg-emerald-400" /> Rx
+                    <span className="size-1.5 rounded-full bg-emerald-400" />{" "}
+                    {messages.rx}
                   </span>
                   <span className="inline-flex items-center gap-1 font-medium text-sky-400">
-                    <span className="size-1.5 rounded-full bg-sky-400" /> Tx
+                    <span className="size-1.5 rounded-full bg-sky-400" />{" "}
+                    {messages.tx}
                   </span>
                 </div>
               </div>
@@ -556,8 +561,9 @@ export function ClusterTelemetryCards({
                 </span>
               </CardTitle>
               <CardDescription className="text-[11px] text-muted-foreground">
-                Total In: {formatBytes(telemetry.network.totalRxBytes)} &bull;
-                Total Out: {formatBytes(telemetry.network.totalTxBytes)}
+                {messages.totalIn} {formatBytes(telemetry.network.totalRxBytes)}{" "}
+                {messages.totalOutWithBullet}{" "}
+                {formatBytes(telemetry.network.totalTxBytes)}
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
@@ -582,15 +588,18 @@ export function ClusterTelemetryCards({
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-sm font-bold text-foreground">
-                  Pod Resource &amp; Quota Allocation
+                  {messages.podResourceAllocation}
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Live per-pod compute consumption and restart count
+                  {messages.podResourceDescription}
                 </CardDescription>
               </div>
               <span className="text-xs font-medium text-muted-foreground">
                 {telemetry.pods.length}{" "}
-                {telemetry.pods.length === 1 ? "pod" : "pods"} active
+                {telemetry.pods.length === 1
+                  ? messages.podSingular
+                  : messages.podPlural}{" "}
+                {messages.active}
               </span>
             </div>
           </CardHeader>
@@ -599,11 +608,13 @@ export function ClusterTelemetryCards({
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
                   <tr>
-                    <th className="px-3.5 py-2.5">Pod</th>
-                    <th className="px-3.5 py-2.5">Status</th>
-                    <th className="px-3.5 py-2.5">CPU Usage</th>
-                    <th className="px-3.5 py-2.5">Memory Usage</th>
-                    <th className="px-3.5 py-2.5 text-right">Restarts</th>
+                    <th className="px-3.5 py-2.5">{messages.thPod}</th>
+                    <th className="px-3.5 py-2.5">{messages.thStatus}</th>
+                    <th className="px-3.5 py-2.5">{messages.thCpuUsage}</th>
+                    <th className="px-3.5 py-2.5">{messages.thMemoryUsage}</th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      {messages.thRestarts}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -621,9 +632,14 @@ export function ClusterTelemetryCards({
                       <td className="px-3.5 py-3">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
-                            <span>{pod.cpuUsageCores.toFixed(3)} cores</span>
+                            <span>
+                              {pod.cpuUsageCores.toFixed(3)}{" "}
+                              {messages.coresUnit}
+                            </span>
                             <span className="text-muted-foreground">
-                              {pod.cpuPercent}% of {pod.cpuLimitCores} Limit
+                              {pod.cpuPercent}
+                              {messages.percentOf} {pod.cpuLimitCores}{" "}
+                              {messages.limit}
                             </span>
                           </div>
                           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -641,8 +657,10 @@ export function ClusterTelemetryCards({
                           <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
                             <span>{formatBytes(pod.memoryUsageBytes)}</span>
                             <span className="text-muted-foreground">
-                              {pod.memoryPercent}% of{" "}
-                              {formatBytes(pod.memoryLimitBytes)} Limit
+                              {pod.memoryPercent}
+                              {messages.percentOf}{" "}
+                              {formatBytes(pod.memoryLimitBytes)}{" "}
+                              {messages.limit}
                             </span>
                           </div>
                           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
