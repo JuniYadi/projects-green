@@ -52,6 +52,38 @@ import type {
 export type DomainsPanelMessages =
   AppMessages["console"]["app"]["settings"]["domainsPanel"]
 
+export function isApexDomain(hostname: string): boolean {
+  if (!hostname) return false
+  const clean = hostname.trim().toLowerCase().replace(/\.$/, "")
+  const parts = clean.split(".")
+  if (parts.length <= 1) return false
+  if (parts.length === 2) return true
+  const commonSecondLevel = [
+    "co",
+    "com",
+    "org",
+    "net",
+    "edu",
+    "gov",
+    "ac",
+    "mil",
+    "sch",
+    "or",
+    "go",
+  ]
+  if (parts.length === 3 && commonSecondLevel.includes(parts[1])) {
+    return true
+  }
+  return false
+}
+
+export function getSubdomainHost(hostname: string): string {
+  if (isApexDomain(hostname)) return "@"
+  const clean = hostname.trim().toLowerCase().replace(/\.$/, "")
+  const parts = clean.split(".")
+  return parts[0] || "@"
+}
+
 export type TabDomainsApi = {
   onAddDomain: (hostname: string) => Promise<void>
   onDeleteDomain: (domainId: string) => Promise<void>
@@ -92,39 +124,12 @@ type TabDomainsProps = {
   messages: DomainsPanelMessages
 }
 
-const displayValue = (
-  t: DomainsPanelMessages,
-  value: string | null | undefined
-) => value || t.notConfigured
-
-const certificateLabel = (t: DomainsPanelMessages, domain: TenantDomainDTO) => {
-  const certificate = domain.certificate
-  if (!certificate) return t.notConfigured
-  const status = certificate.status || t.certificateUnknownStatus
-  const expiry = certificate.expiresAt
-    ? `${t.certificateExpiresPrefix}${new Date(certificate.expiresAt).toLocaleDateString()}`
-    : ""
-  return `${certificate.source || t.unknownSource} · ${status}${expiry}`
-}
 const dnsCheckLabel = (t: DomainsPanelMessages, domain: TenantDomainDTO) => {
   if (!domain.dnsLastCheckedAt) return t.notCheckedYet
   const checkedAt = new Date(domain.dnsLastCheckedAt)
   return Number.isNaN(checkedAt.getTime())
     ? t.checkedFallback
     : t.checkedAt.replace("{value}", checkedAt.toLocaleString())
-}
-
-const dnsEvidenceLabel = (t: DomainsPanelMessages, domain: TenantDomainDTO) => {
-  const evidence = domain.dnsResolverEvidence ?? []
-  if (evidence.length === 0) return null
-  const providers = new Set(
-    evidence
-      .filter((item) => item.outcome === "MATCH")
-      .map((item) => item.provider)
-  )
-  return providers.size > 0
-    ? t.matchedBy.replace("{value}", Array.from(providers).join(" + "))
-    : t.noResolverMatch
 }
 
 export function TabDomains({
@@ -148,12 +153,6 @@ export function TabDomains({
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
-  const [certificateForm, setCertificateForm] = useState<
-    Record<
-      string,
-      { certificatePem: string; privateKeyPem: string; chainPem: string }
-    >
-  >({})
   const [allowlistInput, setAllowlistInput] = useState<Record<string, string>>(
     {}
   )
@@ -242,15 +241,25 @@ export function TabDomains({
     const ipv4 = endpoint?.ipv4Addresses ?? []
     const ipv6 = endpoint?.ipv6Addresses ?? []
 
+    const isApex = isApexDomain(domain.hostname)
+    const isVerified = domain.dnsStatus === "VERIFIED"
+    const subHost = getSubdomainHost(domain.hostname)
+
     const cnameRecords = cname
-      ? [{ type: "CNAME", host: "@", value: cname }]
+      ? [{ type: "CNAME", host: subHost, value: cname }]
       : []
     const ipRecords = [
       ...ipv4.map((value) => ({ type: "A", host: "@", value })),
       ...ipv6.map((value) => ({ type: "AAAA", host: "@", value })),
     ]
-    const allRecords = [...cnameRecords, ...ipRecords]
-    const isVerified = domain.dnsStatus === "VERIFIED"
+
+    // Smart detection: Subdomains use CNAME; Apex domains use direct A / AAAA
+    const targetRecords =
+      !isApex && cnameRecords.length > 0
+        ? cnameRecords
+        : ipRecords.length > 0
+          ? ipRecords
+          : cnameRecords
 
     return (
       <Collapsible
@@ -274,26 +283,30 @@ export function TabDomains({
           </CollapsibleTrigger>
         </div>
         <CollapsibleContent className="mt-2 space-y-2.5">
-          {allRecords.length === 0 ? (
+          {targetRecords.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t.dnsTargetsEmpty}</p>
           ) : (
             <>
               <p className="text-[11px] text-muted-foreground">
                 {t.dnsTargetsHint}
               </p>
-              {cnameRecords.length > 0 && (
-                <div className="space-y-1.5 pt-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground">
-                    Option 1: CNAME (Recommended for subdomains like{" "}
-                    {domain.hostname})
-                  </p>
-                  {cnameRecords.map((record, index) => (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-[10px] font-semibold text-muted-foreground">
+                  {!isApex && cnameRecords.length > 0
+                    ? `Catatan CNAME untuk ${domain.hostname}:`
+                    : "Catatan A / AAAA (Domain Utama @):"}
+                </p>
+                <div className="space-y-1">
+                  {targetRecords.map((record, index) => (
                     <div
                       key={`${domain.id}-${record.type}-${record.value}-${index}`}
-                      className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
+                      className="grid grid-cols-[48px_80px_1fr_auto] items-center gap-2 rounded border border-border/50 bg-background/50 px-2.5 py-1.5 font-mono text-[11px]"
                     >
                       <span className="font-bold text-emerald-400">
                         {record.type}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {record.host}
                       </span>
                       <span className="truncate text-foreground">
                         {record.value}
@@ -305,33 +318,7 @@ export function TabDomains({
                     </div>
                   ))}
                 </div>
-              )}
-              {ipRecords.length > 0 && (
-                <div className="space-y-1.5 pt-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground">
-                    {cnameRecords.length > 0
-                      ? "Option 2: Direct A / AAAA (For Apex / Root domain @)"
-                      : "Direct IP Records"}
-                  </p>
-                  {ipRecords.map((record, index) => (
-                    <div
-                      key={`${domain.id}-${record.type}-${record.value}-${index}`}
-                      className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
-                    >
-                      <span className="font-bold text-emerald-400">
-                        {record.type}
-                      </span>
-                      <span className="truncate text-foreground">
-                        {record.value}
-                      </span>
-                      {renderCopyButton(
-                        record.value,
-                        `${domain.id}-${record.type}-${index}`
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              </div>
             </>
           )}
         </CollapsibleContent>
@@ -339,41 +326,18 @@ export function TabDomains({
     )
   }
 
-  const updateCertificateField = (
-    domainId: string,
-    field: "certificatePem" | "privateKeyPem" | "chainPem",
-    value: string
-  ) => {
-    setCertificateForm((previous) => ({
-      ...previous,
-      [domainId]: {
-        ...previous[domainId],
-        certificatePem: "",
-        privateKeyPem: "",
-        chainPem: "",
-        [field]: value,
-      },
-    }))
-  }
-
   const renderApiDomain = (domain: TenantDomainDTO) => {
-    const certificate = certificateForm[domain.id] ?? {
-      certificatePem: "",
-      privateKeyPem: "",
-      chainPem: "",
-    }
     const allowlistEntry = allowlistInput[domain.id] ?? ""
     const isManaged = domain.kind === "MANAGED"
-    const dnsEvidence = dnsEvidenceLabel(t, domain)
     return (
       <div
         key={domain.id}
         className="space-y-3 border-b border-border p-4 last:border-b-0"
       >
-        <div className="grid gap-3 md:grid-cols-[1.3fr_0.8fr_0.8fr_1.4fr_auto] md:items-start">
+        <div className="grid gap-3 md:grid-cols-[1.5fr_1fr_1fr_auto] md:items-center">
           <div className="font-semibold text-foreground">
             <div className="flex flex-wrap items-center gap-2">
-              <span>{domain.hostname}</span>
+              <span className="text-sm">{domain.hostname}</span>
               {domain.isPrimary && (
                 <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary uppercase">
                   {t.primaryBadge}
@@ -383,18 +347,16 @@ export function TabDomains({
                 {isManaged ? t.kindManaged : t.kindCustom}
               </span>
             </div>
-            <p className="mt-1 text-[11px] font-normal text-muted-foreground">
-              {domain.cluster
-                ? `${domain.cluster.name} · ${domain.cluster.region}`
-                : t.clusterNotAssigned}
-            </p>
           </div>
           {isManaged ? (
             <div className="md:col-span-2">
-              <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-500">
+                <span className="size-1.5 rounded-full bg-current" />
                 {t.managedStatusLabel}
+              </span>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t.managedStatusText}
               </p>
-              <p className="text-xs text-foreground">{t.managedStatusText}</p>
             </div>
           ) : (
             <>
@@ -402,46 +364,62 @@ export function TabDomains({
                 <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   {t.dnsLabel}
                 </p>
-                <p className="text-xs text-foreground">{domain.dnsStatus}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                      domain.dnsStatus === "VERIFIED"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                        : "border-amber-500/30 bg-amber-500/10 text-amber-500"
+                    )}
+                  >
+                    <span className="size-1.5 rounded-full bg-current" />
+                    {domain.dnsStatus}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
                   {dnsCheckLabel(t, domain)}
                 </p>
-                {domain.dnsVerificationReason && (
-                  <p className="text-[10px] text-muted-foreground">
-                    {domain.dnsVerificationReason}
-                  </p>
-                )}
-                {dnsEvidence && (
-                  <p className="text-[10px] text-muted-foreground">
-                    {dnsEvidence}
-                  </p>
-                )}
               </div>
               <div>
                 <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   {t.certificateHeading}
                 </p>
-                <p className="text-xs text-foreground">
-                  {certificateLabel(t, domain)}
-                </p>
-                {domain.certificate?.validationError && (
-                  <p className="text-[11px] text-rose-400">
-                    {domain.certificate.validationError}
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                      domain.certificate?.status === "READY" ||
+                        domain.certificate?.status === "ACTIVE"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                        : "border-muted border-muted-foreground/30 text-muted-foreground"
+                    )}
+                  >
+                    <span className="size-1.5 rounded-full bg-current" />
+                    {domain.certificate?.status === "READY" ||
+                    domain.certificate?.status === "ACTIVE"
+                      ? "SSL Aktif"
+                      : "Otomatis (Let's Encrypt)"}
+                  </span>
+                </div>
+                {domain.certificate?.expiresAt ? (
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    Exp:{" "}
+                    {new Date(
+                      domain.certificate.expiresAt
+                    ).toLocaleDateString()}
                   </p>
-                )}
+                ) : null}
               </div>
             </>
           )}
-          <div className="text-xs text-muted-foreground">
-            <p>{displayValue(t, domain.endpoint?.managedBaseDomain)}</p>
-            <p className="text-[11px]">{domain.cluster?.code || ""}</p>
-          </div>
           <div className="flex gap-1 md:justify-end">
             {!isManaged && (
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
+                className="h-8 gap-1 text-xs"
                 disabled={busyKey !== null}
                 onClick={() =>
                   void runAction(`verify-${domain.id}`, () =>
@@ -456,6 +434,7 @@ export function TabDomains({
               type="button"
               size="sm"
               variant="ghost"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
               disabled={busyKey !== null}
               onClick={() =>
                 void runAction(`delete-${domain.id}`, () =>
@@ -469,75 +448,6 @@ export function TabDomains({
           </div>
         </div>
         {!isManaged && renderDns(domain)}
-        {!isManaged && (
-          <Collapsible className="rounded-lg border border-border bg-muted/30 p-3">
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-1.5 text-left text-[11px] font-semibold text-muted-foreground hover:text-foreground"
-              >
-                <CaretDown size={14} />
-                <span>{t.certificateHeading} (Custom SSL / TLS)</span>
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 grid gap-3 md:grid-cols-3">
-              <p className="text-[11px] text-muted-foreground md:col-span-3">
-                {t.certificateHint}
-              </p>
-              {(["certificatePem", "privateKeyPem", "chainPem"] as const).map(
-                (field) => (
-                  <label
-                    key={field}
-                    className="space-y-1 text-[10px] font-semibold text-muted-foreground"
-                  >
-                    {field === "certificatePem"
-                      ? t.certificatePemLabel
-                      : field === "privateKeyPem"
-                        ? t.privateKeyPemLabel
-                        : t.chainPemLabel}
-                    <textarea
-                      className="min-h-20 w-full rounded-md border border-border bg-background p-2 font-mono text-[10px] text-foreground"
-                      value={certificate[field]}
-                      onChange={(event) =>
-                        updateCertificateField(
-                          domain.id,
-                          field,
-                          event.target.value
-                        )
-                      }
-                      placeholder={t.pemPlaceholder}
-                    />
-                  </label>
-                )
-              )}
-              <Button
-                type="button"
-                size="sm"
-                className="md:col-span-3 md:w-fit"
-                disabled={
-                  busyKey !== null ||
-                  !certificate.certificatePem ||
-                  !certificate.privateKeyPem
-                }
-                onClick={() =>
-                  void runAction(`certificate-${domain.id}`, async () => {
-                    await api!.onUploadCertificate(domain.id, certificate)
-                    setCertificateForm((previous) => ({
-                      ...previous,
-                      [domain.id]: {
-                        certificatePem: "",
-                        privateKeyPem: "",
-                        chainPem: "",
-                      },
-                    }))
-                  })
-                }
-              >
-                {t.saveCertificate}
-              </Button>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
         <Collapsible
           defaultOpen={
             domain.allowlistMode === "ALLOWLIST_ONLY" ||

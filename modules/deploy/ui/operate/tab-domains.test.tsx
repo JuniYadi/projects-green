@@ -161,7 +161,7 @@ describe("TabDomains", () => {
 
     expect(view.getByText("https://shop.acme.test")).toBeTruthy()
     expect(view.getByText("Primary URL")).toBeTruthy()
-    expect(view.getByText("shop")).toBeTruthy()
+    expect(view.getAllByText("shop").length).toBeGreaterThanOrEqual(1)
     expect(view.getByText("us-east")).toBeTruthy()
   })
 
@@ -363,5 +363,105 @@ describe("TabDomains", () => {
     expect(
       view.getByLabelText(`Delete domain ${managedDomain.hostname}`)
     ).toBeDefined()
+  })
+
+  it("renders CNAME record only for subdomains without showing direct A records", () => {
+    const subdomainItem: TenantDomainDTO = {
+      ...sampleDomain,
+      id: "dom-sub",
+      hostname: "9router-test.juniyadi.id",
+      dnsStatus: "PENDING",
+      expectedCnameTarget: "cname-sg.pfnapp.com",
+      endpoint: {
+        cnameTarget: "cname-sg.pfnapp.com",
+        ipv4Addresses: ["51.79.188.39", "64.120.95.191"],
+        ipv6Addresses: [],
+        managedBaseDomain: "sg.pfnapp.dev",
+      },
+    }
+    const view = render(
+      <TabDomains
+        stackSlug="test-stack"
+        apiDomains={[subdomainItem]}
+        api={mockApi}
+        messages={domainsMessages}
+      />
+    )
+
+    // Should show CNAME target and subdomain host
+    expect(view.getByText("CNAME")).toBeDefined()
+    expect(view.getByText("9router-test")).toBeDefined()
+    expect(view.getByText("cname-sg.pfnapp.com")).toBeDefined()
+
+    // Should NOT show A records for subdomains when CNAME is available
+    expect(view.queryByText("51.79.188.39")).toBeNull()
+    expect(view.queryByText("64.120.95.191")).toBeNull()
+  })
+
+  it("renders A record only for apex domains without showing CNAME records", () => {
+    const apexDomainItem: TenantDomainDTO = {
+      ...sampleDomain,
+      id: "dom-apex",
+      hostname: "juniyadi.id",
+      dnsStatus: "PENDING",
+      expectedCnameTarget: "cname-sg.pfnapp.com",
+      endpoint: {
+        cnameTarget: "cname-sg.pfnapp.com",
+        ipv4Addresses: ["51.79.188.39"],
+        ipv6Addresses: [],
+        managedBaseDomain: "sg.pfnapp.dev",
+      },
+    }
+    const view = render(
+      <TabDomains
+        stackSlug="test-stack"
+        apiDomains={[apexDomainItem]}
+        api={mockApi}
+        messages={domainsMessages}
+      />
+    )
+
+    // Should show A record and @ host
+    expect(view.getByText("A")).toBeDefined()
+    expect(view.getByText("@")).toBeDefined()
+    expect(view.getByText("51.79.188.39")).toBeDefined()
+
+    // Should NOT show CNAME for apex domains
+    expect(view.queryByText("cname-sg.pfnapp.com")).toBeNull()
+  })
+
+  it("does not leak cluster name or raw base domain on the domain card", () => {
+    const domainWithCluster: TenantDomainDTO = {
+      ...sampleDomain,
+      id: "dom-clean",
+      hostname: "app.acme.com",
+      cluster: {
+        id: "cl_1",
+        code: "sgp",
+        name: "Singapore Production",
+        region: "Singapore",
+      },
+      endpoint: {
+        cnameTarget: "cname.example.com",
+        ipv4Addresses: ["1.2.3.4"],
+        ipv6Addresses: [],
+        managedBaseDomain: "sg.pfnapp.dev",
+      },
+    }
+    const view = render(
+      <TabDomains
+        stackSlug="test-stack"
+        apiDomains={[domainWithCluster]}
+        api={mockApi}
+        messages={domainsMessages}
+      />
+    )
+
+    // The domain card itself should NOT leak raw cluster name or sg.pfnapp.dev / sgp in the grid
+    const domainCard = view.getByText("app.acme.com").closest("div.space-y-3")
+    expect(domainCard).toBeDefined()
+    expect(domainCard?.textContent).not.toContain("Singapore Production")
+    expect(domainCard?.textContent).not.toContain("sg.pfnapp.dev")
+    expect(domainCard?.textContent).not.toContain("sgp")
   })
 })

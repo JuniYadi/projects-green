@@ -160,8 +160,6 @@ describe("Operate tabs coverage", () => {
     expect(view.getByText("Custom")).toBeTruthy()
     expect(view.getByText("us-east")).toBeTruthy()
     expect(view.getByText("shop.edge.example")).toBeTruthy()
-    expect(view.getByText("203.0.113.10")).toBeTruthy()
-    expect(view.getByText("2001:db8::10")).toBeTruthy()
 
     fireEvent.input(view.getByPlaceholderText("e.g. shop.acme.com"), {
       target: { value: "api.acme.test" },
