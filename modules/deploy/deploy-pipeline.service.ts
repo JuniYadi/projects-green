@@ -51,6 +51,7 @@ export type StackUpsertInput = {
   templateId?: string | null
   templateSlug?: string | null
   templateVersion?: string | null
+  environment?: "dev" | "prod" | "staging"
 }
 
 const IN_PROGRESS_STATUSES = ["QUEUED", "BUILDING", "DEPLOYING"] as const
@@ -130,7 +131,30 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       ? null
       : new Prisma.Decimal(String(input.hourlyCost))
 
-  const envVarsJson = (input.envVars ?? []) as Prisma.InputJsonValue
+  const sanitizedInitialEnvVars = Array.isArray(input.envVars)
+    ? input.envVars.map((item) => {
+        if (typeof item === "object" && item !== null && "key" in item) {
+          const entry = item as Record<string, unknown>
+          if (
+            entry.type === "secret_ref" ||
+            entry.type === "secret_shared_ref"
+          ) {
+            return entry
+          }
+          const { value: _value, ...rest } = entry
+          return {
+            ...rest,
+            value: "",
+            type: entry.type ?? "secret_ref",
+            isStoredSecret: true,
+            masked: true,
+          }
+        }
+        return item
+      })
+    : []
+
+  const envVarsJson = sanitizedInitialEnvVars as Prisma.InputJsonValue
 
   let defaultClusterId: string | null = null
   try {
@@ -237,12 +261,16 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
     return tx.applicationStack.create({ data })
   })
-  // Determine env from slug (e.g., "app-myapp-prod" → "prod", "-staging" → "staging", default "dev")
-  const env = stack.slug.endsWith("-prod")
-    ? "prod"
-    : stack.slug.endsWith("-staging")
+  // Determine env from slug or input (e.g., "-staging" → "staging", "-dev" → "dev", default "prod" for templates or non-suffixed)
+  const env =
+    input.environment ??
+    (stack.slug.endsWith("-staging")
       ? "staging"
-      : "dev"
+      : stack.slug.endsWith("-dev")
+        ? "dev"
+        : stack.slug.endsWith("-prod") || input.sourceType === "TEMPLATE"
+          ? "prod"
+          : "dev")
 
   // If envVars contains plain key-value pairs (or unreferenced secrets), write them into HashiCorp Vault
   if (Array.isArray(input.envVars) && input.envVars.length > 0) {
@@ -263,28 +291,25 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
         // If it's not already a resolved vault reference, collect it for Vault storage
         if (envEntry.source !== "vault" && envEntry.type !== "secret_ref") {
           const key = String(envEntry.key).trim()
-          if (key) {
-            plainSecrets[key] = String(envEntry.value ?? "")
+          if (
+            key &&
+            typeof envEntry.value === "string" &&
+            envEntry.value.length > 0
+          ) {
+            plainSecrets[key] = envEntry.value
           }
         }
       }
     }
 
     if (Object.keys(plainSecrets).length > 0) {
-      try {
-        const vaultService = new VaultSecretsService()
-        await vaultService.writeSecrets({
-          organizationId: stack.organizationId,
-          stackId: stack.id,
-          environment: env,
-          secrets: plainSecrets,
-        })
-      } catch (vaultError) {
-        console.warn(
-          `[deploy-pipeline] Non-fatal: failed to store environment variables in Vault for stack ${stack.id}:`,
-          vaultError
-        )
-      }
+      const vaultService = new VaultSecretsService()
+      await vaultService.writeSecrets({
+        organizationId: stack.organizationId,
+        stackId: stack.id,
+        environment: env,
+        secrets: plainSecrets,
+      })
     }
   }
 

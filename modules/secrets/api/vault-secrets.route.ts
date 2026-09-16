@@ -27,6 +27,7 @@ import {
   toVaultSecretRevealDTO,
   toVaultSecretWriteDTO,
 } from "./vault-secrets.dto"
+import { encryptEnvelope } from "@/lib/vault/vault-envelope"
 
 type VaultSecretsRouteDependencies = {
   requireActor: typeof requireTenantActor
@@ -188,6 +189,23 @@ export const createVaultSecretsRoutes = (
             workosUserId: actor.userId,
           })
 
+          if (body.clientPublicKey) {
+            const envelope = await encryptEnvelope(
+              result.value,
+              body.clientPublicKey as JsonWebKey
+            )
+            return {
+              ok: true as const,
+              data: {
+                environment: result.environment,
+                key: result.key,
+                version: result.version,
+                vaultPath: result.vaultPath,
+                envelope,
+              },
+            }
+          }
+
           return {
             ok: true as const,
             data: toVaultSecretRevealDTO(result),
@@ -200,6 +218,7 @@ export const createVaultSecretsRoutes = (
         body: t.Object({
           environment: t.String({ minLength: 1, maxLength: 64 }),
           key: t.String({ minLength: 1, maxLength: 255 }),
+          clientPublicKey: t.Optional(t.Any()),
         }),
       }
     )

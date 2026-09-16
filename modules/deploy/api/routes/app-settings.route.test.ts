@@ -240,7 +240,7 @@ describe("appSettingsRoutes", () => {
           envVarsJson: [
             {
               key: "DATABASE_PASSWORD",
-              value: "old-secret",
+              value: "",
               type: "secret",
               scope: "runtime",
               masked: true,

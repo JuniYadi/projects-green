@@ -426,6 +426,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           sourceType === "TEMPLATE" || sourceType === "MANAGED_TEMPLATE"
             ? (dbTemplateVersion ?? "1.0.0")
             : null,
+        environment: "prod",
       })
     } catch (error) {
       if (claimedStock) {

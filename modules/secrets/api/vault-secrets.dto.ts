@@ -4,6 +4,7 @@ import type {
   VaultSecretRevealResult,
   VaultSecretWriteResult,
 } from "@/modules/secrets/vault-secrets.service"
+import type { EnvelopeEncryptedPayload } from "@/lib/vault/vault-envelope"
 
 export type VaultSecretReferenceDTO = {
   key: string
@@ -31,9 +32,10 @@ export type VaultSecretWriteDTO = VaultSecretMetadataDTO & {
 export type VaultSecretRevealDTO = {
   environment: string
   key: string
-  value: string
+  value?: string
   version: number
   vaultPath: string
+  envelope?: EnvelopeEncryptedPayload
 }
 
 export const toVaultSecretReferenceDTO = (
