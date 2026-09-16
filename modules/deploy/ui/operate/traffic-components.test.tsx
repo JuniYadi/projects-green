@@ -149,6 +149,9 @@ describe("Frontend Traffic Components", () => {
       expect(view.getByText("Jakarta, Indonesia")).toBeTruthy()
       expect(view.getByText("90% sukses")).toBeTruthy()
       expect(view.getByText("100% sukses")).toBeTruthy()
+      // Non-2xx counts must be readable as persistent text, not only a
+      // hover-only bar segment.
+      expect(view.getByText("120 4xx")).toBeTruthy()
 
       // Asserts that SVG flags for SG and ID are rendered (country-flag-icons renders svg elements)
       const svgs = view.container.querySelectorAll("svg")
