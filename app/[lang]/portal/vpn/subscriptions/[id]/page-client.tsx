@@ -29,7 +29,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { toast } from "sonner"
-import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getMessages } from "@/lib/i18n/messages"
 
 import {
@@ -339,7 +339,7 @@ function SummaryBadges({ summary }: { summary: ProvisioningStatusSummary }) {
 
 export default function SubscriptionDetailPage() {
   const params = useParams()
-  const locale = ((params?.lang as string) ?? defaultLocale) as AppLocale
+  const locale = resolveLocaleOrDefault(params?.lang as string)
   const messages = getMessages(locale).console.vpn.subscriptionDetail
   const subscriptionId = params.id as string
 

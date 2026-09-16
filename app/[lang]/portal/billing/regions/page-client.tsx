@@ -675,7 +675,7 @@ export default function PortalBillingRegionsPage() {
               }}
               disabled={deleting}
             >
-              {deleting ? messages.saving : messages.delete}
+              {deleting ? messages.deleting : messages.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

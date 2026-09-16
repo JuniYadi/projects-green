@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CountryFlag } from "@/components/ui/country-flag"
 import { Skeleton } from "@/components/ui/skeleton"
-import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getMessages } from "@/lib/i18n/messages"
 import {
   Table,
@@ -144,7 +144,7 @@ function ProcessList({
 
 export default function VpnServerDetailPage() {
   const params = useParams()
-  const locale = ((params?.lang as string) ?? defaultLocale) as AppLocale
+  const locale = resolveLocaleOrDefault(params?.lang as string)
   const messages = getMessages(locale).console.vpn.serverDetail
   const serverId = params.id as string
 
@@ -405,8 +405,8 @@ export default function VpnServerDetailPage() {
                     <div className="font-mono text-xs text-muted-foreground">
                       {(protocol as { enabled: boolean; port: number | null })
                         .enabled
-                        ? `Port ${(protocol as { port: number | null }).port ?? "—"}`
-                        : "Disabled"}
+                        ? `${messages.port} ${(protocol as { port: number | null }).port ?? "—"}`
+                        : messages.disabled}
                     </div>
                   </div>
                   <Badge
@@ -417,8 +417,8 @@ export default function VpnServerDetailPage() {
                     }
                   >
                     {(protocol as { enabled: boolean }).enabled
-                      ? "Enabled"
-                      : "Disabled"}
+                      ? messages.enabled
+                      : messages.disabled}
                   </Badge>
                 </div>
               ))}
@@ -432,7 +432,7 @@ export default function VpnServerDetailPage() {
                 disabled={syncing}
               >
                 <ArrowClockwise className="mr-2 h-4 w-4" />
-                {syncing ? "Syncing..." : "Sync Protocols to Subscriptions"}
+                {syncing ? messages.syncing : messages.syncProtocols}
               </Button>
               <p className="mt-2 text-xs text-muted-foreground">
                 {messages.provisionAccountsNotice}
@@ -469,7 +469,7 @@ export default function VpnServerDetailPage() {
             disabled={metricsLoading}
           >
             <ArrowClockwise className="mr-2 h-4 w-4" />
-            {metricsLoading ? "..." : "Refresh"}
+            {metricsLoading ? "..." : messages.refresh}
           </Button>
         </div>
 
@@ -553,7 +553,7 @@ export default function VpnServerDetailPage() {
             disabled={usersLoading}
           >
             <ArrowClockwise className="mr-2 h-4 w-4" />
-            {usersLoading ? "..." : "Refresh"}
+            {usersLoading ? "..." : messages.refresh}
           </Button>
         </div>
 

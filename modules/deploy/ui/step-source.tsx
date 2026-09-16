@@ -214,7 +214,7 @@ export function StepSource({
   const params = useParams()
   const lang = typeof params?.lang === "string" ? params.lang : "en"
   const locale = resolveLocaleOrDefault(lang)
-  const messages = getMessages(locale).console.deploy.deployWizard.source
+  const messages = getMessages(locale).console.app.deployWizard.source
 
   const [repoFilter, setRepoFilter] = useState("")
   const [templateFilter, setTemplateFilter] = useState("")

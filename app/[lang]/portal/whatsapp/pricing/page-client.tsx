@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle, Plus } from "@phosphor-icons/react"
 import { toast } from "sonner"
-import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getMessages } from "@/lib/i18n/messages"
 import { eden } from "@/lib/eden"
 import { Badge } from "@/components/ui/badge"
@@ -132,7 +132,7 @@ function validateAmount(value: string, label: string) {
 
 export default function PortalWhatsappPricingPage() {
   const params = useParams()
-  const locale = ((params?.lang as string) ?? defaultLocale) as AppLocale
+  const locale = resolveLocaleOrDefault(params?.lang as string)
   const messages = getMessages(locale).console.whatsapp.pricingAdmin
   const queryClient = useQueryClient()
   const [countryFilter, setCountryFilter] = React.useState("all")

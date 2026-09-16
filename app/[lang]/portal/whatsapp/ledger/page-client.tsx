@@ -14,7 +14,7 @@ import {
   MagnifyingGlass,
   Funnel,
 } from "@phosphor-icons/react"
-import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getMessages } from "@/lib/i18n/messages"
 import { eden } from "@/lib/eden"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
@@ -167,7 +167,7 @@ function CategoryBadge({ category }: { category: string }) {
 
 export default function PortalWhatsAppLedgerPage() {
   const params = useParams()
-  const locale = ((params?.lang as string) ?? defaultLocale) as AppLocale
+  const locale = resolveLocaleOrDefault(params?.lang as string)
   const messages = getMessages(locale).console.whatsapp.ledgerAdmin
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")

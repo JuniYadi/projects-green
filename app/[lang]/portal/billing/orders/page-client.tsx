@@ -346,10 +346,18 @@ export function BillingOrdersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{messages.allPeriods}</SelectItem>
-                      <SelectItem value="MONTHLY">Monthly</SelectItem>
-                      <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                      <SelectItem value="SEMI_ANNUAL">Semi-Annual</SelectItem>
-                      <SelectItem value="ANNUAL">Annual</SelectItem>
+                      <SelectItem value="MONTHLY">
+                        {messages.periodMonthly}
+                      </SelectItem>
+                      <SelectItem value="QUARTERLY">
+                        {messages.periodQuarterly}
+                      </SelectItem>
+                      <SelectItem value="SEMI_ANNUAL">
+                        {messages.periodSemiAnnual}
+                      </SelectItem>
+                      <SelectItem value="ANNUAL">
+                        {messages.periodAnnual}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

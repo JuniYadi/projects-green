@@ -87,7 +87,7 @@ export function StepBuild({
   const params = useParams()
   const lang = typeof params?.lang === "string" ? params.lang : "en"
   const locale = resolveLocaleOrDefault(lang)
-  const messages = getMessages(locale).console.deploy.deployWizard.buildSettings
+  const messages = getMessages(locale).console.app.deployWizard.buildSettings
   const detectionStatusMessage = (() => {
     if (isDetecting) {
       return "Detecting framework..."

@@ -108,7 +108,7 @@ describe("TemplateInstallationsTab", () => {
     await waitFor(() => {
       expect(getByText("Sync Application Setup from Template?")).toBeTruthy()
       expect(getByText(/Safe Merge Rules:/i)).toBeTruthy()
-      expect(getByText(/Confirm & Trigger Sync/i)).toBeTruthy()
+      expect(getByText(/Confirm Sync|Konfirmasi Sinkronisasi/i)).toBeTruthy()
     })
   })
 })
