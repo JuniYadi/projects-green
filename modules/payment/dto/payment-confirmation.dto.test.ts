@@ -27,7 +27,11 @@ describe("toPaymentConfirmationDTO", () => {
       status: "PENDING",
       createdAt: new Date("2026-06-11T00:00:00.000Z"),
       notes: null,
-      invoice: { currency: "USD", invoiceNumber: "INV-2026-123" },
+      invoice: {
+        currency: "USD",
+        invoiceNumber: "INV-2026-123",
+        totalAmount: 50382,
+      },
       bankAccount: {
         currency: "USD",
         bankName: "Bank JP Morgan",
@@ -42,5 +46,6 @@ describe("toPaymentConfirmationDTO", () => {
     expect(dto.accountNumber).not.toContain("encrypted")
     expect(dto.invoiceId).toBe("inv-123")
     expect(dto.invoiceNumber).toBe("INV-2026-123")
+    expect(dto.invoiceTotal).toBe(50382)
   })
 })

@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 interface PaymentConfirmation {
@@ -30,6 +31,7 @@ interface PaymentConfirmation {
   currency: string
   invoiceId: string
   invoiceNumber?: string | null
+  invoiceTotal?: number | null
   bankAccountId: string
   bankName: string
   accountName?: string
@@ -110,6 +112,7 @@ export function ConfirmationsTab() {
   const [selectedConfirmation, setSelectedConfirmation] =
     useState<PaymentConfirmation | null>(null)
   const [rejectReason, setRejectReason] = useState("")
+  const [verifiedAmount, setVerifiedAmount] = useState("")
 
   const fetchConfirmations = useCallback(async () => {
     try {
@@ -141,7 +144,8 @@ export function ConfirmationsTab() {
   async function reviewConfirmation(
     id: string,
     action: "approve" | "reject",
-    reason?: string
+    reason?: string,
+    amount?: number
   ) {
     setPendingActionId(`${action}:${id}`)
     try {
@@ -149,6 +153,7 @@ export function ConfirmationsTab() {
         action
       ].post({
         action,
+        amount: action === "approve" ? amount : undefined,
         reason:
           action === "reject"
             ? reason?.trim() || "Rejected from portal review"
@@ -165,6 +170,7 @@ export function ConfirmationsTab() {
       }
       setSelectedConfirmation(null)
       setRejectReason("")
+      setVerifiedAmount("")
       await fetchConfirmations()
     } catch {
       setState({ status: "error", message: `Failed to ${action} confirmation` })
@@ -272,6 +278,7 @@ export function ConfirmationsTab() {
             onClick={() => {
               setSelectedConfirmation(row.original)
               setRejectReason("")
+              setVerifiedAmount(String(row.original.amount))
             }}
           >
             Review
@@ -393,8 +400,18 @@ export function ConfirmationsTab() {
                       : selectedConfirmation.invoiceId || "-"
                   }
                 />
+                {selectedConfirmation.invoiceTotal !== null &&
+                  selectedConfirmation.invoiceTotal !== undefined && (
+                    <DetailRow
+                      label="Invoice Total"
+                      value={formatConfirmationAmount({
+                        ...selectedConfirmation,
+                        amount: selectedConfirmation.invoiceTotal,
+                      })}
+                    />
+                  )}
                 <DetailRow
-                  label="Amount"
+                  label="Submitted Amount"
                   value={formatConfirmationAmount(selectedConfirmation)}
                 />
                 <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
@@ -420,6 +437,26 @@ export function ConfirmationsTab() {
                 />
               </dl>
 
+              {selectedConfirmation.invoiceTotal !== null &&
+                selectedConfirmation.invoiceTotal !== undefined &&
+                selectedConfirmation.amount >
+                  selectedConfirmation.invoiceTotal && (
+                  <div className="flex items-center gap-2 rounded-md border border-green-500/20 bg-green-500/10 p-3 text-xs text-green-700 dark:text-green-300">
+                    <span className="font-semibold">Overpayment detected:</span>
+                    <span>
+                      Customer transferred +
+                      {formatConfirmationAmount({
+                        ...selectedConfirmation,
+                        amount:
+                          selectedConfirmation.amount -
+                          selectedConfirmation.invoiceTotal,
+                      })}{" "}
+                      over invoice total. The full verified amount will be
+                      credited to balance.
+                    </span>
+                  </div>
+                )}
+
               <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
                 <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                   Notes
@@ -428,6 +465,27 @@ export function ConfirmationsTab() {
                   {selectedConfirmation.notes || "-"}
                 </dd>
               </div>
+
+              {isPendingReview && (
+                <div className="grid gap-2">
+                  <Label htmlFor="verifiedAmount">
+                    Verified received amount (
+                    {selectedConfirmation.currency || "IDR"})
+                  </Label>
+                  <Input
+                    id="verifiedAmount"
+                    type="number"
+                    step="any"
+                    value={verifiedAmount}
+                    onChange={(e) => setVerifiedAmount(e.target.value)}
+                    placeholder={String(selectedConfirmation.amount)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This exact amount will be credited to the customer&apos;s
+                    balance and reflected on the invoice.
+                  </p>
+                </div>
+              )}
 
               {isPendingReview && (
                 <div className="grid gap-2">
@@ -475,9 +533,19 @@ export function ConfirmationsTab() {
                 </Button>
                 <Button
                   type="button"
-                  disabled={pendingActionId !== null}
+                  disabled={
+                    pendingActionId !== null ||
+                    !verifiedAmount ||
+                    Number(verifiedAmount) <= 0 ||
+                    isNaN(Number(verifiedAmount))
+                  }
                   onClick={() =>
-                    void reviewConfirmation(selectedConfirmation.id, "approve")
+                    void reviewConfirmation(
+                      selectedConfirmation.id,
+                      "approve",
+                      undefined,
+                      Number(verifiedAmount) || selectedConfirmation.amount
+                    )
                   }
                 >
                   Approve received payment

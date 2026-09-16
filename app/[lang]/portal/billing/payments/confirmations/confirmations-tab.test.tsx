@@ -86,6 +86,55 @@ describe("ConfirmationsTab", () => {
     })
   })
 
+  it("displays overpayment notice and sends verified amount on approval", async () => {
+    const overpaymentPayload = [
+      {
+        ...confirmationPayload[0],
+        id: "pc-over",
+        amount: 305000,
+        invoiceTotal: 300000,
+      },
+    ]
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    globalThis.fetch = Object.assign(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(url), init })
+        return new Response(JSON.stringify(overpaymentPayload), {
+          status: 200,
+        })
+      },
+      { preconnect: () => {} }
+    ) as typeof fetch
+
+    const view = render(<ConfirmationsTab />)
+    fireEvent.click(await view.findByRole("button", { name: "Review" }))
+
+    expect(await view.findByRole("dialog")).toBeInTheDocument()
+    expect(view.getByText(/Overpayment detected/i)).toBeInTheDocument()
+
+    // Change verified amount
+    const verifiedInput = view.getByLabelText(/verified received amount/i)
+    fireEvent.change(verifiedInput, { target: { value: "305000" } })
+
+    fireEvent.click(
+      view.getByRole("button", { name: "Approve received payment" })
+    )
+
+    await waitFor(() => {
+      const approveCall = calls.find(
+        (call) =>
+          new URL(call.url, "http://localhost").pathname ===
+            "/api/portal/payments/confirmations/pc-over/approve" &&
+          call.init?.method === "POST"
+      )
+      expect(approveCall).toBeDefined()
+      expect(JSON.parse(String(approveCall?.init?.body))).toEqual({
+        action: "approve",
+        amount: 305000,
+      })
+    })
+  })
+
   it("requires a rejection reason and sends it to the API", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = []
     globalThis.fetch = Object.assign(

@@ -65,12 +65,22 @@ export const createAdminConfirmationRoutes = () =>
       return toPaymentConfirmationDTO(confirmation)
     })
 
-    .post("/:id/approve", async ({ params, set }) => {
+    .post("/:id/approve", async ({ params, body, set }) => {
       const result = await requireConfirmationAuth(set)
       if (!result.ok) return result
+
+      const parseResult = ReviewConfirmationSchema.safeParse(
+        body ?? { action: "approve" }
+      )
+      const verifiedAmount =
+        parseResult.success && parseResult.data.amount
+          ? parseResult.data.amount
+          : undefined
+
       const approved = await confirmationService.approve(
         params.id,
-        result.user.id
+        result.user.id,
+        verifiedAmount
       )
 
       // Fire-and-forget: send invoice paid email

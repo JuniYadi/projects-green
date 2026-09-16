@@ -185,4 +185,31 @@ describe("ConfirmRoute POST /topup/confirm/:id", () => {
 
     expect(res.status).toBe(401)
   })
+
+  it("returns 400 when transfer amount is less than invoice total", async () => {
+    mockBillingInvoiceFindFirst.mockResolvedValueOnce({
+      id: "inv-1",
+      status: "OPEN",
+      totalAmount: 100000,
+      billingAccount: { organizationId: "org-1" },
+    })
+
+    const app = new Elysia().use(createConfirmRoutes()).compile()
+    const res = await app.handle(
+      new Request("http://localhost/topup/confirm/inv-1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bankAccountId: "ba-1",
+          amount: 50000,
+          paymentDateTime: new Date().toISOString(),
+        }),
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { error: string; message: string }
+    expect(body.error).toBe("VALIDATION_ERROR")
+    expect(body.message).toContain("cannot be less than")
+  })
 })

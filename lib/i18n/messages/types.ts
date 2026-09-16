@@ -698,6 +698,9 @@ export type AppMessages = {
         amount: string
         destination: string
         amountToConfirm: string
+        actualTransferAmount: string
+        overpaymentNotice: string
+        underpaymentError: string
         invoice: string
         invoiceLabel: string
         destinationBankAccount: string
