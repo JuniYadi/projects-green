@@ -498,6 +498,10 @@ model AppHostingDailyTrafficSnapshot {
   topPathsJson    Json             @default("[]")
   errorPathsJson  Json             @default("[]")
   topIpsJson      Json             @default("[]")
+  audienceJson    Json             @default("{}")
+  automatedCount  Int              @default(0)
+  visitorEstimate Int              @default(0)
+  visitorEstMethod String          @default("ip_cardinality_v1")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 

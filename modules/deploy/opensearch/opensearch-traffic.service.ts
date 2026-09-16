@@ -8,11 +8,18 @@ import {
   enrichTopIpsWithGeo,
   type IpGeoInfo,
 } from "./geoip-lookup.service"
+import {
+  BOT_SIGNAL_FRAGMENTS,
+  CLI_CLIENT_SIGNAL_FRAGMENTS,
+  parseUserAgent,
+} from "./ua-parser.service"
 import type {
   AppTrafficLogItemDTO,
   AppTrafficLogsDTO,
   AppTrafficReportDTO,
+  AudienceBucket,
   DailySnapshotComputeResult,
+  TrafficAudienceBreakdown,
   TrafficCountryCount,
   TrafficErrorPath,
   TrafficPathCount,
@@ -120,6 +127,81 @@ export function computeTopCountries(
     .sort((a, b) => b.requests - a.requests)
 }
 
+// ponytail: IP-cardinality only, not IP+normalized-UA per the issue's own
+// definition -- combining two fields in a cardinality agg needs an inline
+// script, and the issue itself flags scripts may be disabled on the
+// cluster. Upgrade path: an ingest-time visitor-fingerprint field (also
+// flagged in the issue as the likely real fix), then bump this to v2 and
+// swap the aggregation's field.
+const VISITOR_ESTIMATE_METHOD = "ip_cardinality_v1"
+
+const EMPTY_AUDIENCE: TrafficAudienceBreakdown = {
+  device: [],
+  browser: [],
+  os: [],
+}
+
+/**
+ * Legacy snapshot rows have audienceJson: {} (the column default), not
+ * null -- missing device/browser/os keys, not a missing object. Normalize
+ * both cases the same way instead of relying on `?? EMPTY_AUDIENCE`, which
+ * only catches null/undefined and would let `{}` through with undefined
+ * arrays that break downstream .map() calls.
+ */
+function normalizeAudience(raw: unknown): TrafficAudienceBreakdown {
+  const a = (raw ?? {}) as Partial<TrafficAudienceBreakdown>
+  return {
+    device: a.device ?? [],
+    browser: a.browser ?? [],
+    os: a.os ?? [],
+  }
+}
+
+/** Top 5 labels by count, remainder rolled into a single "Other" bucket. */
+function buildTop5WithOther(counts: Map<string, number>): AudienceBucket[] {
+  const total = Array.from(counts.values()).reduce((a, b) => a + b, 0)
+  const pct = (n: number) =>
+    total > 0 ? Math.round((n / total) * 1000) / 10 : 0
+  const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+  const buckets: AudienceBucket[] = sorted
+    .slice(0, 5)
+    .map(([label, count]) => ({ label, count, percentage: pct(count) }))
+  const otherCount = sorted.slice(5).reduce((sum, [, c]) => sum + c, 0)
+  if (otherCount > 0) {
+    buckets.push({
+      label: "Other",
+      count: otherCount,
+      percentage: pct(otherCount),
+    })
+  }
+  return buckets
+}
+
+function mergeBucketLists(lists: AudienceBucket[][]): AudienceBucket[] {
+  const counts = new Map<string, number>()
+  for (const list of lists) {
+    for (const b of list)
+      counts.set(b.label, (counts.get(b.label) ?? 0) + b.count)
+  }
+  return buildTop5WithOther(counts)
+}
+
+/**
+ * Merges already-compacted (top-5 + Other) daily breakdowns into one. Each
+ * day already discarded detail beyond its own top 5, so a label that never
+ * made a single day's top 5 can't be recovered here -- same accepted
+ * lossy-rollup tradeoff this file already makes for topPaths/topIps.
+ */
+export function mergeAudienceBreakdown(
+  lists: TrafficAudienceBreakdown[]
+): TrafficAudienceBreakdown {
+  return {
+    device: mergeBucketLists(lists.map((a) => a.device)),
+    browser: mergeBucketLists(lists.map((a) => a.browser)),
+    os: mergeBucketLists(lists.map((a) => a.os)),
+  }
+}
+
 /**
  * Builds the period-wide request-quality breakdown. Percentages are against
  * the sum of the 4 buckets, not totalRequests -- so a period mixing fresh
@@ -224,6 +306,32 @@ export async function resolveOpenSearchForStack(
   )
 
   return { client, stack, clusterCode, domainList }
+}
+
+/**
+ * Query-time equivalent of parseUserAgent()'s bot/CLI signal check, built
+ * from the SAME fragment lists (see ua-parser.service.ts) so the per-hour
+ * chart split and the per-UA classifier can't silently drift apart. Missing
+ * or empty User-Agent counts as automated too, matching parseUserAgent.
+ * case_insensitive avoids depending on the index having a lowercase
+ * normalizer on user_agent.keyword, which this repo doesn't control.
+ */
+function buildAutomatedUaFilter(): Record<string, unknown> {
+  const fragments = [...BOT_SIGNAL_FRAGMENTS, ...CLI_CLIENT_SIGNAL_FRAGMENTS]
+  return {
+    bool: {
+      should: [
+        ...fragments.map((f) => ({
+          wildcard: {
+            "user_agent.keyword": { value: `*${f}*`, case_insensitive: true },
+          },
+        })),
+        { bool: { must_not: { exists: { field: "user_agent.keyword" } } } },
+        { term: { "user_agent.keyword": "" } },
+      ],
+      minimum_should_match: 1,
+    },
+  }
 }
 
 /**
@@ -367,7 +475,16 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
               range: { http_status: { gte: 400 } },
             },
           },
+          automated: {
+            filter: buildAutomatedUaFilter(),
+          },
+          visitor_cardinality: {
+            cardinality: { field: "client_ip.keyword" },
+          },
         },
+      },
+      visitor_cardinality: {
+        cardinality: { field: "client_ip.keyword" },
       },
       top_paths: {
         terms: { field: "http_path.keyword", size: 5 },
@@ -387,6 +504,11 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
             },
           },
         },
+      },
+      user_agent_buckets: {
+        // Enough distinct UA strings to represent the day's audience without
+        // parsing every document; parsed once per unique string, server-side.
+        terms: { field: "user_agent.keyword", size: 100 },
       },
       error_paths: {
         filter: {
@@ -415,8 +537,8 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   let status5xx = 0
   let totalBytes = BigInt(0)
   let avgLatencyMs = 0
-  const hourlyTrend: Array<{ hour: number; requests: number; errors: number }> =
-    []
+  const hourlyTrend: DailySnapshotComputeResult["hourlyTrend"] = []
+  let dayVisitorCardinality = 0
   const topPaths: TrafficPathCount[] = []
   const errorPaths: TrafficErrorPath[] = []
   const rawTopIps: Array<{
@@ -427,6 +549,9 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     status4xx: number
     status5xx: number
   }> = []
+  const deviceCounts = new Map<string, number>()
+  const browserCounts = new Map<string, number>()
+  const osCounts = new Map<string, number>()
 
   try {
     const rawClient = client as unknown as {
@@ -451,8 +576,11 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
           key_as_string: string
           doc_count: number
           errors?: { doc_count: number }
+          automated?: { doc_count: number }
+          visitor_cardinality?: { value: number }
         }>
       }
+      visitor_cardinality?: { value: number }
       top_paths?: { buckets: Array<{ key: string; doc_count: number }> }
       top_ips?: {
         buckets: Array<{
@@ -462,6 +590,9 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
             buckets: Array<{ key: string; doc_count: number }>
           }
         }>
+      }
+      user_agent_buckets?: {
+        buckets: Array<{ key: string; doc_count: number }>
       }
       error_paths?: {
         paths?: {
@@ -473,6 +604,8 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
         }
       }
     }
+
+    dayVisitorCardinality = aggs.visitor_cardinality?.value ?? 0
 
     if (aggs.status_codes?.buckets) {
       for (const bucket of aggs.status_codes.buckets) {
@@ -513,6 +646,8 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
           hour,
           requests: b.doc_count,
           errors: b.errors?.doc_count ?? 0,
+          visitors: b.visitor_cardinality?.value ?? 0,
+          automated: b.automated?.doc_count ?? 0,
         })
       }
     }
@@ -542,6 +677,21 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
       }
     }
 
+    if (aggs.user_agent_buckets?.buckets) {
+      for (const b of aggs.user_agent_buckets.buckets) {
+        const parsed = parseUserAgent(b.key)
+        const device = parsed.deviceClass
+        const browser = parsed.browserFamily
+        const os = parsed.osFamily
+        deviceCounts.set(device, (deviceCounts.get(device) ?? 0) + b.doc_count)
+        browserCounts.set(
+          browser,
+          (browserCounts.get(browser) ?? 0) + b.doc_count
+        )
+        osCounts.set(os, (osCounts.get(os) ?? 0) + b.doc_count)
+      }
+    }
+
     const errBuckets = aggs.error_paths?.paths?.buckets ?? []
     for (const b of errBuckets) {
       errorPaths.push({
@@ -564,6 +714,12 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   }
 
   const topIps = await enrichTopIpsWithGeo(rawTopIps)
+  const audience: TrafficAudienceBreakdown = {
+    device: buildTop5WithOther(deviceCounts),
+    browser: buildTop5WithOther(browserCounts),
+    os: buildTop5WithOther(osCounts),
+  }
+  const automatedRequests = hourlyTrend.reduce((sum, h) => sum + h.automated, 0)
 
   return {
     stackId,
@@ -581,6 +737,10 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
     topPaths,
     errorPaths,
     topIps,
+    audience,
+    automatedRequests,
+    visitorEstimate: dayVisitorCardinality,
+    visitorEstimateMethod: VISITOR_ESTIMATE_METHOD,
   }
 }
 
@@ -611,6 +771,10 @@ export async function saveDailyTrafficSnapshot(
       topPathsJson: snapshot.topPaths as unknown as Prisma.InputJsonValue,
       errorPathsJson: snapshot.errorPaths as unknown as Prisma.InputJsonValue,
       topIpsJson: snapshot.topIps as unknown as Prisma.InputJsonValue,
+      audienceJson: snapshot.audience as unknown as Prisma.InputJsonValue,
+      automatedCount: snapshot.automatedRequests,
+      visitorEstimate: snapshot.visitorEstimate,
+      visitorEstMethod: snapshot.visitorEstimateMethod,
     },
     create: {
       stackId: snapshot.stackId,
@@ -628,6 +792,10 @@ export async function saveDailyTrafficSnapshot(
       topPathsJson: snapshot.topPaths as unknown as Prisma.InputJsonValue,
       errorPathsJson: snapshot.errorPaths as unknown as Prisma.InputJsonValue,
       topIpsJson: snapshot.topIps as unknown as Prisma.InputJsonValue,
+      audienceJson: snapshot.audience as unknown as Prisma.InputJsonValue,
+      automatedCount: snapshot.automatedRequests,
+      visitorEstimate: snapshot.visitorEstimate,
+      visitorEstMethod: snapshot.visitorEstimateMethod,
     },
   })
 }
@@ -755,11 +923,17 @@ export async function getAppTrafficReport(
           label: `${String(h).padStart(2, "0")}:00`,
           requests: 0,
           errors: 0,
+          visitors: 0,
+          automated: 0,
+          humanLike: 0,
         })),
         topPages: [],
         troubledPages: [],
         topIps: [],
         topCountries: [],
+        audience: EMPTY_AUDIENCE,
+        visitorEstimate: 0,
+        visitorEstimateMethod: VISITOR_ESTIMATE_METHOD,
         requestQuality: computeRequestQuality(0, 0, 0, 0),
       }
     }
@@ -769,18 +943,33 @@ export async function getAppTrafficReport(
         hour: number
         requests: number
         errors: number
+        visitors?: number
+        automated?: number
       }>) ?? []
-    const trendMap = new Map<number, { requests: number; errors: number }>()
+    const trendMap = new Map<
+      number,
+      { requests: number; errors: number; visitors: number; automated: number }
+    >()
     for (const item of hourlyTrend) {
-      trendMap.set(item.hour, { requests: item.requests, errors: item.errors })
+      trendMap.set(item.hour, {
+        requests: item.requests,
+        errors: item.errors,
+        visitors: item.visitors ?? 0,
+        automated: item.automated ?? 0,
+      })
     }
 
     const trend: TrafficTrendItem[] = Array.from({ length: 24 }, (_, h) => {
       const d = trendMap.get(h)
+      const requests = d?.requests ?? 0
+      const automated = d?.automated ?? 0
       return {
         label: `${String(h).padStart(2, "0")}:00`,
-        requests: d?.requests ?? 0,
+        requests,
         errors: d?.errors ?? 0,
+        visitors: d?.visitors ?? 0,
+        automated,
+        humanLike: requests - automated,
       }
     })
 
@@ -810,6 +999,9 @@ export async function getAppTrafficReport(
         (snapshot.errorPathsJson as unknown as TrafficErrorPath[]) ?? [],
       topIps,
       topCountries,
+      audience: normalizeAudience(snapshot.audienceJson),
+      visitorEstimate: snapshot.visitorEstimate,
+      visitorEstimateMethod: snapshot.visitorEstMethod,
       requestQuality: computeRequestQuality(
         snapshot.status2xxCount,
         snapshot.status3xxCount,
@@ -864,10 +1056,12 @@ export async function getAppTrafficReport(
     let totalBytesBig = BigInt(0)
     let latencySum = 0
     let latencyCount = 0
+    let totalVisitorEstimate = 0
 
     const pathViews = new Map<string, number>()
     const errorMap = new Map<string, { errors: number; sampleStatus: number }>()
     const ipMap = new Map<string, IpGeoInfo>()
+    const audienceLists: TrafficAudienceBreakdown[] = []
 
     const trend: TrafficTrendItem[] = []
 
@@ -875,10 +1069,17 @@ export async function getAppTrafficReport(
       const snap = snapshotByDate.get(day)
       const reqs = snap?.totalRequests ?? 0
       const errs = snap?.errorCount ?? 0
+      const dayVisitors = snap?.visitorEstimate ?? 0
+      const dayAutomated = snap?.automatedCount ?? 0
       trend.push({
         label: `${String(day).padStart(2, "0")}`,
         requests: reqs,
         errors: errs,
+        // A day IS the natural cardinality scope here (unlike month/year
+        // below), so this is the day's own real estimate, not a sum.
+        visitors: dayVisitors,
+        automated: dayAutomated,
+        humanLike: reqs - dayAutomated,
       })
 
       if (snap) {
@@ -890,6 +1091,12 @@ export async function getAppTrafficReport(
         totalStatus4xx += snap.status4xxCount ?? 0
         totalStatus5xx += snap.status5xxCount ?? 0
         totalBytesBig += snap.totalBytes
+        // Summing daily cardinality estimates overcounts a visitor who
+        // returns on multiple days within the month -- accepted, documented
+        // approximation (visitorEstimateMethod already marks this as an
+        // estimate; a true monthly cardinality would need re-querying
+        // OpenSearch over the whole month instead of rolling up snapshots).
+        totalVisitorEstimate += dayVisitors
         if (snap.avgLatencyMs > 0) {
           latencySum += snap.avgLatencyMs * snap.totalRequests
           latencyCount += snap.totalRequests
@@ -910,6 +1117,8 @@ export async function getAppTrafficReport(
             sampleStatus: e.sampleStatus ?? cur?.sampleStatus ?? 500,
           })
         }
+
+        audienceLists.push(normalizeAudience(snap.audienceJson))
 
         const snapIps = ((snap.topIpsJson as unknown as IpGeoInfo[]) ?? []).map(
           normalizeIpGeoInfo
@@ -979,6 +1188,9 @@ export async function getAppTrafficReport(
       troubledPages: sortedTroubledPages,
       topIps,
       topCountries,
+      audience: mergeAudienceBreakdown(audienceLists),
+      visitorEstimate: totalVisitorEstimate,
+      visitorEstimateMethod: VISITOR_ESTIMATE_METHOD,
       requestQuality: computeRequestQuality(
         totalStatus2xx,
         totalStatus3xx,
@@ -1011,6 +1223,8 @@ export async function getAppTrafficReport(
     requests: 0,
     errors: 0,
     bytes: BigInt(0),
+    visitors: 0,
+    automated: 0,
   }))
 
   let totalRequests = 0
@@ -1022,16 +1236,24 @@ export async function getAppTrafficReport(
   let totalBytesBig = BigInt(0)
   let latencySum = 0
   let latencyCount = 0
+  let totalVisitorEstimate = 0
 
   const pathViews = new Map<string, number>()
   const errorMap = new Map<string, { errors: number; sampleStatus: number }>()
   const ipMap = new Map<string, IpGeoInfo>()
+  const audienceLists: TrafficAudienceBreakdown[] = []
 
   for (const snap of snapshots) {
     const month = snap.date.getUTCMonth()
     monthBuckets[month].requests += snap.totalRequests
     monthBuckets[month].errors += snap.errorCount
     monthBuckets[month].bytes += snap.totalBytes
+    // Same accepted sum-of-daily-estimates approximation as the monthly
+    // view's period total -- see the comment there.
+    monthBuckets[month].visitors += snap.visitorEstimate ?? 0
+    monthBuckets[month].automated += snap.automatedCount ?? 0
+    totalVisitorEstimate += snap.visitorEstimate ?? 0
+    audienceLists.push(normalizeAudience(snap.audienceJson))
 
     totalRequests += snap.totalRequests
     totalSuccess += snap.successCount
@@ -1098,6 +1320,9 @@ export async function getAppTrafficReport(
     label: name,
     requests: monthBuckets[idx].requests,
     errors: monthBuckets[idx].errors,
+    visitors: monthBuckets[idx].visitors,
+    automated: monthBuckets[idx].automated,
+    humanLike: monthBuckets[idx].requests - monthBuckets[idx].automated,
   }))
 
   const successRate =
@@ -1141,6 +1366,9 @@ export async function getAppTrafficReport(
     troubledPages: sortedTroubledPages,
     topIps,
     topCountries,
+    audience: mergeAudienceBreakdown(audienceLists),
+    visitorEstimate: totalVisitorEstimate,
+    visitorEstimateMethod: VISITOR_ESTIMATE_METHOD,
     requestQuality: computeRequestQuality(
       totalStatus2xx,
       totalStatus3xx,

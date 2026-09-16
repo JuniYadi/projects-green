@@ -4,6 +4,12 @@ export interface TrafficTrendItem {
   label: string
   requests: number
   errors: number
+  /** Estimated distinct visitors in this bucket. Approximate -- see visitorEstimateMethod. */
+  visitors: number
+  /** Requests with a known bot/CLI User-Agent, or a missing one. */
+  automated: number
+  /** requests - automated. */
+  humanLike: number
 }
 
 export interface TrafficPathCount {
@@ -22,6 +28,18 @@ export interface TrafficCountryCount {
   countryName: string
   requests: number
   percentage: number
+}
+
+export interface AudienceBucket {
+  label: string
+  count: number
+  percentage: number
+}
+
+export interface TrafficAudienceBreakdown {
+  device: AudienceBucket[]
+  browser: AudienceBucket[]
+  os: AudienceBucket[]
 }
 
 export interface TrafficRequestQuality {
@@ -53,6 +71,11 @@ export interface AppTrafficReportDTO {
   troubledPages: TrafficErrorPath[]
   topIps: IpGeoInfo[]
   topCountries: TrafficCountryCount[]
+  audience: TrafficAudienceBreakdown
+  /** Approximate distinct-visitor count for the whole period. See visitorEstimateMethod. */
+  visitorEstimate: number
+  /** Estimation method + version, e.g. "ip_cardinality_v1". Not proof of a real person. */
+  visitorEstimateMethod: string
   requestQuality: TrafficRequestQuality
 }
 
@@ -84,8 +107,18 @@ export interface DailySnapshotComputeResult {
   status5xx: number
   totalBytes: bigint
   avgLatencyMs: number
-  hourlyTrend: Array<{ hour: number; requests: number; errors: number }>
+  hourlyTrend: Array<{
+    hour: number
+    requests: number
+    errors: number
+    visitors: number
+    automated: number
+  }>
   topPaths: TrafficPathCount[]
   errorPaths: TrafficErrorPath[]
   topIps: IpGeoInfo[]
+  audience: TrafficAudienceBreakdown
+  automatedRequests: number
+  visitorEstimate: number
+  visitorEstimateMethod: string
 }

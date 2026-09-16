@@ -25,6 +25,7 @@ mock.module("../cluster-integration.service", () => ({
 const {
   formatBytes,
   computeTopCountries,
+  mergeAudienceBreakdown,
   computeRequestQuality,
   computeDailyTrafficSnapshotFromOpenSearch,
   getAppTrafficReport,
@@ -100,6 +101,42 @@ describe("opensearch-traffic.service", () => {
     })
   })
 
+  describe("mergeAudienceBreakdown", () => {
+    it("sums matching labels across days and re-derives top 5 + Other", () => {
+      const merged = mergeAudienceBreakdown([
+        {
+          device: [{ label: "desktop", count: 80, percentage: 80 }],
+          browser: [{ label: "Chrome", count: 80, percentage: 80 }],
+          os: [{ label: "Windows", count: 80, percentage: 80 }],
+        },
+        {
+          device: [{ label: "desktop", count: 20, percentage: 100 }],
+          browser: [{ label: "Firefox", count: 20, percentage: 100 }],
+          os: [{ label: "Windows", count: 20, percentage: 100 }],
+        },
+      ])
+
+      expect(merged.device).toEqual([
+        { label: "desktop", count: 100, percentage: 100 },
+      ])
+      expect(merged.os).toEqual([
+        { label: "Windows", count: 100, percentage: 100 },
+      ])
+      expect(merged.browser).toEqual([
+        { label: "Chrome", count: 80, percentage: 80 },
+        { label: "Firefox", count: 20, percentage: 20 },
+      ])
+    })
+
+    it("returns empty buckets when given no data", () => {
+      expect(mergeAudienceBreakdown([])).toEqual({
+        device: [],
+        browser: [],
+        os: [],
+      })
+    })
+  })
+
   describe("computeRequestQuality", () => {
     it("computes percentages against the sum of the 4 buckets", () => {
       expect(computeRequestQuality(90, 5, 4, 1)).toEqual({
@@ -163,22 +200,36 @@ describe("opensearch-traffic.service", () => {
               },
               avg_latency: { value: 45.4 },
               total_bytes: { value: 204800 },
+              visitor_cardinality: { value: 42 },
               hourly_trend: {
                 buckets: [
                   {
                     key_as_string: "2026-09-10T00:00:00.000Z",
                     doc_count: 10,
                     errors: { doc_count: 0 },
+                    automated: { doc_count: 1 },
+                    visitor_cardinality: { value: 8 },
                   },
                   {
                     key_as_string: "2026-09-10T01:00:00.000Z",
                     doc_count: 20,
                     errors: { doc_count: 1 },
+                    automated: { doc_count: 3 },
+                    visitor_cardinality: { value: 15 },
                   },
                 ],
               },
               top_paths: {
                 buckets: [{ key: "/home", doc_count: 80 }],
+              },
+              user_agent_buckets: {
+                buckets: [
+                  {
+                    key: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    doc_count: 90,
+                  },
+                  { key: "curl/7.68.0", doc_count: 10 },
+                ],
               },
               top_ips: {
                 buckets: [
@@ -225,9 +276,31 @@ describe("opensearch-traffic.service", () => {
       expect(result.avgLatencyMs).toBe(45)
       expect(result.totalBytes).toBe(BigInt(204800))
       expect(result.hourlyTrend.length).toBe(2)
+      expect(result.hourlyTrend[0]).toEqual({
+        hour: 0,
+        requests: 10,
+        errors: 0,
+        visitors: 8,
+        automated: 1,
+      })
+      expect(result.visitorEstimate).toBe(42)
+      expect(result.visitorEstimateMethod).toBe("ip_cardinality_v1")
+      expect(result.automatedRequests).toBe(4) // 1 + 3 across the 2 hourly buckets
       expect(result.topPaths).toEqual([{ path: "/home", views: 80 }])
       expect(result.errorPaths).toEqual([
         { path: "/missing", errors: 5, sampleStatus: 404 },
+      ])
+      expect(result.audience.device).toEqual([
+        { label: "desktop", count: 90, percentage: 90 },
+        { label: "bot", count: 10, percentage: 10 },
+      ])
+      expect(result.audience.browser).toEqual([
+        { label: "Chrome", count: 90, percentage: 90 },
+        { label: "CLI/HTTP Client", count: 10, percentage: 10 },
+      ])
+      expect(result.audience.os).toEqual([
+        { label: "Windows", count: 90, percentage: 90 },
+        { label: "Unknown", count: 10, percentage: 10 },
       ])
       expect(result.status2xx).toBe(100)
       expect(result.status3xx).toBe(0)
@@ -311,6 +384,13 @@ describe("opensearch-traffic.service", () => {
         ],
         topPathsJson: [{ path: "/api", views: 500 }],
         errorPathsJson: [{ path: "/api/bad", errors: 10, sampleStatus: 400 }],
+        audienceJson: {
+          device: [{ label: "mobile", count: 700, percentage: 70 }],
+          browser: [{ label: "Safari", count: 700, percentage: 70 }],
+          os: [{ label: "iOS", count: 700, percentage: 70 }],
+        },
+        visitorEstimate: 250,
+        visitorEstMethod: "ip_cardinality_v1",
       })
 
       const report = await getAppTrafficReport("my-app", {
@@ -324,10 +404,20 @@ describe("opensearch-traffic.service", () => {
       expect(report.avgLatencyMs).toBe(30)
       expect(report.trend[0].requests).toBe(50)
       expect(report.trend[1].requests).toBe(100)
+      // hourlyTrendJson here predates the visitors/automated fields --
+      // must degrade to 0/humanLike=requests, not crash or read undefined.
+      expect(report.trend[0].visitors).toBe(0)
+      expect(report.trend[0].automated).toBe(0)
+      expect(report.trend[0].humanLike).toBe(50)
       expect(report.topPages).toEqual([{ path: "/api", views: 500 }])
       expect(report.troubledPages).toEqual([
         { path: "/api/bad", errors: 10, sampleStatus: 400 },
       ])
+      expect(report.audience.device).toEqual([
+        { label: "mobile", count: 700, percentage: 70 },
+      ])
+      expect(report.visitorEstimate).toBe(250)
+      expect(report.visitorEstimateMethod).toBe("ip_cardinality_v1")
       expect(report.requestQuality).toEqual({
         status2xx: 900,
         status3xx: 50,
@@ -339,6 +429,35 @@ describe("opensearch-traffic.service", () => {
         status5xxPct: 1,
         hasBreakdown: true,
       })
+    })
+
+    it("degrades a legacy snapshot with no audienceJson keys to empty buckets", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+      mockPrisma.appHostingDailyTrafficSnapshot.findUnique.mockResolvedValue({
+        id: "snap_legacy",
+        stackId: "st_123",
+        date: new Date(Date.UTC(2026, 8, 10)),
+        totalRequests: 500,
+        successCount: 500,
+        errorCount: 0,
+        totalBytes: BigInt(1000),
+        avgLatencyMs: 10,
+        hourlyTrendJson: [],
+        topPathsJson: [],
+        errorPathsJson: [],
+        audienceJson: {}, // the column default for pre-migration rows
+      })
+
+      const report = await getAppTrafficReport("my-app", {
+        granularity: "daily",
+        date: "2026-09-10",
+      })
+
+      expect(report.audience).toEqual({ device: [], browser: [], os: [] })
     })
 
     it("returns monthly rolled up report across daily snapshots", async () => {
@@ -469,11 +588,17 @@ describe("opensearch-traffic.service", () => {
         label: "Jan",
         requests: 1000,
         errors: 10,
+        visitors: 0,
+        automated: 0,
+        humanLike: 1000,
       })
       expect(report.trend[1]).toEqual({
         label: "Feb",
         requests: 2000,
         errors: 40,
+        visitors: 0,
+        automated: 0,
+        humanLike: 2000,
       })
       expect(report.topIps[0].requestsCount).toBe(300)
       // Both snapshots predate the status-family columns -- no breakdown was
@@ -786,12 +911,19 @@ describe("opensearch-traffic.service", () => {
         topPaths: [],
         errorPaths: [],
         topIps: [],
+        audience: { device: [], browser: [], os: [] },
+        automatedRequests: 3,
+        visitorEstimate: 20,
+        visitorEstimateMethod: "ip_cardinality_v1",
       })
       expect(
         mockPrisma.appHostingDailyTrafficSnapshot.upsert
       ).toHaveBeenCalled()
       const call = mockPrisma.appHostingDailyTrafficSnapshot.upsert.mock
         .calls[0][0] as { create: Record<string, unknown> }
+      expect(call.create.automatedCount).toBe(3)
+      expect(call.create.visitorEstimate).toBe(20)
+      expect(call.create.visitorEstMethod).toBe("ip_cardinality_v1")
       expect(call.create.status2xxCount).toBe(45)
       expect(call.create.status5xxCount).toBe(1)
     })

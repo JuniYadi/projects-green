@@ -7,6 +7,7 @@ import { TrafficRequestQualityCard } from "./traffic-request-quality-card"
 import { TrafficHourlyChart } from "./traffic-hourly-chart"
 import { TrafficTopPagesCard } from "./traffic-top-pages-card"
 import { TrafficGeoCard } from "./traffic-geo-card"
+import { TrafficAudienceCard } from "./traffic-audience-card"
 import { TrafficLiveStreamTable } from "./traffic-live-stream-table"
 import { Button } from "@/components/ui/button"
 import { ArrowClockwise } from "@phosphor-icons/react"
@@ -199,6 +200,13 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
           <TrafficGeoCard
             topCountries={data.topCountries || []}
             topIps={data.topIps || []}
+          />
+
+          {/* 4b. Audience Breakdown: Device / Browser / OS */}
+          <TrafficAudienceCard
+            device={data.audience?.device || []}
+            browser={data.audience?.browser || []}
+            os={data.audience?.os || []}
           />
 
           {/* 5. Live Feed Stream Section */}

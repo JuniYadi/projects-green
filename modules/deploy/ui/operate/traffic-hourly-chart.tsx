@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import {
   Card,
   CardContent,
@@ -14,18 +14,23 @@ export interface TrafficHourlyChartProps {
   periodLabel: string
 }
 
+type ChartMetric = "visitors" | "requests"
+
 export function TrafficHourlyChart({
   trend,
   granularity,
   periodLabel,
 }: TrafficHourlyChartProps) {
-  const maxRequests = useMemo(() => {
+  const [metric, setMetric] = useState<ChartMetric>("visitors")
+
+  const maxValue = useMemo(() => {
     let max = 1
     for (const item of trend) {
-      if (item.requests > max) max = item.requests
+      const value = metric === "visitors" ? item.visitors : item.requests
+      if (value > max) max = value
     }
     return max
-  }, [trend])
+  }, [trend, metric])
 
   const axisSubtitle =
     granularity === "daily"
@@ -37,24 +42,55 @@ export function TrafficHourlyChart({
   return (
     <Card className="border-border bg-card">
       <CardHeader className="pb-3">
-        <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <div>
             <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
-              Grafik Tren Kunjungan
+              {metric === "visitors"
+                ? "Estimasi Pengunjung"
+                : "Komposisi Permintaan"}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
               {axisSubtitle} — {periodLabel}
+              {metric === "visitors" ? " (estimasi, bukan angka pasti)" : ""}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
-              <span>Sukses</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-sm bg-destructive" />
-              <span>Error</span>
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center rounded-lg border border-border bg-muted/10 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setMetric("visitors")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  metric === "visitors"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Visitors
+              </button>
+              <button
+                type="button"
+                onClick={() => setMetric("requests")}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  metric === "requests"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Requests
+              </button>
+            </div>
+            {metric === "requests" && (
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
+                  <span>Human-like</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" />
+                  <span>Automated</span>
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -68,13 +104,15 @@ export function TrafficHourlyChart({
             {/* Chart Area */}
             <div className="flex h-44 items-end gap-1.5 pt-6 pb-2">
               {trend.map((item, idx) => {
+                const value =
+                  metric === "visitors" ? item.visitors : item.requests
                 const heightPercent = Math.max(
-                  Math.round((item.requests / maxRequests) * 100),
+                  Math.round((value / maxValue) * 100),
                   4
                 )
-                const errorPercent =
+                const automatedPercent =
                   item.requests > 0
-                    ? Math.round((item.errors / item.requests) * 100)
+                    ? Math.round((item.automated / item.requests) * 100)
                     : 0
 
                 return (
@@ -83,12 +121,28 @@ export function TrafficHourlyChart({
                     className="group relative flex h-full flex-1 flex-col justify-end"
                   >
                     {/* Tooltip on hover */}
-                    <div className="pointer-events-none absolute -top-12 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center rounded-md border border-border bg-popover px-2 py-1 text-[11px] whitespace-nowrap text-popover-foreground shadow-sm group-hover:flex">
+                    <div className="pointer-events-none absolute -top-14 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center rounded-md border border-border bg-popover px-2 py-1 text-[11px] whitespace-nowrap text-popover-foreground shadow-sm group-hover:flex">
                       <span className="font-semibold">{item.label}</span>
-                      <span>
-                        {item.requests.toLocaleString("id-ID")} hits
-                        {item.errors > 0 ? ` (${item.errors} err)` : ""}
-                      </span>
+                      {metric === "visitors" ? (
+                        <span>
+                          ~{item.visitors.toLocaleString("id-ID")} pengunjung
+                        </span>
+                      ) : (
+                        <>
+                          <span>
+                            {item.requests.toLocaleString("id-ID")} permintaan
+                          </span>
+                          <span>
+                            {item.humanLike.toLocaleString("id-ID")} human-like,{" "}
+                            {item.automated.toLocaleString("id-ID")} automated
+                          </span>
+                        </>
+                      )}
+                      {item.errors > 0 && (
+                        <span className="text-destructive">
+                          {item.errors.toLocaleString("id-ID")} error
+                        </span>
+                      )}
                     </div>
 
                     {/* Bar representation */}
@@ -96,14 +150,20 @@ export function TrafficHourlyChart({
                       style={{ height: `${heightPercent}%` }}
                       className="w-full overflow-hidden rounded-t transition-all hover:opacity-80"
                     >
-                      <div
-                        style={{ height: `${errorPercent}%` }}
-                        className="w-full bg-destructive"
-                      />
-                      <div
-                        style={{ height: `${100 - errorPercent}%` }}
-                        className="w-full bg-primary"
-                      />
+                      {metric === "visitors" ? (
+                        <div className="h-full w-full bg-primary" />
+                      ) : (
+                        <>
+                          <div
+                            style={{ height: `${automatedPercent}%` }}
+                            className="w-full bg-amber-500"
+                          />
+                          <div
+                            style={{ height: `${100 - automatedPercent}%` }}
+                            className="w-full bg-primary"
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 )
