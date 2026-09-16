@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { TrafficSummaryCards } from "./traffic-summary-cards"
+import { TrafficRequestQualityCard } from "./traffic-request-quality-card"
 import { TrafficHourlyChart } from "./traffic-hourly-chart"
 import { TrafficTopPagesCard } from "./traffic-top-pages-card"
 import { TrafficGeoCard } from "./traffic-geo-card"
@@ -185,6 +186,9 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
             granularity={data.granularity}
             periodLabel={data.periodLabel}
           />
+
+          {/* 2b. Request Quality Breakdown */}
+          <TrafficRequestQualityCard requestQuality={data.requestQuality} />
 
           {/* 3. Top Pages & Broken Links Card */}
           <TrafficTopPagesCard

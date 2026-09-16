@@ -42,6 +42,19 @@ export interface TrafficAudienceBreakdown {
   os: AudienceBucket[]
 }
 
+export interface TrafficRequestQuality {
+  status2xx: number
+  status3xx: number
+  status4xx: number
+  status5xx: number
+  status2xxPct: number
+  status3xxPct: number
+  status4xxPct: number
+  status5xxPct: number
+  /** False when no per-status breakdown was ever recorded for this period (pre-migration snapshot). */
+  hasBreakdown: boolean
+}
+
 export interface AppTrafficReportDTO {
   granularity: "daily" | "monthly" | "yearly"
   periodLabel: string
@@ -63,6 +76,7 @@ export interface AppTrafficReportDTO {
   visitorEstimate: number
   /** Estimation method + version, e.g. "ip_cardinality_v1". Not proof of a real person. */
   visitorEstimateMethod: string
+  requestQuality: TrafficRequestQuality
 }
 
 export interface AppTrafficLogItemDTO {
@@ -87,6 +101,10 @@ export interface DailySnapshotComputeResult {
   totalRequests: number
   successCount: number
   errorCount: number
+  status2xx: number
+  status3xx: number
+  status4xx: number
+  status5xx: number
   totalBytes: bigint
   avgLatencyMs: number
   hourlyTrend: Array<{

@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "bun:test"
 import { render, cleanup } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { TrafficSummaryCards } from "./traffic-summary-cards"
+import { TrafficRequestQualityCard } from "./traffic-request-quality-card"
 import { TrafficHourlyChart } from "./traffic-hourly-chart"
 import { TrafficTopPagesCard } from "./traffic-top-pages-card"
 import { TrafficGeoCard } from "./traffic-geo-card"
@@ -33,6 +34,54 @@ describe("Frontend Traffic Components", () => {
       expect(view.getByText("0.14s")).toBeTruthy()
       expect(view.getByText("Transfer Data")).toBeTruthy()
       expect(view.getByText("450.0 MB")).toBeTruthy()
+    })
+  })
+
+  describe("TrafficRequestQualityCard", () => {
+    it("renders per-status counts and percentages when a breakdown exists", () => {
+      const view = render(
+        <TrafficRequestQualityCard
+          requestQuality={{
+            status2xx: 900,
+            status3xx: 50,
+            status4xx: 40,
+            status5xx: 10,
+            status2xxPct: 90,
+            status3xxPct: 5,
+            status4xxPct: 4,
+            status5xxPct: 1,
+            hasBreakdown: true,
+          }}
+        />
+      )
+
+      expect(view.getByText("2xx Berhasil")).toBeTruthy()
+      expect(view.getByText("90%")).toBeTruthy()
+      expect(view.getByText("(900 req)")).toBeTruthy()
+      expect(view.getByText("5xx Error Server")).toBeTruthy()
+      expect(view.getByText("1%")).toBeTruthy()
+    })
+
+    it("shows an honest empty state instead of fabricated percentages", () => {
+      const view = render(
+        <TrafficRequestQualityCard
+          requestQuality={{
+            status2xx: 0,
+            status3xx: 0,
+            status4xx: 0,
+            status5xx: 0,
+            status2xxPct: 0,
+            status3xxPct: 0,
+            status4xxPct: 0,
+            status5xxPct: 0,
+            hasBreakdown: false,
+          }}
+        />
+      )
+
+      expect(
+        view.getByText("Data rinci status belum tersedia untuk periode ini")
+      ).toBeTruthy()
     })
   })
 
