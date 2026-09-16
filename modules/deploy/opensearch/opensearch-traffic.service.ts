@@ -3,7 +3,11 @@ import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 import { logger } from "@/lib/logger"
 import { resolveClusterIntegrationByClusterCode } from "../cluster-integration.service"
-import { enrichTopIpsWithGeo, type IpGeoInfo } from "./geoip-lookup.service"
+import {
+  computeSuccessRatio,
+  enrichTopIpsWithGeo,
+  type IpGeoInfo,
+} from "./geoip-lookup.service"
 import {
   BOT_SIGNAL_FRAGMENTS,
   CLI_CLIENT_SIGNAL_FRAGMENTS,
@@ -50,6 +54,38 @@ export function formatBytes(bytes: bigint | number): string {
   const i = Math.floor(Math.log(num) / Math.log(1024))
   const formatted = (num / Math.pow(1024, i)).toFixed(1)
   return `${formatted} ${units[i] ?? "B"}`
+}
+
+/**
+ * Fills in status2xx/3xx/4xx/5xx/successRatio for IpGeoInfo rows persisted
+ * before those fields existed, so old snapshots degrade to an honest
+ * "no evidence" state instead of throwing on undefined.
+ */
+function normalizeIpGeoInfo(item: IpGeoInfo): IpGeoInfo {
+  return {
+    ...item,
+    status2xx: item.status2xx ?? 0,
+    status3xx: item.status3xx ?? 0,
+    status4xx: item.status4xx ?? 0,
+    status5xx: item.status5xx ?? 0,
+    // No recorded breakdown at all (pre-this-change snapshot) reads as 100,
+    // matching this file's existing "no data -> 100" successRate convention
+    // -- distinct from a *measured* 0% which requires real status evidence.
+    successRatio: item.successRatio ?? 100,
+  }
+}
+
+/** Recomputes successRatio after summing status counts across snapshots, keeping the "no evidence -> 100" default when nothing was ever recorded. */
+function recomputeSuccessRatio(ip: IpGeoInfo): number {
+  const statusEvidence =
+    ip.status2xx + ip.status3xx + ip.status4xx + ip.status5xx
+  // Divide by the evidenced volume, not requestsCount: a merge can mix an
+  // evidenced snapshot with a legacy one that has real request volume but
+  // zero recorded status, and that unevidenced volume must not get silently
+  // counted as failure in the denominator.
+  return statusEvidence > 0
+    ? computeSuccessRatio(ip.status2xx, statusEvidence)
+    : 100
 }
 
 export function computeTopCountries(
@@ -421,6 +457,19 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
       },
       top_ips: {
         terms: { field: "client_ip.keyword", size: 10 },
+        aggs: {
+          status_class: {
+            range: {
+              field: "http_status",
+              ranges: [
+                { key: "2xx", from: 200, to: 300 },
+                { key: "3xx", from: 300, to: 400 },
+                { key: "4xx", from: 400, to: 500 },
+                { key: "5xx", from: 500 },
+              ],
+            },
+          },
+        },
       },
       user_agent_buckets: {
         // Enough distinct UA strings to represent the day's audience without
@@ -454,7 +503,14 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
   let dayVisitorCardinality = 0
   const topPaths: TrafficPathCount[] = []
   const errorPaths: TrafficErrorPath[] = []
-  const rawTopIps: Array<{ ip: string; count: number }> = []
+  const rawTopIps: Array<{
+    ip: string
+    count: number
+    status2xx: number
+    status3xx: number
+    status4xx: number
+    status5xx: number
+  }> = []
   const deviceCounts = new Map<string, number>()
   const browserCounts = new Map<string, number>()
   const osCounts = new Map<string, number>()
@@ -488,7 +544,15 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
       }
       visitor_cardinality?: { value: number }
       top_paths?: { buckets: Array<{ key: string; doc_count: number }> }
-      top_ips?: { buckets: Array<{ key: string; doc_count: number }> }
+      top_ips?: {
+        buckets: Array<{
+          key: string
+          doc_count: number
+          status_class?: {
+            buckets: Array<{ key: string; doc_count: number }>
+          }
+        }>
+      }
       user_agent_buckets?: {
         buckets: Array<{ key: string; doc_count: number }>
       }
@@ -555,9 +619,16 @@ export async function computeDailyTrafficSnapshotFromOpenSearch(
 
     if (aggs.top_ips?.buckets) {
       for (const b of aggs.top_ips.buckets) {
+        const statusBuckets = b.status_class?.buckets ?? []
+        const statusCount = (key: string) =>
+          statusBuckets.find((s) => s.key === key)?.doc_count ?? 0
         rawTopIps.push({
           ip: b.key,
           count: b.doc_count,
+          status2xx: statusCount("2xx"),
+          status3xx: statusCount("3xx"),
+          status4xx: statusCount("4xx"),
+          status5xx: statusCount("5xx"),
         })
       }
     }
@@ -851,7 +922,9 @@ export async function getAppTrafficReport(
         ? Math.round((snapshot.successCount / totalRequests) * 1000) / 10
         : 100
 
-    const topIps = (snapshot.topIpsJson as unknown as IpGeoInfo[]) ?? []
+    const topIps = ((snapshot.topIpsJson as unknown as IpGeoInfo[]) ?? []).map(
+      normalizeIpGeoInfo
+    )
     const topCountries = computeTopCountries(topIps)
 
     return {
@@ -976,11 +1049,18 @@ export async function getAppTrafficReport(
 
         audienceLists.push(normalizeAudience(snap.audienceJson))
 
-        const snapIps = (snap.topIpsJson as unknown as IpGeoInfo[]) ?? []
+        const snapIps = ((snap.topIpsJson as unknown as IpGeoInfo[]) ?? []).map(
+          normalizeIpGeoInfo
+        )
         for (const ipItem of snapIps) {
           const cur = ipMap.get(ipItem.ip)
           if (cur) {
             cur.requestsCount += ipItem.requestsCount
+            cur.status2xx += ipItem.status2xx
+            cur.status3xx += ipItem.status3xx
+            cur.status4xx += ipItem.status4xx
+            cur.status5xx += ipItem.status5xx
+            cur.successRatio = recomputeSuccessRatio(cur)
           } else {
             ipMap.set(ipItem.ip, { ...ipItem })
           }
@@ -1118,11 +1198,18 @@ export async function getAppTrafficReport(
       })
     }
 
-    const snapIps = (snap.topIpsJson as unknown as IpGeoInfo[]) ?? []
+    const snapIps = ((snap.topIpsJson as unknown as IpGeoInfo[]) ?? []).map(
+      normalizeIpGeoInfo
+    )
     for (const ipItem of snapIps) {
       const cur = ipMap.get(ipItem.ip)
       if (cur) {
         cur.requestsCount += ipItem.requestsCount
+        cur.status2xx += ipItem.status2xx
+        cur.status3xx += ipItem.status3xx
+        cur.status4xx += ipItem.status4xx
+        cur.status5xx += ipItem.status5xx
+        cur.successRatio = recomputeSuccessRatio(cur)
       } else {
         ipMap.set(ipItem.ip, { ...ipItem })
       }

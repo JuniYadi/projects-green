@@ -53,24 +53,34 @@ describe("opensearch-traffic.service", () => {
 
   describe("computeTopCountries", () => {
     it("aggregates requests per country and calculates percentage correctly", () => {
+      const noStatusEvidence = {
+        status2xx: 0,
+        status3xx: 0,
+        status4xx: 0,
+        status5xx: 0,
+        successRatio: 100,
+      }
       const topIps = [
         {
           ip: "1.1.1.1",
           countryCode: "SG",
           countryName: "Singapore",
           requestsCount: 60,
+          ...noStatusEvidence,
         },
         {
           ip: "1.1.1.2",
           countryCode: "SG",
           countryName: "Singapore",
           requestsCount: 40,
+          ...noStatusEvidence,
         },
         {
           ip: "2.2.2.2",
           countryCode: "ID",
           countryName: "Indonesia",
           requestsCount: 100,
+          ...noStatusEvidence,
         },
       ]
       const countries = computeTopCountries(topIps)
@@ -181,6 +191,22 @@ describe("opensearch-traffic.service", () => {
                   { key: "curl/7.68.0", doc_count: 10 },
                 ],
               },
+              top_ips: {
+                buckets: [
+                  {
+                    key: "10.0.0.5",
+                    doc_count: 12,
+                    status_class: {
+                      buckets: [
+                        { key: "2xx", doc_count: 9 },
+                        { key: "3xx", doc_count: 1 },
+                        { key: "4xx", doc_count: 1 },
+                        { key: "5xx", doc_count: 1 },
+                      ],
+                    },
+                  },
+                ],
+              },
               error_paths: {
                 paths: {
                   buckets: [
@@ -235,6 +261,20 @@ describe("opensearch-traffic.service", () => {
       expect(result.audience.os).toEqual([
         { label: "Windows", count: 90, percentage: 90 },
         { label: "Unknown", count: 10, percentage: 10 },
+      ])
+      expect(result.topIps).toEqual([
+        {
+          ip: "10.0.0.5",
+          requestsCount: 12,
+          countryCode: "LOCAL",
+          countryName: "Jaringan Internal",
+          city: "Local",
+          status2xx: 9,
+          status3xx: 1,
+          status4xx: 1,
+          status5xx: 1,
+          successRatio: 75,
+        },
       ])
     })
 
@@ -485,6 +525,156 @@ describe("opensearch-traffic.service", () => {
         humanLike: 2000,
       })
       expect(report.topIps[0].requestsCount).toBe(300)
+      expect(report.topIps[0].status2xx).toBe(0)
+      expect(report.topIps[0].successRatio).toBe(100)
+    })
+
+    it("sums per-IP status breakdown across rolled-up snapshots", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+
+      mockPrisma.appHostingDailyTrafficSnapshot.findMany.mockResolvedValue([
+        {
+          id: "snap_1",
+          stackId: "st_123",
+          date: new Date(Date.UTC(2026, 8, 1)),
+          totalRequests: 100,
+          successCount: 90,
+          errorCount: 10,
+          totalBytes: BigInt(1000),
+          avgLatencyMs: 20,
+          topPathsJson: [],
+          errorPathsJson: [],
+          topIpsJson: [
+            {
+              ip: "10.0.0.5",
+              requestsCount: 100,
+              countryCode: "LOCAL",
+              countryName: "Jaringan Internal",
+              status2xx: 90,
+              status3xx: 0,
+              status4xx: 10,
+              status5xx: 0,
+              successRatio: 90,
+            },
+          ],
+        },
+        {
+          id: "snap_2",
+          stackId: "st_123",
+          date: new Date(Date.UTC(2026, 8, 2)),
+          totalRequests: 200,
+          successCount: 190,
+          errorCount: 10,
+          totalBytes: BigInt(2000),
+          avgLatencyMs: 20,
+          topPathsJson: [],
+          errorPathsJson: [],
+          topIpsJson: [
+            {
+              ip: "10.0.0.5",
+              requestsCount: 200,
+              countryCode: "LOCAL",
+              countryName: "Jaringan Internal",
+              status2xx: 190,
+              status3xx: 0,
+              status4xx: 0,
+              status5xx: 10,
+              successRatio: 95,
+            },
+          ],
+        },
+      ])
+
+      const report = await getAppTrafficReport("my-app", {
+        granularity: "monthly",
+        month: "2026-09",
+      })
+
+      expect(report.topIps[0]).toMatchObject({
+        ip: "10.0.0.5",
+        requestsCount: 300,
+        status2xx: 280,
+        status3xx: 0,
+        status4xx: 10,
+        status5xx: 10,
+        successRatio: 93.3,
+      })
+    })
+
+    it("excludes unevidenced legacy volume from the merged success ratio instead of diluting it", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        name: "My App",
+      })
+
+      mockPrisma.appHostingDailyTrafficSnapshot.findMany.mockResolvedValue([
+        {
+          id: "snap_1",
+          stackId: "st_123",
+          date: new Date(Date.UTC(2026, 8, 1)),
+          totalRequests: 1000,
+          successCount: 1000,
+          errorCount: 0,
+          totalBytes: BigInt(1000),
+          avgLatencyMs: 20,
+          topPathsJson: [],
+          errorPathsJson: [],
+          // Legacy row: real request volume, no status breakdown recorded.
+          topIpsJson: [
+            {
+              ip: "10.0.0.9",
+              requestsCount: 1000,
+              countryCode: "LOCAL",
+              countryName: "Jaringan Internal",
+            },
+          ],
+        },
+        {
+          id: "snap_2",
+          stackId: "st_123",
+          date: new Date(Date.UTC(2026, 8, 2)),
+          totalRequests: 10,
+          successCount: 8,
+          errorCount: 2,
+          totalBytes: BigInt(10),
+          avgLatencyMs: 20,
+          topPathsJson: [],
+          errorPathsJson: [],
+          topIpsJson: [
+            {
+              ip: "10.0.0.9",
+              requestsCount: 10,
+              countryCode: "LOCAL",
+              countryName: "Jaringan Internal",
+              status2xx: 8,
+              status3xx: 0,
+              status4xx: 2,
+              status5xx: 0,
+              successRatio: 80,
+            },
+          ],
+        },
+      ])
+
+      const report = await getAppTrafficReport("my-app", {
+        granularity: "monthly",
+        month: "2026-09",
+      })
+
+      // 8/10 evidenced requests succeeded -> 80%, not 8/1010 (~0.8%) diluted
+      // by the 1000 legacy requests that carry no status evidence at all.
+      expect(report.topIps[0]).toMatchObject({
+        ip: "10.0.0.9",
+        requestsCount: 1010,
+        status2xx: 8,
+        status4xx: 2,
+        successRatio: 80,
+      })
     })
 
     it("returns empty default report when snapshot is absent", async () => {
