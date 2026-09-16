@@ -181,15 +181,15 @@ export default function AiKnowledgePage() {
               <TabsContent value="upload" className="space-y-4 pt-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">
-                    File Dokumen (PDF, DOCX, TXT)
+                    File Dokumen (PDF / DOCX)
                   </Label>
                   <StorageDropzone
-                    accept=".pdf,.docx,.txt,application/pdf"
+                    accept=".pdf,.docx,application/pdf"
                     maxSizeBytes={10 * 1024 * 1024}
                     purpose="knowledge"
                     mediaType="DOCUMENT"
                     label="Pilih atau tarik file dokumen ke sini"
-                    description="Mendukung format PDF, DOCX, atau TXT (Maks. 10MB)"
+                    description="Mendukung format PDF atau DOCX (Maks. 10MB)"
                     value={uploadedFile?.url}
                     onUploadSuccess={(result) => {
                       setUploadedFile(result)
