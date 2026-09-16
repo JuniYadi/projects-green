@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import { Copy, Pencil, Plus, RotateCw, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -32,6 +33,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type MetaAppRow = {
   id: string
@@ -67,16 +70,21 @@ const emptyCreateForm: CreateForm = {
 type RotateForm = { appSecret: string; verifyToken: string }
 const emptyRotateForm: RotateForm = { appSecret: "", verifyToken: "" }
 
-const CONFLICT_MESSAGE =
-  "Cannot delete or deactivate this Meta App while devices are still attached. Detach the devices first."
-
 const API_BASE = "/api/admin/whatsapp/meta-apps"
 
-type WhatsappMetaAppInventoryProps = { baseUrl: string }
+type WhatsappMetaAppInventoryProps = {
+  baseUrl: string
+  locale?: string
+}
 
 export function WhatsappMetaAppInventory({
   baseUrl,
+  locale: localeProp,
 }: WhatsappMetaAppInventoryProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const t = getMessages(locale).console.whatsapp.metaApps
+
   const [rows, setRows] = React.useState<MetaAppRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [authorized, setAuthorized] = React.useState<boolean | null>(null)
@@ -115,20 +123,16 @@ export function WhatsappMetaAppInventory({
       }
       setAuthorized(true)
       if (!response.ok || !body.ok || !body.data) {
-        throw new Error(body.message ?? "Failed to load Meta Apps.")
+        throw new Error(body.message ?? t.loadError)
       }
       setRows(body.data)
     } catch (loadError) {
       setAuthorized((current) => current ?? true)
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Failed to load Meta Apps."
-      )
+      setError(loadError instanceof Error ? loadError.message : t.loadError)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t.loadError])
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -142,10 +146,8 @@ export function WhatsappMetaAppInventory({
       <section className="flex flex-col gap-6 px-6 pb-6">
         <Card className="border-destructive">
           <CardHeader>
-            <CardTitle>Access denied</CardTitle>
-            <CardDescription>
-              Only super-admins can manage Meta App webhook credentials.
-            </CardDescription>
+            <CardTitle>{t.accessDeniedTitle}</CardTitle>
+            <CardDescription>{t.accessDeniedDesc}</CardDescription>
           </CardHeader>
         </Card>
       </section>
@@ -161,7 +163,7 @@ export function WhatsappMetaAppInventory({
       !createForm.appSecret.trim() ||
       !createForm.verifyToken.trim()
     ) {
-      setError("Name, Meta App ID, app secret, and verify token are required.")
+      setError(t.createValidation)
       return
     }
     setCreating(true)
@@ -174,16 +176,14 @@ export function WhatsappMetaAppInventory({
       })
       const body = (await response.json()) as MutationResponse
       if (!response.ok || !body.ok) {
-        throw new Error(body.message ?? "Failed to create Meta App.")
+        throw new Error(body.message ?? t.createError)
       }
       setCreateOpen(false)
       setCreateForm(emptyCreateForm)
       await loadInventory()
     } catch (createError) {
       setError(
-        createError instanceof Error
-          ? createError.message
-          : "Failed to create Meta App."
+        createError instanceof Error ? createError.message : t.createError
       )
     } finally {
       setCreating(false)
@@ -200,7 +200,7 @@ export function WhatsappMetaAppInventory({
   const submitEdit = async () => {
     if (!editTarget) return
     if (!editName.trim()) {
-      setError("Meta App name is required.")
+      setError(t.nameRequired)
       return
     }
     setSavingEdit(true)
@@ -223,18 +223,14 @@ export function WhatsappMetaAppInventory({
       if (!response.ok || !body.ok) {
         throw new Error(
           response.status === 409
-            ? CONFLICT_MESSAGE
-            : (body.message ?? "Failed to update Meta App.")
+            ? t.conflictError
+            : (body.message ?? t.updateError)
         )
       }
       setEditTarget(null)
       await loadInventory()
     } catch (editError) {
-      setError(
-        editError instanceof Error
-          ? editError.message
-          : "Failed to update Meta App."
-      )
+      setError(editError instanceof Error ? editError.message : t.updateError)
     } finally {
       setSavingEdit(false)
     }
@@ -248,7 +244,7 @@ export function WhatsappMetaAppInventory({
   const submitRotate = async () => {
     if (!rotateTarget) return
     if (!rotateForm.appSecret.trim() || !rotateForm.verifyToken.trim()) {
-      setError("Both app secret and verify token are required to rotate.")
+      setError(t.rotateValidation)
       return
     }
     setRotating(true)
@@ -261,16 +257,14 @@ export function WhatsappMetaAppInventory({
       })
       const body = (await response.json()) as MutationResponse
       if (!response.ok || !body.ok) {
-        throw new Error(body.message ?? "Failed to rotate credentials.")
+        throw new Error(body.message ?? t.rotateError)
       }
       setRotateTarget(null)
       setRotateForm(emptyRotateForm)
       await loadInventory()
     } catch (rotateError) {
       setError(
-        rotateError instanceof Error
-          ? rotateError.message
-          : "Failed to rotate credentials."
+        rotateError instanceof Error ? rotateError.message : t.rotateError
       )
     } finally {
       setRotating(false)
@@ -278,10 +272,7 @@ export function WhatsappMetaAppInventory({
   }
 
   const deleteApp = async (row: MetaAppRow) => {
-    if (
-      !window.confirm(`Delete Meta App "${row.name}"? This cannot be undone.`)
-    )
-      return
+    if (!window.confirm(t.deleteConfirm.replace("{name}", row.name))) return
     setBusyId(row.id)
     setError(null)
     try {
@@ -292,16 +283,14 @@ export function WhatsappMetaAppInventory({
       if (!response.ok || !body.ok) {
         throw new Error(
           response.status === 409
-            ? CONFLICT_MESSAGE
-            : (body.message ?? "Failed to delete Meta App.")
+            ? t.conflictError
+            : (body.message ?? t.deleteError)
         )
       }
       await loadInventory()
     } catch (deleteError) {
       setError(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "Failed to delete Meta App."
+        deleteError instanceof Error ? deleteError.message : t.deleteError
       )
     } finally {
       setBusyId(null)
@@ -316,30 +305,28 @@ export function WhatsappMetaAppInventory({
     <section className="flex flex-col gap-6 px-6 pb-6">
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-xl font-semibold">Meta Apps</h2>
-          <p className="text-sm text-muted-foreground">
-            Create, inspect, and rotate the Meta App webhook credentials that
-            inbound WhatsApp events route through.
-          </p>
+          <h2 className="text-xl font-semibold">{t.heading}</h2>
+          <p className="text-sm text-muted-foreground">{t.description}</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="mr-1.5 size-4" />
-              New Meta App
+              {t.newAppButton}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Meta App</DialogTitle>
+              <DialogTitle>{t.createDialog.title}</DialogTitle>
               <DialogDescription>
-                Credentials are encrypted at rest and never shown again after
-                creation.
+                {t.createDialog.description}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="meta-app-name">Name</Label>
+                <Label htmlFor="meta-app-name">
+                  {t.createDialog.nameLabel}
+                </Label>
                 <Input
                   id="meta-app-name"
                   value={createForm.name}
@@ -349,7 +336,9 @@ export function WhatsappMetaAppInventory({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="meta-app-id">Meta App ID</Label>
+                <Label htmlFor="meta-app-id">
+                  {t.createDialog.metaAppIdLabel}
+                </Label>
                 <Input
                   id="meta-app-id"
                   value={createForm.metaAppId}
@@ -362,7 +351,9 @@ export function WhatsappMetaAppInventory({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="meta-app-secret">App Secret</Label>
+                <Label htmlFor="meta-app-secret">
+                  {t.createDialog.appSecretLabel}
+                </Label>
                 <Input
                   id="meta-app-secret"
                   type="password"
@@ -377,7 +368,9 @@ export function WhatsappMetaAppInventory({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="meta-app-verify-token">Verify Token</Label>
+                <Label htmlFor="meta-app-verify-token">
+                  {t.createDialog.verifyTokenLabel}
+                </Label>
                 <Input
                   id="meta-app-verify-token"
                   type="password"
@@ -393,7 +386,7 @@ export function WhatsappMetaAppInventory({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="meta-app-default-version">
-                  Default Graph API Version
+                  {t.createDialog.versionLabel}
                 </Label>
                 <Input
                   id="meta-app-default-version"
@@ -404,12 +397,12 @@ export function WhatsappMetaAppInventory({
                       defaultVersion: event.target.value,
                     })
                   }
-                  placeholder="v24.0"
+                  placeholder={t.createDialog.versionPlaceholder}
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="meta-app-system-token">
-                  Master System User Token (Optional)
+                  {t.createDialog.masterTokenLabel}
                 </Label>
                 <Input
                   id="meta-app-system-token"
@@ -422,11 +415,10 @@ export function WhatsappMetaAppInventory({
                       systemToken: event.target.value,
                     })
                   }
-                  placeholder="Shared token inherited by attached devices"
+                  placeholder={t.createDialog.masterTokenPlaceholder}
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Devices without their own token will inherit this master
-                  token.
+                  {t.createDialog.masterTokenHint}
                 </p>
               </div>
             </div>
@@ -438,10 +430,12 @@ export function WhatsappMetaAppInventory({
                   setCreateForm(emptyCreateForm)
                 }}
               >
-                Cancel
+                {t.createDialog.btnCancel}
               </Button>
               <Button onClick={() => void submitCreate()} disabled={creating}>
-                {creating ? "Creating..." : "Create"}
+                {creating
+                  ? t.createDialog.btnCreating
+                  : t.createDialog.btnCreate}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -458,35 +452,33 @@ export function WhatsappMetaAppInventory({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Meta App inventory</CardTitle>
-          <CardDescription>
-            Paste the callback URL into Meta&apos;s App Dashboard webhook
-            configuration for each app.
-          </CardDescription>
+          <CardTitle className="text-base">{t.table.cardTitle}</CardTitle>
+          <CardDescription>{t.table.cardDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Loading Meta Apps...
+              {t.table.loading}
             </p>
           ) : rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No Meta Apps yet. Create one to start receiving inbound WhatsApp
-              events.
+              {t.table.empty}
             </p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Meta App ID</TableHead>
-                    <TableHead>Version</TableHead>
-                    <TableHead>Master Token</TableHead>
-                    <TableHead>Callback URL</TableHead>
-                    <TableHead>Devices</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t.table.colName}</TableHead>
+                    <TableHead>{t.table.colMetaAppId}</TableHead>
+                    <TableHead>{t.table.colVersion}</TableHead>
+                    <TableHead>{t.table.colMasterToken}</TableHead>
+                    <TableHead>{t.table.colCallbackUrl}</TableHead>
+                    <TableHead>{t.table.colDevices}</TableHead>
+                    <TableHead>{t.table.colStatus}</TableHead>
+                    <TableHead className="text-right">
+                      {t.table.colActions}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -515,7 +507,9 @@ export function WhatsappMetaAppInventory({
                             }
                             className="text-xs"
                           >
-                            {row.hasSystemToken ? "Configured" : "Not Set"}
+                            {row.hasSystemToken
+                              ? t.table.tokenConfigured
+                              : t.table.tokenNotSet}
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-64">
@@ -528,7 +522,10 @@ export function WhatsappMetaAppInventory({
                               type="button"
                               size="icon-sm"
                               variant="ghost"
-                              aria-label={`Copy callback URL for ${row.name}`}
+                              aria-label={t.table.copyCallbackUrl.replace(
+                                "{name}",
+                                row.name
+                              )}
                               onClick={() =>
                                 void copyCallbackUrl(row.callbackPath)
                               }
@@ -540,7 +537,9 @@ export function WhatsappMetaAppInventory({
                         <TableCell>{row.deviceCount}</TableCell>
                         <TableCell>
                           <Badge variant={row.active ? "success" : "secondary"}>
-                            {row.active ? "Active" : "Inactive"}
+                            {row.active
+                              ? t.table.statusActive
+                              : t.table.statusInactive}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -553,7 +552,7 @@ export function WhatsappMetaAppInventory({
                               onClick={() => openEdit(row)}
                             >
                               <Pencil className="mr-1.5 size-3.5" />
-                              Edit
+                              {t.table.btnEdit}
                             </Button>
                             <Button
                               type="button"
@@ -563,7 +562,7 @@ export function WhatsappMetaAppInventory({
                               onClick={() => openRotate(row)}
                             >
                               <RotateCw className="mr-1.5 size-3.5" />
-                              Rotate
+                              {t.table.btnRotate}
                             </Button>
                             <Button
                               type="button"
@@ -573,7 +572,7 @@ export function WhatsappMetaAppInventory({
                               onClick={() => void deleteApp(row)}
                             >
                               <Trash2 className="mr-1.5 size-3.5" />
-                              Delete
+                              {t.table.btnDelete}
                             </Button>
                           </div>
                         </TableCell>
@@ -595,14 +594,16 @@ export function WhatsappMetaAppInventory({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit {editTarget?.name}</DialogTitle>
-            <DialogDescription>
-              Update the display name or activation state.
-            </DialogDescription>
+            <DialogTitle>
+              {t.editDialog.title.replace("{name}", editTarget?.name ?? "")}
+            </DialogTitle>
+            <DialogDescription>{t.editDialog.description}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="edit-meta-app-name">Name</Label>
+              <Label htmlFor="edit-meta-app-name">
+                {t.editDialog.nameLabel}
+              </Label>
               <Input
                 id="edit-meta-app-name"
                 value={editName}
@@ -611,18 +612,18 @@ export function WhatsappMetaAppInventory({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-meta-app-default-version">
-                Default Graph API Version
+                {t.editDialog.versionLabel}
               </Label>
               <Input
                 id="edit-meta-app-default-version"
                 value={editDefaultVersion}
                 onChange={(event) => setEditDefaultVersion(event.target.value)}
-                placeholder="v24.0"
+                placeholder={t.editDialog.versionPlaceholder}
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-meta-app-system-token">
-                Master System User Token (Optional)
+                {t.editDialog.masterTokenLabel}
               </Label>
               <Input
                 id="edit-meta-app-system-token"
@@ -630,14 +631,16 @@ export function WhatsappMetaAppInventory({
                 autoComplete="off"
                 value={editSystemToken}
                 onChange={(event) => setEditSystemToken(event.target.value)}
-                placeholder="Leave blank to keep current master token"
+                placeholder={t.editDialog.masterTokenPlaceholder}
               />
               <p className="text-[11px] text-muted-foreground">
-                Leave blank to keep existing master token.
+                {t.editDialog.masterTokenHint}
               </p>
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="edit-meta-app-active">Active</Label>
+              <Label htmlFor="edit-meta-app-active">
+                {t.editDialog.activeLabel}
+              </Label>
               <Switch
                 id="edit-meta-app-active"
                 checked={editActive}
@@ -647,10 +650,10 @@ export function WhatsappMetaAppInventory({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditTarget(null)}>
-              Cancel
+              {t.editDialog.btnCancel}
             </Button>
             <Button onClick={() => void submitEdit()} disabled={savingEdit}>
-              {savingEdit ? "Saving..." : "Save"}
+              {savingEdit ? t.editDialog.btnSaving : t.editDialog.btnSave}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -665,16 +668,15 @@ export function WhatsappMetaAppInventory({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Rotate credentials for {rotateTarget?.name}
+              {t.rotateDialog.title.replace("{name}", rotateTarget?.name ?? "")}
             </DialogTitle>
-            <DialogDescription>
-              Enter new values for both fields. The previous secret and verify
-              token stop working immediately.
-            </DialogDescription>
+            <DialogDescription>{t.rotateDialog.description}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="rotate-app-secret">New App Secret</Label>
+              <Label htmlFor="rotate-app-secret">
+                {t.rotateDialog.appSecretLabel}
+              </Label>
               <Input
                 id="rotate-app-secret"
                 type="password"
@@ -689,7 +691,9 @@ export function WhatsappMetaAppInventory({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="rotate-verify-token">New Verify Token</Label>
+              <Label htmlFor="rotate-verify-token">
+                {t.rotateDialog.verifyTokenLabel}
+              </Label>
               <Input
                 id="rotate-verify-token"
                 type="password"
@@ -706,10 +710,10 @@ export function WhatsappMetaAppInventory({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRotateTarget(null)}>
-              Cancel
+              {t.rotateDialog.btnCancel}
             </Button>
             <Button onClick={() => void submitRotate()} disabled={rotating}>
-              {rotating ? "Rotating..." : "Rotate"}
+              {rotating ? t.rotateDialog.btnRotating : t.rotateDialog.btnRotate}
             </Button>
           </DialogFooter>
         </DialogContent>

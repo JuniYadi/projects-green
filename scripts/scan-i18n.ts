@@ -68,25 +68,52 @@ const CODE_ATTRIBUTE_NAMES = new Set([
   "action",
   "aria-hidden",
   "asChild",
+  "autoCapitalize",
+  "autoComplete",
   "class",
   "className",
+  "clipRule",
+  "cx",
+  "cy",
+  "d",
   "data-state",
   "data-testid",
+  "fill",
+  "fillRule",
   "height",
   "href",
+  "htmlFor",
   "id",
   "key",
   "method",
   "name",
+  "points",
+  "r",
   "rel",
   "role",
+  "rx",
+  "ry",
   "size",
+  "spellCheck",
   "src",
+  "stroke",
+  "strokeLinecap",
+  "strokeLinejoin",
+  "strokeWidth",
   "style",
   "target",
+  "transform",
   "type",
   "variant",
+  "viewBox",
   "width",
+  "x",
+  "x1",
+  "x2",
+  "xmlns",
+  "y",
+  "y1",
+  "y2",
 ])
 
 const TECHNICAL_TERMS = new Set([
@@ -273,6 +300,7 @@ export function scanSourceFile(filePath: string, rootDir: string): FileReport {
     if (ts.isJsxAttribute(node)) {
       const attrName = node.name.getText(sourceFile)
       if (
+        !attrName.startsWith("data-") &&
         !CODE_ATTRIBUTE_NAMES.has(attrName) &&
         (TEXT_ATTRIBUTE_NAMES.has(attrName) || !attrName.startsWith("on"))
       ) {

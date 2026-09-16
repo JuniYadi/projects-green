@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { CountryFlag } from "@/components/ui/country-flag"
 import { toast } from "sonner"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   cancelVpnSubscription,
   reinstateVpnSubscription,
@@ -53,12 +55,15 @@ type Props = {
   locale?: string
 }
 
-export function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
+export function formatDate(value: string, locale: string = "id"): string {
+  return new Date(value).toLocaleDateString(
+    locale === "id" ? "id-ID" : "en-US",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }
+  )
 }
 
 const STATUS_VARIANT: Record<
@@ -70,31 +75,22 @@ const STATUS_VARIANT: Record<
   EXPIRED: "destructive",
 }
 
-const PROVISIONING_VARIANT: Record<
-  VpnServerAccount["provisioningStatus"],
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  ACTIVE: "default",
-  PENDING: "secondary",
-  PROVISIONING: "secondary",
-  FAILED: "destructive",
-  REVOKED: "outline",
-}
-
 function normalizeCountryCode(countryCode: string | undefined): string {
   return countryCode?.trim().toUpperCase() ?? ""
 }
 
 function RegionBadge({
   region,
+  fallbackLabel,
 }: {
   region: { name: string; slug: string; countryCode: string } | null
+  fallbackLabel?: string
 }) {
   if (!region) {
     return (
       <Badge variant="outline" className="gap-1 text-muted-foreground">
         <MapPinIcon className="h-3.5 w-3.5" />
-        Region
+        {fallbackLabel ?? "Region"}
       </Badge>
     )
   }
@@ -117,10 +113,13 @@ function RegionBadge({
 function ProxyCredentialCell({
   subscriptionId,
   account,
+  locale = "en",
 }: {
   subscriptionId: string
   account: VpnServerAccount
+  locale?: string
 }) {
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const [password, setPassword] = useState<string | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -156,9 +155,9 @@ function ProxyCredentialCell({
       await navigator.clipboard.writeText(
         `username=${account.username}\npassword=${value}`
       )
-      toast.success("Proxy credentials copied")
+      toast.success(t.proxyCredentialsCopied)
     } catch {
-      toast.error("Failed to copy proxy credentials")
+      toast.error(t.failedToCopyProxyCredentials)
     } finally {
       setLoading(false)
     }
@@ -167,11 +166,11 @@ function ProxyCredentialCell({
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
       <span>
-        user: <span className="font-mono">{account.username}</span>
+        {t.user} <span className="font-mono">{account.username}</span>
       </span>
       <span className="flex items-center gap-1">
         <span className="font-mono">
-          pass: {revealed ? (password ?? "…") : "••••••••"}
+          {t.pass} {revealed ? (password ?? "…") : "••••••••"}
         </span>
         <Button
           size="sm"
@@ -179,7 +178,7 @@ function ProxyCredentialCell({
           className="h-6 px-1"
           onClick={() => void toggle()}
           disabled={loading}
-          aria-label={revealed ? "Hide password" : "Show password"}
+          aria-label={revealed ? t.hidePassword : t.showPassword}
         >
           {revealed ? (
             <EyeSlashIcon className="h-4 w-4" />
@@ -193,7 +192,7 @@ function ProxyCredentialCell({
           className="h-6 px-1"
           onClick={() => void copy()}
           disabled={loading}
-          aria-label="Copy Proxy Credentials"
+          aria-label={t.copyProxyCredentials}
         >
           <CopySimpleIcon className="h-4 w-4" />
         </Button>
@@ -205,10 +204,13 @@ function ProxyCredentialCell({
 function WireGuardQrAction({
   subscriptionId,
   accountId,
+  locale = "en",
 }: {
   subscriptionId: string
   accountId: string
+  locale?: string
 }) {
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const [open, setOpen] = useState(false)
   const [qrData, setQrData] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -241,29 +243,27 @@ function WireGuardQrAction({
         variant="outline"
         className="h-7 px-2 text-xs"
         onClick={() => void showQr()}
-        aria-label="WireGuard QR Code"
+        aria-label={t.wireGuardQrCode}
       >
-        WireGuard QR Code
+        {t.wireGuardQrCode}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>WireGuard QR Code</DialogTitle>
-            <DialogDescription>
-              Scan this code with the WireGuard app to add the profile.
-            </DialogDescription>
+            <DialogTitle>{t.wireGuardQrCode}</DialogTitle>
+            <DialogDescription>{t.scanQrWireGuard}</DialogDescription>
           </DialogHeader>
           <div className="flex min-h-64 items-center justify-center">
             {loading ? (
               <span className="text-sm text-muted-foreground">
-                Loading QR code…
+                {t.loadingQr}
               </span>
             ) : error ? (
               <span className="text-sm text-destructive">
-                Unable to generate QR code.
+                {t.unableToGenerateQr}
               </span>
             ) : qrData ? (
-              <img src={qrData} alt="WireGuard QR Code" />
+              <img src={qrData} alt={t.wireGuardQrCode} />
             ) : null}
           </div>
         </DialogContent>
@@ -274,10 +274,13 @@ function WireGuardQrAction({
 function WireGuardConfigQrModal({
   configUrl,
   onClose,
+  locale = "en",
 }: {
   configUrl: string
   onClose: () => void
+  locale?: string
 }) {
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const [qrData, setQrData] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -320,29 +323,26 @@ function WireGuardConfigQrModal({
     >
       <DialogContent className="text-center sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>WireGuard QR Code</DialogTitle>
-          <DialogDescription>
-            Scan this QR code with the WireGuard app on your phone to connect
-            instantly.
-          </DialogDescription>
+          <DialogTitle>{t.wireGuardQrCode}</DialogTitle>
+          <DialogDescription>{t.scanQrWireGuardMobile}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-4">
           <div className="flex min-h-48 w-48 items-center justify-center rounded-lg border p-2">
             {loading ? (
               <span className="text-sm text-muted-foreground">
-                Loading QR code…
+                {t.loadingQr}
               </span>
             ) : error ? (
               <span className="text-sm text-destructive">
-                Unable to generate QR code.
+                {t.unableToGenerateQr}
               </span>
             ) : qrData ? (
-              <img src={qrData} alt="WireGuard QR Code" className="h-48 w-48" />
+              <img src={qrData} alt={t.wireGuardQrCode} className="h-48 w-48" />
             ) : null}
           </div>
           <Button asChild variant="outline" size="sm" className="mt-4">
             <a href={configUrl} download>
-              Download .conf File
+              {t.downloadConf}
             </a>
           </Button>
         </div>
@@ -355,39 +355,49 @@ function ConfigCell({
   subscriptionId,
   account,
   subStatus,
+  locale = "en",
 }: {
   subscriptionId: string
   account: VpnServerAccount
   subStatus: VpnSubscription["status"]
+  locale?: string
 }) {
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   if (account.provisioningStatus === "REVOKED") {
-    return <span className="text-xs text-muted-foreground">Revoked</span>
+    return <span className="text-xs text-muted-foreground">{t.revoked}</span>
   }
   if (subStatus !== "ACTIVE") {
     return (
-      <span className="text-xs text-muted-foreground">Renew to download</span>
+      <span className="text-xs text-muted-foreground">{t.renewToDownload}</span>
     )
   }
   if (account.protocol === "PROXY") {
     return (
-      <ProxyCredentialCell subscriptionId={subscriptionId} account={account} />
+      <ProxyCredentialCell
+        subscriptionId={subscriptionId}
+        account={account}
+        locale={locale}
+      />
     )
   }
   if (!account.hasConfig) {
-    return <span className="text-xs text-muted-foreground">Provisioning…</span>
+    return (
+      <span className="text-xs text-muted-foreground">{t.provisioning}</span>
+    )
   }
   return (
     <div className="flex items-center gap-1.5">
       <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
         <a href={vpnConfigDownloadUrl(subscriptionId, account.id)} download>
           <DownloadIcon className="mr-1 h-3.5 w-3.5" />
-          Download
+          {t.download}
         </a>
       </Button>
       {account.protocol === "WIREGUARD" && (
         <WireGuardQrAction
           subscriptionId={subscriptionId}
           accountId={account.id}
+          locale={locale}
         />
       )}
     </div>
@@ -416,12 +426,15 @@ function ProtocolControl({
   subscriptionId,
   account,
   subStatus,
+  locale = "en",
 }: {
   subscriptionId: string
   account: VpnServerAccount
   subStatus: VpnSubscription["status"]
+  locale?: string
 }) {
   const isFailed = account.provisioningStatus === "FAILED"
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
 
   return (
     <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
@@ -437,10 +450,11 @@ function ProtocolControl({
           subscriptionId={subscriptionId}
           account={account}
           subStatus={subStatus}
+          locale={locale}
         />
         {isFailed && (
           <Badge variant="destructive" className="text-[10px]">
-            Failed
+            {t.failed}
           </Badge>
         )}
       </div>
@@ -518,10 +532,16 @@ function regionFilterValue(sub: VpnSubscription): string {
   ].join("|")
 }
 
-async function copySubscriptionId(id: string): Promise<void> {
+async function copySubscriptionId(
+  id: string,
+  messages?: { copied: string; failedToCopyManual: string }
+): Promise<void> {
+  const successText = messages?.copied ?? "Copied!"
+  const errorText =
+    messages?.failedToCopyManual ?? "Failed to copy — please copy manually"
   try {
     await navigator.clipboard.writeText(id)
-    toast.success("Copied!")
+    toast.success(successText)
   } catch {
     try {
       // ponytail: clipboard requires secure context
@@ -533,38 +553,33 @@ async function copySubscriptionId(id: string): Promise<void> {
       el.select()
       document.execCommand("copy")
       document.body.removeChild(el)
-      toast.success("Copied!")
+      toast.success(successText)
     } catch {
-      toast.error("Failed to copy — please copy manually")
+      toast.error(errorText)
     }
   }
 }
 
-function uniqueRegionNames(sub: VpnSubscription): string[] {
-  return [
-    ...new Set(
-      sub.serverAccounts
-        .map((account) => account.region?.name)
-        .filter((name): name is string => Boolean(name))
-    ),
-  ]
-}
-
-function RegionSummary({ sub }: { sub: VpnSubscription }) {
-  const regions = uniqueRegionNames(sub)
-  const visible = regions.slice(0, 2).join(", ") || "No regions"
-  const more = regions.length > 2 ? ` +${regions.length - 2} more` : ""
-
-  return (
-    <p className="max-w-[220px] truncate text-xs text-muted-foreground">
-      {visible}
-      {more}
-    </p>
-  )
-}
-
-function SubscriptionStatusBadge({ sub }: { sub: VpnSubscription }) {
+function SubscriptionStatusBadge({
+  sub,
+  locale = "en",
+}: {
+  sub: VpnSubscription
+  locale?: string
+}) {
   const status = billingStatus(sub)
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
+
+  const statusLabel =
+    status === "CANCELLING"
+      ? t.cancellingStatus
+      : status === "ACTIVE"
+        ? t.activeStatus
+        : status === "SUSPENDED"
+          ? t.suspendedStatus
+          : status === "EXPIRED"
+            ? t.expiredStatus
+            : sub.status
 
   return (
     <Badge
@@ -573,12 +588,19 @@ function SubscriptionStatusBadge({ sub }: { sub: VpnSubscription }) {
       }
       className="text-xs font-medium uppercase"
     >
-      {status === "CANCELLING" ? "Cancelling" : sub.status}
+      {statusLabel}
     </Badge>
   )
 }
 
-function ConnectionSummaryCell({ sub }: { sub: VpnSubscription }) {
+function ConnectionSummaryCell({
+  sub,
+  locale = "en",
+}: {
+  sub: VpnSubscription
+  locale?: string
+}) {
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const groups = groupByServer(sub.serverAccounts)
   const visibleGroups = groups.slice(0, 2)
   const extraCount = groups.length - visibleGroups.length
@@ -587,11 +609,15 @@ function ConnectionSummaryCell({ sub }: { sub: VpnSubscription }) {
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
         {visibleGroups.map((group) => (
-          <RegionBadge key={group.serverId} region={group.region} />
+          <RegionBadge
+            key={group.serverId}
+            region={group.region}
+            fallbackLabel={t.region}
+          />
         ))}
         {extraCount > 0 && (
           <Badge variant="outline" className="text-xs text-muted-foreground">
-            +{extraCount} more
+            +{extraCount} {t.moreCount}
           </Badge>
         )}
       </div>
@@ -609,10 +635,13 @@ function ConnectionSummaryCell({ sub }: { sub: VpnSubscription }) {
 function DeviceSummaryCell({
   sub,
   devices,
+  locale = "en",
 }: {
   sub: VpnSubscription
   devices: Array<{ deviceName: string; platform: string; status: string }>
+  locale?: string
 }) {
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const maxDevices =
     sub.serverAccounts.filter(
       (account) => account.provisioningStatus === "ACTIVE"
@@ -620,16 +649,19 @@ function DeviceSummaryCell({
 
   return (
     <span className="text-sm">
-      {devices.length}/{maxDevices} devices
+      {devices.length}/{maxDevices} {t.devicesCount}
     </span>
   )
 }
 
 export function VpnServerAccountsDetail({
   subscription,
+  locale = "en",
 }: {
   subscription: VpnSubscription
+  locale?: string
 }) {
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.vpn.myServices
   const [search, setSearch] = useState("")
   const [regionFilter, setRegionFilter] = useState("all")
 
@@ -671,7 +703,7 @@ export function VpnServerAccountsDetail({
       {showFilterControls && (
         <div className="flex flex-wrap items-center gap-3">
           <Input
-            placeholder="Search servers..."
+            placeholder={t.searchServersPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 max-w-xs text-xs"
@@ -681,9 +713,11 @@ export function VpnServerAccountsDetail({
               value={regionFilter}
               onChange={(e) => setRegionFilter(e.target.value)}
               className="h-8 rounded-md border border-input bg-background px-2.5 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
-              aria-label="Filter by region"
+              aria-label={t.filterByRegion}
             >
-              <option value="all">All regions ({serverGroups.length})</option>
+              <option value="all">
+                {t.allRegionsCount} ({serverGroups.length})
+              </option>
               {regionOptions.map((r) => (
                 <option key={r.slug} value={r.slug}>
                   {r.label}
@@ -696,7 +730,7 @@ export function VpnServerAccountsDetail({
 
       {filteredGroups.length === 0 ? (
         <div className="rounded-lg border border-dashed p-6 text-center text-xs text-muted-foreground">
-          No server locations match your filter.
+          {t.noServersMatchFilter}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -720,7 +754,10 @@ export function VpnServerAccountsDetail({
                         <span className="text-sm leading-tight font-semibold">
                           {group.serverName}
                         </span>
-                        <RegionBadge region={group.region} />
+                        <RegionBadge
+                          region={group.region}
+                          fallbackLabel={t.region}
+                        />
                       </div>
                       <p className="truncate font-mono text-xs text-muted-foreground">
                         {group.hostname || group.ipAddress || "—"}
@@ -729,17 +766,17 @@ export function VpnServerAccountsDetail({
                     {anyFailed ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-destructive">
                         <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                        Error
+                        {t.error}
                       </span>
                     ) : allActive ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        Ready
+                        {t.ready}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                         <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        Provisioning
+                        {t.provisioning}
                       </span>
                     )}
                   </div>
@@ -752,6 +789,7 @@ export function VpnServerAccountsDetail({
                       subscriptionId={subscription.id}
                       account={account}
                       subStatus={subscription.status}
+                      locale={locale}
                     />
                   ))}
                 </CardContent>
@@ -769,6 +807,11 @@ export function VpnMyServices({
   onChanged,
   locale = "en",
 }: Props) {
+  const messages = useMemo(
+    () => getMessages(resolveLocaleOrDefault(locale)),
+    [locale]
+  )
+  const t = messages.console.vpn.myServices
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null)
   const [confirmCancelTexts, setConfirmCancelTexts] = useState<
@@ -857,7 +900,7 @@ export function VpnMyServices({
     } catch (err) {
       // Keep dialog open so user can retry
       console.error("[VPN] cancel failed:", err)
-      toast.error("Failed to cancel subscription. Please try again.")
+      toast.error(t.failedToCancel)
     } finally {
       setCancelling(null)
     }
@@ -877,7 +920,7 @@ export function VpnMyServices({
     } catch (err) {
       // Keep dialog open so user can retry
       console.error("[VPN] reinstate failed:", err)
-      toast.error("Failed to reinstate subscription. Please try again.")
+      toast.error(t.failedToReinstate)
     } finally {
       setReinstating(null)
     }
@@ -888,7 +931,7 @@ export function VpnMyServices({
       {
         accessorKey: "packageName",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Connection Profile" />
+          <DataTableColumnHeader column={column} title={t.connectionProfile} />
         ),
         cell: ({ row }) => {
           const sub = row.original
@@ -910,8 +953,13 @@ export function VpnMyServices({
                   variant="ghost"
                   size="sm"
                   className="h-5 px-1 text-muted-foreground hover:text-foreground"
-                  onClick={() => void copySubscriptionId(sub.id)}
-                  aria-label="Copy subscription ID"
+                  onClick={() =>
+                    void copySubscriptionId(sub.id, {
+                      copied: t.copied,
+                      failedToCopyManual: t.failedToCopyManual,
+                    })
+                  }
+                  aria-label={t.copySubscriptionId}
                 >
                   <CopySimpleIcon className="h-3 w-3" />
                 </Button>
@@ -924,37 +972,42 @@ export function VpnMyServices({
         id: "status",
         accessorFn: (sub) => billingStatus(sub),
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={t.status} />
         ),
         filterFn: (row, _columnId, value) => {
           if (value === "ALL") return true
           const status = billingStatus(row.original)
           return status === value
         },
-        cell: ({ row }) => <SubscriptionStatusBadge sub={row.original} />,
+        cell: ({ row }) => (
+          <SubscriptionStatusBadge sub={row.original} locale={locale} />
+        ),
       },
       {
         id: "servers",
         accessorFn: subscriptionSearchText,
-        header: "Location Coverage",
+        header: t.locationCoverage,
         filterFn: (row, _columnId, value) =>
           regionFilterValue(row.original).split("|").includes(String(value)),
-        cell: ({ row }) => <ConnectionSummaryCell sub={row.original} />,
+        cell: ({ row }) => (
+          <ConnectionSummaryCell sub={row.original} locale={locale} />
+        ),
       },
       {
         id: "devices",
         accessorFn: (sub) => devicesBySub[sub.id]?.length ?? 0,
-        header: "Devices",
+        header: t.devices,
         cell: ({ row }) => (
           <DeviceSummaryCell
             sub={row.original}
             devices={devicesBySub[row.original.id] ?? []}
+            locale={locale}
           />
         ),
       },
       {
         id: "quickActions",
-        header: () => <div className="text-right">Setup & Connect</div>,
+        header: () => <div className="text-right">{t.setupAndConnect}</div>,
         cell: ({ row }) => {
           const sub = row.original
           return (
@@ -963,7 +1016,7 @@ export function VpnMyServices({
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5">
                     <DownloadIcon className="h-4 w-4 text-primary" />
-                    <span>Get Config</span>
+                    <span>{t.getConfig}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -977,7 +1030,10 @@ export function VpnMyServices({
                     >
                       <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-foreground">
                         <span>{group.serverName}</span>
-                        <RegionBadge region={group.region} />
+                        <RegionBadge
+                          region={group.region}
+                          fallbackLabel={t.region}
+                        />
                       </div>
                       <div className="space-y-0.5">
                         {group.accounts.map((account: VpnServerAccount) => {
@@ -994,6 +1050,7 @@ export function VpnMyServices({
                                 key={account.id}
                                 subscriptionId={sub.id}
                                 account={account}
+                                locale={locale}
                               />
                             )
                           }
@@ -1016,7 +1073,7 @@ export function VpnMyServices({
                                       setPairingQrConfigUrl(downloadUrl)
                                     }
                                   >
-                                    QR
+                                    {t.qr}
                                   </Button>
                                 )}
                                 <Button
@@ -1026,7 +1083,7 @@ export function VpnMyServices({
                                   className="h-6 px-1.5 text-xs font-medium text-primary"
                                 >
                                   <a href={downloadUrl} download>
-                                    Download
+                                    {t.download}
                                   </a>
                                 </Button>
                               </div>
@@ -1057,14 +1114,14 @@ export function VpnMyServices({
             <div className="flex justify-end">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" aria-label="Actions">
+                  <Button variant="ghost" size="icon-sm" aria-label={t.actions}>
                     <DotsThreeVertical className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
                     <Link href={`/console/vpn/subscriptions/${sub.id}`}>
-                      View details
+                      {t.viewDetails}
                     </Link>
                   </DropdownMenuItem>
                   {sub.status === "ACTIVE" && (
@@ -1072,7 +1129,7 @@ export function VpnMyServices({
                       disabled={subDevices.length >= maxDevices}
                       onClick={() => setPairingSubId(sub.id)}
                     >
-                      Pair device
+                      {t.pairDevice}
                     </DropdownMenuItem>
                   )}
                   {sub.cancelAtPeriodEnd && sub.status === "ACTIVE" ? (
@@ -1086,7 +1143,7 @@ export function VpnMyServices({
                         }))
                       }}
                     >
-                      {reinstating === sub.id ? "Reinstating…" : "Reinstate"}
+                      {reinstating === sub.id ? t.reinstating : t.reinstate}
                     </DropdownMenuItem>
                   ) : (
                     <DropdownMenuItem
@@ -1106,7 +1163,7 @@ export function VpnMyServices({
                         }))
                       }}
                     >
-                      {cancelling === sub.id ? "Cancelling…" : "Cancel"}
+                      {cancelling === sub.id ? t.cancelling : t.cancel}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -1116,7 +1173,7 @@ export function VpnMyServices({
         },
       },
     ],
-    [devicesBySub, cancelling, reinstating]
+    [devicesBySub, cancelling, reinstating, locale, t]
   )
 
   return (
@@ -1124,9 +1181,7 @@ export function VpnMyServices({
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <Button asChild size="sm">
-            <Link href="/console/billing/services/vpn">
-              {locale === "id" ? "+ Pesan VPN Baru" : "+ Order VPN Plan"}
-            </Link>
+            <Link href="/console/billing/services/vpn">{t.orderPlan}</Link>
           </Button>
           {subscriptions.length === 1 ? (
             <Button asChild variant="outline" size="sm">
@@ -1135,7 +1190,7 @@ export function VpnMyServices({
                 download
               >
                 <DownloadIcon className="mr-2 h-4 w-4" />
-                Download All ZIP
+                {t.downloadAllZip}
               </a>
             </Button>
           ) : subscriptions.length > 1 ? (
@@ -1143,7 +1198,7 @@ export function VpnMyServices({
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <DownloadIcon className="mr-2 h-4 w-4" />
-                  Download All ZIP
+                  {t.downloadAllZip}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -1166,28 +1221,28 @@ export function VpnMyServices({
           columns={columns}
           data={subscriptions}
           defaultColumnVisibility={{}}
-          searchPlaceholder="Search subscriptions..."
+          searchPlaceholder={t.searchSubscriptionsPlaceholder}
           searchableColumns={["packageName", "servers"]}
           facetFilters={[
             {
               columnId: "status",
-              label: "Status",
-              allLabel: "All statuses",
+              label: t.status,
+              allLabel: t.allStatuses,
               options: [
-                { label: "Active", value: "ACTIVE" },
-                { label: "Cancelling", value: "CANCELLING" },
-                { label: "Suspended", value: "SUSPENDED" },
-                { label: "Expired", value: "EXPIRED" },
+                { label: t.activeStatus, value: "ACTIVE" },
+                { label: t.cancellingStatus, value: "CANCELLING" },
+                { label: t.suspendedStatus, value: "SUSPENDED" },
+                { label: t.expiredStatus, value: "EXPIRED" },
               ],
             },
             {
               columnId: "servers",
-              label: "Region",
-              allLabel: "All regions",
+              label: t.region,
+              allLabel: t.allRegions,
               options: regionOptions,
             },
           ]}
-          emptyMessage="No VPN subscriptions found."
+          emptyMessage={t.emptySubscriptions}
         />
       </div>
 
@@ -1235,18 +1290,19 @@ export function VpnMyServices({
             >
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Cancel VPN Subscription</DialogTitle>
+                  <DialogTitle>{t.cancelDialogTitle}</DialogTitle>
                   <DialogDescription className="space-y-3 pt-2">
                     <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm">
                       <p>
-                        You are about to cancel{" "}
-                        <strong>{sub.packageName}</strong>.
+                        {t.cancelDialogAbout} <strong>{sub.packageName}</strong>
+                        .
                       </p>
                       <p className="mt-1">
-                        Your service will continue until{" "}
-                        <strong>{formatDate(sub.currentPeriodEnd)}</strong>,
-                        then expire. No further charges will be made after
-                        cancellation.
+                        {t.cancelDialogServiceUntil}{" "}
+                        <strong>
+                          {formatDate(sub.currentPeriodEnd, locale)}
+                        </strong>
+                        {t.cancelDialogServiceUntilSuffix}
                       </p>
                     </div>
                   </DialogDescription>
@@ -1255,7 +1311,7 @@ export function VpnMyServices({
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Why are you cancelling?
+                      {t.cancelDialogReasonLabel}
                     </label>
                     <Textarea
                       value={cancelReasons[confirmCancelId] ?? ""}
@@ -1265,7 +1321,7 @@ export function VpnMyServices({
                           [confirmCancelId]: e.target.value,
                         }))
                       }
-                      placeholder="Tell us why you're cancelling..."
+                      placeholder={t.cancelDialogReasonPlaceholder}
                       rows={2}
                       autoFocus
                     />
@@ -1273,9 +1329,9 @@ export function VpnMyServices({
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Type{" "}
+                      {t.cancelDialogType}{" "}
                       <span className="font-bold text-destructive">CANCEL</span>{" "}
-                      to confirm
+                      {t.cancelDialogToConfirm}
                     </label>
                     <Input
                       value={confirmCancelTexts[confirmCancelId] ?? ""}
@@ -1285,7 +1341,7 @@ export function VpnMyServices({
                           [confirmCancelId]: e.target.value,
                         }))
                       }
-                      placeholder='Type "CANCEL" to confirm'
+                      placeholder={t.cancelDialogConfirmPlaceholder}
                       autoComplete="off"
                     />
                   </div>
@@ -1310,7 +1366,7 @@ export function VpnMyServices({
                     }}
                     disabled={isProcessing}
                   >
-                    Keep subscription
+                    {t.keepSubscription}
                   </Button>
                   <Button
                     variant="destructive"
@@ -1319,7 +1375,7 @@ export function VpnMyServices({
                       await handleCancel(confirmCancelId)
                     }}
                   >
-                    {isProcessing ? "Cancelling…" : "Yes, cancel subscription"}
+                    {isProcessing ? t.cancelling : t.confirmCancelButton}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1353,17 +1409,19 @@ export function VpnMyServices({
             >
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Reinstate Subscription</DialogTitle>
+                  <DialogTitle>{t.reinstateDialogTitle}</DialogTitle>
                   <DialogDescription className="space-y-3 pt-2">
                     <div className="rounded-lg border bg-muted/30 p-3 text-sm">
                       <p>
-                        You are about to reinstate{" "}
+                        {t.reinstateDialogAbout}{" "}
                         <strong>{sub.packageName}</strong>.
                       </p>
                       <p className="mt-1">
-                        Normal billing will resume after{" "}
-                        <strong>{formatDate(sub.currentPeriodEnd)}</strong>, and
-                        your subscription will continue as usual.
+                        {t.reinstateDialogBillingResume}{" "}
+                        <strong>
+                          {formatDate(sub.currentPeriodEnd, locale)}
+                        </strong>
+                        {t.reinstateDialogBillingResumeSuffix}
                       </p>
                     </div>
                   </DialogDescription>
@@ -1371,7 +1429,7 @@ export function VpnMyServices({
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
-                    Why did you decide to reinstate?
+                    {t.reinstateDialogReasonLabel}
                   </label>
                   <Textarea
                     value={reinstateReasons[reinstateDialogId] ?? ""}
@@ -1381,7 +1439,7 @@ export function VpnMyServices({
                         [reinstateDialogId]: e.target.value,
                       }))
                     }
-                    placeholder="Tell us why you changed your mind..."
+                    placeholder={t.reinstateDialogReasonPlaceholder}
                     rows={3}
                     autoFocus
                   />
@@ -1401,7 +1459,7 @@ export function VpnMyServices({
                     }}
                     disabled={isProcessing}
                   >
-                    Go back
+                    {t.goBack}
                   </Button>
                   <Button
                     disabled={!hasReason || isProcessing}
@@ -1409,9 +1467,7 @@ export function VpnMyServices({
                       await handleReinstate(reinstateDialogId)
                     }}
                   >
-                    {isProcessing
-                      ? "Reinstating…"
-                      : "Yes, reinstate subscription"}
+                    {isProcessing ? t.reinstating : t.confirmReinstateButton}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1422,6 +1478,7 @@ export function VpnMyServices({
         <WireGuardConfigQrModal
           configUrl={pairingQrConfigUrl}
           onClose={() => setPairingQrConfigUrl(null)}
+          locale={locale}
         />
       )}
     </>

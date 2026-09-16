@@ -61,6 +61,220 @@ export type AppMessages = {
     }
   }
   console: {
+    deploy: {
+      envVarsEditor: {
+        searchLabel: string
+        searchPlaceholder: string
+        importDotEnv: string
+        addVariable: string
+        quickStart: string
+        key: string
+        value: string
+        type: string
+        scope: string
+        lastUpdated: string
+        actions: string
+        noVariablesFound: string
+        referenceOnly: string
+        show: string
+        hide: string
+        reveal: string
+        revealing: string
+        edit: string
+        delete: string
+        typePlain: string
+        typePlainBadge: string
+        typeSecret: string
+        typeSharedSecret: string
+        scopeRuntime: string
+        scopeBuild: string
+        scopeAll: string
+        activityTimeline: string
+        noActivityYet: string
+        keyFormatHelper: string
+        toastsLabel: string
+        importTitle: string
+        editTitle: string
+        createTitle: string
+        importDescription: string
+        formDescription: string
+        importPayloadLabel: string
+        importPayloadPlaceholder: string
+        importPreview: string
+        variableSingular: string
+        variablePlural: string
+        importEmptyNotice: string
+        importVaultNotice: string
+        keyLabel: string
+        keyAriaLabel: string
+        typeLabel: string
+        typeAriaLabel: string
+        managedSecretLabel: string
+        managedSecretAriaLabel: string
+        chooseManagedService: string
+        noManagedServices: string
+        managedSecretNotice: string
+        valueLabel: string
+        valueAriaLabel: string
+        valueRotatePlaceholder: string
+        valueSetPlaceholder: string
+        hideValue: string
+        showValue: string
+        maxCharacters: string
+        scopeLabel: string
+        scopeAriaLabel: string
+        cancel: string
+        saving: string
+        importSubmit: string
+        saveChanges: string
+        saveSubmit: string
+        keyRequired: string
+        keyInvalid: string
+        keyDuplicate: string
+        secretKeyChangeValueRequired: string
+        valueTooLong: string
+        managedSecretRequired: string
+        valueRequired: string
+        importPasteRequired: string
+        importFixErrors: string
+        importNoVariables: string
+        importInvalidKeys: string
+        importOversizedKeys: string
+        importDuplicateKeys: string
+        variableUpdated: string
+        variableSaved: string
+        variableDeleted: string
+        activityCreated: string
+        activityUpdated: string
+        activityCreatedVault: string
+        activityUpdatedVault: string
+        activityDeleted: string
+        importSuccess: string
+        importSuccessVault: string
+        sharedSecretRevealError: string
+        vaultRevealSavedNotice: string
+        vaultSecretStoredNotice: string
+        unableToReveal: string
+        unableToSaveVault: string
+        unableToRevealVault: string
+        vaultNoMetadata: string
+        unableToSave: string
+        unableToImportVault: string
+      }
+      operateMetrics: {
+        timeRangeAria: string
+        title: string
+        description: string
+        live: string
+        liveUpper: string
+        liveResourceMonitoring: string
+        liveResourceMonitoringDesc: string
+        cpuAllocation: string
+        ramAllocation: string
+        networkIngress: string
+        normal: string
+        zeroPercentRequest: string
+        zeroMbRequest: string
+        zeroRps: string
+        maxCapacity: string
+        limitLabel: string
+        resourceAdvisory: string
+        resourceAdvisoryDesc: string
+        lowRamHeadroom: string
+        lowRamDesc: string
+        lowRamRecommendation: string
+        cpuHeadroomAdequate: string
+        cpuHeadroomDesc: string
+        latencyPercentiles: string
+        windowLabel: string
+        latencyPercentilesDesc: string
+        p50Median: string
+        p50Badge: string
+        p50Desc: string
+        p95Threshold: string
+        p95Badge: string
+        p95Desc: string
+        p99TailLatency: string
+        p99Badge: string
+        p99Desc: string
+        edgeGatewayNote: string
+        httpStatusAndErrorRate: string
+        httpStatusDesc: string
+        totalRequests: string
+        status2xxSuccessful: string
+        status4xxClientErrors: string
+        status5xxServerErrors: string
+        reqs: string
+        workloadObservability: string
+        workloadObservabilityDesc: string
+        status2xxSeries: string
+        status3xxSeries: string
+        status4xxSeries: string
+        status5xxSeries: string
+        totalRoundtripSeries: string
+        appResponseSeries: string
+        connectTimeSeries: string
+        queueTimeSeries: string
+        serviceTraffic: string
+        rpsBadge: string
+        reqPerSec: string
+        edgeGatewayRequestRate: string
+        errorRates: string
+        badge5xxDetected: string
+        badgeHigh4xx: string
+        badge0Percent5xx: string
+        serverAndClientErrorPercentages: string
+        avgLatency: string
+        endToEndBadge: string
+        msUnit: string
+        avgBackendRoundtrip: string
+        computeSaturation: string
+        replicaCount: string
+        replicasCount: string
+        cpuMemSaturation: string
+        saturationSubtext: string
+        groupedHttpResponseCodes: string
+        liveRates: string
+        statusCodeBreakdown: string
+        statusCodeBreakdownDesc: string
+        latencyBreakdown: string
+        latencyBreakdownBadge: string
+        responseTimeComponents: string
+        responseTimeComponentsDesc: string
+        cpuUsagePerPod: string
+        ramWorkingSetPerPod: string
+        networkIngressPerPod: string
+        allocatedBadge: string
+        liveRxBadge: string
+        totalIn: string
+        replicaLine: string
+        replicaLines: string
+        limitVCpu: string
+        limitMb: string
+        throughputPerPod: string
+        podReplicasAndHealth: string
+        podReplicasAndHealthDesc: string
+        allReplicas: string
+        podReplicaCol: string
+        containerStatusCol: string
+        uptimeCol: string
+        cpuConsumptionCol: string
+        ramWorkingSetCol: string
+        restartsCol: string
+        justStarted: string
+        runningReady: string
+        running: string
+        coresCount: string
+        percentOfLimit: string
+        restartsReason: string
+        resourceAdvisoryPrefix: string
+        elevatedRamMsg: string
+        ramAdequateMsg: string
+        highCpuMsg: string
+        steadyCpuMsg: string
+        fetchFailed: string
+      }
+    }
     overview: {
       heading: string
       description: string
@@ -117,6 +331,119 @@ export type AppMessages = {
       members: string
       invitations: string
       ownership: string
+    }
+    organizationAdmin: {
+      heading: string
+      description: string
+      effectiveRole: string
+      noneRole: string
+      unknownRole: string
+      retry: string
+      refreshing: string
+      tabs: {
+        members: string
+        membersDesc: string
+        invitations: string
+        invitationsDesc: string
+        settings: string
+        settingsDesc: string
+      }
+      members: {
+        heading: string
+        description: string
+        noPermission: string
+        searchPlaceholder: string
+        searchAriaLabel: string
+        filterRoleAriaLabel: string
+        allRoles: string
+        filterStatusAriaLabel: string
+        allStatuses: string
+        resetFilters: string
+        showingCount: string
+        noMembers: string
+        noMatchingMembers: string
+        clearFilters: string
+        memberId: string
+        roleAndStatus: string
+        promoteToAdmin: string
+        promotingToAdmin: string
+        promoteToOwner: string
+        promotingToOwner: string
+        demoteToMember: string
+        demotingToMember: string
+        transferOwnership: string
+        transferringOwnership: string
+        removeMember: string
+        removingMember: string
+      }
+      invitations: {
+        heading: string
+        description: string
+        emailPlaceholder: string
+        invite: string
+        sending: string
+        noPermission: string
+        noPending: string
+        roleAndExpires: string
+        resend: string
+        resending: string
+        revoke: string
+        revoking: string
+      }
+      settings: {
+        profileHeading: string
+        profileDescription: string
+        orgNameLabel: string
+        orgNamePlaceholder: string
+        billingFullNameLabel: string
+        billingFullNamePlaceholder: string
+        billingAddressLabel: string
+        billingAddressPlaceholder: string
+        billingCityLabel: string
+        billingCityPlaceholder: string
+        billingStateLabel: string
+        billingStatePlaceholder: string
+        billingCountryLabel: string
+        billingCountryPlaceholder: string
+        billingPostCodeLabel: string
+        billingPostCodePlaceholder: string
+        saveProfile: string
+        savingProfile: string
+        orgId: string
+        created: string
+        lastUpdated: string
+        profileUnavailable: string
+        dangerZoneHeading: string
+        dangerZoneDescription: string
+        deleteNoticePrefix: string
+        deleteNoticeUnavailable: string
+        deleteConfirmPlaceholder: string
+        deleteOrganization: string
+        deletingOrganization: string
+      }
+      confirm: {
+        promoteOwner: string
+        transferOwnership: string
+        removeMember: string
+        revokeInvitation: string
+        deleteOrganization: string
+      }
+      messages: {
+        requestFailed: string
+        loadFailed: string
+        actionFailed: string
+        inviteEmailRequired: string
+        invitationSent: string
+        memberPromotedAdmin: string
+        memberPromotedOwner: string
+        memberDemoted: string
+        ownershipTransferred: string
+        memberRemoved: string
+        invitationResent: string
+        invitationRevoked: string
+        profileUpdated: string
+        orgDeleted: string
+      }
     }
     billing: {
       heading: string
@@ -1601,6 +1928,84 @@ export type AppMessages = {
           error: string
         }
       }
+      metaApps: {
+        heading: string
+        description: string
+        newAppButton: string
+        accessDeniedTitle: string
+        accessDeniedDesc: string
+        conflictError: string
+        loadError: string
+        createError: string
+        updateError: string
+        rotateError: string
+        deleteError: string
+        createValidation: string
+        nameRequired: string
+        rotateValidation: string
+        deleteConfirm: string
+        table: {
+          cardTitle: string
+          cardDesc: string
+          loading: string
+          empty: string
+          colName: string
+          colMetaAppId: string
+          colVersion: string
+          colMasterToken: string
+          colCallbackUrl: string
+          colDevices: string
+          colStatus: string
+          colActions: string
+          tokenConfigured: string
+          tokenNotSet: string
+          statusActive: string
+          statusInactive: string
+          copyCallbackUrl: string
+          btnEdit: string
+          btnRotate: string
+          btnDelete: string
+        }
+        createDialog: {
+          title: string
+          description: string
+          nameLabel: string
+          metaAppIdLabel: string
+          appSecretLabel: string
+          verifyTokenLabel: string
+          versionLabel: string
+          versionPlaceholder: string
+          masterTokenLabel: string
+          masterTokenPlaceholder: string
+          masterTokenHint: string
+          btnCancel: string
+          btnCreate: string
+          btnCreating: string
+        }
+        editDialog: {
+          title: string
+          description: string
+          nameLabel: string
+          versionLabel: string
+          versionPlaceholder: string
+          masterTokenLabel: string
+          masterTokenPlaceholder: string
+          masterTokenHint: string
+          activeLabel: string
+          btnCancel: string
+          btnSave: string
+          btnSaving: string
+        }
+        rotateDialog: {
+          title: string
+          description: string
+          appSecretLabel: string
+          verifyTokenLabel: string
+          btnCancel: string
+          btnRotate: string
+          btnRotating: string
+        }
+      }
     }
     supportTickets: {
       heading: string
@@ -1646,6 +2051,7 @@ export type AppMessages = {
       ticketDetails: string
       subjectPlaceholder: string
       generalMessage: string
+      sendReply: string
       secureDetails: string
       messageOptional: string
       messagePlaceholder: string
@@ -1668,6 +2074,127 @@ export type AppMessages = {
       submitTicket: string
       submitting: string
       cancel: string
+      closedWarning: string
+      secureWipedTitle: string
+      secureWipedDesc: string
+      activeSecureWarningTitle: string
+      activeSecureWarningDesc: string
+      thread: string
+      noRepliesYet: string
+      internalNote: string
+      supportTeam: string
+      customer: string
+      replyBodyPlaceholder: string
+      secureFormLabel: string
+      secureFormPlaceholder: string
+      attachments: string
+      download: string
+      loadingPreview: string
+      previewUnavailable: string
+      previewUnavailableDesc: string
+      unableToLoadPreview: string
+      orgDetails: string
+      fullName: string
+      address: string
+      cityState: string
+      countryPostCode: string
+      organization: string
+      requester: string
+      pic: string
+      picFull: string
+      unassigned: string
+      staffSuffix: string
+      closing: string
+      categorizationControl: string
+      selectStatus: string
+      saveCategorization: string
+      saving: string
+      dangerZone: string
+      deleteWarning: string
+      deleteTicket: string
+      deleting: string
+      postInternalNote: string
+      replyRequired: string
+      replySuccess: string
+      unableToSubmitReply: string
+      confirmCloseTransition: string
+      categorizationUpdated: string
+      unableToUpdateCategorization: string
+      confirmClose: string
+      ticketClosedSuccess: string
+      unableToClose: string
+      confirmDelete: string
+      unableToDelete: string
+    }
+    adminCronjobs: {
+      heading: string
+      description: string
+      refresh: string
+      tabs: {
+        overview: string
+        history: string
+      }
+      metrics: {
+        totalJobs: string
+        executions24h: string
+        successRate: string
+        failedRuns: string
+        activeSchedules: string
+        totalCompleted: string
+        healthyJobs: string
+        healthyJobsDesc: string
+        needsAttention: string
+        needsAttentionDesc: string
+        activePods: string
+        activePodsDesc: string
+      }
+      filters: {
+        searchPlaceholder: string
+        allCategories: string
+        allStatuses: string
+        statusSuccess: string
+        statusFailed: string
+        statusRunning: string
+      }
+      table: {
+        jobName: string
+        category: string
+        schedule: string
+        target: string
+        lastRun: string
+        status: string
+        actions: string
+        executionId: string
+        triggerType: string
+        startTime: string
+        duration: string
+        runNow: string
+        viewLogs: string
+        noJobs: string
+        noExecutions: string
+      }
+      modal: {
+        triggerTitle: string
+        triggerDescription: string
+        auditNotice: string
+        reasonLabel: string
+        reasonPlaceholder: string
+        cancel: string
+        confirmRun: string
+        running: string
+      }
+      drawer: {
+        title: string
+        description: string
+        copyLogs: string
+        copied: string
+        noLogs: string
+      }
+      messages: {
+        triggerSuccess: string
+        triggerFailed: string
+        loadFailed: string
+      }
     }
     app: {
       deploy: {
@@ -2753,6 +3280,86 @@ export type AppMessages = {
       amount: string
       noInvoices: string
     }
+    vpn: {
+      myServices: {
+        orderPlan: string
+        downloadAllZip: string
+        getConfig: string
+        download: string
+        downloadConf: string
+        renewToDownload: string
+        provisioning: string
+        revoked: string
+        failed: string
+        error: string
+        ready: string
+        qr: string
+        wireGuardQrCode: string
+        scanQrWireGuard: string
+        scanQrWireGuardMobile: string
+        loadingQr: string
+        unableToGenerateQr: string
+        user: string
+        pass: string
+        hidePassword: string
+        showPassword: string
+        copyProxyCredentials: string
+        proxyCredentialsCopied: string
+        failedToCopyProxyCredentials: string
+        copySubscriptionId: string
+        copied: string
+        failedToCopyManual: string
+        failedToCancel: string
+        failedToReinstate: string
+        connectionProfile: string
+        status: string
+        locationCoverage: string
+        devices: string
+        setupAndConnect: string
+        actions: string
+        viewDetails: string
+        pairDevice: string
+        reinstate: string
+        reinstating: string
+        cancel: string
+        cancelling: string
+        searchSubscriptionsPlaceholder: string
+        emptySubscriptions: string
+        allStatuses: string
+        region: string
+        allRegions: string
+        activeStatus: string
+        cancellingStatus: string
+        suspendedStatus: string
+        expiredStatus: string
+        noRegions: string
+        devicesCount: string
+        moreCount: string
+        searchServersPlaceholder: string
+        filterByRegion: string
+        allRegionsCount: string
+        noServersMatchFilter: string
+        cancelDialogTitle: string
+        cancelDialogAbout: string
+        cancelDialogServiceUntil: string
+        cancelDialogServiceUntilSuffix: string
+        cancelDialogReasonLabel: string
+        cancelDialogReasonPlaceholder: string
+        cancelDialogType: string
+        cancelDialogToConfirm: string
+        cancelDialogConfirmPlaceholder: string
+        keepSubscription: string
+        confirmCancelButton: string
+        reinstateDialogTitle: string
+        reinstateDialogAbout: string
+        reinstateDialogBillingResume: string
+        reinstateDialogBillingResumeSuffix: string
+        reinstateDialogReasonLabel: string
+        reinstateDialogReasonPlaceholder: string
+        goBack: string
+        confirmReinstateButton: string
+      }
+    }
   }
   sidebar: {
     app: {
@@ -2833,3 +3440,7 @@ export type TimelineMessages = AppMessages["console"]["app"]["timeline"]
 export type DeploymentsMessages = AppMessages["console"]["app"]["deployments"]
 export type AdminDeploymentsMessages =
   AppMessages["console"]["app"]["adminDeployments"]
+export type EnvVarsEditorMessages =
+  AppMessages["console"]["deploy"]["envVarsEditor"]
+export type OperateMetricsMessages =
+  AppMessages["console"]["deploy"]["operateMetrics"]
