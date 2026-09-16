@@ -8,12 +8,7 @@ type TxClient = Omit<
 >
 
 export type BillingChargeSource =
-  | "TOPUP"
-  | "APP_HOSTING"
-  | "WHATSAPP"
-  | "VPN"
-  | "PACKAGE"
-  | "ADJUSTMENT"
+  "TOPUP" | "APP_HOSTING" | "WHATSAPP" | "VPN" | "PACKAGE" | "ADJUSTMENT"
 
 export type BalanceMutationInput = {
   organizationId: string
@@ -468,23 +463,21 @@ export class BillingTransactionService {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)
     )
 
-    // Look for existing DRAFT service invoice for this period
-    const existing = await tx.billingInvoice.findFirst({
-      where: {
-        billingAccountId,
-        type: "SERVICE",
-        status: "DRAFT",
-        periodStart: { gte: periodStart },
-        periodEnd: { lte: periodEnd },
-      },
-    })
-    if (existing) return existing
-
     // Generate invoice number: SVC-YYYYMM
-    // One service invoice per month per org, so no sequential counter needed.
+    // One service invoice per month per org, uniquely keyed by (billingAccountId, invoiceNumber).
     const periodStr = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}`
     const invoiceNumber = `SVC-${periodStr}`
 
+    // Look for existing service invoice for this period using compound unique key
+    const existing = await tx.billingInvoice.findUnique({
+      where: {
+        billingAccountId_invoiceNumber: {
+          billingAccountId,
+          invoiceNumber,
+        },
+      },
+    })
+    if (existing) return existing
     return tx.billingInvoice.create({
       data: {
         billingAccountId,

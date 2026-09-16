@@ -1255,7 +1255,7 @@ model BillingInvoice {
   billingAccountId String
   subscriptionId   String?
   billingRunId     String?
-  invoiceNumber    String               @unique
+  invoiceNumber    String
   periodStart      DateTime
   periodEnd        DateTime
   currency         String
@@ -1287,6 +1287,7 @@ model BillingInvoice {
   orders               BillingOrder[]
 
   @@unique([billingAccountId, periodStart, periodEnd])
+  @@unique([billingAccountId, invoiceNumber])
   @@index([billingAccountId, status])
   @@index([subscriptionId, periodStart])
   @@index([billingRunId])

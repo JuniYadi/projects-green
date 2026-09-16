@@ -441,7 +441,12 @@ class InvoicesSupportTicketsSeeder extends BaseSeeder {
     for (const seed of invoiceSeedData()) {
       const invoiceNumber = `SEED-${this.scopeCode}-INV-${seed.key}`
       const existingInvoice = await this.prisma.billingInvoice.findUnique({
-        where: { invoiceNumber },
+        where: {
+          billingAccountId_invoiceNumber: {
+            billingAccountId: billingAccount.id,
+            invoiceNumber,
+          },
+        },
         select: { id: true },
       })
 
