@@ -114,6 +114,11 @@ describe("Frontend Traffic Components", () => {
               countryCode: "SG",
               countryName: "Singapura",
               city: "Singapore",
+              status2xx: 1080,
+              status3xx: 0,
+              status4xx: 120,
+              status5xx: 0,
+              successRatio: 90,
             },
             {
               ip: "103.10.10.1",
@@ -121,6 +126,11 @@ describe("Frontend Traffic Components", () => {
               countryCode: "ID",
               countryName: "Indonesia",
               city: "Jakarta",
+              status2xx: 500,
+              status3xx: 0,
+              status4xx: 0,
+              status5xx: 0,
+              successRatio: 100,
             },
           ]}
         />
@@ -137,6 +147,11 @@ describe("Frontend Traffic Components", () => {
       expect(view.getByText("Singapore, Singapura")).toBeTruthy()
       expect(view.getByText("103.10.10.1")).toBeTruthy()
       expect(view.getByText("Jakarta, Indonesia")).toBeTruthy()
+      expect(view.getByText("90% sukses")).toBeTruthy()
+      expect(view.getByText("100% sukses")).toBeTruthy()
+      // Non-2xx counts must be readable as persistent text, not only a
+      // hover-only bar segment.
+      expect(view.getByText("120 4xx")).toBeTruthy()
 
       // Asserts that SVG flags for SG and ID are rendered (country-flag-icons renders svg elements)
       const svgs = view.container.querySelectorAll("svg")
@@ -161,6 +176,11 @@ describe("Frontend Traffic Components", () => {
               countryCode: "LOCAL",
               countryName: "Local Network",
               city: "Localhost",
+              status2xx: 10,
+              status3xx: 0,
+              status4xx: 0,
+              status5xx: 0,
+              successRatio: 100,
             },
           ]}
         />
