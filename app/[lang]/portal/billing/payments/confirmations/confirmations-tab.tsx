@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCallback, useEffect, useState, useMemo } from "react"
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
@@ -25,6 +28,8 @@ interface PaymentConfirmation {
   id: string
   amount: number
   currency: string
+  invoiceId: string
+  invoiceNumber?: string | null
   bankAccountId: string
   bankName: string
   accountName?: string
@@ -96,6 +101,8 @@ type ConfirmationsRequestState =
   | { status: "error"; message: string }
 
 export function ConfirmationsTab() {
+  const params = useParams<{ lang?: string }>()
+  const lang = resolveLocaleOrDefault(params?.lang)
   const [state, setState] = useState<ConfirmationsRequestState>({
     status: "loading",
   })
@@ -169,6 +176,30 @@ export function ConfirmationsTab() {
   const confirmationColumns = useMemo<ColumnDef<PaymentConfirmation>[]>(
     () => [
       {
+        accessorKey: "invoiceNumber",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Invoice" />
+        ),
+        cell: ({ row }) => {
+          const invoiceNumber =
+            row.original.invoiceNumber || row.original.invoiceId
+          const invoiceId = row.original.invoiceId
+
+          if (!invoiceId) {
+            return <span className="text-muted-foreground">-</span>
+          }
+
+          return (
+            <Link
+              href={`/${lang}/portal/billing/invoices/${invoiceId}`}
+              className="font-mono text-xs font-semibold text-primary hover:underline"
+            >
+              {invoiceNumber}
+            </Link>
+          )
+        },
+      },
+      {
         accessorKey: "submittedAt",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Submitted" />
@@ -228,6 +259,11 @@ export function ConfirmationsTab() {
       {
         id: "actions",
         enableHiding: false,
+        header: () => (
+          <span className="text-xs font-medium text-muted-foreground">
+            Actions
+          </span>
+        ),
         cell: ({ row }) => (
           <Button
             type="button"
@@ -243,7 +279,7 @@ export function ConfirmationsTab() {
         ),
       },
     ],
-    []
+    [lang]
   )
 
   if (state.status === "loading") {
@@ -308,7 +344,12 @@ export function ConfirmationsTab() {
               submittedAt: false,
             }}
             searchPlaceholder="Filter confirmations..."
-            searchableColumns={["bankAccount", "notes", "status"]}
+            searchableColumns={[
+              "invoiceNumber",
+              "bankAccount",
+              "notes",
+              "status",
+            ]}
             facetFilters={[
               {
                 columnId: "status",
@@ -344,6 +385,14 @@ export function ConfirmationsTab() {
           {selectedConfirmation && (
             <div className="grid gap-4">
               <dl className="grid gap-3 sm:grid-cols-2">
+                <DetailRow
+                  label="Invoice"
+                  value={
+                    selectedConfirmation.invoiceNumber
+                      ? `${selectedConfirmation.invoiceNumber} (${selectedConfirmation.invoiceId})`
+                      : selectedConfirmation.invoiceId || "-"
+                  }
+                />
                 <DetailRow
                   label="Amount"
                   value={formatConfirmationAmount(selectedConfirmation)}

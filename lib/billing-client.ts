@@ -102,6 +102,12 @@ export type InvoiceListItem = {
   currency: string
   orders?: InvoiceOrderItem[]
   lines?: InvoiceLineItem[]
+  confirmations?: Array<{
+    id: string
+    status: string
+    createdAt: string
+    amount: number
+  }>
   billingEntity?: {
     name?: string | null
     email?: string | null

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { afterEach, describe, expect, it } from "bun:test"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 
 import { ConfirmationsTab } from "./confirmations-tab"
 
@@ -8,6 +8,8 @@ const confirmationPayload = [
     id: "pc-1",
     amount: 100000,
     currency: "IDR",
+    invoiceId: "inv-100",
+    invoiceNumber: "TOP-D16B8E60",
     bankAccountId: "ba-1",
     bankName: "BCA",
     accountName: "PT Projects Green",
@@ -19,6 +21,10 @@ const confirmationPayload = [
 ]
 
 describe("ConfirmationsTab", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   it("renders confirmations in a filterable table and opens a review modal", async () => {
     globalThis.fetch = Object.assign(
       async () =>
@@ -32,12 +38,16 @@ describe("ConfirmationsTab", () => {
 
     expect(await view.findByRole("table")).toBeInTheDocument()
     expect(
+      view.getByRole("columnheader", { name: /invoice/i })
+    ).toBeInTheDocument()
+    expect(
       view.getByRole("columnheader", { name: /amount/i })
     ).toBeInTheDocument()
     expect(
       view.getByRole("columnheader", { name: /bank account/i })
     ).toBeInTheDocument()
     expect(view.getByLabelText("Filter confirmations...")).toBeInTheDocument()
+    expect(view.getByText("TOP-D16B8E60")).toBeInTheDocument()
 
     fireEvent.click(view.getByRole("button", { name: "Review" }))
 
