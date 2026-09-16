@@ -45,6 +45,7 @@ import {
 } from "@/modules/invoices/invoices.helpers"
 import type { InvoiceDetail } from "@/modules/invoices/invoices.types"
 import { formatPaymentMethod } from "@/modules/billing/user-labels"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 
 type OrganizationInput = {
   name?: string | null
@@ -305,6 +306,8 @@ const LineItemRow = ({
   </View>
 )
 
+const pdfMessages = getMessagesForMaybeLocale("en").console.invoices.pdf
+
 const BillToBlock = ({
   organization,
 }: {
@@ -316,7 +319,7 @@ const BillToBlock = ({
 
   return (
     <View style={styles.billToSection}>
-      <Text style={styles.sectionLabel}>BILL TO</Text>
+      <Text style={styles.sectionLabel}>{pdfMessages.billTo}</Text>
       <Text style={styles.billToName}>{name}</Text>
       {organization.name && organization.name !== name ? (
         <Text style={styles.billToDetail}>{organization.name}</Text>
@@ -357,25 +360,24 @@ const PaymentDetailsBlock = ({
 
   return (
     <View style={styles.paymentDetailsSection}>
-      <Text style={styles.sectionLabel}>PAYMENT DETAILS</Text>
+      <Text style={styles.sectionLabel}>{pdfMessages.paymentDetails}</Text>
       <Text style={styles.paymentDetailsSubtitle}>
-        Manual Bank Transfer — transfer the total amount to one of the accounts
-        below
+        {pdfMessages.bankTransferDesc}
       </Text>
       {bankAccounts.map((account, index) => (
         <View key={index} style={styles.bankAccountRow}>
           <Text style={styles.bankAccountText}>
-            <Text style={styles.bankAccountBold}>Bank: </Text>
+            <Text style={styles.bankAccountBold}>{pdfMessages.bank} </Text>
             {account.bankName} ({account.bankCode}){" | "}
-            <Text style={styles.bankAccountBold}>Acct: </Text>
+            <Text style={styles.bankAccountBold}>{pdfMessages.acct} </Text>
             {account.accountNumber}
             {" | "}
-            <Text style={styles.bankAccountBold}>Name: </Text>
+            <Text style={styles.bankAccountBold}>{pdfMessages.name} </Text>
             {account.accountName}
             {account.swiftCode ? (
               <>
                 {` | `}
-                <Text style={styles.bankAccountBold}>Swift: </Text>
+                <Text style={styles.bankAccountBold}>{pdfMessages.swift} </Text>
                 {account.swiftCode}
               </>
             ) : null}
@@ -404,15 +406,12 @@ const InvoiceFooter = () => {
   return (
     <View style={styles.footerSection}>
       <View style={styles.footerRule} />
+      <Text style={styles.footerText}>{pdfMessages.afterTransferNotice}</Text>
       <Text style={styles.footerText}>
-        After transferring, please confirm your payment through the portal or
-        contact support.
+        {pdfMessages.site} {siteUrl} {pdfMessages.support}
       </Text>
       <Text style={styles.footerText}>
-        Site: {siteUrl} | Support: support@pfnapp.com
-      </Text>
-      <Text style={styles.footerText}>
-        Generated on {dateStr} at {timeStr} UTC
+        {pdfMessages.generatedOn} {dateStr} {pdfMessages.at} {timeStr} UTC
       </Text>
     </View>
   )
@@ -435,12 +434,12 @@ const InvoicePdfDocument = ({
       <Page size="A4" style={styles.page}>
         <View style={styles.headerBar}>
           <Text style={styles.headerBrandName}>PFNApp</Text>
-          <Text style={styles.headerBrandLine}>PT. Premium Fast Network</Text>
+          <Text style={styles.headerBrandLine}>{pdfMessages.companyName}</Text>
           <Text style={styles.headerBrandLine}>
-            Jl. Bungurasih Tengah No 70, Waru, Sidoarjo, Jawa Timur 61256
+            {pdfMessages.companyAddress}
           </Text>
           <Text style={styles.headerBrandLine}>
-            Email: support@pfnapp.id | Whatsapp: +6281216667996
+            {pdfMessages.companyContact}
           </Text>
           <View style={styles.headerBottomRow}>
             <Text style={styles.invoiceNumberText}>
@@ -458,47 +457,52 @@ const InvoicePdfDocument = ({
 
         <View style={styles.metaSection}>
           <MetaRow
-            label="Issued:"
+            label={pdfMessages.labelIssued}
             value={formatInvoiceDate(invoice.issuedAt)}
           />
-          <MetaRow label="Due:" value={formatInvoiceDate(invoice.dueAt)} />
+          <MetaRow
+            label={pdfMessages.labelDue}
+            value={formatInvoiceDate(invoice.dueAt)}
+          />
           {invoice.periodStart && invoice.periodEnd ? (
             <MetaRow
-              label="Service Period:"
+              label={pdfMessages.labelServicePeriod}
               value={`${formatInvoiceDate(invoice.periodStart)} - ${formatInvoiceDate(invoice.periodEnd)}`}
             />
           ) : null}
           {invoice.periodEnd ? (
             <>
               <MetaRow
-                label="Service Ends:"
+                label={pdfMessages.labelServiceEnds}
                 value={formatInvoiceDate(invoice.periodEnd)}
               />
               <MetaRow
-                label="Next Renewal Date:"
+                label={pdfMessages.labelNextRenewal}
                 value={formatInvoiceDate(getNextRenewalDate(invoice.periodEnd))}
               />
             </>
           ) : null}
           <MetaRow
-            label="Payment Method:"
+            label={pdfMessages.labelPaymentMethod}
             value={formatPaymentMethod(invoice.paymentMethod)}
           />
         </View>
         <BillToBlock organization={organization} />
 
-        <Text style={styles.sectionLabel}>LINE ITEMS</Text>
+        <Text style={styles.sectionLabel}>{pdfMessages.lineItems}</Text>
 
         <View style={styles.tableHeaderRow}>
           <Text style={[styles.descCell, styles.tableHeaderCell]}>
-            Description
+            {pdfMessages.colDescription}
           </Text>
-          <Text style={[styles.qtyCell, styles.tableHeaderCell]}>Qty</Text>
+          <Text style={[styles.qtyCell, styles.tableHeaderCell]}>
+            {pdfMessages.colQty}
+          </Text>
           <Text style={[styles.unitCell, styles.tableHeaderCell]}>
-            Unit Price
+            {pdfMessages.colUnitPrice}
           </Text>
           <Text style={[styles.amountCell, styles.tableHeaderCell]}>
-            Amount
+            {pdfMessages.colAmount}
           </Text>
         </View>
         <View style={styles.rule} />
@@ -511,25 +515,25 @@ const InvoicePdfDocument = ({
 
         <View style={styles.totalsSection}>
           <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>Subtotal:</Text>
+            <Text style={styles.totalsLabel}>{pdfMessages.subtotal}</Text>
             <Text style={styles.totalsValue}>
               {formatInvoiceCurrency(invoice.subtotalAmount, currency)}
             </Text>
           </View>
           <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>Tax:</Text>
+            <Text style={styles.totalsLabel}>{pdfMessages.tax}</Text>
             <Text style={styles.totalsValue}>
               {formatInvoiceCurrency(invoice.taxAmount, currency)}
             </Text>
           </View>
           <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>Discount:</Text>
+            <Text style={styles.totalsLabel}>{pdfMessages.discount}</Text>
             <Text style={styles.totalsValue}>
               {formatInvoiceCurrency(invoice.discountAmount, currency)}
             </Text>
           </View>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total:</Text>
+            <Text style={styles.totalLabel}>{pdfMessages.total}</Text>
             <Text style={styles.totalValue}>
               {formatInvoiceCurrency(invoice.totalAmount, currency)}
             </Text>

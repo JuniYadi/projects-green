@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -82,8 +83,13 @@ const PERIOD_SUFFIX: Record<string, string> = {
 }
 export default function CatalogProductsListPage() {
   const router = useRouter()
-  const { catalogCode: rawCatalogCode } = useParams<{ catalogCode: string }>()
+  const { catalogCode: rawCatalogCode, lang } = useParams<{
+    catalogCode: string
+    lang: string
+  }>()
   const catalogCode = (rawCatalogCode || "").toUpperCase()
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingCatalog.productList
   const [products, setProducts] = useState<CatalogPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -261,15 +267,20 @@ export default function CatalogProductsListPage() {
       <header className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link href="/portal/billing/catalog">
-            <Button variant="ghost" size="icon" aria-label="Back to catalog">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={messages.backToCatalog}
+            >
               <ArrowLeftIcon className="h-4 w-4" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold">{catalogTitle} Products</h1>
+            <h1 className="text-2xl font-bold">
+              {catalogTitle} {messages.title}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Manage product tiers, inventory, specs, and pricing under{" "}
-              {catalogTitle}.
+              {messages.description} {catalogTitle}.
             </p>
           </div>
         </div>
@@ -284,7 +295,7 @@ export default function CatalogProductsListPage() {
           >
             <Button size="sm">
               <PlusIcon className="mr-2 h-4 w-4" />
-              New Product
+              {messages.newProduct}
             </Button>
           </Link>
         </div>
@@ -315,17 +326,15 @@ export default function CatalogProductsListPage() {
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <PackageIcon className="h-12 w-12 text-muted-foreground/50" />
             <div className="text-center">
-              <p className="text-sm font-medium">
-                No products found in this catalog.
-              </p>
+              <p className="text-sm font-medium">{messages.noProducts}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Add plans to create products for this category.
+                {messages.noProductsDesc}
               </p>
             </div>
             <Link
               href={`/portal/billing/catalog/${catalogCode.toLowerCase()}/products/new`}
             >
-              <Button size="sm">Add First Product</Button>
+              <Button size="sm">{messages.addFirstProduct}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -358,7 +367,7 @@ export default function CatalogProductsListPage() {
                     </Badge>
                   </div>
                   <CardDescription className="font-mono text-xs">
-                    Code: {product.code}
+                    {messages.code} {product.code}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -381,13 +390,13 @@ export default function CatalogProductsListPage() {
                           : "Out of stock"}
                       </Badge>
                     ) : (
-                      <Badge variant="outline">Unlimited stock</Badge>
+                      <Badge variant="outline">{messages.unlimitedStock}</Badge>
                     )}
                   </div>
 
                   <div className="border-t pt-3">
                     <p className="text-xs text-muted-foreground">
-                      Starting from
+                      {messages.startingFrom}
                     </p>
                     <p className="text-lg font-bold text-foreground">
                       {lowestOffer
@@ -403,7 +412,7 @@ export default function CatalogProductsListPage() {
                     >
                       <Button variant="outline" size="sm" className="w-full">
                         <PencilSimpleIcon className="mr-1.5 h-3.5 w-3.5" />
-                        Edit
+                        {messages.edit}
                       </Button>
                     </Link>
                     <DropdownMenu>
@@ -422,7 +431,7 @@ export default function CatalogProductsListPage() {
                           onClick={() => openDuplicateDialog(product)}
                         >
                           <Copy className="mr-2 h-4 w-4" />
-                          Duplicate
+                          {messages.duplicate}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -430,7 +439,7 @@ export default function CatalogProductsListPage() {
                           onClick={() => setDeleteProductTarget(product)}
                         >
                           <TrashIcon className="mr-2 h-4 w-4" />
-                          Delete
+                          {messages.delete}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -451,17 +460,20 @@ export default function CatalogProductsListPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Product Plan?</AlertDialogTitle>
+            <AlertDialogTitle>{messages.deleteProductPlan}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete{" "}
+              {messages.deleteConfirmDesc}{" "}
               <span className="font-semibold text-foreground">
                 {deleteProductTarget?.name || deleteProductTarget?.code}
               </span>{" "}
-              ({deleteProductTarget?.code})? This action cannot be undone.
+              ({deleteProductTarget?.code}
+              {messages.cannotBeUndone}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              {messages.cancel}
+            </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={(e) => {
@@ -487,27 +499,24 @@ export default function CatalogProductsListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <ArchiveBoxIcon className="h-5 w-5 text-amber-500" />
-              Archive Instead of Delete
+              {messages.archiveInsteadTitle}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <span>
-                Product{" "}
+                {messages.archiveProductBefore}{" "}
                 <span className="font-semibold text-foreground">
                   {referencedArchiveTarget?.name ||
                     referencedArchiveTarget?.code}
                 </span>{" "}
-                cannot be deleted because active or historical customer
-                subscriptions reference it.
+                {messages.archiveProductAfter}
               </span>
-              <span className="block">
-                Would you like to archive and disable it from the public catalog
-                instead? Existing subscribers won&apos;t be broken, but new
-                orders will be prevented.
-              </span>
+              <span className="block">{messages.archivePrompt}</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isArchiving}>
+              {messages.cancel}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
@@ -530,13 +539,13 @@ export default function CatalogProductsListPage() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Duplicate Product</DialogTitle>
+            <DialogTitle>{messages.duplicateTitle}</DialogTitle>
             <DialogDescription>
-              Create a quick clone of{" "}
+              {messages.duplicateDescBefore}{" "}
               <span className="font-semibold text-foreground">
                 {duplicateTarget?.name || duplicateTarget?.code}
               </span>
-              . Enter a unique product code and name for the new copy.
+              {messages.duplicateDescAfter}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -547,27 +556,27 @@ export default function CatalogProductsListPage() {
             className="space-y-4 py-2"
           >
             <div className="space-y-2">
-              <Label htmlFor="dup-code">New Product Code *</Label>
+              <Label htmlFor="dup-code">{messages.newProductCode}</Label>
               <Input
                 id="dup-code"
                 value={duplicateCode}
                 onChange={(e) => setDuplicateCode(e.target.value.toUpperCase())}
-                placeholder="e.g. STARTER_V2"
+                placeholder={messages.newProductCodePlaceholder}
                 className="font-mono uppercase"
                 required
                 autoFocus
               />
               <p className="text-xs text-muted-foreground">
-                Must be unique within the {catalogTitle} catalog.
+                {messages.mustBeUnique} {catalogTitle} {messages.catalogSuffix}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dup-name">New Product Name *</Label>
+              <Label htmlFor="dup-name">{messages.newProductName}</Label>
               <Input
                 id="dup-name"
                 value={duplicateName}
                 onChange={(e) => setDuplicateName(e.target.value)}
-                placeholder="e.g. Starter Plan (2026)"
+                placeholder={messages.newProductNamePlaceholder}
                 required
               />
             </div>
@@ -578,7 +587,7 @@ export default function CatalogProductsListPage() {
                 onClick={() => setDuplicateTarget(null)}
                 disabled={isDuplicating}
               >
-                Cancel
+                {messages.cancel}
               </Button>
               <Button type="submit" disabled={isDuplicating}>
                 {isDuplicating ? "Duplicating..." : "Create Copy"}

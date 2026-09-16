@@ -18,6 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import type { VoucherDetailDTO, VoucherKind } from "@/lib/billing-client"
 
 const KIND_OPTIONS: { value: VoucherKind; label: string; desc: string }[] = [
@@ -42,6 +44,11 @@ export function VoucherTypeTab({
   onUpdate: (updates: Record<string, unknown>) => void
   fieldErrors?: Record<string, string[]>
 }) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingPromotions
+      .voucherTypeTab
   const isProductPromo = voucher.kind === "PRODUCT_PROMOTION"
   const kindIsEditable = voucher.id === "new"
 
@@ -61,15 +68,12 @@ export function VoucherTypeTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Promotion Type</CardTitle>
-        <CardDescription>
-          Choose whether this voucher credits a balance or discounts a selected
-          product purchase.
-        </CardDescription>
+        <CardTitle>{messages.title}</CardTitle>
+        <CardDescription>{messages.description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
-          <Label>Kind</Label>
+          <Label>{messages.kind}</Label>
           <ToggleGroup
             type="single"
             value={voucher.kind}
@@ -77,7 +81,7 @@ export function VoucherTypeTab({
               if (value) onUpdate({ kind: value as VoucherKind })
             }}
             disabled={!kindIsEditable}
-            aria-label="Voucher kind"
+            aria-label={messages.kindAria}
             className="grid w-full gap-3 sm:grid-cols-2"
           >
             {KIND_OPTIONS.map((option) => (
@@ -97,7 +101,7 @@ export function VoucherTypeTab({
           </ToggleGroup>
           {!kindIsEditable && (
             <p className="text-xs text-muted-foreground">
-              A voucher&apos;s kind cannot be changed after it is created.
+              {messages.kindImmutableNotice}
             </p>
           )}
           {renderErrors("kind")}
@@ -106,7 +110,7 @@ export function VoucherTypeTab({
         {!isProductPromo && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="voucher-amount">Credit Amount</Label>
+              <Label htmlFor="voucher-amount">{messages.creditAmount}</Label>
               <Input
                 id="voucher-amount"
                 type="number"
@@ -120,13 +124,13 @@ export function VoucherTypeTab({
                 aria-invalid={Boolean(fieldErrors.amount?.length)}
               />
               <p className="text-xs text-muted-foreground">
-                The fixed credit amount added to the billing balance.
+                {messages.creditAmountDesc}
               </p>
               {renderErrors("amount")}
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="voucher-currency">Currency</Label>
+              <Label htmlFor="voucher-currency">{messages.currency}</Label>
               <Select
                 value={voucher.currency ?? "IDR"}
                 onValueChange={(value) => onUpdate({ currency: value })}
@@ -135,8 +139,8 @@ export function VoucherTypeTab({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="IDR">IDR - Indonesian Rupiah</SelectItem>
-                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                  <SelectItem value="IDR">{messages.currencyIdr}</SelectItem>
+                  <SelectItem value="USD">{messages.currencyUsd}</SelectItem>
                 </SelectContent>
               </Select>
               {renderErrors("currency")}
@@ -148,7 +152,9 @@ export function VoucherTypeTab({
           <div className="flex flex-col gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="voucher-discount-type">Discount Type</Label>
+                <Label htmlFor="voucher-discount-type">
+                  {messages.discountType}
+                </Label>
                 <Select
                   value={voucher.discountType ?? ""}
                   onValueChange={(value) =>
@@ -163,18 +169,26 @@ export function VoucherTypeTab({
                     id="voucher-discount-type"
                     aria-invalid={Boolean(fieldErrors.discountType?.length)}
                   >
-                    <SelectValue placeholder="Select discount type" />
+                    <SelectValue
+                      placeholder={messages.discountTypePlaceholder}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
-                    <SelectItem value="FIXED">Fixed Amount</SelectItem>
+                    <SelectItem value="PERCENTAGE">
+                      {messages.percentage}
+                    </SelectItem>
+                    <SelectItem value="FIXED">
+                      {messages.fixedAmount}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 {renderErrors("discountType")}
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="voucher-discount-value">Discount Value</Label>
+                <Label htmlFor="voucher-discount-value">
+                  {messages.discountValue}
+                </Label>
                 <Input
                   id="voucher-discount-value"
                   type="number"
@@ -203,7 +217,7 @@ export function VoucherTypeTab({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="voucher-discount-currency">
-                  Discount Currency
+                  {messages.discountCurrency}
                 </Label>
                 <Select
                   value={voucher.discountCurrency ?? "SAME"}
@@ -214,11 +228,11 @@ export function VoucherTypeTab({
                   }
                 >
                   <SelectTrigger id="voucher-discount-currency">
-                    <SelectValue placeholder="Same as voucher currency" />
+                    <SelectValue placeholder={messages.sameAsVoucher} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="SAME">
-                      Same as voucher currency
+                      {messages.sameAsVoucher}
                     </SelectItem>
                     <SelectItem value="IDR">IDR</SelectItem>
                     <SelectItem value="USD">USD</SelectItem>
@@ -228,7 +242,9 @@ export function VoucherTypeTab({
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="voucher-currency-policy">Currency Policy</Label>
+                <Label htmlFor="voucher-currency-policy">
+                  {messages.currencyPolicy}
+                </Label>
                 <Select
                   value={voucher.currencyPolicy ?? "MATCH_CURRENCY_ONLY"}
                   onValueChange={(value) =>
@@ -243,19 +259,18 @@ export function VoucherTypeTab({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MATCH_CURRENCY_ONLY">
-                      Match currency only
+                      {messages.matchCurrency}
                     </SelectItem>
                     <SelectItem value="CONVERT_AT_CHECKOUT">
-                      Convert at checkout
+                      {messages.convertCheckout}
                     </SelectItem>
                     <SelectItem value="CONVERT_AT_REDEMPTION">
-                      Convert at redemption
+                      {messages.convertRedemption}
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Percentage discounts apply regardless of currency. Fixed
-                  discounts use the configured currency policy.
+                  {messages.discountPolicyDesc}
                 </p>
                 {renderErrors("currencyPolicy")}
               </div>
@@ -269,10 +284,10 @@ export function VoucherTypeTab({
               htmlFor="voucher-first-checkout-only"
               className="font-medium"
             >
-              First checkout only
+              {messages.firstCheckoutOnly}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Allow this voucher to be claimed only on the first checkout.
+              {messages.firstCheckoutOnlyDesc}
             </p>
           </div>
           <Checkbox
@@ -287,10 +302,10 @@ export function VoucherTypeTab({
         <div className="flex items-center justify-between rounded-lg border border-border p-3">
           <div>
             <Label htmlFor="voucher-allow-upgrade" className="font-medium">
-              Allow upgrades
+              {messages.allowUpgrades}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Permit customers to apply this voucher when upgrading plans.
+              {messages.allowUpgradesDesc}
             </p>
           </div>
           <Checkbox
@@ -305,10 +320,10 @@ export function VoucherTypeTab({
         <div className="flex items-center justify-between rounded-lg border border-border p-3">
           <div>
             <Label htmlFor="voucher-stackable" className="font-medium">
-              Stackable
+              {messages.stackable}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Allow this voucher to be combined with other promotions.
+              {messages.stackableDesc}
             </p>
           </div>
           <Checkbox

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { AppMessages } from "@/lib/i18n/messages/types"
 import { legalEn } from "@/lib/i18n/messages/legal-en"
 
@@ -66,7 +67,20 @@ export const enMessages: AppMessages = {
     },
   },
   console: {
+    adminBillingCatalog: {},
+    adminBillingPayments: {},
+    adminBillingPromotions: {},
     deploy: {
+       
+      templateEditor: {} as any,
+       
+      operateOverview: {} as any,
+       
+      operateTraffic: {} as any,
+       
+      operateMounts: {} as any,
+       
+      gitDeploy: {} as any,
       envVarsEditor: {
         searchLabel: "Search environment variables",
         searchPlaceholder: "Search key, type, or scope",
@@ -700,6 +714,39 @@ export const enMessages: AppMessages = {
       viewAll: "View all",
       noActiveSubscriptions: "No active subscriptions",
       noInvoices: "No invoices yet.",
+      pdf: {
+        billTo: "Bill To",
+        paymentDetails: "Payment Details",
+        bankTransferDesc: "Please transfer payment to the following account.",
+        bank: "Bank",
+        acct: "Account",
+        name: "Name",
+        swift: "SWIFT",
+        afterTransferNotice:
+          "Please include your invoice number in the transfer.",
+        site: "Website",
+        support: "Support",
+        generatedOn: "Generated on",
+        at: "at",
+        companyName: "Company",
+        companyAddress: "Address",
+        companyContact: "Contact",
+        labelIssued: "Issued",
+        labelDue: "Due",
+        labelServicePeriod: "Service period",
+        labelServiceEnds: "Service ends",
+        labelNextRenewal: "Next renewal",
+        labelPaymentMethod: "Payment method",
+        lineItems: "Line items",
+        colDescription: "Description",
+        colQty: "Qty",
+        colUnitPrice: "Unit price",
+        colAmount: "Amount",
+        subtotal: "Subtotal",
+        tax: "Tax",
+        discount: "Discount",
+        total: "Total",
+      },
       lowBalanceWarning:
         "Your balance is running low. Top up to avoid service interruption.",
       failedToLoadBalance: "Failed to load balance",
@@ -3163,6 +3210,10 @@ export const enMessages: AppMessages = {
           back: "Back",
           deploying: "Deploying…",
           deploy: "Deploy",
+          attachedResources: "Attached resources",
+          noDatabases: "No databases attached",
+          settingsTitle: "Deployment settings",
+          settingsDesc: "Review deployment settings before continuing.",
         },
         monitor: {
           yourApp: "Your app",

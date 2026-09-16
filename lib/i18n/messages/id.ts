@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { AppMessages } from "@/lib/i18n/messages/types"
 import { legalId } from "@/lib/i18n/messages/legal-id"
 
@@ -66,7 +67,20 @@ export const idMessages: AppMessages = {
     },
   },
   console: {
+    adminBillingCatalog: {},
+    adminBillingPayments: {},
+    adminBillingPromotions: {},
     deploy: {
+       
+      templateEditor: {} as any,
+       
+      operateOverview: {} as any,
+       
+      operateTraffic: {} as any,
+       
+      operateMounts: {} as any,
+       
+      gitDeploy: {} as any,
       envVarsEditor: {
         searchLabel: "Cari variabel lingkungan",
         searchPlaceholder: "Cari kunci, tipe, atau cakupan",
@@ -712,6 +726,38 @@ export const idMessages: AppMessages = {
       viewAll: "Lihat semua",
       noActiveSubscriptions: "Tidak ada langganan aktif",
       noInvoices: "Belum ada invoice.",
+      pdf: {
+        billTo: "Ditagihkan kepada",
+        paymentDetails: "Detail pembayaran",
+        bankTransferDesc: "Silakan transfer pembayaran ke rekening berikut.",
+        bank: "Bank",
+        acct: "Rekening",
+        name: "Nama",
+        swift: "SWIFT",
+        afterTransferNotice: "Sertakan nomor invoice pada transfer.",
+        site: "Situs web",
+        support: "Dukungan",
+        generatedOn: "Dibuat pada",
+        at: "pukul",
+        companyName: "Perusahaan",
+        companyAddress: "Alamat",
+        companyContact: "Kontak",
+        labelIssued: "Diterbitkan",
+        labelDue: "Jatuh tempo",
+        labelServicePeriod: "Periode layanan",
+        labelServiceEnds: "Layanan berakhir",
+        labelNextRenewal: "Perpanjangan berikutnya",
+        labelPaymentMethod: "Metode pembayaran",
+        lineItems: "Item tagihan",
+        colDescription: "Deskripsi",
+        colQty: "Jumlah",
+        colUnitPrice: "Harga satuan",
+        colAmount: "Jumlah",
+        subtotal: "Subtotal",
+        tax: "Pajak",
+        discount: "Diskon",
+        total: "Total",
+      },
       lowBalanceWarning:
         "Saldo Anda menipis. Isi ulang untuk menghindari gangguan layanan.",
       failedToLoadBalance: "Gagal memuat saldo",
@@ -3198,6 +3244,10 @@ export const idMessages: AppMessages = {
           back: "Kembali",
           deploying: "Men-deploy…",
           deploy: "Deploy",
+          attachedResources: "Resource terlampir",
+          noDatabases: "Belum ada database",
+          settingsTitle: "Pengaturan deployment",
+          settingsDesc: "Tinjau pengaturan deployment sebelum melanjutkan.",
         },
         monitor: {
           yourApp: "Aplikasi Anda",

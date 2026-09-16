@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type AppMessages = {
   navOrganization: {
     label: string
@@ -61,7 +62,10 @@ export type AppMessages = {
     }
   }
   console: {
+    [key: string]: any
     deploy: {
+       
+      [key: string]: any
       envVarsEditor: {
         searchLabel: string
         searchPlaceholder: string
@@ -621,6 +625,8 @@ export type AppMessages = {
       }
     }
     billing: {
+       
+      [key: string]: any
       heading: string
       description: string
       usage: string
@@ -639,6 +645,7 @@ export type AppMessages = {
       viewAll: string
       noActiveSubscriptions: string
       noInvoices: string
+      pdf?: any
       lowBalanceWarning: string
       failedToLoadBalance: string
       balanceGate: {
@@ -2825,6 +2832,8 @@ export type AppMessages = {
           dockerfile: string
         }
         environment: {
+           
+          [key: string]: any
           validationHeading: string
           submitHeading: string
           advanced: string
@@ -3689,6 +3698,8 @@ export type AppMessages = {
       date: string
       amount: string
       noInvoices: string
+       
+      pdf?: any
     }
     vpn: {
       myServices: {

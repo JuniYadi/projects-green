@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { type ColumnDef } from "@tanstack/react-table"
 import { eden } from "@/lib/eden"
 import { Badge } from "@/components/ui/badge"
@@ -76,6 +77,10 @@ function buildDiscountDisplay(voucher: VoucherDTO): string {
 export default function BillingPromotionsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingPromotions.list
   const [vouchers, setVouchers] = useState<PromoListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -216,7 +221,7 @@ export default function BillingPromotionsPage() {
             <button
               onClick={(e) => copyCode(row.original.code, e)}
               className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-              title="Copy to clipboard"
+              title={messages.copyTitle}
             >
               <CopySimpleIcon className="h-3.5 w-3.5" />
             </button>
@@ -276,7 +281,7 @@ export default function BillingPromotionsPage() {
       },
       {
         id: "actions",
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => <span className="sr-only">{messages.actions}</span>,
         cell: ({ row }) => {
           const v = row.original
           const isExpired =
@@ -290,7 +295,7 @@ export default function BillingPromotionsPage() {
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"
-                    aria-label="Actions"
+                    aria-label={messages.actionsAria}
                   >
                     <DotsThreeVerticalIcon className="h-4 w-4" />
                   </Button>
@@ -298,7 +303,7 @@ export default function BillingPromotionsPage() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
                     <Link href={`/portal/billing/promotions/${v.id}`}>
-                      Edit / Details
+                      {messages.editDetails}
                     </Link>
                   </DropdownMenuItem>
                   {v.status === "ACTIVE" && (
@@ -306,7 +311,7 @@ export default function BillingPromotionsPage() {
                       onClick={() => void handleDisable(v.id)}
                       className="text-amber-600 focus:text-amber-700"
                     >
-                      Deactivate (Disable)
+                      {messages.deactivate}
                     </DropdownMenuItem>
                   )}
                   {v.status !== "EXPIRED" && isExpired && (
@@ -314,7 +319,7 @@ export default function BillingPromotionsPage() {
                       onClick={() => void handleExpire(v.id)}
                       className="text-destructive focus:text-destructive"
                     >
-                      Mark as Expired
+                      {messages.markExpired}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -332,14 +337,14 @@ export default function BillingPromotionsPage() {
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <header className="flex items-center justify-between">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">Promotions</h1>
+            <h1 className="text-2xl font-semibold">{messages.title}</h1>
             <p className="text-sm text-muted-foreground">
-              Create and manage discount vouchers and balance credits.
+              {messages.description}
             </p>
           </div>
           <Button disabled>
             <PlusIcon className="mr-2 h-4 w-4" />
-            Create Voucher
+            {messages.createVoucher}
           </Button>
         </header>
         <div className="space-y-4">
@@ -355,15 +360,15 @@ export default function BillingPromotionsPage() {
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Promotions</h1>
+          <h1 className="text-2xl font-semibold">{messages.title}</h1>
           <p className="text-sm text-muted-foreground">
-            Create and manage discount vouchers and balance credits.
+            {messages.description}
           </p>
         </div>
         <Button asChild>
           <Link href="/portal/billing/promotions/new">
             <PlusIcon className="mr-2 h-4 w-4" />
-            Create Voucher
+            {messages.createVoucher}
           </Link>
         </Button>
       </header>
@@ -376,14 +381,14 @@ export default function BillingPromotionsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle>{messages.filters}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <div className="relative flex-1">
               <Input
                 type="search"
-                placeholder="Search by code prefix..."
+                placeholder={messages.searchPlaceholder}
                 defaultValue={searchFilter}
                 onChange={(e) => {
                   const value = e.target.value.trim()
@@ -409,7 +414,7 @@ export default function BillingPromotionsPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={messages.statusPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {STATUS_FILTERS.map((f) => (
@@ -430,7 +435,7 @@ export default function BillingPromotionsPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[190px]">
-                <SelectValue placeholder="Type" />
+                <SelectValue placeholder={messages.typePlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {KIND_FILTERS.map((filter) => (
@@ -453,7 +458,7 @@ export default function BillingPromotionsPage() {
           tableId="portal-billing-promotions"
           columns={columns}
           data={vouchers}
-          searchPlaceholder="Search promotions..."
+          searchPlaceholder={messages.searchTablePlaceholder}
           searchableColumns={["code"]}
           defaultColumnVisibility={{
             createdAt: false,
@@ -467,7 +472,7 @@ export default function BillingPromotionsPage() {
           <Card>
             <CardContent className="py-10 text-center">
               <p className="text-sm text-muted-foreground">
-                No vouchers match your current filters.
+                {messages.noVouchersMatch}
               </p>
             </CardContent>
           </Card>
@@ -500,23 +505,31 @@ export default function BillingPromotionsPage() {
                   <CardContent className="pt-0">
                     <dl className="grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <dt className="text-muted-foreground">Discount</dt>
+                        <dt className="text-muted-foreground">
+                          {messages.discount}
+                        </dt>
                         <dd>{voucher.discountDisplay}</dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">Claims</dt>
+                        <dt className="text-muted-foreground">
+                          {messages.claims}
+                        </dt>
                         <dd>
                           {voucher.claimedCount}/{voucher.maxClaims}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">Expires</dt>
+                        <dt className="text-muted-foreground">
+                          {messages.expires}
+                        </dt>
                         <dd>
                           {new Date(voucher.expiresAt).toLocaleDateString()}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">Target</dt>
+                        <dt className="text-muted-foreground">
+                          {messages.target}
+                        </dt>
                         <dd>
                           {voucher.targetWorkosUserId
                             ? "Specific user"
@@ -537,7 +550,8 @@ export default function BillingPromotionsPage() {
       {total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages} ({total} total)
+            {messages.page} {currentPage} {messages.of} {totalPages} ({total}{" "}
+            {messages.totalSuffix}
           </p>
           <div className="flex gap-2">
             <Button
@@ -547,7 +561,7 @@ export default function BillingPromotionsPage() {
               disabled={currentPage <= 1 || isLoading}
             >
               <ArrowLeftIcon className="mr-2 h-4 w-4" />
-              Previous
+              {messages.previous}
             </Button>
             <Button
               variant="outline"
@@ -555,7 +569,7 @@ export default function BillingPromotionsPage() {
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage >= totalPages || isLoading}
             >
-              Next
+              {messages.next}
               <ArrowRightIcon className="ml-2 h-4 w-4" />
             </Button>
           </div>

@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { ArrowClockwise, GithubLogo, GitBranch } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -34,6 +36,10 @@ export function TabOverview({
   setDbConnected,
   domains,
 }: TabOverviewProps) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.deploy.operateOverview
   const [rebuildState, setRebuildState] = useState<
     "idle" | "fetching" | "building" | "restarting" | "success"
   >("idle")
@@ -121,10 +127,10 @@ export function TabOverview({
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="space-y-1">
               <CardTitle className="text-base font-bold text-foreground">
-                Repository Deploy Status
+                {messages.repoDeployStatus}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Git repository synchronization and pipeline builds
+                {messages.repoDeployStatusDesc}
               </CardDescription>
             </div>
             <span className="relative flex h-2.5 w-2.5">
@@ -138,7 +144,7 @@ export function TabOverview({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                 <div className="space-y-1">
                   <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                    Source Provider
+                    {messages.sourceProvider}
                   </span>
                   <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                     <GithubLogo size={16} className="text-muted-foreground" />
@@ -147,7 +153,7 @@ export function TabOverview({
                 </div>
                 <div className="space-y-1">
                   <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                    Repository
+                    {messages.repository}
                   </span>
                   <span className="text-sm font-semibold text-foreground">
                     acme/laravel-shop
@@ -155,7 +161,7 @@ export function TabOverview({
                 </div>
                 <div className="space-y-1">
                   <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                    Active Branch
+                    {messages.activeBranch}
                   </span>
                   <span className="inline-flex items-center gap-1 text-sm font-bold text-primary">
                     <GitBranch size={14} />
@@ -166,7 +172,7 @@ export function TabOverview({
 
               <div className="mt-4 space-y-1 border-t border-border/60 pt-4">
                 <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Last Synced Commit
+                  {messages.lastSyncedCommit}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
@@ -182,7 +188,7 @@ export function TabOverview({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
-                  Trigger build manually when updates are pushed:
+                  {messages.manualBuildPrompt}
                 </span>
                 <Button
                   type="button"
@@ -196,8 +202,8 @@ export function TabOverview({
                     size={14}
                   />
                   {rebuildState === "idle"
-                    ? "Rebuild & Deploy"
-                    : "Processing Build..."}
+                    ? messages.rebuildButton
+                    : messages.rebuildingButton}
                 </Button>
               </div>
 
@@ -212,7 +218,7 @@ export function TabOverview({
                       <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
                     </div>
                     <span className="font-mono text-[10px] text-muted-foreground">
-                      laravel-shop -- build logs
+                      {messages.buildLogsTitle}
                     </span>
                     <div className="w-10" /> {/* Spacer */}
                   </div>
@@ -241,10 +247,10 @@ export function TabOverview({
         >
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold text-foreground">
-              Accessibility Diagnostics
+              {messages.diagnosticsTitle}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              App endpoint availability auditing
+              {messages.diagnosticsDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -257,7 +263,7 @@ export function TabOverview({
             >
               <div className="flex items-center justify-between border-b border-border/40 pb-2">
                 <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Health Status Check
+                  {messages.healthCheckTitle}
                 </span>
                 <span className="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono text-[10px] text-foreground">
                   {diagnosticMode === "healthy"
@@ -272,25 +278,21 @@ export function TabOverview({
 
               {diagnosticMode === "healthy" && (
                 <p className="leading-relaxed text-muted-foreground">
-                  Your app endpoints are responding normally. Cluster routing,
-                  SSL verification, and target pods are fully resolved.
+                  {messages.healthNormalDesc}
                 </p>
               )}
 
               {diagnosticMode === "error_502" && (
                 <div className="space-y-2 leading-relaxed">
                   <p className="font-semibold text-rose-600 dark:text-rose-400">
-                    Diagnostics failed: 502 Bad Gateway.
+                    {messages.badGatewayTitle}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    <strong>Root Cause:</strong> The origin server inside the
-                    Kubernetes pod is not listening on the expected port
-                    (targetPort: 8080) or crashed on boot.
+                    <strong>{messages.rootCause}</strong>{" "}
+                    {messages.badGatewayCause}
                   </p>
                   <p className="rounded-lg border border-border/40 bg-muted/30 p-2.5 font-mono text-[10px] leading-normal text-foreground dark:bg-black/40 dark:text-white">
-                    Solution: Ensure the app starts up on port 8080. Check
-                    &apos;Opensearch Logs&apos; to verify PHP-FPM / Node boot
-                    errors.
+                    {messages.badGatewaySolution}
                   </p>
                 </div>
               )}
@@ -298,16 +300,14 @@ export function TabOverview({
               {diagnosticMode === "ssl_expired" && (
                 <div className="space-y-2 leading-relaxed">
                   <p className="font-semibold text-rose-600 dark:text-rose-400">
-                    SSL Handshake Failure
+                    {messages.sslFailTitle}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    <strong>Root Cause:</strong> The custom domain certificate
-                    expired on 2026-05-18. Kubernetes cert-manager failed
-                    validation because DNS is misconfigured.
+                    <strong>{messages.rootCause}</strong>{" "}
+                    {messages.sslFailCause}
                   </p>
                   <p className="rounded-lg border border-border/40 bg-muted/30 p-2.5 font-mono text-[10px] leading-normal text-foreground dark:bg-black/40 dark:text-white">
-                    Solution: Visit the &apos;Domains &amp; SSL&apos; tab, check
-                    DNS mapping, and click &apos;Force SSL Renewal&apos;.
+                    {messages.sslFailSolution}
                   </p>
                 </div>
               )}
@@ -315,16 +315,14 @@ export function TabOverview({
               {diagnosticMode === "redirect_loop" && (
                 <div className="space-y-2 leading-relaxed">
                   <p className="font-semibold text-amber-600 dark:text-amber-400">
-                    Redirect Loop Detected
+                    {messages.redirectLoopTitle}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    <strong>Root Cause:</strong> Cloudflare Flexible SSL is
-                    active. Cloudflare hits ingress on HTTP, which redirects to
-                    HTTPS, sending it back to Cloudflare.
+                    <strong>{messages.rootCause}</strong>{" "}
+                    {messages.redirectLoopCause}
                   </p>
                   <p className="rounded-lg border border-border/40 bg-muted/30 p-2.5 font-mono text-[10px] leading-normal text-foreground dark:bg-black/40 dark:text-white">
-                    Solution: Change Cloudflare SSL setting to &apos;Full&apos;
-                    or &apos;Full (strict)&apos;.
+                    {messages.redirectLoopSolution}
                   </p>
                 </div>
               )}
@@ -332,19 +330,21 @@ export function TabOverview({
 
             <div className="space-y-2 rounded-xl border border-border/60 bg-muted/30 p-3.5 text-xs">
               <span className="block text-xs font-semibold text-foreground">
-                Cluster Endpoint Details
+                {messages.endpointDetailsTitle}
               </span>
               <div className="flex items-center justify-between pt-1 font-mono text-[11px] text-muted-foreground">
-                <span>Cluster Host:</span>
+                <span>{messages.clusterHost}</span>
                 <span className="text-foreground">k8s-ingress-prod.local</span>
               </div>
               <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
-                <span>Target Port:</span>
+                <span>{messages.targetPort}</span>
                 <span className="text-foreground">80 / 8080 (TCP)</span>
               </div>
               <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
-                <span>Replicas:</span>
-                <span className="text-foreground">{replicas} active</span>
+                <span>{messages.replicas}</span>
+                <span className="text-foreground">
+                  {replicas} {messages.active}
+                </span>
               </div>
             </div>
           </CardContent>

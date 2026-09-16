@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
@@ -105,6 +106,7 @@ type ConfirmationsRequestState =
 export function ConfirmationsTab() {
   const params = useParams<{ lang?: string }>()
   const lang = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(lang).console.adminBillingPayments.confirmations
   const [state, setState] = useState<ConfirmationsRequestState>({
     status: "loading",
   })
@@ -184,7 +186,7 @@ export function ConfirmationsTab() {
       {
         accessorKey: "invoiceNumber",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Invoice" />
+          <DataTableColumnHeader column={column} title={messages.colInvoice} />
         ),
         cell: ({ row }) => {
           const invoiceNumber =
@@ -208,7 +210,10 @@ export function ConfirmationsTab() {
       {
         accessorKey: "submittedAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Submitted" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.colSubmitted}
+          />
         ),
         cell: ({ row }) => formatSubmittedAt(row.original.submittedAt),
         sortingFn: "datetime",
@@ -216,7 +221,7 @@ export function ConfirmationsTab() {
       {
         accessorKey: "amount",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Amount" />
+          <DataTableColumnHeader column={column} title={messages.colAmount} />
         ),
         cell: ({ row }) => (
           <span className="font-medium">
@@ -231,7 +236,10 @@ export function ConfirmationsTab() {
             .filter(Boolean)
             .join(" "),
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Bank Account" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.colBankAccount}
+          />
         ),
         cell: ({ row }) => (
           <div className="grid gap-1">
@@ -247,14 +255,14 @@ export function ConfirmationsTab() {
       {
         accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={messages.colStatus} />
         ),
         cell: ({ row }) => <PaymentStatusBadge status={row.original.status} />,
       },
       {
         accessorKey: "notes",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Notes" />
+          <DataTableColumnHeader column={column} title={messages.colNotes} />
         ),
         cell: ({ row }) => (
           <span className="text-sm text-muted-foreground">
@@ -267,7 +275,7 @@ export function ConfirmationsTab() {
         enableHiding: false,
         header: () => (
           <span className="text-xs font-medium text-muted-foreground">
-            Actions
+            {messages.actions}
           </span>
         ),
         cell: ({ row }) => (
@@ -281,7 +289,7 @@ export function ConfirmationsTab() {
               setVerifiedAmount(String(row.original.amount))
             }}
           >
-            Review
+            {messages.review}
           </Button>
         ),
       },
@@ -315,7 +323,7 @@ export function ConfirmationsTab() {
             variant="outline"
             onClick={() => void fetchConfirmations()}
           >
-            Retry
+            {messages.retry}
           </Button>
         </div>
       </div>
@@ -332,14 +340,12 @@ export function ConfirmationsTab() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Payment Confirmations</CardTitle>
+            <CardTitle className="text-base">{messages.title}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-            Manual payment confirmations must be submitted from a customer
-            invoice/top-up flow so the invoice and organization context are
-            known. Use this tab to review pending confirmations.
+            {messages.description}
           </div>
 
           <DataTable
@@ -350,7 +356,7 @@ export function ConfirmationsTab() {
               notes: false,
               submittedAt: false,
             }}
-            searchPlaceholder="Filter confirmations..."
+            searchPlaceholder={messages.searchPlaceholder}
             searchableColumns={[
               "invoiceNumber",
               "bankAccount",
@@ -366,7 +372,7 @@ export function ConfirmationsTab() {
               },
             ]}
             initialSorting={[{ id: "submittedAt", desc: false }]}
-            emptyMessage="No payment confirmations match your filters."
+            emptyMessage={messages.emptyMessage}
           />
         </CardContent>
       </Card>
@@ -382,18 +388,15 @@ export function ConfirmationsTab() {
       >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Review payment confirmation</DialogTitle>
-            <DialogDescription>
-              Confirm the bank transfer details before marking the payment as
-              received.
-            </DialogDescription>
+            <DialogTitle>{messages.reviewModalTitle}</DialogTitle>
+            <DialogDescription>{messages.reviewModalDesc}</DialogDescription>
           </DialogHeader>
 
           {selectedConfirmation && (
             <div className="grid gap-4">
               <dl className="grid gap-3 sm:grid-cols-2">
                 <DetailRow
-                  label="Invoice"
+                  label={messages.labelInvoice}
                   value={
                     selectedConfirmation.invoiceNumber
                       ? `${selectedConfirmation.invoiceNumber} (${selectedConfirmation.invoiceId})`
@@ -403,7 +406,7 @@ export function ConfirmationsTab() {
                 {selectedConfirmation.invoiceTotal !== null &&
                   selectedConfirmation.invoiceTotal !== undefined && (
                     <DetailRow
-                      label="Invoice Total"
+                      label={messages.labelInvoiceTotal}
                       value={formatConfirmationAmount({
                         ...selectedConfirmation,
                         amount: selectedConfirmation.invoiceTotal,
@@ -411,28 +414,31 @@ export function ConfirmationsTab() {
                     />
                   )}
                 <DetailRow
-                  label="Submitted Amount"
+                  label={messages.labelSubmittedAmount}
                   value={formatConfirmationAmount(selectedConfirmation)}
                 />
                 <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
                   <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    Status
+                    {messages.labelStatus}
                   </dt>
                   <dd>
                     <PaymentStatusBadge status={selectedConfirmation.status} />
                   </dd>
                 </div>
-                <DetailRow label="Bank" value={selectedConfirmation.bankName} />
                 <DetailRow
-                  label="Account number"
+                  label={messages.labelBank}
+                  value={selectedConfirmation.bankName}
+                />
+                <DetailRow
+                  label={messages.labelAccountNumber}
                   value={selectedConfirmation.accountNumber}
                 />
                 <DetailRow
-                  label="Account holder"
+                  label={messages.labelAccountHolder}
                   value={selectedConfirmation.accountName || "-"}
                 />
                 <DetailRow
-                  label="Submitted"
+                  label={messages.labelSubmitted}
                   value={formatSubmittedAt(selectedConfirmation.submittedAt)}
                 />
               </dl>
@@ -442,24 +448,25 @@ export function ConfirmationsTab() {
                 selectedConfirmation.amount >
                   selectedConfirmation.invoiceTotal && (
                   <div className="flex items-center gap-2 rounded-md border border-green-500/20 bg-green-500/10 p-3 text-xs text-green-700 dark:text-green-300">
-                    <span className="font-semibold">Overpayment detected:</span>
+                    <span className="font-semibold">
+                      {messages.overpaymentDetected}
+                    </span>
                     <span>
-                      Customer transferred +
+                      {messages.customerTransferred}
                       {formatConfirmationAmount({
                         ...selectedConfirmation,
                         amount:
                           selectedConfirmation.amount -
                           selectedConfirmation.invoiceTotal,
                       })}{" "}
-                      over invoice total. The full verified amount will be
-                      credited to balance.
+                      {messages.overpaymentHelp}
                     </span>
                   </div>
                 )}
 
               <div className="grid gap-1 rounded-md border bg-muted/20 p-3">
                 <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  Notes
+                  {messages.labelNotes}
                 </dt>
                 <dd className="text-sm text-foreground">
                   {selectedConfirmation.notes || "-"}
@@ -469,7 +476,7 @@ export function ConfirmationsTab() {
               {isPendingReview && (
                 <div className="grid gap-2">
                   <Label htmlFor="verifiedAmount">
-                    Verified received amount (
+                    {messages.verifiedAmountPrefix}
                     {selectedConfirmation.currency || "IDR"})
                   </Label>
                   <Input
@@ -481,15 +488,16 @@ export function ConfirmationsTab() {
                     placeholder={String(selectedConfirmation.amount)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    This exact amount will be credited to the customer&apos;s
-                    balance and reflected on the invoice.
+                    {messages.verifiedAmountSuffix}
                   </p>
                 </div>
               )}
 
               {isPendingReview && (
                 <div className="grid gap-2">
-                  <Label htmlFor="rejectReason">Rejection reason</Label>
+                  <Label htmlFor="rejectReason">
+                    {messages.rejectionReason}
+                  </Label>
                   <Textarea
                     id="rejectReason"
                     value={rejectReason}
@@ -497,7 +505,7 @@ export function ConfirmationsTab() {
                     onInput={(event) =>
                       setRejectReason(event.currentTarget.value)
                     }
-                    placeholder="Explain why this payment confirmation is rejected."
+                    placeholder={messages.rejectionPlaceholder}
                   />
                 </div>
               )}
@@ -513,7 +521,7 @@ export function ConfirmationsTab() {
                 setRejectReason("")
               }}
             >
-              Close
+              {messages.close}
             </Button>
             {selectedConfirmation && isPendingReview && (
               <>
@@ -529,7 +537,7 @@ export function ConfirmationsTab() {
                     )
                   }
                 >
-                  Reject payment
+                  {messages.rejectPayment}
                 </Button>
                 <Button
                   type="button"
@@ -548,7 +556,7 @@ export function ConfirmationsTab() {
                     )
                   }
                 >
-                  Approve received payment
+                  {messages.approvePayment}
                 </Button>
               </>
             )}

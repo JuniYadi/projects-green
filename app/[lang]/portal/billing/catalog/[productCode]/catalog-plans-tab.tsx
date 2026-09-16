@@ -1,6 +1,8 @@
 "use client"
 
 import { useMemo } from "react"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -78,6 +80,10 @@ function PlanCard({
   identityErrors?: ProductPlanIdentityErrors[string]
   provisionAdapter?: ProductProvisionAdapter
 }>) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingCatalog.catalogPlansTab
   const isSelected = selectedPlanId === plan.id
   const enabledTerms = plan.enabledTerms
   const offerByCell = useMemo(
@@ -142,9 +148,11 @@ function PlanCard({
             <CardTitle className="text-base">
               {plan.name || "Unnamed plan"}
             </CardTitle>
-            <CardDescription>Code: {plan.code || "—"}</CardDescription>
+            <CardDescription>
+              {messages.code} {plan.code || "—"}
+            </CardDescription>
             {isSelected && (
-              <Badge variant="secondary">Selected from VPN package</Badge>
+              <Badge variant="secondary">{messages.selectedFromVpn}</Badge>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -159,7 +167,7 @@ function PlanCard({
               variant="ghost"
               size="sm"
               onClick={onRemove}
-              aria-label="Remove plan"
+              aria-label={messages.removePlan}
             >
               <TrashIcon className="h-4 w-4 text-destructive" />
             </Button>
@@ -169,14 +177,16 @@ function PlanCard({
       <CardContent className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label htmlFor={`catalog-plan-${plan.id}-name`}>Name *</Label>
+            <Label htmlFor={`catalog-plan-${plan.id}-name`}>
+              {messages.name}
+            </Label>
             <Input
               id={`catalog-plan-${plan.id}-name`}
               value={plan.name}
               onChange={(event) =>
                 onUpdate({ ...plan, name: event.target.value })
               }
-              placeholder="Plan display name"
+              placeholder={messages.namePlaceholder}
               aria-invalid={Boolean(identityErrors?.name)}
               aria-describedby={
                 identityErrors?.name
@@ -195,14 +205,16 @@ function PlanCard({
             )}
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={`catalog-plan-${plan.id}-code`}>Code *</Label>
+            <Label htmlFor={`catalog-plan-${plan.id}-code`}>
+              {messages.codeLabel}
+            </Label>
             <Input
               id={`catalog-plan-${plan.id}-code`}
               value={plan.code}
               onChange={(event) =>
                 onUpdate({ ...plan, code: event.target.value })
               }
-              placeholder="e.g. PRIVATE"
+              placeholder={messages.codePlaceholder}
               aria-invalid={Boolean(identityErrors?.code)}
               aria-describedby={
                 identityErrors?.code
@@ -225,7 +237,7 @@ function PlanCard({
         {/* Billing Strategy & Stock Controls */}
         <div className="grid gap-4 rounded-md border p-3 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label className="text-xs">Billing Strategy</Label>
+            <Label className="text-xs">{messages.billingStrategy}</Label>
             <div className="flex gap-4">
               <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <input
@@ -237,7 +249,7 @@ function PlanCard({
                     onUpdate({ ...plan, billingStrategy: "FIXED_CYCLE" })
                   }
                 />
-                Fixed Cycle (30-day term)
+                {messages.fixedCycle}
               </label>
               <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <input
@@ -249,14 +261,14 @@ function PlanCard({
                     onUpdate({ ...plan, billingStrategy: "PRO_RATA" })
                   }
                 />
-                Pro-rata (Calendar month)
+                {messages.prorata}
               </label>
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Inventory & Stock</Label>
+              <Label className="text-xs">{messages.inventoryStock}</Label>
               <label className="flex items-center gap-2 text-xs">
                 <Switch
                   checked={plan.stockControl === "TRACKED"}
@@ -268,7 +280,7 @@ function PlanCard({
                     })
                   }
                 />
-                Track stock
+                {messages.trackStock}
               </label>
             </div>
             {plan.stockControl === "TRACKED" && (
@@ -285,7 +297,7 @@ function PlanCard({
                           Number.parseInt(event.target.value, 10) || 0,
                       })
                     }
-                    placeholder="Available count"
+                    placeholder={messages.availableCountPlaceholder}
                   />
                 </div>
                 <label className="flex items-center gap-2 text-xs">
@@ -299,7 +311,7 @@ function PlanCard({
                       })
                     }
                   />
-                  Allow backorders
+                  {messages.allowBackorders}
                 </label>
               </div>
             )}
@@ -322,11 +334,11 @@ function PlanCard({
         )}
         {plan.offers.length === 0 && (
           <p className="rounded-md border border-dashed p-3 text-sm text-amber-700">
-            Pricing required before this plan can be published.
+            {messages.pricingRequired}
           </p>
         )}
         <div className="space-y-2">
-          <Label className="text-xs">Enabled terms</Label>
+          <Label className="text-xs">{messages.enabledTerms}</Label>
           <div className="flex flex-wrap gap-3">
             {BILLING_PERIODS.filter((period) => period !== "CUSTOM").map(
               (period) => (
@@ -345,7 +357,7 @@ function PlanCard({
 
         {currencies.length === 0 || enabledTerms.length === 0 ? (
           <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            Enable at least one currency and billing term to configure prices.
+            {messages.enableTermsDesc}
           </p>
         ) : (
           <div className="overflow-x-auto rounded-md border">
@@ -355,7 +367,9 @@ function PlanCard({
             >
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium">Currency</th>
+                  <th className="px-3 py-2 text-left font-medium">
+                    {messages.currency}
+                  </th>
                   {enabledTerms.map((period) => (
                     <th
                       key={period}
@@ -381,7 +395,7 @@ function PlanCard({
                             type="number"
                             min="0"
                             step="0.01"
-                            placeholder="Required"
+                            placeholder={messages.requiredPlaceholder}
                             value={offer?.periodPrice ?? ""}
                             onChange={(event) =>
                               updateCell(currency, period, event.target.value)
@@ -390,7 +404,7 @@ function PlanCard({
                           {offer?.periodPrice &&
                           Number(offer.periodPrice) <= 0 ? (
                             <p className="mt-1 text-xs text-destructive">
-                              Must be positive
+                              {messages.mustBePositive}
                             </p>
                           ) : null}
                         </td>
@@ -435,6 +449,10 @@ export function CatalogPlansTab({
   selectedPlanId?: string | null
   productCode?: ServiceType
 }>) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages =
+    getMessagesForMaybeLocale(lang).console.adminBillingCatalog.catalogPlansTab
   const identityErrors = validateProductPlanIdentities(plans)
   const provisionAdapter = productCode
     ? getProvisionAdapter(productCode)
@@ -463,7 +481,7 @@ export function CatalogPlansTab({
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Preview mode: plans are read-only.
+          {messages.previewReadOnly}
         </p>
         {plans.map((plan) => (
           <div key={plan.id} className="rounded-md border p-4">
@@ -487,7 +505,9 @@ export function CatalogPlansTab({
   return (
     <div className="space-y-4">
       {plans.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No plans configured.</p>
+        <p className="text-sm text-muted-foreground">
+          {messages.noPlansConfigured}
+        </p>
       ) : (
         plans.map((plan) => (
           <PlanCard
@@ -508,7 +528,7 @@ export function CatalogPlansTab({
       )}
       <Button variant="outline" className="w-full" onClick={handleAddPlan}>
         <PlusIcon className="mr-2 h-4 w-4" />
-        Add plan
+        {messages.addPlan}
       </Button>
     </div>
   )

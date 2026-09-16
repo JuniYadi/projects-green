@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef, MouseEvent, WheelEvent } from "react"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   Globe,
   Cloud,
@@ -31,6 +33,9 @@ export function TrafficFlowCanvas({
   setDbConnected,
   domains,
 }: TrafficFlowCanvasProps) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages = getMessagesForMaybeLocale(lang).console.deploy.operateTraffic
   // Hydration safety
   const [isMounted, setIsMounted] = useState(
     () => typeof window !== "undefined" && process.env.NODE_ENV === "test"
@@ -223,10 +228,10 @@ export function TrafficFlowCanvas({
               <span className="relative flex h-2 w-2">
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-neutral-700"></span>
               </span>
-              Cluster Traffic Routing Canvas
+              {messages.canvasTitle}
             </span>
             <span className="block text-[10px] text-muted-foreground">
-              Loading simulation canvas...
+              {messages.loading}
             </span>
           </div>
         </div>
@@ -252,11 +257,10 @@ export function TrafficFlowCanvas({
                 className={`relative inline-flex h-2 w-2 rounded-full ${isHealthy ? "bg-emerald-500" : "bg-rose-500"}`}
               ></span>
             </span>
-            Cluster Traffic Routing Canvas
+            {messages.canvasTitle}
           </span>
           <span className="block text-[10px] text-muted-foreground">
-            Drag to pan, scroll to zoom. Live request paths from edge to
-            database.
+            {messages.canvasSubtitle}
           </span>
         </div>
 
@@ -265,7 +269,7 @@ export function TrafficFlowCanvas({
           {/* Domain Dropdown Selection */}
           <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/60 px-3 py-1">
             <span className="font-semibold text-muted-foreground">
-              Active Domain:
+              {messages.activeDomain}
             </span>
             <select
               value={selectedDomain}
@@ -294,7 +298,7 @@ export function TrafficFlowCanvas({
 
           <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/60 px-3 py-1">
             <span className="font-semibold text-muted-foreground">
-              Cloudflare:
+              {messages.cloudflare}
             </span>
             <button
               onClick={() => setCloudflareEnabled(!cloudflareEnabled)}
@@ -310,7 +314,7 @@ export function TrafficFlowCanvas({
 
           <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/60 px-3 py-1">
             <span className="font-semibold text-muted-foreground">
-              Database:
+              {messages.database}
             </span>
             <button
               onClick={() => setDbConnected(!dbConnected)}
@@ -587,11 +591,11 @@ export function TrafficFlowCanvas({
                 className="shrink-0 text-blue-500 dark:text-blue-400"
               />
               <span className="text-[11px] font-bold tracking-wide text-foreground">
-                Internet
+                {messages.internet}
               </span>
             </div>
             <div className="text-[9px] leading-tight font-semibold text-neutral-600 select-none dark:text-neutral-400">
-              User Traffic
+              {messages.userTraffic}
             </div>
             <div className="font-mono text-[9px] leading-none">
               <span
@@ -632,7 +636,7 @@ export function TrafficFlowCanvas({
               <span
                 className={`text-[11px] font-bold tracking-wide ${cloudflareEnabled ? "text-foreground" : "text-muted-foreground"}`}
               >
-                Cloudflare
+                {messages.cloudflareNode}
               </span>
             </div>
             <div className="font-mono text-[8px] font-bold">
@@ -648,7 +652,7 @@ export function TrafficFlowCanvas({
             </div>
             {cloudflareEnabled && (
               <div className="font-mono text-[8px] font-medium text-neutral-600 dark:text-neutral-400">
-                SSL: Full Strict
+                {messages.sslFullStrict}
               </div>
             )}
           </div>
@@ -680,15 +684,15 @@ export function TrafficFlowCanvas({
             <div className="mt-1 font-mono text-[8px] select-none">
               {isSslError ? (
                 <span className="font-bold text-rose-600 dark:text-rose-500">
-                  SSL HANDSHAKE FAIL
+                  {messages.sslHandshakeFail}
                 </span>
               ) : isRedirectLoop ? (
                 <span className="font-bold text-amber-600 dark:text-amber-500">
-                  301 LOOP DETECTED
+                  {messages.loopDetected}
                 </span>
               ) : (
                 <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                  SSL ACTIVE (ACM)
+                  {messages.sslActiveAcm}
                 </span>
               )}
             </div>
@@ -705,7 +709,7 @@ export function TrafficFlowCanvas({
             className="pointer-events-auto absolute flex flex-col rounded-3xl border border-dashed border-border bg-muted/[0.05] p-3 text-left dark:bg-white/[0.005]"
           >
             <span className="mb-2 block text-[8px] font-bold tracking-wider text-neutral-500 uppercase select-none dark:text-muted-foreground/80">
-              K8s Namespace
+              {messages.k8sNamespace}
             </span>
 
             {/* Container mapping active Pods */}
@@ -752,13 +756,13 @@ export function TrafficFlowCanvas({
 
                     <div className="mt-1.5 flex justify-between border-t border-border/40 pt-1.5 font-mono text-[8px] font-medium text-neutral-600 dark:text-neutral-400">
                       <span>
-                        CPU:{" "}
+                        {messages.cpu}{" "}
                         <span className="font-bold text-foreground">
                           {cpu}%
                         </span>
                       </span>
                       <span>
-                        RAM:{" "}
+                        {messages.ram}{" "}
                         <span className="font-bold text-foreground">
                           {mem}MB
                         </span>
@@ -766,7 +770,7 @@ export function TrafficFlowCanvas({
                     </div>
                     <div className="mt-1 font-mono text-[8px] font-medium text-neutral-600 dark:text-neutral-400">
                       <span>
-                        STATUS:{" "}
+                        {messages.status}{" "}
                         <span
                           className={
                             isPodError
@@ -804,13 +808,13 @@ export function TrafficFlowCanvas({
                 className={`shrink-0 ${dbConnected ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500"}`}
               />
               <span className="text-[11px] font-bold tracking-wide text-foreground">
-                MySQL DB
+                {messages.mysqlDb}
               </span>
             </div>
             <div className="mt-1 font-mono text-[8px] font-bold">
               {dbConnected ? (
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  12 Active Conns
+                  {messages.activeConns}
                 </span>
               ) : (
                 <span className="text-rose-500">CONN_TIMEOUT</span>
@@ -824,21 +828,21 @@ export function TrafficFlowCanvas({
           <button
             onClick={zoomIn}
             className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-muted text-foreground/80 transition-all hover:bg-muted/80 hover:text-foreground active:scale-95"
-            title="Zoom In"
+            title={messages.zoomIn}
           >
             <MagnifyingGlassPlus size={16} />
           </button>
           <button
             onClick={zoomOut}
             className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-muted text-foreground/80 transition-all hover:bg-muted/80 hover:text-foreground active:scale-95"
-            title="Zoom Out"
+            title={messages.zoomOut}
           >
             <MagnifyingGlassMinus size={16} />
           </button>
           <button
             onClick={resetZoom}
             className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-muted text-foreground/80 transition-all hover:bg-muted/80 hover:text-foreground active:scale-95"
-            title="Reset Zoom"
+            title={messages.resetZoom}
           >
             <ArrowsOutSimple size={16} />
           </button>
@@ -848,15 +852,15 @@ export function TrafficFlowCanvas({
         <div className="absolute right-4 bottom-4 z-10 flex flex-col gap-1 rounded-xl border border-border bg-card px-3 py-2 text-[10px] font-medium text-neutral-600 shadow-md backdrop-blur-md dark:text-neutral-400">
           <div className="flex items-center gap-1.5">
             <span className="inline-block h-1 w-2.5 rounded-full bg-emerald-500" />
-            <span>Healthy / Active traffic</span>
+            <span>{messages.legendHealthy}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="inline-block h-1 w-2.5 rounded-full bg-rose-500" />
-            <span>Blocked / Error traffic</span>
+            <span>{messages.legendBlocked}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="inline-block h-1 w-2.5 rounded-full bg-orange-400" />
-            <span>Cloudflare Proxied path</span>
+            <span>{messages.legendProxied}</span>
           </div>
         </div>
       </div>

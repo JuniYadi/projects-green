@@ -1,6 +1,8 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { HardDrive, Key, Trash } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -49,6 +51,9 @@ export function TabMounts({
   onAddMount,
   onDeleteMount,
 }: TabMountsProps) {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages = getMessagesForMaybeLocale(lang).console.deploy.operateMounts
   const [newMountName, setNewMountName] = useState("")
   const [newMountPath, setNewMountPath] = useState("")
   const [newMountReadOnly, setNewMountReadOnly] = useState(true)
@@ -157,12 +162,11 @@ export function TabMounts({
         <Card size="sm" className="border-border bg-card shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-              <HardDrive size={18} className="text-primary" /> Persistent Volume
-              (PVC)
+              <HardDrive size={18} className="text-primary" />{" "}
+              {messages.persistentVolumeTitle}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Managed persistent block storage volume attached to this
-              application
+              {messages.persistentVolumeDesc}
             </CardDescription>
           </CardHeader>
           <CardContent className="text-xs">
@@ -172,8 +176,7 @@ export function TabMounts({
                   {persistentStorage.mountPath}
                 </span>
                 <p className="font-sans text-[11px] font-normal text-muted-foreground">
-                  ReadWriteOnce persistent disk for application data and
-                  databases.
+                  {messages.persistentVolumeRwo}
                 </p>
               </div>
               <span className="rounded-md border border-primary/20 bg-primary/10 px-2.5 py-1 font-bold text-primary">
@@ -188,12 +191,11 @@ export function TabMounts({
       <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-            <Key size={18} className="text-primary" /> File Mounts &
-            Configurations
+            <Key size={18} className="text-primary" />{" "}
+            {messages.fileMountsTitle}
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Mount configuration files, certificates, or secrets securely into
-            container paths
+            {messages.fileMountsDesc}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs">
@@ -205,10 +207,10 @@ export function TabMounts({
           <form onSubmit={handleAddMount} className="space-y-3.5">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-muted-foreground">
-                Mount Name
+                {messages.mountName}
               </label>
               <Input
-                placeholder="e.g. app-config or application-key"
+                placeholder={messages.mountNamePlaceholder}
                 value={newMountName}
                 onChange={(e) => setNewMountName(e.target.value)}
                 className="h-9 border-border bg-background text-xs focus:border-primary/50"
@@ -216,22 +218,21 @@ export function TabMounts({
             </div>
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-muted-foreground">
-                Container Target Path
+                {messages.targetPath}
               </label>
               <Input
-                placeholder="e.g. /etc/app/config.yaml or /var/secrets/key.pem"
+                placeholder={messages.targetPathPlaceholder}
                 value={newMountPath}
                 onChange={(e) => setNewMountPath(e.target.value)}
                 className="h-9 border-border bg-background font-mono text-xs focus:border-primary/50"
               />
               <span className="block text-[10px] leading-relaxed text-muted-foreground/80">
-                Must be absolute. Path is write-protected for container
-                security.
+                {messages.targetPathHelp}
               </span>
             </div>
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-muted-foreground">
-                File Content / Configuration Data
+                {messages.contentData}
               </label>
               <Textarea
                 ref={mountContentInputRef}
@@ -246,23 +247,23 @@ export function TabMounts({
             <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 p-3.5">
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs font-semibold text-foreground">
-                  Read-Only Mount
+                  {messages.readOnly}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
-                  Recommended for configuration files and certificates.
+                  {messages.readOnlyDesc}
                 </span>
               </div>
               <Switch
                 checked={newMountReadOnly}
                 onCheckedChange={setNewMountReadOnly}
-                aria-label="Set mount as read-only"
+                aria-label={messages.setReadOnlyAria}
               />
             </div>
             <Button
               type="submit"
               className="mt-2 h-9 w-full bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/95"
             >
-              Create File Mount
+              {messages.createButton}
             </Button>
           </form>
         </CardContent>
@@ -272,19 +273,21 @@ export function TabMounts({
       <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold text-foreground">
-            Active Pod File Mounts
+            {messages.activeMountsTitle}
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Configuration files attached directly to this application
+            {messages.activeMountsDesc}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="overflow-hidden rounded-xl border border-border bg-card text-xs">
             <div className="grid grid-cols-12 border-b border-border bg-muted/30 px-4 py-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-              <span className="col-span-4">Mount Target</span>
-              <span className="col-span-3">Type / Mode</span>
-              <span className="col-span-3">Content Summary</span>
-              <span className="col-span-2 text-right font-normal">Actions</span>
+              <span className="col-span-4">{messages.colTarget}</span>
+              <span className="col-span-3">{messages.colType}</span>
+              <span className="col-span-3">{messages.colSummary}</span>
+              <span className="col-span-2 text-right font-normal">
+                {messages.colActions}
+              </span>
             </div>
 
             <div className="divide-y divide-border">
@@ -300,11 +303,11 @@ export function TabMounts({
                     <span>{item.sourceType.toUpperCase()}</span>
                     {item.readOnly ? (
                       <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-500">
-                        ● Read-Only
+                        {messages.readOnlyDot}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[9px] font-medium text-muted-foreground">
-                        ● Read-Write
+                        {messages.readWriteDot}
                       </span>
                     )}
                   </span>
@@ -318,7 +321,7 @@ export function TabMounts({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      aria-label="Delete mount"
+                      aria-label={messages.deleteAria}
                       onClick={() => handleDeleteMount(item.id)}
                       className="h-7 w-7 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300"
                     >
@@ -330,7 +333,7 @@ export function TabMounts({
 
               {mounts[selectedEnv].length === 0 && (
                 <div className="p-6 text-center font-medium text-muted-foreground">
-                  No volume or configuration files mounted.
+                  {messages.emptyState}
                 </div>
               )}
             </div>
@@ -338,12 +341,10 @@ export function TabMounts({
 
           <div className="space-y-1.5 rounded-xl border border-border bg-muted/20 p-4 text-xs leading-relaxed">
             <span className="block text-xs font-bold text-foreground">
-              How File Mounts Work
+              {messages.howItWorksTitle}
             </span>
             <p className="leading-normal text-muted-foreground">
-              Uploaded configuration files and certificates are stored encrypted
-              and automatically mounted into your application container
-              filesystem at startup.
+              {messages.howItWorksDesc}
             </p>
           </div>
         </CardContent>
