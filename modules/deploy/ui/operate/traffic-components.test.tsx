@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from "bun:test"
 import { render, cleanup } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { TrafficSummaryCards } from "./traffic-summary-cards"
 import { TrafficHourlyChart } from "./traffic-hourly-chart"
 import { TrafficTopPagesCard } from "./traffic-top-pages-card"
@@ -36,22 +37,57 @@ describe("Frontend Traffic Components", () => {
   })
 
   describe("TrafficHourlyChart", () => {
-    it("renders hourly trend chart with bar representation and tooltips", () => {
+    const trend = [
+      {
+        label: "00:00",
+        requests: 50,
+        errors: 1,
+        visitors: 30,
+        automated: 5,
+        humanLike: 45,
+      },
+      {
+        label: "01:00",
+        requests: 120,
+        errors: 0,
+        visitors: 80,
+        automated: 10,
+        humanLike: 110,
+      },
+    ]
+
+    it("defaults to the Visitors metric with an estimate disclaimer", () => {
       const view = render(
         <TrafficHourlyChart
-          trend={[
-            { label: "00:00", requests: 50, errors: 1 },
-            { label: "01:00", requests: 120, errors: 0 },
-          ]}
+          trend={trend}
           granularity="daily"
           periodLabel="10 Sep 2026"
         />
       )
 
-      expect(view.getByText("Grafik Tren Kunjungan")).toBeTruthy()
+      expect(view.getByText("Estimasi Pengunjung")).toBeTruthy()
       expect(
-        view.getByText("Distribusi per jam (00:00 - 23:00 UTC) — 10 Sep 2026")
+        view.getByText(
+          "Distribusi per jam (00:00 - 23:00 UTC) — 10 Sep 2026 (estimasi, bukan angka pasti)"
+        )
       ).toBeTruthy()
+    })
+
+    it("switches to the Requests metric showing human-like/automated legend", async () => {
+      const user = userEvent.setup()
+      const view = render(
+        <TrafficHourlyChart
+          trend={trend}
+          granularity="daily"
+          periodLabel="10 Sep 2026"
+        />
+      )
+
+      await user.click(view.getByText("Requests"))
+
+      expect(view.getByText("Komposisi Permintaan")).toBeTruthy()
+      expect(view.getByText("Human-like")).toBeTruthy()
+      expect(view.getByText("Automated")).toBeTruthy()
     })
   })
 
