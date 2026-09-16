@@ -86,7 +86,9 @@ describe("AdminWhatsappAnalyticsView component", () => {
       await waitFor(() => {
         expect(view.getByText("WhatsApp Analytics & Profit")).toBeDefined()
         expect(view.getAllByText(/Tenant Alpha/).length).toBeGreaterThan(0)
-        expect(view.getByText(/Peringatan Defisit Margin/)).toBeDefined()
+        expect(
+          view.getByText(/Margin Deficit Warning|Peringatan Defisit Margin/)
+        ).toBeDefined()
       })
 
       const syncButton = view.getByRole("button", {

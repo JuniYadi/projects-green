@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -10,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { DEPLOY_TEMPLATES } from "@/modules/deploy/deploy.constants"
 import type {
   Branch,
@@ -208,6 +211,11 @@ export function StepSource({
   isDetecting,
   detectionError,
 }: StepSourceProps) {
+  const params = useParams()
+  const lang = typeof params?.lang === "string" ? params.lang : "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.app.deployWizard.source
+
   const [repoFilter, setRepoFilter] = useState("")
   const [templateFilter, setTemplateFilter] = useState("")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -260,10 +268,9 @@ export function StepSource({
   return (
     <Card className="border border-border bg-card shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl font-bold">Deploy Source</CardTitle>
+        <CardTitle className="text-xl font-bold">{messages.deploySource}</CardTitle>
         <CardDescription>
-          Choose a pre-configured template to deploy instantly, or connect your
-          GitHub account.
+          {messages.deploySourceDesc}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -280,14 +287,14 @@ export function StepSource({
               className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <GithubLogo className="mr-2 h-4 w-4" />
-              GitHub Repository
+              {messages.githubRepo}
             </TabsTrigger>
             <TabsTrigger
               value="template"
               className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <FileCode className="mr-2 h-4 w-4" />
-              Instant Templates
+              {messages.instantTemplates}
             </TabsTrigger>
           </TabsList>
 
@@ -305,14 +312,14 @@ export function StepSource({
                   </div>
                   <div>
                     <h4 className="text-sm font-semibold">
-                      GitHub Integration
+                      {messages.githubIntegration}
                     </h4>
                     <p className="text-xs text-muted-foreground">
                       {githubReconnectRequired
-                        ? "GitHub access expired or was revoked. Reconnect to continue."
+                        ? messages.githubAccessExpired
                         : githubConnectionStatus === "connected"
-                          ? "Successfully connected to your GitHub account."
-                          : "Connect your GitHub account to access your repositories."}
+                          ? messages.connected
+                          : messages.connectGithub}
                     </p>
                   </div>
                 </div>
@@ -321,7 +328,7 @@ export function StepSource({
                   {githubConnectionStatus === "connected" && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-600">
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                      Connected
+                      {messages.connected}
                     </span>
                   )}
                   <div className="flex items-center gap-2">
@@ -334,12 +341,12 @@ export function StepSource({
                       onClick={onConnectGithub}
                     >
                       {isConnectingGithub
-                        ? "Redirecting..."
+                        ? messages.redirecting
                         : githubReconnectRequired
-                          ? "Reconnect GitHub"
+                          ? messages.reconnectGithub
                           : githubConnectionStatus === "connected"
-                            ? "Add Account"
-                            : "Connect GitHub"}
+                            ? messages.account
+                            : messages.connectGithub}
                     </Button>
                     {githubConnectionStatus === "connected" && (
                       <Button
@@ -348,7 +355,7 @@ export function StepSource({
                         variant="ghost"
                         className="h-8 w-8 p-2"
                         onClick={() => onOwnerSelect(selectedOwnerId)}
-                        title="Refresh list"
+                        title={messages.refreshList}
                       >
                         <ArrowRight className="h-4 w-4 rotate-[-90deg]" />
                       </Button>
@@ -360,7 +367,7 @@ export function StepSource({
               {githubConnectionStatus === "error" && (
                 <div className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-2.5 text-xs text-destructive">
                   <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                  GitHub connection failed. Please try connecting again.
+                  {messages.connectionFailed}
                 </div>
               )}
 
@@ -370,8 +377,7 @@ export function StepSource({
                   className="mt-3 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  GitHub access expired or was revoked. Reconnect GitHub to
-                  continue listing repositories.
+                  {messages.githubAccessExpired}
                 </div>
               )}
             </div>
@@ -384,7 +390,7 @@ export function StepSource({
                     {ownerOptionsLoading ? (
                       <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                        Loading...
+                        {messages.loadingAccounts}
                       </div>
                     ) : ownerOptionsError ? (
                       <p className="text-xs text-destructive">
@@ -392,7 +398,7 @@ export function StepSource({
                       </p>
                     ) : owners.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        No accounts found. Install the GitHub App first.
+                        {messages.noAccountsInstall}
                       </p>
                     ) : (
                       <div>
@@ -402,7 +408,7 @@ export function StepSource({
                           disabled={owners.length === 1}
                         >
                           <SelectTrigger className="h-9 w-full text-xs">
-                            <SelectValue placeholder="Select account" />
+                            <SelectValue placeholder={messages.selectAccount} />
                           </SelectTrigger>
                           <SelectContent>
                             {owners.map((owner) => (
@@ -423,7 +429,7 @@ export function StepSource({
                         </Select>
                         {owners.length === 1 && (
                           <p className="mt-1 text-[10px] text-muted-foreground">
-                            Only one GitHub account connected.
+                            {messages.onlyOneAccount}
                           </p>
                         )}
                       </div>
@@ -436,7 +442,7 @@ export function StepSource({
                       <div className="relative">
                         <MagnifyingGlass className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Search repositories..."
+                          placeholder={messages.searchRepositories}
                           value={repoFilter}
                           onChange={(e) => setRepoFilter(e.target.value)}
                           className="h-9 pl-9 text-xs"
@@ -452,7 +458,7 @@ export function StepSource({
                     {repositoryOptionsLoading ? (
                       <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed py-4 text-xs text-muted-foreground">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                        Loading repositories...
+                        {messages.loadingRepositories}
                       </div>
                     ) : repositoryOptionsError ? (
                       <p className="text-xs text-destructive">
@@ -460,9 +466,7 @@ export function StepSource({
                       </p>
                     ) : filteredRepositories.length === 0 ? (
                       <div className="rounded-xl border border-dashed py-6 text-center text-xs text-muted-foreground">
-                        {repoFilter
-                          ? "No repositories match your filter."
-                          : "No repositories found for this account."}
+                        {messages.noMatches}
                       </div>
                     ) : (
                       <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
@@ -496,12 +500,12 @@ export function StepSource({
                                   {repo.isPrivate ? (
                                     <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700">
                                       <Lock className="h-3 w-3" />
-                                      Private
+                                      {messages.privateRepository}
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-700">
                                       <Globe className="h-3 w-3" />
-                                      Public
+                                      {messages.publicRepository}
                                     </span>
                                   )}
                                   {repo.defaultBranch && (
@@ -527,7 +531,7 @@ export function StepSource({
                 {selectedRepositoryId && isDetecting && (
                   <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
                     <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    Detecting framework from repository...
+                    {messages.detectingFramework}
                   </div>
                 )}
                 {selectedRepositoryId && detectionError && (
@@ -543,12 +547,12 @@ export function StepSource({
                       <div className="flex items-center justify-between">
                         <label className="flex items-center gap-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                           <GitBranch className="h-3.5 w-3.5" />
-                          Deployment Branch
+                          {messages.deploymentBranch}
                         </label>
                       </div>
                       {branches.length === 0 ? (
                         <p className="text-xs text-muted-foreground">
-                          No branches found.
+                          {messages.noBranches}
                         </p>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
@@ -579,12 +583,12 @@ export function StepSource({
                     <div className="space-y-2">
                       <label className="flex items-center gap-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                         <Folder className="h-3.5 w-3.5" />
-                        Root Directory
+                        {messages.rootDirectory}
                       </label>
                       <div className="relative">
                         <Folder className="absolute top-2.5 left-3 h-4.5 w-4.5 text-muted-foreground" />
                         <Input
-                          aria-label="Root directory"
+                          aria-label={messages.rootDirectory}
                           value={rootDirectory}
                           onChange={(event) =>
                             onRootDirectoryChange(event.target.value)
@@ -594,8 +598,7 @@ export function StepSource({
                         />
                       </div>
                       <p className="text-[10px] text-muted-foreground">
-                        Where your application build files are located. Use root
-                        (/) by default.
+                        {messages.rootDirectoryHelp}
                       </p>
                     </div>
                   </div>
@@ -611,13 +614,13 @@ export function StepSource({
           >
             <div className="flex items-center justify-between gap-4">
               <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Select Instant Template
+                {messages.selectInstantTemplate}
               </label>
               <div className="relative w-full max-w-xs">
                 <MagnifyingGlass className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search templates..."
+                  placeholder={messages.searchTemplates}
                   onChange={(e) => {
                     setTemplateFilter(e.target.value)
                     setCurrentPage(1)
@@ -665,7 +668,7 @@ export function StepSource({
                       ? "border-primary/30 bg-primary/5 text-primary"
                       : "border-border bg-background text-muted-foreground hover:bg-muted/40"
                   )}
-                  title="Grid View"
+                  title={messages.gridView}
                 >
                   <SquaresFour className="h-4 w-4" />
                 </button>
@@ -678,7 +681,7 @@ export function StepSource({
                       ? "border-primary/30 bg-primary/5 text-primary"
                       : "border-border bg-background text-muted-foreground hover:bg-muted/40"
                   )}
-                  title="List View"
+                  title={messages.listView}
                 >
                   <List className="h-4 w-4" />
                 </button>
@@ -687,7 +690,7 @@ export function StepSource({
 
             {filteredTemplates.length === 0 ? (
               <div className="rounded-xl border border-dashed py-8 text-center text-xs text-muted-foreground">
-                No templates match your search.
+                {messages.noTemplatesMatch}
               </div>
             ) : (
               <div className="space-y-4">
@@ -833,7 +836,7 @@ export function StepSource({
                                 </span>
                               ) : (
                                 <span className="text-xs font-medium text-muted-foreground transition-colors group-hover:text-primary">
-                                  Select
+                                  {messages.selectAction}
                                 </span>
                               )}
                             </div>
@@ -848,7 +851,7 @@ export function StepSource({
                 {totalPages > 1 && (
                   <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-4">
                     <div className="text-[11px] font-medium text-muted-foreground">
-                      Showing{" "}
+                      {messages.showing}{" "}
                       <span className="font-semibold text-foreground">
                         {(currentPage - 1) * ITEMS_PER_PAGE + 1}
                       </span>
@@ -859,11 +862,11 @@ export function StepSource({
                           currentPage * ITEMS_PER_PAGE
                         )}
                       </span>{" "}
-                      of{" "}
+                      {messages.of}{" "}
                       <span className="font-semibold text-foreground">
                         {filteredTemplates.length}
                       </span>{" "}
-                      templates
+                      {messages.templates}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Button
@@ -877,7 +880,7 @@ export function StepSource({
                         className="flex h-8 items-center gap-1 border-border px-2.5 text-xs font-medium shadow-sm"
                       >
                         <CaretLeft className="h-3.5 w-3.5" />
-                        Previous
+                        {messages.previous}
                       </Button>
                       <div className="px-2 text-xs font-semibold text-muted-foreground">
                         {currentPage} / {totalPages}
@@ -894,7 +897,7 @@ export function StepSource({
                         }
                         className="flex h-8 items-center gap-1 border-border px-2.5 text-xs font-medium shadow-sm"
                       >
-                        Next
+                        {messages.nextAction}
                         <CaretRight className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -908,23 +911,23 @@ export function StepSource({
               <div className="border-t border-border pt-4">
                 {!templateId ? (
                   <div className="rounded-xl border border-dashed py-6 text-center text-xs text-muted-foreground">
-                    Select a template above to see package details.
+                    {messages.selectTemplateAbovePrompt}
                   </div>
                 ) : selectedTemplate ? (
                   <div className="grid gap-6">
                     {/* Package Details Panel */}
                     <div className="rounded-xl border border-border bg-muted/20 p-4">
                       <h4 className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        Package Details
+                        {messages.packageDetails}
                       </h4>
                       <div className="grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
                         <div>
                           <span className="block text-muted-foreground">
-                            Compute
+                            {messages.compute}
                           </span>
                           <span className="font-semibold">
                             {(selectedTemplate.defaultCpu / 1000).toFixed(1)}{" "}
-                            vCPU /{" "}
+                            {messages.vcpuPer}{" "}
                             {selectedTemplate.defaultMemory >= 1024
                               ? `${(selectedTemplate.defaultMemory / 1024).toFixed(0)} GB`
                               : `${selectedTemplate.defaultMemory} MB`}
@@ -932,7 +935,7 @@ export function StepSource({
                         </div>
                         <div>
                           <span className="block text-muted-foreground">
-                            Runtime
+                            {messages.runtime}
                           </span>
                           <span className="font-semibold">
                             {selectedTemplate.build.useDockerfile
@@ -942,7 +945,7 @@ export function StepSource({
                         </div>
                         <div>
                           <span className="block text-muted-foreground">
-                            Default Port
+                            {messages.defaultPort}
                           </span>
                           <span className="font-semibold">
                             {selectedTemplate.build.defaultPort ?? "—"}
@@ -950,7 +953,7 @@ export function StepSource({
                         </div>
                         <div>
                           <span className="block text-muted-foreground">
-                            Estimated Cost
+                            {messages.estimatedCost}
                           </span>
                           <span className="font-semibold">
                             ${packageHourlyCost.toFixed(4)}/hr
@@ -962,7 +965,7 @@ export function StepSource({
                     {/* App Name */}
                     <div className="space-y-2">
                       <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        App Name
+                        {messages.appName}
                       </label>
                       <Input
                         value={appName}
@@ -971,15 +974,14 @@ export function StepSource({
                         className="h-9 text-xs"
                       />
                       <p className="text-[10px] text-muted-foreground">
-                        Enter a name for your application. It will be used to
-                        generate the URL.
+                        {messages.appNameHelp}
                       </p>
                     </div>
 
                     {/* Resource Plan */}
                     <div className="space-y-2">
                       <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        Resource Plan
+                        {messages.resourcePlan}
                       </label>
                       <ResourcePlanSelector
                         selectedPlanId={templateResourcePlanId}
@@ -1002,7 +1004,7 @@ export function StepSource({
           onClick={onCancel}
           className="h-9 border-border px-4 text-xs font-semibold shadow-sm"
         >
-          Cancel
+          {messages.cancel}
         </Button>
         <div className="flex items-center gap-2">
           {sourceType === "template" && templateId && appName.trim() && (
@@ -1013,7 +1015,7 @@ export function StepSource({
               className="flex h-9 items-center gap-1 px-4 text-xs font-semibold shadow-sm"
             >
               <RocketLaunchIcon className="h-3.5 w-3.5" />
-              Deploy with defaults
+              {messages.deployWithDefaults}
             </Button>
           )}
           <Button
@@ -1022,7 +1024,7 @@ export function StepSource({
             disabled={!canProceed}
             className="flex h-9 items-center gap-1 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
           >
-            Next Step
+            {messages.nextStep}
             <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </div>

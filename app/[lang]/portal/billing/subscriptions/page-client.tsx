@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -120,6 +122,11 @@ const PAGE_SIZE = 20
 const EMPTY_SUBSCRIPTIONS: AdminSubscriptionItem[] = []
 
 export function BillingSubscriptionsPage() {
+  const params = useParams()
+  const lang = (params?.lang as string) || "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).console.adminBillingSubscriptions
+
   const searchParams = useSearchParams()
   const linkedSubscriptionId = searchParams.get("subscriptionId")
   const [selectedSubscription, setSelectedSubscription] =
@@ -178,7 +185,7 @@ export function BillingSubscriptionsPage() {
       {
         accessorKey: "organizationId",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Organization" />
+          <DataTableColumnHeader column={column} title={messages.colOrganization} />
         ),
         cell: ({ row }) =>
           row.original.organizationId ? (
@@ -195,7 +202,7 @@ export function BillingSubscriptionsPage() {
       {
         accessorKey: "packageCode",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Product / plan" />
+          <DataTableColumnHeader column={column} title={messages.colProduct} />
         ),
         cell: ({ row }) => (
           <Button
@@ -211,19 +218,19 @@ export function BillingSubscriptionsPage() {
       {
         accessorKey: "billingPeriod",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Billing period" />
+          <DataTableColumnHeader column={column} title={messages.colBillingPeriod} />
         ),
       },
       {
         accessorKey: "type",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Type" />
+          <DataTableColumnHeader column={column} title={messages.colType} />
         ),
       },
       {
         accessorKey: "periodPrice",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Price" />
+          <DataTableColumnHeader column={column} title={messages.colPrice} />
         ),
         cell: ({ row }) =>
           formatBillingMoney(
@@ -234,7 +241,7 @@ export function BillingSubscriptionsPage() {
       {
         accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Service" />
+          <DataTableColumnHeader column={column} title={messages.colService} />
         ),
         cell: ({ row }) => (
           <Badge variant={serviceStatusVariant(row.original.status)}>
@@ -245,7 +252,7 @@ export function BillingSubscriptionsPage() {
       {
         accessorKey: "orderStatus",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Payment" />
+          <DataTableColumnHeader column={column} title={messages.colPayment} />
         ),
         cell: ({ row }) => (
           <PaymentStatusBadge orderStatus={row.original.orderStatus} />
@@ -254,7 +261,7 @@ export function BillingSubscriptionsPage() {
       {
         accessorKey: "invoiceStatus",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Invoice" />
+          <DataTableColumnHeader column={column} title={messages.colInvoice} />
         ),
         cell: ({ row }) =>
           row.original.invoiceStatus ? (
@@ -273,7 +280,7 @@ export function BillingSubscriptionsPage() {
           }
           if (!subscription.vpnSubscriptionId) {
             return (
-              <span className="text-xs text-muted-foreground">Unavailable</span>
+              <span className="text-xs text-muted-foreground">{messages.unavailable}</span>
             )
           }
           return (
@@ -281,7 +288,7 @@ export function BillingSubscriptionsPage() {
               href={`/portal/vpn/subscriptions/${encodeURIComponent(subscription.vpnSubscriptionId)}`}
               className="text-sm font-medium text-primary hover:underline"
             >
-              Open VPN operations
+              {messages.openVpnOperations}
             </Link>
           )
         },
@@ -289,7 +296,7 @@ export function BillingSubscriptionsPage() {
       {
         accessorKey: "currentPeriodEnd",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Renews" />
+          <DataTableColumnHeader column={column} title={messages.colRenews} />
         ),
         sortingFn: "datetime",
         cell: ({ row }) =>
@@ -322,7 +329,7 @@ export function BillingSubscriptionsPage() {
               size="xs"
               onClick={() => setSelectedConfigSub(sub)}
             >
-              View Config
+              {messages.viewConfig}
             </Button>
           )
         },
@@ -355,7 +362,7 @@ export function BillingSubscriptionsPage() {
                   })
                 }}
               >
-                Edit Renewal
+                {messages.editRenewal}
               </Button>
               <Button
                 variant="ghost"
@@ -385,25 +392,23 @@ export function BillingSubscriptionsPage() {
         },
       },
     ],
-    [renewingSubId, subscriptionsQuery]
+    [renewingSubId, subscriptionsQuery, messages]
   )
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header>
-        <h1 className="text-2xl font-bold">Commercial subscriptions</h1>
+        <h1 className="text-2xl font-bold">{messages.title}</h1>
         <p className="text-muted-foreground">
-          Manage payment, order, invoice, and renewal context across products.
-          VPN account provisioning lives in VPN Service Operations.
+          {messages.description}
         </p>
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle>All commercial subscriptions</CardTitle>
+          <CardTitle>{messages.allCommercialSubscriptions}</CardTitle>
           <CardDescription>
-            Product rows link to operational workspaces only when the explicit
-            relation exists.
+            {messages.allCommercialSubscriptionsDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -420,7 +425,7 @@ export function BillingSubscriptionsPage() {
                 tableId="portal-billing-subscriptions"
                 columns={columns}
                 data={subscriptions}
-                searchPlaceholder="Search org, product, plan…"
+                searchPlaceholder={messages.searchPlaceholder}
                 searchableColumns={[
                   "organizationId",
                   "packageCode",
@@ -457,17 +462,22 @@ export function BillingSubscriptionsPage() {
                   },
                 ]}
                 defaultColumnVisibility={{ billingPeriod: false }}
-                emptyMessage="No subscriptions found."
+                emptyMessage={messages.noSubscriptionsFound}
               />
 
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Showing {subscriptions.length} of {total} subscriptions
+                    {messages.showingSubscriptions
+                      .replace("{from}", "1")
+                      .replace("{to}", String(subscriptions.length))
+                      .replace("{total}", String(total))}
                   </p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-muted-foreground">
-                      Page {page} of {totalPages}
+                      {messages.pageOf
+                        .replace("{current}", String(page))
+                        .replace("{total}", String(totalPages))}
                     </p>
                     <Button
                       variant="outline"
@@ -475,7 +485,7 @@ export function BillingSubscriptionsPage() {
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page <= 1 || loading}
                     >
-                      Previous
+                      {messages.previous}
                     </Button>
                     <Button
                       variant="outline"
@@ -483,7 +493,7 @@ export function BillingSubscriptionsPage() {
                       onClick={() => setPage((p) => p + 1)}
                       disabled={page >= totalPages || loading}
                     >
-                      Next
+                      {messages.next}
                     </Button>
                   </div>
                 </div>
@@ -496,11 +506,11 @@ export function BillingSubscriptionsPage() {
         <Card
           className="border-primary/30"
           role="dialog"
-          aria-label="Subscription detail drawer"
+          aria-label={messages.detailDrawerAria}
         >
           <CardHeader className="flex flex-row items-start justify-between gap-4">
             <div>
-              <CardTitle>Subscription details</CardTitle>
+              <CardTitle>{messages.detailDrawerTitle}</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {selectedSubscription.id}
               </p>
@@ -527,26 +537,26 @@ export function BillingSubscriptionsPage() {
                   })
                 }}
               >
-                Edit Renewal
+                {messages.editRenewal}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedSubscription(null)}
               >
-                Close
+                {messages.close}
               </Button>
             </div>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <p className="text-xs text-muted-foreground">Organization</p>
+              <p className="text-xs text-muted-foreground">{messages.organizationLabel}</p>
               <p className="font-medium">
                 {selectedSubscription.organizationId ?? "—"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Service status</p>
+              <p className="text-xs text-muted-foreground">{messages.serviceStatusLabel}</p>
               <Badge
                 variant={serviceStatusVariant(selectedSubscription.status)}
               >
@@ -554,13 +564,13 @@ export function BillingSubscriptionsPage() {
               </Badge>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Payment</p>
+              <p className="text-xs text-muted-foreground">{messages.paymentLabel}</p>
               <p className="font-medium">
                 {paymentStatusLabel(selectedSubscription.orderStatus)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Renewal</p>
+              <p className="text-xs text-muted-foreground">{messages.renewalLabel}</p>
               <p className="font-medium">
                 {selectedSubscription.currentPeriodEnd
                   ? new Date(
@@ -570,7 +580,7 @@ export function BillingSubscriptionsPage() {
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Locked price</p>
+              <p className="text-xs text-muted-foreground">{messages.lockedPriceLabel}</p>
               <p className="font-medium">
                 {selectedSubscription.periodPrice
                   ? formatBillingMoney(
@@ -582,9 +592,9 @@ export function BillingSubscriptionsPage() {
             </div>
             {selectedSubscription.cancelAtPeriodEnd && (
               <div className="sm:col-span-2">
-                <p className="text-xs text-muted-foreground">Next transition</p>
+                <p className="text-xs text-muted-foreground">{messages.nextTransitionLabel}</p>
                 <p className="font-medium text-yellow-600 dark:text-yellow-400">
-                  Cancellation scheduled for the current period end.
+                  {messages.cancellationScheduled}
                 </p>
               </div>
             )}
@@ -601,9 +611,9 @@ export function BillingSubscriptionsPage() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Subscription Provisioning Parameters</DialogTitle>
+            <DialogTitle>{messages.provisioningParametersTitle}</DialogTitle>
             <DialogDescription>
-              Configuration details and responses for Subscription{" "}
+              {messages.provisioningParametersDesc}{" "}
               <span className="font-mono font-medium text-foreground">
                 {selectedConfigSub?.id}
               </span>
@@ -626,7 +636,7 @@ export function BillingSubscriptionsPage() {
               if (entries.length === 0) {
                 return (
                   <p className="text-center text-xs text-muted-foreground">
-                    No custom provisioning parameters recorded.
+                    {messages.noCustomParameters}
                   </p>
                 )
               }
@@ -662,9 +672,9 @@ export function BillingSubscriptionsPage() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Subscription & Renewal</DialogTitle>
+            <DialogTitle>{messages.editRenewalModalTitle}</DialogTitle>
             <DialogDescription>
-              Update billing period, status, or adjust the next renewal date for{" "}
+              {messages.editRenewalModalDesc}{" "}
               <span className="font-mono font-medium text-foreground">
                 {editingSub?.id}
               </span>
@@ -673,7 +683,7 @@ export function BillingSubscriptionsPage() {
           </DialogHeader>
           <div className="grid gap-4 py-3">
             <div className="grid gap-2">
-              <Label htmlFor="edit-status">Service Status</Label>
+              <Label htmlFor="edit-status">{messages.serviceStatusLabel}</Label>
               <Select
                 value={editForm.status}
                 onValueChange={(val: "ACTIVE" | "SUSPENDED" | "CANCELLED") =>
@@ -681,18 +691,18 @@ export function BillingSubscriptionsPage() {
                 }
               >
                 <SelectTrigger id="edit-status">
-                  <SelectValue placeholder="Select status" />
+                  <SelectValue placeholder={messages.selectStatusPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                  <SelectItem value="ACTIVE">{messages.statusActive}</SelectItem>
+                  <SelectItem value="SUSPENDED">{messages.statusSuspended}</SelectItem>
+                  <SelectItem value="CANCELLED">{messages.statusCancelled}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="edit-period">Billing Period</Label>
+              <Label htmlFor="edit-period">{messages.colBillingPeriod}</Label>
               <Select
                 value={editForm.billingPeriod}
                 onValueChange={(
@@ -700,20 +710,20 @@ export function BillingSubscriptionsPage() {
                 ) => setEditForm((prev) => ({ ...prev, billingPeriod: val }))}
               >
                 <SelectTrigger id="edit-period">
-                  <SelectValue placeholder="Select period" />
+                  <SelectValue placeholder={messages.selectPeriodPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MONTHLY">Monthly</SelectItem>
-                  <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                  <SelectItem value="SEMI_ANNUAL">Semi-Annual</SelectItem>
-                  <SelectItem value="ANNUAL">Annual</SelectItem>
+                  <SelectItem value="MONTHLY">{messages.periodMonthly}</SelectItem>
+                  <SelectItem value="QUARTERLY">{messages.periodQuarterly}</SelectItem>
+                  <SelectItem value="SEMI_ANNUAL">{messages.periodSemiAnnual}</SelectItem>
+                  <SelectItem value="ANNUAL">{messages.periodAnnual}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="edit-period-end">
-                Renewal Expiry (Current Period End)
+                {messages.renewalExpiryLabel}
               </Label>
               <Input
                 id="edit-period-end"
@@ -727,8 +737,7 @@ export function BillingSubscriptionsPage() {
                 }
               />
               <p className="text-xs text-muted-foreground">
-                Updating this date automatically synchronizes the expiry on
-                connected WhatsApp devices.
+                {messages.renewalSyncNotice}
               </p>
             </div>
           </div>
@@ -738,7 +747,7 @@ export function BillingSubscriptionsPage() {
               disabled={isSubmitting}
               onClick={() => setEditingSub(null)}
             >
-              Cancel
+              {messages.cancel}
             </Button>
             <Button
               disabled={isSubmitting}
