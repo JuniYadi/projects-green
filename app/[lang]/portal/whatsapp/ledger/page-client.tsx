@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { formatWhatsappPaygCost } from "@/modules/whatsapp/usage/usage.dto"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import {
   Card,
@@ -54,9 +55,12 @@ interface LedgerEntry {
   whatsappDeviceId: string | null
   pricingBillable?: boolean | null
   pricingCategory?: string | null
+  unitPrice?: number | null
+  currency?: string | null
   createdAt: string
   updatedAt: string
   devicePhoneNumber?: string | null
+  deviceName?: string | null
 }
 
 interface LedgerSummary {
@@ -691,13 +695,23 @@ export default function PortalWhatsAppLedgerPage() {
                         <TableCell>
                           <CategoryBadge category={entry.category} />
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell
+                          className={`text-right font-medium ${
+                            entry.isReverted
+                              ? "text-amber-500"
+                              : entry.pricingBillable
+                                ? "text-amber-600 dark:text-amber-400"
+                                : ""
+                          }`}
+                        >
                           {entry.pricingBillable ? (
                             <div className="flex flex-col items-end gap-0.5">
                               <span>
-                                {entry.category === "MARKETING"
-                                  ? "Rp 587"
-                                  : "Rp 357"}
+                                {entry.isReverted ? "+" : "-"}
+                                {formatWhatsappPaygCost(
+                                  entry.unitPrice,
+                                  entry.currency ?? "IDR"
+                                )}
                               </span>
                               <Badge
                                 variant="outline"
@@ -709,10 +723,11 @@ export default function PortalWhatsAppLedgerPage() {
                           ) : (
                             <div className="flex flex-col items-end gap-0.5">
                               <span>
+                                {entry.isReverted ? "+" : "-"}
                                 {entry.quotaValue} {entry.quotaKey || "unit"}
                               </span>
                               <span className="text-[9px] font-normal text-muted-foreground">
-                                Kuota Paket
+                                Package Quota
                               </span>
                             </div>
                           )}

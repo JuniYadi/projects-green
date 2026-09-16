@@ -109,9 +109,12 @@ export type WhatsappBillingLedgerEntryDTO = {
   whatsappDeviceId: string | null
   pricingBillable?: boolean | null
   pricingCategory?: string | null
+  unitPrice?: number | null
+  currency?: string | null
   createdAt: Date
   updatedAt: Date
   devicePhoneNumber?: string | null
+  deviceName?: string | null
 }
 
 export type WhatsappBillingLedgerListResponseDTO = {
@@ -126,6 +129,20 @@ export type WhatsappBillingLedgerListResponseDTO = {
     activeCredits: number
   }
 }
+
+export function formatWhatsappPaygCost(
+  unitPrice?: number | null,
+  currency = "IDR"
+): string {
+  if (unitPrice == null || isNaN(unitPrice)) {
+    return currency === "IDR" ? "Rp 0" : `${currency} 0`
+  }
+  if (currency === "IDR") {
+    return `Rp ${unitPrice.toLocaleString("id-ID")}`
+  }
+  return `${currency} ${unitPrice}`
+}
+
 // ─── Mapper Functions ──────────────────────────────────────────────────────────
 
 export function toDailyCountDTO(

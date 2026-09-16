@@ -8,6 +8,7 @@ const mockFindManyDevices = mock(async () => [] as unknown[])
 const mockFindManyWhatsappLedger = mock(async () => [] as unknown[])
 const mockFindUniqueBillingAccount = mock(async () => null as unknown)
 const mockFindManyAdjustments = mock(async () => [] as unknown[])
+const mockFindManyBasePrices = mock(async () => [] as unknown[])
 const mockLedgerCount = mock(async () => 0)
 const mockLedgerAggregate = mock(async () => ({
   _sum: { quotaValue: 0 as number | null },
@@ -32,6 +33,9 @@ mock.module("@/lib/prisma", () => ({
       findMany: mockFindManyWhatsappLedger,
       count: mockLedgerCount,
       aggregate: mockLedgerAggregate,
+    },
+    whatsappBasePrice: {
+      findMany: mockFindManyBasePrices,
     },
     billingAccount: {
       findUnique: mockFindUniqueBillingAccount,
@@ -353,6 +357,11 @@ describe("getLedgerEntries", () => {
   beforeEach(() => {
     mockFindManyWhatsappLedger.mockReset()
     mockFindManyWhatsappLedger.mockImplementation(async () => [])
+    mockFindManyBasePrices.mockReset()
+    mockFindManyBasePrices.mockImplementation(async () => [
+      { category: "MARKETING", basePrice: new Decimal(587), currency: "IDR" },
+      { category: "UTILITY", basePrice: new Decimal(357), currency: "IDR" },
+    ])
     mockLedgerCount.mockReset()
     mockLedgerCount.mockImplementation(async () => 0)
     mockLedgerAggregate.mockReset()

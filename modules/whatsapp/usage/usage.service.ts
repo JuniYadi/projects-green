@@ -566,39 +566,44 @@ export class WhatsappUsageService {
       where.createdAt = dateFilter
     }
 
-    const [total, rows, summaryAgg, refundedAgg] = await Promise.all([
-      prisma.whatsappBillingLedger.count({ where }),
-      prisma.whatsappBillingLedger.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        include: {
-          whatsappDevice: {
-            select: {
-              phoneNumber: true,
-              whatsappProfile: true,
+    const [total, rows, summaryAgg, refundedAgg, basePrices] =
+      await Promise.all([
+        prisma.whatsappBillingLedger.count({ where }),
+        prisma.whatsappBillingLedger.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+          include: {
+            whatsappDevice: {
+              select: {
+                phoneNumber: true,
+                whatsappProfile: true,
+              },
             },
           },
-        },
-      }),
-      prisma.whatsappBillingLedger.aggregate({
-        where: {
-          ...(organizationId ? { organizationId } : {}),
-          isReverted: false,
-        },
-        _sum: { quotaValue: true },
-        _count: true,
-      }),
-      prisma.whatsappBillingLedger.aggregate({
-        where: {
-          ...(organizationId ? { organizationId } : {}),
-          isReverted: true,
-        },
-        _sum: { quotaValue: true },
-        _count: true,
-      }),
-    ])
+        }),
+        prisma.whatsappBillingLedger.aggregate({
+          where: {
+            ...(organizationId ? { organizationId } : {}),
+            isReverted: false,
+          },
+          _sum: { quotaValue: true },
+          _count: true,
+        }),
+        prisma.whatsappBillingLedger.aggregate({
+          where: {
+            ...(organizationId ? { organizationId } : {}),
+            isReverted: true,
+          },
+          _sum: { quotaValue: true },
+          _count: true,
+        }),
+        prisma.whatsappBasePrice.findMany({
+          where: { isActive: true },
+          orderBy: { effectiveFrom: "desc" },
+        }),
+      ])
     const totalCredits =
       toNum(summaryAgg._sum.quotaValue ?? 0) +
       toNum(refundedAgg._sum.quotaValue ?? 0)
@@ -618,6 +623,17 @@ export class WhatsappUsageService {
             ? profile.name.trim()
             : null
 
+        const effectiveCat = (
+          r.pricingCategory ||
+          r.category ||
+          "UTILITY"
+        ).toUpperCase()
+        const matchedPrice =
+          basePrices.find((bp) => bp.category === effectiveCat) ??
+          basePrices.find((bp) => bp.category === "UTILITY")
+        const unitPrice = matchedPrice ? toNum(matchedPrice.basePrice) : null
+        const currency = matchedPrice?.currency ?? "IDR"
+
         return {
           id: r.id,
           organizationId: r.organizationId,
@@ -634,6 +650,8 @@ export class WhatsappUsageService {
           whatsappDeviceId: r.whatsappDeviceId,
           pricingBillable: r.pricingBillable ?? null,
           pricingCategory: r.pricingCategory ?? null,
+          unitPrice,
+          currency,
           createdAt: r.createdAt,
           updatedAt: r.updatedAt,
           devicePhoneNumber: dev?.phoneNumber ?? null,

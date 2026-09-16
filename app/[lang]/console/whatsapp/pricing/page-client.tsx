@@ -58,6 +58,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { formatWhatsappPaygCost } from "@/modules/whatsapp/usage/usage.dto"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
@@ -77,6 +78,8 @@ type LedgerEntry = {
   whatsappDeviceId: string | null
   pricingBillable?: boolean | null
   pricingCategory?: string | null
+  unitPrice?: number | null
+  currency?: string | null
   createdAt: string
   updatedAt: string
   devicePhoneNumber?: string | null
@@ -1347,7 +1350,10 @@ export default function WhatsAppPricingPage() {
                                 <>
                                   <span>
                                     {row.isReverted ? "+" : "-"}
-                                    {row.category === "MARKETING" ? "Rp 587" : "Rp 357"}
+                                    {formatWhatsappPaygCost(
+                                      row.unitPrice,
+                                      row.currency ?? "IDR"
+                                    )}
                                   </span>
                                   <Badge
                                     variant="outline"

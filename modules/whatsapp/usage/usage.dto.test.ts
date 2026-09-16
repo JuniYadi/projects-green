@@ -1,8 +1,22 @@
 import { describe, expect, it } from "bun:test"
 import { Prisma } from "@prisma/client"
-import { toDailyCountDTO, toMonthlyCountDTO, toCostDTO } from "./usage.dto"
+import {
+  toDailyCountDTO,
+  toMonthlyCountDTO,
+  toCostDTO,
+  formatWhatsappPaygCost,
+} from "./usage.dto"
 
 describe("usage DTO mappers", () => {
+  it("formats WhatsApp PAYG cost by unit price and currency", () => {
+    expect(formatWhatsappPaygCost(587, "IDR")).toBe("Rp 587")
+    expect(formatWhatsappPaygCost(357, "IDR")).toBe("Rp 357")
+    expect(formatWhatsappPaygCost(300, "IDR")).toBe("Rp 300")
+    expect(formatWhatsappPaygCost(null, "IDR")).toBe("Rp 0")
+    expect(formatWhatsappPaygCost(undefined, "IDR")).toBe("Rp 0")
+    expect(formatWhatsappPaygCost(0.05, "USD")).toBe("USD 0.05")
+  })
+
   it("maps daily count row to DTO", () => {
     const date = new Date("2026-09-01T00:00:00.000Z")
     const now = new Date("2026-09-01T12:00:00.000Z")
