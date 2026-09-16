@@ -1,6 +1,6 @@
 import "@/test/register"
-import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { render, fireEvent, waitFor } from "@testing-library/react"
+import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test"
+import { render, fireEvent, waitFor, cleanup } from "@testing-library/react"
 
 const mockLedgerList = mock(() =>
   Promise.resolve({
@@ -111,6 +111,10 @@ import PortalWhatsAppLedgerPage from "./page"
 describe("PortalWhatsAppLedgerPage", () => {
   beforeEach(() => {
     mockLedgerList.mockClear()
+  })
+
+  afterEach(() => {
+    cleanup()
   })
 
   it("renders page header, summary KPI cards, and ledger rows", async () => {

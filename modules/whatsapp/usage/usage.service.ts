@@ -632,6 +632,8 @@ export class WhatsappUsageService {
           revertedAt: r.revertedAt,
           lastStatus: r.lastStatus,
           whatsappDeviceId: r.whatsappDeviceId,
+          pricingBillable: r.pricingBillable ?? null,
+          pricingCategory: r.pricingCategory ?? null,
           createdAt: r.createdAt,
           updatedAt: r.updatedAt,
           devicePhoneNumber: dev?.phoneNumber ?? null,

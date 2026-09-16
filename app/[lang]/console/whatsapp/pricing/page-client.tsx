@@ -75,6 +75,8 @@ type LedgerEntry = {
   revertedAt: string | null
   lastStatus: string | null
   whatsappDeviceId: string | null
+  pricingBillable?: boolean | null
+  pricingCategory?: string | null
   createdAt: string
   updatedAt: string
   devicePhoneNumber?: string | null
@@ -1267,7 +1269,7 @@ export default function WhatsAppPricingPage() {
                           {isIndonesian ? "Status" : "Status"}
                         </TableHead>
                         <TableHead className="text-right">
-                          {isIndonesian ? "Pemotongan Kredit" : "Credits"}
+                          {isIndonesian ? "Pemotongan / Biaya" : "Deduction / Cost"}
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1335,12 +1337,38 @@ export default function WhatsAppPricingPage() {
                             className={`text-right font-mono text-[11px] font-semibold ${
                               row.isReverted
                                 ? "text-amber-500"
-                                : "text-emerald-600"
+                                : row.pricingBillable
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-emerald-600"
                             }`}
                           >
-                            {row.isReverted ? "+" : "-"}
-                            {row.quotaValue}{" "}
-                            {isIndonesian ? "kredit" : "credits"}
+                            <div className="flex flex-col items-end gap-0.5">
+                              {row.pricingBillable ? (
+                                <>
+                                  <span>
+                                    {row.isReverted ? "+" : "-"}
+                                    {row.category === "MARKETING" ? "Rp 587" : "Rp 357"}
+                                  </span>
+                                  <Badge
+                                    variant="outline"
+                                    className="border-amber-500/30 bg-amber-500/10 text-[9px] font-normal text-amber-600 dark:text-amber-400"
+                                  >
+                                    PAYG Saldo
+                                  </Badge>
+                                </>
+                              ) : (
+                                <>
+                                  <span>
+                                    {row.isReverted ? "+" : "-"}
+                                    {row.quotaValue}{" "}
+                                    {isIndonesian ? "kredit" : "credits"}
+                                  </span>
+                                  <span className="text-[9px] font-normal text-muted-foreground">
+                                    {isIndonesian ? "Kuota Paket" : "Package Quota"}
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

@@ -107,6 +107,8 @@ export type WhatsappBillingLedgerEntryDTO = {
   revertedAt: Date | null
   lastStatus: string | null
   whatsappDeviceId: string | null
+  pricingBillable?: boolean | null
+  pricingCategory?: string | null
   createdAt: Date
   updatedAt: Date
   devicePhoneNumber?: string | null
