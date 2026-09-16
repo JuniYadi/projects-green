@@ -72,8 +72,12 @@ function normalizeIpGeoInfo(item: IpGeoInfo): IpGeoInfo {
 function recomputeSuccessRatio(ip: IpGeoInfo): number {
   const statusEvidence =
     ip.status2xx + ip.status3xx + ip.status4xx + ip.status5xx
+  // Divide by the evidenced volume, not requestsCount: a merge can mix an
+  // evidenced snapshot with a legacy one that has real request volume but
+  // zero recorded status, and that unevidenced volume must not get silently
+  // counted as failure in the denominator.
   return statusEvidence > 0
-    ? computeSuccessRatio(ip.status2xx, ip.requestsCount)
+    ? computeSuccessRatio(ip.status2xx, statusEvidence)
     : 100
 }
 
