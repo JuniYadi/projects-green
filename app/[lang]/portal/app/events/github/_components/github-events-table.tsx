@@ -1,7 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -66,6 +68,10 @@ function truncate(str: string | null | undefined, max: number) {
 }
 
 export function GithubEventsTable() {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages = getMessagesForMaybeLocale(lang).console.app.githubEvents
+
   const [events, setEvents] = useState<GithubEventRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -101,40 +107,43 @@ export function GithubEventsTable() {
         $query: Object.fromEntries(params.entries()),
       })
       if (!res || !res.ok) {
-        setError("Failed to load events")
+        setError(messages.failedToLoadEvents)
         return
       }
       setEvents(res.data!.items as never)
       setTotal(res.data!.total as never)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      setError(err instanceof Error ? err.message : messages.genericError)
     } finally {
       setIsLoading(false)
     }
-  }, [page, pageSize, search, eventName, processStatus, deletedState])
+  }, [page, pageSize, search, eventName, processStatus, deletedState, messages])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadEvents()
   }, [loadEvents])
 
-  const handleViewJson = useCallback(async (event: GithubEventRow) => {
-    setIsLoadingDetail(true)
-    setJsonModalOpen(true)
-    try {
-      const { data: res } =
-        await eden.api.admin.app.events.github[event.id].get()
-      if (res?.ok && res.data) {
-        setSelectedEvent(res.data as unknown as GithubEventDetail)
-      } else {
-        setError("Failed to load event detail")
+  const handleViewJson = useCallback(
+    async (event: GithubEventRow) => {
+      setIsLoadingDetail(true)
+      setJsonModalOpen(true)
+      try {
+        const { data: res } =
+          await eden.api.admin.app.events.github[event.id].get()
+        if (res?.ok && res.data) {
+          setSelectedEvent(res.data as unknown as GithubEventDetail)
+        } else {
+          setError(messages.failedToLoadEventDetail)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : messages.genericError)
+      } finally {
+        setIsLoadingDetail(false)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setIsLoadingDetail(false)
-    }
-  }, [])
+    },
+    [messages]
+  )
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const columns = useMemo<ColumnDef<GithubEventRow>[]>(
@@ -142,7 +151,7 @@ export function GithubEventsTable() {
       {
         accessorKey: "receivedAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Received" />
+          <DataTableColumnHeader column={column} title={messages.received} />
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
@@ -153,7 +162,7 @@ export function GithubEventsTable() {
       {
         accessorKey: "eventName",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Event" />
+          <DataTableColumnHeader column={column} title={messages.event} />
         ),
         cell: ({ row }) => (
           <span className="text-xs font-medium">{row.original.eventName}</span>
@@ -162,7 +171,7 @@ export function GithubEventsTable() {
       {
         accessorKey: "repositoryFullName",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Repository" />
+          <DataTableColumnHeader column={column} title={messages.repository} />
         ),
         cell: ({ row }) => (
           <span className="text-xs">{row.original.repositoryFullName}</span>
@@ -171,7 +180,7 @@ export function GithubEventsTable() {
       {
         accessorKey: "branch",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Branch" />
+          <DataTableColumnHeader column={column} title={messages.branch} />
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
@@ -182,7 +191,7 @@ export function GithubEventsTable() {
       {
         accessorKey: "commitSha",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Commit SHA" />
+          <DataTableColumnHeader column={column} title={messages.commitSha} />
         ),
         cell: ({ row }) => (
           <span className="font-mono text-xs text-muted-foreground">
@@ -193,7 +202,7 @@ export function GithubEventsTable() {
       {
         accessorKey: "commitMessage",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Message" />
+          <DataTableColumnHeader column={column} title={messages.message} />
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
@@ -204,7 +213,7 @@ export function GithubEventsTable() {
       {
         accessorKey: "senderLogin",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Sender" />
+          <DataTableColumnHeader column={column} title={messages.sender} />
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
@@ -215,7 +224,7 @@ export function GithubEventsTable() {
       {
         accessorKey: "processStatus",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={messages.status} />
         ),
         cell: ({ row }) => (
           <div className="space-y-1">
@@ -262,7 +271,7 @@ export function GithubEventsTable() {
       <section className="space-y-4">
         <div className="flex flex-wrap items-end gap-3">
           <Input
-            placeholder="Search repos, commit SHA, sender…"
+            placeholder={messages.searchPlaceholder}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value)
@@ -278,14 +287,20 @@ export function GithubEventsTable() {
             }}
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Event type" />
+              <SelectValue placeholder={messages.eventTypePlaceholder} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="push">push</SelectItem>
-              <SelectItem value="installation">installation</SelectItem>
-              <SelectItem value="pull_request">pull_request</SelectItem>
-              <SelectItem value="release">release</SelectItem>
-              <SelectItem value="delete">delete</SelectItem>
+              <SelectItem value="push">{messages.eventTypePush}</SelectItem>
+              <SelectItem value="installation">
+                {messages.eventTypeInstallation}
+              </SelectItem>
+              <SelectItem value="pull_request">
+                {messages.eventTypePullRequest}
+              </SelectItem>
+              <SelectItem value="release">
+                {messages.eventTypeRelease}
+              </SelectItem>
+              <SelectItem value="delete">{messages.eventTypeDelete}</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -296,14 +311,18 @@ export function GithubEventsTable() {
             }}
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={messages.statusPlaceholder} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="processed">processed</SelectItem>
-              <SelectItem value="pending">pending</SelectItem>
-              <SelectItem value="processing">processing</SelectItem>
-              <SelectItem value="failed">failed</SelectItem>
-              <SelectItem value="ignored">ignored</SelectItem>
+              <SelectItem value="processed">
+                {messages.statusProcessed}
+              </SelectItem>
+              <SelectItem value="pending">{messages.statusPending}</SelectItem>
+              <SelectItem value="processing">
+                {messages.statusProcessing}
+              </SelectItem>
+              <SelectItem value="failed">{messages.statusFailed}</SelectItem>
+              <SelectItem value="ignored">{messages.statusIgnored}</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -314,12 +333,18 @@ export function GithubEventsTable() {
             }}
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Visibility" />
+              <SelectValue placeholder={messages.visibilityPlaceholder} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="deleted">Deleted</SelectItem>
-              <SelectItem value="include_deleted">All</SelectItem>
+              <SelectItem value="active">
+                {messages.visibilityActive}
+              </SelectItem>
+              <SelectItem value="deleted">
+                {messages.visibilityDeleted}
+              </SelectItem>
+              <SelectItem value="include_deleted">
+                {messages.visibilityAll}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -333,8 +358,8 @@ export function GithubEventsTable() {
         ) : events.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {search || eventName || processStatus || deletedState
-              ? "No events match your filters."
-              : "No GitHub events recorded yet."}
+              ? messages.noEventsMatchFilters
+              : messages.noEventsRecorded}
           </p>
         ) : (
           <>
@@ -342,7 +367,7 @@ export function GithubEventsTable() {
               tableId="portal-github-events"
               columns={columns}
               data={events}
-              searchPlaceholder="Search events..."
+              searchPlaceholder={messages.tableSearchPlaceholder}
               searchableColumns={[
                 "eventName",
                 "repositoryFullName",
@@ -357,7 +382,8 @@ export function GithubEventsTable() {
             />
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
-                Showing {events.length} of {total} events
+                {messages.showingLabel} {events.length} {messages.ofLabel}{" "}
+                {total} {messages.eventsLabel}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -366,10 +392,10 @@ export function GithubEventsTable() {
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
-                  Previous
+                  {messages.previous}
                 </Button>
                 <span>
-                  Page {page} of {totalPages}
+                  {messages.pageLabel} {page} {messages.ofLabel} {totalPages}
                 </span>
                 <Button
                   variant="outline"
@@ -377,7 +403,7 @@ export function GithubEventsTable() {
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  Next
+                  {messages.next}
                 </Button>
               </div>
             </div>
@@ -388,7 +414,7 @@ export function GithubEventsTable() {
       <Dialog open={jsonModalOpen} onOpenChange={setJsonModalOpen}>
         <DialogContent className="max-h-[80vh] w-full max-w-3xl overflow-auto">
           <DialogHeader>
-            <DialogTitle>Raw Event Payload</DialogTitle>
+            <DialogTitle>{messages.rawEventPayload}</DialogTitle>
           </DialogHeader>
           {isLoadingDetail ? (
             <Skeleton className="h-64 w-full" />
@@ -399,7 +425,7 @@ export function GithubEventsTable() {
             </pre>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No payload available.
+              {messages.noPayloadAvailable}
             </p>
           )}
         </DialogContent>
