@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   FileText,
   UploadSimple,
@@ -50,6 +52,9 @@ export type KnowledgeDoc = {
 }
 
 export default function AiKnowledgePage() {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages = getMessagesForMaybeLocale(lang).console.ai.knowledge
   const [docs, setDocs] = useState<KnowledgeDoc[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [title, setTitle] = useState("")
@@ -138,11 +143,10 @@ export default function AiKnowledgePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Knowledge Base & Dokumen Toko
+            {messages.heading}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Kelola katalog produk, daftar harga, dan SOP. AI akan mempelajari
-            isi dokumen untuk menjawab chat WhatsApp pelanggan secara otomatis.
+            {messages.description}
           </p>
         </div>
 
@@ -150,15 +154,14 @@ export default function AiKnowledgePage() {
           <DialogTrigger asChild>
             <Button className="gap-2 bg-amber-500 text-black hover:bg-amber-600">
               <UploadSimple size={16} weight="bold" />
-              <span>Unggah Dokumen PDF/DOCX</span>
+              <span>{messages.uploadButton}</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-xl">
             <DialogHeader>
-              <DialogTitle>Unggah Dokumen Knowledge Base</DialogTitle>
+              <DialogTitle>{messages.dialogTitle}</DialogTitle>
               <DialogDescription>
-                AI akan membaca informasi dan tabel harga dokumen secara
-                terstruktur untuk asisten bot WhatsApp.
+                {messages.dialogDescription}
               </DialogDescription>
             </DialogHeader>
 
@@ -170,26 +173,26 @@ export default function AiKnowledgePage() {
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="upload" className="gap-1.5 text-xs">
                   <UploadSimple size={14} weight="bold" />
-                  <span>Upload File (PDF / DOCX)</span>
+                  <span>{messages.tabUpload}</span>
                 </TabsTrigger>
                 <TabsTrigger value="manual" className="gap-1.5 text-xs">
                   <PencilSimple size={14} weight="bold" />
-                  <span>Tulis / Tempel Teks</span>
+                  <span>{messages.tabManual}</span>
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="upload" className="space-y-4 pt-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">
-                    File Dokumen (PDF / DOCX)
+                    {messages.fileLabel}
                   </Label>
                   <StorageDropzone
                     accept=".pdf,.docx,application/pdf"
                     maxSizeBytes={10 * 1024 * 1024}
                     purpose="knowledge"
                     mediaType="DOCUMENT"
-                    label="Pilih atau tarik file dokumen ke sini"
-                    description="Mendukung format PDF atau DOCX (Maks. 10MB)"
+                    label={messages.dropzoneLabel}
+                    description={messages.dropzoneDescription}
                     value={uploadedFile?.url}
                     onUploadSuccess={(result) => {
                       setUploadedFile(result)
@@ -205,17 +208,17 @@ export default function AiKnowledgePage() {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Judul Dokumen</Label>
+                    <Label className="text-xs">{messages.titleLabel}</Label>
                     <Input
-                      placeholder="Misal: Katalog Produk Herbal 2026"
+                      placeholder={messages.titlePlaceholderUpload}
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Kategori</Label>
+                    <Label className="text-xs">{messages.categoryLabel}</Label>
                     <Input
-                      placeholder="Pricelist / SOP / FAQ"
+                      placeholder={messages.categoryPlaceholder}
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     />
@@ -226,17 +229,17 @@ export default function AiKnowledgePage() {
               <TabsContent value="manual" className="space-y-3 pt-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Judul Dokumen</Label>
+                    <Label className="text-xs">{messages.titleLabel}</Label>
                     <Input
-                      placeholder="Misal: FAQ Layanan Pelanggan"
+                      placeholder={messages.titlePlaceholderManual}
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Kategori</Label>
+                    <Label className="text-xs">{messages.categoryLabel}</Label>
                     <Input
-                      placeholder="Pricelist / SOP / FAQ"
+                      placeholder={messages.categoryPlaceholder}
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     />
@@ -246,10 +249,10 @@ export default function AiKnowledgePage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-semibold">
-                      Konten Dokumen / Markdown
+                      {messages.contentLabel}
                     </Label>
                     <span className="text-[11px] text-muted-foreground">
-                      Mendukung format Heading (#), Tabel, dan Daftar
+                      {messages.contentHint}
                     </span>
                   </div>
                   <Textarea
@@ -269,13 +272,15 @@ export default function AiKnowledgePage() {
                 type="button"
                 onClick={() => setIsOpen(false)}
               >
-                Batal
+                {messages.cancel}
               </Button>
               <Button
                 onClick={handleUpload}
                 disabled={isUploading || saving || !isFormValid}
               >
-                {isUploading ? "Memproses Dokumen..." : "Mulai Parsing Dokumen"}
+                {isUploading
+                  ? messages.processingDocument
+                  : messages.startParsingDocument}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -287,16 +292,15 @@ export default function AiKnowledgePage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold">
-              Kapasitas Storage Halaman PDF
+              {messages.quotaTitle}
             </CardTitle>
             <span className="font-mono text-xs font-medium text-muted-foreground">
-              {totalPagesUsed} / {maxQuota} Halaman Digunakan (
+              {totalPagesUsed} / {maxQuota} {messages.pagesUsedLabel} (
               {Math.round((totalPagesUsed / maxQuota) * 100)}%)
             </span>
           </div>
           <CardDescription className="text-xs">
-            Paket Starter gratis 100 Halaman PDF. Tambah kuota kapasitas Rp
-            50.000 / 1.000 halaman jika membutuhkan lebih.
+            {messages.quotaDescription}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -314,15 +318,14 @@ export default function AiKnowledgePage() {
       {/* Documents List */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold tracking-tight text-muted-foreground">
-          Daftar Dokumen Aktif ({docs.length})
+          {messages.activeDocsLabel} ({docs.length})
         </h2>
         {docs.length === 0 ? (
           <Card className="flex flex-col items-center justify-center border-dashed p-8 text-center">
             <FileText size={32} className="mb-2 text-muted-foreground" />
-            <p className="text-sm font-medium">Belum ada dokumen diunggah</p>
+            <p className="text-sm font-medium">{messages.emptyTitle}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Klik tombol di atas untuk mengunggah dokumen knowledge base toko
-              Anda.
+              {messages.emptyHint}
             </p>
           </Card>
         ) : (
@@ -346,7 +349,9 @@ export default function AiKnowledgePage() {
                         {doc.category}
                       </Badge>
                       <span>•</span>
-                      <span>{doc.pageCount || 1} Halaman</span>
+                      <span>
+                        {doc.pageCount || 1} {messages.pagesSuffix}
+                      </span>
                       {doc.createdAt && (
                         <>
                           <span>•</span>
@@ -365,12 +370,12 @@ export default function AiKnowledgePage() {
                   {doc.status === "READY" ? (
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500">
                       <CheckCircle size={15} />
-                      Siap Digunakan
+                      {messages.statusReady}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-500">
                       <Clock size={15} className="animate-spin" />
-                      Memproses di Worker...
+                      {messages.statusProcessing}
                     </span>
                   )}
                   <Button
