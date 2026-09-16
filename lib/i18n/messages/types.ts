@@ -3842,6 +3842,9 @@ export type AppMessages = {
         noUsersReturned: string
         syncing: string
         syncProtocols: string
+        syncConfirmMsg: string
+        syncQueuedMsg: string
+        syncInProgressMsg: string
         port: string
         disabled: string
         enabled: string

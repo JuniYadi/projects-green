@@ -211,30 +211,21 @@ export default function VpnServerDetailPage() {
   }, [serverId, loadServer])
 
   const runSyncProtocols = useCallback(async () => {
-    if (
-      !window.confirm(
-        "Sync protocols will create missing VpnServerAccounts for all ACTIVE subscriptions linked to this server. Continue?"
-      )
-    )
-      return
+    if (!window.confirm(messages.syncConfirmMsg)) return
     setSyncing(true)
     try {
       const res = await syncVpnServerProtocols(serverId)
       if (res.data.queued) {
-        window.alert(
-          "Sync protocols job queued. Accounts will be created in the background."
-        )
+        window.alert(messages.syncQueuedMsg)
       } else {
-        window.alert(
-          "A sync is already in progress. Please wait for it to complete."
-        )
+        window.alert(messages.syncInProgressMsg)
       }
     } catch (err) {
       window.alert((err as Error).message)
     } finally {
       setSyncing(false)
     }
-  }, [serverId])
+  }, [serverId, messages])
 
   useEffect(() => {
     // ponytail: voided async calls; setState fires after fetch resolves, not synchronously

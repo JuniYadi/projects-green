@@ -4226,6 +4226,12 @@ export const enMessages: AppMessages = {
         noUsersReturned: "No OpenVPN users returned by server.",
         syncing: "Syncing...",
         syncProtocols: "Sync Protocols to Subscriptions",
+        syncConfirmMsg:
+          "Sync protocols will create missing VpnServerAccounts for all ACTIVE subscriptions linked to this server. Continue?",
+        syncQueuedMsg:
+          "Sync protocols job queued. Accounts will be created in the background.",
+        syncInProgressMsg:
+          "A sync is already in progress. Please wait for it to complete.",
         port: "Port",
         disabled: "Disabled",
         enabled: "Enabled",

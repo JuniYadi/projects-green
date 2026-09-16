@@ -4265,6 +4265,12 @@ export const idMessages: AppMessages = {
         noUsersReturned: "Tidak ada pengguna OpenVPN yang dikembalikan server.",
         syncing: "Menyinkronkan...",
         syncProtocols: "Sinkronkan Protokol ke Langganan",
+        syncConfirmMsg:
+          "Sinkronisasi protokol akan membuat VpnServerAccounts yang hilang untuk semua langganan AKTIF yang terhubung ke server ini. Lanjutkan?",
+        syncQueuedMsg:
+          "Pekerjaan sinkronisasi protokol telah diantrekan. Akun akan dibuat di latar belakang.",
+        syncInProgressMsg:
+          "Sinkronisasi sedang berjalan. Tunggu hingga selesai.",
         port: "Port",
         disabled: "Nonaktif",
         enabled: "Aktif",
