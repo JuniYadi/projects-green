@@ -1,36 +1,3 @@
-type InvoicePdfMessages = {
-  billTo: string
-  paymentDetails: string
-  bankTransferDesc: string
-  bank: string
-  acct: string
-  name: string
-  swift: string
-  afterTransferNotice: string
-  site: string
-  support: string
-  generatedOn: string
-  at: string
-  companyName: string
-  companyAddress: string
-  companyContact: string
-  labelIssued: string
-  labelDue: string
-  labelServicePeriod: string
-  labelServiceEnds: string
-  labelNextRenewal: string
-  labelPaymentMethod: string
-  lineItems: string
-  colDescription: string
-  colQty: string
-  colUnitPrice: string
-  colAmount: string
-  subtotal: string
-  tax: string
-  discount: string
-  total: string
-}
-
 export type AppMessages = {
   navOrganization: {
     label: string
@@ -727,6 +694,35 @@ export type AppMessages = {
           importButton: string
         }
       }
+      clusterTelemetryCards: {
+        fallbackBanner: string
+        retry: string
+        primary: string
+        primaryWithBullet: string
+        rx: string
+        txWithBullet: string
+        cpuUtilization: string
+        limit: string
+        peak: string
+        avgWithBullet: string
+        memoryUtilization: string
+        networkThroughput: string
+        tx: string
+        totalIn: string
+        totalOutWithBullet: string
+        podResourceAllocation: string
+        podResourceDescription: string
+        active: string
+        podSingular: string
+        podPlural: string
+        thPod: string
+        thStatus: string
+        thCpuUsage: string
+        thMemoryUsage: string
+        thRestarts: string
+        coresUnit: string
+        percentOf: string
+      }
     }
     adminBillingCatalog: {
       productDetail: {
@@ -1057,6 +1053,62 @@ export type AppMessages = {
         allowUpgradesDesc: string
         stackable: string
         stackableDesc: string
+      }
+      new: {
+        backLabel: string
+        heading: string
+        subtitle: string
+        codeLabel: string
+        saveDraftButton: string
+        previewPublishButton: string
+        tabs: {
+          details: string
+          audience: string
+        }
+        codeGeneration: {
+          heading: string
+          description: string
+          randomTitle: string
+          randomDesc: string
+          prefixTitle: string
+          prefixDesc: string
+          prefixExample: string
+          staticTitle: string
+          staticDesc: string
+          staticExample: string
+        }
+        prefixCode: {
+          label: string
+          placeholder: string
+          hint: string
+        }
+        staticCode: {
+          label: string
+          placeholder: string
+          hint: string
+        }
+        maxClaims: {
+          label: string
+          hint: string
+        }
+        expiry: {
+          label: string
+          specificDateTimeLabel: string
+          validUntilLabel: string
+        }
+        confirmModal: {
+          title: string
+          description: string
+          voucherCodeLabel: string
+          typeLabel: string
+          benefitLabel: string
+          maxClaimsLabel: string
+          claimsUnit: string
+          expiresAtLabel: string
+          targetAudienceLabel: string
+          cancelButton: string
+          saveAsDraftButton: string
+        }
       }
     }
     adminBillingOrders: {
@@ -2165,6 +2217,39 @@ export type AppMessages = {
           currencyPlaceholder: string
         }
       }
+      adminOrgSubscriptionManager: {
+        packageLabel: string
+        regionLabelSuffix: string
+        planLabel: string
+        billingModeLabel: string
+        cpuLabel: string
+        memoryLabel: string
+        updating: string
+        updateSubscription: string
+        regionLabel: string
+        countryIndonesia: string
+        countrySingapore: string
+        statusLabel: string
+        statusActive: string
+        statusSuspended: string
+        statusCancelled: string
+        statusChangeNotice: string
+        updateVpnSubscription: string
+        planLite: string
+        planStandard: string
+        planProfessional: string
+        planEnterprise: string
+        statusNonActive: string
+        quotaLabel: string
+        inSlash: string
+        outPerMonth: string
+        dailyPerDevice: string
+        updateWhatsappSubscription: string
+        contactForPricing: string
+        currentPeriodEnds: string
+        noActiveSubscriptions: string
+        changesNextCycle: string
+      }
     }
     whatsapp: {
       onboarding: {
@@ -2419,6 +2504,34 @@ export type AppMessages = {
         syncEnqueued: string
         syncFailedSingle: string
       }
+      adminTemplates: {
+        metaRejectionReason: string
+        localDbLabel: string
+        colTemplate: string
+        colStatus: string
+        colCategory: string
+        colLanguages: string
+        colDevice: string
+        anyDevice: string
+        deviceIdLabel: string
+        clickToViewDevice: string
+        colCreated: string
+        viewButton: string
+        moreActionsAria: string
+        editManage: string
+        duplicate: string
+        deleteAction: string
+        organizationLabel: string
+        filterByOrgAria: string
+        allOrganizations: string
+        filterByDeviceAria: string
+        allDevices: string
+        filterBySyncStatusAria: string
+        clearFilters: string
+        createTemplate: string
+        retry: string
+        searchPlaceholder: string
+      }
       devices: {
         heading: string
         description: string
@@ -2466,6 +2579,48 @@ export type AppMessages = {
         editPhoneNumber: string
         invalidFileType: string
         fileTooLarge: string
+        metaNamePending: string
+        metaNameRejected: string
+        officialBusinessAccountAria: string
+        descriptionLabel: string
+        categoryLabel: string
+        websiteLabel: string
+        addressLabel: string
+        inboundReceived: string
+        quotaConsumption: string
+        alertPolicyLink: string
+        metaNameStatusLabel: string
+        deviceStatusLabel: string
+        dailyLimitLabel: string
+        deviceBalanceLabel: string
+        subscriptionRenewalHeading: string
+        subscriptionRenewalDescription: string
+        activePlanLabel: string
+        billingPeriodLabel: string
+        nextRenewalLabel: string
+        pricePerPeriodLabel: string
+        manageOrChangeSubscription: string
+        viewInvoicesDescription: string
+        openBilling: string
+        noLinkedSubscription: string
+        viewSubscriptions: string
+        viewOrders: string
+        lifecycleTimestamps: string
+        createdAtLabel: string
+        lastSynchronizedLabel: string
+        profilePicturePreviewAlt: string
+        changeProfilePictureTitle: string
+        uploadNewPhoto: string
+        removeButton: string
+        profilePictureHint: string
+        aboutInfoTab: string
+        contactLinksTab: string
+        businessCategoryLabel: string
+        businessEmailLabel: string
+        addressPlaceholder: string
+        websitesMaxLabel: string
+        livePreviewLabel: string
+        liveUpdatesBadge: string
       }
       webhookLogs: {
         heading: string
@@ -2507,6 +2662,97 @@ export type AppMessages = {
         messageQueued: string
         unableToSend: string
         noConversations: string
+        received: string
+        sent: string
+        noMessages: string
+        note: string
+        conversationActionsAria: string
+        editNotes: string
+        manageLabels: string
+        deleteConversation: string
+        templateHeaderAlt: string
+        templateHeaderVideoAlt: string
+        attachmentSuffix: string
+        reactionLabel: string
+        stickerAlt: string
+        stickerFallback: string
+        audioAlt: string
+        audioFallback: string
+        videoAlt: string
+        videoFallback: string
+        imageAlt: string
+        suggestedRepliesAria: string
+        filterByOrganizationAria: string
+        allOrganizations: string
+        filterByDeviceAria: string
+        allDevices: string
+        languageCountSingular: string
+        languageCountPlural: string
+        language: string
+        languageRequired: string
+        fieldLabel: string
+        exampleLabel: string
+        lifecycleStatus: string
+        allLifecycles: string
+        lifecycleOpen: string
+        lifecyclePending: string
+        lifecycleResolved: string
+        replyState: string
+        needsReplyInbox: string
+        repliedOutbox: string
+        direction: string
+        directionInbox: string
+        directionOutbox: string
+        statusDelivered: string
+        statusRead: string
+        labels: string
+        summarizeConversation: string
+        attachMedia: string
+        removeAttachment: string
+        internalNotesTitle: string
+        notesLabel: string
+        interactiveComposer: {
+          replyButtonsLabel: string
+          buttonIdPlaceholder: string
+          buttonTitlePlaceholder: string
+          addButton: string
+          ctaUrlButtonsLabel: string
+          displayTextPlaceholder: string
+          sectionLabel: string
+          sectionTitlePlaceholder: string
+          titleColonLabel: string
+          rowIdPlaceholder: string
+          titlePlaceholder: string
+          descriptionOptionalPlaceholder: string
+          addRow: string
+          listButtonTextLabel: string
+          sectionsLabel: string
+          addSection: string
+          interactiveMessageButton: string
+          sendInteractiveMessageTitle: string
+          dialogDescription: string
+          replyButtonsTab: string
+          listTab: string
+          ctaUrlTab: string
+          phoneNumberLabel: string
+          headerOptionalLabel: string
+          headerTextPlaceholder: string
+          bodyLabel: string
+          messageBodyPlaceholder: string
+          footerOptionalLabel: string
+          footerTextPlaceholder: string
+          deviceOptionalLabel: string
+          autoSelectDeviceOption: string
+          cancelButton: string
+          hidePreview: string
+          showPreview: string
+          sendingLabel: string
+          sendPrefix: string
+          modeButtons: string
+          phoneNumberRequiredToast: string
+          messageSentToast: string
+          failedToSendToast: string
+        }
       }
       media: {
         heading: string
@@ -2627,6 +2873,40 @@ export type AppMessages = {
           completed: string
           completedWithErrors: string
           failed: string
+        }
+        portalDetail: {
+          description: string
+          fallbackTitle: string
+          sending: string
+          sendBroadcast: string
+          downloadFailed: string
+          back: string
+          draftBannerTitle: string
+          draftBannerBeforeCount: string
+          draftBannerAfterCount: string
+          loading: string
+          notFound: string
+          campaignProgress: string
+          createdAtBullet: string
+          totalRecipients: string
+          sent: string
+          queued: string
+          failed: string
+          filterAll: string
+          deliveryProgress: string
+          progressComplete: string
+          progressEnded: string
+          recipientList: string
+          recipientListDescription: string
+          searchRecipientPlaceholder: string
+          recipientFilterLabel: string
+          thPhoneNumber: string
+          thName: string
+          thStatus: string
+          thAttempts: string
+          thMessageId: string
+          thError: string
+          noRecipientsFound: string
         }
       }
       shared: {
@@ -3104,6 +3384,170 @@ export type AppMessages = {
           btnRotating: string
         }
       }
+      overview: {
+        heading: string
+        subtitle: string
+        actions: {
+          broadcast: string
+          addDevice: string
+        }
+        stats: {
+          totalDevice: string
+          online: string
+          attention: string
+          monthlyMessage: string
+          in: string
+          out: string
+          totalMessagesThisCycle: string
+          dailyMessage: string
+          messagesToday: string
+          totalPaygSpending: string
+          accumulatedMeterSpend: string
+        }
+        categories: {
+          heading: string
+          subheading: string
+          tooltip: string
+        }
+        quickOps: {
+          heading: string
+          subheading: string
+          registerDevice: {
+            title: string
+            desc: string
+            cta: string
+          }
+          messageTemplates: {
+            title: string
+            desc: string
+            cta: string
+          }
+          launchBroadcast: {
+            title: string
+            desc: string
+            cta: string
+          }
+          apiKeys: {
+            title: string
+            desc: string
+            cta: string
+          }
+        }
+        deviceAttention: {
+          heading: string
+          subheading: string
+          allHealthyTitle: string
+          allHealthyDesc: string
+          fixButton: string
+          viewAllPrefix: string
+          viewAllSuffix: string
+        }
+        emptyState: {
+          title: string
+          description: string
+        }
+      }
+      usageAnalytics: {
+        heading: string
+        subtitle: string
+        filters: {
+          orgAriaLabel: string
+          allOrganizations: string
+          deviceAriaLabel: string
+          allDevices: string
+        }
+        quotaWarning: {
+          label: string
+          message: string
+          viewDetails: string
+        }
+        stats: {
+          totalMessages: string
+          thisMonth: string
+          inboundCount: string
+          messagesReceived: string
+          outboundCount: string
+          messagesSent: string
+          totalCost: string
+          ledgerEntries: string
+        }
+        costBreakdown: {
+          heading: string
+          projectedLabel: string
+          balanceLabel: string
+          noData: string
+          messagesUnit: string
+          totalLabel: string
+        }
+        dailyTrend: {
+          heading: string
+          to: string
+          noData: string
+        }
+        categoryBreakdown: {
+          heading: string
+          entriesUnit: string
+        }
+        monthlyComparison: {
+          heading: string
+          noData: string
+          inSlash: string
+          out: string
+          totalMessages: string
+        }
+        emptyState: {
+          title: string
+          description: string
+        }
+      }
+      deviceEdit: {
+        metaConfigHeading: string
+        metaConfigDescription: string
+        phoneNumberLabel: string
+        statusLabel: string
+        statusActive: string
+        statusNonActive: string
+        wabaIdLabel: string
+        phoneIdLabel: string
+        environmentLabel: string
+        environmentLive: string
+        environmentSandbox: string
+        applicationIdLabel: string
+        graphApiVersionLabel: string
+        graphApiVersionPlaceholder: string
+        graphApiVersionHint: string
+        callbackUrlLabel: string
+        metaAccessTokenLabel: string
+        metaAccessTokenPlaceholder: string
+        metaAccessTokenHint: string
+        quotaBillingHeading: string
+        quotaBillingDescription: string
+        quotaBaseLabel: string
+        quotaBaseOutLabel: string
+        dailyLimitMessageLabel: string
+        balanceLabel: string
+        expiredAtLabel: string
+        rateTierLabel: string
+        rateTierPlaceholder: string
+        rateTierBase: string
+        rateTier1: string
+        rateTier2: string
+        rateTier3: string
+        s3PathLabel: string
+        whatsappProfileHeading: string
+        whatsappProfileDescription: string
+        displayNameLabel: string
+        categoryLabel: string
+        descriptionLabel: string
+        emailLabel: string
+        profilePictureLabel: string
+        profilePicturePlaceholder: string
+        websiteLabel: string
+        websiteHint: string
+        greenVerifiedLabel: string
+        officialBusinessAccountLabel: string
+        cancelButton: string
+      }
     }
     supportTickets: {
       heading: string
@@ -3147,15 +3591,21 @@ export type AppMessages = {
       creatingTicket: string
       creatingDescription: string
       ticketDetails: string
+      targetOrgLabel: string
+      selectTargetOrganization: string
       subjectPlaceholder: string
+      subjectPlaceholderAdmin: string
       generalMessage: string
+      generalMessageTab: string
       sendReply: string
       secureDetails: string
       messageOptional: string
       messagePlaceholder: string
+      messagePlaceholderAdmin: string
       encrypted: string
       endToEndSecure: string
       secureDescription: string
+      secureDescriptionAdmin: string
       secureDetailsOptional: string
       securePlaceholder: string
       showSecureDetails: string
@@ -3629,6 +4079,22 @@ export type AppMessages = {
           noDatabases: string
           settingsTitle: string
           settingsDesc: string
+          webAddressHeading: string
+          webAddressDescription: string
+          freeAddressOption: string
+          recommendedBadge: string
+          freeAddressDescription: string
+          ownAddressOption: string
+          customDomainExamplePrefix: string
+          invalidDomainPrefix: string
+          hostingPlanHeading: string
+          cpuLabel: string
+          memoryLabel: string
+          attachedResourcesTitle: string
+          noDatabasesLong: string
+          readyToPublishPrefix: string
+          onThe: string
+          planSuffix: string
         }
         monitor: {
           yourApp: string
@@ -4313,6 +4779,216 @@ export type AppMessages = {
           dnsStatusVerified: string
         }
       }
+      marketplace: {
+        launchDrawer: {
+          deployHeading: string
+          official: string
+          instantLaunchFallback: string
+          insufficientBalance: string
+          firstMonthRequires: string
+          currentBalanceIs: string
+          quickTopUp: string
+          appNameLabel: string
+          appNamePlaceholder: string
+          assignedSubdomainLabel: string
+          hostingPackageHeading: string
+          monthlySubscription: string
+          targetRegionLabel: string
+          hardwareResourcePlanLabel: string
+          loadingCatalogPlans: string
+          starterPlanFallback: string
+          cpuLabel: string
+          ramLabel: string
+          dbDependenciesLabel: string
+          selfContainedFallback: string
+          persistentVolumeLabel: string
+          gbMountedAt: string
+          envConfigHeading: string
+          autoPopulated: string
+          enabledLabel: string
+          disabledLabel: string
+          fixedBadge: string
+          selectOptionPlaceholder: string
+          customEnvVarsHeading: string
+          customEnvVarsDescription: string
+          addVariable: string
+          valuePlaceholder: string
+          reservedVariableSuffix: string
+          noCustomEnvVars: string
+          cancel: string
+          deployingStack: string
+          confirmDeploy: string
+        }
+      }
+      marketplaceBuilder: {
+        breadcrumb: {
+          templates: string
+          customVisualBuilder: string
+        }
+        heading: string
+        description: string
+        importJson: string
+        exportJson: string
+        saveAsTemplate: string
+        submitForReview: string
+        step1: {
+          title: string
+          description: string
+          templateName: string
+          templateNamePlaceholder: string
+          category: string
+          categoryPlaceholder: string
+          tagline: string
+          taglinePlaceholder: string
+          fullDescription: string
+          fullDescriptionPlaceholder: string
+          iconUrl: string
+        }
+        step2: {
+          title: string
+          description: string
+          dockerImage: string
+          dockerImagePlaceholder: string
+          defaultPort: string
+          healthCheckPath: string
+          healthCheckPathPlaceholder: string
+          commandOverride: string
+          commandPlaceholder: string
+          commandArgs: string
+          commandArgsPlaceholder: string
+          defaultCpu: string
+          defaultMemory: string
+          runAsNonRoot: string
+          runAsNonRootDescription: string
+        }
+        step3: {
+          title: string
+          description: string
+          managedDbAddons: string
+          managedDbAddonsDescription: string
+          postgresInjects: string
+          mysqlInjects: string
+          redisInjects: string
+          persistentStorageVolume: string
+          persistentStorageDescription: string
+          mountPath: string
+          defaultSizeGb: string
+        }
+        step4: {
+          title: string
+          description: string
+          addVariable: string
+          noVariables: string
+          noVariablesDescription: string
+          addFirstVariable: string
+          variableKey: string
+          variableKeyPlaceholder: string
+          displayLabel: string
+          displayLabelPlaceholder: string
+          dataType: string
+          dataTypeString: string
+          dataTypeNumber: string
+          dataTypeBoolean: string
+          dataTypeSelect: string
+          defaultValue: string
+          defaultValuePlaceholder: string
+          descriptionHelperText: string
+          descriptionPlaceholder: string
+          randomHexLength: string
+          randomHexLengthPlaceholder: string
+          optionsCommaSeparated: string
+          optionsPlaceholder: string
+          required: string
+          storeAsSecret: string
+          fixedLocked: string
+          hidden: string
+          remove: string
+        }
+        footer: {
+          previous: string
+          next: string
+          finishAndSave: string
+        }
+        importDialog: {
+          title: string
+          description: string
+          uploadFile: string
+          fileLoaded: string
+          jsonPlaceholder: string
+          cancel: string
+          applyImport: string
+        }
+      }
+      githubEvents: {
+        received: string
+        event: string
+        repository: string
+        branch: string
+        commitSha: string
+        message: string
+        sender: string
+        status: string
+        searchPlaceholder: string
+        eventTypePlaceholder: string
+        eventTypePush: string
+        eventTypeInstallation: string
+        eventTypePullRequest: string
+        eventTypeRelease: string
+        eventTypeDelete: string
+        statusPlaceholder: string
+        statusProcessed: string
+        statusPending: string
+        statusProcessing: string
+        statusFailed: string
+        statusIgnored: string
+        visibilityPlaceholder: string
+        visibilityActive: string
+        visibilityDeleted: string
+        visibilityAll: string
+        tableSearchPlaceholder: string
+        showingLabel: string
+        ofLabel: string
+        eventsLabel: string
+        previous: string
+        pageLabel: string
+        next: string
+        rawEventPayload: string
+        noPayloadAvailable: string
+        failedToLoadEvents: string
+        genericError: string
+        failedToLoadEventDetail: string
+        noEventsMatchFilters: string
+        noEventsRecorded: string
+      }
+      platforms: {
+        heading: string
+        description: string
+        marketplaceLink: string
+        deployNewApp: string
+        allTab: string
+        runningTab: string
+        queuedTab: string
+        failedTab: string
+        searchPlaceholder: string
+        loadingFleet: string
+        retry: string
+        emptyTitle: string
+        emptyHint: string
+        deployApplication: string
+        noMatchFilter: string
+        colPlatform: string
+        colStatus: string
+        colRegion: string
+        colFramework: string
+        colSource: string
+        colLastDeployed: string
+        colActions: string
+        templateBadge: string
+        deploymentsAction: string
+        logsAction: string
+        metricsAction: string
+        settingsAction: string
+      }
     }
     whatsappWorkflows: {
       title: string
@@ -4454,7 +5130,80 @@ export type AppMessages = {
       amount: string
       noInvoices: string
 
-      pdf: InvoicePdfMessages
+      pdf: {
+        billTo: string
+        paymentDetails: string
+        bankTransferDesc: string
+        bank: string
+        acct: string
+        name: string
+        swift: string
+        afterTransferNotice: string
+        site: string
+        support: string
+        generatedOn: string
+        at: string
+        companyName: string
+        companyAddress: string
+        companyContact: string
+        labelIssued: string
+        labelDue: string
+        labelServicePeriod: string
+        labelServiceEnds: string
+        labelNextRenewal: string
+        labelPaymentMethod: string
+        lineItems: string
+        colDescription: string
+        colQty: string
+        colUnitPrice: string
+        colAmount: string
+        subtotal: string
+        tax: string
+        discount: string
+        total: string
+      }
+      detail: {
+        retry: string
+        actionsHeading: string
+        payInvoice: string
+        markAsPaid: string
+        markInvoiceCanceled: string
+        overviewHeading: string
+        invoiceNumberLabel: string
+        invoiceIdLabel: string
+        statusLabel: string
+        servicePeriodLabel: string
+        serviceEndsLabel: string
+        nextRenewalDateLabel: string
+        issuedDateLabel: string
+        dueDateLabel: string
+        billedToHeading: string
+        paidToHeading: string
+        companyName: string
+        companyAddressLine1: string
+        companyAddressLine2: string
+        companyEmailLine: string
+        companyWhatsappLine: string
+        lineItemsHeading: string
+        descriptionColumn: string
+        qtyColumn: string
+        unitPriceColumn: string
+        amountColumn: string
+        totalsHeading: string
+        subtotalLabel: string
+        taxLabel: string
+        discountLabel: string
+        totalLabel: string
+        invoiceStatusLabel: string
+        confirmPaymentNote: string
+        confirmPaymentButton: string
+        cancelNotePrefix: string
+        cancelNoteSuffix: string
+        cancelConfirmText: string
+        keepInvoice: string
+        canceling: string
+        confirmCanceled: string
+      }
     }
     vpn: {
       myServices: {
@@ -4622,6 +5371,68 @@ export type AppMessages = {
         disabled: string
         enabled: string
         refresh: string
+      }
+      adminSubscriptionsTable: {
+        colOrganization: string
+        colPackage: string
+        viewInBilling: string
+        unavailableLegacy: string
+        colStatus: string
+        colDevices: string
+        colPrice: string
+        colPeriodStart: string
+        colPeriodEnd: string
+        colCreated: string
+        searchPlaceholder: string
+        searchAriaLabel: string
+        allOrganizations: string
+        allPackages: string
+        allStatus: string
+        fromLabel: string
+        toLabel: string
+        clearFilters: string
+        columnsButton: string
+        toggleColumns: string
+        showing: string
+        of: string
+        previous: string
+        page: string
+        next: string
+      }
+      adminDevicesTable: {
+        searchPlaceholder: string
+        allStatusPlaceholder: string
+        allStatus: string
+        statusActive: string
+        statusSuspended: string
+        statusRevoked: string
+        allPlatformsPlaceholder: string
+        allPlatforms: string
+        platformIos: string
+        platformAndroid: string
+        allMethodsPlaceholder: string
+        allMethods: string
+        methodSso: string
+        methodQr: string
+        refresh: string
+        thDeviceName: string
+        thPlatform: string
+        thStatus: string
+        thPairedVia: string
+        thPairedAt: string
+        thLastSeen: string
+        thActions: string
+        noDevicesFound: string
+        revoke: string
+        showing: string
+        of: string
+        previous: string
+        next: string
+        revokeDeviceTitle: string
+        revokeDeviceDescription: string
+        reasonPlaceholder: string
+        cancel: string
+        revoking: string
       }
     }
     aiBans: {
@@ -4888,6 +5699,137 @@ export type AppMessages = {
       unfeature: string
       reject: string
       approveTemplate: string
+    }
+    aiAgents: {
+      heading: string
+      subtitle: string
+      createButton: string
+      dialog: {
+        title: string
+        description: string
+        cancelButton: string
+        saveProfileOnlyButton: string
+        saveAndOpenCanvasButton: string
+      }
+      tabs: {
+        aiAssistant: string
+        manual: string
+      }
+      aiAssistant: {
+        presetsLabel: string
+        presetTrackingLabel: string
+        presetRegistrationLabel: string
+        presetGreetingLabel: string
+        promptLabel: string
+        promptPlaceholder: string
+        generatedStepsLabel: string
+        simulatorTitle: string
+        livePreview: string
+        testInputPlaceholder: string
+      }
+      manual: {
+        nameLabel: string
+        namePlaceholder: string
+        descriptionLabel: string
+        descriptionPlaceholder: string
+        systemPromptLabel: string
+        systemPromptPlaceholder: string
+        dailyLimitLabel: string
+        profanityFilterLabel: string
+      }
+      emptyState: {
+        title: string
+        description: string
+      }
+      badge: {
+        active: string
+      }
+      card: {
+        dailyLimitLabel: string
+        reqPerUser: string
+        antiSpamProtection: string
+        channelsConnectedLabel: string
+        manageNumbersButton: string
+        openCanvasButton: string
+      }
+      bindingModal: {
+        title: string
+        descriptionPrefix: string
+        descriptionSuffix: string
+        loadingDevices: string
+        noDevices: string
+        connectDeviceLink: string
+        connectedBadge: string
+        availableBadge: string
+        doneButton: string
+      }
+    }
+    aiSessions: {
+      breadcrumbGovernance: string
+      heading: string
+      description: string
+      searchPlaceholder: string
+      searchButton: string
+      channelPlaceholder: string
+      allChannels: string
+      channelConsole: string
+      channelWebLivechat: string
+      channelTelegram: string
+      statusPlaceholder: string
+      allStatus: string
+      cleanOnly: string
+      flaggedOnly: string
+      thSessionId: string
+      thUserCaller: string
+      thOrganization: string
+      thChannel: string
+      thMessages: string
+      thTokens: string
+      thStrikes: string
+      thCreated: string
+      thAction: string
+      loadingSessions: string
+      noSessionsFound: string
+      internalBadge: string
+      strikeSuffix: string
+      inspect: string
+      showing: string
+      to: string
+      of: string
+      sessionsUnit: string
+    }
+    ai: {
+      knowledge: {
+        heading: string
+        description: string
+        uploadButton: string
+        dialogTitle: string
+        dialogDescription: string
+        tabUpload: string
+        tabManual: string
+        fileLabel: string
+        dropzoneLabel: string
+        dropzoneDescription: string
+        titleLabel: string
+        titlePlaceholderUpload: string
+        categoryLabel: string
+        categoryPlaceholder: string
+        titlePlaceholderManual: string
+        contentLabel: string
+        contentHint: string
+        cancel: string
+        quotaTitle: string
+        pagesUsedLabel: string
+        quotaDescription: string
+        activeDocsLabel: string
+        emptyTitle: string
+        emptyHint: string
+        pagesSuffix: string
+        statusReady: string
+        statusProcessing: string
+        processingDocument: string
+        startParsingDocument: string
+      }
     }
   }
   sidebar: {
