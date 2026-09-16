@@ -56,6 +56,14 @@ const mockApps = [
     resourcePlanId: "small",
     billingMode: "PAYG",
     billingState: "ACTIVE",
+    dockerVersion: "5.0.0",
+    cluster: {
+      id: "cl_1",
+      name: "Singapore Production",
+      code: "sgp",
+      regionName: "Singapore",
+      countryCode: "SG",
+    },
     lastDeployedAt: "2026-09-10T00:00:00.000Z",
     latestDeploymentId: "dep-3",
     currentStepLabel: "Application live",
@@ -151,6 +159,44 @@ describe("PlatformsFleetPage (/console/app/platforms)", () => {
       expect(liveLink.getAttribute("href")).toBe(
         "https://ghost-blog.pfnapp.dev"
       )
+    })
+  })
+
+  it("renders Region with CountryFlag and cluster code", async () => {
+    const { getByText } = render(<PlatformsFleetPage />)
+
+    await waitFor(() => {
+      expect(getByText("Singapore")).toBeDefined()
+      expect(getByText("(sgp)")).toBeDefined()
+    })
+  })
+
+  it("renders docker version for template apps and git branch for git apps in Source column", async () => {
+    const { getByText, getAllByText } = render(<PlatformsFleetPage />)
+
+    await waitFor(() => {
+      // Template app should display docker version v5.0.0
+      expect(getByText("v5.0.0")).toBeDefined()
+      // Non-template app should display branch name main
+      expect(getAllByText("main").length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  it("renders contextual CTAs (Open App for live apps, View Logs for queued apps, and Manage)", async () => {
+    const { getAllByRole } = render(<PlatformsFleetPage />)
+
+    await waitFor(() => {
+      // Manage buttons should be available for each app
+      const manageButtons = getAllByRole("link", { name: /^Manage/i })
+      expect(manageButtons.length).toBeGreaterThanOrEqual(1)
+
+      // Open App link should be rendered for running apps with domain
+      const openAppLinks = getAllByRole("link", { name: /^Open App/i })
+      expect(openAppLinks.length).toBeGreaterThanOrEqual(1)
+
+      // View Logs link should be rendered for queued/deploying/failed apps
+      const viewLogsLinks = getAllByRole("link", { name: /^View Logs/i })
+      expect(viewLogsLinks.length).toBeGreaterThanOrEqual(1)
     })
   })
 })

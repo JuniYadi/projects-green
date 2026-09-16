@@ -137,31 +137,45 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
       return { ok: false, error: "FORBIDDEN", message: "Organization required" }
     }
 
-    const stacks = await prisma.applicationStack.findMany({
-      where: { organizationId: auth.organizationId },
-      orderBy: { updatedAt: "desc" },
-      include: {
-        template: true,
-        deployments: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: {
-            createdAt: true,
-            id: true,
-            events: {
-              orderBy: { createdAt: "asc" },
-              select: { type: true, createdAt: true },
+    const [stacks, defaultCluster] = await Promise.all([
+      prisma.applicationStack.findMany({
+        where: { organizationId: auth.organizationId },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          template: true,
+          cluster: {
+            include: {
+              region: true,
+            },
+          },
+          deployments: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              createdAt: true,
+              id: true,
+              events: {
+                orderBy: { createdAt: "asc" },
+                select: { type: true, createdAt: true },
+              },
             },
           },
         },
-      },
-    })
+      }),
+      prisma.appHostingCluster?.findFirst
+        ? prisma.appHostingCluster.findFirst({
+            where: { status: "ACTIVE", isDefault: true },
+            include: { region: true },
+          })
+        : Promise.resolve(null),
+    ])
 
     return {
       ok: true,
       data: stacks.map((stack) =>
         toStackSummaryDTO({
           ...stack,
+          cluster: stack.cluster ?? defaultCluster,
           events: stack.deployments[0]?.events ?? [],
         })
       ),
@@ -270,6 +284,11 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         },
         include: {
           template: true,
+          cluster: {
+            include: {
+              region: true,
+            },
+          },
           deployments: {
             orderBy: { createdAt: "desc" },
             take: 1,
