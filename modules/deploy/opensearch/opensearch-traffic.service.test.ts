@@ -25,6 +25,7 @@ mock.module("../cluster-integration.service", () => ({
 const {
   formatBytes,
   computeTopCountries,
+  computeRequestQuality,
   computeDailyTrafficSnapshotFromOpenSearch,
   getAppTrafficReport,
   getLiveTrafficLogs,
@@ -86,6 +87,45 @@ describe("opensearch-traffic.service", () => {
         requests: 100,
         percentage: 50,
       })
+    })
+  })
+
+  describe("computeRequestQuality", () => {
+    it("computes percentages against the sum of the 4 buckets", () => {
+      expect(computeRequestQuality(90, 5, 4, 1)).toEqual({
+        status2xx: 90,
+        status3xx: 5,
+        status4xx: 4,
+        status5xx: 1,
+        status2xxPct: 90,
+        status3xxPct: 5,
+        status4xxPct: 4,
+        status5xxPct: 1,
+        hasBreakdown: true,
+      })
+    })
+
+    it("reads an all-zero period as unknown, not 0%", () => {
+      expect(computeRequestQuality(0, 0, 0, 0)).toEqual({
+        status2xx: 0,
+        status3xx: 0,
+        status4xx: 0,
+        status5xx: 0,
+        status2xxPct: 0,
+        status3xxPct: 0,
+        status4xxPct: 0,
+        status5xxPct: 0,
+        hasBreakdown: false,
+      })
+    })
+
+    it("defaults undefined inputs to 0 instead of producing NaN", () => {
+      // @ts-expect-error -- exercising the runtime guard against a
+      // legacy/nullable DB read, not a type-valid call.
+      const result = computeRequestQuality(undefined, undefined, 4, 1)
+      expect(result.status2xx).toBe(0)
+      expect(result.hasBreakdown).toBe(true)
+      expect(result.status4xxPct).toBe(80)
     })
   })
 
@@ -163,6 +203,10 @@ describe("opensearch-traffic.service", () => {
       expect(result.errorPaths).toEqual([
         { path: "/missing", errors: 5, sampleStatus: 404 },
       ])
+      expect(result.status2xx).toBe(100)
+      expect(result.status3xx).toBe(0)
+      expect(result.status4xx).toBe(5)
+      expect(result.status5xx).toBe(2)
     })
 
     it("throws error when stack is not found in computeDailyTrafficSnapshotFromOpenSearch", async () => {
@@ -195,6 +239,8 @@ describe("opensearch-traffic.service", () => {
       )
       expect(result.totalRequests).toBe(0)
       expect(result.topIps).toEqual([])
+      expect(result.status2xx).toBe(0)
+      expect(result.status5xx).toBe(0)
     })
   })
 
@@ -213,6 +259,10 @@ describe("opensearch-traffic.service", () => {
         totalRequests: 1000,
         successCount: 990,
         errorCount: 10,
+        status2xxCount: 900,
+        status3xxCount: 50,
+        status4xxCount: 40,
+        status5xxCount: 10,
         totalBytes: BigInt(5000000),
         avgLatencyMs: 30,
         hourlyTrendJson: [
@@ -238,6 +288,17 @@ describe("opensearch-traffic.service", () => {
       expect(report.troubledPages).toEqual([
         { path: "/api/bad", errors: 10, sampleStatus: 400 },
       ])
+      expect(report.requestQuality).toEqual({
+        status2xx: 900,
+        status3xx: 50,
+        status4xx: 40,
+        status5xx: 10,
+        status2xxPct: 90,
+        status3xxPct: 5,
+        status4xxPct: 4,
+        status5xxPct: 1,
+        hasBreakdown: true,
+      })
     })
 
     it("returns monthly rolled up report across daily snapshots", async () => {
@@ -255,6 +316,10 @@ describe("opensearch-traffic.service", () => {
           totalRequests: 100,
           successCount: 95,
           errorCount: 5,
+          status2xxCount: 90,
+          status3xxCount: 5,
+          status4xxCount: 4,
+          status5xxCount: 1,
           totalBytes: BigInt(100000),
           avgLatencyMs: 20,
           topPathsJson: [{ path: "/page1", views: 50 }],
@@ -267,6 +332,10 @@ describe("opensearch-traffic.service", () => {
           totalRequests: 200,
           successCount: 190,
           errorCount: 10,
+          status2xxCount: 180,
+          status3xxCount: 10,
+          status4xxCount: 8,
+          status5xxCount: 2,
           totalBytes: BigInt(200000),
           avgLatencyMs: 40,
           topPathsJson: [
@@ -290,6 +359,13 @@ describe("opensearch-traffic.service", () => {
       expect(report.troubledPages).toEqual([
         { path: "/err", errors: 10, sampleStatus: 500 },
       ])
+      expect(report.requestQuality).toMatchObject({
+        status2xx: 270,
+        status3xx: 15,
+        status4xx: 12,
+        status5xx: 3,
+        hasBreakdown: true,
+      })
     })
 
     it("returns yearly rolled up report across monthly buckets", async () => {
@@ -360,6 +436,19 @@ describe("opensearch-traffic.service", () => {
         errors: 40,
       })
       expect(report.topIps[0].requestsCount).toBe(300)
+      // Both snapshots predate the status-family columns -- no breakdown was
+      // ever recorded, so this must read as "unknown", not a fabricated 0%.
+      expect(report.requestQuality).toEqual({
+        status2xx: 0,
+        status3xx: 0,
+        status4xx: 0,
+        status5xx: 0,
+        status2xxPct: 0,
+        status3xxPct: 0,
+        status4xxPct: 0,
+        status5xxPct: 0,
+        hasBreakdown: false,
+      })
     })
 
     it("returns empty default report when snapshot is absent", async () => {
@@ -382,6 +471,7 @@ describe("opensearch-traffic.service", () => {
       expect(report.topPages).toEqual([])
       expect(report.topIps).toEqual([])
       expect(report.topCountries).toEqual([])
+      expect(report.requestQuality.hasBreakdown).toBe(false)
     })
 
     it("throws error when stack is not found", async () => {
@@ -496,6 +586,10 @@ describe("opensearch-traffic.service", () => {
         totalRequests: 50,
         successCount: 48,
         errorCount: 2,
+        status2xx: 45,
+        status3xx: 3,
+        status4xx: 1,
+        status5xx: 1,
         totalBytes: BigInt(5000),
         avgLatencyMs: 25,
         hourlyTrend: [],
@@ -506,6 +600,10 @@ describe("opensearch-traffic.service", () => {
       expect(
         mockPrisma.appHostingDailyTrafficSnapshot.upsert
       ).toHaveBeenCalled()
+      const call = mockPrisma.appHostingDailyTrafficSnapshot.upsert.mock
+        .calls[0][0] as { create: Record<string, unknown> }
+      expect(call.create.status2xxCount).toBe(45)
+      expect(call.create.status5xxCount).toBe(1)
     })
 
     it("processes all running stacks in daily cron job", async () => {
