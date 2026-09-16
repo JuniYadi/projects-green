@@ -117,17 +117,28 @@ export type WhatsappBillingLedgerEntryDTO = {
   deviceName?: string | null
 }
 
+export type WhatsappBillingLedgerSummaryDTO = {
+  totalCredits: number
+  totalRefundedCredits: number
+  activeCredits: number
+  quotaCredits: number
+  quotaRefundedCredits: number
+  activeQuotaCredits: number
+  paygAmount: number
+  paygRefundedAmount: number
+  activePaygAmount: number
+  paygCount: number
+  paygRefundedCount: number
+  activePaygCount: number
+}
+
 export type WhatsappBillingLedgerListResponseDTO = {
   data: WhatsappBillingLedgerEntryDTO[]
   total: number
   page: number
   limit: number
   totalPages: number
-  summary: {
-    totalCredits: number
-    totalRefundedCredits: number
-    activeCredits: number
-  }
+  summary: WhatsappBillingLedgerSummaryDTO
 }
 
 export function formatWhatsappPaygCost(

@@ -351,8 +351,7 @@ export const idMessages: AppMessages = {
         increaseReplicasAria: "Tambah replika",
         hpaActiveLocked:
           "Replika manual terkunci karena Horizontal Pod Autoscaler (HPA) sedang aktif.",
-        maxQuotaReached:
-          "Kuota sumber daya maksimum tercapai untuk paket ini.",
+        maxQuotaReached: "Kuota sumber daya maksimum tercapai untuk paket ini.",
         saveResourceSettings: "Simpan Pengaturan Sumber Daya",
         saving: "Menyimpan...",
         autoscalingPolicies: "Kebijakan Penskalaan Otomatis (HPA / VPA)",
@@ -2360,6 +2359,9 @@ export const idMessages: AppMessages = {
           "Riwayat terperinci pembebanan pesan, deduksi kuota, dan pengembalian dana di semua organisasi.",
         totalDeductedUnits: "Total Unit Terpotong",
         totalDeductedUnitsDesc: "Total unit kuota / pesan tercatat",
+        packageQuotaUsed: "Kuota Paket Terpakai",
+        paygSaldoCharges: "Biaya Saldo PAYG",
+        netActiveMessages: "Total Pesan Aktif",
         activeCharges: "Tagihan Aktif",
         activeChargesDesc: "Unit kuota bersih yang ditagih aktif",
         refundedReverted: "Dikembalikan / Dibatalkan",
@@ -2451,13 +2453,12 @@ export const idMessages: AppMessages = {
         topCurrentMonthTitle: "⚡ Top Organisasi: Bulan Berjalan",
         topCurrentMonthDesc:
           "Aktivitas dan kesehatan margin tenant pada bulan ini (real-time/M-t-D)",
-        noCurrentMonthData:
-          "Belum ada aktivitas pesan terkirim di bulan ini.",
+        noCurrentMonthData: "Belum ada aktivitas pesan terkirim di bulan ini.",
         tenantHealthTitle: "Kesehatan Margin per Tenant / Perusahaan",
         tenantHealthDesc:
           "Evaluasi unit ekonomi per organisasi untuk memantau tenant yang ber-margin tinggi vs margin berisiko.",
         noTenantData:
-          "Belum ada data rekonsiliasi organisasi pada periode ini. Klik \"Sync Meta Pricing\" untuk memperbarui data.",
+          'Belum ada data rekonsiliasi organisasi pada periode ini. Klik "Sync Meta Pricing" untuk memperbarui data.',
         thTenantName: "Nama Tenant / Organisasi",
         thDevices: "Devices",
         thStatus: "Status",
@@ -2978,7 +2979,8 @@ export const idMessages: AppMessages = {
           searchTemplates: "Cari template...",
           gridView: "Tampilan Grid",
           listView: "Tampilan Daftar",
-          noTemplatesMatch: "Tidak ada template yang cocok dengan pencarian Anda.",
+          noTemplatesMatch:
+            "Tidak ada template yang cocok dengan pencarian Anda.",
           selectAction: "Pilih",
           showing: "Menampilkan",
           of: "dari",
@@ -4256,8 +4258,7 @@ export const idMessages: AppMessages = {
         noVnstatData: "Tidak ada data vnStat.",
         noProcessData: "Tidak ada data proses.",
         openvpnUsersTitle: "Pengguna OpenVPN",
-        openvpnUsersDesc:
-          "Daftar realtime dari server, bukan dari basis data.",
+        openvpnUsersDesc: "Daftar realtime dari server, bukan dari basis data.",
         thUsername: "Username",
         thStatus: "Status",
         thConnection: "Koneksi",
@@ -4304,7 +4305,8 @@ export const idMessages: AppMessages = {
       duration7d: "7 Hari (168 Jam)",
       durationPermanent: "Blokir Permanen",
       reasonLabel: "Alasan / Catatan Keamanan",
-      reasonPlaceholder: "contoh: Serangan prompt injection atau kata-kata kasar",
+      reasonPlaceholder:
+        "contoh: Serangan prompt injection atau kata-kata kasar",
       cancel: "Batal",
       createBan: "Buat Blokir",
       creating: "Membuat...",
@@ -4421,12 +4423,14 @@ export const idMessages: AppMessages = {
     },
     whatsappOrgApiKeys: {
       accessDenied: "Akses ditolak",
-      accessDeniedDesc: "Hanya super-admin yang dapat melihat API key organisasi.",
+      accessDeniedDesc:
+        "Hanya super-admin yang dapat melihat API key organisasi.",
       title: "API Key Organisasi",
       description:
         "Inventaris super-admin untuk kredensial sistem WhatsApp yang stabil. Rahasia mentah hanya ditampilkan sekali setelah pembuatan atau rotasi.",
       oneTimeSecretTitle: "Rahasia satu kali untuk",
-      oneTimeSecretDesc: "Salin rahasia ini sekarang. Tidak dapat dipulihkan dari portal.",
+      oneTimeSecretDesc:
+        "Salin rahasia ini sekarang. Tidak dapat dipulihkan dari portal.",
       generatedKeys: "Kunci yang Dibuat",
       orgsWithKey: "Organisasi dengan kunci aktif",
       orgsWithoutKey: "Organisasi tanpa kunci aktif",
@@ -4468,7 +4472,8 @@ export const idMessages: AppMessages = {
         "Wilayah master yang tersedia untuk Cluster App Hosting dan Paket Layanan Billing.",
       retry: "Coba Lagi",
       searchPlaceholder: "Cari wilayah...",
-      noRegions: "Belum ada wilayah terkonfigurasi. Klik 'Tambah Wilayah' untuk membuatnya.",
+      noRegions:
+        "Belum ada wilayah terkonfigurasi. Klik 'Tambah Wilayah' untuk membuatnya.",
       thRegion: "Wilayah",
       thCode: "Kode",
       thCountry: "Negara",
@@ -4492,7 +4497,8 @@ export const idMessages: AppMessages = {
       saving: "Menyimpan...",
       deleting: "Menghapus...",
       deleteTitle: "Hapus Wilayah",
-      deleteConfirmMsg: "Apakah Anda yakin ingin menghapus wilayah ini? Tindakan ini tidak dapat dibatalkan.",
+      deleteConfirmMsg:
+        "Apakah Anda yakin ingin menghapus wilayah ini? Tindakan ini tidak dapat dibatalkan.",
     },
     templateInstallations: {
       totalActiveInstallations: "Total Instalasi Aktif",
@@ -4502,7 +4508,8 @@ export const idMessages: AppMessages = {
       outdatedWorkloads: "Workload Kedaluwarsa (Perlu Sinkronisasi)",
       outdatedDesc: "Perlu sinkronisasi ke konfigurasi template terbaru",
       installedApps: "Aplikasi Terpasang",
-      manageAndSync: "Kelola dan sinkronkan aplikasi pelanggan yang di-deploy dari template ini.",
+      manageAndSync:
+        "Kelola dan sinkronkan aplikasi pelanggan yang di-deploy dari template ini.",
       selectOutdated: "Pilih yang Kedaluwarsa",
       refreshList: "Segarkan daftar",
       syncSelected: "Sinkronkan Terpilih",
@@ -4524,9 +4531,11 @@ export const idMessages: AppMessages = {
       archUpdateTitle: "Pembaruan arsitektur:",
       archUpdateDesc: "Controller diperbarui, port dan healthcheck disegarkan.",
       customSettingsTitle: "Pengaturan khusus dipertahankan:",
-      customSettingsDesc: "Penskalaan CPU/memori pelanggan, domain kustom, dan subdomain tetap utuh.",
+      customSettingsDesc:
+        "Penskalaan CPU/memori pelanggan, domain kustom, dan subdomain tetap utuh.",
       envVarsTitle: "Variabel lingkungan dipertahankan:",
-      envVarsDesc: "Nilai variabel lingkungan pelanggan tetap utuh; default baru dari template akan ditambahkan jika belum ada.",
+      envVarsDesc:
+        "Nilai variabel lingkungan pelanggan tetap utuh; default baru dari template akan ditambahkan jika belum ada.",
       gitOpsTitle: "GitOps & ArgoCD:",
       gitOpsDesc: "Menghasilkan manifest Helm baru dan memicu rolling sync.",
       cancel: "Batal",
@@ -4543,7 +4552,8 @@ export const idMessages: AppMessages = {
       requiredDatabases: "Kebutuhan Database",
       noDatabasesRequired: "Tidak memerlukan dependensi database.",
       environmentSchema: "Skema Environment",
-      noEnvDeclared: "Tidak ada variabel lingkungan tambahan yang dideklarasikan.",
+      noEnvDeclared:
+        "Tidak ada variabel lingkungan tambahan yang dideklarasikan.",
       required: "Wajib",
       secret: "Rahasia",
       fixed: "Tetap",

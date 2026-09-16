@@ -346,16 +346,14 @@ export const enMessages: AppMessages = {
         increaseReplicasAria: "Increase replicas",
         hpaActiveLocked:
           "Manual replicas are locked because Horizontal Pod Autoscaler (HPA) is currently active.",
-        maxQuotaReached:
-          "Maximum resource quota reached for this plan.",
+        maxQuotaReached: "Maximum resource quota reached for this plan.",
         saveResourceSettings: "Save Resource Settings",
         saving: "Saving...",
         autoscalingPolicies: "Autoscaling Policies (HPA / VPA)",
         autoscalingPoliciesDesc:
           "Automate horizontal scale-out and vertical limits optimizations",
         hpaTitle: "Horizontal Pod Autoscaler (HPA)",
-        hpaDesc:
-          "Dynamically scale replicas based on CPU/RAM thresholds",
+        hpaDesc: "Dynamically scale replicas based on CPU/RAM thresholds",
         toggleHpaAria: "Toggle Horizontal Pod Autoscaler",
         badgeActive: "Active",
         badgeDisabled: "Disabled",
@@ -2335,6 +2333,9 @@ export const enMessages: AppMessages = {
           "Itemized history of message charges, quota deductions, and refunds across all organizations.",
         totalDeductedUnits: "Total Deducted Units",
         totalDeductedUnitsDesc: "Total quota units / messages recorded",
+        packageQuotaUsed: "Package Quota Used",
+        paygSaldoCharges: "PAYG Saldo Charges",
+        netActiveMessages: "Net Active Messages",
         activeCharges: "Active Charges",
         activeChargesDesc: "Net active billed quota units",
         refundedReverted: "Refunded / Reverted",
@@ -2426,13 +2427,12 @@ export const enMessages: AppMessages = {
         topCurrentMonthTitle: "⚡ Top Organizations: Month to Date",
         topCurrentMonthDesc:
           "Tenant activity and margin health this month (real-time/M-t-D)",
-        noCurrentMonthData:
-          "No message delivery activity recorded this month.",
+        noCurrentMonthData: "No message delivery activity recorded this month.",
         tenantHealthTitle: "Margin Health per Tenant / Company",
         tenantHealthDesc:
           "Evaluate unit economics per organization to monitor high-margin vs at-risk tenants.",
         noTenantData:
-          "No organization reconciliation data for this period. Click \"Sync Meta Pricing\" to update.",
+          'No organization reconciliation data for this period. Click "Sync Meta Pricing" to update.',
         thTenantName: "Tenant / Organization Name",
         thDevices: "Devices",
         thStatus: "Status",
@@ -2934,8 +2934,7 @@ export const enMessages: AppMessages = {
           githubIntegration: "GitHub Integration",
           connected: "Connected",
           refreshList: "Refresh list",
-          noAccountsInstall:
-            "No accounts found. Install the GitHub App first.",
+          noAccountsInstall: "No accounts found. Install the GitHub App first.",
           selectAccount: "Select account",
           onlyOneAccount: "Only one GitHub account connected.",
           detectingFramework: "Detecting framework from repository...",
@@ -4217,8 +4216,7 @@ export const enMessages: AppMessages = {
         noVnstatData: "No vnStat data.",
         noProcessData: "No process data.",
         openvpnUsersTitle: "OpenVPN users",
-        openvpnUsersDesc:
-          "Realtime list from the server, not from database.",
+        openvpnUsersDesc: "Realtime list from the server, not from database.",
         thUsername: "Username",
         thStatus: "Status",
         thConnection: "Connection",
@@ -4339,7 +4337,8 @@ export const enMessages: AppMessages = {
     },
     adminInvitations: {
       title: "Organization Invitations",
-      description: "Manage system-wide member and admin onboarding invitations.",
+      description:
+        "Manage system-wide member and admin onboarding invitations.",
       inviteUser: "Invite User",
       searchPlaceholder: "Search invitations...",
       allStatuses: "All Statuses",
@@ -4387,7 +4386,8 @@ export const enMessages: AppMessages = {
       description:
         "Super-admin inventory for stable WhatsApp system credentials. Raw secrets are shown only once after generation or rotation.",
       oneTimeSecretTitle: "One-time secret for",
-      oneTimeSecretDesc: "Copy this secret now. It cannot be recovered from the portal.",
+      oneTimeSecretDesc:
+        "Copy this secret now. It cannot be recovered from the portal.",
       generatedKeys: "Generated keys",
       orgsWithKey: "Organizations with active key",
       orgsWithoutKey: "Organizations without active key",
@@ -4453,7 +4453,8 @@ export const enMessages: AppMessages = {
       saving: "Saving...",
       deleting: "Deleting...",
       deleteTitle: "Delete Region",
-      deleteConfirmMsg: "Are you sure you want to delete this region? This action cannot be undone.",
+      deleteConfirmMsg:
+        "Are you sure you want to delete this region? This action cannot be undone.",
     },
     templateInstallations: {
       totalActiveInstallations: "Total Active Installations",
@@ -4463,7 +4464,8 @@ export const enMessages: AppMessages = {
       outdatedWorkloads: "Outdated Workloads (Needs Sync)",
       outdatedDesc: "Needs sync to latest template configuration",
       installedApps: "Installed Applications",
-      manageAndSync: "Manage and synchronize customer applications deployed from this template.",
+      manageAndSync:
+        "Manage and synchronize customer applications deployed from this template.",
       selectOutdated: "Select Outdated",
       refreshList: "Refresh list",
       syncSelected: "Sync Selected",
@@ -4485,9 +4487,11 @@ export const enMessages: AppMessages = {
       archUpdateTitle: "Architecture update:",
       archUpdateDesc: "Controller updated, ports and healthcheck refreshed.",
       customSettingsTitle: "Custom settings preserved:",
-      customSettingsDesc: "Customer CPU/memory scaling, custom domains, and subdomain settings remain untouched.",
+      customSettingsDesc:
+        "Customer CPU/memory scaling, custom domains, and subdomain settings remain untouched.",
       envVarsTitle: "Env vars preserved:",
-      envVarsDesc: "Customer-configured environment values stay intact; new template defaults are appended if missing.",
+      envVarsDesc:
+        "Customer-configured environment values stay intact; new template defaults are appended if missing.",
       gitOpsTitle: "GitOps & ArgoCD:",
       gitOpsDesc: "Generates fresh Helm manifests and triggers a rolling sync.",
       cancel: "Cancel",

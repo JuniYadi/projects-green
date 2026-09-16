@@ -2124,6 +2124,9 @@ export type AppMessages = {
         description: string
         totalDeductedUnits: string
         totalDeductedUnitsDesc: string
+        packageQuotaUsed: string
+        paygSaldoCharges: string
+        netActiveMessages: string
         activeCharges: string
         activeChargesDesc: string
         refundedReverted: string

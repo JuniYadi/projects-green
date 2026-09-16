@@ -17,6 +17,11 @@ const WHATSAPP_CATEGORIES = [
   USAGE_CATEGORY_WHATSAPP_OUT,
 ]
 
+// Fallback per-message PAYG price (IDR) when no active base price row matches.
+// Matches the seeded UTILITY base price; surfaced as a named constant so a
+// missing pricing row stays visible instead of a silent magic number.
+const FALLBACK_PAYG_UNIT_PRICE_IDR = 357
+
 function toNum(v: any): number {
   if (v == null) return 0
   if (typeof v === "number") return v
@@ -566,48 +571,127 @@ export class WhatsappUsageService {
       where.createdAt = dateFilter
     }
 
-    const [total, rows, summaryAgg, refundedAgg, basePrices] =
-      await Promise.all([
-        prisma.whatsappBillingLedger.count({ where }),
-        prisma.whatsappBillingLedger.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          skip,
-          take: limit,
-          include: {
-            whatsappDevice: {
-              select: {
-                phoneNumber: true,
-                whatsappProfile: true,
-              },
+    const summaryDateFilter = where.createdAt
+      ? { createdAt: where.createdAt }
+      : {}
+
+    const [
+      total,
+      rows,
+      quotaActiveAgg,
+      quotaRefundedAgg,
+      paygActiveAgg,
+      paygRefundedAgg,
+      basePrices,
+    ] = await Promise.all([
+      prisma.whatsappBillingLedger.count({ where }),
+      prisma.whatsappBillingLedger.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: {
+          whatsappDevice: {
+            select: {
+              phoneNumber: true,
+              whatsappProfile: true,
             },
           },
-        }),
-        prisma.whatsappBillingLedger.aggregate({
-          where: {
-            ...(organizationId ? { organizationId } : {}),
-            isReverted: false,
-          },
-          _sum: { quotaValue: true },
-          _count: true,
-        }),
-        prisma.whatsappBillingLedger.aggregate({
-          where: {
-            ...(organizationId ? { organizationId } : {}),
-            isReverted: true,
-          },
-          _sum: { quotaValue: true },
-          _count: true,
-        }),
-        prisma.whatsappBasePrice.findMany({
-          where: { isActive: true },
-          orderBy: { effectiveFrom: "desc" },
-        }),
-      ])
-    const totalCredits =
-      toNum(summaryAgg._sum.quotaValue ?? 0) +
-      toNum(refundedAgg._sum.quotaValue ?? 0)
-    const totalRefundedCredits = toNum(refundedAgg._sum.quotaValue ?? 0)
+        },
+      }),
+      prisma.whatsappBillingLedger.aggregate({
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: false,
+          ...summaryDateFilter,
+          OR: [{ pricingBillable: false }, { pricingBillable: null }],
+        },
+        _sum: { quotaValue: true },
+        _count: true,
+      }),
+      prisma.whatsappBillingLedger.aggregate({
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: true,
+          ...summaryDateFilter,
+          OR: [{ pricingBillable: false }, { pricingBillable: null }],
+        },
+        _sum: { quotaValue: true },
+        _count: true,
+      }),
+      prisma.whatsappBillingLedger.groupBy({
+        by: ["pricingCategory", "category"],
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: false,
+          pricingBillable: true,
+          ...summaryDateFilter,
+        },
+        _sum: { quotaValue: true },
+        _count: { _all: true },
+      }),
+      prisma.whatsappBillingLedger.groupBy({
+        by: ["pricingCategory", "category"],
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: true,
+          pricingBillable: true,
+          ...summaryDateFilter,
+        },
+        _sum: { quotaValue: true },
+        _count: { _all: true },
+      }),
+      prisma.whatsappBasePrice.findMany({
+        where: { isActive: true },
+        orderBy: { effectiveFrom: "desc" },
+      }),
+    ])
+
+    const activeQuotaCredits = toNum(quotaActiveAgg._sum.quotaValue ?? 0)
+    const quotaRefundedCredits = toNum(quotaRefundedAgg._sum.quotaValue ?? 0)
+    const quotaCredits = activeQuotaCredits + quotaRefundedCredits
+
+    let paygAmount = 0
+    let paygCount = 0
+    for (const group of paygActiveAgg) {
+      const cat = (
+        group.pricingCategory ||
+        group.category ||
+        "UTILITY"
+      ).toUpperCase()
+      const bp =
+        basePrices.find((p) => p.category === cat) ??
+        basePrices.find((p) => p.category === "UTILITY")
+      const price = bp ? toNum(bp.basePrice) : FALLBACK_PAYG_UNIT_PRICE_IDR
+      const count = group._count._all ?? 0
+      const quotaSum = toNum(group._sum.quotaValue ?? count)
+      paygCount += count
+      paygAmount += price * quotaSum
+    }
+
+    let paygRefundedAmount = 0
+    let paygRefundedCount = 0
+    for (const group of paygRefundedAgg) {
+      const cat = (
+        group.pricingCategory ||
+        group.category ||
+        "UTILITY"
+      ).toUpperCase()
+      const bp =
+        basePrices.find((p) => p.category === cat) ??
+        basePrices.find((p) => p.category === "UTILITY")
+      const price = bp ? toNum(bp.basePrice) : FALLBACK_PAYG_UNIT_PRICE_IDR
+      const count = group._count._all ?? 0
+      const quotaSum = toNum(group._sum.quotaValue ?? count)
+      paygRefundedCount += count
+      paygRefundedAmount += price * quotaSum
+    }
+
+    const totalCredits = quotaCredits + paygCount + paygRefundedCount
+    const totalRefundedCredits = quotaRefundedCredits + paygRefundedCount
+    const activeCredits = activeQuotaCredits + paygCount
+    const activePaygAmount = Math.max(0, paygAmount)
+    const activePaygCount = Math.max(0, paygCount)
 
     return {
       data: rows.map((r) => {
@@ -667,6 +751,15 @@ export class WhatsappUsageService {
         totalRefundedCredits: Math.round(totalRefundedCredits * 100) / 100,
         activeCredits:
           Math.round((totalCredits - totalRefundedCredits) * 100) / 100,
+        quotaCredits: Math.round(quotaCredits * 100) / 100,
+        quotaRefundedCredits: Math.round(quotaRefundedCredits * 100) / 100,
+        activeQuotaCredits: Math.round(activeQuotaCredits * 100) / 100,
+        paygAmount: Math.round(paygAmount),
+        paygRefundedAmount: Math.round(paygRefundedAmount),
+        activePaygAmount: Math.round(activePaygAmount),
+        paygCount,
+        paygRefundedCount,
+        activePaygCount,
       },
     }
   }

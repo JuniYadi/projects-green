@@ -4,6 +4,7 @@ import {
   updateDeviceSchema,
 } from "@/modules/whatsapp/devices/devices.schemas"
 import type { WhatsappMessagePricingDTO } from "@/modules/whatsapp/messages/message-pricing.dto"
+import type { WhatsappBillingLedgerSummaryDTO } from "@/modules/whatsapp/usage/usage.dto"
 import { eden, getApiBaseUrl } from "@/lib/eden"
 import { z } from "zod"
 import type { BusinessProfileDTO } from "@/modules/whatsapp/devices/business-profile.dto"
@@ -599,6 +600,10 @@ export const whatsappClient = {
           revertedAt: string | null
           lastStatus: string | null
           whatsappDeviceId: string | null
+          pricingBillable?: boolean | null
+          pricingCategory?: string | null
+          unitPrice?: number | null
+          currency?: string | null
           createdAt: string
           updatedAt: string
           devicePhoneNumber?: string | null
@@ -608,11 +613,7 @@ export const whatsappClient = {
         page: number
         limit: number
         totalPages: number
-        summary: {
-          totalCredits: number
-          totalRefundedCredits: number
-          activeCredits: number
-        }
+        summary: WhatsappBillingLedgerSummaryDTO
       }>("/api/whatsapp/usage/ledger", { params }),
   },
 

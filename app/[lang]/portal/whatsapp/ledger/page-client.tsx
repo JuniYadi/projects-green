@@ -70,6 +70,15 @@ interface LedgerSummary {
   totalCredits: number
   totalRefundedCredits: number
   activeCredits: number
+  quotaCredits?: number
+  quotaRefundedCredits?: number
+  activeQuotaCredits?: number
+  paygAmount?: number
+  paygRefundedAmount?: number
+  activePaygAmount?: number
+  paygCount?: number
+  paygRefundedCount?: number
+  activePaygCount?: number
 }
 
 interface OrganizationOption {
@@ -111,7 +120,9 @@ function StatusBadge({
 }: {
   status: string
   isReverted: boolean
-  messages?: ReturnType<typeof getMessages>["console"]["whatsapp"]["ledgerAdmin"]
+  messages?: ReturnType<
+    typeof getMessages
+  >["console"]["whatsapp"]["ledgerAdmin"]
 }) {
   if (isReverted || status === "REFUNDED" || status === "REVERTED") {
     return (
@@ -356,20 +367,16 @@ export default function PortalWhatsAppLedgerPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">
-          {messages.title}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {messages.description}
-        </p>
+        <h1 className="text-2xl font-semibold">{messages.title}</h1>
+        <p className="text-sm text-muted-foreground">{messages.description}</p>
       </header>
 
       {/* Summary KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {messages.totalDeductedUnits}
+              {messages.packageQuotaUsed}
             </CardTitle>
             <Receipt className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -379,10 +386,20 @@ export default function PortalWhatsAppLedgerPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold">
-                  {summary.totalCredits.toLocaleString()}
+                  {(
+                    summary.activeQuotaCredits ?? summary.activeCredits
+                  ).toLocaleString("id-ID")}{" "}
+                  credits
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {messages.totalDeductedUnitsDesc}
+                  {(
+                    summary.quotaCredits ?? summary.totalCredits
+                  ).toLocaleString("id-ID")}{" "}
+                  deducted,{" "}
+                  {(
+                    summary.quotaRefundedCredits ?? summary.totalRefundedCredits
+                  ).toLocaleString("id-ID")}{" "}
+                  refunded
                 </p>
               </>
             )}
@@ -392,7 +409,31 @@ export default function PortalWhatsAppLedgerPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {messages.activeCharges}
+              {messages.paygSaldoCharges}
+            </CardTitle>
+            <Tag className="size-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            {state === "loading" ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                  Rp {(summary.activePaygAmount ?? 0).toLocaleString("id-ID")}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {(summary.activePaygCount ?? 0).toLocaleString("id-ID")}{" "}
+                  messages billed to Saldo
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {messages.netActiveMessages}
             </CardTitle>
             <CheckCircle className="size-4 text-emerald-500" />
           </CardHeader>
@@ -402,10 +443,12 @@ export default function PortalWhatsAppLedgerPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {summary.activeCredits.toLocaleString()}
+                  {summary.activeCredits.toLocaleString("id-ID")}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {messages.activeChargesDesc}
+                  {(summary.activeQuotaCredits ?? 0).toLocaleString("id-ID")}{" "}
+                  quota +{" "}
+                  {(summary.activePaygCount ?? 0).toLocaleString("id-ID")} PAYG
                 </p>
               </>
             )}
@@ -425,10 +468,13 @@ export default function PortalWhatsAppLedgerPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                  {summary.totalRefundedCredits.toLocaleString()}
+                  {summary.totalRefundedCredits.toLocaleString("id-ID")}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {messages.refundedRevertedDesc}
+                  {(summary.quotaRefundedCredits ?? 0).toLocaleString("id-ID")}{" "}
+                  quota + Rp{" "}
+                  {(summary.paygRefundedAmount ?? 0).toLocaleString("id-ID")}{" "}
+                  balance
                 </p>
               </>
             )}
@@ -440,9 +486,7 @@ export default function PortalWhatsAppLedgerPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">{messages.filtersTitle}</CardTitle>
-          <CardDescription>
-            {messages.filtersDesc}
-          </CardDescription>
+          <CardDescription>{messages.filtersDesc}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -647,9 +691,7 @@ export default function PortalWhatsAppLedgerPage() {
           {state === "loaded" && entries.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Receipt className="mb-3 size-10 text-muted-foreground" />
-              <p className="text-sm font-medium">
-                {messages.noTransactions}
-              </p>
+              <p className="text-sm font-medium">{messages.noTransactions}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {messages.adjustFiltersPrompt}
               </p>

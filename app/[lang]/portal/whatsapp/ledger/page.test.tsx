@@ -124,8 +124,9 @@ describe("PortalWhatsAppLedgerPage", () => {
     const view = render(<PortalWhatsAppLedgerPage />)
 
     expect(view.getByText("WhatsApp Billing & Quota Ledger")).toBeTruthy()
-    expect(view.getByText("Total Deducted Units")).toBeTruthy()
-    expect(view.getByText("Active Charges")).toBeTruthy()
+    expect(view.getByText("Package Quota Used")).toBeTruthy()
+    expect(view.getByText("PAYG Saldo Charges")).toBeTruthy()
+    expect(view.getByText("Net Active Messages")).toBeTruthy()
 
     await waitFor(() => {
       expect(view.getByText("6281234567890")).toBeTruthy()
