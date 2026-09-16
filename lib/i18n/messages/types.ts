@@ -2188,6 +2188,7 @@ export type AppMessages = {
         metaCost: string
         incTax: string
         grossProfit: string
+        grossProfitDesc: string
         marginHealth: string
         healthy: string
         warning: string
