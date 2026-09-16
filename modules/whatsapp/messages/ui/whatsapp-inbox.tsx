@@ -311,6 +311,7 @@ function ConversationItem({
   onDelete,
   onNotes,
   onLabels,
+  messages: t,
 }: {
   conversation: ConversationListItem
   isActive: boolean
@@ -320,6 +321,7 @@ function ConversationItem({
   onDelete: (id: string) => void
   onNotes: (conversation: ConversationListItem) => void
   onLabels: (conversation: ConversationListItem) => void
+  messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["messages"]
 }) {
   return (
     <div
@@ -364,15 +366,15 @@ function ConversationItem({
           {conversation.lastDirection === "INBOX" ? (
             <>
               <ArrowBendDownLeft className="size-3 text-blue-500" />
-              <span>Received</span>
+              <span>{t.received}</span>
             </>
           ) : conversation.lastDirection === "OUTBOX" ? (
             <>
               <ArrowBendUpRight className="size-3 text-emerald-500" />
-              <span>Sent</span>
+              <span>{t.sent}</span>
             </>
           ) : (
-            <span>No messages</span>
+            <span>{t.noMessages}</span>
           )}
         </div>
         {/* Device & Org badges for tracking */}
@@ -407,7 +409,7 @@ function ConversationItem({
                 className="inline-flex items-center rounded-xs bg-amber-500/10 px-1 py-0.5 text-[10px] text-amber-600 dark:text-amber-400"
                 title={conversation.internalNotes ?? undefined}
               >
-                Note
+                {t.note}
               </span>
             )}
             {conversation.conversationLabels?.map((cl) => (
@@ -445,24 +447,24 @@ function ConversationItem({
               variant="ghost"
               size="icon"
               className="size-7"
-              aria-label="Conversation actions"
+              aria-label={t.conversationActionsAria}
             >
               <DotsThreeVertical className="size-4" weight="bold" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onNotes(conversation)}>
-              Edit Notes
+              {t.editNotes}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onLabels(conversation)}>
-              Manage Labels
+              {t.manageLabels}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={() => onDelete(conversation.id)}
             >
-              Delete Conversation
+              {t.deleteConversation}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -498,7 +500,15 @@ function getTemplateButtonLabel(button: Record<string, unknown>): string {
   return button.type === "OTP" ? "Copy Code" : String(button.type ?? "Button")
 }
 
-function TemplateHeader({ data }: { data: TemplateLanguageData }) {
+function TemplateHeader({
+  data,
+  locale,
+}: {
+  data: TemplateLanguageData
+  locale: string
+}) {
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.whatsapp
+    .messages
   const headerType = data.headerType?.toUpperCase()
   const headerText = data.headerText?.trim()
   const headerUrl = data.headerUrl?.trim()
@@ -517,7 +527,7 @@ function TemplateHeader({ data }: { data: TemplateLanguageData }) {
         {/* eslint-disable-next-line @next/next/no-img-element -- template media URLs are dynamic */}
         <img
           src={headerUrl}
-          alt="Template header"
+          alt={t.templateHeaderAlt}
           className="max-h-48 w-full object-cover"
         />
       </div>
@@ -531,7 +541,7 @@ function TemplateHeader({ data }: { data: TemplateLanguageData }) {
           src={headerUrl}
           controls
           className="max-h-48 w-full object-cover"
-          aria-label="Template header video"
+          aria-label={t.templateHeaderVideoAlt}
         />
       </div>
     )
@@ -553,7 +563,7 @@ function TemplateHeader({ data }: { data: TemplateLanguageData }) {
   if (headerType && headerType !== "NONE") {
     return (
       <div className="mb-2 rounded-lg border border-border/40 bg-black/5 p-2 text-center text-xs text-[#667781] dark:bg-white/5 dark:text-[#8696a0]">
-        {headerType} attachment
+        {headerType} {t.attachmentSuffix}
       </div>
     )
   }
@@ -572,6 +582,8 @@ function MessageBubble({
   locale: string
   basePath: string
 }) {
+  const t = getMessages(resolveLocaleOrDefault(locale)).console.whatsapp
+    .messages
   const isInbox = message.direction === "INBOX"
   const journeyHref = `${basePath.replace(/\/$/, "")}/${encodeURIComponent(
     message.waMessageId || ""
@@ -619,7 +631,7 @@ function MessageBubble({
         >
           {isTemplatePreview ? (
             <>
-              <TemplateHeader data={templateData} />
+              <TemplateHeader data={templateData} locale={locale} />
               {templateBody ? (
                 <div className="leading-relaxed break-words whitespace-pre-wrap">
                   <WhatsAppFormattedText text={templateBody} />
@@ -649,7 +661,7 @@ function MessageBubble({
                 {message.body || "👍"}
               </span>
               <span className="text-[11px] text-muted-foreground italic">
-                (Reaksi)
+                {t.reactionLabel}
               </span>
             </div>
           ) : message.messageType === "sticker" ? (
@@ -658,11 +670,11 @@ function MessageBubble({
                 <CDNAsset
                   url={message.mediaUrl}
                   type="sticker"
-                  alt="Sticker"
+                  alt={t.stickerAlt}
                   imageClassName="size-32 object-contain"
                 />
               ) : (
-                <span className="italic opacity-60">🎨 (Sticker)</span>
+                <span className="italic opacity-60">{t.stickerFallback}</span>
               )}
             </div>
           ) : message.messageType === "audio" ? (
@@ -671,10 +683,10 @@ function MessageBubble({
                 <CDNAsset
                   url={message.mediaUrl}
                   type="audio"
-                  alt="Audio message"
+                  alt={t.audioAlt}
                 />
               ) : (
-                <span className="italic opacity-60">🎵 (Audio)</span>
+                <span className="italic opacity-60">{t.audioFallback}</span>
               )}
             </div>
           ) : message.messageType === "video" ? (
@@ -683,10 +695,10 @@ function MessageBubble({
                 <CDNAsset
                   url={message.mediaUrl}
                   type="video"
-                  alt="Video message"
+                  alt={t.videoAlt}
                 />
               ) : (
-                <span className="italic opacity-60">🎥 (Video)</span>
+                <span className="italic opacity-60">{t.videoFallback}</span>
               )}
               {message.body ? (
                 <p className="leading-relaxed break-words whitespace-pre-wrap">
@@ -699,7 +711,7 @@ function MessageBubble({
               <CDNAsset
                 url={message.mediaUrl}
                 type="image"
-                alt="Image"
+                alt={t.imageAlt}
                 imageClassName="max-h-60 max-w-full rounded-md object-contain"
               />
               {message.body ? (
@@ -788,10 +800,17 @@ export function SmartComposerBar({
   suggestions: string[]
   onSelect: (suggestion: string) => void
 }) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(resolveLocaleOrDefault(params?.lang)).console.whatsapp
+    .messages
+
   if (suggestions.length === 0) return null
 
   return (
-    <div className="mb-2 flex flex-wrap gap-2" aria-label="Suggested replies">
+    <div
+      className="mb-2 flex flex-wrap gap-2"
+      aria-label={t.suggestedRepliesAria}
+    >
       {suggestions.slice(0, 3).map((suggestion) => (
         <button
           key={suggestion}
@@ -1770,12 +1789,12 @@ export function WhatsAppInbox({
                 >
                   <SelectTrigger
                     className="h-9 w-[180px] text-xs"
-                    aria-label="Filter by organization"
+                    aria-label={t.filterByOrganizationAria}
                   >
-                    <SelectValue placeholder="All Organizations" />
+                    <SelectValue placeholder={t.allOrganizations} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Organizations</SelectItem>
+                    <SelectItem value="all">{t.allOrganizations}</SelectItem>
                     {adminOrganizations.map((org) => (
                       <SelectItem key={org.id} value={org.id}>
                         {org.name || org.id}
@@ -1798,12 +1817,12 @@ export function WhatsAppInbox({
                 >
                   <SelectTrigger
                     className="h-9 w-[180px] text-xs"
-                    aria-label="Filter by device"
+                    aria-label={t.filterByDeviceAria}
                   >
-                    <SelectValue placeholder="All Devices" />
+                    <SelectValue placeholder={t.allDevices} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Devices</SelectItem>
+                    <SelectItem value="all">{t.allDevices}</SelectItem>
                     {adminDevices.map((dev) => (
                       <SelectItem key={dev.id} value={dev.id}>
                         {dev.phoneNumber} {dev.name ? `(${dev.name})` : ""}
@@ -1975,8 +1994,13 @@ export function WhatsAppInbox({
                                     variant="secondary"
                                     className="mt-1 text-[10px]"
                                   >
-                                    {tpl.languages.length} lang
-                                    {tpl.languages.length !== 1 ? "s" : ""}
+                                    {(tpl.languages.length === 1
+                                      ? t.languageCountSingular
+                                      : t.languageCountPlural
+                                    ).replace(
+                                      "{count}",
+                                      String(tpl.languages.length)
+                                    )}
                                   </Badge>
                                 </div>
                                 <Button
@@ -2049,8 +2073,13 @@ export function WhatsAppInbox({
                                       variant="secondary"
                                       className="shrink-0 text-[10px]"
                                     >
-                                      {tpl.languages.length} lang
-                                      {tpl.languages.length !== 1 ? "s" : ""}
+                                      {(tpl.languages.length === 1
+                                        ? t.languageCountSingular
+                                        : t.languageCountPlural
+                                      ).replace(
+                                        "{count}",
+                                        String(tpl.languages.length)
+                                      )}
                                     </Badge>
                                   </div>
                                   <span className="truncate text-xs text-muted-foreground">
@@ -2087,7 +2116,7 @@ export function WhatsAppInbox({
                           return (
                             <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3.5 py-2.5">
                               <span className="text-xs font-medium text-muted-foreground">
-                                Language
+                                {t.language}
                               </span>
                               <span className="inline-flex items-center gap-2 text-sm font-medium">
                                 <CountryFlag
@@ -2104,7 +2133,7 @@ export function WhatsAppInbox({
                         return (
                           <FieldSet className="gap-2">
                             <FieldLegend variant="label">
-                              Language *
+                              {t.languageRequired}
                             </FieldLegend>
                             <div className="flex flex-col gap-2">
                               {tpl.languages.map((lang, index) => {
@@ -2199,11 +2228,11 @@ export function WhatsAppInbox({
                                 <div className="grid gap-2" key={index}>
                                   <div className="flex items-center justify-between">
                                     <Label htmlFor={`field-${index}`}>
-                                      Field {`{{${index}}}`}
+                                      {t.fieldLabel} {`{{${index}}}`}
                                     </Label>
                                     {exampleHint && (
                                       <span className="text-[11px] text-muted-foreground">
-                                        Example:{" "}
+                                        {t.exampleLabel}{" "}
                                         <span className="font-mono text-foreground/80">
                                           {exampleHint}
                                         </span>
@@ -2265,7 +2294,7 @@ export function WhatsAppInbox({
                                 {selectedTemplateLanguage && (
                                   <div>
                                     <p className="text-xs text-muted-foreground">
-                                      Language
+                                      {t.language}
                                     </p>
                                     <p className="flex items-center gap-2 text-sm">
                                       <CountryFlag
@@ -2384,26 +2413,26 @@ export function WhatsAppInbox({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Lifecycle Status</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t.lifecycleStatus}</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={lifecycleFilter}
                     onValueChange={setLifecycleFilter}
                   >
                     <DropdownMenuRadioItem value="all">
-                      All Lifecycles
+                      {t.allLifecycles}
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="OPEN">
-                      Open
+                      {t.lifecycleOpen}
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="PENDING">
-                      Pending
+                      {t.lifecyclePending}
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="RESOLVED">
-                      Resolved
+                      {t.lifecycleResolved}
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Reply State</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t.replyState}</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={replyFilter}
                     onValueChange={(val) => {
@@ -2420,14 +2449,14 @@ export function WhatsAppInbox({
                       <WhatsAppText id="s152" />
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="unreplied">
-                      Needs Reply (Inbox)
+                      {t.needsReplyInbox}
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="replied">
-                      Replied (Outbox)
+                      {t.repliedOutbox}
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Direction</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t.direction}</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={directionFilter}
                     onValueChange={setDirectionFilter}
@@ -2436,10 +2465,10 @@ export function WhatsAppInbox({
                       <WhatsAppText id="s153" />
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="INBOX">
-                      Inbox
+                      {t.directionInbox}
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="OUTBOX">
-                      Outbox
+                      {t.directionOutbox}
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                   <DropdownMenuSeparator />
@@ -2457,10 +2486,10 @@ export function WhatsAppInbox({
                       <WhatsAppText id="s154" />
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="DELIVERED">
-                      Delivered
+                      {t.statusDelivered}
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="READ">
-                      Read
+                      {t.statusRead}
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="FAILED">
                       <WhatsAppText id="s155" />
@@ -2469,7 +2498,7 @@ export function WhatsAppInbox({
                   {allLabels.length > 0 && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Labels</DropdownMenuLabel>
+                      <DropdownMenuLabel>{t.labels}</DropdownMenuLabel>
                       {allLabels.map((label) => (
                         <DropdownMenuCheckboxItem
                           key={label.id}
@@ -2607,6 +2636,7 @@ export function WhatsAppInbox({
                   onDelete={handleDeleteConversation}
                   onNotes={handleNotesConversation}
                   onLabels={handleLabelsConversation}
+                  messages={t}
                 />
               ))}
           </div>
@@ -2668,7 +2698,7 @@ export function WhatsAppInbox({
                 size="sm"
                 onClick={handleSummarizeConversation}
               >
-                ✨ Rangkum Percakapan
+                {t.summarizeConversation}
               </Button>
             )}
           </div>
@@ -2798,8 +2828,8 @@ export function WhatsAppInbox({
                         className="size-10 shrink-0"
                         onClick={() => replyAttachmentInputRef.current?.click()}
                         disabled={sendReplyMutation.isPending}
-                        aria-label="Attach media"
-                        title="Attach media"
+                        aria-label={t.attachMedia}
+                        title={t.attachMedia}
                       >
                         <Paperclip className="size-4" />
                       </Button>
@@ -2826,8 +2856,8 @@ export function WhatsAppInbox({
                             }
                           }}
                           disabled={sendReplyMutation.isPending}
-                          aria-label="Remove attachment"
-                          title="Remove attachment"
+                          aria-label={t.removeAttachment}
+                          title={t.removeAttachment}
                         >
                           <X className="size-4" />
                         </Button>
@@ -2913,14 +2943,14 @@ export function WhatsAppInbox({
       <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Internal Notes</DialogTitle>
+            <DialogTitle>{t.internalNotesTitle}</DialogTitle>
             <DialogDescription>
               <WhatsAppText id="s166" />
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <Label htmlFor="notes-textarea" className="sr-only">
-              Notes
+              {t.notesLabel}
             </Label>
             <textarea
               id="notes-textarea"
