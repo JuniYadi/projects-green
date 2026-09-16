@@ -6,6 +6,18 @@ export interface IpGeoInfo {
   countryName: string
   city?: string
   requestsCount: number
+  status2xx: number
+  status3xx: number
+  status4xx: number
+  status5xx: number
+  /** 2xx share of requestsCount, 0-100, one decimal. */
+  successRatio: number
+}
+
+/** 2xx share of total requests, 0-100 rounded to one decimal. Empty totals read as 100% (no evidence of failure). */
+export function computeSuccessRatio(status2xx: number, total: number): number {
+  if (total <= 0) return 100
+  return Math.round((status2xx / total) * 1000) / 10
 }
 
 const MAX_GEO_CACHE_SIZE = 5000
@@ -152,7 +164,14 @@ export async function lookupIpGeo(
  * Enriches a list of { ip, count } into IpGeoInfo with parallel requests.
  */
 export async function enrichTopIpsWithGeo(
-  rawIps: Array<{ ip: string; count: number }>,
+  rawIps: Array<{
+    ip: string
+    count: number
+    status2xx: number
+    status3xx: number
+    status4xx: number
+    status5xx: number
+  }>,
   fetchFn: typeof fetch = fetch
 ): Promise<IpGeoInfo[]> {
   const settled = await Promise.allSettled(
@@ -164,17 +183,28 @@ export async function enrichTopIpsWithGeo(
         countryCode: geo.countryCode,
         countryName: geo.countryName,
         city: geo.city,
+        status2xx: item.status2xx,
+        status3xx: item.status3xx,
+        status4xx: item.status4xx,
+        status5xx: item.status5xx,
+        successRatio: computeSuccessRatio(item.status2xx, item.count),
       }
     })
   )
 
   return settled.map((res, idx) => {
     if (res.status === "fulfilled") return res.value
+    const raw = rawIps[idx]
     return {
-      ip: rawIps[idx].ip,
-      requestsCount: rawIps[idx].count,
+      ip: raw.ip,
+      requestsCount: raw.count,
       countryCode: "UNKNOWN",
       countryName: "Tidak Diketahui",
+      status2xx: raw.status2xx,
+      status3xx: raw.status3xx,
+      status4xx: raw.status4xx,
+      status5xx: raw.status5xx,
+      successRatio: computeSuccessRatio(raw.status2xx, raw.count),
     }
   })
 }
