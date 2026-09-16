@@ -51,6 +51,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import type { AppTemplateBlueprintEnvVar } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 import { buildInitialEnvVars } from "@/modules/deploy/blueprint/app-template-blueprint.service"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 
 import type { MarketplaceTemplateItem } from "./template-card"
 export type { MarketplaceTemplateItem }
@@ -125,6 +126,8 @@ export function DynamicLaunchDrawer({
   currency: initialCurrency = "USD",
   lang,
 }: DynamicLaunchDrawerProps & { lang?: string }) {
+  const messages =
+    getMessagesForMaybeLocale(lang).console.app.marketplace.launchDrawer
   const [accountData, setAccountData] = useState<BillingAccount | null>(null)
   const [quickTopUpOpen, setQuickTopUpOpen] = useState(false)
   const [appNameOverride, setAppNameOverride] = useState<string | null>(null)
@@ -396,7 +399,7 @@ export function DynamicLaunchDrawer({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <SheetTitle className="truncate text-lg font-semibold">
-                  Deploy {template.name}
+                  {messages.deployHeading} {template.name}
                 </SheetTitle>
                 {template.isOfficial && (
                   <Badge
@@ -404,14 +407,14 @@ export function DynamicLaunchDrawer({
                     className="gap-1 border border-border px-1.5 py-0 text-xs font-normal"
                   >
                     <ShieldCheckIcon className="size-3 text-emerald-500" />
-                    Official
+                    {messages.official}
                   </Badge>
                 )}
               </div>
               <SheetDescription className="truncate text-xs text-muted-foreground">
                 {template.tagline ||
                   template.description ||
-                  "1-Click instant launch"}
+                  messages.instantLaunchFallback}
               </SheetDescription>
             </div>
           </div>
@@ -425,14 +428,14 @@ export function DynamicLaunchDrawer({
                 <WarningIcon className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <div className="flex-1 space-y-1">
                   <p className="font-semibold text-foreground">
-                    Insufficient balance for this plan
+                    {messages.insufficientBalance}
                   </p>
                   <p className="text-muted-foreground">
-                    First month requires{" "}
+                    {messages.firstMonthRequires}{" "}
                     <span className="font-medium text-foreground">
                       {formatBillingMoney(planCost, planCurrency)}
                     </span>
-                    . Your current balance is{" "}
+                    {messages.currentBalanceIs}{" "}
                     <span className="font-medium text-foreground">
                       {formatBillingMoney(currentBalance, currency)}
                     </span>
@@ -450,7 +453,7 @@ export function DynamicLaunchDrawer({
                 >
                   <Lightning className="size-3" weight="fill" />
                   <span>
-                    Quick Top-Up (+
+                    {messages.quickTopUp}
                     {formatBillingMoney(shortageAmount, planCurrency)})
                   </span>
                 </Button>
@@ -462,20 +465,20 @@ export function DynamicLaunchDrawer({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="app-name-input" className="text-sm font-medium">
-                App Name
+                {messages.appNameLabel}
               </Label>
               <Input
                 id="app-name-input"
                 value={appName}
                 onChange={(e) => setAppName(e.target.value)}
-                placeholder="e.g. n8n-sparkling-star"
+                placeholder={messages.appNamePlaceholder}
                 className="font-mono text-sm"
               />
             </div>
 
             <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs">
               <span className="text-muted-foreground">
-                Assigned Subdomain:{" "}
+                {messages.assignedSubdomainLabel}{" "}
               </span>
               <span className="font-mono font-medium text-foreground">
                 https://{subdomain}
@@ -487,20 +490,20 @@ export function DynamicLaunchDrawer({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Hosting Package & Sizing
+                {messages.hostingPackageHeading}
               </h4>
               <Badge
                 variant="outline"
                 className="text-[10px] text-muted-foreground"
               >
-                Monthly Subscription
+                {messages.monthlySubscription}
               </Badge>
             </div>
 
             {/* Region Selection */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Target Region
+                {messages.targetRegionLabel}
               </Label>
               <div className="grid grid-cols-2 gap-2">
                 {availableRegions.map((region) => {
@@ -544,7 +547,7 @@ export function DynamicLaunchDrawer({
           {/* Resource Plan Cards (Grouped by selected Region) */}
           <div className="space-y-3">
             <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Hardware Resource Plan
+              {messages.hardwareResourcePlanLabel}
             </Label>
 
             {plans.length > 0 ? (
@@ -596,11 +599,11 @@ export function DynamicLaunchDrawer({
               </div>
             ) : catalogLoading ? (
               <div className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
-                Loading available catalog plans…
+                {messages.loadingCatalogPlans}
               </div>
             ) : (
               <div className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
-                Starter Plan — Monthly Subscription
+                {messages.starterPlanFallback}
               </div>
             )}
 
@@ -613,7 +616,7 @@ export function DynamicLaunchDrawer({
                     htmlFor="custom-cpu-input"
                     className="text-xs font-medium"
                   >
-                    CPU (mCore)
+                    {messages.cpuLabel}
                   </Label>
                 </div>
                 <Input
@@ -637,7 +640,7 @@ export function DynamicLaunchDrawer({
                     htmlFor="custom-mem-input"
                     className="text-xs font-medium"
                   >
-                    RAM (MB)
+                    {messages.ramLabel}
                   </Label>
                 </div>
                 <Input
@@ -658,11 +661,13 @@ export function DynamicLaunchDrawer({
             <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 shadow-2xs">
               <Database className="size-4 text-muted-foreground" />
               <div className="flex-1 text-xs">
-                <span className="text-muted-foreground">DB Dependencies: </span>
+                <span className="text-muted-foreground">
+                  {messages.dbDependenciesLabel}{" "}
+                </span>
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                   {dependencies.length > 0
                     ? dependencies.map((d) => d.serviceType).join(", ")
-                    : "Self-contained / In-Stock"}
+                    : messages.selfContainedFallback}
                 </span>
               </div>
             </div>
@@ -671,7 +676,8 @@ export function DynamicLaunchDrawer({
               <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                 <HardDrive className="size-3.5" />
                 <span>
-                  Persistent Volume: {storage.sizeGbDefault} GB mounted at{" "}
+                  {messages.persistentVolumeLabel} {storage.sizeGbDefault}{" "}
+                  {messages.gbMountedAt}{" "}
                   <code className="font-mono font-medium text-foreground">
                     {storage.mountPath}
                   </code>
@@ -685,14 +691,15 @@ export function DynamicLaunchDrawer({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                  Environment Configuration ({visibleEnvSchema.length})
+                  {messages.envConfigHeading}
+                  {visibleEnvSchema.length})
                 </h4>
                 <Badge
                   variant="outline"
                   className="gap-1 text-[10px] text-muted-foreground"
                 >
                   <Lightning className="size-2.5 text-primary" />
-                  Auto-populated
+                  {messages.autoPopulated}
                 </Badge>
               </div>
 
@@ -718,7 +725,7 @@ export function DynamicLaunchDrawer({
                           {isFixed && (
                             <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
                               <Lock className="size-2.5" />
-                              Fixed
+                              {messages.fixedBadge}
                             </span>
                           )}
                         </Label>
@@ -745,7 +752,9 @@ export function DynamicLaunchDrawer({
                             id={`env-field-${fieldKey}`}
                             className="w-full text-xs"
                           >
-                            <SelectValue placeholder="Select option" />
+                            <SelectValue
+                              placeholder={messages.selectOptionPlaceholder}
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {field.options.map((opt) => (
@@ -774,8 +783,8 @@ export function DynamicLaunchDrawer({
                           />
                           <span className="text-xs text-muted-foreground">
                             {val === "true" || val === "1"
-                              ? "Enabled"
-                              : "Disabled"}
+                              ? messages.enabledLabel
+                              : messages.disabledLabel}
                           </span>
                         </div>
                       ) : (
@@ -833,10 +842,10 @@ export function DynamicLaunchDrawer({
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-semibold text-foreground">
-                  Custom Environment Variables
+                  {messages.customEnvVarsHeading}
                 </h4>
                 <p className="text-[11px] text-muted-foreground">
-                  Add extra environment variables needed for your deployment
+                  {messages.customEnvVarsDescription}
                 </p>
               </div>
               <Button
@@ -856,7 +865,7 @@ export function DynamicLaunchDrawer({
                 className="h-7 gap-1 text-xs"
               >
                 <Plus className="size-3.5" />
-                Add Variable
+                {messages.addVariable}
               </Button>
             </div>
 
@@ -891,7 +900,7 @@ export function DynamicLaunchDrawer({
                         </div>
                         <div className="flex-1">
                           <Input
-                            placeholder="Value"
+                            placeholder={messages.valuePlaceholder}
                             value={item.value}
                             onChange={(e) => {
                               const val = e.target.value
@@ -920,8 +929,8 @@ export function DynamicLaunchDrawer({
                       </div>
                       {isKeyReserved && (
                         <p className="text-[10px] font-medium text-destructive">
-                          &quot;{item.key.trim()}&quot; is a reserved template
-                          variable.
+                          &quot;{item.key.trim()}
+                          {messages.reservedVariableSuffix}
                         </p>
                       )}
                     </div>
@@ -930,7 +939,7 @@ export function DynamicLaunchDrawer({
               </div>
             ) : (
               <p className="text-[11px] text-muted-foreground/70 italic">
-                No custom environment variables added.
+                {messages.noCustomEnvVars}
               </p>
             )}
           </div>
@@ -944,7 +953,7 @@ export function DynamicLaunchDrawer({
               disabled={isDeploying}
               className="w-1/3"
             >
-              Cancel
+              {messages.cancel}
             </Button>
             <Button
               type="button"
@@ -955,12 +964,12 @@ export function DynamicLaunchDrawer({
               {isDeploying ? (
                 <>
                   <Clock className="mr-2 size-4 animate-spin" />
-                  Deploying Stack…
+                  {messages.deployingStack}
                 </>
               ) : (
                 <>
                   <RocketLaunchIcon className="mr-2 size-4" />
-                  Confirm & Deploy Instantly
+                  {messages.confirmDeploy}
                 </>
               )}
             </Button>
