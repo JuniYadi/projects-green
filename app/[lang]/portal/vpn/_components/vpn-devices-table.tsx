@@ -1,7 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useState, startTransition } from "react"
+import { useParams } from "next/navigation"
 
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   Table,
   TableBody,
@@ -82,6 +84,9 @@ function formatDate(value: string | null): string {
 // ── Component ────────────────────────────────────────────────────────────
 
 export function VpnDevicesTable() {
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
+  const messages = getMessagesForMaybeLocale(lang).console.vpn.adminDevicesTable
   const [devices, setDevices] = useState<AdminDeviceEntry[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -158,7 +163,7 @@ export function VpnDevicesTable() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <Input
-          placeholder="Search device name…"
+          placeholder={messages.searchPlaceholder}
           className="h-9 w-48"
           value={filters.search}
           onChange={(e) => {
@@ -174,13 +179,15 @@ export function VpnDevicesTable() {
           }}
         >
           <SelectTrigger className="h-9 w-32">
-            <SelectValue placeholder="All status" />
+            <SelectValue placeholder={messages.allStatusPlaceholder} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value=" ">All status</SelectItem>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="SUSPENDED">Suspended</SelectItem>
-            <SelectItem value="REVOKED">Revoked</SelectItem>
+            <SelectItem value=" ">{messages.allStatus}</SelectItem>
+            <SelectItem value="ACTIVE">{messages.statusActive}</SelectItem>
+            <SelectItem value="SUSPENDED">
+              {messages.statusSuspended}
+            </SelectItem>
+            <SelectItem value="REVOKED">{messages.statusRevoked}</SelectItem>
           </SelectContent>
         </Select>
         <Select
@@ -191,12 +198,12 @@ export function VpnDevicesTable() {
           }}
         >
           <SelectTrigger className="h-9 w-36">
-            <SelectValue placeholder="All platforms" />
+            <SelectValue placeholder={messages.allPlatformsPlaceholder} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value=" ">All platforms</SelectItem>
-            <SelectItem value="ios">iOS</SelectItem>
-            <SelectItem value="android">Android</SelectItem>
+            <SelectItem value=" ">{messages.allPlatforms}</SelectItem>
+            <SelectItem value="ios">{messages.platformIos}</SelectItem>
+            <SelectItem value="android">{messages.platformAndroid}</SelectItem>
           </SelectContent>
         </Select>
         <Select
@@ -207,16 +214,16 @@ export function VpnDevicesTable() {
           }}
         >
           <SelectTrigger className="h-9 w-36">
-            <SelectValue placeholder="All methods" />
+            <SelectValue placeholder={messages.allMethodsPlaceholder} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value=" ">All methods</SelectItem>
-            <SelectItem value="SSO">SSO</SelectItem>
-            <SelectItem value="QR">QR</SelectItem>
+            <SelectItem value=" ">{messages.allMethods}</SelectItem>
+            <SelectItem value="SSO">{messages.methodSso}</SelectItem>
+            <SelectItem value="QR">{messages.methodQr}</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" className="h-9" onClick={load}>
-          Refresh
+          {messages.refresh}
         </Button>
       </div>
 
@@ -232,13 +239,13 @@ export function VpnDevicesTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Device Name</TableHead>
-              <TableHead>Platform</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Paired Via</TableHead>
-              <TableHead>Paired At</TableHead>
-              <TableHead>Last Seen</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{messages.thDeviceName}</TableHead>
+              <TableHead>{messages.thPlatform}</TableHead>
+              <TableHead>{messages.thStatus}</TableHead>
+              <TableHead>{messages.thPairedVia}</TableHead>
+              <TableHead>{messages.thPairedAt}</TableHead>
+              <TableHead>{messages.thLastSeen}</TableHead>
+              <TableHead className="text-right">{messages.thActions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -254,7 +261,7 @@ export function VpnDevicesTable() {
                   colSpan={7}
                   className="text-center text-sm text-muted-foreground"
                 >
-                  No devices found.
+                  {messages.noDevicesFound}
                 </TableCell>
               </TableRow>
             ) : (
@@ -291,7 +298,7 @@ export function VpnDevicesTable() {
                         onClick={() => setShowRevokeDialog(device.id)}
                         disabled={revoking === device.id}
                       >
-                        {revoking === device.id ? "…" : "Revoke"}
+                        {revoking === device.id ? "…" : messages.revoke}
                       </Button>
                     )}
                   </TableCell>
@@ -306,8 +313,8 @@ export function VpnDevicesTable() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <p>
-            Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of{" "}
-            {total}
+            {messages.showing} {(page - 1) * limit + 1}–
+            {Math.min(page * limit, total)} {messages.of} {total}
           </p>
           <div className="flex gap-2">
             <Button
@@ -316,7 +323,7 @@ export function VpnDevicesTable() {
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              Previous
+              {messages.previous}
             </Button>
             <Button
               variant="outline"
@@ -324,7 +331,7 @@ export function VpnDevicesTable() {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {messages.next}
             </Button>
           </div>
         </div>
@@ -342,15 +349,14 @@ export function VpnDevicesTable() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Revoke device</DialogTitle>
+            <DialogTitle>{messages.revokeDeviceTitle}</DialogTitle>
             <DialogDescription>
-              This will disconnect VPN on this device immediately. The action is
-              logged for audit purposes.
+              {messages.revokeDeviceDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <Input
-              placeholder="Reason (optional)"
+              placeholder={messages.reasonPlaceholder}
               value={revokeReason}
               onChange={(e) => setRevokeReason(e.target.value)}
             />
@@ -363,14 +369,16 @@ export function VpnDevicesTable() {
                 setRevokeReason("")
               }}
             >
-              Cancel
+              {messages.cancel}
             </Button>
             <Button
               variant="destructive"
               onClick={handleRevoke}
               disabled={revoking === showRevokeDialog}
             >
-              {revoking === showRevokeDialog ? "Revoking…" : "Revoke"}
+              {revoking === showRevokeDialog
+                ? messages.revoking
+                : messages.revoke}
             </Button>
           </DialogFooter>
         </DialogContent>
