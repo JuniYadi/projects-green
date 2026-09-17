@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type TabBuildProps = {
   buildCommand?: string
@@ -39,6 +42,9 @@ export function TabBuild({
   templateId,
   onSave,
 }: TabBuildProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [buildCommand, setBuildCommand] = useState(initialBuildCommand)
   const [rootDirectory, setRootDirectory] = useState(initialRootDirectory)
   const [dockerfileDetected, setDockerfileDetected] = useState(
@@ -71,10 +77,13 @@ export function TabBuild({
       <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-bold text-foreground">
-            Build & Deploy
+            {messages.pConsoleSettingsTabBuild.buildDeployTitle}
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Prebuilt template container configuration
+            {
+              messages.pConsoleSettingsTabBuild
+                .prebuiltTemplateConfigDescription
+            }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs">
@@ -84,13 +93,11 @@ export function TabBuild({
                 📦 {templateName ?? "Prebuilt Template"}
               </span>
               <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-500">
-                Managed Container Image
+                {messages.pConsoleSettingsTabBuild.managedContainerImageBadge}
               </span>
             </div>
             <p className="leading-normal text-muted-foreground">
-              This application runs from a verified prebuilt container image.
-              Source code compilation, repository build commands, and custom
-              Dockerfiles are managed directly by the template runtime.
+              {messages.pConsoleSettingsTabBuild.prebuiltContainerDescription}
             </p>
           </div>
         </CardContent>
@@ -102,10 +109,10 @@ export function TabBuild({
     <Card size="sm" className="border-border bg-card shadow-sm">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-bold text-foreground">
-          Build & Deploy
+          {messages.pConsoleSettingsTabBuild.buildDeployTitle}
         </CardTitle>
         <CardDescription className="text-xs text-muted-foreground">
-          Configure how your application is built and deployed.
+          {messages.pConsoleSettingsTabBuild.buildDeployDescription}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5 text-xs">
@@ -114,7 +121,7 @@ export function TabBuild({
             htmlFor="build-command"
             className="block text-xs font-semibold text-muted-foreground"
           >
-            Build Command
+            {messages.pConsoleSettingsTabBuild.buildCommandLabel}
           </label>
           <Input
             id="build-command"
@@ -124,7 +131,7 @@ export function TabBuild({
             className="h-9 text-xs"
           />
           <p className="text-[11px] text-muted-foreground">
-            Custom build command. Leave empty to use auto-detected defaults.
+            {messages.pConsoleSettingsTabBuild.buildCommandHint}
           </p>
         </div>
 
@@ -133,7 +140,7 @@ export function TabBuild({
             htmlFor="root-directory"
             className="block text-xs font-semibold text-muted-foreground"
           >
-            Root Directory
+            {messages.pConsoleSettingsTabBuild.rootDirectoryLabel}
           </label>
           <Input
             id="root-directory"
@@ -143,7 +150,7 @@ export function TabBuild({
             className="h-9 text-xs"
           />
           <p className="text-[11px] text-muted-foreground">
-            The directory within your repository where source code lives.
+            {messages.pConsoleSettingsTabBuild.rootDirectoryHint}
           </p>
         </div>
 
@@ -152,33 +159,35 @@ export function TabBuild({
             htmlFor="framework-name"
             className="block text-xs font-semibold text-muted-foreground"
           >
-            Framework
+            {messages.pConsoleSettingsTabBuild.frameworkLabel}
           </label>
           <Input
             id="framework-name"
             value={framework}
             onChange={(e) => setFramework(e.target.value)}
-            placeholder="e.g. Next.js, Laravel, Docker"
+            placeholder={messages.pConsoleSettingsTabBuild.frameworkPlaceholder}
             className="h-9 text-xs"
           />
           <p className="text-[11px] text-muted-foreground">
-            Detected or configured runtime framework.
+            {messages.pConsoleSettingsTabBuild.frameworkHint}
           </p>
         </div>
 
         <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-3.5">
           <div className="space-y-0.5">
             <span className="text-xs font-semibold text-foreground">
-              Dockerfile Build
+              {messages.pConsoleSettingsTabBuild.dockerfileBuildLabel}
             </span>
             <p className="text-[10px] text-muted-foreground">
-              Build container image directly using repository Dockerfile.
+              {messages.pConsoleSettingsTabBuild.dockerfileBuildHint}
             </p>
           </div>
           <Switch
             checked={dockerfileDetected}
             onCheckedChange={setDockerfileDetected}
-            aria-label="Toggle Dockerfile build"
+            aria-label={
+              messages.pConsoleSettingsTabBuild.dockerfileBuildToggleAriaLabel
+            }
           />
         </div>
 
