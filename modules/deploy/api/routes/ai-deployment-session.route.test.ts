@@ -1,6 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import type { AiDeploymentSession } from "@prisma/client"
 
+mock.module("server-only", () => ({}))
 mock.module("@/lib/prisma", () => ({ prisma: {} }))
 
 const { AiDeploymentSessionError } =

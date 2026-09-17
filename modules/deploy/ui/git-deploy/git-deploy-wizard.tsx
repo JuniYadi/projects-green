@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { AiAgentIntake } from "./ai-agent-intake"
-import {
-  AiAgentSummaryCard,
-  type DeploymentSummaryConfig,
-} from "./ai-agent-summary-card"
+import { DeployChatStream } from "../chat/deploy-chat-stream"
+import type { InlineBlueprintData } from "../chat/inline-blueprint-card"
+import { DeployMorphContainer } from "../deploy-morph-container"
+import { ExecutiveLaunchCard } from "../launch-card/executive-launch-card"
 import { GitRolloutStep } from "./git-rollout-step"
 import type { GitSizingConfig, GitSourceConfig } from "./types"
 
@@ -20,9 +19,7 @@ export function GitDeployWizard({
   lang = "en",
 }: GitDeployWizardProps = {}) {
   const currency = lang === "id" ? "IDR" : "USD"
-  const [screen, setScreen] = useState<"intake" | "summary" | "rollout">(
-    "intake"
-  )
+  const [screen, setScreen] = useState<"chat" | "launch" | "rollout">("chat")
   const [userName, setUserName] = useState<string>(initialUserName || "")
 
   useEffect(() => {
@@ -51,50 +48,72 @@ export function GitDeployWizard({
 
   // Wizard state
   const [source, setSource] = useState<GitSourceConfig | null>(null)
+  const [blueprint, setBlueprint] = useState<InlineBlueprintData | null>(null)
+  const [sessionId, setSessionId] = useState<string | undefined>()
   const [inspectionData, setInspectionData] = useState<Record<
     string,
     unknown
   > | null>(null)
   const [sizingConfig, setSizingConfig] = useState<GitSizingConfig | null>(null)
   const [deploymentId, setDeploymentId] = useState<string>("dep-initial")
+  const [isLaunching, setIsLaunching] = useState(false)
 
-  const handleSourceVerified = (
-    src: GitSourceConfig,
-    inspected?: Record<string, unknown> | null
-  ) => {
+  const handleReadyToLaunch = (data: {
+    blueprint: InlineBlueprintData
+    sessionId?: string
+    inspectionData?: Record<string, unknown> | null
+    sourceUrl?: string
+  }) => {
+    const detectedBranch =
+      ((data.inspectionData?.source as Record<string, unknown> | undefined)
+        ?.ref as string | undefined) || "main"
+    const src: GitSourceConfig = {
+      url: data.sourceUrl || "https://github.com/organization/repository",
+      branch: detectedBranch,
+      rootDir: "./",
+      isPrivate: false,
+    }
     setSource(src)
-    setInspectionData(inspected ?? null)
-    setScreen("summary")
+    setBlueprint(data.blueprint)
+    setSessionId(data.sessionId)
+    setInspectionData(data.inspectionData ?? null)
+    setScreen("launch")
   }
 
-  const handleDeployFromSummary = async (config: DeploymentSummaryConfig) => {
-    if (!source) return
+  const handleBackToChat = () => {
+    setScreen("chat")
+  }
 
+  const handleLaunch = async () => {
+    if (!source || !blueprint) return
+
+    setIsLaunching(true)
+    const tier = blueprint.computeTier || "Medium"
+    const subdomain = blueprint.subdomain || "app"
     const sizing: GitSizingConfig = {
-      tier: config.tier,
-      cpu: config.cpu,
-      memory: config.memory,
-      hourlyRate: config.hourlyRate,
-      subdomain: config.subdomain,
-      monthlyPrice: config.monthlyPrice,
+      tier,
+      cpu: 1000,
+      memory: 2048,
+      hourlyRate: blueprint.hourlyRate ?? 0.04,
+      subdomain,
+      monthlyPrice: 30,
       currency,
     }
     setSizingConfig(sizing)
 
     try {
       const session = inspectionData?.session as { id?: string } | undefined
-      const sessionId = session?.id
-      if (sessionId) {
+      const activeSessionId = sessionId || session?.id
+      if (activeSessionId) {
         const res = await fetch(
-          `/api/deploy/ai-sessions/${sessionId}/confirm`,
+          `/api/deploy/ai-sessions/${activeSessionId}/confirm`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              subdomain: config.subdomain,
+              subdomain,
               resources: {
-                cpu: config.cpu,
-                memory: config.memory,
+                package: tier.toLowerCase(),
               },
             }),
           }
@@ -104,6 +123,7 @@ export function GitDeployWizard({
           toast.error(
             data.message || data.error || "Deployment failed to start."
           )
+          setIsLaunching(false)
           return
         }
         const createdStackId =
@@ -121,47 +141,55 @@ export function GitDeployWizard({
       toast.error(
         "Network error while initiating deployment. Please try again."
       )
+    } finally {
+      setIsLaunching(false)
     }
   }
 
   const handleReset = () => {
     setSource(null)
+    setBlueprint(null)
     setInspectionData(null)
     setSizingConfig(null)
-    setScreen("intake")
+    setScreen("chat")
   }
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 pt-0">
-      {screen === "intake" && (
-        <AiAgentIntake
-          initialSource={source ?? undefined}
-          userName={userName}
-          lang={lang}
-          onSourceVerified={handleSourceVerified}
-        />
-      )}
+      <DeployMorphContainer screen={screen}>
+        <div className={screen !== "chat" ? "hidden" : undefined}>
+          <DeployChatStream
+            initialUserName={userName}
+            lang={lang}
+            onReadyToLaunch={handleReadyToLaunch}
+            initialSessionId={sessionId}
+          />
+        </div>
 
-      {screen === "summary" && source && (
-        <AiAgentSummaryCard
-          source={source}
-          inspectionData={inspectionData}
-          currency={currency}
-          lang={lang}
-          userName={userName}
-          onStartOver={handleReset}
-          onDeploy={handleDeployFromSummary}
-        />
-      )}
+        {screen === "launch" && source && blueprint && (
+          <ExecutiveLaunchCard
+            source={source}
+            blueprint={blueprint}
+            inspectionData={inspectionData}
+            sessionId={sessionId}
+            currency={currency}
+            lang={lang}
+            userName={userName}
+            onLaunch={handleLaunch}
+            onBackToChat={handleBackToChat}
+            isLaunching={isLaunching}
+          />
+        )}
 
-      {screen === "rollout" && source && sizingConfig && (
-        <GitRolloutStep
-          source={source}
-          sizing={sizingConfig}
-          deploymentId={deploymentId}
-          onReset={handleReset}
-        />
-      )}
+        {screen === "rollout" && source && sizingConfig && (
+          <GitRolloutStep
+            source={source}
+            sizing={sizingConfig}
+            deploymentId={deploymentId}
+            onReset={handleReset}
+          />
+        )}
+      </DeployMorphContainer>
     </div>
   )
 }

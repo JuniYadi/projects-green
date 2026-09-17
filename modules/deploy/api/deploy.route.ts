@@ -9,6 +9,7 @@ import {
 import { appHostingEdgeRoutes } from "@/modules/deploy/api/routes/app-hosting-edge.route"
 import { aiDeploymentSessionRoutes } from "@/modules/deploy/api/routes/ai-deployment-session.route"
 import { aiDeploymentSessionDecisionRoutes } from "@/modules/deploy/api/routes/ai-deployment-session-decisions.route"
+import { aiDeploymentSessionChatRoutes } from "@/modules/deploy/api/routes/ai-deployment-session-chat.route"
 import { deploySubmitRoutes } from "@/modules/deploy/api/routes/deploy-submit.route"
 import { deployTriggerRoutes } from "@/modules/deploy/api/routes/deploy-trigger.route"
 import { appSettingsRoutes } from "@/modules/deploy/api/routes/app-settings.route"
@@ -28,6 +29,7 @@ import { appLogHealthRoutes } from "@/modules/deploy/api/routes/app-log-health.r
 export const deployRoutes = new Elysia()
   .use(aiDeploymentSessionRoutes)
   .use(aiDeploymentSessionDecisionRoutes)
+  .use(aiDeploymentSessionChatRoutes)
   .use(recentSourcesRoutes)
   .use(appStacksRoutes)
   .use(deploySubmitRoutes)
