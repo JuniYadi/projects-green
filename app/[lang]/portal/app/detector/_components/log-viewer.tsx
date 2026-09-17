@@ -2,8 +2,11 @@
 
 import type { ColumnDef } from "@tanstack/react-table"
 import { eden } from "@/lib/eden"
+import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { DataTable } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
 import {
@@ -50,10 +53,12 @@ function LogDetailDialog({
   log,
   open,
   onOpenChange,
+  messages,
 }: {
   log: InspectionLog | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  messages: ReturnType<typeof getMessages>
 }) {
   if (!log) return null
 
@@ -61,7 +66,9 @@ function LogDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Inspection Log Detail</DialogTitle>
+          <DialogTitle>
+            {messages.pPortalDetectorLogViewer.inspectionLogDetail}
+          </DialogTitle>
           <DialogDescription>
             {log.repoUrl}
             {log.ref && ` @ ${log.ref}`}
@@ -70,7 +77,9 @@ function LogDetailDialog({
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm font-medium">Status</p>
+              <p className="text-sm font-medium">
+                {messages.pPortalDetectorLogViewer.status}
+              </p>
               <Badge
                 variant={
                   log.status === "success"
@@ -86,19 +95,25 @@ function LogDetailDialog({
               </Badge>
             </div>
             <div>
-              <p className="text-sm font-medium">Duration</p>
+              <p className="text-sm font-medium">
+                {messages.pPortalDetectorLogViewer.duration}
+              </p>
               <p className="text-sm text-muted-foreground">
                 {log.durationMs ? `${log.durationMs}ms` : "—"}
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium">Detected Framework</p>
+              <p className="text-sm font-medium">
+                {messages.pPortalDetectorLogViewer.detectedFramework}
+              </p>
               <p className="text-sm text-muted-foreground">
                 {log.detectedFramework ?? "—"}
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium">Confidence</p>
+              <p className="text-sm font-medium">
+                {messages.pPortalDetectorLogViewer.confidence}
+              </p>
               <p className="text-sm text-muted-foreground">
                 {log.confidence != null
                   ? `${(log.confidence * 100).toFixed(1)}%`
@@ -109,7 +124,9 @@ function LogDetailDialog({
 
           {log.enforcedRuntimes && log.enforcedRuntimes.length > 0 && (
             <div>
-              <p className="text-sm font-medium">Enforced Runtimes</p>
+              <p className="text-sm font-medium">
+                {messages.pPortalDetectorLogViewer.enforcedRuntimes}
+              </p>
               <div className="mt-1 flex flex-wrap gap-2">
                 {log.enforcedRuntimes.map((rt, i) => (
                   <Badge key={i} variant="outline">
@@ -122,7 +139,9 @@ function LogDetailDialog({
 
           {log.reasoning.length > 0 && (
             <div>
-              <p className="text-sm font-medium">AI Reasoning</p>
+              <p className="text-sm font-medium">
+                {messages.pPortalDetectorLogViewer.aiReasoning}
+              </p>
               <ul className="mt-1 space-y-1">
                 {log.reasoning.map((reason, i) => (
                   <li
@@ -138,7 +157,9 @@ function LogDetailDialog({
 
           {log.warnings.length > 0 && (
             <div>
-              <p className="text-sm font-medium text-amber-600">Warnings</p>
+              <p className="text-sm font-medium text-amber-600">
+                {messages.pPortalDetectorLogViewer.warnings}
+              </p>
               <ul className="mt-1 space-y-1">
                 {log.warnings.map((warning, i) => (
                   <li
@@ -155,7 +176,7 @@ function LogDetailDialog({
           {log.blockedByRuleId && (
             <div>
               <p className="text-sm font-medium text-destructive">
-                Blocked By Rule
+                {messages.pPortalDetectorLogViewer.blockedByRule}
               </p>
               <p className="font-mono text-sm text-muted-foreground">
                 {log.blockedByRuleId}
@@ -166,7 +187,7 @@ function LogDetailDialog({
           {log.errorMessage && (
             <div>
               <p className="text-sm font-medium text-destructive">
-                Error Message
+                {messages.pPortalDetectorLogViewer.errorMessage}
               </p>
               <pre className="mt-1 overflow-x-auto rounded-md bg-destructive/10 p-2 text-xs text-destructive">
                 {log.errorMessage}
@@ -175,7 +196,9 @@ function LogDetailDialog({
           )}
 
           <div>
-            <p className="text-sm font-medium">Created At</p>
+            <p className="text-sm font-medium">
+              {messages.pPortalDetectorLogViewer.createdAt}
+            </p>
             <p className="text-sm text-muted-foreground">
               {new Date(log.createdAt).toLocaleString()}
             </p>
@@ -187,6 +210,9 @@ function LogDetailDialog({
 }
 
 export function LogViewer() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [logs, setLogs] = useState<InspectionLog[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -281,7 +307,7 @@ export function LogViewer() {
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: messages.pPortalDetectorLogViewer.status,
       cell: ({ row }) => (
         <Badge
           variant={
@@ -300,7 +326,7 @@ export function LogViewer() {
     },
     {
       accessorKey: "durationMs",
-      header: "Duration",
+      header: messages.pPortalDetectorLogViewer.duration,
       cell: ({ row }) => (
         <div className="text-muted-foreground">
           {row.original.durationMs ? `${row.original.durationMs}ms` : "—"}
@@ -325,7 +351,7 @@ export function LogViewer() {
           size="sm"
           onClick={() => setSelectedLog(row.original)}
         >
-          View
+          {messages.pPortalDetectorLogViewer.view}
         </Button>
       ),
     },
@@ -352,10 +378,16 @@ export function LogViewer() {
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]" size="sm">
-              <SelectValue placeholder="Filter by status" />
+              <SelectValue
+                placeholder={
+                  messages.pPortalDetectorLogViewer.filterByStatusPlaceholder
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="all">
+                {messages.pPortalDetectorLogViewer.allStatuses}
+              </SelectItem>
               {STATUS_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
@@ -364,7 +396,8 @@ export function LogViewer() {
             </SelectContent>
           </Select>
           <p className="text-sm text-muted-foreground">
-            {total} total log{total !== 1 ? "s" : ""}
+            {total} {messages.pPortalDetectorLogViewer.totalLog}
+            {total !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
@@ -373,8 +406,10 @@ export function LogViewer() {
         columns={columns}
         data={logs}
         searchableColumns={["repoUrl"]}
-        searchPlaceholder="Search by repository..."
-        emptyMessage="No inspection logs found."
+        searchPlaceholder={
+          messages.pPortalDetectorLogViewer.searchByRepositoryPlaceholder
+        }
+        emptyMessage={messages.pPortalDetectorLogViewer.noInspectionLogsFound}
       />
       <div className="flex items-center justify-between">
         <Button
@@ -383,10 +418,12 @@ export function LogViewer() {
           onClick={handlePrev}
           disabled={offset === 0 || isLoading}
         >
-          Previous
+          {messages.pPortalDetectorLogViewer.previous}
         </Button>
         <p className="text-sm text-muted-foreground">
-          Showing {offset + 1}–{Math.min(offset + limit, total)} of {total}
+          {messages.pPortalDetectorLogViewer.showing} {offset + 1}–
+          {Math.min(offset + limit, total)}{" "}
+          {messages.pPortalDetectorLogViewer.of} {total}
         </p>
         <Button
           variant="outline"
@@ -394,7 +431,7 @@ export function LogViewer() {
           onClick={handleNext}
           disabled={offset + limit >= total || isLoading}
         >
-          Next
+          {messages.pPortalDetectorLogViewer.next}
         </Button>
       </div>
       <LogDetailDialog
@@ -403,6 +440,7 @@ export function LogViewer() {
         onOpenChange={(open) => {
           if (!open) setSelectedLog(null)
         }}
+        messages={messages}
       />
     </div>
   )
