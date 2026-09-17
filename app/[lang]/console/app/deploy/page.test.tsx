@@ -1,5 +1,11 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { act, fireEvent, render, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react"
 import DeployPageClient from "./page-client"
 
 const mockInspectResponse = {
@@ -132,22 +138,20 @@ const mockFetch = mock(
 globalThis.fetch = mockFetch as unknown as typeof fetch
 
 describe("DeployPage Client", () => {
+  afterEach(cleanup)
+
   beforeEach(() => {
     mockFetch.mockClear()
   })
 
-  it("renders Centered AI Agent Hero & Intake (Screen 1)", async () => {
+  it("renders Tanya P Chat-First Deploy Assistant (Fase 1)", async () => {
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
     expect(
       view.getByText("Hi Alex, what do you want to deploy today?")
     ).toBeTruthy()
-    expect(
-      view.getByPlaceholderText("https://github.com/organization/repository")
-    ).toBeTruthy()
-    expect(
-      view.getByRole("button", { name: /inspect repository/i })
-    ).toBeTruthy()
+    expect(view.getByRole("textbox")).toBeTruthy()
+    expect(view.getByRole("button", { name: /send/i })).toBeTruthy()
 
     // Wait for organization repositories quick-picks to load
     await waitFor(() => {
@@ -158,30 +162,22 @@ describe("DeployPage Client", () => {
   it("inspects public repository and transitions to AI Deployment Summary (Screen 2)", async () => {
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
-    const input = view.getByPlaceholderText(
-      "https://github.com/organization/repository"
-    )
+    const input = view.getByRole("textbox")
 
     await act(async () => {
       fireEvent.change(input, {
         target: { value: "https://github.com/acme/public-app" },
       })
-    })
-
-    const inspectBtn = view.getByRole("button", {
-      name: /inspect repository/i,
-    })
-
-    await act(async () => {
-      fireEvent.click(inspectBtn)
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
     })
 
     await waitFor(() => {
-      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+      expect(view.getByText(/Public Repository Verified/i)).toBeTruthy()
+      expect(view.getByTestId("inline-blueprint-card")).toBeTruthy()
     })
 
     const continueBtn = view.getByRole("button", {
-      name: /review ai blueprint/i,
+      name: /SIAP DEPLOY -> LANJUT KE LAUNCH CARD/i,
     })
 
     await act(async () => {
@@ -202,24 +198,24 @@ describe("DeployPage Client", () => {
   it("allows environment variable management and compute sizing selection on Screen 2", async () => {
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
-    // Step 1: inspect
-    const input = view.getByPlaceholderText(
-      "https://github.com/organization/repository"
-    )
+    // Step 1: inspect in chat
+    const input = view.getByRole("textbox")
     await act(async () => {
       fireEvent.change(input, {
         target: { value: "https://github.com/acme/public-app" },
       })
-      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
     })
 
     await waitFor(() => {
-      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+      expect(view.getByText(/Public Repository Verified/i)).toBeTruthy()
     })
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /review ai blueprint/i })
+        view.getByRole("button", {
+          name: /SIAP DEPLOY -> LANJUT KE LAUNCH CARD/i,
+        })
       )
     })
 
@@ -256,7 +252,7 @@ describe("DeployPage Client", () => {
       fireEvent.click(startOverBtn)
     })
 
-    // Should return to Screen 1
+    // Should return to Screen 1 (Chat Stream)
     expect(
       view.getByText("Hi Alex, what do you want to deploy today?")
     ).toBeTruthy()
@@ -265,23 +261,23 @@ describe("DeployPage Client", () => {
   it("triggers deployment from Screen 2 and advances to Flight Deck", async () => {
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
-    const input = view.getByPlaceholderText(
-      "https://github.com/organization/repository"
-    )
+    const input = view.getByRole("textbox")
     await act(async () => {
       fireEvent.change(input, {
         target: { value: "https://github.com/acme/public-app" },
       })
-      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
     })
 
     await waitFor(() => {
-      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+      expect(view.getByText(/Public Repository Verified/i)).toBeTruthy()
     })
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /review ai blueprint/i })
+        view.getByRole("button", {
+          name: /SIAP DEPLOY -> LANJUT KE LAUNCH CARD/i,
+        })
       )
     })
 
@@ -306,21 +302,23 @@ describe("DeployPage Client", () => {
   it("sanitizes the subdomain and prevents deployment when it is empty", async () => {
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
+    const input = view.getByRole("textbox")
     await act(async () => {
-      fireEvent.change(
-        view.getByPlaceholderText("https://github.com/organization/repository"),
-        { target: { value: "https://github.com/acme/public-app" } }
-      )
-      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+      fireEvent.change(input, {
+        target: { value: "https://github.com/acme/public-app" },
+      })
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
     })
 
     await waitFor(() => {
-      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+      expect(view.getByText(/Public Repository Verified/i)).toBeTruthy()
     })
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /review ai blueprint/i })
+        view.getByRole("button", {
+          name: /SIAP DEPLOY -> LANJUT KE LAUNCH CARD/i,
+        })
       )
     })
 
@@ -380,24 +378,24 @@ describe("DeployPage Client", () => {
     )
 
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
-    const input = view.getByPlaceholderText(
-      "https://github.com/organization/repository"
-    )
+    const input = view.getByRole("textbox")
 
     await act(async () => {
       fireEvent.change(input, {
         target: { value: "https://github.com/acme/public-app" },
       })
-      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
     })
 
     await waitFor(() => {
-      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+      expect(view.getByText(/Public Repository Verified/i)).toBeTruthy()
     })
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /review ai blueprint/i })
+        view.getByRole("button", {
+          name: /SIAP DEPLOY -> LANJUT KE LAUNCH CARD/i,
+        })
       )
     })
 
@@ -521,24 +519,24 @@ describe("DeployPage Client", () => {
     )
 
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
-    const input = view.getByPlaceholderText(
-      "https://github.com/organization/repository"
-    )
+    const input = view.getByRole("textbox")
 
     await act(async () => {
       fireEvent.change(input, {
         target: { value: "https://github.com/laravel/laravel" },
       })
-      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
     })
 
     await waitFor(() => {
-      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+      expect(view.getByText(/Public Repository Verified/i)).toBeTruthy()
     })
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /review ai blueprint/i })
+        view.getByRole("button", {
+          name: /SIAP DEPLOY -> LANJUT KE LAUNCH CARD/i,
+        })
       )
     })
 
@@ -660,24 +658,24 @@ describe("DeployPage Client", () => {
     )
 
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
-    const input = view.getByPlaceholderText(
-      "https://github.com/organization/repository"
-    )
+    const input = view.getByRole("textbox")
 
     await act(async () => {
       fireEvent.change(input, {
         target: { value: "https://github.com/pfnapp/example-vite-react" },
       })
-      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
     })
 
     await waitFor(() => {
-      expect(view.getByText("Public Repository Verified")).toBeTruthy()
+      expect(view.getByText(/Public Repository Verified/i)).toBeTruthy()
     })
 
     await act(async () => {
       fireEvent.click(
-        view.getByRole("button", { name: /review ai blueprint/i })
+        view.getByRole("button", {
+          name: /SIAP DEPLOY -> LANJUT KE LAUNCH CARD/i,
+        })
       )
     })
 
@@ -746,15 +744,13 @@ describe("DeployPage Client", () => {
     )
 
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
-    const input = view.getByPlaceholderText(
-      "https://github.com/organization/repository"
-    )
+    const input = view.getByRole("textbox")
 
     await act(async () => {
       fireEvent.change(input, {
         target: { value: "https://github.com/unknown/unsupported-app" },
       })
-      fireEvent.click(view.getByRole("button", { name: /inspect repository/i }))
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
     })
 
     await waitFor(() => {
@@ -764,7 +760,9 @@ describe("DeployPage Client", () => {
           /Your framework was detected as Ruby on Rails, but we currently only support laravel, nextjs./i
         )
       ).toBeTruthy()
-      expect(view.queryByText("Review AI Blueprint")).toBeNull()
+      expect(
+        view.queryByText("SIAP DEPLOY -> LANJUT KE LAUNCH CARD")
+      ).toBeNull()
     })
   })
 })

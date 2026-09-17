@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { AiAgentIntake } from "./ai-agent-intake"
+import { DeployChatStream } from "../chat/deploy-chat-stream"
+import type { InlineBlueprintData } from "../chat/inline-blueprint-card"
 import {
   AiAgentSummaryCard,
   type DeploymentSummaryConfig,
@@ -20,9 +21,7 @@ export function GitDeployWizard({
   lang = "en",
 }: GitDeployWizardProps = {}) {
   const currency = lang === "id" ? "IDR" : "USD"
-  const [screen, setScreen] = useState<"intake" | "summary" | "rollout">(
-    "intake"
-  )
+  const [screen, setScreen] = useState<"chat" | "summary" | "rollout">("chat")
   const [userName, setUserName] = useState<string>(initialUserName || "")
 
   useEffect(() => {
@@ -58,12 +57,23 @@ export function GitDeployWizard({
   const [sizingConfig, setSizingConfig] = useState<GitSizingConfig | null>(null)
   const [deploymentId, setDeploymentId] = useState<string>("dep-initial")
 
-  const handleSourceVerified = (
-    src: GitSourceConfig,
-    inspected?: Record<string, unknown> | null
-  ) => {
+  const handleReadyToLaunch = (data: {
+    blueprint: InlineBlueprintData
+    sessionId?: string
+    inspectionData?: Record<string, unknown> | null
+    sourceUrl?: string
+  }) => {
+    const detectedBranch =
+      ((data.inspectionData?.source as Record<string, unknown> | undefined)
+        ?.ref as string | undefined) || "main"
+    const src: GitSourceConfig = {
+      url: data.sourceUrl || "https://github.com/organization/repository",
+      branch: detectedBranch,
+      rootDir: "./",
+      isPrivate: false,
+    }
     setSource(src)
-    setInspectionData(inspected ?? null)
+    setInspectionData(data.inspectionData ?? null)
     setScreen("summary")
   }
 
@@ -128,17 +138,16 @@ export function GitDeployWizard({
     setSource(null)
     setInspectionData(null)
     setSizingConfig(null)
-    setScreen("intake")
+    setScreen("chat")
   }
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 pt-0">
-      {screen === "intake" && (
-        <AiAgentIntake
-          initialSource={source ?? undefined}
-          userName={userName}
+      {screen === "chat" && (
+        <DeployChatStream
+          initialUserName={userName}
           lang={lang}
-          onSourceVerified={handleSourceVerified}
+          onReadyToLaunch={handleReadyToLaunch}
         />
       )}
 
