@@ -379,7 +379,13 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
           })
           currentEnvVarsJson = reloaded?.envVarsJson ?? currentEnvVarsJson
         } catch (vaultErr) {
-          console.warn("[app-settings] Vault write error:", vaultErr)
+          console.error("[app-settings] Vault write error:", vaultErr)
+          set.status = 500
+          return {
+            ok: false,
+            error: "VAULT_WRITE_FAILED",
+            message: "Failed to store secret in Vault. Please try again.",
+          }
         }
       }
 

@@ -261,7 +261,11 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
     return tx.applicationStack.create({ data })
   })
-  // Determine env from slug or input (e.g., "-staging" → "staging", "-dev" → "dev", default "prod" for templates or non-suffixed)
+  // Determine env from input or slug:
+  // - Suffix "-staging" -> "staging"
+  // - Suffix "-dev" -> "dev"
+  // - Suffix "-prod" or Marketplace TEMPLATE -> "prod"
+  // - Other non-suffixed source repos -> "dev" default
   const env =
     input.environment ??
     (stack.slug.endsWith("-staging")

@@ -92,6 +92,17 @@ mock.module("@/lib/encryption", () => ({
   serializeEncryptedField: mock((value: unknown) => JSON.stringify(value)),
 }))
 
+const mockVaultWriteSecrets = mock(async () => ({
+  environment: "dev",
+  vaultPath: "tenants/org-1/stacks/stack-1/dev/app-env",
+  version: 1,
+  updatedAt: "2026-09-17T00:00:00.000Z",
+  references: [],
+}))
+const { VaultSecretsService } =
+  await import("@/modules/secrets/vault-secrets.service")
+VaultSecretsService.prototype.writeSecrets = mockVaultWriteSecrets
+
 const { appSettingsRoutes } = await import("./app-settings.route")
 
 function request(path: string, init?: RequestInit) {
@@ -252,6 +263,56 @@ describe("appSettingsRoutes", () => {
     )
     const body = await response.json()
     expect(body.data.envVars[0]).not.toHaveProperty("value")
+  })
+
+  it("fails closed with 500 when Vault write fails during settings update", async () => {
+    mockVaultWriteSecrets.mockRejectedValueOnce(new Error("Vault unavailable"))
+    const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
+      environmentId: "dev",
+      variables: [
+        {
+          key: "NEW_API_KEY",
+          value: "secret-token-value",
+          type: "secret",
+        },
+      ],
+    })
+    expect(response.status).toBe(500)
+    const body = await response.json()
+    expect(body).toEqual({
+      ok: false,
+      error: "VAULT_WRITE_FAILED",
+      message: "Failed to store secret in Vault. Please try again.",
+    })
+  })
+
+  it("writes secrets to Vault and updates metadata when non-empty secret is submitted", async () => {
+    mockVaultWriteSecrets.mockResolvedValueOnce({
+      environment: "dev",
+      vaultPath: "tenants/org-1/stacks/stack-1/dev/app-env",
+      version: 2,
+      updatedAt: "2026-09-17T00:00:00.000Z",
+      references: [],
+    })
+    const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
+      environmentId: "dev",
+      variables: [
+        {
+          key: "NEW_API_KEY",
+          value: "secret-token-value",
+          type: "secret",
+        },
+      ],
+    })
+    expect(response.status).toBe(200)
+    expect(mockVaultWriteSecrets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "dev",
+        secrets: { NEW_API_KEY: "secret-token-value" },
+      })
+    )
   })
 
   it("merges mount metadata, encrypts content, and omits content from summaries", async () => {

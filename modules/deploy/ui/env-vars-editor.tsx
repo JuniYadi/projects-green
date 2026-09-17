@@ -364,6 +364,8 @@ const revealVaultSecret = async (input: {
     return await clientCrypto.decrypt(payload.data.envelope)
   }
 
+  // Explicit backward-compatibility fallback: only used if Web Crypto API is
+  // unavailable in the client runtime or the server operates in legacy mode.
   if (typeof payload.data?.value === "string") {
     return payload.data.value
   }

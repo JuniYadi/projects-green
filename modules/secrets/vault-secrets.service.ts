@@ -347,6 +347,9 @@ export class VaultSecretsService {
       environment,
     })
     const storedItems = toStoredItems(stack.envVarsJson)
+    // Defensive lookup: first try exact environment match, then fall back to any
+    // matching secret_ref key. This handles stacks migrated from legacy environment
+    // mappings (e.g. dev -> prod transition) while maintaining full tenant isolation.
     let reference = referencesForEnvironment(
       storedItems,
       environment,

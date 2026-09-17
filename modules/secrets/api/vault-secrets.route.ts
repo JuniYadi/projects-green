@@ -218,7 +218,14 @@ export const createVaultSecretsRoutes = (
         body: t.Object({
           environment: t.String({ minLength: 1, maxLength: 64 }),
           key: t.String({ minLength: 1, maxLength: 255 }),
-          clientPublicKey: t.Optional(t.Any()),
+          clientPublicKey: t.Optional(
+            t.Object({
+              kty: t.String(),
+              crv: t.String(),
+              x: t.String(),
+              y: t.String(),
+            })
+          ),
         }),
       }
     )

@@ -170,5 +170,17 @@ describe("vaultSecretsRoutes", () => {
     expect(envelopeJson.ok).toBe(true)
     expect(envelopeJson.data.envelope?.encrypted).toBe(true)
     expect(typeof envelopeJson.data.envelope?.ciphertext).toBe("string")
+
+    const invalidEnvelopeResponse = await app.handle(
+      request("/stacks/stack-1/secrets/reveal", {
+        method: "POST",
+        body: {
+          environment: "prod",
+          key: "API_KEY",
+          clientPublicKey: { kty: "RSA" },
+        },
+      })
+    )
+    expect(invalidEnvelopeResponse.status).toBe(422)
   })
 })
