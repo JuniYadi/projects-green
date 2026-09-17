@@ -1,5 +1,118 @@
 import type { IpGeoInfo } from "./geoip-lookup.service"
 
+export type TrafficSignal =
+  "likely_human" | "mixed" | "likely_automated" | "unknown"
+
+export interface TrafficIpItemDTO extends IpGeoInfo {
+  percentage: number
+  firstSeen?: string
+  lastSeen?: string
+  primaryClient: string
+  primaryDevice: string
+  signal: TrafficSignal
+  confidence: number
+  reasons: string[]
+  isBlocked: boolean
+  blockStatus?: "pending" | "active" | "failed" | "expired" | "revoked" | null
+  blockId?: string | null
+}
+
+export interface AppHostingIpBlockDTO {
+  id: string
+  stackId: string
+  organizationId: string
+  ipAddress: string
+  reason: string
+  durationMinutes: number | null
+  status: "pending" | "active" | "failed" | "expired" | "revoked"
+  errorMessage?: string | null
+  enforcedAt?: string | null
+  expiresAt?: string | null
+  revokedAt?: string | null
+  revokedBy?: string | null
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GetAppTrafficIpsOptions {
+  granularity?: "daily" | "monthly" | "yearly"
+  date?: string
+  month?: string
+  year?: string
+  page?: number
+  limit?: number
+  search?: string
+  signal?: "likely_human" | "mixed" | "likely_automated" | "unknown"
+  statusFamily?: "2xx" | "3xx" | "4xx" | "5xx"
+  country?: string
+  minRequests?: number
+  sortBy?: "requests" | "2xx" | "4xx" | "5xx" | "success" | "lastSeen"
+  sortDir?: "asc" | "desc"
+}
+
+export interface TrafficIpListResponseDTO {
+  items: TrafficIpItemDTO[]
+  page: number
+  limit: number
+  total: number
+  otherRequestCount: number
+  coveragePercentage: number
+}
+
+export interface TrafficIpDetailDTO {
+  ip: string
+  countryCode: string
+  countryName: string
+  city?: string
+  totalRequests: number
+  statusCounts: {
+    status2xx: number
+    status3xx: number
+    status4xx: number
+    status5xx: number
+  }
+  successRate: number
+  signal: {
+    classification: TrafficSignal
+    confidence: number
+    reasons: string[]
+  }
+  pathsByStatus: {
+    status2xx: Array<{ path: string; count: number }>
+    status3xx: Array<{ path: string; count: number }>
+    status4xx: Array<{ path: string; count: number }>
+    status5xx: Array<{ path: string; count: number }>
+  }
+  userAgents: Array<{
+    raw: string
+    browser: string
+    os: string
+    device: string
+    count: number
+  }>
+  timeline: Array<{ timestamp: string; requests: number; errors: number }>
+  firstSeen: string
+  lastSeen: string
+  velocity: {
+    maxRpm: number
+    isBurst: boolean
+  }
+  staticAssetShare: number
+  blockInfo?: {
+    id: string
+    isBlocked: boolean
+    status: "pending" | "active" | "failed" | "expired" | "revoked"
+    reason: string
+    durationMinutes: number | null
+    errorMessage?: string | null
+    enforcedAt?: string | null
+    expiresAt?: string | null
+    createdBy: string
+    createdAt: string
+  } | null
+}
+
 export interface TrafficTrendItem {
   label: string
   requests: number

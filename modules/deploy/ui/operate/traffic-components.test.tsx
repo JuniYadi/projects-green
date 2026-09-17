@@ -35,6 +35,31 @@ describe("Frontend Traffic Components", () => {
       expect(view.getByText("Transfer Data")).toBeTruthy()
       expect(view.getByText("450.0 MB")).toBeTruthy()
     })
+
+    it("renders 4-pillar visitor intelligence cards when estimate metrics are present", () => {
+      const view = render(
+        <TrafficSummaryCards
+          totalRequests={10000}
+          successRate={98.5}
+          avgLatencyMs={120}
+          totalBytesFormatted="250.0 MB"
+          periodLabel="16 Sep 2026"
+          visitorEstimate={3500}
+          visitorEstimateMethod="ip_cardinality_v1"
+          automatedRequests={2000}
+          humanRequests={8000}
+        />
+      )
+
+      expect(view.getByText("Total Permintaan")).toBeTruthy()
+      expect(view.getByText("10.000")).toBeTruthy()
+      expect(view.getByText("Estimasi Pengunjung")).toBeTruthy()
+      expect(view.getByText("3.500")).toBeTruthy()
+      expect(view.getByText("Trafik Manusia (Wajar)")).toBeTruthy()
+      expect(view.getByText("80%")).toBeTruthy()
+      expect(view.getByText("Trafik Otomasi & Bot")).toBeTruthy()
+      expect(view.getByText("20%")).toBeTruthy()
+    })
   })
 
   describe("TrafficRequestQualityCard", () => {

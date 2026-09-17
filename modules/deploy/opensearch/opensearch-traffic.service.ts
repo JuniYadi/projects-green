@@ -6,6 +6,7 @@ import { resolveClusterIntegrationByClusterCode } from "../cluster-integration.s
 import {
   computeSuccessRatio,
   enrichTopIpsWithGeo,
+  lookupIpGeo,
   type IpGeoInfo,
 } from "./geoip-lookup.service"
 import {
@@ -13,17 +14,29 @@ import {
   CLI_CLIENT_SIGNAL_FRAGMENTS,
   parseUserAgent,
 } from "./ua-parser.service"
+import {
+  classifyTraffic,
+  isProbePath,
+  isStaticAssetPath,
+  isValidIpAddress,
+  normalizeIpAddress,
+} from "./traffic-classification.service"
 import type {
   AppTrafficLogItemDTO,
   AppTrafficLogsDTO,
   AppTrafficReportDTO,
   AudienceBucket,
   DailySnapshotComputeResult,
+  GetAppTrafficIpsOptions,
   TrafficAudienceBreakdown,
   TrafficCountryCount,
   TrafficErrorPath,
+  TrafficIpDetailDTO,
+  TrafficIpItemDTO,
+  TrafficIpListResponseDTO,
   TrafficPathCount,
   TrafficRequestQuality,
+  TrafficSignal,
   TrafficTrendItem,
 } from "./opensearch-traffic.types"
 
@@ -1480,5 +1493,813 @@ export async function getLiveTrafficLogs(
       "Failed to fetch live ingress logs from OpenSearch"
     )
     return { logs: [], total: 0 }
+  }
+}
+
+/**
+ * Computes calendar date range in UTC for daily, monthly, or yearly queries.
+ */
+export function computeTimeRangeForPeriod(params: {
+  granularity?: "daily" | "monthly" | "yearly"
+  date?: string
+  month?: string
+  year?: string
+}): { startTime: Date; endTime: Date } {
+  const granularity = params.granularity ?? "daily"
+  if (granularity === "monthly") {
+    let yearNum = new Date().getUTCFullYear()
+    let monthNum = new Date().getUTCMonth() + 1
+    if (params.month && /^\d{4}-\d{2}$/.test(params.month)) {
+      const parts = params.month.split("-")
+      yearNum = parseInt(parts[0], 10)
+      monthNum = parseInt(parts[1], 10)
+    }
+    const startTime = new Date(Date.UTC(yearNum, monthNum - 1, 1, 0, 0, 0, 0))
+    const lastDay = new Date(Date.UTC(yearNum, monthNum, 0)).getUTCDate()
+    const endTime = new Date(
+      Date.UTC(yearNum, monthNum - 1, lastDay, 23, 59, 59, 999)
+    )
+    return { startTime, endTime }
+  } else if (granularity === "yearly") {
+    let yearNum = new Date().getUTCFullYear()
+    if (params.year && /^\d{4}$/.test(params.year)) {
+      yearNum = parseInt(params.year, 10)
+    }
+    const startTime = new Date(Date.UTC(yearNum, 0, 1, 0, 0, 0, 0))
+    const endTime = new Date(Date.UTC(yearNum, 11, 31, 23, 59, 59, 999))
+    return { startTime, endTime }
+  } else {
+    // daily
+    let targetDate = new Date()
+    if (params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date)) {
+      targetDate = new Date(params.date)
+    }
+    const startTime = new Date(
+      Date.UTC(
+        targetDate.getUTCFullYear(),
+        targetDate.getUTCMonth(),
+        targetDate.getUTCDate(),
+        0,
+        0,
+        0,
+        0
+      )
+    )
+    const endTime = new Date(
+      Date.UTC(
+        targetDate.getUTCFullYear(),
+        targetDate.getUTCMonth(),
+        targetDate.getUTCDate(),
+        23,
+        59,
+        59,
+        999
+      )
+    )
+    return { startTime, endTime }
+  }
+}
+
+/**
+ * Fetches up to 100 investigated IPs from OpenSearch for the selected period,
+ * with server-side pagination, filters, classification signals, and coverage metrics.
+ */
+export async function getAppTrafficIps(
+  slug: string,
+  options?: GetAppTrafficIpsOptions,
+  injectedClient?: Client
+): Promise<TrafficIpListResponseDTO> {
+  let client: Client
+  let stackSlug: string
+  let stackId: string
+  let domainList: string[] = []
+
+  if (injectedClient) {
+    const s = await prisma.applicationStack.findFirst({
+      where: { OR: [{ id: slug }, { slug }] },
+      select: {
+        id: true,
+        slug: true,
+        customDomain: true,
+        subdomain: true,
+        domains: { select: { hostname: true } },
+      },
+    })
+    if (!s) {
+      throw new Error(`ApplicationStack not found for identifier: ${slug}`)
+    }
+    client = injectedClient
+    stackSlug = s.slug
+    stackId = s.id
+    domainList = Array.from(
+      new Set(
+        [
+          s.customDomain,
+          s.subdomain,
+          ...(s.domains?.map((d) => d.hostname) ?? []),
+        ].filter(Boolean) as string[]
+      )
+    )
+  } else {
+    const resolved = await resolveOpenSearchForStack(slug)
+    client = resolved.client
+    stackSlug = resolved.stack.slug
+    stackId = resolved.stack.id
+    domainList = resolved.domainList
+  }
+
+  const { startTime, endTime } = computeTimeRangeForPeriod(options ?? {})
+  const filterClauses: Record<string, unknown>[] = [
+    {
+      range: {
+        "@timestamp": {
+          gte: startTime.toISOString(),
+          lte: endTime.toISOString(),
+        },
+      },
+    },
+    buildStackFilterClause(domainList, stackSlug),
+  ]
+
+  const queryPayload: Record<string, unknown> = {
+    size: 0,
+    query: {
+      bool: {
+        filter: filterClauses,
+      },
+    },
+    aggs: {
+      top_ips: {
+        terms: {
+          field: "client_ip.keyword",
+          size: 100,
+        },
+        aggs: {
+          status_class: {
+            range: {
+              field: "http_status",
+              ranges: [
+                { key: "2xx", from: 200, to: 300 },
+                { key: "3xx", from: 300, to: 400 },
+                { key: "4xx", from: 400, to: 500 },
+                { key: "5xx", from: 500 },
+              ],
+            },
+          },
+          first_seen: { min: { field: "@timestamp" } },
+          last_seen: { max: { field: "@timestamp" } },
+          user_agents: { terms: { field: "user_agent.keyword", size: 3 } },
+          top_paths: { terms: { field: "http_path.keyword", size: 10 } },
+          automated_uas: { filter: buildAutomatedUaFilter() },
+        },
+      },
+    },
+  }
+
+  try {
+    const rawClient = client as unknown as {
+      search: (
+        params: Record<string, unknown>
+      ) => Promise<Record<string, unknown>>
+    }
+    const response = await rawClient.search({
+      index: "haproxy-controller-*",
+      body: queryPayload,
+    })
+
+    const rawRes = response as unknown as {
+      body?: {
+        hits?: { total?: number | { value: number } }
+        aggregations?: Record<string, unknown>
+      }
+      hits?: { total?: number | { value: number } }
+      aggregations?: Record<string, unknown>
+    }
+
+    const rawTotal = rawRes.body?.hits?.total ?? rawRes.hits?.total
+    const totalRequests =
+      typeof rawTotal === "number"
+        ? rawTotal
+        : typeof rawTotal === "object" &&
+            rawTotal !== null &&
+            "value" in rawTotal
+          ? rawTotal.value
+          : 0
+
+    const aggs = (rawRes.body?.aggregations ?? rawRes.aggregations ?? {}) as {
+      top_ips?: {
+        sum_other_doc_count?: number
+        buckets: Array<{
+          key: string
+          doc_count: number
+          status_class?: {
+            buckets: Array<{ key: string; doc_count: number }>
+          }
+          first_seen?: { value?: number; value_as_string?: string }
+          last_seen?: { value?: number; value_as_string?: string }
+          user_agents?: { buckets: Array<{ key: string; doc_count: number }> }
+          top_paths?: { buckets: Array<{ key: string; doc_count: number }> }
+          automated_uas?: { doc_count: number }
+        }>
+      }
+    }
+
+    const ipBuckets = aggs.top_ips?.buckets ?? []
+    const otherRequestCount = aggs.top_ips?.sum_other_doc_count ?? 0
+
+    // Check active blocks in DB
+    const activeBlockMap = new Map<string, { id: string; status: string }>()
+    try {
+      if (prisma.appHostingIpBlock) {
+        const blocks = await prisma.appHostingIpBlock.findMany({
+          where: { stackId, status: { in: ["active", "pending"] } },
+          select: { id: true, ipAddress: true, status: true },
+        })
+        for (const b of blocks) {
+          activeBlockMap.set(b.ipAddress, { id: b.id, status: b.status })
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        {
+          event: "ACTIVE_BLOCKS_LOOKUP_FAILED",
+          stackId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        "Failed to lookup active IP blocks from database"
+      )
+    }
+
+    // Process and enrich each IP bucket
+    const allItems: TrafficIpItemDTO[] = await Promise.all(
+      ipBuckets.map(async (bucket) => {
+        let status2xx = 0
+        let status3xx = 0
+        let status4xx = 0
+        let status5xx = 0
+
+        if (bucket.status_class?.buckets) {
+          for (const s of bucket.status_class.buckets) {
+            if (s.key === "2xx") status2xx = s.doc_count
+            else if (s.key === "3xx") status3xx = s.doc_count
+            else if (s.key === "4xx") status4xx = s.doc_count
+            else if (s.key === "5xx") status5xx = s.doc_count
+          }
+        }
+
+        const evidencedTotal = status2xx + status3xx + status4xx + status5xx
+        const successRatio =
+          evidencedTotal > 0
+            ? computeSuccessRatio(status2xx, evidencedTotal)
+            : 100
+
+        const topUa = bucket.user_agents?.buckets[0]?.key
+        const parsedUa = parseUserAgent(topUa)
+        const primaryClient = parsedUa.browserFamily || "Unknown"
+        const primaryDevice = parsedUa.deviceClass || "other"
+
+        const probePathRequests =
+          bucket.top_paths?.buckets
+            ?.filter((p) => isProbePath(p.key))
+            ?.reduce((sum, p) => sum + p.doc_count, 0) ?? 0
+
+        const automatedUaRequests = bucket.automated_uas?.doc_count ?? 0
+
+        const classification = classifyTraffic({
+          totalRequests: bucket.doc_count,
+          automatedUaRequests,
+          successRequests: status2xx + status3xx,
+          errorRequests: status4xx + status5xx,
+          probePathRequests,
+        })
+
+        const geo = await lookupIpGeo(bucket.key)
+        const block = activeBlockMap.get(bucket.key)
+
+        const percentage =
+          totalRequests > 0
+            ? Math.round((bucket.doc_count / totalRequests) * 1000) / 10
+            : 0
+
+        return {
+          ip: bucket.key,
+          countryCode: geo.countryCode,
+          countryName: geo.countryName,
+          city: geo.city,
+          requestsCount: bucket.doc_count,
+          percentage,
+          status2xx,
+          status3xx,
+          status4xx,
+          status5xx,
+          successRatio,
+          firstSeen:
+            bucket.first_seen?.value_as_string ??
+            (bucket.first_seen?.value
+              ? new Date(bucket.first_seen.value).toISOString()
+              : undefined),
+          lastSeen:
+            bucket.last_seen?.value_as_string ??
+            (bucket.last_seen?.value
+              ? new Date(bucket.last_seen.value).toISOString()
+              : undefined),
+          primaryClient,
+          primaryDevice,
+          signal: classification.label as TrafficSignal,
+          confidence: classification.confidence,
+          reasons: classification.reasons,
+          isBlocked: Boolean(block),
+          blockStatus:
+            (block?.status as TrafficIpItemDTO["blockStatus"]) ?? null,
+          blockId: block?.id ?? null,
+        }
+      })
+    )
+
+    // Apply filtering
+    let filtered = allItems
+    if (options?.search) {
+      const q = options.search.trim().toLowerCase()
+      filtered = filtered.filter((i) => i.ip.toLowerCase().includes(q))
+    }
+    if (options?.signal) {
+      filtered = filtered.filter((i) => i.signal === options.signal)
+    }
+    if (options?.statusFamily) {
+      if (options.statusFamily === "2xx")
+        filtered = filtered.filter((i) => i.status2xx > 0)
+      else if (options.statusFamily === "3xx")
+        filtered = filtered.filter((i) => i.status3xx > 0)
+      else if (options.statusFamily === "4xx")
+        filtered = filtered.filter((i) => i.status4xx > 0)
+      else if (options.statusFamily === "5xx")
+        filtered = filtered.filter((i) => i.status5xx > 0)
+    }
+    if (options?.country) {
+      const c = options.country.trim().toLowerCase()
+      filtered = filtered.filter((i) => i.countryCode.toLowerCase() === c)
+    }
+    if (options?.minRequests && options.minRequests > 0) {
+      filtered = filtered.filter((i) => i.requestsCount >= options.minRequests!)
+    }
+
+    // Apply sorting
+    const sortBy = options?.sortBy ?? "requests"
+    const sortDir = options?.sortDir === "asc" ? 1 : -1
+    filtered.sort((a, b) => {
+      if (sortBy === "2xx") return (a.status2xx - b.status2xx) * sortDir
+      if (sortBy === "4xx") return (a.status4xx - b.status4xx) * sortDir
+      if (sortBy === "5xx") return (a.status5xx - b.status5xx) * sortDir
+      if (sortBy === "success")
+        return (a.successRatio - b.successRatio) * sortDir
+      if (sortBy === "lastSeen") {
+        const tA = a.lastSeen ? new Date(a.lastSeen).getTime() : 0
+        const tB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0
+        return (tA - tB) * sortDir
+      }
+      return (a.requestsCount - b.requestsCount) * sortDir
+    })
+
+    // Pagination
+    const page = Math.max(1, options?.page ?? 1)
+    const limit = Math.min(100, Math.max(1, options?.limit ?? 10))
+    const startIndex = (page - 1) * limit
+    const paginatedItems = filtered.slice(startIndex, startIndex + limit)
+
+    const coveragePercentage =
+      totalRequests > 0
+        ? Math.round(
+            ((totalRequests - otherRequestCount) / totalRequests) * 1000
+          ) / 10
+        : 100
+
+    return {
+      items: paginatedItems,
+      page,
+      limit,
+      total: filtered.length,
+      otherRequestCount,
+      coveragePercentage,
+    }
+  } catch (err) {
+    logger.warn(
+      {
+        event: "FETCH_TRAFFIC_IPS_FAILED",
+        slug,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      "Failed to fetch traffic IPs from OpenSearch"
+    )
+    return {
+      items: [],
+      page: 1,
+      limit: options?.limit ?? 10,
+      total: 0,
+      otherRequestCount: 0,
+      coveragePercentage: 100,
+    }
+  }
+}
+
+/**
+ * Fetches detailed traffic evidence for a specific IP address:
+ * status breakdown, paths split by status family, UA samples, velocity, and classification.
+ */
+export async function getAppTrafficIpDetail(
+  slug: string,
+  ipAddress: string,
+  options?: {
+    granularity?: "daily" | "monthly" | "yearly"
+    date?: string
+    month?: string
+    year?: string
+  },
+  injectedClient?: Client
+): Promise<TrafficIpDetailDTO> {
+  if (!isValidIpAddress(ipAddress)) {
+    throw new Error(
+      `Invalid IP address: '${ipAddress}'. Only exact IPv4 or IPv6 addresses are accepted.`
+    )
+  }
+  const normalizedIp = normalizeIpAddress(ipAddress)
+
+  let client: Client
+  let stackSlug: string
+  let stackId: string
+  let domainList: string[] = []
+
+  if (injectedClient) {
+    const s = await prisma.applicationStack.findFirst({
+      where: { OR: [{ id: slug }, { slug }] },
+      select: {
+        id: true,
+        slug: true,
+        customDomain: true,
+        subdomain: true,
+        domains: { select: { hostname: true } },
+      },
+    })
+    if (!s) {
+      throw new Error(`ApplicationStack not found for identifier: ${slug}`)
+    }
+    client = injectedClient
+    stackSlug = s.slug
+    stackId = s.id
+    domainList = Array.from(
+      new Set(
+        [
+          s.customDomain,
+          s.subdomain,
+          ...(s.domains?.map((d) => d.hostname) ?? []),
+        ].filter(Boolean) as string[]
+      )
+    )
+  } else {
+    const resolved = await resolveOpenSearchForStack(slug)
+    client = resolved.client
+    stackSlug = resolved.stack.slug
+    stackId = resolved.stack.id
+    domainList = resolved.domainList
+  }
+
+  const { startTime, endTime } = computeTimeRangeForPeriod(options ?? {})
+  const filterClauses: Record<string, unknown>[] = [
+    {
+      range: {
+        "@timestamp": {
+          gte: startTime.toISOString(),
+          lte: endTime.toISOString(),
+        },
+      },
+    },
+    buildStackFilterClause(domainList, stackSlug),
+    { term: { "client_ip.keyword": normalizedIp } },
+  ]
+
+  const queryPayload: Record<string, unknown> = {
+    size: 0,
+    query: {
+      bool: {
+        filter: filterClauses,
+      },
+    },
+    aggs: {
+      status_class: {
+        range: {
+          field: "http_status",
+          ranges: [
+            { key: "2xx", from: 200, to: 300 },
+            { key: "3xx", from: 300, to: 400 },
+            { key: "4xx", from: 400, to: 500 },
+            { key: "5xx", from: 500 },
+          ],
+        },
+      },
+      paths_2xx: {
+        filter: { range: { http_status: { gte: 200, lt: 300 } } },
+        aggs: { paths: { terms: { field: "http_path.keyword", size: 10 } } },
+      },
+      paths_3xx: {
+        filter: { range: { http_status: { gte: 300, lt: 400 } } },
+        aggs: { paths: { terms: { field: "http_path.keyword", size: 10 } } },
+      },
+      paths_4xx: {
+        filter: { range: { http_status: { gte: 400, lt: 500 } } },
+        aggs: { paths: { terms: { field: "http_path.keyword", size: 10 } } },
+      },
+      paths_5xx: {
+        filter: { range: { http_status: { gte: 500 } } },
+        aggs: { paths: { terms: { field: "http_path.keyword", size: 10 } } },
+      },
+      all_paths: { terms: { field: "http_path.keyword", size: 50 } },
+      user_agents: { terms: { field: "user_agent.keyword", size: 10 } },
+      first_seen: { min: { field: "@timestamp" } },
+      last_seen: { max: { field: "@timestamp" } },
+      timeline: {
+        date_histogram: {
+          field: "@timestamp",
+          fixed_interval: "1h",
+          min_doc_count: 0,
+        },
+        aggs: {
+          errors: { filter: { range: { http_status: { gte: 400 } } } },
+        },
+      },
+      automated_uas: { filter: buildAutomatedUaFilter() },
+    },
+  }
+
+  try {
+    const rawClient = client as unknown as {
+      search: (
+        params: Record<string, unknown>
+      ) => Promise<Record<string, unknown>>
+    }
+    const response = await rawClient.search({
+      index: "haproxy-controller-*",
+      body: queryPayload,
+    })
+
+    const rawRes = response as unknown as {
+      body?: {
+        hits?: { total?: number | { value: number } }
+        aggregations?: Record<string, unknown>
+      }
+      hits?: { total?: number | { value: number } }
+      aggregations?: Record<string, unknown>
+    }
+
+    const rawTotal = rawRes.body?.hits?.total ?? rawRes.hits?.total
+    const totalRequests =
+      typeof rawTotal === "number"
+        ? rawTotal
+        : typeof rawTotal === "object" &&
+            rawTotal !== null &&
+            "value" in rawTotal
+          ? rawTotal.value
+          : 0
+
+    const aggs = (rawRes.body?.aggregations ?? rawRes.aggregations ?? {}) as {
+      status_class?: { buckets: Array<{ key: string; doc_count: number }> }
+      paths_2xx?: {
+        paths?: { buckets: Array<{ key: string; doc_count: number }> }
+      }
+      paths_3xx?: {
+        paths?: { buckets: Array<{ key: string; doc_count: number }> }
+      }
+      paths_4xx?: {
+        paths?: { buckets: Array<{ key: string; doc_count: number }> }
+      }
+      paths_5xx?: {
+        paths?: { buckets: Array<{ key: string; doc_count: number }> }
+      }
+      all_paths?: { buckets: Array<{ key: string; doc_count: number }> }
+      user_agents?: { buckets: Array<{ key: string; doc_count: number }> }
+      first_seen?: { value?: number; value_as_string?: string }
+      last_seen?: { value?: number; value_as_string?: string }
+      timeline?: {
+        buckets: Array<{
+          key_as_string: string
+          doc_count: number
+          errors?: { doc_count: number }
+        }>
+      }
+      automated_uas?: { doc_count: number }
+    }
+
+    let status2xx = 0
+    let status3xx = 0
+    let status4xx = 0
+    let status5xx = 0
+
+    if (aggs.status_class?.buckets) {
+      for (const s of aggs.status_class.buckets) {
+        if (s.key === "2xx") status2xx = s.doc_count
+        else if (s.key === "3xx") status3xx = s.doc_count
+        else if (s.key === "4xx") status4xx = s.doc_count
+        else if (s.key === "5xx") status5xx = s.doc_count
+      }
+    }
+
+    const evidencedTotal = status2xx + status3xx + status4xx + status5xx
+    const successRate =
+      evidencedTotal > 0 ? computeSuccessRatio(status2xx, evidencedTotal) : 100
+
+    const pathsByStatus = {
+      status2xx:
+        aggs.paths_2xx?.paths?.buckets?.map((b) => ({
+          path: b.key,
+          count: b.doc_count,
+        })) ?? [],
+      status3xx:
+        aggs.paths_3xx?.paths?.buckets?.map((b) => ({
+          path: b.key,
+          count: b.doc_count,
+        })) ?? [],
+      status4xx:
+        aggs.paths_4xx?.paths?.buckets?.map((b) => ({
+          path: b.key,
+          count: b.doc_count,
+        })) ?? [],
+      status5xx:
+        aggs.paths_5xx?.paths?.buckets?.map((b) => ({
+          path: b.key,
+          count: b.doc_count,
+        })) ?? [],
+    }
+
+    // User agents
+    const userAgents =
+      aggs.user_agents?.buckets?.map((b) => {
+        const parsed = parseUserAgent(b.key)
+        return {
+          raw: b.key,
+          browser: parsed.browserFamily,
+          os: parsed.osFamily,
+          device: parsed.deviceClass,
+          count: b.doc_count,
+        }
+      }) ?? []
+
+    // Static asset share & probe paths
+    const allPathBuckets = aggs.all_paths?.buckets ?? []
+    const staticRequests = allPathBuckets
+      .filter((p) => isStaticAssetPath(p.key))
+      .reduce((sum, p) => sum + p.doc_count, 0)
+    const staticAssetShare =
+      totalRequests > 0
+        ? Math.round((staticRequests / totalRequests) * 1000) / 10
+        : 0
+
+    const probePathRequests = allPathBuckets
+      .filter((p) => isProbePath(p.key))
+      .reduce((sum, p) => sum + p.doc_count, 0)
+
+    const automatedUaRequests = aggs.automated_uas?.doc_count ?? 0
+
+    const classification = classifyTraffic({
+      totalRequests,
+      automatedUaRequests,
+      successRequests: status2xx + status3xx,
+      errorRequests: status4xx + status5xx,
+      probePathRequests,
+    })
+
+    // Timeline & velocity
+    let maxBucketCount = 0
+    const timeline =
+      aggs.timeline?.buckets?.map((b) => {
+        if (b.doc_count > maxBucketCount) maxBucketCount = b.doc_count
+        return {
+          timestamp: b.key_as_string,
+          requests: b.doc_count,
+          errors: b.errors?.doc_count ?? 0,
+        }
+      }) ?? []
+
+    const maxRpm = Math.round((maxBucketCount / 60) * 10) / 10
+    const isBurst = maxRpm >= 30 || maxBucketCount >= 100
+
+    const geo = await lookupIpGeo(normalizedIp)
+
+    // Check block info
+    let blockInfo: TrafficIpDetailDTO["blockInfo"] = null
+    try {
+      if (prisma.appHostingIpBlock) {
+        const b = await prisma.appHostingIpBlock.findFirst({
+          where: {
+            stackId,
+            ipAddress: normalizedIp,
+            status: { in: ["active", "pending", "failed"] },
+          },
+          orderBy: { createdAt: "desc" },
+        })
+        if (b) {
+          blockInfo = {
+            id: b.id,
+            isBlocked: b.status === "active" || b.status === "pending",
+            status: b.status as
+              "pending" | "active" | "failed" | "expired" | "revoked",
+            reason: b.reason,
+            durationMinutes: b.durationMinutes,
+            errorMessage: b.errorMessage,
+            enforcedAt: b.enforcedAt ? b.enforcedAt.toISOString() : null,
+            expiresAt: b.expiresAt ? b.expiresAt.toISOString() : null,
+            createdBy: b.createdBy,
+            createdAt: b.createdAt.toISOString(),
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        {
+          event: "IP_BLOCK_DETAIL_LOOKUP_FAILED",
+          stackId,
+          ip: normalizedIp,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        "Failed to lookup IP block detail from database"
+      )
+    }
+
+    const firstSeen =
+      aggs.first_seen?.value_as_string ??
+      (aggs.first_seen?.value
+        ? new Date(aggs.first_seen.value).toISOString()
+        : new Date().toISOString())
+    const lastSeen =
+      aggs.last_seen?.value_as_string ??
+      (aggs.last_seen?.value
+        ? new Date(aggs.last_seen.value).toISOString()
+        : new Date().toISOString())
+
+    return {
+      ip: normalizedIp,
+      countryCode: geo.countryCode,
+      countryName: geo.countryName,
+      city: geo.city,
+      totalRequests,
+      statusCounts: {
+        status2xx,
+        status3xx,
+        status4xx,
+        status5xx,
+      },
+      successRate,
+      signal: {
+        classification: classification.label as TrafficSignal,
+        confidence: classification.confidence,
+        reasons: classification.reasons,
+      },
+      pathsByStatus,
+      userAgents,
+      timeline,
+      firstSeen,
+      lastSeen,
+      velocity: {
+        maxRpm,
+        isBurst,
+      },
+      staticAssetShare,
+      blockInfo,
+    }
+  } catch (err) {
+    logger.warn(
+      {
+        event: "FETCH_TRAFFIC_IP_DETAIL_FAILED",
+        slug,
+        ip: normalizedIp,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      "Failed to fetch IP traffic detail from OpenSearch"
+    )
+    const geo = await lookupIpGeo(normalizedIp)
+    return {
+      ip: normalizedIp,
+      countryCode: geo.countryCode,
+      countryName: geo.countryName,
+      city: geo.city,
+      totalRequests: 0,
+      statusCounts: { status2xx: 0, status3xx: 0, status4xx: 0, status5xx: 0 },
+      successRate: 100,
+      signal: {
+        classification: "unknown",
+        confidence: 0,
+        reasons: ["No traffic evidence available in selected period"],
+      },
+      pathsByStatus: {
+        status2xx: [],
+        status3xx: [],
+        status4xx: [],
+        status5xx: [],
+      },
+      userAgents: [],
+      timeline: [],
+      firstSeen: new Date().toISOString(),
+      lastSeen: new Date().toISOString(),
+      velocity: { maxRpm: 0, isBurst: false },
+      staticAssetShare: 0,
+      blockInfo: null,
+    }
   }
 }

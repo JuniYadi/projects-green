@@ -30,6 +30,8 @@ const {
   computeDailyTrafficSnapshotFromOpenSearch,
   getAppTrafficReport,
   getLiveTrafficLogs,
+  getAppTrafficIps,
+  getAppTrafficIpDetail,
 } = await import("./opensearch-traffic.service")
 
 describe("opensearch-traffic.service", () => {
@@ -958,6 +960,231 @@ describe("opensearch-traffic.service", () => {
         new Date("2026-09-10")
       )
       expect(summary.processed).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  describe("getAppTrafficIps and getAppTrafficIpDetail", () => {
+    it("getAppTrafficIps aggregates and classifies top IPs with coverage metrics", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        customDomain: "myapp.com",
+        subdomain: "myapp.green.id",
+        domains: [],
+      })
+
+      const mockClient = {
+        search: mock(async () => ({
+          body: {
+            hits: { total: { value: 150 } },
+            aggregations: {
+              top_ips: {
+                sum_other_doc_count: 50,
+                buckets: [
+                  {
+                    key: "10.1.1.1",
+                    doc_count: 80,
+                    status_class: {
+                      buckets: [
+                        { key: "2xx", doc_count: 75 },
+                        { key: "3xx", doc_count: 5 },
+                        { key: "4xx", doc_count: 0 },
+                        { key: "5xx", doc_count: 0 },
+                      ],
+                    },
+                    first_seen: { value_as_string: "2026-09-16T01:00:00.000Z" },
+                    last_seen: { value_as_string: "2026-09-16T12:00:00.000Z" },
+                    user_agents: {
+                      buckets: [
+                        {
+                          key: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+                          doc_count: 80,
+                        },
+                      ],
+                    },
+                    top_paths: {
+                      buckets: [{ key: "/dashboard", doc_count: 50 }],
+                    },
+                    automated_uas: { doc_count: 0 },
+                  },
+                  {
+                    key: "10.2.2.2",
+                    doc_count: 20,
+                    status_class: {
+                      buckets: [
+                        { key: "2xx", doc_count: 0 },
+                        { key: "3xx", doc_count: 0 },
+                        { key: "4xx", doc_count: 20 },
+                        { key: "5xx", doc_count: 0 },
+                      ],
+                    },
+                    first_seen: { value_as_string: "2026-09-16T03:00:00.000Z" },
+                    last_seen: { value_as_string: "2026-09-16T03:05:00.000Z" },
+                    user_agents: {
+                      buckets: [{ key: "curl/7.68.0", doc_count: 20 }],
+                    },
+                    top_paths: {
+                      buckets: [{ key: "/.env", doc_count: 15 }],
+                    },
+                    automated_uas: { doc_count: 20 },
+                  },
+                ],
+              },
+            },
+          },
+        })),
+      }
+
+      const res = await getAppTrafficIps(
+        "my-app",
+        { page: 1, limit: 10 },
+        mockClient as unknown as import("@opensearch-project/opensearch").Client
+      )
+
+      expect(res.total).toBe(2)
+      expect(res.otherRequestCount).toBe(50)
+      expect(res.coveragePercentage).toBeCloseTo(66.7, 1)
+      expect(res.items[0].ip).toBe("10.1.1.1")
+      expect(res.items[0].signal).toBe("likely_human")
+      expect(res.items[0].successRatio).toBeCloseTo(93.8, 1)
+      expect(res.items[1].ip).toBe("10.2.2.2")
+      expect(res.items[1].signal).toBe("likely_automated")
+      expect(res.items[1].successRatio).toBe(0)
+    })
+
+    it("getAppTrafficIps filters by signal and status family", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        customDomain: "myapp.com",
+      })
+
+      const mockClient = {
+        search: mock(async () => ({
+          body: {
+            hits: { total: { value: 100 } },
+            aggregations: {
+              top_ips: {
+                sum_other_doc_count: 0,
+                buckets: [
+                  {
+                    key: "10.1.1.1",
+                    doc_count: 50,
+                    status_class: {
+                      buckets: [{ key: "2xx", doc_count: 50 }],
+                    },
+                    user_agents: {
+                      buckets: [
+                        {
+                          key: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36",
+                          doc_count: 50,
+                        },
+                      ],
+                    },
+                    top_paths: { buckets: [{ key: "/", doc_count: 50 }] },
+                  },
+                  {
+                    key: "10.2.2.2",
+                    doc_count: 50,
+                    status_class: {
+                      buckets: [{ key: "4xx", doc_count: 50 }],
+                    },
+                    user_agents: {
+                      buckets: [{ key: "python-requests/2.28", doc_count: 50 }],
+                    },
+                    top_paths: { buckets: [{ key: "/.git", doc_count: 50 }] },
+                    automated_uas: { doc_count: 50 },
+                  },
+                ],
+              },
+            },
+          },
+        })),
+      }
+
+      const resFiltered = await getAppTrafficIps(
+        "my-app",
+        { signal: "likely_automated" },
+        mockClient as unknown as import("@opensearch-project/opensearch").Client
+      )
+
+      expect(resFiltered.total).toBe(1)
+      expect(resFiltered.items[0].ip).toBe("10.2.2.2")
+    })
+
+    it("getAppTrafficIpDetail returns comprehensive evidence for an IP", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "st_123",
+        slug: "my-app",
+        customDomain: "myapp.com",
+      })
+
+      const mockClient = {
+        search: mock(async () => ({
+          body: {
+            hits: { total: { value: 30 } },
+            aggregations: {
+              status_class: {
+                buckets: [
+                  { key: "2xx", doc_count: 5 },
+                  { key: "4xx", doc_count: 25 },
+                ],
+              },
+              paths_2xx: {
+                paths: { buckets: [{ key: "/", doc_count: 5 }] },
+              },
+              paths_4xx: {
+                paths: { buckets: [{ key: "/.env", doc_count: 20 }] },
+              },
+              all_paths: {
+                buckets: [
+                  { key: "/.env", doc_count: 20 },
+                  { key: "/favicon.ico", doc_count: 5 },
+                  { key: "/", doc_count: 5 },
+                ],
+              },
+              user_agents: {
+                buckets: [{ key: "curl/7.81.0", doc_count: 30 }],
+              },
+              first_seen: { value_as_string: "2026-09-16T08:00:00.000Z" },
+              last_seen: { value_as_string: "2026-09-16T08:30:00.000Z" },
+              timeline: {
+                buckets: [
+                  {
+                    key_as_string: "2026-09-16T08:00:00.000Z",
+                    doc_count: 30,
+                    errors: { doc_count: 25 },
+                  },
+                ],
+              },
+              automated_uas: { doc_count: 30 },
+            },
+          },
+        })),
+      }
+
+      const detail = await getAppTrafficIpDetail(
+        "my-app",
+        "10.50.0.1",
+        {},
+        mockClient as unknown as import("@opensearch-project/opensearch").Client
+      )
+
+      expect(detail.ip).toBe("10.50.0.1")
+      expect(detail.totalRequests).toBe(30)
+      expect(detail.statusCounts.status2xx).toBe(5)
+      expect(detail.statusCounts.status4xx).toBe(25)
+      expect(detail.signal.classification).toBe("likely_automated")
+      expect(detail.pathsByStatus.status4xx[0].path).toBe("/.env")
+      expect(detail.userAgents[0].browser).toBe("CLI/HTTP Client")
+      expect(detail.staticAssetShare).toBeCloseTo(16.7, 1)
+      expect(detail.timeline.length).toBe(1)
+    })
+
+    it("getAppTrafficIpDetail rejects invalid IP addresses", async () => {
+      await expect(
+        getAppTrafficIpDetail("my-app", "invalid-ip")
+      ).rejects.toThrow("Invalid IP address")
     })
   })
 })

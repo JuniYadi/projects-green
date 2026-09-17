@@ -473,6 +473,7 @@ model ApplicationStack {
   template             AppTemplate?                    @relation(fields: [templateId], references: [id])
   trafficSnapshots     AppHostingDailyTrafficSnapshot[]
   logSnapshots         AppHostingDailyLogSnapshot[]
+  ipBlocks             AppHostingIpBlock[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -510,6 +511,31 @@ model AppHostingDailyTrafficSnapshot {
   @@unique([stackId, date])
   @@index([stackId, date])
   @@map("AppHostingDailyTrafficSnapshot")
+}
+
+model AppHostingIpBlock {
+  id              String           @id @default(cuid())
+  stackId         String
+  organizationId  String
+  ipAddress       String
+  reason          String
+  durationMinutes Int?
+  status          String           @default("pending") // pending, active, failed, expired, revoked
+  errorMessage    String?
+  enforcedAt      DateTime?
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  revokedBy       String?
+  createdBy       String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  stack           ApplicationStack @relation(fields: [stackId], references: [id], onDelete: Cascade)
+
+  @@index([stackId, status])
+  @@index([organizationId, ipAddress])
+  @@index([expiresAt])
+  @@map("AppHostingIpBlock")
 }
 
 model AppHostingDailyLogSnapshot {

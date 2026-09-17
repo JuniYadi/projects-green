@@ -8,9 +8,16 @@ import { TrafficHourlyChart } from "./traffic-hourly-chart"
 import { TrafficTopPagesCard } from "./traffic-top-pages-card"
 import { TrafficGeoCard } from "./traffic-geo-card"
 import { TrafficAudienceCard } from "./traffic-audience-card"
+import { TrafficIpInvestigationTable } from "./traffic-ip-investigation-table"
+import { TrafficIpReviewDrawer } from "./traffic-ip-review-drawer"
 import { TrafficLiveStreamTable } from "./traffic-live-stream-table"
 import { Button } from "@/components/ui/button"
-import { ArrowClockwise } from "@phosphor-icons/react"
+import {
+  ArrowClockwise,
+  ChartLineUp,
+  Table as TableIcon,
+} from "@phosphor-icons/react"
+import { cn } from "@/lib/utils"
 import type { AppTrafficReportDTO } from "../../opensearch/opensearch-traffic.types"
 
 export interface TabTrafficProps {
@@ -19,12 +26,20 @@ export interface TabTrafficProps {
 }
 
 export function TabTraffic({ appSlug }: TabTrafficProps) {
+  const [workspaceMode, setWorkspaceMode] = useState<"chart" | "table">("chart")
   const [granularity, setGranularity] = useState<
     "daily" | "monthly" | "yearly"
   >("daily")
   const [targetDate, setTargetDate] = useState<string>("")
   const [targetMonth, setTargetMonth] = useState<string>("")
   const [targetYear, setTargetYear] = useState<string>("")
+  const [selectedReviewIp, setSelectedReviewIp] = useState<string | null>(null)
+  const [isReviewDrawerOpen, setIsReviewDrawerOpen] = useState(false)
+
+  const handleReviewIp = (ip: string) => {
+    setSelectedReviewIp(ip)
+    setIsReviewDrawerOpen(true)
+  }
 
   const { data, isLoading, isError, error, refetch, isFetching } =
     useQuery<AppTrafficReportDTO>({
@@ -71,6 +86,36 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Workspace Mode Pills (Chart vs Table Investigation) */}
+          <div className="flex items-center rounded-lg border border-border bg-muted/10 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setWorkspaceMode("chart")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                workspaceMode === "chart"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <ChartLineUp size={14} />
+              <span>Chart</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkspaceMode("table")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                workspaceMode === "table"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <TableIcon size={14} />
+              <span>Investigasi IP</span>
+            </button>
+          </div>
+
           {/* Granularity Pills */}
           <div className="flex items-center rounded-lg border border-border bg-muted/10 p-0.5 text-xs">
             <button
@@ -171,46 +216,91 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
         </div>
       ) : data ? (
         <div className="space-y-6">
-          {/* 1. Summary Cards */}
+          {/* 1. Summary Cards - Shared 4-Pillar Visitor Intelligence strip */}
           <TrafficSummaryCards
             totalRequests={data.totalRequests}
             successRate={data.successRate}
             avgLatencyMs={data.avgLatencyMs}
             totalBytesFormatted={data.totalBytesFormatted}
             periodLabel={data.periodLabel}
+            visitorEstimate={data.visitorEstimate}
+            visitorEstimateMethod={data.visitorEstimateMethod}
+            automatedRequests={
+              data.trend?.reduce((s, t) => s + (t.automated || 0), 0) ?? 0
+            }
+            humanRequests={
+              data.trend?.reduce((s, t) => s + (t.humanLike || 0), 0) ?? 0
+            }
           />
 
-          {/* 2. Visual Hourly / Date / Monthly Chart */}
-          <TrafficHourlyChart
-            trend={data.trend}
-            granularity={data.granularity}
-            periodLabel={data.periodLabel}
+          {/* Mode-specific Workspace View */}
+          {workspaceMode === "chart" ? (
+            <div className="space-y-6">
+              {/* 2. Visual Hourly / Date / Monthly Chart */}
+              <TrafficHourlyChart
+                trend={data.trend}
+                granularity={data.granularity}
+                periodLabel={data.periodLabel}
+              />
+
+              {/* 2b. Request Quality Breakdown */}
+              <TrafficRequestQualityCard requestQuality={data.requestQuality} />
+
+              {/* 3. Top Pages & Broken Links Card */}
+              <TrafficTopPagesCard
+                topPages={data.topPages}
+                troubledPages={data.troubledPages}
+              />
+
+              {/* 4. Geographical Origin & Top IP Visitors Card */}
+              <TrafficGeoCard
+                topCountries={data.topCountries || []}
+                topIps={data.topIps || []}
+                onReviewIp={handleReviewIp}
+              />
+
+              {/* 4b. Audience Breakdown: Device / Browser / OS */}
+              <TrafficAudienceCard
+                device={data.audience?.device || []}
+                browser={data.audience?.browser || []}
+                os={data.audience?.os || []}
+              />
+
+              {/* 5. Live Feed Stream Section */}
+              <TrafficLiveStreamTable appSlug={appSlug} />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Table Mode: Quick Top 10 Summary preview */}
+              <TrafficGeoCard
+                topCountries={data.topCountries || []}
+                topIps={data.topIps || []}
+                onReviewIp={handleReviewIp}
+              />
+
+              {/* Table Mode: Server-paged Top 100 IP Investigation Table */}
+              <TrafficIpInvestigationTable
+                appSlug={appSlug}
+                granularity={granularity}
+                date={targetDate}
+                month={targetMonth}
+                year={targetYear}
+                onReviewIp={handleReviewIp}
+              />
+            </div>
+          )}
+
+          {/* IP Review & Evidence Drawer */}
+          <TrafficIpReviewDrawer
+            appSlug={appSlug}
+            ip={selectedReviewIp}
+            open={isReviewDrawerOpen}
+            onOpenChange={setIsReviewDrawerOpen}
+            granularity={granularity}
+            date={targetDate}
+            month={targetMonth}
+            year={targetYear}
           />
-
-          {/* 2b. Request Quality Breakdown */}
-          <TrafficRequestQualityCard requestQuality={data.requestQuality} />
-
-          {/* 3. Top Pages & Broken Links Card */}
-          <TrafficTopPagesCard
-            topPages={data.topPages}
-            troubledPages={data.troubledPages}
-          />
-
-          {/* 4. Geographical Origin & Top IP Visitors Card */}
-          <TrafficGeoCard
-            topCountries={data.topCountries || []}
-            topIps={data.topIps || []}
-          />
-
-          {/* 4b. Audience Breakdown: Device / Browser / OS */}
-          <TrafficAudienceCard
-            device={data.audience?.device || []}
-            browser={data.audience?.browser || []}
-            os={data.audience?.os || []}
-          />
-
-          {/* 5. Live Feed Stream Section */}
-          <TrafficLiveStreamTable appSlug={appSlug} />
         </div>
       ) : null}
     </div>
