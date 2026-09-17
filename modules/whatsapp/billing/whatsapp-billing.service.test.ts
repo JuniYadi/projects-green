@@ -1,5 +1,5 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { Prisma } from "@prisma/client"
+import { Prisma, WhatsappBillingCategory } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 
 // ─── Mocks ──────────────────────────────────────────────────────────────
@@ -523,7 +523,56 @@ describe("WhatsappBillingService", () => {
       expect(
         mockBillingTransactionService.debitServiceBalance
       ).toHaveBeenCalledWith(
-        expect.objectContaining({ organizationId: "org_1" }),
+        expect.objectContaining({
+          organizationId: "org_1",
+          line: expect.objectContaining({
+            description: "WhatsApp overage quota credit",
+          }),
+        }),
+        defaultTx
+      )
+    })
+
+    it("includes category in line description and metadata when category is provided", async () => {
+      defaultTx.whatsappDevice.findUnique.mockResolvedValue(
+        whatsappDevice({ quotaBaseOut: decimal("0"), addonQuota: decimal("0") })
+      )
+      defaultTx.billingAccount.findUnique.mockResolvedValue(
+        billingAccount({ balance: decimal("100.00") })
+      )
+      mockBillingTransactionService.debitServiceBalance.mockResolvedValue({
+        billingAccountId: "ba_1",
+        adjustmentId: "adj_overage_cat",
+        balanceBefore: decimal("100.00"),
+        balanceAfter: decimal("90.00"),
+        amount: decimal("10.00"),
+        currency: "IDR",
+        alreadyProcessed: false,
+      })
+
+      const result = await service.consumeAllowanceOrChargeOverage({
+        organizationId: "org_1",
+        deviceId: "device_1",
+        quotaCredit: decimal("1"),
+        unitPrice: decimal("10.00"),
+        idempotencyKey: "wa-message:req_cat_001",
+        category: WhatsappBillingCategory.UTILITY,
+      })
+
+      expect(result.kind).toBe("OVERAGE_CHARGED")
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "org_1",
+          metadata: expect.objectContaining({
+            category: WhatsappBillingCategory.UTILITY,
+          }),
+          line: expect.objectContaining({
+            description: "WhatsApp overage quota credit (UTILITY)",
+            category: "whatsapp-utility",
+          }),
+        }),
         defaultTx
       )
     })
@@ -751,6 +800,16 @@ describe("WhatsappBillingService", () => {
         expect(result.decision.charged.toString()).toBe("1000")
         expect(result.decision.adjustmentId).toBe("adj_overage_1")
       }
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          line: expect.objectContaining({
+            description: "WhatsApp overage quota credit (SERVICE)",
+          }),
+        }),
+        defaultTx
+      )
     })
 
     it("throws InsufficientBalanceError when balance is insufficient for overage", async () => {

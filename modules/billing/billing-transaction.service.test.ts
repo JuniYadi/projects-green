@@ -21,7 +21,9 @@ const mockPrisma = {
     count: vi.fn(),
   },
   billingInvoiceLine: {
+    findFirst: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
   },
 }
 
@@ -80,6 +82,7 @@ describe("BillingTransactionService", () => {
         return fn(mockPrisma)
       }
     )
+    mockPrisma.billingInvoiceLine.findFirst.mockResolvedValue(null)
   })
 
   describe("creditBalance", () => {
@@ -413,6 +416,84 @@ describe("BillingTransactionService", () => {
           }),
         })
       )
+    })
+
+    it("consolidates line items into existing invoice line by incrementing quantity and amount when matching line exists", async () => {
+      const account = billingAccount({ balance: decimal("100.00") })
+      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      mockPrisma.billingAdjustment.findFirst.mockResolvedValue(null)
+      mockPrisma.billingAccount.update.mockResolvedValue({
+        ...account,
+        balance: decimal("90.00"),
+      })
+      mockPrisma.billingInvoice.findUnique.mockResolvedValue({
+        id: "inv_existing_1",
+        billingAccountId: "ba_1",
+        invoiceNumber: "SVC-202609",
+        type: "SERVICE",
+        status: "DRAFT",
+        currency: "IDR",
+        subtotalAmount: decimal("10.00"),
+        totalAmount: decimal("10.00"),
+      })
+
+      // Existing line on the draft invoice matches description, unitPrice, currency, lineType
+      const existingLine = {
+        id: "line_existing_1",
+        invoiceId: "inv_existing_1",
+        lineType: "METERED",
+        description: "WhatsApp overage quota credit (UTILITY)",
+        quantity: decimal("1"),
+        unitPrice: decimal("10.00"),
+        amount: decimal("10.00"),
+        currency: "IDR",
+      }
+      mockPrisma.billingInvoiceLine.findFirst.mockResolvedValue(existingLine)
+      mockPrisma.billingInvoiceLine.update.mockResolvedValue({
+        ...existingLine,
+        quantity: decimal("2"),
+        amount: decimal("20.00"),
+      })
+      mockPrisma.billingAdjustment.create.mockResolvedValue({
+        id: "adj_consolidated",
+        billingAccountId: "ba_1",
+        adjustmentType: "DEBIT",
+        amount: decimal("10.00"),
+        currency: "IDR",
+      })
+
+      const result = await service.debitServiceBalance({
+        ...baseInput({
+          amount: decimal("10.00"),
+          source: "WHATSAPP",
+          reason: "WhatsApp overage charge",
+        }),
+        line: {
+          description: "WhatsApp overage quota credit (UTILITY)",
+          quantity: decimal("1"),
+          unitPrice: decimal("10.00"),
+          lineType: "USAGE",
+        },
+      })
+
+      expect(mockPrisma.billingInvoiceLine.findFirst).toHaveBeenCalledWith({
+        where: {
+          invoiceId: "inv_existing_1",
+          lineType: "METERED",
+          description: "WhatsApp overage quota credit (UTILITY)",
+          unitPrice: decimal("10.00"),
+          currency: "IDR",
+        },
+      })
+      expect(mockPrisma.billingInvoiceLine.update).toHaveBeenCalledWith({
+        where: { id: "line_existing_1" },
+        data: {
+          quantity: { increment: decimal("1") },
+          amount: { increment: decimal("10.00") },
+        },
+      })
+      expect(mockPrisma.billingInvoiceLine.create).not.toHaveBeenCalled()
+      expect(result.invoiceLineId).toBe("line_existing_1")
     })
 
     it("locks the account before a credit idempotency lookup", async () => {

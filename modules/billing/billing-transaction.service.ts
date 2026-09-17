@@ -282,26 +282,51 @@ export class BillingTransactionService {
         throw new Error("INVOICE_ALREADY_FINALIZED")
       }
 
-      const line = await tx.billingInvoiceLine.create({
-        data: {
-          invoiceId: invoice.id,
-          lineType:
-            input.line.lineType === "SUBSCRIPTION" ? "SUBSCRIPTION" : "METERED",
-          description: input.line.description,
-          quantity: input.line.quantity,
-          unitPrice: input.line.unitPrice,
-          amount: input.amount,
-          currency: lockedAccount.currency,
-          periodStart: input.line.periodStart ?? invoice.periodStart,
-          periodEnd: input.line.periodEnd ?? invoice.periodEnd,
-          metadataJson: {
-            source: input.source,
-            category:
-              input.line.category ?? inferCategory(input.line.description),
-            _internal: { idempotencyKey: input.idempotencyKey },
-          },
-        },
-      })
+      const lineType =
+        input.line.lineType === "SUBSCRIPTION" ? "SUBSCRIPTION" : "METERED"
+
+      const existingLine =
+        typeof tx.billingInvoiceLine?.findFirst === "function"
+          ? await tx.billingInvoiceLine.findFirst({
+              where: {
+                invoiceId: invoice.id,
+                lineType,
+                description: input.line.description,
+                unitPrice: input.line.unitPrice,
+                currency: lockedAccount.currency,
+              },
+            })
+          : null
+
+      const line =
+        existingLine && typeof tx.billingInvoiceLine?.update === "function"
+          ? await tx.billingInvoiceLine.update({
+              where: { id: existingLine.id },
+              data: {
+                quantity: { increment: input.line.quantity },
+                amount: { increment: input.amount },
+              },
+            })
+          : await tx.billingInvoiceLine.create({
+              data: {
+                invoiceId: invoice.id,
+                lineType,
+                description: input.line.description,
+                quantity: input.line.quantity,
+                unitPrice: input.line.unitPrice,
+                amount: input.amount,
+                currency: lockedAccount.currency,
+                periodStart: input.line.periodStart ?? invoice.periodStart,
+                periodEnd: input.line.periodEnd ?? invoice.periodEnd,
+                metadataJson: {
+                  source: input.source,
+                  category:
+                    input.line.category ??
+                    inferCategory(input.line.description),
+                  _internal: { idempotencyKey: input.idempotencyKey },
+                },
+              },
+            })
 
       await tx.billingInvoice.update({
         where: { id: invoice.id },

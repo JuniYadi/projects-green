@@ -72,7 +72,9 @@ const mockTx = {
     update: mock(async () => ({ id: "inv-1" })),
   },
   billingInvoiceLine: {
+    findFirst: mock(async () => null),
     create: mock(async () => ({ id: "line-1" })),
+    update: mock(async () => ({ id: "line-1" })),
   },
   whatsappBillingLedger: {
     create: mock(async () => ({ id: "ledger-1" })),
