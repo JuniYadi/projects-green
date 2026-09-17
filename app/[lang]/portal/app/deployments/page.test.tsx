@@ -44,6 +44,8 @@ const mockGetDeployments = mock(async () => ({
         stackSlug: "store-api",
         stackName: "Store API",
         organizationId: "org_test",
+        organizationName: "Test Org",
+        framework: "Next.js",
         status: "RUNNING",
         triggerType: "GIT_PUSH",
         commitSha: "1234567",
@@ -69,6 +71,8 @@ const mockGetDeployments = mock(async () => ({
 }))
 
 mock.module("@/lib/eden", () => ({
+  getApiBaseUrl: () => "http://localhost:3000",
+  getWsBaseUrl: () => "ws://localhost:3000",
   eden: {
     api: {
       admin: {
@@ -103,6 +107,7 @@ describe("AdminDeploymentsPage", () => {
 
     await waitFor(() => {
       expect(getByText("Store API")).toBeInTheDocument()
+      expect(getByText("Test Org")).toBeInTheDocument()
       expect(getByText("dep_abc")).toBeInTheDocument()
       expect(getAllByText("Running").length).toBeGreaterThanOrEqual(1)
     })
@@ -180,6 +185,8 @@ describe("AdminDeploymentsPage", () => {
             stackSlug: "store-api",
             stackName: "Store API",
             organizationId: "org_test",
+            organizationName: "Test Org",
+            framework: "Next.js",
             status: "FAILED",
             triggerType: "GIT_PUSH",
             commitSha: "deadbeef",

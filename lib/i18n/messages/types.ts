@@ -329,6 +329,9 @@ export type AppMessages = {
         vpaExplainAuto: string
         vpaExplainInitial: string
         vpaExplainOff: string
+        comingSoonBadge: string
+        comingSoonTitle: string
+        comingSoonDesc: string
       }
       templateEditor: {
         official: string
@@ -609,6 +612,9 @@ export type AppMessages = {
         emptyState: string
         howItWorksTitle: string
         howItWorksDesc: string
+        comingSoonBadge: string
+        comingSoonTitle: string
+        comingSoonDesc: string
       }
       gitDeploy: {
         review: {
@@ -6971,6 +6977,7 @@ export type AppMessages = {
     scalingNav: string
     settingsHeading: string
     storageMountsNav: string
+    soonBadge: string
     terminalLive: string
   }
   pConsoleSettingsTabDanger: {
@@ -7956,6 +7963,8 @@ export type AppMessages = {
     ipUnblockedSuccess: string
     lastSeen: string
     loadingEvidence: string
+    logsTab: string
+    noLogsRecorded: string
     loadingGeo: string
     no2xxRequests: string
     noTimelineLogs: string

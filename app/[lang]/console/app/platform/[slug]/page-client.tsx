@@ -1132,6 +1132,9 @@ export default function PlatformInstanceWorkspacePage() {
                     }
                   />
                   <span className="flex-1">{tPage.scalingNav}</span>
+                  <span className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {tPage.soonBadge}
+                  </span>
                 </button>
 
                 <button
@@ -1153,6 +1156,9 @@ export default function PlatformInstanceWorkspacePage() {
                     }
                   />
                   <span className="flex-1">{tPage.storageMountsNav}</span>
+                  <span className="rounded-full border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {tPage.soonBadge}
+                  </span>
                 </button>
 
                 <button
@@ -1257,6 +1263,8 @@ export default function PlatformInstanceWorkspacePage() {
                     )}
                     {settingsSubTab === "scaling" && (
                       <TabScaling
+                        isComingSoon
+                        locale={locale}
                         replicas={replicas}
                         setReplicas={setReplicas}
                         maxAllowedReplicas={
@@ -1291,6 +1299,8 @@ export default function PlatformInstanceWorkspacePage() {
                     )}
                     {settingsSubTab === "mounts" && (
                       <TabMounts
+                        isComingSoon
+                        locale={locale}
                         selectedEnv={selectedEnv}
                         mounts={mounts}
                         setMounts={setMounts}

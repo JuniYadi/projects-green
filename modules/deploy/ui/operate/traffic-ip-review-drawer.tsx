@@ -20,7 +20,9 @@ import {
   FileCode,
   Browser,
   LockKey,
+  TerminalWindow,
 } from "@phosphor-icons/react"
+import { cn } from "@/lib/utils"
 import {
   Sheet,
   SheetContent,
@@ -117,9 +119,9 @@ export function TrafficIpReviewDrawer({
   const t = messages.pDeployOperateTrafficIpReviewDrawer
   const numLocale = locale === "en" ? "en-US" : "id-ID"
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<"paths" | "clients" | "timeline">(
-    "paths"
-  )
+  const [activeTab, setActiveTab] = useState<
+    "logs" | "paths" | "clients" | "timeline"
+  >("logs")
   const [isBlockFormOpen, setIsBlockFormOpen] = useState(false)
   const [blockDuration, setBlockDuration] = useState<BlockDurationOption>("24h")
   const [blockReason, setBlockReason] = useState("")
@@ -444,15 +446,19 @@ export function TrafficIpReviewDrawer({
               </div>
             </div>
 
-            {/* 5. Deep Evidence Tabs: Paths / User-Agents / Timeline */}
+            {/* 5. Deep Evidence Tabs: Logs / Paths / User-Agents / Timeline */}
             <Tabs
               value={activeTab}
               onValueChange={(v) =>
-                setActiveTab(v as "paths" | "clients" | "timeline")
+                setActiveTab(v as "logs" | "paths" | "clients" | "timeline")
               }
               className="space-y-3"
             >
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="logs" className="text-xs">
+                  <TerminalWindow size={14} className="mr-1.5" />
+                  {t.logsTab}
+                </TabsTrigger>
                 <TabsTrigger value="paths" className="text-xs">
                   <FileCode size={14} className="mr-1.5" />
                   {t.visitedPathsTab}
@@ -466,6 +472,64 @@ export function TrafficIpReviewDrawer({
                   {t.timelineTab}
                 </TabsTrigger>
               </TabsList>
+
+              {/* Logs Tab */}
+              <TabsContent value="logs" className="space-y-2 pt-1">
+                {!data.recentLogs || data.recentLogs.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                    {t.noLogsRecorded}
+                  </div>
+                ) : (
+                  <div className="max-h-72 space-y-1.5 overflow-y-auto">
+                    {data.recentLogs.map((log) => {
+                      const statusColor =
+                        log.statusCode >= 500
+                          ? "border-rose-500/30 bg-rose-500/10 text-rose-500"
+                          : log.statusCode >= 400
+                            ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
+                            : log.statusCode >= 300
+                              ? "border-sky-500/30 bg-sky-500/10 text-sky-500"
+                              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                      return (
+                        <div
+                          key={log.id}
+                          className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 font-mono text-xs"
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "px-1.5 py-0 text-[10px] font-semibold",
+                                statusColor
+                              )}
+                            >
+                              {log.statusCode}
+                            </Badge>
+                            <span className="font-semibold text-foreground">
+                              {log.method}
+                            </span>
+                            <span
+                              className="truncate text-muted-foreground"
+                              title={log.path}
+                            >
+                              {log.path}
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2 text-[10px] text-muted-foreground">
+                            <span>{log.latencyMs}ms</span>
+                            <span>•</span>
+                            <span>
+                              {new Date(log.timestamp).toLocaleTimeString(
+                                numLocale
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </TabsContent>
 
               {/* Paths Tab */}
               <TabsContent value="paths" className="space-y-4 pt-1">
