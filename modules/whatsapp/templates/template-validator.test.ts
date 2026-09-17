@@ -5,6 +5,7 @@ import {
   validateTemplateBodyRules,
   buildMetaTemplateComponents,
   validateTemplateButtons,
+  normalizeTemplateButtons,
 } from "./template-validator"
 
 describe("template-validator", () => {
@@ -231,6 +232,67 @@ describe("template-validator", () => {
       expect(res.errors[0]).toContain(
         "exceeds Meta's maximum limit of 25 characters"
       )
+    })
+
+    it("validates and allows local Indonesian numbers that can be normalized", () => {
+      const buttons = [
+        {
+          type: "PHONE_NUMBER",
+          text: "Donor Darah",
+          phoneNumber: "08989279111",
+        },
+      ]
+      const res = validateTemplateButtons(buttons)
+      expect(res.isValid).toBe(true)
+      expect(res.errors).toHaveLength(0)
+    })
+
+    it("fails when phone number is missing or invalid", () => {
+      const missingRes = validateTemplateButtons([
+        { type: "PHONE_NUMBER", text: "Contact", phoneNumber: "" },
+      ])
+      expect(missingRes.isValid).toBe(false)
+      expect(missingRes.errors[0]).toContain("requires a phone number")
+
+      const invalidRes = validateTemplateButtons([
+        { type: "PHONE_NUMBER", text: "Contact", phoneNumber: "invalid_phone" },
+      ])
+      expect(invalidRes.isValid).toBe(false)
+      expect(invalidRes.errors[0]).toContain("invalid")
+    })
+  })
+
+  describe("normalizeTemplateButtons", () => {
+    it("normalizes 08... phone number to +628... in PHONE_NUMBER buttons", () => {
+      const buttons = [
+        {
+          type: "PHONE_NUMBER",
+          text: "Layanan Donor Darah",
+          phoneNumber: "08989279111",
+        },
+        { type: "QUICK_REPLY", text: "Ya" },
+      ]
+      const normalized = normalizeTemplateButtons(buttons) as any[]
+      expect(normalized[0].phoneNumber).toBe("+628989279111")
+      expect(normalized[1].text).toBe("Ya")
+    })
+  })
+
+  describe("buildMetaTemplateComponents phone normalization", () => {
+    it("normalizes local 08... phone numbers to E.164 in Meta BUTTONS component", () => {
+      const components = buildMetaTemplateComponents({
+        body: "Test template body",
+        buttons: [
+          {
+            type: "PHONE_NUMBER",
+            text: "Layanan Donor Darah",
+            phoneNumber: "08989279111",
+          },
+        ],
+      })
+      const buttonComp = components.find((c) => c.type === "BUTTONS") as any
+      expect(buttonComp).toBeDefined()
+      expect(buttonComp.buttons[0].phone_number).toBe("+628989279111")
     })
   })
 })

@@ -16,6 +16,7 @@ import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { MetaCloudError } from "@/lib/whatsapp/meta-cloud/errors"
 import {
   buildMetaTemplateComponents,
+  normalizeTemplateButtons,
   validateTemplateButtons,
 } from "../template-validator"
 
@@ -747,7 +748,8 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       const languages = rawLanguages!.map((lang) => ({
         ...lang,
         parameters: lang.parameters as Prisma.InputJsonValue,
-        buttons: lang.buttons as Prisma.InputJsonValue,
+        buttons: (normalizeTemplateButtons(lang.buttons) ??
+          lang.buttons) as Prisma.InputJsonValue,
       }))
 
       const auth = whatsappAuth as AuthContext
@@ -1043,7 +1045,8 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                       body: lang.body,
                       parameters: lang.parameters as Prisma.InputJsonValue,
                       footer: lang.footer,
-                      buttons: lang.buttons as Prisma.InputJsonValue,
+                      buttons: (normalizeTemplateButtons(lang.buttons) ??
+                        lang.buttons) as Prisma.InputJsonValue,
                     },
                     update: {
                       headerType: lang.headerType,
@@ -1052,7 +1055,8 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                       body: lang.body,
                       parameters: lang.parameters as Prisma.InputJsonValue,
                       footer: lang.footer,
-                      buttons: lang.buttons as Prisma.InputJsonValue,
+                      buttons: (normalizeTemplateButtons(lang.buttons) ??
+                        lang.buttons) as Prisma.InputJsonValue,
                     },
                   })
                 ),

@@ -9,6 +9,8 @@
  * 4. Slug formatting: lowercase letters, numbers, and underscores only.
  */
 
+import { normalizeIndonesianPhoneNumber } from "../messages/phone-number"
+
 export type ContentRuleWarning = {
   ruleId: string
   title: string
@@ -208,12 +210,49 @@ export function validateTemplateButtons(buttons?: unknown): {
         `Button #${i + 1} ("${text.slice(0, 15)}...") exceeds Meta's maximum limit of ${META_BUTTON_TEXT_MAX_LENGTH} characters (${text.length} characters).`
       )
     }
+
+    if (btn.type === "PHONE_NUMBER") {
+      const rawPhone = (btn.phoneNumber ?? btn.phone_number ?? "")
+        .toString()
+        .trim()
+      if (!rawPhone) {
+        errors.push(`Button #${i + 1} (PHONE_NUMBER) requires a phone number.`)
+      } else {
+        const normalized = normalizeIndonesianPhoneNumber(rawPhone)
+        if (!normalized) {
+          errors.push(
+            `Button #${i + 1} phone number "${rawPhone}" is invalid. Please use international format (e.g. +6281234567890).`
+          )
+        }
+      }
+    }
   }
 
   return {
     isValid: errors.length === 0,
     errors,
   }
+}
+
+/**
+ * Normalizes template button configurations (e.g. converts local phone numbers
+ * to international E.164 format for PHONE_NUMBER buttons).
+ */
+export function normalizeTemplateButtons(buttons?: unknown): unknown {
+  if (!Array.isArray(buttons)) return buttons
+  return buttons.map((btn) => {
+    if (btn && typeof btn === "object" && btn.type === "PHONE_NUMBER") {
+      const rawPhone = (btn.phoneNumber ?? btn.phone_number ?? "")
+        .toString()
+        .trim()
+      const normalized = normalizeIndonesianPhoneNumber(rawPhone) ?? rawPhone
+      return {
+        ...btn,
+        phoneNumber: normalized,
+      }
+    }
+    return btn
+  })
 }
 
 /**
@@ -396,12 +435,17 @@ export function buildMetaTemplateComponents(
       } else if (
         b.type === "PHONE_NUMBER" &&
         b.text?.trim() &&
-        b.phoneNumber?.trim()
+        (b.phoneNumber?.trim() || b.phone_number?.trim())
       ) {
+        const rawPhone = (b.phoneNumber || b.phone_number || "")
+          .toString()
+          .trim()
+        const normalizedPhone =
+          normalizeIndonesianPhoneNumber(rawPhone) ?? rawPhone
         metaButtons.push({
           type: "PHONE_NUMBER",
           text: b.text.trim(),
-          phone_number: b.phoneNumber.trim(),
+          phone_number: normalizedPhone,
         })
       } else if (b.type === "OTP") {
         metaButtons.push({
