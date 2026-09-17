@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 
 export type BalanceGuardProps = {
   hourlyRate?: number
+  rateCurrency?: "USD" | "IDR"
   currency?: "USD" | "IDR"
   balance?: number
   balanceFormatted?: string
@@ -26,6 +27,7 @@ const DEFAULT_USD_TO_IDR = 15625
 
 export function BalanceGuard({
   hourlyRate = 0.04,
+  rateCurrency = "USD",
   currency = "IDR",
   balance,
   balanceFormatted,
@@ -106,7 +108,7 @@ export function BalanceGuard({
   }, [account, balance, balanceFormatted, currency])
 
   // Compute 24-hour buffer: hourlyRate * 24
-  const isRateInIdr = hourlyRate >= 1
+  const isRateInIdr = rateCurrency === "IDR"
   const bufferIdr = useMemo(
     () =>
       isRateInIdr
@@ -117,9 +119,9 @@ export function BalanceGuard({
   const bufferUsd = useMemo(
     () =>
       isRateInIdr
-        ? Number((bufferIdr / DEFAULT_USD_TO_IDR).toFixed(2))
+        ? Number(((hourlyRate * 24) / DEFAULT_USD_TO_IDR).toFixed(2))
         : Number((hourlyRate * 24).toFixed(2)),
-    [bufferIdr, hourlyRate, isRateInIdr]
+    [hourlyRate, isRateInIdr]
   )
 
   const effectiveCurrency =

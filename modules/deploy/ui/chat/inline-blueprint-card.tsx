@@ -54,12 +54,9 @@ export function InlineBlueprintCard({
       ? blueprint.hourlyRate.toFixed(2)
       : "0.04"
   const tier = blueprint.computeTier || "Medium (2GB RAM)"
-  const isRealIdr =
-    blueprint.currency === "IDR" &&
-    typeof blueprint.hourlyRate === "number" &&
-    blueprint.hourlyRate >= 1
+  const isRealIdr = blueprint.currency === "IDR"
   const compute = isRealIdr
-    ? `${tier} · IDR ${Math.round(blueprint.hourlyRate!)}/jam`
+    ? `${tier} · IDR ${Math.round(blueprint.hourlyRate ?? 56)}/jam`
     : `${tier} · $${hourlyRateFormatted}/jam`
 
   const domain = `${blueprint.subdomain || "app"}.pfnapp.dev`

@@ -386,6 +386,11 @@ export function ExecutiveLaunchCard({
             <div className="sm:col-span-2">
               <BalanceGuard
                 hourlyRate={realHourlyRate}
+                rateCurrency={
+                  blueprint.currency === "IDR" || realHourlyRate >= 1
+                    ? "IDR"
+                    : "USD"
+                }
                 currency={effectiveCurrency}
                 balanceFormatted={balanceFormatted}
                 account={account}
