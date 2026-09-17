@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import {
   ShieldWarning,
   Robot,
@@ -15,6 +16,7 @@ import {
   Prohibit,
   FileCode,
   Browser,
+  LockKey,
 } from "@phosphor-icons/react"
 import {
   Sheet,
@@ -25,12 +27,14 @@ import {
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CountryFlag } from "@/components/ui/country-flag"
 import type {
   TrafficIpDetailDTO,
   TrafficSignal,
 } from "../../opensearch/opensearch-traffic.types"
+import type { BlockDurationOption } from "../../ip-block/ip-block.service"
 
 export interface TrafficIpReviewDrawerProps {
   appSlug: string
@@ -93,9 +97,13 @@ export function TrafficIpReviewDrawer({
   year,
   onBlockAction,
 }: TrafficIpReviewDrawerProps) {
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<"paths" | "clients" | "timeline">(
     "paths"
   )
+  const [isBlockFormOpen, setIsBlockFormOpen] = useState(false)
+  const [blockDuration, setBlockDuration] = useState<BlockDurationOption>("24h")
+  const [blockReason, setBlockReason] = useState("")
 
   const { data, isLoading, isError, error, refetch, isFetching } =
     useQuery<TrafficIpDetailDTO>({
@@ -128,6 +136,62 @@ export function TrafficIpReviewDrawer({
       },
       enabled: Boolean(open && ip && appSlug),
     })
+
+  const blockMutation = useMutation({
+    mutationFn: async (payload: {
+      ipAddress: string
+      reason: string
+      duration: BlockDurationOption
+    }) => {
+      const res = await fetch(
+        `/api/deploy/apps/${encodeURIComponent(appSlug)}/traffic/blocks`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      )
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.message || "Failed to block IP")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success(`Alamat IP ${ip} berhasil diblokir`)
+      setIsBlockFormOpen(false)
+      setBlockReason("")
+      refetch()
+      queryClient.invalidateQueries({ queryKey: ["traffic-ips-investigation"] })
+      onBlockAction?.(ip ?? "", "block")
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Gagal memblokir IP")
+    },
+  })
+
+  const unblockMutation = useMutation({
+    mutationFn: async (ipAddress: string) => {
+      const res = await fetch(
+        `/api/deploy/apps/${encodeURIComponent(appSlug)}/traffic/blocks/${encodeURIComponent(ipAddress)}`,
+        { method: "DELETE" }
+      )
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.message || "Failed to unblock IP")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success(`Blokir terhadap IP ${ip} berhasil dicabut`)
+      refetch()
+      queryClient.invalidateQueries({ queryKey: ["traffic-ips-investigation"] })
+      onBlockAction?.(ip ?? "", "unblock")
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Gagal mencabut blokir IP")
+    },
+  })
 
   const signalMeta = data
     ? getSignalBadge(data.signal.classification, data.signal.confidence)
@@ -549,12 +613,13 @@ export function TrafficIpReviewDrawer({
             <div className="space-y-3 rounded-lg border border-border bg-card p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-semibold text-foreground">
-                    Tindakan Akses & Keamanan
+                  <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <LockKey size={14} />
+                    <span>Tindakan Akses & Keamanan</span>
                   </h4>
                   <p className="text-[11px] text-muted-foreground">
                     Blokir atau batasi lalu lintas dari IP ini di level ingress
-                    gateway
+                    gateway aplikasi
                   </p>
                 </div>
 
@@ -562,29 +627,171 @@ export function TrafficIpReviewDrawer({
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={unblockMutation.isPending}
                     className="h-8 border-destructive text-xs text-destructive hover:bg-destructive/10"
-                    onClick={() => onBlockAction?.(data.ip, "unblock")}
+                    onClick={() => unblockMutation.mutate(data.ip)}
                   >
-                    Buka Blokir (Unblock)
+                    {unblockMutation.isPending
+                      ? "Membuka..."
+                      : "Buka Blokir (Unblock)"}
                   </Button>
-                ) : (
+                ) : !isBlockFormOpen ? (
                   <Button
                     variant="destructive"
                     size="sm"
                     className="h-8 text-xs"
-                    onClick={() => onBlockAction?.(data.ip, "block")}
+                    onClick={() => setIsBlockFormOpen(true)}
                   >
                     <Prohibit size={14} className="mr-1.5" />
                     Blokir Akses IP
                   </Button>
-                )}
+                ) : null}
               </div>
 
-              {data.blockInfo ? (
-                <div className="space-y-1 rounded-md border border-border bg-muted/20 p-3 text-[11px]">
-                  <div className="font-medium text-foreground">
-                    Alasan: {data.blockInfo.reason}
+              {/* Block Form when open */}
+              {isBlockFormOpen && !data.blockInfo?.isBlocked ? (
+                <div className="space-y-3 rounded-md border border-border bg-muted/10 p-3">
+                  <div className="text-xs font-medium text-foreground">
+                    Formulir Pemblokiran IP:{" "}
+                    <span className="font-mono">{data.ip}</span>
                   </div>
+
+                  {/* Duration Selection */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-medium text-muted-foreground">
+                      Durasi Blokir:
+                    </label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {(
+                        [
+                          { value: "1h", label: "1 Jam" },
+                          { value: "24h", label: "24 Jam" },
+                          { value: "7d", label: "7 Hari" },
+                          { value: "permanent", label: "Permanen" },
+                        ] as const
+                      ).map((d) => (
+                        <Button
+                          key={d.value}
+                          type="button"
+                          variant={
+                            blockDuration === d.value ? "default" : "outline"
+                          }
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setBlockDuration(d.value)}
+                        >
+                          {d.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Preset Reasons */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-medium text-muted-foreground">
+                      Pilih Alasan Cepat:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        "Scanner Probe (.env, .git)",
+                        "Error Ekstrem (4xx/5xx)",
+                        "Bot/Scraper Tanpa Izin",
+                        "Burst Velocity Anomali",
+                      ].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setBlockReason(preset)}
+                          className="rounded border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Reason Text Input */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-muted-foreground">
+                      Alasan Pemblokiran (Wajib):
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Masukkan alasan pemblokiran..."
+                      value={blockReason}
+                      onChange={(e) => setBlockReason(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+
+                  {/* Scope Confirmation Notice */}
+                  <div className="rounded bg-muted/30 p-2 text-[10px] text-muted-foreground">
+                    <strong>Cakupan:</strong> Pemblokiran hanya diterapkan pada
+                    aplikasi saat ini ({appSlug}) di level cluster HAProxy edge.
+                  </div>
+
+                  {/* Form Action Buttons */}
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        setIsBlockFormOpen(false)
+                        setBlockReason("")
+                      }}
+                      disabled={blockMutation.isPending}
+                    >
+                      Batal
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={!blockReason.trim() || blockMutation.isPending}
+                      onClick={() =>
+                        blockMutation.mutate({
+                          ipAddress: data.ip,
+                          reason: blockReason.trim(),
+                          duration: blockDuration,
+                        })
+                      }
+                    >
+                      {blockMutation.isPending
+                        ? "Memproses..."
+                        : "Konfirmasi Blokir IP"}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Existing Block Info Display */}
+              {data.blockInfo ? (
+                <div className="space-y-1.5 rounded-md border border-border bg-muted/20 p-3 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-foreground">
+                      Alasan: {data.blockInfo.reason}
+                    </div>
+                    <Badge
+                      variant={
+                        data.blockInfo.status === "active"
+                          ? "destructive"
+                          : data.blockInfo.status === "failed"
+                            ? "outline"
+                            : "secondary"
+                      }
+                      className="text-[10px] uppercase"
+                    >
+                      {data.blockInfo.status}
+                    </Badge>
+                  </div>
+
+                  {data.blockInfo.errorMessage ? (
+                    <div className="rounded bg-destructive/10 p-2 text-destructive">
+                      Peringatan Penegakan: {data.blockInfo.errorMessage}
+                    </div>
+                  ) : null}
+
                   <div className="text-muted-foreground">
                     Dibuat oleh: {data.blockInfo.createdBy} •{" "}
                     {new Date(data.blockInfo.createdAt).toLocaleString("id-ID")}

@@ -30,6 +30,15 @@ mock.module("../../opensearch/opensearch-traffic.service", () => ({
   getAppTrafficIpDetail: mockGetAppTrafficIpDetail,
 }))
 
+const mockBlockIpAddress = mock()
+const mockUnblockIpAddress = mock()
+const mockListAppIpBlocks = mock()
+mock.module("../../ip-block/ip-block.service", () => ({
+  blockIpAddress: mockBlockIpAddress,
+  unblockIpAddress: mockUnblockIpAddress,
+  listAppIpBlocks: mockListAppIpBlocks,
+}))
+
 const { appTrafficRoutes } = await import("./app-traffic.route")
 
 describe("app-traffic.route", () => {
@@ -402,6 +411,152 @@ describe("app-traffic.route", () => {
       expect(body.data.ip).toBe("10.0.0.1")
       expect(body.data.signal.classification).toBe("likely_human")
       expect(body.data.pathsByStatus.status2xx[0].path).toBe("/home")
+    })
+  })
+
+  describe("GET /deploy/apps/:slug/traffic/blocks", () => {
+    it("returns 401 when unauthenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({ user: null })
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/blocks")
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 404 when stack is not found", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce(null)
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/unknown-app/traffic/blocks")
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it("returns list of blocks when stack exists", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        organizationId: "org_1",
+      })
+      mockListAppIpBlocks.mockResolvedValueOnce([
+        {
+          id: "blk_1",
+          ipAddress: "198.51.100.1",
+          reason: "Repeated scanner",
+          status: "active",
+        },
+      ])
+
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/blocks")
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.length).toBe(1)
+      expect(body.data[0].ipAddress).toBe("198.51.100.1")
+    })
+  })
+
+  describe("POST /deploy/apps/:slug/traffic/blocks", () => {
+    it("creates active block successfully", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        organizationId: "org_1",
+      })
+      mockBlockIpAddress.mockResolvedValueOnce({
+        id: "blk_10",
+        ipAddress: "198.51.100.55",
+        reason: "Scanner probe",
+        status: "active",
+        durationMinutes: 1440,
+      })
+
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/blocks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ipAddress: "198.51.100.55",
+            reason: "Scanner probe",
+            duration: "24h",
+          }),
+        })
+      )
+      expect(res.status).toBe(201)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.status).toBe("active")
+    })
+
+    it("returns 400 when invalid input is provided", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        organizationId: "org_1",
+      })
+      mockBlockIpAddress.mockRejectedValueOnce(
+        new Error(
+          "Invalid IP address: 'not-an-ip'. Only exact IPv4 or IPv6 addresses are accepted."
+        )
+      )
+
+      const res = await appTrafficRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/traffic/blocks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ipAddress: "not-an-ip",
+            reason: "Malicious traffic",
+            duration: "1h",
+          }),
+        })
+      )
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toBe("INVALID_BLOCK_REQUEST")
+    })
+  })
+
+  describe("DELETE /deploy/apps/:slug/traffic/blocks/:ip", () => {
+    it("revokes block successfully", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        organizationId: "org_1",
+      })
+      mockUnblockIpAddress.mockResolvedValueOnce({
+        id: "blk_10",
+        ipAddress: "198.51.100.55",
+        status: "revoked",
+      })
+
+      const res = await appTrafficRoutes.handle(
+        new Request(
+          "http://localhost/deploy/apps/my-app/traffic/blocks/198.51.100.55",
+          { method: "DELETE" }
+        )
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.status).toBe("revoked")
+    })
+
+    it("returns 404 when block does not exist", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+        id: "st_1",
+        organizationId: "org_1",
+      })
+      mockUnblockIpAddress.mockRejectedValueOnce(
+        new Error("No active or pending block found for IP: 198.51.100.99")
+      )
+
+      const res = await appTrafficRoutes.handle(
+        new Request(
+          "http://localhost/deploy/apps/my-app/traffic/blocks/198.51.100.99",
+          { method: "DELETE" }
+        )
+      )
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.error).toBe("BLOCK_NOT_FOUND")
     })
   })
 })

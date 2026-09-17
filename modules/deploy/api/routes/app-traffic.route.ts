@@ -8,6 +8,12 @@ import {
   getAppTrafficIps,
   getAppTrafficIpDetail,
 } from "../../opensearch/opensearch-traffic.service"
+import {
+  blockIpAddress,
+  unblockIpAddress,
+  listAppIpBlocks,
+  type BlockDurationOption,
+} from "../../ip-block/ip-block.service"
 
 export const appTrafficRoutes = new Elysia({ prefix: "/deploy/apps" })
   .get(
@@ -384,5 +390,205 @@ export const appTrafficRoutes = new Elysia({ prefix: "/deploy/apps" })
           year: t.Optional(t.String()),
         })
       ),
+    }
+  )
+  .get(
+    "/:slug/traffic/blocks",
+    async ({ params, set }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      const platformRole = await getPlatformRoleForUser({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
+
+      const stack = await prisma.applicationStack.findFirst({
+        where: {
+          slug: params.slug,
+          ...(platformRole === "super_admin"
+            ? {}
+            : { organizationId: auth.organizationId ?? "__invalid__" }),
+        },
+        select: { id: true, organizationId: true },
+      })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application stack not found",
+        }
+      }
+
+      try {
+        const blocks = await listAppIpBlocks(stack.id, stack.organizationId)
+        return {
+          ok: true,
+          data: blocks,
+        }
+      } catch (err) {
+        set.status = 500
+        return {
+          ok: false,
+          error: "LIST_BLOCKS_FAILED",
+          message:
+            err instanceof Error ? err.message : "Failed to list IP blocks",
+        }
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+      }),
+    }
+  )
+  .post(
+    "/:slug/traffic/blocks",
+    async ({ params, body, set }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      const platformRole = await getPlatformRoleForUser({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
+
+      const stack = await prisma.applicationStack.findFirst({
+        where: {
+          slug: params.slug,
+          ...(platformRole === "super_admin"
+            ? {}
+            : { organizationId: auth.organizationId ?? "__invalid__" }),
+        },
+        select: { id: true, organizationId: true },
+      })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application stack not found",
+        }
+      }
+
+      try {
+        const block = await blockIpAddress({
+          stackId: stack.id,
+          organizationId: stack.organizationId,
+          ipAddress: body.ipAddress,
+          reason: body.reason,
+          duration: body.duration,
+          actorId: auth.user.id,
+        })
+
+        set.status = 201
+        return {
+          ok: true,
+          data: block,
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to block IP"
+        const isClientErr =
+          msg.includes("Invalid IP address") ||
+          msg.includes("valid reason is required")
+        set.status = isClientErr ? 400 : 500
+        return {
+          ok: false,
+          error: isClientErr ? "INVALID_BLOCK_REQUEST" : "BLOCK_IP_FAILED",
+          message: msg,
+        }
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+      }),
+      body: t.Object({
+        ipAddress: t.String(),
+        reason: t.String(),
+        duration: t.Union([
+          t.Literal("1h"),
+          t.Literal("24h"),
+          t.Literal("7d"),
+          t.Literal("permanent"),
+        ]),
+      }),
+    }
+  )
+  .delete(
+    "/:slug/traffic/blocks/:ip",
+    async ({ params, set }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      const platformRole = await getPlatformRoleForUser({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
+
+      const stack = await prisma.applicationStack.findFirst({
+        where: {
+          slug: params.slug,
+          ...(platformRole === "super_admin"
+            ? {}
+            : { organizationId: auth.organizationId ?? "__invalid__" }),
+        },
+        select: { id: true, organizationId: true },
+      })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application stack not found",
+        }
+      }
+
+      try {
+        const revoked = await unblockIpAddress({
+          stackId: stack.id,
+          organizationId: stack.organizationId,
+          ipAddress: params.ip,
+          actorId: auth.user.id,
+        })
+
+        return {
+          ok: true,
+          data: revoked,
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to unblock IP"
+        const isNotFound = msg.includes("No active or pending block found")
+        const isInvalid = msg.includes("Invalid IP address")
+        set.status = isNotFound ? 404 : isInvalid ? 400 : 500
+        return {
+          ok: false,
+          error: isNotFound
+            ? "BLOCK_NOT_FOUND"
+            : isInvalid
+              ? "INVALID_IP"
+              : "UNBLOCK_FAILED",
+          message: msg,
+        }
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+        ip: t.String(),
+      }),
     }
   )

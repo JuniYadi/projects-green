@@ -17,6 +17,24 @@ export interface TrafficIpItemDTO extends IpGeoInfo {
   blockId?: string | null
 }
 
+export interface AppHostingIpBlockDTO {
+  id: string
+  stackId: string
+  organizationId: string
+  ipAddress: string
+  reason: string
+  durationMinutes: number | null
+  status: "pending" | "active" | "failed" | "expired" | "revoked"
+  errorMessage?: string | null
+  enforcedAt?: string | null
+  expiresAt?: string | null
+  revokedAt?: string | null
+  revokedBy?: string | null
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface GetAppTrafficIpsOptions {
   granularity?: "daily" | "monthly" | "yearly"
   date?: string
