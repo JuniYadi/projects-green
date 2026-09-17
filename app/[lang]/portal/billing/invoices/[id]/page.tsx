@@ -13,5 +13,9 @@ export default async function InvoiceDetailPage({
 }: InvoiceDetailPageProps) {
   const { id, lang } = await params
 
-  return <InvoiceDetailScreen invoiceId={id} lang={lang} />
+  return (
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      <InvoiceDetailScreen invoiceId={id} lang={lang} />
+    </main>
+  )
 }
