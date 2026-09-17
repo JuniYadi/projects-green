@@ -23,6 +23,8 @@ import {
   XCircle,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type DeadLetter = {
   id: string
@@ -48,7 +50,13 @@ type OrganizationListItem = {
   id: string
   name: string
 }
-function ReplayStatusBadge({ status }: { status: string | null }) {
+function ReplayStatusBadge({
+  status,
+  messages,
+}: {
+  status: string | null
+  messages: ReturnType<typeof getMessages>
+}) {
   if (!status) return null
 
   switch (status) {
@@ -56,21 +64,21 @@ function ReplayStatusBadge({ status }: { status: string | null }) {
       return (
         <Badge variant="default" className="bg-green-500">
           <CheckCircle className="mr-1 size-3" />
-          Replayed
+          {messages.pPortalWhatsappWebhookDeadLetterPageClient.statusReplayed}
         </Badge>
       )
     case "FAILED":
       return (
         <Badge variant="destructive">
           <XCircle className="mr-1 size-3" />
-          Failed
+          {messages.pPortalWhatsappWebhookDeadLetterPageClient.statusFailed}
         </Badge>
       )
     case "PENDING":
       return (
         <Badge variant="secondary">
           <Clock className="mr-1 size-3" />
-          Pending
+          {messages.pPortalWhatsappWebhookDeadLetterPageClient.statusPending}
         </Badge>
       )
     default:
@@ -80,7 +88,8 @@ function ReplayStatusBadge({ status }: { status: string | null }) {
 
 function getColumns(
   lang: string,
-  onReplay: (id: string) => void
+  onReplay: (id: string) => void,
+  messages: ReturnType<typeof getMessages>
 ): ColumnDef<DeadLetter>[] {
   const locale = lang || "en"
 
@@ -88,7 +97,12 @@ function getColumns(
     {
       accessorKey: "failedAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Failed At" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalWhatsappWebhookDeadLetterPageClient.columnFailedAt
+          }
+        />
       ),
       cell: ({ row }) => {
         const date = new Date(row.original.failedAt)
@@ -99,7 +113,12 @@ function getColumns(
     {
       accessorKey: "deviceId",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Device ID" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalWhatsappWebhookDeadLetterPageClient.columnDeviceId
+          }
+        />
       ),
       cell: ({ row }) => (
         <code className="text-xs">{row.original.deviceId.slice(0, 8)}...</code>
@@ -108,7 +127,12 @@ function getColumns(
     {
       accessorKey: "eventType",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Event Type" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalWhatsappWebhookDeadLetterPageClient.columnEventType
+          }
+        />
       ),
       cell: ({ row }) => (
         <Badge variant="outline">{row.original.eventType}</Badge>
@@ -117,7 +141,12 @@ function getColumns(
     {
       accessorKey: "errorMessage",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Error" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalWhatsappWebhookDeadLetterPageClient.columnError
+          }
+        />
       ),
       cell: ({ row }) => (
         <span className="max-w-[300px] truncate text-sm text-muted-foreground">
@@ -128,17 +157,30 @@ function getColumns(
     {
       accessorKey: "attemptCount",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Attempts" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalWhatsappWebhookDeadLetterPageClient.columnAttempts
+          }
+        />
       ),
       cell: ({ row }) => row.original.attemptCount,
     },
     {
       accessorKey: "replayStatus",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalWhatsappWebhookDeadLetterPageClient.columnStatus
+          }
+        />
       ),
       cell: ({ row }) => (
-        <ReplayStatusBadge status={row.original.replayStatus} />
+        <ReplayStatusBadge
+          status={row.original.replayStatus}
+          messages={messages}
+        />
       ),
     },
     {
@@ -150,7 +192,7 @@ function getColumns(
           onClick={() => onReplay(row.original.id)}
         >
           <ArrowCounterClockwise className="mr-1 size-4" />
-          Replay
+          {messages.pPortalWhatsappWebhookDeadLetterPageClient.replayButton}
         </Button>
       ),
     },
@@ -175,6 +217,8 @@ export default function WebhookDeadLetterPage({
 
   const resolvedParams = React.use(params)
   const lang = resolvedParams.lang
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
 
   const loadData = React.useCallback(() => {
     let cancelled = false
@@ -281,7 +325,12 @@ export default function WebhookDeadLetterPage({
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <Warning className="mx-auto mb-4 size-12 text-destructive" />
-          <h2 className="mb-2 text-lg font-semibold">Failed to load</h2>
+          <h2 className="mb-2 text-lg font-semibold">
+            {
+              messages.pPortalWhatsappWebhookDeadLetterPageClient
+                .failedToLoadHeading
+            }
+          </h2>
           <p className="text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -292,14 +341,23 @@ export default function WebhookDeadLetterPage({
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Webhook Dead Letters</h1>
+          <h1 className="text-2xl font-bold">
+            {messages.pPortalWhatsappWebhookDeadLetterPageClient.pageHeading}
+          </h1>
           <p className="text-muted-foreground">
-            Failed webhook payloads that exceeded retry limits
+            {
+              messages.pPortalWhatsappWebhookDeadLetterPageClient
+                .pageDescription
+            }
           </p>
         </div>
         {meta && (
           <div className="text-sm text-muted-foreground">
-            {meta.total} total dead letters
+            {meta.total}{" "}
+            {
+              messages.pPortalWhatsappWebhookDeadLetterPageClient
+                .totalCountLabel
+            }
           </div>
         )}
       </div>
@@ -308,17 +366,27 @@ export default function WebhookDeadLetterPage({
       <div className="flex items-end gap-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Organization
+            {
+              messages.pPortalWhatsappWebhookDeadLetterPageClient
+                .organizationLabel
+            }
           </label>
           <Select
             value={selectedOrgId}
             onValueChange={(val) => setSelectedOrgId(val)}
           >
             <SelectTrigger className="w-64">
-              <SelectValue placeholder="All organizations" />
+              <SelectValue
+                placeholder={
+                  messages.pPortalWhatsappWebhookDeadLetterPageClient
+                    .allOrganizationsPlaceholder
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="all">
+                {messages.pPortalWhatsappWebhookDeadLetterPageClient.allOption}
+              </SelectItem>
               {organizations.map((org) => (
                 <SelectItem key={org.id} value={org.id}>
                   {org.name}
@@ -331,7 +399,7 @@ export default function WebhookDeadLetterPage({
 
       <DataTable<DeadLetter>
         tableId="webhook-dead-letters"
-        columns={getColumns(lang, handleReplay)}
+        columns={getColumns(lang, handleReplay, messages)}
         data={data}
         searchableColumns={[
           "deviceId",
@@ -339,7 +407,9 @@ export default function WebhookDeadLetterPage({
           "errorMessage",
           "replayStatus",
         ]}
-        searchPlaceholder="Search dead letters..."
+        searchPlaceholder={
+          messages.pPortalWhatsappWebhookDeadLetterPageClient.searchPlaceholder
+        }
       />
     </main>
   )
