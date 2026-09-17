@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type SessionDetail = {
@@ -68,6 +69,7 @@ export default function ForensicTranscriptPage() {
   const sessionId =
     typeof params?.sessionId === "string" ? params.sessionId : ""
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
 
   const [data, setData] = useState<SessionDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -108,7 +110,7 @@ export default function ForensicTranscriptPage() {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <div className="p-8 text-center text-sm text-muted-foreground">
-          Loading forensic audit transcript...
+          {messages.pAiSessionsSessionidPageClient.loadingTranscript}
         </div>
       </main>
     )
@@ -124,7 +126,7 @@ export default function ForensicTranscriptPage() {
     )
   }
 
-  const { session, messages } = data
+  const { session, messages: sessionMessages } = data
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -134,14 +136,14 @@ export default function ForensicTranscriptPage() {
             href={localizePathname({ pathname: "/portal/ai", locale })}
             className="hover:text-foreground"
           >
-            AI Governance
+            {messages.pAiSessionsSessionidPageClient.breadcrumbGovernance}
           </Link>
           <span>/</span>
           <Link
             href={localizePathname({ pathname: "/portal/ai/sessions", locale })}
             className="hover:text-foreground"
           >
-            Sessions
+            {messages.pAiSessionsSessionidPageClient.breadcrumbSessions}
           </Link>
           <span>/</span>
           <span className="font-mono text-foreground">{session.sessionId}</span>
@@ -151,11 +153,10 @@ export default function ForensicTranscriptPage() {
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
               <ChatCircleText className="h-6 w-6 text-primary" />
-              Forensic Session Transcript
+              {messages.pAiSessionsSessionidPageClient.heading}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Chronological conversation log, edge guardrail interceptions,
-              latency, and token consumption audit.
+              {messages.pAiSessionsSessionidPageClient.description}
             </p>
           </div>
 
@@ -164,7 +165,7 @@ export default function ForensicTranscriptPage() {
           >
             <Button variant="outline" size="sm" className="gap-1.5">
               <ArrowLeft className="h-4 w-4" />
-              Back to Sessions
+              {messages.pAiSessionsSessionidPageClient.backToSessions}
             </Button>
           </Link>
         </div>
@@ -175,7 +176,8 @@ export default function ForensicTranscriptPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <User className="h-4 w-4" /> Caller & Channel
+              <User className="h-4 w-4" />{" "}
+              {messages.pAiSessionsSessionidPageClient.callerAndChannel}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 text-xs">
@@ -188,7 +190,8 @@ export default function ForensicTranscriptPage() {
               </Badge>
               {session.organizationId && (
                 <span className="font-mono text-[10px] text-muted-foreground">
-                  Org: {session.organizationId}
+                  {messages.pAiSessionsSessionidPageClient.orgLabel}{" "}
+                  {session.organizationId}
                 </span>
               )}
             </div>
@@ -198,7 +201,8 @@ export default function ForensicTranscriptPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Globe className="h-4 w-4" /> Network & IP
+              <Globe className="h-4 w-4" />{" "}
+              {messages.pAiSessionsSessionidPageClient.networkAndIp}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 text-xs">
@@ -217,16 +221,20 @@ export default function ForensicTranscriptPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Lightning className="h-4 w-4 text-amber-500" /> Token Consumption
+              <Lightning className="h-4 w-4 text-amber-500" />{" "}
+              {messages.pAiSessionsSessionidPageClient.tokenConsumption}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 text-xs">
             <div className="font-mono font-semibold text-foreground">
-              {session.metrics.totalTokens.toLocaleString()} tokens
+              {session.metrics.totalTokens.toLocaleString()}{" "}
+              {messages.pAiSessionsSessionidPageClient.tokensUnit}
             </div>
             <div className="text-[10px] text-muted-foreground">
-              {session.metrics.totalPromptTokens} in /{" "}
-              {session.metrics.totalResponseTokens} out
+              {session.metrics.totalPromptTokens}{" "}
+              {messages.pAiSessionsSessionidPageClient.inSlash}{" "}
+              {session.metrics.totalResponseTokens}{" "}
+              {messages.pAiSessionsSessionidPageClient.outLabel}
             </div>
           </CardContent>
         </Card>
@@ -234,27 +242,30 @@ export default function ForensicTranscriptPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <WarningOctagon className="h-4 w-4 text-orange-500" /> Safety &
-              Strikes
+              <WarningOctagon className="h-4 w-4 text-orange-500" />{" "}
+              {messages.pAiSessionsSessionidPageClient.safetyAndStrikes}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 text-xs">
             <div className="flex items-center gap-2">
               {session.strikeCount > 0 ? (
                 <Badge variant="destructive" className="text-[10px]">
-                  {session.strikeCount} Strike Escalation
+                  {session.strikeCount}{" "}
+                  {messages.pAiSessionsSessionidPageClient.strikeEscalation}
                 </Badge>
               ) : (
                 <Badge
                   variant="outline"
                   className="border-emerald-300 text-[10px] text-emerald-600"
                 >
-                  Clean Session
+                  {messages.pAiSessionsSessionidPageClient.cleanSession}
                 </Badge>
               )}
             </div>
             <div className="text-[10px] text-muted-foreground">
-              Total {messages.length} message turns recorded
+              {messages.pAiSessionsSessionidPageClient.totalLabel}{" "}
+              {sessionMessages.length}{" "}
+              {messages.pAiSessionsSessionidPageClient.messageTurnsRecorded}
             </div>
           </CardContent>
         </Card>
@@ -263,11 +274,11 @@ export default function ForensicTranscriptPage() {
       {/* Visual Chat Stream */}
       <section className="space-y-4">
         <h2 className="text-sm font-semibold tracking-tight text-muted-foreground">
-          TRANSCRIPT TIMELINE
+          {messages.pAiSessionsSessionidPageClient.transcriptTimeline}
         </h2>
 
         <div className="space-y-4">
-          {messages.map((m) => {
+          {sessionMessages.map((m) => {
             const isUser = m.role === "user"
             const isBlocked = Boolean(m.flagReason)
 
@@ -314,7 +325,8 @@ export default function ForensicTranscriptPage() {
                       {m.durationMs && (
                         <span>
                           <Clock className="mr-0.5 inline h-3 w-3" />
-                          {m.durationMs}ms
+                          {m.durationMs}
+                          {messages.pAiSessionsSessionidPageClient.msUnit}
                         </span>
                       )}
                       <span>{new Date(m.createdAt).toLocaleTimeString()}</span>
@@ -326,8 +338,15 @@ export default function ForensicTranscriptPage() {
                     <div className="my-1 flex items-center gap-2 rounded bg-destructive/20 px-2.5 py-1 text-[11px] font-medium text-destructive">
                       <WarningOctagon className="h-4 w-4 shrink-0" />
                       <span>
-                        Edge Interception: <strong>{m.flagReason}</strong> (0
-                        LLM Tokens Burned)
+                        {
+                          messages.pAiSessionsSessionidPageClient
+                            .edgeInterception
+                        }{" "}
+                        <strong>{m.flagReason}</strong>{" "}
+                        {
+                          messages.pAiSessionsSessionidPageClient
+                            .zeroTokensBurned
+                        }
                       </span>
                     </div>
                   )}
@@ -341,7 +360,10 @@ export default function ForensicTranscriptPage() {
                   {m.citations && m.citations.length > 0 && (
                     <div className="mt-2 space-y-1 border-t pt-2">
                       <div className="text-[10px] font-semibold text-muted-foreground">
-                        RETRIEVED KNOWLEDGE CITATIONS:
+                        {
+                          messages.pAiSessionsSessionidPageClient
+                            .retrievedCitations
+                        }
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {m.citations.map((c, i) => (
@@ -363,8 +385,12 @@ export default function ForensicTranscriptPage() {
                       {m.modelUsed || "Zero-Token Block"}
                     </span>
                     <span className="font-mono">
-                      {m.promptTokens} in / {m.responseTokens} out (
-                      {m.totalTokens} total)
+                      {m.promptTokens}{" "}
+                      {messages.pAiSessionsSessionidPageClient.inSlash}{" "}
+                      {m.responseTokens}{" "}
+                      {messages.pAiSessionsSessionidPageClient.outParen}
+                      {m.totalTokens}{" "}
+                      {messages.pAiSessionsSessionidPageClient.totalParen}
                     </span>
                   </div>
                 </div>
