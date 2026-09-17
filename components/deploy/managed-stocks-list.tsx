@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
 import type { ColumnDef } from "@tanstack/react-table"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -35,6 +38,9 @@ const STATUS_VARIANT: Record<
 }
 
 export function ManagedStocksList() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [stocks, setStocks] = useState<ManagedStockDTO[]>([])
   const [clusters, setClusters] = useState<ClusterOption[]>([])
   const [selectedClusterId, setSelectedClusterId] = useState("")
@@ -119,9 +125,7 @@ export function ManagedStocksList() {
     const values = new FormData(form)
     const label = String(values.get("label") ?? "").trim()
     const serviceType = String(values.get("serviceType") ?? "MYSQL") as
-      | "MYSQL"
-      | "POSTGRESQL"
-      | "REDIS"
+      "MYSQL" | "POSTGRESQL" | "REDIS"
     const payload = {
       clusterId: String(values.get("clusterId") ?? ""),
       serviceType,
@@ -189,7 +193,7 @@ export function ManagedStocksList() {
     },
     {
       accessorKey: "serviceType",
-      header: "Engine Type",
+      header: messages.pDeployManagedStocksList.engineTypeLabel,
     },
     {
       id: "endpoint",
@@ -281,22 +285,26 @@ export function ManagedStocksList() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Import Database Stock</CardTitle>
+          <CardTitle>
+            {messages.pDeployManagedStocksList.importDatabaseStockTitle}
+          </CardTitle>
           <CardDescription>
-            Add a pre-provisioned database slot to the 1-click deployment pool.
+            {messages.pDeployManagedStocksList.importDatabaseStockDescription}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <details open>
             <summary className="mb-4 cursor-pointer text-sm font-medium">
-              Import a stock slot
+              {messages.pDeployManagedStocksList.importStockSlotButton}
             </summary>
             <form
               className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
               onSubmit={(event) => void handleImport(event)}
             >
               <div className="grid gap-2">
-                <Label htmlFor="stock-cluster">Cluster</Label>
+                <Label htmlFor="stock-cluster">
+                  {messages.pDeployManagedStocksList.clusterLabel}
+                </Label>
                 <select
                   id="stock-cluster"
                   name="clusterId"
@@ -316,7 +324,9 @@ export function ManagedStocksList() {
                 </select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock-service-type">Engine Type</Label>
+                <Label htmlFor="stock-service-type">
+                  {messages.pDeployManagedStocksList.engineTypeLabel}
+                </Label>
                 <select
                   id="stock-service-type"
                   name="serviceType"
@@ -331,11 +341,15 @@ export function ManagedStocksList() {
                 </select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock-label">Label (optional)</Label>
+                <Label htmlFor="stock-label">
+                  {messages.pDeployManagedStocksList.labelOptionalLabel}
+                </Label>
                 <Input id="stock-label" name="label" disabled={importing} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock-host">Host</Label>
+                <Label htmlFor="stock-host">
+                  {messages.pDeployManagedStocksList.hostLabel}
+                </Label>
                 <Input
                   id="stock-host"
                   name="endpointHost"
@@ -344,7 +358,9 @@ export function ManagedStocksList() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock-port">Port</Label>
+                <Label htmlFor="stock-port">
+                  {messages.pDeployManagedStocksList.portLabel}
+                </Label>
                 <Input
                   id="stock-port"
                   name="endpointPort"
@@ -356,7 +372,9 @@ export function ManagedStocksList() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock-database">Database Name</Label>
+                <Label htmlFor="stock-database">
+                  {messages.pDeployManagedStocksList.databaseNameLabel}
+                </Label>
                 <Input
                   id="stock-database"
                   name="databaseName"
@@ -365,7 +383,9 @@ export function ManagedStocksList() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock-username">Username</Label>
+                <Label htmlFor="stock-username">
+                  {messages.pDeployManagedStocksList.usernameLabel}
+                </Label>
                 <Input
                   id="stock-username"
                   name="username"
@@ -374,7 +394,9 @@ export function ManagedStocksList() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stock-password">Password</Label>
+                <Label htmlFor="stock-password">
+                  {messages.pDeployManagedStocksList.passwordLabel}
+                </Label>
                 <Input
                   id="stock-password"
                   name="password"
@@ -395,18 +417,24 @@ export function ManagedStocksList() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <p className="text-sm text-muted-foreground">
-          {available} AVAILABLE / {allocated} ALLOCATED / {dirty} DIRTY
+          {available} {messages.pDeployManagedStocksList.availableStatusLabel}{" "}
+          {allocated} {messages.pDeployManagedStocksList.allocatedStatusLabel}{" "}
+          {dirty} DIRTY
         </p>
         {clusters.length > 1 && (
           <div className="flex items-center gap-2 sm:ml-auto">
-            <Label htmlFor="stock-cluster-filter">Cluster</Label>
+            <Label htmlFor="stock-cluster-filter">
+              {messages.pDeployManagedStocksList.clusterLabel}
+            </Label>
             <select
               id="stock-cluster-filter"
               value={selectedClusterId}
               onChange={(event) => setSelectedClusterId(event.target.value)}
               className="h-8 min-w-40 rounded-2xl border border-border bg-background px-2.5 text-sm"
             >
-              <option value="">All clusters</option>
+              <option value="">
+                {messages.pDeployManagedStocksList.allClustersOption}
+              </option>
               {clusters.map((cluster) => (
                 <option key={cluster.id} value={cluster.id}>
                   {cluster.name} ({cluster.code})
@@ -419,7 +447,7 @@ export function ManagedStocksList() {
 
       {loading ? (
         <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-          Loading managed stocks...
+          {messages.pDeployManagedStocksList.loadingManagedStocksMessage}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
@@ -435,8 +463,12 @@ export function ManagedStocksList() {
               "status",
               "vaultPath",
             ]}
-            searchPlaceholder="Search managed stocks..."
-            emptyMessage="No managed database stocks found."
+            searchPlaceholder={
+              messages.pDeployManagedStocksList.searchManagedStocksPlaceholder
+            }
+            emptyMessage={
+              messages.pDeployManagedStocksList.noManagedStocksFoundMessage
+            }
             pageSize={10}
           />
         </div>

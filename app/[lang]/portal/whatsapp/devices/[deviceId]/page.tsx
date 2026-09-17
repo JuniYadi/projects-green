@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import { getEmailBaseUrl } from "@/lib/email-url"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
@@ -59,6 +60,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
 }: DeviceDetailPageProps) {
   const { deviceId, lang } = await params
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
 
   const devicesPath = localizePathname({
     pathname: "/portal/whatsapp/devices",
@@ -115,18 +117,30 @@ export default async function PortalWhatsAppDeviceDetailPage({
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Device Information</CardTitle>
-          <CardDescription>Core device details and identifiers</CardDescription>
+          <CardTitle className="text-base">
+            {messages.pPortalWhatsappDevicesDeviceid.deviceInformationTitle}
+          </CardTitle>
+          <CardDescription>
+            {
+              messages.pPortalWhatsappDevicesDeviceid
+                .deviceInformationDescription
+            }
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="space-y-3">
-            <InfoRow label="Phone Number" value={device.phoneNumber} />
             <InfoRow
-              label="Display Name"
+              label={messages.pPortalWhatsappDevicesDeviceid.phoneNumberLabel}
+              value={device.phoneNumber}
+            />
+            <InfoRow
+              label={messages.pPortalWhatsappDevicesDeviceid.displayNameLabel}
               value={device.verifiedName || device.name || "-"}
             />
             <InfoRow
-              label="Meta Name Status"
+              label={
+                messages.pPortalWhatsappDevicesDeviceid.metaNameStatusLabel
+              }
               value={
                 <MetaNameStatusBadge
                   nameStatus={device.nameStatus}
@@ -137,7 +151,9 @@ export default async function PortalWhatsAppDeviceDetailPage({
             />
             {device.qualityRating && (
               <InfoRow
-                label="Quality Rating"
+                label={
+                  messages.pPortalWhatsappDevicesDeviceid.qualityRatingLabel
+                }
                 value={
                   <Badge variant="outline" className="capitalize">
                     {device.qualityRating.toLowerCase()}
@@ -146,7 +162,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
               />
             )}
             <InfoRow
-              label="Device Status"
+              label={messages.pPortalWhatsappDevicesDeviceid.deviceStatusLabel}
               value={
                 <Badge
                   variant={device.status === "ACTIVE" ? "default" : "secondary"}
@@ -156,19 +172,30 @@ export default async function PortalWhatsAppDeviceDetailPage({
               }
             />
             <InfoRow
-              label="Environment"
+              label={messages.pPortalWhatsappDevicesDeviceid.environmentLabel}
               value={<Badge variant="outline">{device.environment}</Badge>}
             />
             <InfoRow
-              label="WhatsApp Business Account ID"
+              label={
+                messages.pPortalWhatsappDevicesDeviceid
+                  .whatsappBusinessAccountIdLabel
+              }
               value={device.whatsappBusinessAccountId || "-"}
             />
             <InfoRow
-              label="WhatsApp Phone ID"
+              label={
+                messages.pPortalWhatsappDevicesDeviceid.whatsappPhoneIdLabel
+              }
               value={device.whatsappPhoneId || "-"}
             />
-            <InfoRow label="Business ID" value={device.businessId || "-"} />
-            <InfoRow label="Callback URL" value={device.callbackUrl || "-"} />
+            <InfoRow
+              label={messages.pPortalWhatsappDevicesDeviceid.businessIdLabel}
+              value={device.businessId || "-"}
+            />
+            <InfoRow
+              label={messages.pPortalWhatsappDevicesDeviceid.callbackUrlLabel}
+              value={device.callbackUrl || "-"}
+            />
           </dl>
         </CardContent>
       </Card>
@@ -183,13 +210,19 @@ export default async function PortalWhatsAppDeviceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Organization</CardTitle>
-          <CardDescription>Owner organization mapping</CardDescription>
+          <CardTitle className="text-base">
+            {messages.pPortalWhatsappDevicesDeviceid.organizationTitle}
+          </CardTitle>
+          <CardDescription>
+            {messages.pPortalWhatsappDevicesDeviceid.organizationDescription}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="space-y-3">
             <InfoRow
-              label="Organization ID"
+              label={
+                messages.pPortalWhatsappDevicesDeviceid.organizationIdLabel
+              }
               value={
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                   {device.organizationId}
@@ -202,17 +235,27 @@ export default async function PortalWhatsAppDeviceDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Timestamps</CardTitle>
-          <CardDescription>Creation and activity dates</CardDescription>
+          <CardTitle className="text-base">
+            {messages.pPortalWhatsappDevicesDeviceid.timestampsTitle}
+          </CardTitle>
+          <CardDescription>
+            {messages.pPortalWhatsappDevicesDeviceid.timestampsDescription}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="space-y-3">
-            <InfoRow label="Created" value={formatDate(device.createdAt)} />
             <InfoRow
-              label="Last Updated"
+              label={messages.pPortalWhatsappDevicesDeviceid.createdLabel}
+              value={formatDate(device.createdAt)}
+            />
+            <InfoRow
+              label={messages.pPortalWhatsappDevicesDeviceid.lastUpdatedLabel}
               value={formatDate(device.updatedAt)}
             />
-            <InfoRow label="Expires" value={formatDate(device.expiredAt)} />
+            <InfoRow
+              label={messages.pPortalWhatsappDevicesDeviceid.expiresLabel}
+              value={formatDate(device.expiredAt)}
+            />
           </dl>
         </CardContent>
       </Card>

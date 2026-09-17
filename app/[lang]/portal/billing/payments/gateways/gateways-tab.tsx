@@ -1,5 +1,6 @@
 "use client"
 
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,8 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
 
 import { invalidateBillingSetupStatus } from "@/components/billing/setup-status/billing-setup-banner"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 interface PaymentGateway {
   id: string
@@ -81,6 +84,10 @@ type GatewaysRequestState =
   | { status: "error"; message: string }
 
 export function GatewaysTab() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [state, setState] = useState<GatewaysRequestState>({
     status: "loading",
   })
@@ -109,7 +116,12 @@ export function GatewaysTab() {
         id: "gateway",
         accessorFn: (gateway) => gateway.name,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Gateway" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pBillingPaymentsGatewaysGatewaysTab.gatewayColumnTitle
+            }
+          />
         ),
         cell: ({ row }) => (
           <div className="grid gap-1">
@@ -124,7 +136,12 @@ export function GatewaysTab() {
       {
         accessorKey: "type",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Provider" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pBillingPaymentsGatewaysGatewaysTab.providerColumnTitle
+            }
+          />
         ),
         cell: ({ row }) => <Badge variant="outline">{row.original.type}</Badge>,
       },
@@ -133,7 +150,12 @@ export function GatewaysTab() {
         accessorFn: (gateway) =>
           gateway.supportedCurrencies?.join(", ") || "all",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Currencies" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pBillingPaymentsGatewaysGatewaysTab.currenciesColumnTitle
+            }
+          />
         ),
         cell: ({ row }) => (
           <Badge variant="outline" className="text-xs">
@@ -147,7 +169,12 @@ export function GatewaysTab() {
         id: "status",
         accessorFn: (gateway) => (gateway.isActive ? "active" : "inactive"),
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pBillingPaymentsGatewaysGatewaysTab.statusColumnTitle
+            }
+          />
         ),
         cell: ({ row }) => (
           <Badge
@@ -182,7 +209,7 @@ export function GatewaysTab() {
                 setEditProviderType(row.original.type)
               }}
             >
-              Configure
+              {messages.pBillingPaymentsGatewaysGatewaysTab.configureButton}
             </Button>
           </div>
         ),
@@ -403,7 +430,7 @@ export function GatewaysTab() {
             variant="outline"
             onClick={() => void fetchGateways()}
           >
-            Retry
+            {messages.pBillingPaymentsGatewaysGatewaysTab.retryButton}
           </Button>
         </div>
       </div>
@@ -416,10 +443,12 @@ export function GatewaysTab() {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Payment Gateways</CardTitle>
+          <CardTitle className="text-base">
+            {messages.pBillingPaymentsGatewaysGatewaysTab.cardTitle}
+          </CardTitle>
           {!editingGateway && (
             <Button type="button" size="sm" onClick={() => setIsCreating(true)}>
-              Add Gateway
+              {messages.pBillingPaymentsGatewaysGatewaysTab.addGatewayButton}
             </Button>
           )}
         </div>
@@ -432,12 +461,29 @@ export function GatewaysTab() {
           >
             <div className="grid gap-4 md:grid-cols-2">
               <Label className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Gateway name</span>
-                <Input name="name" placeholder="My Duitku Gateway" required />
+                <span>
+                  {
+                    messages.pBillingPaymentsGatewaysGatewaysTab
+                      .gatewayNameLabel
+                  }
+                </span>
+                <Input
+                  name="name"
+                  placeholder={
+                    messages.pBillingPaymentsGatewaysGatewaysTab
+                      .gatewayNamePlaceholder
+                  }
+                  required
+                />
               </Label>
 
               <Label className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Provider type</span>
+                <span>
+                  {
+                    messages.pBillingPaymentsGatewaysGatewaysTab
+                      .providerTypeLabel
+                  }
+                </span>
                 <Select
                   name="type"
                   value={selectedProvider}
@@ -475,7 +521,12 @@ export function GatewaysTab() {
                 renderConfigFields(currentProvider.configFields)}
 
               <fieldset className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Supported currencies</span>
+                <span>
+                  {
+                    messages.pBillingPaymentsGatewaysGatewaysTab
+                      .supportedCurrenciesLabel
+                  }
+                </span>
                 <div className="flex gap-4">
                   {CURRENCY_OPTIONS.map((code) => (
                     <label
@@ -495,8 +546,7 @@ export function GatewaysTab() {
                   ))}
                 </div>
                 <p className="text-xs font-normal text-muted-foreground">
-                  Defaults to the provider&apos;s supported currencies. Uncheck
-                  to restrict.
+                  {messages.pBillingPaymentsGatewaysGatewaysTab.currenciesHint}
                 </p>
               </fieldset>
             </div>
@@ -517,7 +567,7 @@ export function GatewaysTab() {
                   setSelectedProvider("")
                 }}
               >
-                Cancel
+                {messages.pBillingPaymentsGatewaysGatewaysTab.cancelButton}
               </Button>
             </div>
           </form>
@@ -530,7 +580,12 @@ export function GatewaysTab() {
           >
             <div className="grid gap-4 md:grid-cols-2">
               <Label className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Gateway name</span>
+                <span>
+                  {
+                    messages.pBillingPaymentsGatewaysGatewaysTab
+                      .gatewayNameLabel
+                  }
+                </span>
                 <Input
                   name="name"
                   defaultValue={editingGateway.name}
@@ -539,7 +594,12 @@ export function GatewaysTab() {
               </Label>
 
               <Label className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Provider</span>
+                <span>
+                  {
+                    messages.pBillingPaymentsGatewaysGatewaysTab
+                      .providerColumnTitle
+                  }
+                </span>
                 <div className="flex items-center gap-2 pt-1 text-sm text-muted-foreground">
                   <Badge variant="outline">{editingGateway.type}</Badge>
                 </div>
@@ -552,7 +612,12 @@ export function GatewaysTab() {
                 )}
 
               <fieldset className="space-y-2 text-sm font-medium md:col-span-2">
-                <span>Supported currencies</span>
+                <span>
+                  {
+                    messages.pBillingPaymentsGatewaysGatewaysTab
+                      .supportedCurrenciesLabel
+                  }
+                </span>
                 <div className="flex gap-4">
                   {CURRENCY_OPTIONS.map((code) => (
                     <label
@@ -585,7 +650,7 @@ export function GatewaysTab() {
                   setEditProviderType("")
                 }}
               >
-                Cancel
+                {messages.pBillingPaymentsGatewaysGatewaysTab.cancelButton}
               </Button>
             </div>
           </form>
@@ -595,19 +660,23 @@ export function GatewaysTab() {
           <>
             {gateways.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
-                No payment gateways configured yet.
+                {messages.pBillingPaymentsGatewaysGatewaysTab.emptyState}
               </div>
             ) : (
               <DataTable
                 tableId="portal-payments-gateways"
                 columns={gatewayColumns}
                 data={gateways}
-                searchPlaceholder="Filter gateways..."
+                searchPlaceholder={
+                  messages.pBillingPaymentsGatewaysGatewaysTab.searchPlaceholder
+                }
                 searchableColumns={["gateway", "type", "currencies", "status"]}
                 facetFilters={[
                   {
                     columnId: "status",
-                    label: "Status",
+                    label:
+                      messages.pBillingPaymentsGatewaysGatewaysTab
+                        .statusColumnTitle,
                     allLabel: "All status",
                     options: [
                       { label: "Active", value: "active" },
@@ -615,7 +684,10 @@ export function GatewaysTab() {
                     ],
                   },
                 ]}
-                emptyMessage="No payment gateways match your filters."
+                emptyMessage={
+                  messages.pBillingPaymentsGatewaysGatewaysTab
+                    .emptyFilterMessage
+                }
               />
             )}
           </>

@@ -1,6 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -70,6 +73,9 @@ function relativeTime(iso: string | null): string {
 }
 
 export default function WireGuardPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [peers, setPeers] = useState<WgPeer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -177,11 +183,14 @@ export default function WireGuardPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">WireGuard Peers</h1>
+        <h1 className="text-2xl font-bold">
+          {messages.pPortalVpnWireguardPageClient.pageTitle}
+        </h1>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button>
-              <PlusIcon className="mr-2 h-4 w-4" /> Add Peer
+              <PlusIcon className="mr-2 h-4 w-4" />{" "}
+              {messages.pPortalVpnWireguardPageClient.addPeerButton}
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -193,7 +202,9 @@ export default function WireGuardPage() {
             {createResult ? (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Peer <strong>{createResult.username}</strong> created.
+                  {messages.pPortalVpnWireguardPageClient.peerCreatedPrefix}{" "}
+                  <strong>{createResult.username}</strong>{" "}
+                  {messages.pPortalVpnWireguardPageClient.peerCreatedSuffix}
                 </p>
                 <div className="max-h-60 overflow-auto rounded border bg-muted p-3">
                   <pre className="text-xs">{createResult.config}</pre>
@@ -213,14 +224,15 @@ export default function WireGuardPage() {
                       URL.revokeObjectURL(url)
                     }}
                   >
-                    <DownloadSimpleIcon className="mr-2 h-4 w-4" /> Download
-                    .conf
+                    <DownloadSimpleIcon className="mr-2 h-4 w-4" />{" "}
+                    {messages.pPortalVpnWireguardPageClient.downloadConfButton}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setShowQr(createResult.qrBase64)}
                   >
-                    <ImageIcon className="mr-2 h-4 w-4" /> Show QR
+                    <ImageIcon className="mr-2 h-4 w-4" />{" "}
+                    {messages.pPortalVpnWireguardPageClient.showQrButton}
                   </Button>
                   <Button
                     variant="secondary"
@@ -229,14 +241,16 @@ export default function WireGuardPage() {
                       setCreateResult(null)
                     }}
                   >
-                    Done
+                    {messages.pPortalVpnWireguardPageClient.doneButton}
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
                 <Input
-                  placeholder="Username (e.g. cust-123)"
+                  placeholder={
+                    messages.pPortalVpnWireguardPageClient.usernamePlaceholder
+                  }
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCreate()}
@@ -263,18 +277,33 @@ export default function WireGuardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Peers ({peers.length})</CardTitle>
+          <CardTitle className="text-lg">
+            {messages.pPortalVpnWireguardPageClient.peersCountPrefix}
+            {peers.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>IP Address</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Handshake</TableHead>
-                <TableHead>Transfer</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>
+                  {messages.pPortalVpnWireguardPageClient.usernameColumn}
+                </TableHead>
+                <TableHead>
+                  {messages.pPortalVpnWireguardPageClient.ipAddressColumn}
+                </TableHead>
+                <TableHead>
+                  {messages.pPortalVpnWireguardPageClient.statusColumn}
+                </TableHead>
+                <TableHead>
+                  {messages.pPortalVpnWireguardPageClient.handshakeColumn}
+                </TableHead>
+                <TableHead>
+                  {messages.pPortalVpnWireguardPageClient.transferColumn}
+                </TableHead>
+                <TableHead className="text-right">
+                  {messages.pPortalVpnWireguardPageClient.actionsColumn}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -294,7 +323,7 @@ export default function WireGuardPage() {
                     colSpan={6}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    No peers found
+                    {messages.pPortalVpnWireguardPageClient.noPeersFound}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -314,11 +343,19 @@ export default function WireGuardPage() {
                       >
                         {peer.status === "online" ? (
                           <>
-                            <WifiHighIcon className="mr-1 h-3 w-3" /> Online
+                            <WifiHighIcon className="mr-1 h-3 w-3" />{" "}
+                            {
+                              messages.pPortalVpnWireguardPageClient
+                                .statusOnline
+                            }
                           </>
                         ) : (
                           <>
-                            <WifiSlashIcon className="mr-1 h-3 w-3" /> Offline
+                            <WifiSlashIcon className="mr-1 h-3 w-3" />{" "}
+                            {
+                              messages.pPortalVpnWireguardPageClient
+                                .statusOffline
+                            }
                           </>
                         )}
                       </Badge>
@@ -335,7 +372,10 @@ export default function WireGuardPage() {
                           size="icon"
                           variant="ghost"
                           onClick={() => handleDownload(peer.username)}
-                          title="Download config"
+                          title={
+                            messages.pPortalVpnWireguardPageClient
+                              .downloadConfigTitle
+                          }
                         >
                           <DownloadSimpleIcon className="h-4 w-4" />
                         </Button>
@@ -343,7 +383,9 @@ export default function WireGuardPage() {
                           size="icon"
                           variant="ghost"
                           onClick={() => handleShowQr(peer.username)}
-                          title="Show QR"
+                          title={
+                            messages.pPortalVpnWireguardPageClient.showQrButton
+                          }
                         >
                           <ImageIcon className="h-4 w-4" />
                         </Button>
@@ -351,7 +393,10 @@ export default function WireGuardPage() {
                           size="icon"
                           variant="ghost"
                           onClick={() => handleDelete(peer.username)}
-                          title="Remove peer"
+                          title={
+                            messages.pPortalVpnWireguardPageClient
+                              .removePeerTitle
+                          }
                           className="text-red-500"
                         >
                           <TrashIcon className="h-4 w-4" />
@@ -374,14 +419,16 @@ export default function WireGuardPage() {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>WireGuard QR Code</DialogTitle>
+            <DialogTitle>
+              {messages.pPortalVpnWireguardPageClient.qrCodeDialogTitle}
+            </DialogTitle>
           </DialogHeader>
           {showQr && (
             <div className="flex justify-center p-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={showQr}
-                alt="WireGuard QR Code"
+                alt={messages.pPortalVpnWireguardPageClient.qrCodeDialogTitle}
                 className="max-w-full"
               />
             </div>

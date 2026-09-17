@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   whatsappClient,
@@ -44,6 +45,7 @@ export default function NewWhatsAppBroadcastPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const basePath = localizePathname({
     pathname: "/portal/whatsapp/broadcasts",
     locale,
@@ -178,18 +180,24 @@ export default function NewWhatsAppBroadcastPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">New broadcast</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {messages.pWhatsappBroadcastsNewPageClient.pageTitle}
+        </h1>
         <p className="text-muted-foreground">
-          Create a WhatsApp template campaign for a list of recipients.
+          {messages.pWhatsappBroadcastsNewPageClient.pageDescription}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Campaign details</CardTitle>
+          <CardTitle>
+            {messages.pWhatsappBroadcastsNewPageClient.campaignDetailsTitle}
+          </CardTitle>
           <CardDescription>
-            Select an approved template, sending device, and recipient phone
-            numbers.
+            {
+              messages.pWhatsappBroadcastsNewPageClient
+                .campaignDetailsDescription
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -198,10 +206,17 @@ export default function NewWhatsAppBroadcastPage() {
             onSubmit={(event) => void handleSubmit(event)}
           >
             <div className="grid gap-2">
-              <Label htmlFor="template">Template</Label>
+              <Label htmlFor="template">
+                {messages.pWhatsappBroadcastsNewPageClient.templateLabel}
+              </Label>
               <Select value={templateId} onValueChange={handleTemplateChange}>
                 <SelectTrigger id="template">
-                  <SelectValue placeholder="Select template" />
+                  <SelectValue
+                    placeholder={
+                      messages.pWhatsappBroadcastsNewPageClient
+                        .templatePlaceholder
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {templates.map((template) => (
@@ -214,13 +229,20 @@ export default function NewWhatsAppBroadcastPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="language">Language</Label>
+              <Label htmlFor="language">
+                {messages.pWhatsappBroadcastsNewPageClient.languageLabel}
+              </Label>
               <Select
                 value={templateLanguage}
                 onValueChange={setTemplateLanguage}
               >
                 <SelectTrigger id="language">
-                  <SelectValue placeholder="Select language" />
+                  <SelectValue
+                    placeholder={
+                      messages.pWhatsappBroadcastsNewPageClient
+                        .languagePlaceholder
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {languages.map((language) => (
@@ -233,10 +255,17 @@ export default function NewWhatsAppBroadcastPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="device">Device</Label>
+              <Label htmlFor="device">
+                {messages.pWhatsappBroadcastsNewPageClient.deviceLabel}
+              </Label>
               <Select value={deviceId} onValueChange={setDeviceId}>
                 <SelectTrigger id="device">
-                  <SelectValue placeholder="Use template default device" />
+                  <SelectValue
+                    placeholder={
+                      messages.pWhatsappBroadcastsNewPageClient
+                        .deviceDefaultPlaceholder
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {devices.map((device) => (
@@ -249,7 +278,9 @@ export default function NewWhatsAppBroadcastPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="recipient-source">Recipient source</Label>
+              <Label htmlFor="recipient-source">
+                {messages.pWhatsappBroadcastsNewPageClient.recipientSourceLabel}
+              </Label>
               <Select
                 value={recipientSource}
                 onValueChange={(value) =>
@@ -257,11 +288,26 @@ export default function NewWhatsAppBroadcastPage() {
                 }
               >
                 <SelectTrigger id="recipient-source">
-                  <SelectValue placeholder="Select recipient source" />
+                  <SelectValue
+                    placeholder={
+                      messages.pWhatsappBroadcastsNewPageClient
+                        .recipientSourcePlaceholder
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="contacts">From contacts</SelectItem>
-                  <SelectItem value="manual">Manual entry</SelectItem>
+                  <SelectItem value="contacts">
+                    {
+                      messages.pWhatsappBroadcastsNewPageClient
+                        .fromContactsOption
+                    }
+                  </SelectItem>
+                  <SelectItem value="manual">
+                    {
+                      messages.pWhatsappBroadcastsNewPageClient
+                        .manualEntryOption
+                    }
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -270,10 +316,17 @@ export default function NewWhatsAppBroadcastPage() {
               <div className="grid gap-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">
-                    Select contacts{" "}
+                    {
+                      messages.pWhatsappBroadcastsNewPageClient
+                        .selectContactsLabel
+                    }{" "}
                     {selectedContactIds.size > 0 && (
                       <span className="font-normal text-muted-foreground">
-                        ({selectedContactIds.size} selected)
+                        ({selectedContactIds.size}{" "}
+                        {
+                          messages.pWhatsappBroadcastsNewPageClient
+                            .selectedCountSuffix
+                        }
                       </span>
                     )}
                   </Label>
@@ -290,7 +343,10 @@ export default function NewWhatsAppBroadcastPage() {
                 <div className="max-h-64 overflow-y-auto rounded-md border">
                   {contacts.length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      No contacts available.
+                      {
+                        messages.pWhatsappBroadcastsNewPageClient
+                          .noContactsAvailable
+                      }
                     </div>
                   ) : (
                     <div className="divide-y">
@@ -318,9 +374,13 @@ export default function NewWhatsAppBroadcastPage() {
                 </div>
                 {selectedContactIds.size > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {selectedContactIds.size} contact
-                    {selectedContactIds.size !== 1 ? "s" : ""} selected from
-                    contacts
+                    {selectedContactIds.size}{" "}
+                    {messages.pWhatsappBroadcastsNewPageClient.contactUnitLabel}
+                    {selectedContactIds.size !== 1 ? "s" : ""}{" "}
+                    {
+                      messages.pWhatsappBroadcastsNewPageClient
+                        .selectedFromContactsSuffix
+                    }
                   </p>
                 )}
               </div>
@@ -328,7 +388,9 @@ export default function NewWhatsAppBroadcastPage() {
 
             {recipientSource === "manual" && (
               <div className="grid gap-2">
-                <Label htmlFor="recipients">Phone numbers</Label>
+                <Label htmlFor="recipients">
+                  {messages.pWhatsappBroadcastsNewPageClient.phoneNumbersLabel}
+                </Label>
                 <Textarea
                   id="recipients"
                   rows={8}
@@ -337,7 +399,7 @@ export default function NewWhatsAppBroadcastPage() {
                   placeholder="6281234567890\n6289876543210"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter one phone number per line or comma-separated.
+                  {messages.pWhatsappBroadcastsNewPageClient.phoneNumbersHint}
                 </p>
               </div>
             )}
@@ -348,7 +410,7 @@ export default function NewWhatsAppBroadcastPage() {
                 variant="outline"
                 onClick={() => router.push(basePath)}
               >
-                Cancel
+                {messages.pWhatsappBroadcastsNewPageClient.cancelButton}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "Creating…" : "Create broadcast"}

@@ -2,6 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import type { Metadata } from "next"
 import Link from "next/link"
 
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
@@ -40,7 +41,13 @@ import {
 
 export const metadata: Metadata = { title: "WhatsApp Devices" }
 
-function QuotaUsageCell({ device }: { device: DeviceListItem }) {
+function QuotaUsageCell({
+  device,
+  messages,
+}: {
+  device: DeviceListItem
+  messages: ReturnType<typeof getMessages>
+}) {
   const total = device.quotaBase > 0 ? device.quotaBase : 1000
   // In the billing model: quotaBaseOut is the REMAINING base quota!
   // When usage exceeds base quota, quotaBaseOut is negative (overdraft).
@@ -82,7 +89,8 @@ function QuotaUsageCell({ device }: { device: DeviceListItem }) {
             </div>
             <div className="flex justify-between text-[10px]">
               <span className="text-muted-foreground">
-                Used: {used.toLocaleString()}
+                {messages.pPortalWhatsappDevices.usedLabel}{" "}
+                {used.toLocaleString()}
               </span>
               <span
                 className={
@@ -91,15 +99,20 @@ function QuotaUsageCell({ device }: { device: DeviceListItem }) {
                     : "text-muted-foreground"
                 }
               >
-                Left: {rawRemaining.toLocaleString()}
+                {messages.pPortalWhatsappDevices.leftLabel}{" "}
+                {rawRemaining.toLocaleString()}
               </span>
             </div>
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="flex flex-col gap-1 text-xs">
-          <p className="font-semibold">Quota Usage</p>
+          <p className="font-semibold">
+            {messages.pPortalWhatsappDevices.quotaUsageTitle}
+          </p>
           <p>
-            {used.toLocaleString()} of {total.toLocaleString()} messages used
+            {used.toLocaleString()} {messages.pPortalWhatsappDevices.ofLabel}{" "}
+            {total.toLocaleString()}{" "}
+            {messages.pPortalWhatsappDevices.messagesUsedLabel}
           </p>
           <p
             className={
@@ -116,8 +129,9 @@ function QuotaUsageCell({ device }: { device: DeviceListItem }) {
           </p>
           {device.dailyLimitMessage > 0 && (
             <p className="text-muted-foreground">
-              Daily limit: {device.dailyLimitMessage.toLocaleString()}{" "}
-              messages/day
+              {messages.pPortalWhatsappDevices.dailyLimitLabel}{" "}
+              {device.dailyLimitMessage.toLocaleString()}{" "}
+              {messages.pPortalWhatsappDevices.messagesPerDayLabel}
             </p>
           )}
         </TooltipContent>
@@ -164,6 +178,7 @@ export default async function PortalWhatsAppDevicesPage({
   const { lang } = await params
   const { organizationId } = await searchParams
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
 
   const auth = await withAuth({ ensureSignedIn: true })
   const platformRole = await getPlatformRoleForUser({
@@ -224,9 +239,11 @@ export default async function PortalWhatsAppDevicesPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">WhatsApp Devices</h1>
+        <h1 className="text-2xl font-semibold">
+          {messages.pPortalWhatsappDevices.pageTitle}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Manage all WhatsApp Business devices across organizations.
+          {messages.pPortalWhatsappDevices.pageDescription}
         </p>
       </header>
 
@@ -235,9 +252,11 @@ export default async function PortalWhatsAppDevicesPage({
           <CardHeader className="pb-3">
             <div className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base">All Devices</CardTitle>
+                <CardTitle className="text-base">
+                  {messages.pPortalWhatsappDevices.allDevicesTitle}
+                </CardTitle>
                 <CardDescription>
-                  View and manage WhatsApp devices across all organizations
+                  {messages.pPortalWhatsappDevices.allDevicesDescription}
                 </CardDescription>
               </div>
               <form
@@ -251,9 +270,14 @@ export default async function PortalWhatsAppDevicesPage({
                   name="organizationId"
                   defaultValue={selectedOrganizationId ?? "all"}
                   className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs"
-                  aria-label="Filter by organization"
+                  aria-label={
+                    messages.pPortalWhatsappDevices
+                      .filterByOrganizationAriaLabel
+                  }
                 >
-                  <option value="all">All organizations</option>
+                  <option value="all">
+                    {messages.pPortalWhatsappDevices.allOrganizationsOption}
+                  </option>
                   {organizationOptions.map((organization) => (
                     <option key={organization.id} value={organization.id}>
                       {organization.name}
@@ -261,7 +285,7 @@ export default async function PortalWhatsAppDevicesPage({
                   ))}
                 </select>
                 <Button type="submit" size="sm" variant="outline">
-                  Filter
+                  {messages.pPortalWhatsappDevices.filterButton}
                 </Button>
               </form>
               <Link
@@ -277,7 +301,7 @@ export default async function PortalWhatsAppDevicesPage({
                   >
                     +
                   </span>
-                  Add Device
+                  {messages.pPortalWhatsappDevices.addDeviceButton}
                 </Button>
               </Link>
             </div>
@@ -289,15 +313,33 @@ export default async function PortalWhatsAppDevicesPage({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Organization Name</TableHead>
-                    <TableHead>Name / Phone</TableHead>
-                    <TableHead>Meta Name Status</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Health</TableHead>
-                    <TableHead>Quota Usage</TableHead>
-                    <TableHead className="text-right">Daily Limit</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>
+                      {messages.pPortalWhatsappDevices.organizationNameColumn}
+                    </TableHead>
+                    <TableHead>
+                      {messages.pPortalWhatsappDevices.namePhoneColumn}
+                    </TableHead>
+                    <TableHead>
+                      {messages.pPortalWhatsappDevices.metaNameStatusColumn}
+                    </TableHead>
+                    <TableHead>
+                      {messages.pPortalWhatsappDevices.statusColumn}
+                    </TableHead>
+                    <TableHead>
+                      {messages.pPortalWhatsappDevices.healthColumn}
+                    </TableHead>
+                    <TableHead>
+                      {messages.pPortalWhatsappDevices.quotaUsageTitle}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {messages.pPortalWhatsappDevices.dailyLimitColumn}
+                    </TableHead>
+                    <TableHead>
+                      {messages.pPortalWhatsappDevices.createdColumn}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {messages.pPortalWhatsappDevices.actionsColumn}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -338,7 +380,7 @@ export default async function PortalWhatsAppDevicesPage({
                         />
                       </TableCell>
                       <TableCell>
-                        <QuotaUsageCell device={device} />
+                        <QuotaUsageCell device={device} messages={messages} />
                       </TableCell>
                       <TableCell className="text-right">
                         {device.dailyLimitMessage.toLocaleString()}

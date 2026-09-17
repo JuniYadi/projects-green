@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import {
   DownloadIcon,
   UploadIcon,
@@ -10,6 +11,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -38,6 +41,9 @@ export function CatalogExportImport({
   catalogTitle,
   onImportSuccess,
 }: CatalogExportImportProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [isExporting, setIsExporting] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [jsonText, setJsonText] = useState("")
@@ -161,33 +167,46 @@ export function CatalogExportImport({
           size="sm"
           onClick={handleExport}
           disabled={isExporting}
-          aria-label="Export Catalog JSON"
+          aria-label={
+            messages.pBillingAdminCatalogCatalogExportImport
+              .exportCatalogJsonAriaLabel
+          }
         >
           {isExporting ? (
             <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <DownloadIcon className="mr-2 h-4 w-4" />
           )}
-          Export JSON
+          {messages.pBillingAdminCatalogCatalogExportImport.exportJson}
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setIsImportOpen(true)}
-          aria-label="Import Catalog JSON"
+          aria-label={
+            messages.pBillingAdminCatalogCatalogExportImport
+              .importCatalogJsonAriaLabel
+          }
         >
           <UploadIcon className="mr-2 h-4 w-4" />
-          Import JSON
+          {messages.pBillingAdminCatalogCatalogExportImport.importJson}
         </Button>
       </div>
 
       <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Import Catalog Configuration</DialogTitle>
+            <DialogTitle>
+              {
+                messages.pBillingAdminCatalogCatalogExportImport
+                  .importCatalogConfigurationTitle
+              }
+            </DialogTitle>
             <DialogDescription>
-              Upload or paste a catalog export JSON to safely migrate
-              configurations into{" "}
+              {
+                messages.pBillingAdminCatalogCatalogExportImport
+                  .importDialogDescription
+              }{" "}
               <span className="font-semibold text-foreground">
                 {catalogTitle}
               </span>
@@ -201,7 +220,10 @@ export function CatalogExportImport({
                 htmlFor="catalog-json-file"
                 className="mb-1 block text-xs font-medium text-muted-foreground"
               >
-                Upload JSON File
+                {
+                  messages.pBillingAdminCatalogCatalogExportImport
+                    .uploadJsonFileLabel
+                }
               </label>
               <input
                 id="catalog-json-file"
@@ -217,7 +239,10 @@ export function CatalogExportImport({
                 htmlFor="catalog-json-textarea"
                 className="mb-1 block text-xs font-medium text-muted-foreground"
               >
-                Or Paste JSON Content
+                {
+                  messages.pBillingAdminCatalogCatalogExportImport
+                    .orPasteJsonContentLabel
+                }
               </label>
               <textarea
                 id="catalog-json-textarea"
@@ -235,7 +260,12 @@ export function CatalogExportImport({
             {parseError && (
               <Alert variant="destructive">
                 <AlertCircleIcon className="h-4 w-4" />
-                <AlertTitle>JSON Error</AlertTitle>
+                <AlertTitle>
+                  {
+                    messages.pBillingAdminCatalogCatalogExportImport
+                      .jsonErrorTitle
+                  }
+                </AlertTitle>
                 <AlertDescription>{parseError}</AlertDescription>
               </Alert>
             )}
@@ -244,17 +274,33 @@ export function CatalogExportImport({
               <div className="space-y-2 rounded-md border bg-muted/40 p-3 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">
-                    Source: {parsedPayload.catalogCode} (
+                    {
+                      messages.pBillingAdminCatalogCatalogExportImport
+                        .sourceLabel
+                    }{" "}
+                    {parsedPayload.catalogCode} (
                     {parsedPayload.sourceEnv || "unknown env"})
                   </span>
                   <Badge variant="outline">
-                    {parsedPayload.products.length} Products
+                    {parsedPayload.products.length}{" "}
+                    {
+                      messages.pBillingAdminCatalogCatalogExportImport
+                        .productsLabel
+                    }
                   </Badge>
                 </div>
                 {parsedPayload.catalogCode !== catalogCode && (
                   <p className="font-medium text-amber-600 dark:text-amber-400">
-                    ⚠️ Notice: Source catalog code ({parsedPayload.catalogCode})
-                    will be mapped to target ({catalogCode}).
+                    {
+                      messages.pBillingAdminCatalogCatalogExportImport
+                        .noticeSourceCatalogPrefix
+                    }
+                    {parsedPayload.catalogCode}
+                    {
+                      messages.pBillingAdminCatalogCatalogExportImport
+                        .noticeMappedToTarget
+                    }
+                    {catalogCode}).
                   </p>
                 )}
                 {!dryRunResult && (
@@ -268,7 +314,10 @@ export function CatalogExportImport({
                     {isDryRunning && (
                       <Loader2Icon className="mr-2 h-3.5 w-3.5 animate-spin" />
                     )}
-                    Preview Changes (Dry Run)
+                    {
+                      messages.pBillingAdminCatalogCatalogExportImport
+                        .previewChangesDryRun
+                    }
                   </Button>
                 )}
               </div>
@@ -278,16 +327,28 @@ export function CatalogExportImport({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-xs">
-                    +{dryRunResult.summary.productsToCreate} New
+                    +{dryRunResult.summary.productsToCreate}{" "}
+                    {
+                      messages.pBillingAdminCatalogCatalogExportImport
+                        .newBadgeLabel
+                    }
                   </Badge>
                   <Badge variant="secondary" className="text-xs">
-                    ~{dryRunResult.summary.productsToUpdate} Updated
+                    ~{dryRunResult.summary.productsToUpdate}{" "}
+                    {
+                      messages.pBillingAdminCatalogCatalogExportImport
+                        .updatedBadgeLabel
+                    }
                   </Badge>
                   <Badge
                     variant="outline"
                     className="text-xs text-muted-foreground"
                   >
-                    ={dryRunResult.summary.productsUnchanged} Unchanged
+                    ={dryRunResult.summary.productsUnchanged}{" "}
+                    {
+                      messages.pBillingAdminCatalogCatalogExportImport
+                        .unchangedBadgeLabel
+                    }
                   </Badge>
                 </div>
 
@@ -329,7 +390,7 @@ export function CatalogExportImport({
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={() => setIsImportOpen(false)}>
-              Cancel
+              {messages.pBillingAdminCatalogCatalogExportImport.cancelButton}
             </Button>
             <Button
               onClick={handleApplyImport}
@@ -346,7 +407,10 @@ export function CatalogExportImport({
               ) : (
                 <CheckCircle2Icon className="h-4 w-4" />
               )}
-              Apply Migration
+              {
+                messages.pBillingAdminCatalogCatalogExportImport
+                  .applyMigrationButton
+              }
             </Button>
           </DialogFooter>
         </DialogContent>

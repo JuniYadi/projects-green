@@ -395,7 +395,10 @@ export default function ConsoleTemplatesPage() {
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs text-xs">
                 <p className="font-semibold text-destructive">
-                  Meta Rejection Reason:
+                  {
+                    messages.pConsoleWhatsappTemplatesPageClient
+                      .metaRejectionReason
+                  }
                 </p>
                 <p className="mt-0.5 text-muted-foreground">
                   {firstRejectReason.replace(/_/g, " ")}
@@ -423,7 +426,8 @@ export default function ConsoleTemplatesPage() {
               <TooltipContent side="top" className="text-xs">
                 <p className="font-semibold">{currentSync.tooltip}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  Local DB: {syncStatus}
+                  {messages.pConsoleWhatsappTemplatesPageClient.localDb}{" "}
+                  {syncStatus}
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -443,7 +447,7 @@ export default function ConsoleTemplatesPage() {
             (table.getIsSomePageRowsSelected() && "indeterminate")
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
+          aria-label={messages.pConsoleWhatsappTemplatesPageClient.selectAll}
           className="translate-y-[2px]"
         />
       ),
@@ -451,7 +455,7 @@ export default function ConsoleTemplatesPage() {
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
+          aria-label={messages.pConsoleWhatsappTemplatesPageClient.selectRow}
           className="translate-y-[2px]"
         />
       ),
@@ -502,7 +506,12 @@ export default function ConsoleTemplatesPage() {
     {
       accessorKey: "category",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Category" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pConsoleWhatsappTemplatesPageClient.categoryColumnTitle
+          }
+        />
       ),
       cell: ({ row }) => {
         const cat = row.original.category
@@ -529,16 +538,29 @@ export default function ConsoleTemplatesPage() {
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs text-xs">
                   <p className="font-semibold text-amber-700 dark:text-amber-300">
-                    Kategori Disesuaikan Otomatis oleh Meta
+                    {
+                      messages.pConsoleWhatsappTemplatesPageClient
+                        .categoryAutoAdjustedByMeta
+                    }
                   </p>
                   <p className="mt-1 leading-relaxed text-muted-foreground">
-                    Template ini diajukan sebagai{" "}
+                    {
+                      messages.pConsoleWhatsappTemplatesPageClient
+                        .templateSubmittedAs
+                    }{" "}
                     <span className="font-semibold text-foreground">
                       {requestedCat}
                     </span>
-                    , tetapi disetujui Meta sebagai{" "}
+                    {
+                      messages.pConsoleWhatsappTemplatesPageClient
+                        .butApprovedByMetaAs
+                    }{" "}
                     <span className="font-semibold text-foreground">{cat}</span>
-                    . Tarif pesan mengikuti kategori {cat}.
+                    {
+                      messages.pConsoleWhatsappTemplatesPageClient
+                        .messageRateFollowsCategory
+                    }{" "}
+                    {cat}.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -557,7 +579,12 @@ export default function ConsoleTemplatesPage() {
       accessorFn: (row) => row.languages?.map((l) => l.lang).join(", ") ?? "",
       id: "languages",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Languages" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pConsoleWhatsappTemplatesPageClient.languagesColumnTitle
+          }
+        />
       ),
     },
     {
@@ -795,51 +822,69 @@ export default function ConsoleTemplatesPage() {
             <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">
-                  ⚡ Utility
+                  {
+                    messages.pConsoleWhatsappTemplatesPageClient
+                      .utilityStatLabel
+                  }
                 </span>
                 <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                  Trans
+                  {messages.pConsoleWhatsappTemplatesPageClient.transBadge}
                 </Badge>
               </div>
               <p className="mt-1 text-2xl font-bold text-foreground">
                 {utilityCount}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Notifications & alerts
+                {
+                  messages.pConsoleWhatsappTemplatesPageClient
+                    .notificationsAndAlerts
+                }
               </p>
             </div>
 
             <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">
-                  🔑 Authentication
+                  {
+                    messages.pConsoleWhatsappTemplatesPageClient
+                      .authenticationStatLabel
+                  }
                 </span>
                 <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                  Auth
+                  {messages.pConsoleWhatsappTemplatesPageClient.authBadge}
                 </Badge>
               </div>
               <p className="mt-1 text-2xl font-bold text-foreground">
                 {authCount}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                OTPs & verifications
+                {
+                  messages.pConsoleWhatsappTemplatesPageClient
+                    .otpsAndVerifications
+                }
               </p>
             </div>
 
             <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">
-                  📢 Marketing
+                  {
+                    messages.pConsoleWhatsappTemplatesPageClient
+                      .marketingStatLabel
+                  }
                 </span>
                 <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                  Promo
+                  {messages.pConsoleWhatsappTemplatesPageClient.promoBadge}
                 </Badge>
               </div>
               <p className="mt-1 text-2xl font-bold text-foreground">
                 {marketingCount}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Campaigns & offers
+                {
+                  messages.pConsoleWhatsappTemplatesPageClient
+                    .campaignsAndOffers
+                }
               </p>
             </div>
 
@@ -852,7 +897,10 @@ export default function ConsoleTemplatesPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">
-                  ☁️ Meta Sync
+                  {
+                    messages.pConsoleWhatsappTemplatesPageClient
+                      .metaSyncStatLabel
+                  }
                 </span>
                 <span
                   className={`size-2 rounded-full ${
@@ -922,7 +970,10 @@ export default function ConsoleTemplatesPage() {
               columns={columns}
               data={templates}
               tableId="console-whatsapp-templates"
-              searchPlaceholder="Search templates..."
+              searchPlaceholder={
+                messages.pConsoleWhatsappTemplatesPageClient
+                  .searchTemplatesPlaceholder
+              }
               searchableColumns={[
                 "name",
                 "status",
@@ -956,7 +1007,9 @@ export default function ConsoleTemplatesPage() {
                 {
                   columnId: "category",
                   allLabel: "All Category",
-                  label: "Category",
+                  label:
+                    messages.pConsoleWhatsappTemplatesPageClient
+                      .categoryColumnTitle,
                   options: [
                     { label: "Marketing", value: "MARKETING" },
                     { label: "Utility", value: "UTILITY" },

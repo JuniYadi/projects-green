@@ -1,8 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { Key, Lightning, ShieldCheck, Plus, Trash } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -41,6 +44,10 @@ export type ProviderEntry = {
 }
 
 export default function AiProvidersPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [providers, setProviders] = useState<ProviderEntry[]>([
     {
       id: "prov_managed",
@@ -157,11 +164,10 @@ export default function AiProvidersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            AI Providers (BYOK)
+            {messages.pConsoleAiProvidersPageClient.pageTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Bawa API Key Anda sendiri (OpenAI, DeepSeek, Groq, Anthropic) dengan
-            penyimpanan terenkripsi HashiCorp Vault.
+            {messages.pConsoleAiProvidersPageClient.pageDescription}
           </p>
         </div>
 
@@ -169,30 +175,40 @@ export default function AiProvidersPage() {
           <DialogTrigger asChild>
             <Button className="gap-2 bg-amber-500 text-black hover:bg-amber-600">
               <Plus size={16} weight="bold" />
-              <span>Tambah Provider BYOK</span>
+              <span>
+                {messages.pConsoleAiProvidersPageClient.addProviderButton}
+              </span>
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Hubungkan API Key Sendiri (BYOK)</DialogTitle>
+              <DialogTitle>
+                {messages.pConsoleAiProvidersPageClient.dialogTitle}
+              </DialogTitle>
               <DialogDescription>
-                API Key Anda akan dienkripsi dengan standar HashiCorp Vault KV
-                v2 dan tidak pernah disimpan di database SQL plaintext.
+                {messages.pConsoleAiProvidersPageClient.dialogDescription}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label>Nama Provider</Label>
+                <Label>
+                  {messages.pConsoleAiProvidersPageClient.providerNameLabel}
+                </Label>
                 <Input
-                  placeholder="Misal: OpenAI Corporate Toko"
+                  placeholder={
+                    messages.pConsoleAiProvidersPageClient
+                      .providerNamePlaceholder
+                  }
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Tipe Provider</Label>
+                <Label>
+                  {messages.pConsoleAiProvidersPageClient.providerTypeLabel}
+                </Label>
                 <Select
                   value={providerType}
                   onValueChange={(val: "OPENAI_COMPATIBLE" | "ANTHROPIC") => {
@@ -211,10 +227,16 @@ export default function AiProvidersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="OPENAI_COMPATIBLE">
-                      OpenAI Compatible (OpenAI, DeepSeek, Groq, Ollama)
+                      {
+                        messages.pConsoleAiProvidersPageClient
+                          .providerTypeOpenAiCompatible
+                      }
                     </SelectItem>
                     <SelectItem value="ANTHROPIC">
-                      Anthropic (Claude 3.5 Sonnet / Haiku)
+                      {
+                        messages.pConsoleAiProvidersPageClient
+                          .providerTypeAnthropic
+                      }
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -222,7 +244,9 @@ export default function AiProvidersPage() {
 
               {providerType === "OPENAI_COMPATIBLE" && (
                 <div className="space-y-2">
-                  <Label>Base URL Endpoint</Label>
+                  <Label>
+                    {messages.pConsoleAiProvidersPageClient.baseUrlLabel}
+                  </Label>
                   <Input
                     placeholder="https://api.openai.com/v1"
                     value={baseUrl}
@@ -232,19 +256,28 @@ export default function AiProvidersPage() {
               )}
 
               <div className="space-y-2">
-                <Label>Default Model Name</Label>
+                <Label>
+                  {messages.pConsoleAiProvidersPageClient.defaultModelNameLabel}
+                </Label>
                 <Input
-                  placeholder="gpt-4o-mini / deepseek-chat"
+                  placeholder={
+                    messages.pConsoleAiProvidersPageClient
+                      .defaultModelPlaceholder
+                  }
                   value={defaultModel}
                   onChange={(e) => setDefaultModel(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>API Key (Secret)</Label>
+                <Label>
+                  {messages.pConsoleAiProvidersPageClient.apiKeyLabel}
+                </Label>
                 <Input
                   type="password"
-                  placeholder="sk-proj-..."
+                  placeholder={
+                    messages.pConsoleAiProvidersPageClient.apiKeyPlaceholder
+                  }
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                 />
@@ -268,7 +301,8 @@ export default function AiProvidersPage() {
                 </Button>
                 {testStatus === "success" && (
                   <span className="text-xs font-medium text-emerald-500">
-                    API Key Valid: &quot;{testMessage}&quot;
+                    {messages.pConsoleAiProvidersPageClient.apiKeyValidPrefix}
+                    {testMessage}&quot;
                   </span>
                 )}
                 {testStatus === "failed" && (
@@ -281,7 +315,7 @@ export default function AiProvidersPage() {
 
             <DialogFooter>
               <Button variant="ghost" onClick={() => setIsOpen(false)}>
-                Batal
+                {messages.pConsoleAiProvidersPageClient.cancelButton}
               </Button>
               <Button
                 onClick={handleSave}
@@ -318,13 +352,15 @@ export default function AiProvidersPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Default Model:</span>
+                <span className="text-muted-foreground">
+                  {messages.pConsoleAiProvidersPageClient.defaultModelCardLabel}
+                </span>
                 <span className="font-mono font-medium">{p.defaultModel}</span>
               </div>
               <div className="flex items-center justify-between border-t border-border pt-3">
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500">
                   <ShieldCheck size={14} />
-                  Vault Encrypted
+                  {messages.pConsoleAiProvidersPageClient.vaultEncryptedBadge}
                 </span>
                 {p.providerType !== "MANAGED" && (
                   <Button
@@ -334,7 +370,7 @@ export default function AiProvidersPage() {
                     onClick={() => handleDelete(p.id)}
                   >
                     <Trash size={14} className="mr-1" />
-                    Hapus
+                    {messages.pConsoleAiProvidersPageClient.deleteButton}
                   </Button>
                 )}
               </div>

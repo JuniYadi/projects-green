@@ -17,6 +17,7 @@ import {
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { type ColumnDef } from "@tanstack/react-table"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Tooltip,
@@ -47,6 +48,7 @@ export default function WhatsAppBroadcastsPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const basePath = localizePathname({
     pathname: "/portal/whatsapp/broadcasts",
     locale,
@@ -113,7 +115,12 @@ export default function WhatsAppBroadcastsPage() {
         id: "templateName",
         accessorFn: (row) => row.templateName,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Template" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pPortalWhatsappBroadcastsPageClient.templateColumnTitle
+            }
+          />
         ),
         cell: ({ row }) => (
           <div>
@@ -127,7 +134,12 @@ export default function WhatsAppBroadcastsPage() {
       {
         accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pPortalWhatsappBroadcastsPageClient.statusColumnTitle
+            }
+          />
         ),
         cell: ({ row }) => {
           const isDraft = isDraftBroadcast(row.original)
@@ -144,26 +156,45 @@ export default function WhatsAppBroadcastsPage() {
         id: "progress",
         accessorFn: (row) => row.sent,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Progress" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pPortalWhatsappBroadcastsPageClient.progressColumnTitle
+            }
+          />
         ),
         cell: ({ row }) => (
           <span>
-            {row.original.sent} sent / {row.original.failed} failed /{" "}
-            {row.original.total} total
+            {row.original.sent}{" "}
+            {messages.pPortalWhatsappBroadcastsPageClient.sentCountLabel}{" "}
+            {row.original.failed}{" "}
+            {messages.pPortalWhatsappBroadcastsPageClient.failedCountLabel}{" "}
+            {row.original.total}{" "}
+            {messages.pPortalWhatsappBroadcastsPageClient.totalCountLabel}
           </span>
         ),
       },
       {
         accessorKey: "createdAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Created" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pPortalWhatsappBroadcastsPageClient.createdColumnTitle
+            }
+          />
         ),
         cell: ({ row }) => <span>{formatDate(row.original.createdAt)}</span>,
       },
       {
         id: "actions",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Actions" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pPortalWhatsappBroadcastsPageClient.actionsColumnTitle
+            }
+          />
         ),
         cell: ({ row }) => {
           const isDraft = isDraftBroadcast(row.original)
@@ -176,7 +207,7 @@ export default function WhatsAppBroadcastsPage() {
                 onClick={() => router.push(`${basePath}/${row.original.id}`)}
               >
                 <Eye className="mr-1 size-4" />
-                View
+                {messages.pPortalWhatsappBroadcastsPageClient.viewButtonLabel}
               </Button>
               <TooltipProvider>
                 <Tooltip>
@@ -189,7 +220,10 @@ export default function WhatsAppBroadcastsPage() {
                         onClick={() => void handleSend(row.original)}
                       >
                         <PaperPlaneTilt className="mr-1 size-4" />
-                        Send
+                        {
+                          messages.pPortalWhatsappBroadcastsPageClient
+                            .sendButtonLabel
+                        }
                       </Button>
                     </span>
                   </TooltipTrigger>
@@ -208,7 +242,7 @@ export default function WhatsAppBroadcastsPage() {
                 onClick={() => void handleDelete(row.original)}
               >
                 <Trash className="mr-1 size-4" />
-                Delete
+                {messages.pPortalWhatsappBroadcastsPageClient.deleteButtonLabel}
               </Button>
             </div>
           )
@@ -221,28 +255,35 @@ export default function WhatsAppBroadcastsPage() {
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Broadcasts</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {messages.pPortalWhatsappBroadcastsPageClient.pageHeading}
+          </h1>
           <p className="text-muted-foreground">
-            Create, send, and monitor WhatsApp template broadcasts.
+            {messages.pPortalWhatsappBroadcastsPageClient.pageDescription}
           </p>
         </div>
         <Button onClick={() => router.push(`${basePath}/new`)}>
           <Plus weight="bold" className="mr-2 size-4" />
-          New broadcast
+          {messages.pPortalWhatsappBroadcastsPageClient.newBroadcastButtonLabel}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Campaigns</CardTitle>
+          <CardTitle>
+            {messages.pPortalWhatsappBroadcastsPageClient.campaignsCardTitle}
+          </CardTitle>
           <CardDescription>
-            Broadcast campaigns with delivery progress and status.
+            {
+              messages.pPortalWhatsappBroadcastsPageClient
+                .campaignsCardDescription
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="py-12 text-center text-muted-foreground">
-              Loading broadcasts…
+              {messages.pPortalWhatsappBroadcastsPageClient.loadingMessage}
             </div>
           ) : (
             <DataTable
@@ -250,11 +291,15 @@ export default function WhatsAppBroadcastsPage() {
               columns={columns}
               data={broadcasts}
               searchableColumns={["templateName"]}
-              searchPlaceholder="Search broadcasts..."
+              searchPlaceholder={
+                messages.pPortalWhatsappBroadcastsPageClient.searchPlaceholder
+              }
               defaultColumnVisibility={{
                 createdAt: false,
               }}
-              emptyMessage="No broadcasts yet."
+              emptyMessage={
+                messages.pPortalWhatsappBroadcastsPageClient.emptyMessage
+              }
             />
           )}
         </CardContent>

@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -18,6 +21,7 @@ import {
   type CatalogProduct,
   type VoucherDetailDTO,
 } from "@/lib/billing-client"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 
 const FALLBACK_BILLING_PERIODS = [
   "MONTHLY",
@@ -71,6 +75,10 @@ export function VoucherRulesTab({
   isNew?: boolean
   fieldErrors?: Record<string, string[]>
 }) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pBillingPromotionsIdVoucherRulesTab
   const isProductPromo = voucher.kind === "PRODUCT_PROMOTION"
   const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([])
   const [catalogLoading, setCatalogLoading] = useState(false)
@@ -160,7 +168,7 @@ export function VoucherRulesTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Rules &amp; Restrictions</CardTitle>
+        <CardTitle>{t.rulesAndRestrictions}</CardTitle>
         <CardDescription>
           {isProductPromo
             ? "Choose the catalog products or plans and billing terms where this promotion can be used."
@@ -170,7 +178,7 @@ export function VoucherRulesTab({
       <CardContent className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <Label htmlFor="voucher-rules-expires-at">
-            Expiration date and time
+            {t.expirationDateAndTimeLabel}
           </Label>
           <Input
             id="voucher-rules-expires-at"
@@ -181,7 +189,7 @@ export function VoucherRulesTab({
             aria-invalid={Boolean(fieldErrors.expiresAt?.length)}
           />
           <p className="text-xs text-muted-foreground">
-            The voucher must expire after the current time.
+            {t.expirationHelperText}
           </p>
           {renderErrors("expiresAt")}
         </div>
@@ -189,7 +197,9 @@ export function VoucherRulesTab({
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="voucher-min-amount">Minimum Order Amount</Label>
+                <Label htmlFor="voucher-min-amount">
+                  {t.minimumOrderAmountLabel}
+                </Label>
                 <Input
                   id="voucher-min-amount"
                   type="number"
@@ -207,14 +217,14 @@ export function VoucherRulesTab({
                   aria-invalid={Boolean(fieldErrors.minimumOrderAmount?.length)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional minimum subtotal in the discount currency.
+                  {t.minimumOrderAmountHelperText}
                 </p>
                 {renderErrors("minimumOrderAmount")}
               </div>
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="voucher-max-discount">
-                  Maximum Discount Amount
+                  {t.maximumDiscountAmountLabel}
                 </Label>
                 <Input
                   id="voucher-max-discount"
@@ -235,7 +245,7 @@ export function VoucherRulesTab({
                   )}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional cap for percentage discounts.
+                  {t.maximumDiscountAmountHelperText}
                 </p>
                 {renderErrors("maximumDiscountAmount")}
               </div>
@@ -245,15 +255,14 @@ export function VoucherRulesTab({
               <div className="flex flex-col gap-6">
                 <fieldset className="flex flex-col gap-3">
                   <legend className="text-sm font-medium">
-                    Eligible products or plans
+                    {t.eligibleProductsOrPlansLegend}
                   </legend>
                   <p className="text-xs text-muted-foreground">
-                    Select at least one product package or plan. New promotions
-                    never default to every product.
+                    {t.eligibleProductsHelperText}
                   </p>
                   {catalogLoading && (
                     <p className="text-sm text-muted-foreground">
-                      Loading catalog options...
+                      {t.loadingCatalogOptions}
                     </p>
                   )}
                   {catalogError && (
@@ -296,7 +305,7 @@ export function VoucherRulesTab({
                 {planOptions.length > 0 && (
                   <fieldset className="flex flex-col gap-3">
                     <legend className="text-sm font-medium">
-                      Eligible plans (optional)
+                      {t.eligiblePlansOptionalLegend}
                     </legend>
                     <div className="grid gap-3 sm:grid-cols-2">
                       {planOptions.map((plan) => (
@@ -329,10 +338,10 @@ export function VoucherRulesTab({
 
                 <fieldset className="flex flex-col gap-3">
                   <legend className="text-sm font-medium">
-                    Allowed billing periods
+                    {t.allowedBillingPeriodsLegend}
                   </legend>
                   <p className="text-xs text-muted-foreground">
-                    Select at least one term for this promotion.
+                    {t.allowedBillingPeriodsHelperText}
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {periodOptions.map((period) => (
@@ -364,6 +373,7 @@ export function VoucherRulesTab({
                 planCodes={allowedPlanCodes}
                 periods={allowedBillingPeriods}
                 onUpdate={onUpdate}
+                t={t}
               />
             )}
           </>
@@ -385,31 +395,36 @@ function LegacyEligibilityFields({
   planCodes,
   periods,
   onUpdate,
+  t,
 }: {
   packageCodes: string[]
   planCodes: string[]
   periods: string[]
   onUpdate: (updates: Record<string, unknown>) => void
+  t: AppMessages["pBillingPromotionsIdVoucherRulesTab"]
 }) {
   return (
     <div className="flex flex-col gap-6">
       <CodeListField
-        label="Allowed Package Codes"
+        label={t.allowedPackageCodesLabel}
         value={packageCodes}
-        placeholder="e.g. VPN"
+        placeholder={t.allowedPackageCodesPlaceholder}
         onChange={(next) => onUpdate({ allowedPackageCodes: next })}
+        addButtonLabel={t.addButtonLabel}
       />
       <CodeListField
-        label="Allowed Plan Codes"
+        label={t.allowedPlanCodesLabel}
         value={planCodes}
-        placeholder="e.g. PRO"
+        placeholder={t.allowedPlanCodesPlaceholder}
         onChange={(next) => onUpdate({ allowedPlanCodes: next })}
+        addButtonLabel={t.addButtonLabel}
       />
       <CodeListField
-        label="Allowed Billing Periods"
+        label={t.allowedBillingPeriodsFieldLabel}
         value={periods}
-        placeholder="e.g. MONTHLY"
+        placeholder={t.allowedBillingPeriodsPlaceholder}
         onChange={(next) => onUpdate({ allowedBillingPeriods: next })}
+        addButtonLabel={t.addButtonLabel}
       />
     </div>
   )
@@ -420,11 +435,13 @@ function CodeListField({
   value,
   placeholder,
   onChange,
+  addButtonLabel,
 }: {
   label: string
   value: string[]
   placeholder: string
   onChange: (next: string[]) => void
+  addButtonLabel: string
 }) {
   const [draft, setDraft] = useState("")
 
@@ -453,7 +470,7 @@ function CodeListField({
           className="font-mono uppercase"
         />
         <Button type="button" variant="outline" size="sm" onClick={addCode}>
-          Add
+          {addButtonLabel}
         </Button>
       </div>
       {value.length > 0 && (

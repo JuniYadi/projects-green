@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type AdminAiStatsData = {
@@ -48,6 +49,7 @@ export default function PortalAiGovernancePage() {
   const params = useParams()
   const lang = typeof params?.lang === "string" ? params.lang : "en"
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
 
   const [stats, setStats] = useState<AdminAiStatsData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -78,11 +80,10 @@ export default function PortalAiGovernancePage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
             <ShieldCheck className="h-6 w-6 text-primary" />
-            AI Governance & Forensic Audit
+            {messages.pPortalAiPageClient.pageTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Real-time multi-vector guardrails telemetry, forensic transcript
-            inspection, and ban management.
+            {messages.pPortalAiPageClient.pageDescription}
           </p>
         </div>
 
@@ -92,7 +93,7 @@ export default function PortalAiGovernancePage() {
           >
             <Button variant="outline" size="sm" className="gap-1.5">
               <ChatCircleText className="h-4 w-4" />
-              Sessions Explorer
+              {messages.pPortalAiPageClient.sessionsExplorerButton}
             </Button>
           </Link>
           <Link
@@ -104,7 +105,8 @@ export default function PortalAiGovernancePage() {
               className="gap-1.5 text-destructive hover:bg-destructive/10"
             >
               <Prohibit className="h-4 w-4" />
-              Active Bans ({stats?.activeBans ?? 0})
+              {messages.pPortalAiPageClient.activeBansLabel}
+              {stats?.activeBans ?? 0})
             </Button>
           </Link>
         </div>
@@ -115,7 +117,7 @@ export default function PortalAiGovernancePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Queries (24h / 30d)
+              {messages.pPortalAiPageClient.totalQueriesLabel}
             </CardTitle>
             <Sparkle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -124,9 +126,9 @@ export default function PortalAiGovernancePage() {
               {loading ? "..." : stats?.totalQueries24h.toLocaleString()}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              30d total:{" "}
+              {messages.pPortalAiPageClient.thirtyDayTotalLabel}{" "}
               {loading ? "..." : stats?.totalQueries30d.toLocaleString()}{" "}
-              prompts
+              {messages.pPortalAiPageClient.promptsUnit}
             </p>
           </CardContent>
         </Card>
@@ -134,7 +136,7 @@ export default function PortalAiGovernancePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Estimated Token Burn
+              {messages.pPortalAiPageClient.estimatedTokenBurnLabel}
             </CardTitle>
             <Lightning className="h-4 w-4 text-amber-500" />
           </CardHeader>
@@ -145,7 +147,9 @@ export default function PortalAiGovernancePage() {
                 : `${((stats?.tokens.totalTokens || 0) / 1000).toFixed(1)}k tokens`}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Est. ${stats?.tokens.estimatedCostUsd || 0} (~Rp{" "}
+              {messages.pPortalAiPageClient.estimatedCostUsdPrefix}
+              {stats?.tokens.estimatedCostUsd || 0}{" "}
+              {messages.pPortalAiPageClient.estimatedCostIdrPrefix}{" "}
               {stats?.tokens.estimatedCostIdr?.toLocaleString() || 0})
             </p>
           </CardContent>
@@ -154,7 +158,7 @@ export default function PortalAiGovernancePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Active Strikes (24h)
+              {messages.pPortalAiPageClient.activeStrikesLabel}
             </CardTitle>
             <WarningOctagon className="h-4 w-4 text-orange-500" />
           </CardHeader>
@@ -163,7 +167,7 @@ export default function PortalAiGovernancePage() {
               {loading ? "..." : stats?.activeStrikes}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Violations caught by 4-Tier Guardrails
+              {messages.pPortalAiPageClient.violationsCaughtDescription}
             </p>
           </CardContent>
         </Card>
@@ -171,7 +175,7 @@ export default function PortalAiGovernancePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Active Blacklists & Bans
+              {messages.pPortalAiPageClient.activeBlacklistsBansLabel}
             </CardTitle>
             <Prohibit className="h-4 w-4 text-destructive" />
           </CardHeader>
@@ -180,7 +184,7 @@ export default function PortalAiGovernancePage() {
               {loading ? "..." : stats?.activeBans}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              IP, Org, or User permanent/temporary bans
+              {messages.pPortalAiPageClient.bansScopeDescription}
             </p>
           </CardContent>
         </Card>
@@ -195,10 +199,10 @@ export default function PortalAiGovernancePage() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
               </span>
-              Recent Flagged Security Feed (24h Live Stream)
+              {messages.pPortalAiPageClient.flaggedFeedTitle}
             </h2>
             <p className="text-xs text-muted-foreground">
-              Prompts intercepted at edge with 0 token burn or strike recorded.
+              {messages.pPortalAiPageClient.flaggedFeedDescription}
             </p>
           </div>
         </div>
@@ -207,12 +211,12 @@ export default function PortalAiGovernancePage() {
           <CardContent className="p-0">
             {loading ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
-                Loading feed...
+                {messages.pPortalAiPageClient.loadingFeedText}
               </div>
             ) : !stats?.recentFlaggedFeed ||
               stats.recentFlaggedFeed.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
-                No security violations flagged in the last 24 hours.
+                {messages.pPortalAiPageClient.noViolationsText}
               </div>
             ) : (
               <div className="divide-y">
@@ -259,7 +263,7 @@ export default function PortalAiGovernancePage() {
                           size="sm"
                           className="gap-1 text-xs"
                         >
-                          Inspect
+                          {messages.pPortalAiPageClient.inspectButton}
                           <ArrowRight className="h-3.5 w-3.5" />
                         </Button>
                       </Link>

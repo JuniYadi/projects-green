@@ -2,10 +2,12 @@
 
 import { useState, useCallback } from "react"
 import { eden } from "@/lib/eden"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { Plus } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { MetaAppSelector } from "@/components/whatsapp/meta-app-selector"
 import { Button } from "@/components/ui/button"
 import {
@@ -60,6 +62,9 @@ const emptyForm: AddDeviceForm = {
 
 export function AddDeviceDialog() {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<AddDeviceForm>(emptyForm)
   const [organizations, setOrganizations] = useState<Organization[]>([])
@@ -150,19 +155,29 @@ export function AddDeviceDialog() {
       <DialogTrigger asChild>
         <Button size="sm">
           <Plus className="mr-1.5 size-4" />
-          Add Device
+          {messages.pPortalWhatsappDevicesAddDeviceDialog.addDeviceButton}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add WhatsApp Device</DialogTitle>
+          <DialogTitle>
+            {
+              messages.pPortalWhatsappDevicesAddDeviceDialog
+                .addWhatsappDeviceTitle
+            }
+          </DialogTitle>
           <DialogDescription>
-            Register a new WhatsApp Business device for an organization.
+            {
+              messages.pPortalWhatsappDevicesAddDeviceDialog
+                .registerDeviceDescription
+            }
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="add-org">Organization</Label>
+            <Label htmlFor="add-org">
+              {messages.pPortalWhatsappDevicesAddDeviceDialog.organizationLabel}
+            </Label>
             <Select
               value={form.organizationId}
               onValueChange={(value) =>
@@ -186,7 +201,9 @@ export function AddDeviceDialog() {
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-phone">Phone Number</Label>
+            <Label htmlFor="add-phone">
+              {messages.pPortalWhatsappDevicesAddDeviceDialog.phoneNumberLabel}
+            </Label>
             <Input
               id="add-phone"
               value={form.phoneNumber}
@@ -201,21 +218,31 @@ export function AddDeviceDialog() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-display-name">WhatsApp Display Name</Label>
+            <Label htmlFor="add-display-name">
+              {messages.pPortalWhatsappDevicesAddDeviceDialog.displayNameLabel}
+            </Label>
             <Input
               id="add-display-name"
               value={form.displayName}
               onChange={(e) =>
                 setForm({ ...form, displayName: e.target.value })
               }
-              placeholder="My Business Account"
+              placeholder={
+                messages.pPortalWhatsappDevicesAddDeviceDialog
+                  .businessAccountPlaceholder
+              }
             />
             <p className="text-xs text-muted-foreground">
-              Shown in WhatsApp conversations. Optional.
+              {
+                messages.pPortalWhatsappDevicesAddDeviceDialog
+                  .displayNameHelperText
+              }
             </p>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-environment">Environment</Label>
+            <Label htmlFor="add-environment">
+              {messages.pPortalWhatsappDevicesAddDeviceDialog.environmentLabel}
+            </Label>
             <select
               id="add-environment"
               value={form.environment}
@@ -228,8 +255,12 @@ export function AddDeviceDialog() {
               }
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
             >
-              <option value="LIVE">Live</option>
-              <option value="SANDBOX">Sandbox</option>
+              <option value="LIVE">
+                {messages.pPortalWhatsappDevicesAddDeviceDialog.liveOption}
+              </option>
+              <option value="SANDBOX">
+                {messages.pPortalWhatsappDevicesAddDeviceDialog.sandboxOption}
+              </option>
             </select>
           </div>
           <MetaAppSelector
@@ -242,7 +273,9 @@ export function AddDeviceDialog() {
             }}
           />
           <div className="grid gap-2">
-            <Label htmlFor="add-waba-id">WhatsApp Business Account ID</Label>
+            <Label htmlFor="add-waba-id">
+              {messages.pPortalWhatsappDevicesAddDeviceDialog.wabaIdLabel}
+            </Label>
             <Input
               id="add-waba-id"
               value={form.whatsappBusinessAccountId}
@@ -253,7 +286,9 @@ export function AddDeviceDialog() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-phone-id">WhatsApp Phone ID</Label>
+            <Label htmlFor="add-phone-id">
+              {messages.pPortalWhatsappDevicesAddDeviceDialog.phoneIdLabel}
+            </Label>
             <Input
               id="add-phone-id"
               value={form.whatsappPhoneId}
@@ -264,7 +299,12 @@ export function AddDeviceDialog() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-app-id">WhatsApp Application ID</Label>
+            <Label htmlFor="add-app-id">
+              {
+                messages.pPortalWhatsappDevicesAddDeviceDialog
+                  .applicationIdLabel
+              }
+            </Label>
             <Input
               id="add-app-id"
               value={form.whatsappApplicationId}
@@ -275,7 +315,9 @@ export function AddDeviceDialog() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-callback">Callback URL</Label>
+            <Label htmlFor="add-callback">
+              {messages.pPortalWhatsappDevicesAddDeviceDialog.callbackUrlLabel}
+            </Label>
             <Input
               id="add-callback"
               value={form.callbackUrl}
@@ -294,10 +336,12 @@ export function AddDeviceDialog() {
               setForm(emptyForm)
             }}
           >
-            Cancel
+            {messages.pPortalWhatsappDevicesAddDeviceDialog.cancelButton}
           </Button>
           <Button onClick={() => void handleSubmit()} disabled={isSubmitting}>
-            {isSubmitting ? "Adding..." : "Add Device"}
+            {isSubmitting
+              ? "Adding..."
+              : messages.pPortalWhatsappDevicesAddDeviceDialog.addDeviceButton}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import {
   ArrowSquareOut,
   CheckCircle,
@@ -9,6 +10,8 @@ import {
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { GitSizingConfig, GitSourceConfig } from "./types"
 
 type GitRolloutStepProps = {
@@ -24,6 +27,9 @@ export function GitRolloutStep({
   deploymentId = "dep-initial",
   onReset,
 }: GitRolloutStepProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [activeTab, setActiveTab] = useState<"build" | "runtime">("build")
 
   // TODO: Replace static build logs placeholder with real-time SSE / WebSocket streaming log consumer from /api/deploy/build-logs or OpenSearch
@@ -47,16 +53,20 @@ export function GitRolloutStep({
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div>
-            <h2 className="text-base font-semibold">Deployment Rollout</h2>
+            <h2 className="text-base font-semibold">
+              {messages.pDeployGitDeployGitRolloutStep.title}
+            </h2>
             <p className="font-mono text-xs text-muted-foreground">
-              ID: {deploymentId} · Target: {source.branch}
+              {messages.pDeployGitDeployGitRolloutStep.idLabel} {deploymentId}{" "}
+              {messages.pDeployGitDeployGitRolloutStep.targetLabel}{" "}
+              {source.branch}
             </p>
           </div>
           <Badge
             variant="secondary"
             className="bg-emerald-500/10 text-emerald-700"
           >
-            Rolling Out
+            {messages.pDeployGitDeployGitRolloutStep.statusRollingOut}
           </Badge>
         </div>
 
@@ -64,38 +74,40 @@ export function GitRolloutStep({
           <div className="flex flex-col items-center gap-1.5">
             <CheckCircle className="h-5 w-5 text-emerald-600" />
             <span className="font-semibold text-foreground">
-              1. Source Cloned
+              {messages.pDeployGitDeployGitRolloutStep.stepSourceCloned}
             </span>
             <span className="text-[11px] text-muted-foreground">
-              0.8s elapsed
+              {messages.pDeployGitDeployGitRolloutStep.sourceClonedElapsed}
             </span>
           </div>
 
           <div className="flex flex-col items-center gap-1.5">
             <CheckCircle className="h-5 w-5 text-emerald-600" />
             <span className="font-semibold text-foreground">
-              2. Image Built
+              {messages.pDeployGitDeployGitRolloutStep.stepImageBuilt}
             </span>
             <span className="text-[11px] text-muted-foreground">
-              18.4s elapsed
+              {messages.pDeployGitDeployGitRolloutStep.imageBuiltElapsed}
             </span>
           </div>
 
           <div className="flex flex-col items-center gap-1.5">
             <Spinner className="h-5 w-5 animate-spin text-primary" />
             <span className="font-semibold text-foreground">
-              3. K8s Rollout
+              {messages.pDeployGitDeployGitRolloutStep.stepK8sRollout}
             </span>
-            <span className="text-[11px] text-primary">In progress…</span>
+            <span className="text-[11px] text-primary">
+              {messages.pDeployGitDeployGitRolloutStep.k8sRolloutInProgress}
+            </span>
           </div>
 
           <div className="flex flex-col items-center gap-1.5 opacity-50">
             <div className="h-5 w-5 rounded-full border border-border" />
             <span className="font-medium text-muted-foreground">
-              4. Healthy & Live
+              {messages.pDeployGitDeployGitRolloutStep.stepHealthyLive}
             </span>
             <span className="text-[11px] text-muted-foreground">
-              Pending probe
+              {messages.pDeployGitDeployGitRolloutStep.pendingProbe}
             </span>
           </div>
         </div>
@@ -107,7 +119,7 @@ export function GitRolloutStep({
           <div className="flex items-center gap-2">
             <Terminal className="h-4 w-4 text-muted-foreground" />
             <span className="text-xs font-semibold tracking-wider uppercase">
-              Deployment Logs
+              {messages.pDeployGitDeployGitRolloutStep.deploymentLogsHeading}
             </span>
           </div>
 
@@ -118,7 +130,7 @@ export function GitRolloutStep({
               className="h-7 text-xs"
               onClick={() => setActiveTab("build")}
             >
-              Build Logs
+              {messages.pDeployGitDeployGitRolloutStep.buildLogsTab}
             </Button>
             <Button
               variant={activeTab === "runtime" ? "secondary" : "ghost"}
@@ -126,7 +138,7 @@ export function GitRolloutStep({
               className="h-7 text-xs"
               onClick={() => setActiveTab("runtime")}
             >
-              Pod Runtime
+              {messages.pDeployGitDeployGitRolloutStep.podRuntimeTab}
             </Button>
           </div>
         </div>
@@ -139,7 +151,9 @@ export function GitRolloutStep({
           ))}
           <div className="flex items-center gap-2 pt-2 text-primary">
             <Spinner className="h-3.5 w-3.5 animate-spin" />
-            <span>Streaming live cluster events…</span>
+            <span>
+              {messages.pDeployGitDeployGitRolloutStep.streamingClusterEvents}
+            </span>
           </div>
         </div>
       </div>
@@ -148,7 +162,7 @@ export function GitRolloutStep({
       <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row">
         <div>
           <p className="text-xs text-muted-foreground uppercase">
-            Application Public Ingress
+            {messages.pDeployGitDeployGitRolloutStep.publicIngressLabel}
           </p>
           <p className="mt-1 font-mono text-sm font-semibold text-primary">
             {liveUrl}
@@ -162,10 +176,10 @@ export function GitRolloutStep({
             onClick={() => window.open(liveUrl, "_blank")}
           >
             <ArrowSquareOut className="mr-1.5 h-4 w-4" />
-            Visit Application
+            {messages.pDeployGitDeployGitRolloutStep.visitApplication}
           </Button>
           <Button variant="ghost" size="sm" onClick={onReset}>
-            Deploy Another Project
+            {messages.pDeployGitDeployGitRolloutStep.deployAnotherProject}
           </Button>
         </div>
       </div>

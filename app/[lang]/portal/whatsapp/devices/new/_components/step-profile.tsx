@@ -1,10 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Plus, Trash } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { WizardData } from "./device-create-wizard"
 
 type Props = {
@@ -20,6 +23,9 @@ function KeyValueEditor({
   value: Record<string, unknown>
   onChange: (v: Record<string, unknown>) => void
 }) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const entries = Object.entries(value)
   const [newKey, setNewKey] = useState("")
   const [newValue, setNewValue] = useState("")
@@ -57,12 +63,16 @@ function KeyValueEditor({
         <Input
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
-          placeholder="Key"
+          placeholder={
+            messages.pWhatsappDevicesNewStepProfile.newEntryKeyPlaceholder
+          }
         />
         <Input
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
-          placeholder="Value"
+          placeholder={
+            messages.pWhatsappDevicesNewStepProfile.newEntryValuePlaceholder
+          }
         />
         <Button type="button" variant="outline" size="icon" onClick={addEntry}>
           <Plus className="size-4" />
@@ -73,16 +83,25 @@ function KeyValueEditor({
 }
 
 export function StepProfile({ data, updateData, errors }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   return (
     <div className="grid gap-5">
-      <h2 className="text-lg font-semibold">Profile & Features</h2>
+      <h2 className="text-lg font-semibold">
+        {messages.pWhatsappDevicesNewStepProfile.stepTitle}
+      </h2>
       <div className="grid gap-2">
-        <Label htmlFor="display-name">Display Name</Label>
+        <Label htmlFor="display-name">
+          {messages.pWhatsappDevicesNewStepProfile.displayNameLabel}
+        </Label>
         <Input
           id="display-name"
           value={data.displayName}
           onChange={(e) => updateData({ displayName: e.target.value })}
-          placeholder="My Business Account"
+          placeholder={
+            messages.pWhatsappDevicesNewStepProfile.displayNamePlaceholder
+          }
           aria-invalid={!!errors.displayName}
         />
         {errors.displayName && (
@@ -92,14 +111,16 @@ export function StepProfile({ data, updateData, errors }: Props) {
 
       {/* WhatsApp Profile */}
       <div className="grid gap-2">
-        <Label>WhatsApp Profile</Label>
+        <Label>
+          {messages.pWhatsappDevicesNewStepProfile.whatsappProfileLabel}
+        </Label>
         <p className="text-xs text-muted-foreground">
-          Structured profile fields sent to WhatsApp Business API
+          {messages.pWhatsappDevicesNewStepProfile.whatsappProfileDescription}
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="profile-name" className="text-xs">
-              Name
+              {messages.pWhatsappDevicesNewStepProfile.profileNameLabel}
             </Label>
             <Input
               id="profile-name"
@@ -112,12 +133,14 @@ export function StepProfile({ data, updateData, errors }: Props) {
                   },
                 })
               }
-              placeholder="Profile name"
+              placeholder={
+                messages.pWhatsappDevicesNewStepProfile.profileNamePlaceholder
+              }
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="profile-category" className="text-xs">
-              Category
+              {messages.pWhatsappDevicesNewStepProfile.profileCategoryLabel}
             </Label>
             <Input
               id="profile-category"
@@ -130,12 +153,15 @@ export function StepProfile({ data, updateData, errors }: Props) {
                   },
                 })
               }
-              placeholder="e.g. BUSINESS"
+              placeholder={
+                messages.pWhatsappDevicesNewStepProfile
+                  .profileCategoryPlaceholder
+              }
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="profile-desc" className="text-xs">
-              Description
+              {messages.pWhatsappDevicesNewStepProfile.profileDescriptionLabel}
             </Label>
             <Input
               id="profile-desc"
@@ -148,12 +174,15 @@ export function StepProfile({ data, updateData, errors }: Props) {
                   },
                 })
               }
-              placeholder="Business description"
+              placeholder={
+                messages.pWhatsappDevicesNewStepProfile
+                  .profileDescriptionPlaceholder
+              }
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="profile-email" className="text-xs">
-              Email
+              {messages.pWhatsappDevicesNewStepProfile.profileEmailLabel}
             </Label>
             <Input
               id="profile-email"
@@ -173,7 +202,7 @@ export function StepProfile({ data, updateData, errors }: Props) {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="profile-website" className="text-xs">
-            Website
+            {messages.pWhatsappDevicesNewStepProfile.profileWebsiteLabel}
           </Label>
           <Input
             id="profile-website"
@@ -196,9 +225,11 @@ export function StepProfile({ data, updateData, errors }: Props) {
 
       {/* Features */}
       <div className="grid gap-2">
-        <Label>Feature Flags</Label>
+        <Label>
+          {messages.pWhatsappDevicesNewStepProfile.featureFlagsLabel}
+        </Label>
         <p className="text-xs text-muted-foreground">
-          Key-value pairs for feature toggles
+          {messages.pWhatsappDevicesNewStepProfile.featureFlagsDescription}
         </p>
         <KeyValueEditor
           value={data.features}
@@ -211,12 +242,16 @@ export function StepProfile({ data, updateData, errors }: Props) {
 
       {/* S3 Storage */}
       <div className="grid gap-2">
-        <Label htmlFor="s3-path">S3 Storage Path</Label>
+        <Label htmlFor="s3-path">
+          {messages.pWhatsappDevicesNewStepProfile.s3StoragePathLabel}
+        </Label>
         <Input
           id="s3-path"
           value={data.s3}
           onChange={(e) => updateData({ s3: e.target.value })}
-          placeholder="s3://bucket/path"
+          placeholder={
+            messages.pWhatsappDevicesNewStepProfile.s3StoragePathPlaceholder
+          }
           aria-invalid={!!errors.s3}
         />
         {errors.s3 && <p className="text-xs text-destructive">{errors.s3}</p>}
@@ -225,18 +260,19 @@ export function StepProfile({ data, updateData, errors }: Props) {
       {/* Token */}
       <div className="grid gap-2">
         <Label htmlFor="token">
-          Device Token (Optional if Meta App has master token)
+          {messages.pWhatsappDevicesNewStepProfile.deviceTokenLabel}
         </Label>
         <Input
           id="token"
           value={data.token}
           onChange={(e) => updateData({ token: e.target.value })}
-          placeholder="Leave blank to inherit from Meta App (or fill to override)"
+          placeholder={
+            messages.pWhatsappDevicesNewStepProfile.deviceTokenPlaceholder
+          }
           aria-invalid={!!errors.token}
         />
         <p className="text-[11px] text-muted-foreground">
-          Leave empty to inherit the default System User token from your
-          selected Meta App.
+          {messages.pWhatsappDevicesNewStepProfile.deviceTokenHint}
         </p>
         {errors.token && (
           <p className="text-xs text-destructive">{errors.token}</p>

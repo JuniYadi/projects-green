@@ -28,6 +28,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -170,6 +171,7 @@ export function TemplateForm({
 }: TemplateFormProps) {
   const routeParams = useParams<{ lang?: string }>()
   const uiLocale = resolveLocaleOrDefault(routeParams?.lang)
+  const messages = getMessages(uiLocale)
   const isEnUi = uiLocale === "en"
   const initialLang = initialData?.languages?.[0]
 
@@ -558,7 +560,10 @@ export function TemplateForm({
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="text-base font-semibold">
-                1. General Configuration
+                {
+                  messages.pWhatsappTemplatesTemplateForm
+                    .sectionGeneralConfigTitle
+                }
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -619,7 +624,10 @@ export function TemplateForm({
                     id="name"
                     value={name}
                     onChange={(e) => handleNameChange(e.target.value)}
-                    placeholder="e.g. Order Status Update"
+                    placeholder={
+                      messages.pWhatsappTemplatesTemplateForm
+                        .namePlaceholderExample
+                    }
                     disabled={approvedTemplateLocked}
                   />
                   {errors.name && (
@@ -668,7 +676,9 @@ export function TemplateForm({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category">
+                    {messages.pWhatsappTemplatesTemplateForm.categoryFieldLabel}
+                  </Label>
                   <Select
                     value={category}
                     onValueChange={(val) => {
@@ -691,17 +701,32 @@ export function TemplateForm({
                       <SelectValue placeholder={getWhatsAppText("s245")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="UTILITY">Utility</SelectItem>
-                      <SelectItem value="MARKETING">Marketing</SelectItem>
+                      <SelectItem value="UTILITY">
+                        {
+                          messages.pWhatsappTemplatesTemplateForm
+                            .categoryUtilityOption
+                        }
+                      </SelectItem>
+                      <SelectItem value="MARKETING">
+                        {
+                          messages.pWhatsappTemplatesTemplateForm
+                            .categoryMarketingOption
+                        }
+                      </SelectItem>
                       <SelectItem value="AUTHENTICATION">
-                        Authentication (OTP)
+                        {
+                          messages.pWhatsappTemplatesTemplateForm
+                            .categoryAuthenticationOption
+                        }
                       </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="lang">Language</Label>
+                  <Label htmlFor="lang">
+                    {messages.pWhatsappTemplatesTemplateForm.languageFieldLabel}
+                  </Label>
                   <Select
                     value={lang}
                     onValueChange={(newLang) => {
@@ -790,7 +815,10 @@ export function TemplateForm({
                       value={headerText}
                       onChange={(e) => setHeaderText(e.target.value)}
                       maxLength={60}
-                      placeholder="e.g. Order Confirmation"
+                      placeholder={
+                        messages.pWhatsappTemplatesTemplateForm
+                          .headerTextPlaceholderExample
+                      }
                     />
                     {errors.headerText && (
                       <p className="text-xs text-destructive">
@@ -804,7 +832,12 @@ export function TemplateForm({
                   <div className="space-y-3 rounded-lg border bg-muted/10 p-4">
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <Label>Sample Media Asset</Label>
+                        <Label>
+                          {
+                            messages.pWhatsappTemplatesTemplateForm
+                              .sampleMediaAssetLabel
+                          }
+                        </Label>
                         <span className="text-[11px] font-medium text-muted-foreground">
                           {headerType === "IMAGE"
                             ? "Max 5 MB (PNG, JPG)"
@@ -847,7 +880,10 @@ export function TemplateForm({
                         htmlFor="headerUrl"
                         className="text-[11px] text-muted-foreground"
                       >
-                        Atau gunakan URL publik langsung:
+                        {
+                          messages.pWhatsappTemplatesTemplateForm
+                            .useDirectPublicUrlLabel
+                        }
                       </Label>
                       <Input
                         id="headerUrl"
@@ -873,7 +909,10 @@ export function TemplateForm({
                 </CardTitle>
                 {isAuth && (
                   <Badge variant="secondary" className="text-xs">
-                    Meta OTP Standard
+                    {
+                      messages.pWhatsappTemplatesTemplateForm
+                        .metaOtpStandardBadge
+                    }
                   </Badge>
                 )}
               </div>
@@ -1093,7 +1132,11 @@ export function TemplateForm({
                             : "Monospace (```kode```)"
                         }
                       >
-                        <CodeBlock className="mr-1 size-3.5" /> Monospace
+                        <CodeBlock className="mr-1 size-3.5" />{" "}
+                        {
+                          messages.pWhatsappTemplatesTemplateForm
+                            .monospaceButtonLabel
+                        }
                       </Button>
                     </div>
 
@@ -1121,7 +1164,10 @@ export function TemplateForm({
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
                     maxLength={1024}
-                    placeholder="Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}}. Terima kasih telah berbelanja!"
+                    placeholder={
+                      messages.pWhatsappTemplatesTemplateForm
+                        .bodyPlaceholderExample
+                    }
                     className="min-h-[160px] resize-y rounded-t-none font-mono text-sm leading-relaxed"
                   />
                   {errors.body && (
@@ -1188,7 +1234,11 @@ export function TemplateForm({
                   <div className="flex items-center gap-2">
                     <Sparkle className="size-4 text-primary" />
                     <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                      Dynamic Variable Samples ({detectedPlaceholders.length})
+                      {
+                        messages.pWhatsappTemplatesTemplateForm
+                          .dynamicVariableSamplesPrefix
+                      }
+                      {detectedPlaceholders.length})
                     </span>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -1198,7 +1248,15 @@ export function TemplateForm({
                           htmlFor={`sample-${idx}`}
                           className="font-mono text-xs"
                         >
-                          Placeholder {`{{${idx}}}`} Sample
+                          {
+                            messages.pWhatsappTemplatesTemplateForm
+                              .placeholderSampleLabelPrefix
+                          }{" "}
+                          {`{{${idx}}}`}{" "}
+                          {
+                            messages.pWhatsappTemplatesTemplateForm
+                              .placeholderSampleLabelSuffix
+                          }
                         </Label>
                         <Input
                           id={`sample-${idx}`}
@@ -1223,17 +1281,25 @@ export function TemplateForm({
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="text-base font-semibold">
-                  4. Footer (Optional)
+                  {
+                    messages.pWhatsappTemplatesTemplateForm
+                      .sectionFooterOptionalTitle
+                  }
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Label htmlFor="footer">Footer Text</Label>
+                <Label htmlFor="footer">
+                  {messages.pWhatsappTemplatesTemplateForm.footerTextFieldLabel}
+                </Label>
                 <Input
                   id="footer"
                   value={footer}
                   onChange={(e) => setFooter(e.target.value)}
                   maxLength={60}
-                  placeholder="e.g. PT Perusahaan Maju Jaya"
+                  placeholder={
+                    messages.pWhatsappTemplatesTemplateForm
+                      .footerTextPlaceholderExample
+                  }
                 />
                 <p className="text-xs text-muted-foreground">
                   <WhatsAppText id="s256" />
@@ -1248,7 +1314,10 @@ export function TemplateForm({
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-semibold">
-                    5. Buttons (Optional - Max 3)
+                    {
+                      messages.pWhatsappTemplatesTemplateForm
+                        .sectionButtonsOptionalTitle
+                    }
                   </CardTitle>
                   <div className="flex gap-1.5">
                     <Button
@@ -1258,7 +1327,11 @@ export function TemplateForm({
                       onClick={() => addButton("QUICK_REPLY")}
                       disabled={buttons.length >= 3}
                     >
-                      <Plus className="mr-1 size-3.5" /> Quick Reply
+                      <Plus className="mr-1 size-3.5" />{" "}
+                      {
+                        messages.pWhatsappTemplatesTemplateForm
+                          .quickReplyButtonType
+                      }
                     </Button>
                     <Button
                       type="button"
@@ -1267,7 +1340,8 @@ export function TemplateForm({
                       onClick={() => addButton("URL")}
                       disabled={buttons.length >= 3}
                     >
-                      <Plus className="mr-1 size-3.5" /> URL CTA
+                      <Plus className="mr-1 size-3.5" />{" "}
+                      {messages.pWhatsappTemplatesTemplateForm.urlCtaButtonType}
                     </Button>
                     <Button
                       type="button"
@@ -1300,7 +1374,10 @@ export function TemplateForm({
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
                             <Label className="text-[11px] text-muted-foreground">
-                              Button Label
+                              {
+                                messages.pWhatsappTemplatesTemplateForm
+                                  .buttonLabelFieldLabel
+                              }
                             </Label>
                             <span
                               className={`text-[10px] ${
@@ -1318,7 +1395,10 @@ export function TemplateForm({
                             onChange={(e) =>
                               updateButton(i, { text: e.target.value })
                             }
-                            placeholder="Button Text (max 25 chars)"
+                            placeholder={
+                              messages.pWhatsappTemplatesTemplateForm
+                                .buttonTextPlaceholderExample
+                            }
                             className={`text-xs ${
                               ("text" in btn ? btn.text.length : 0) > 25
                                 ? "border-destructive focus-visible:ring-destructive"
@@ -1386,7 +1466,11 @@ export function TemplateForm({
                   className="h-7 text-xs"
                   onClick={() => setPreviewTab("visual")}
                 >
-                  <Eye className="mr-1 size-3.5" /> Bubble
+                  <Eye className="mr-1 size-3.5" />{" "}
+                  {
+                    messages.pWhatsappTemplatesTemplateForm
+                      .bubblePreviewTabLabel
+                  }
                 </Button>
                 <Button
                   type="button"
@@ -1395,7 +1479,8 @@ export function TemplateForm({
                   className="h-7 text-xs"
                   onClick={() => setPreviewTab("json")}
                 >
-                  <Code className="mr-1 size-3.5" /> Config JSON
+                  <Code className="mr-1 size-3.5" />{" "}
+                  {messages.pWhatsappTemplatesTemplateForm.configJsonTabLabel}
                 </Button>
               </div>
             </div>

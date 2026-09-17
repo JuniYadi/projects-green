@@ -1,7 +1,10 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { useParams } from "next/navigation"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { CountryFlag } from "@/components/ui/country-flag"
 import { Input } from "@/components/ui/input"
@@ -87,6 +90,9 @@ export function ServerForm({
   sshKeys,
   onSaved,
 }: ServerFormProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   // Fields copied when duplicating; name/hostname/ip/sshPort are intentionally cleared.
   const copySource = editing ?? duplicateFrom ?? null
   const [name, setName] = useState(editing?.name ?? "")
@@ -299,7 +305,9 @@ export function ServerForm({
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="server-name">Name</Label>
+              <Label htmlFor="server-name">
+                {messages.pPortalVpnServerForm.nameLabel}
+              </Label>
               <Input
                 id="server-name"
                 value={name}
@@ -308,10 +316,14 @@ export function ServerForm({
               />
             </div>
             <div className="space-y-2">
-              <Label>Region</Label>
+              <Label>{messages.pPortalVpnServerForm.regionLabel}</Label>
               <Select value={regionId} onValueChange={setRegionId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select region" />
+                  <SelectValue
+                    placeholder={
+                      messages.pPortalVpnServerForm.selectRegionPlaceholder
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {regions.map((region) => (
@@ -327,7 +339,9 @@ export function ServerForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="server-host">Hostname</Label>
+              <Label htmlFor="server-host">
+                {messages.pPortalVpnServerForm.hostnameLabel}
+              </Label>
               <Input
                 id="server-host"
                 value={hostname}
@@ -339,7 +353,9 @@ export function ServerForm({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="server-ip">IP Address</Label>
+              <Label htmlFor="server-ip">
+                {messages.pPortalVpnServerForm.ipAddressLabel}
+              </Label>
               <Input
                 id="server-ip"
                 value={ipAddress}
@@ -347,14 +363,16 @@ export function ServerForm({
                   clearTestResult()
                   setIpAddress(e.target.value)
                 }}
-                placeholder="203.0.113.10 (optional)"
+                placeholder={messages.pPortalVpnServerForm.ipAddressPlaceholder}
               />
               <p className="text-xs text-muted-foreground">
-                Optional — fallback if hostname DNS fails. IPv4 or IPv6.
+                {messages.pPortalVpnServerForm.ipAddressHint}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="server-ssh-port">SSH Port</Label>
+              <Label htmlFor="server-ssh-port">
+                {messages.pPortalVpnServerForm.sshPortLabel}
+              </Label>
               <Input
                 id="server-ssh-port"
                 type="number"
@@ -367,7 +385,7 @@ export function ServerForm({
               />
             </div>
             <div className="space-y-2">
-              <Label>SSH Key</Label>
+              <Label>{messages.pPortalVpnServerForm.sshKeyLabel}</Label>
               <Select
                 value={sshKeyId}
                 onValueChange={(value) => {
@@ -376,7 +394,11 @@ export function ServerForm({
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select SSH key" />
+                  <SelectValue
+                    placeholder={
+                      messages.pPortalVpnServerForm.selectSshKeyPlaceholder
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {sshKeys.map((key) => (
@@ -400,7 +422,9 @@ export function ServerForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="server-ssh-user">SSH User</Label>
+              <Label htmlFor="server-ssh-user">
+                {messages.pPortalVpnServerForm.sshUserLabel}
+              </Label>
               <Input
                 id="server-ssh-user"
                 value={sshUser}
@@ -414,7 +438,7 @@ export function ServerForm({
           </div>
 
           <div className="space-y-3 rounded-lg border p-4">
-            <Label>Location (for map pin)</Label>
+            <Label>{messages.pPortalVpnServerForm.locationLabel}</Label>
             <div className="space-y-2">
               <div className="relative">
                 <Input
@@ -428,8 +452,12 @@ export function ServerForm({
                       400
                     )
                   }}
-                  placeholder="Search city… Jakarta, Singapore"
-                  aria-label="Search location"
+                  placeholder={
+                    messages.pPortalVpnServerForm.searchLocationPlaceholder
+                  }
+                  aria-label={
+                    messages.pPortalVpnServerForm.searchLocationAriaLabel
+                  }
                 />
                 {searching && (
                   <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground">
@@ -459,7 +487,9 @@ export function ServerForm({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="server-lat">Latitude</Label>
+                <Label htmlFor="server-lat">
+                  {messages.pPortalVpnServerForm.latitudeLabel}
+                </Label>
                 <Input
                   id="server-lat"
                   type="number"
@@ -474,7 +504,9 @@ export function ServerForm({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="server-lng">Longitude</Label>
+                <Label htmlFor="server-lng">
+                  {messages.pPortalVpnServerForm.longitudeLabel}
+                </Label>
                 <Input
                   id="server-lng"
                   type="number"
@@ -492,7 +524,7 @@ export function ServerForm({
             {latitude !== null && longitude !== null && (
               <div className="h-48 overflow-hidden rounded-md border">
                 <iframe
-                  title="Server location"
+                  title={messages.pPortalVpnServerForm.serverLocationTitle}
                   src={`https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.02},${latitude - 0.02},${longitude + 0.02},${latitude + 0.02}&layer=mapnik&marker=${latitude},${longitude}`}
                   className="h-full w-full border-0"
                   allowFullScreen
@@ -503,7 +535,9 @@ export function ServerForm({
           </div>
 
           <div className="space-y-3">
-            <Label>Protocols &amp; Ports</Label>
+            <Label>
+              {messages.pPortalVpnServerForm.protocolsAndPortsLabel}
+            </Label>
             {(Object.keys(PROTOCOL_LABELS) as ProtocolKey[]).map((key) => (
               <div key={key} className="flex items-center gap-3">
                 <label className="flex w-32 items-center gap-2 text-sm">
@@ -536,7 +570,7 @@ export function ServerForm({
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
             />
-            Active
+            {messages.pPortalVpnServerForm.activeLabel}
           </label>
 
           {error && (
@@ -547,7 +581,7 @@ export function ServerForm({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {messages.pPortalVpnServerForm.cancelButton}
           </Button>
           {canTest && (
             <Button

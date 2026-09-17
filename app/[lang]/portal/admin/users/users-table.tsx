@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { eden } from "@/lib/eden"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -73,6 +75,9 @@ type ListMetadata = {
 
 export function UsersTable() {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [listMetadata, setListMetadata] = useState<ListMetadata>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -201,7 +206,10 @@ export function UsersTable() {
       {
         id: "user",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="User" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminUsersUsersTable.userColumn}
+          />
         ),
         cell: ({ row }) => {
           const u = row.original
@@ -235,7 +243,10 @@ export function UsersTable() {
       {
         accessorKey: "id",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="User ID" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminUsersUsersTable.userIdColumn}
+          />
         ),
         cell: ({ row }) => (
           <span className="font-mono text-xs text-muted-foreground">
@@ -246,7 +257,10 @@ export function UsersTable() {
       {
         accessorKey: "emailVerified",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Email Verified" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminUsersUsersTable.emailVerifiedColumn}
+          />
         ),
         cell: ({ row }) => {
           const verified = row.original.emailVerified
@@ -256,14 +270,14 @@ export function UsersTable() {
                 <>
                   <CheckCircle className="h-4 w-4 text-emerald-500" />
                   <span className="text-xs text-muted-foreground">
-                    Verified
+                    {messages.pPortalAdminUsersUsersTable.verifiedLabel}
                   </span>
                 </>
               ) : (
                 <>
                   <XCircle className="h-4 w-4 text-amber-500" />
                   <span className="text-xs text-muted-foreground">
-                    Unverified
+                    {messages.pPortalAdminUsersUsersTable.unverifiedLabel}
                   </span>
                 </>
               )}
@@ -274,7 +288,10 @@ export function UsersTable() {
       {
         accessorKey: "lastSignInAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Last Sign In" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminUsersUsersTable.lastSignInColumn}
+          />
         ),
         cell: ({ row }) => {
           const date = row.original.lastSignInAt
@@ -288,7 +305,10 @@ export function UsersTable() {
       {
         accessorKey: "createdAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Created" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminUsersUsersTable.createdColumn}
+          />
         ),
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground">
@@ -298,7 +318,11 @@ export function UsersTable() {
       },
       {
         id: "actions",
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => (
+          <span className="sr-only">
+            {messages.pPortalAdminUsersUsersTable.actionsColumn}
+          </span>
+        ),
         cell: ({ row }) => (
           <Button
             variant="ghost"
@@ -307,12 +331,12 @@ export function UsersTable() {
             onClick={() => void openUserDetails(row.original.id)}
           >
             <Eye className="h-3.5 w-3.5" />
-            <span>Details</span>
+            <span>{messages.pPortalAdminUsersUsersTable.detailsButton}</span>
           </Button>
         ),
       },
     ],
-    [openUserDetails]
+    [openUserDetails, messages]
   )
 
   if (isLoading && users.length === 0) {
@@ -339,7 +363,9 @@ export function UsersTable() {
           <div className="relative w-72">
             <MagnifyingGlassIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by name or email..."
+              placeholder={
+                messages.pPortalAdminUsersUsersTable.searchPlaceholder
+              }
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
               className="pl-9 text-sm"
@@ -348,10 +374,20 @@ export function UsersTable() {
 
           <Select value={selectedOrgId} onValueChange={handleOrgChange}>
             <SelectTrigger className="w-56 text-sm">
-              <SelectValue placeholder="All Organizations" />
+              <SelectValue
+                placeholder={
+                  messages.pPortalAdminUsersUsersTable
+                    .allOrganizationsPlaceholder
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Organizations</SelectItem>
+              <SelectItem value="all">
+                {
+                  messages.pPortalAdminUsersUsersTable
+                    .allOrganizationsPlaceholder
+                }
+              </SelectItem>
               {organizations.map((org) => (
                 <SelectItem key={org.id} value={org.id}>
                   {org.name}
@@ -378,7 +414,7 @@ export function UsersTable() {
           disabled={!listMetadata.before || isLoading}
         >
           <ArrowLeftIcon className="mr-1 h-4 w-4" />
-          Previous
+          {messages.pPortalAdminUsersUsersTable.previousButton}
         </Button>
         <Button
           variant="outline"
@@ -386,7 +422,7 @@ export function UsersTable() {
           onClick={handleNext}
           disabled={!listMetadata.after || isLoading}
         >
-          Next
+          {messages.pPortalAdminUsersUsersTable.nextButton}
           <ArrowRightIcon className="ml-1 h-4 w-4" />
         </Button>
       </div>
@@ -395,9 +431,11 @@ export function UsersTable() {
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>User Profile & Memberships</DialogTitle>
+            <DialogTitle>
+              {messages.pPortalAdminUsersUsersTable.userProfileMembershipsTitle}
+            </DialogTitle>
             <DialogDescription>
-              Platform details and associated organization roles.
+              {messages.pPortalAdminUsersUsersTable.userProfileDescription}
             </DialogDescription>
           </DialogHeader>
 
@@ -436,18 +474,26 @@ export function UsersTable() {
                 <Badge
                   variant={selectedUser.emailVerified ? "secondary" : "outline"}
                 >
-                  {selectedUser.emailVerified ? "Verified" : "Unverified"}
+                  {selectedUser.emailVerified
+                    ? messages.pPortalAdminUsersUsersTable.verifiedLabel
+                    : messages.pPortalAdminUsersUsersTable.unverifiedLabel}
                 </Badge>
               </div>
 
               <div className="space-y-2">
                 <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                  Organization Memberships (
+                  {
+                    messages.pPortalAdminUsersUsersTable
+                      .organizationMembershipsCountPrefix
+                  }
                   {selectedUser.memberships?.length ?? 0})
                 </h4>
                 {selectedUser.memberships?.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    This user does not belong to any organizations.
+                    {
+                      messages.pPortalAdminUsersUsersTable
+                        .noOrganizationsMessage
+                    }
                   </p>
                 ) : (
                   <div className="max-h-56 divide-y overflow-y-auto rounded-md border">

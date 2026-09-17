@@ -198,6 +198,8 @@ export function SupportTicketAdminDetailScreen({
   const router = useRouter()
   const locale = resolveLocaleOrDefault(lang)
   const messages = getMessages(locale).console.supportTickets
+  const detailMessages =
+    getMessages(locale).pPortalSupportTicketsSupportTicketAdminDetailScreen
   const listPath = localizePathname({
     pathname: "/portal/support-tickets",
     locale,
@@ -736,12 +738,10 @@ export function SupportTicketAdminDetailScreen({
           </svg>
           <div>
             <p className="text-sm font-semibold">
-              Secure Details Permanently Wiped
+              {detailMessages.secureWipedTitle}
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-destructive/80">
-              This ticket is closed. For security compliance, all credentials
-              and sensitive information in the secure fields have been
-              permanently deleted and cannot be retrieved.
+              {detailMessages.secureWipedDescription}
             </p>
           </div>
         </div>
@@ -766,12 +766,10 @@ export function SupportTicketAdminDetailScreen({
           </svg>
           <div>
             <p className="text-sm font-semibold">
-              Active Secure Details Warning
+              {detailMessages.activeSecureWarningTitle}
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-yellow-500/80">
-              This ticket currently stores secure credential information.
-              Closing this ticket will permanently wipe all secure credentials
-              across the thread.
+              {detailMessages.activeSecureWarningDescription}
             </p>
           </div>
         </div>
@@ -789,7 +787,7 @@ export function SupportTicketAdminDetailScreen({
                     {ticket.ticketNumber}
                   </h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Organization:{" "}
+                    {detailMessages.organizationLabel}{" "}
                     <span className="font-semibold text-foreground">
                       {ticket.organizationName || ticket.organizationId}
                     </span>
@@ -802,7 +800,7 @@ export function SupportTicketAdminDetailScreen({
                   {thread.users &&
                     thread.users[ticket.requesterWorkosUserId] && (
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Requester:{" "}
+                        {detailMessages.requesterLabel}{" "}
                         <span className="font-semibold text-foreground">
                           {thread.users[ticket.requesterWorkosUserId].name}
                         </span>
@@ -812,7 +810,7 @@ export function SupportTicketAdminDetailScreen({
                     thread.users &&
                     thread.users[ticket.assignedAgentWorkosUserId] && (
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        PIC:{" "}
+                        {detailMessages.picLabel}{" "}
                         <span className="inline-flex items-center gap-1 font-semibold text-foreground">
                           <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
                           {thread.users[ticket.assignedAgentWorkosUserId].name}
@@ -1079,14 +1077,14 @@ export function SupportTicketAdminDetailScreen({
                           {reply.secureForm ? (
                             <SecureDetailsViewer
                               content={reply.secureForm}
-                              label="Secure details"
+                              label={detailMessages.secureDetailsLabel}
                             />
                           ) : null}
 
                           {reply.attachmentMetadata.length > 0 ? (
                             <div className="space-y-1.5 pt-2">
                               <p className="text-[10px] font-semibold text-muted-foreground">
-                                Attachments
+                                {detailMessages.attachmentsLabel}
                               </p>
                               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 {reply.attachmentMetadata.map((attachment) => (
@@ -1295,8 +1293,7 @@ export function SupportTicketAdminDetailScreen({
                       htmlFor="internal-note"
                       className="cursor-pointer text-sm font-medium text-yellow-500 select-none"
                     >
-                      Post as Internal Note (visible only to support
-                      agents/admins)
+                      {detailMessages.postInternalNote}
                     </Label>
                   </div>
 
@@ -1419,7 +1416,7 @@ export function SupportTicketAdminDetailScreen({
                       value="none"
                       className="text-foreground hover:bg-muted"
                     >
-                      None
+                      {detailMessages.noneOption}
                     </SelectItem>
                     {SUPPORT_TICKET_SERVICES.map((serviceValue) => (
                       <SelectItem
@@ -1439,7 +1436,7 @@ export function SupportTicketAdminDetailScreen({
                   htmlFor="ticket-priority"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  Priority
+                  {detailMessages.priorityLabel}
                 </Label>
                 <Select
                   value={priority}
@@ -1452,7 +1449,9 @@ export function SupportTicketAdminDetailScreen({
                     id="ticket-priority"
                     className="w-full border-border bg-background/50 text-foreground"
                   >
-                    <SelectValue placeholder="Select priority" />
+                    <SelectValue
+                      placeholder={detailMessages.selectPriorityPlaceholder}
+                    />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-popover">
                     {SUPPORT_TICKET_PRIORITIES.map((priorityValue) => (
@@ -1473,7 +1472,7 @@ export function SupportTicketAdminDetailScreen({
                   htmlFor="ticket-pic"
                   className="text-xs font-semibold text-muted-foreground"
                 >
-                  PIC (Point of Contact)
+                  {detailMessages.picFullLabel}
                 </Label>
                 <Select
                   value={effectivePIC ?? "none"}
@@ -1488,14 +1487,16 @@ export function SupportTicketAdminDetailScreen({
                     id="ticket-pic"
                     className="w-full border-border bg-background/50 text-foreground"
                   >
-                    <SelectValue placeholder="Unassigned" />
+                    <SelectValue
+                      placeholder={detailMessages.unassignedPlaceholder}
+                    />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-popover">
                     <SelectItem
                       value="none"
                       className="text-foreground hover:bg-muted"
                     >
-                      Unassigned
+                      {detailMessages.unassignedPlaceholder}
                     </SelectItem>
                     {thread.users &&
                       Object.entries(thread.users).map(([userId, user]) => (
@@ -1527,13 +1528,12 @@ export function SupportTicketAdminDetailScreen({
           <Card className="border-destructive/20 bg-destructive/[0.02]">
             <CardHeader className="pb-2">
               <CardTitle className="font-heading text-base font-semibold text-destructive">
-                Danger Zone
+                {detailMessages.dangerZoneHeading}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Permanently delete this support ticket. All messages and
-                attachments will be lost and cannot be recovered.
+                {detailMessages.deleteWarning}
               </p>
               <Button
                 type="button"

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import {
   type ColumnDef,
   type SortingState,
@@ -38,6 +39,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import {
   listVpnAuditLogs,
@@ -125,7 +129,8 @@ function ColumnHeader({
 
 function getColumns(
   expanded: Set<string>,
-  toggleExpand: (id: string) => void
+  toggleExpand: (id: string) => void,
+  messages: ReturnType<typeof getMessages>
 ): ColumnDef<VpnAuditLogListItem>[] {
   return [
     {
@@ -158,7 +163,12 @@ function getColumns(
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => <ColumnHeader column={column} title="Time" />,
+      header: ({ column }) => (
+        <ColumnHeader
+          column={column}
+          title={messages.pPortalVpnAuditLogsTable.time}
+        />
+      ),
       cell: ({ row }) => (
         <span className="font-mono text-xs text-muted-foreground">
           {formatDateTime(row.original.createdAt)}
@@ -168,7 +178,12 @@ function getColumns(
     },
     {
       accessorKey: "action",
-      header: ({ column }) => <ColumnHeader column={column} title="Action" />,
+      header: ({ column }) => (
+        <ColumnHeader
+          column={column}
+          title={messages.pPortalVpnAuditLogsTable.action}
+        />
+      ),
       cell: ({ row }) => {
         const action = row.original.action
         const tone = actionTone(action)
@@ -184,7 +199,7 @@ function getColumns(
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: messages.pPortalVpnAuditLogsTable.status,
       cell: ({ row }) => {
         const r = row.original
         const status =
@@ -299,7 +314,13 @@ function getColumns(
   ]
 }
 
-function ExpandedDetails({ item }: { item: VpnAuditLogListItem }) {
+function ExpandedDetails({
+  item,
+  messages,
+}: {
+  item: VpnAuditLogListItem
+  messages: ReturnType<typeof getMessages>
+}) {
   const { rows, other } = useMemo(
     () =>
       extractAuditDetails({
@@ -364,7 +385,7 @@ function ExpandedDetails({ item }: { item: VpnAuditLogListItem }) {
         ))}
         {allRows.length === 0 && (
           <span className="text-sm text-muted-foreground">
-            No detail payload for this entry.
+            {messages.pPortalVpnAuditLogsTable.noDetailPayload}
           </span>
         )}
       </div>
@@ -394,6 +415,10 @@ function ExpandedDetails({ item }: { item: VpnAuditLogListItem }) {
 }
 
 export function AuditLogsTable() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [data, setData] = useState<VpnAuditLogListItem[]>([])
   const [pagination, setPagination] = useState<AuditLogPagination | null>(null)
   const [loading, setLoading] = useState(true)
@@ -489,8 +514,8 @@ export function AuditLogsTable() {
   }
 
   const columns = useMemo(
-    () => getColumns(expanded, toggleExpand),
-    [expanded, toggleExpand]
+    () => getColumns(expanded, toggleExpand, messages),
+    [expanded, toggleExpand, messages]
   )
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -528,14 +553,20 @@ export function AuditLogsTable() {
         <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">
-              Action
+              {messages.pPortalVpnAuditLogsTable.action}
             </label>
             <Select value={actionFilter} onValueChange={setActionFilter}>
               <SelectTrigger className="w-[200px]" size="sm">
-                <SelectValue placeholder="All actions" />
+                <SelectValue
+                  placeholder={
+                    messages.pPortalVpnAuditLogsTable.allActionsPlaceholder
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All actions</SelectItem>
+                <SelectItem value="all">
+                  {messages.pPortalVpnAuditLogsTable.allActionsPlaceholder}
+                </SelectItem>
                 {ACTION_OPTIONS.map((a) => (
                   <SelectItem key={a} value={a}>
                     {a}
@@ -547,14 +578,20 @@ export function AuditLogsTable() {
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">
-              Status
+              {messages.pPortalVpnAuditLogsTable.status}
             </label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[140px]" size="sm">
-                <SelectValue placeholder="All status" />
+                <SelectValue
+                  placeholder={
+                    messages.pPortalVpnAuditLogsTable.allStatusPlaceholder
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All status</SelectItem>
+                <SelectItem value="all">
+                  {messages.pPortalVpnAuditLogsTable.allStatusPlaceholder}
+                </SelectItem>
                 {STATUS_OPTIONS.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
@@ -566,7 +603,7 @@ export function AuditLogsTable() {
 
           <div className="flex flex-1 flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">
-              Search (account / device / user / admin ID)
+              {messages.pPortalVpnAuditLogsTable.searchLabel}
             </label>
             <Input
               value={search}
@@ -574,14 +611,14 @@ export function AuditLogsTable() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") applyFilters()
               }}
-              placeholder="e.g. srv_abc123"
+              placeholder={messages.pPortalVpnAuditLogsTable.searchPlaceholder}
               className="lg:max-w-sm"
             />
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">
-              From
+              {messages.pPortalVpnAuditLogsTable.fromLabel}
             </label>
             <Input
               type="date"
@@ -593,7 +630,7 @@ export function AuditLogsTable() {
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">
-              To
+              {messages.pPortalVpnAuditLogsTable.toLabel}
             </label>
             <Input
               type="date"
@@ -605,14 +642,21 @@ export function AuditLogsTable() {
 
           <div className="flex gap-2">
             <Button size="sm" onClick={applyFilters}>
-              Apply
+              {messages.pPortalVpnAuditLogsTable.apply}
             </Button>
             <Button variant="outline" size="sm" onClick={resetFilters}>
-              Reset
+              {messages.pPortalVpnAuditLogsTable.reset}
             </Button>
-            <Button variant="outline" size="sm" onClick={reload} title="Reload">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={reload}
+              title={messages.pPortalVpnAuditLogsTable.reload}
+            >
               <ArrowsDownUpIcon className="h-3.5 w-3.5 rotate-90" />
-              <span className="sr-only">Reload</span>
+              <span className="sr-only">
+                {messages.pPortalVpnAuditLogsTable.reload}
+              </span>
             </Button>
           </div>
         </div>
@@ -663,7 +707,7 @@ export function AuditLogsTable() {
                           colSpan={columns.length}
                           className="bg-muted/30 p-4"
                         >
-                          <ExpandedDetails item={item} />
+                          <ExpandedDetails item={item} messages={messages} />
                         </TableCell>
                       </TableRow>
                     )}
@@ -676,7 +720,7 @@ export function AuditLogsTable() {
                   colSpan={columns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
-                  No audit entries match the current filters.
+                  {messages.pPortalVpnAuditLogsTable.noAuditEntries}
                 </TableCell>
               </TableRow>
             )}
@@ -688,7 +732,7 @@ export function AuditLogsTable() {
       {pagination && (
         <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
           <div className="text-xs text-muted-foreground">
-            Showing{" "}
+            {messages.pPortalVpnAuditLogsTable.showing}{" "}
             <span className="font-medium">
               {(pagination.page - 1) * pagination.limit + 1}
             </span>
@@ -696,7 +740,9 @@ export function AuditLogsTable() {
             <span className="font-medium">
               {Math.min(pagination.page * pagination.limit, pagination.total)}
             </span>{" "}
-            of <span className="font-medium">{pagination.total}</span> entries
+            {messages.pPortalVpnAuditLogsTable.of}{" "}
+            <span className="font-medium">{pagination.total}</span>{" "}
+            {messages.pPortalVpnAuditLogsTable.entries}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -705,10 +751,12 @@ export function AuditLogsTable() {
               disabled={pagination.page <= 1 || loading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Prev
+              {messages.pPortalVpnAuditLogsTable.prev}
             </Button>
             <span className="text-xs text-muted-foreground">
-              Page {pagination.page} of {Math.max(pagination.totalPages, 1)}
+              {messages.pPortalVpnAuditLogsTable.page} {pagination.page}{" "}
+              {messages.pPortalVpnAuditLogsTable.of}{" "}
+              {Math.max(pagination.totalPages, 1)}
             </span>
             <Button
               variant="outline"
@@ -718,7 +766,7 @@ export function AuditLogsTable() {
                 setPage((p) => Math.min(pagination.totalPages, p + 1))
               }
             >
-              Next
+              {messages.pPortalVpnAuditLogsTable.next}
             </Button>
           </div>
         </div>

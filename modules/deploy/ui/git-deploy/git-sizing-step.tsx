@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import {
   ArrowLeft,
   ArrowRight,
@@ -18,6 +19,8 @@ import {
 } from "@/lib/billing-client"
 import { getPlanResources } from "@/modules/deploy/catalog-plan-utils"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { GitSizingConfig } from "./types"
 
 type GitSizingStepProps = {
@@ -64,6 +67,9 @@ export function GitSizingStep({
   onBack,
   onNext,
 }: GitSizingStepProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [catalogData, setCatalogData] =
     useState<CatalogProductDetailResponse | null>(null)
   const [tier, setTier] = useState<string>(initialConfig?.tier ?? "standard")
@@ -160,9 +166,11 @@ export function GitSizingStep({
     <div className="flex flex-col gap-6">
       {/* Target Region */}
       <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-base font-semibold">Deployment Region</h2>
+        <h2 className="text-base font-semibold">
+          {messages.pDeployGitDeployGitSizingStep.deploymentRegionTitle}
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Dedicated Kubernetes cluster hosting your ingress and container pods.
+          {messages.pDeployGitDeployGitSizingStep.deploymentRegionDescription}
         </p>
 
         <div className="mt-4 flex items-center justify-between rounded-lg border border-border p-4">
@@ -170,10 +178,10 @@ export function GitSizingStep({
             <Globe className="h-5 w-5 text-muted-foreground" />
             <div>
               <p className="text-sm font-semibold">
-                Singapore APAC-1 (sgp-k8s-prod-01)
+                {messages.pDeployGitDeployGitSizingStep.regionName}
               </p>
               <p className="text-xs text-muted-foreground">
-                High Availability · Low Latency (SE Asia & Pacific)
+                {messages.pDeployGitDeployGitSizingStep.regionAvailability}
               </p>
             </div>
           </div>
@@ -181,7 +189,7 @@ export function GitSizingStep({
             variant="secondary"
             className="bg-emerald-500/10 text-emerald-700"
           >
-            Online & Ready
+            {messages.pDeployGitDeployGitSizingStep.regionStatusOnline}
           </Badge>
         </div>
       </div>
@@ -190,14 +198,16 @@ export function GitSizingStep({
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold">Compute & Sizing Tier</h2>
+            <h2 className="text-base font-semibold">
+              {messages.pDeployGitDeployGitSizingStep.computeSizingTitle}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Transparent billing loaded from the App Hosting product catalog.
+              {messages.pDeployGitDeployGitSizingStep.computeSizingDescription}
             </p>
           </div>
           {catalogPlans.length > 0 && (
             <Badge variant="outline" className="text-xs">
-              Catalog: APP_HOSTING
+              {messages.pDeployGitDeployGitSizingStep.catalogBadge}
             </Badge>
           )}
         </div>
@@ -223,7 +233,10 @@ export function GitSizingStep({
                     <h3 className="text-sm font-semibold">{item.name}</h3>
                     {item.recommended && (
                       <Badge variant="secondary" className="text-[10px]">
-                        Recommended
+                        {
+                          messages.pDeployGitDeployGitSizingStep
+                            .recommendedBadge
+                        }
                       </Badge>
                     )}
                   </div>
@@ -257,11 +270,17 @@ export function GitSizingStep({
                   <div className="mt-4 flex flex-col gap-2 border-t border-border/60 pt-3 text-xs">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Cpu className="h-3.5 w-3.5" />
-                      <span>{item.cpu}m vCPU</span>
+                      <span>
+                        {item.cpu}
+                        {messages.pDeployGitDeployGitSizingStep.vcpuUnit}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <HardDrives className="h-3.5 w-3.5" />
-                      <span>{item.memory} MiB RAM</span>
+                      <span>
+                        {item.memory}{" "}
+                        {messages.pDeployGitDeployGitSizingStep.ramUnit}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -283,22 +302,25 @@ export function GitSizingStep({
 
       {/* Domain & Public Ingress */}
       <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-base font-semibold">Domain & Ingress Endpoint</h2>
+        <h2 className="text-base font-semibold">
+          {messages.pDeployGitDeployGitSizingStep.domainIngressTitle}
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your application is provisioned with automated TLS wildcard
-          certificates via Let’s Encrypt.
+          {messages.pDeployGitDeployGitSizingStep.domainIngressDescription}
         </p>
 
         <div className="mt-4 max-w-lg">
           <label className="text-xs font-medium text-muted-foreground uppercase">
-            Subdomain Prefix
+            {messages.pDeployGitDeployGitSizingStep.subdomainPrefixLabel}
           </label>
           <div className="mt-1 flex items-center gap-2">
             <Input
               className="font-mono text-sm"
               value={subdomain}
               onChange={(e) => setSubdomain(e.target.value)}
-              placeholder="my-application"
+              placeholder={
+                messages.pDeployGitDeployGitSizingStep.subdomainPlaceholder
+              }
             />
             <span className="text-sm font-medium text-muted-foreground">
               .pfnapp.dev
@@ -306,7 +328,7 @@ export function GitSizingStep({
           </div>
           <p className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700">
             <CheckCircle className="h-3.5 w-3.5" />
-            Automatic HTTPS and TLS routing configured
+            {messages.pDeployGitDeployGitSizingStep.httpsConfiguredText}
           </p>
         </div>
       </div>
@@ -315,10 +337,10 @@ export function GitSizingStep({
       <div className="flex items-center justify-between pt-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="mr-1.5 h-4 w-4" />
-          Back to Build Config
+          {messages.pDeployGitDeployGitSizingStep.backToBuildConfigButton}
         </Button>
         <Button onClick={handleContinue} disabled={!subdomain.trim()}>
-          Review Deployment
+          {messages.pDeployGitDeployGitSizingStep.reviewDeploymentButton}
           <ArrowRight className="ml-1.5 h-4 w-4" />
         </Button>
       </div>

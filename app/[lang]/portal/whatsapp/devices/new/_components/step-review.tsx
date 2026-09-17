@@ -1,9 +1,12 @@
 "use client"
 
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Pencil } from "@phosphor-icons/react"
 import type { WizardData } from "./device-create-wizard"
 import { DEFAULT_QUOTA_BASE } from "@/modules/whatsapp/devices/devices.schemas"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type Props = {
   data: WizardData
@@ -21,6 +24,10 @@ function ReviewSection({
   goToStep: (s: number) => void
   children: React.ReactNode
 }) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   return (
     <div className="grid gap-2">
       <div className="flex items-center justify-between">
@@ -32,7 +39,7 @@ function ReviewSection({
           onClick={() => goToStep(step)}
         >
           <Pencil className="mr-1 size-3" />
-          Edit
+          {messages.pWhatsappDevicesNewStepReview.edit}
         </Button>
       </div>
       <div className="rounded-md border p-3 text-sm">{children}</div>
@@ -50,6 +57,10 @@ function Field({ label, value }: { label: string; value: string | null }) {
 }
 
 export function StepReview({ data, goToStep }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const profileEntries = Object.entries(data.whatsappProfile).filter(
     ([, v]) => v !== ""
   )
@@ -57,45 +68,96 @@ export function StepReview({ data, goToStep }: Props) {
 
   return (
     <div className="grid gap-5">
-      <h2 className="text-lg font-semibold">Review & Submit</h2>
+      <h2 className="text-lg font-semibold">
+        {messages.pWhatsappDevicesNewStepReview.reviewAndSubmit}
+      </h2>
 
-      <ReviewSection title="Organization & Phone" step={0} goToStep={goToStep}>
-        <Field label="Organization ID" value={data.organizationId} />
-        <Field label="Phone Number" value={data.phoneNumber} />
+      <ReviewSection
+        title={messages.pWhatsappDevicesNewStepReview.organizationAndPhoneTitle}
+        step={0}
+        goToStep={goToStep}
+      >
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.organizationIdLabel}
+          value={data.organizationId}
+        />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.phoneNumberLabel}
+          value={data.phoneNumber}
+        />
       </ReviewSection>
 
-      <ReviewSection title="WhatsApp Business IDs" step={1} goToStep={goToStep}>
+      <ReviewSection
+        title={messages.pWhatsappDevicesNewStepReview.whatsappBusinessIdsTitle}
+        step={1}
+        goToStep={goToStep}
+      >
         <Field
-          label="Business Account ID"
+          label={messages.pWhatsappDevicesNewStepReview.businessAccountIdLabel}
           value={data.whatsappBusinessAccountId}
         />
-        <Field label="Phone ID" value={data.whatsappPhoneId} />
-        <Field label="Application ID" value={data.whatsappApplicationId} />
-        <Field label="WhatsApp Version" value={data.whatsappVersion} />
-        <Field label="Callback URL" value={data.callbackUrl} />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.phoneIdLabel}
+          value={data.whatsappPhoneId}
+        />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.applicationIdLabel}
+          value={data.whatsappApplicationId}
+        />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.whatsappVersionLabel}
+          value={data.whatsappVersion}
+        />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.callbackUrlLabel}
+          value={data.callbackUrl}
+        />
       </ReviewSection>
 
-      <ReviewSection title="Quotas & Limits" step={2} goToStep={goToStep}>
+      <ReviewSection
+        title={messages.pWhatsappDevicesNewStepReview.quotasAndLimitsTitle}
+        step={2}
+        goToStep={goToStep}
+      >
         <Field
-          label="Quota Base"
+          label={messages.pWhatsappDevicesNewStepReview.quotaBaseLabel}
           value={data.quotaBase || `${DEFAULT_QUOTA_BASE} (default)`}
         />
-        <Field label="Quota Base Out" value={data.quotaBaseOut || "0"} />
         <Field
-          label="Daily Message Limit"
+          label={messages.pWhatsappDevicesNewStepReview.quotaBaseOutLabel}
+          value={data.quotaBaseOut || "0"}
+        />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.dailyMessageLimitLabel}
           value={data.dailyLimitMessage || "0"}
         />
-        <Field label="Balance" value={data.balance || "0"} />
-        <Field label="Rates" value={data.rates} />
-        <Field label="Expires At" value={data.expiredAt} />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.balanceLabel}
+          value={data.balance || "0"}
+        />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.ratesLabel}
+          value={data.rates}
+        />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.expiresAtLabel}
+          value={data.expiredAt}
+        />
       </ReviewSection>
 
-      <ReviewSection title="Profile & Features" step={3} goToStep={goToStep}>
-        <Field label="Display Name" value={data.displayName} />
+      <ReviewSection
+        title={messages.pWhatsappDevicesNewStepReview.profileAndFeaturesTitle}
+        step={3}
+        goToStep={goToStep}
+      >
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.displayNameLabel}
+          value={data.displayName}
+        />
         {profileEntries.length > 0 && (
           <div className="mt-2">
             <p className="mb-1 text-xs text-muted-foreground">
-              WhatsApp Profile:
+              {messages.pWhatsappDevicesNewStepReview.whatsappProfileHeading}
             </p>
             {profileEntries.map(([k, v]) => (
               <Field key={k} label={k} value={String(v)} />
@@ -104,14 +166,22 @@ export function StepReview({ data, goToStep }: Props) {
         )}
         {featureEntries.length > 0 && (
           <div className="mt-2">
-            <p className="mb-1 text-xs text-muted-foreground">Feature Flags:</p>
+            <p className="mb-1 text-xs text-muted-foreground">
+              {messages.pWhatsappDevicesNewStepReview.featureFlagsHeading}
+            </p>
             {featureEntries.map(([k, v]) => (
               <Field key={k} label={k} value={String(v)} />
             ))}
           </div>
         )}
-        <Field label="S3 Path" value={data.s3} />
-        <Field label="Token" value={data.token ? "••••••••" : null} />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.s3PathLabel}
+          value={data.s3}
+        />
+        <Field
+          label={messages.pWhatsappDevicesNewStepReview.tokenLabel}
+          value={data.token ? "••••••••" : null}
+        />
       </ReviewSection>
     </div>
   )

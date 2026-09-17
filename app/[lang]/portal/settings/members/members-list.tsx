@@ -7,6 +7,9 @@ import {
   useState,
   type FormEvent,
 } from "react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { eden } from "@/lib/eden"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -99,6 +102,9 @@ const getStatusBadge = (status: UnifiedMemberRow["status"]) => {
 }
 
 export function MembersList({ organizationId }: MembersListProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [members, setMembers] = useState<TenantMembershipSummary[]>([])
   const [invitations, setInvitations] = useState<TenantInvitationSummary[]>([])
   const [authorization, setAuthorization] =
@@ -254,7 +260,10 @@ export function MembersList({ organizationId }: MembersListProps) {
         id: "member",
         accessorKey: "email",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Member" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalSettingsMembersMembersList.tableHeaderMember}
+          />
         ),
         cell: ({ row }) => {
           const rawEmail = row.original.email
@@ -293,14 +302,18 @@ export function MembersList({ organizationId }: MembersListProps) {
         id: "role",
         accessorKey: "role",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Role" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalSettingsMembersMembersList.tableHeaderRole}
+          />
         ),
         cell: ({ row }) => (
           <Badge
             variant={getRoleBadgeVariant(row.original.role)}
             className="capitalize"
           >
-            {row.original.role ?? "Member"}
+            {row.original.role ??
+              messages.pPortalSettingsMembersMembersList.tableHeaderMember}
           </Badge>
         ),
       },
@@ -308,7 +321,10 @@ export function MembersList({ organizationId }: MembersListProps) {
         id: "status",
         accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalSettingsMembersMembersList.tableHeaderStatus}
+          />
         ),
         cell: ({ row }) => {
           const statusInfo = getStatusBadge(row.original.status)
@@ -323,7 +339,12 @@ export function MembersList({ organizationId }: MembersListProps) {
         id: "createdAt",
         accessorKey: "date",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Created" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pPortalSettingsMembersMembersList.tableHeaderCreated
+            }
+          />
         ),
         cell: ({ row }) => {
           if (!row.original.date) {
@@ -347,7 +368,12 @@ export function MembersList({ organizationId }: MembersListProps) {
         id: "lastSignInAt",
         accessorKey: "lastSignInAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Last Sign-in" />
+          <DataTableColumnHeader
+            column={column}
+            title={
+              messages.pPortalSettingsMembersMembersList.tableHeaderLastSignIn
+            }
+          />
         ),
         cell: ({ row }) => {
           if (!row.original.lastSignInAt) {
@@ -394,7 +420,7 @@ export function MembersList({ organizationId }: MembersListProps) {
                       )
                     }
                   >
-                    Resend
+                    {messages.pPortalSettingsMembersMembersList.resendButton}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
@@ -412,7 +438,7 @@ export function MembersList({ organizationId }: MembersListProps) {
                       }
                     }}
                   >
-                    Revoke
+                    {messages.pPortalSettingsMembersMembersList.revokeButton}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -438,7 +464,10 @@ export function MembersList({ organizationId }: MembersListProps) {
                         )
                       }
                     >
-                      Promote to Admin
+                      {
+                        messages.pPortalSettingsMembersMembersList
+                          .promoteToAdminButton
+                      }
                     </DropdownMenuItem>
                   ) : null}
                   {role === "admin" ? (
@@ -451,7 +480,10 @@ export function MembersList({ organizationId }: MembersListProps) {
                         )
                       }
                     >
-                      Demote to Member
+                      {
+                        messages.pPortalSettingsMembersMembersList
+                          .demoteToMemberButton
+                      }
                     </DropdownMenuItem>
                   ) : null}
                   <DropdownMenuItem
@@ -470,7 +502,10 @@ export function MembersList({ organizationId }: MembersListProps) {
                       }
                     }}
                   >
-                    Remove Member
+                    {
+                      messages.pPortalSettingsMembersMembersList
+                        .removeMemberButton
+                    }
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -482,7 +517,7 @@ export function MembersList({ organizationId }: MembersListProps) {
         enableHiding: false,
       },
     ],
-    [organizationId, handleInvitationAction]
+    [organizationId, handleInvitationAction, messages]
   )
 
   const allowedActions = new Set(
@@ -505,9 +540,11 @@ export function MembersList({ organizationId }: MembersListProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-medium">Members & Invitations</h2>
+          <h2 className="text-lg font-medium">
+            {messages.pPortalSettingsMembersMembersList.pageTitle}
+          </h2>
           <p className="text-xs text-muted-foreground">
-            Manage active members and pending invitations for your organization.
+            {messages.pPortalSettingsMembersMembersList.pageDescription}
           </p>
         </div>
         {canInvite ? (
@@ -515,16 +552,23 @@ export function MembersList({ organizationId }: MembersListProps) {
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
                 <UserPlusIcon className="size-4" />
-                Invite Member
+                {messages.pPortalSettingsMembersMembersList.inviteMemberButton}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <form onSubmit={handleInvite} className="space-y-4">
                 <DialogHeader>
-                  <DialogTitle>Invite New Member</DialogTitle>
+                  <DialogTitle>
+                    {
+                      messages.pPortalSettingsMembersMembersList
+                        .inviteNewMemberDialogTitle
+                    }
+                  </DialogTitle>
                   <DialogDescription>
-                    Send an invitation link to your teammate to join this
-                    organization.
+                    {
+                      messages.pPortalSettingsMembersMembersList
+                        .inviteDialogDescription
+                    }
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3 py-2">
@@ -533,7 +577,10 @@ export function MembersList({ organizationId }: MembersListProps) {
                       htmlFor="invite-email"
                       className="text-xs font-medium text-muted-foreground"
                     >
-                      Email Address
+                      {
+                        messages.pPortalSettingsMembersMembersList
+                          .emailAddressLabel
+                      }
                     </label>
                     <Input
                       id="invite-email"
@@ -546,7 +593,10 @@ export function MembersList({ organizationId }: MembersListProps) {
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">
-                      Role
+                      {
+                        messages.pPortalSettingsMembersMembersList
+                          .tableHeaderRole
+                      }
                     </label>
                     <Select value={inviteRole} onValueChange={setInviteRole}>
                       <SelectTrigger className="w-full">
@@ -554,10 +604,16 @@ export function MembersList({ organizationId }: MembersListProps) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="member">
-                          Member - Standard team access
+                          {
+                            messages.pPortalSettingsMembersMembersList
+                              .memberRoleOption
+                          }
                         </SelectItem>
                         <SelectItem value="admin">
-                          Admin - Full workspace & member management
+                          {
+                            messages.pPortalSettingsMembersMembersList
+                              .adminRoleOption
+                          }
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -569,7 +625,7 @@ export function MembersList({ organizationId }: MembersListProps) {
                     variant="outline"
                     onClick={() => setIsInviteOpen(false)}
                   >
-                    Cancel
+                    {messages.pPortalSettingsMembersMembersList.cancelButton}
                   </Button>
                   <Button
                     type="submit"
@@ -596,7 +652,9 @@ export function MembersList({ organizationId }: MembersListProps) {
         tableId="portal-settings-members"
         columns={columns}
         data={unifiedData}
-        searchPlaceholder="Search members or invitations..."
+        searchPlaceholder={
+          messages.pPortalSettingsMembersMembersList.searchPlaceholder
+        }
         searchableColumns={["email", "displayName"]}
         defaultColumnVisibility={{ actions: true }}
       />
