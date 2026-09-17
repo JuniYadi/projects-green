@@ -10,6 +10,12 @@ import {
 
 import { syncStackConfiguration } from "../../sync-stack.service"
 import { syncStackFromParentTemplate } from "../../template-sync.service"
+import {
+  computeReinstallPreflight,
+  executeReinstall,
+  executeRollback,
+  AppReinstallError,
+} from "../../app-reinstall.service"
 
 import { mapRecentDeploySource } from "../../recent-sources.dto"
 
@@ -673,6 +679,175 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           error: "UPGRADE_FAILED",
           message:
             err instanceof Error ? err.message : "Failed to upgrade template",
+        }
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+      }),
+    }
+  )
+  .get(
+    "/:slug/reinstall/preflight",
+    async ({ params, query, set }) => {
+      const auth = await withAuth({ ensureSignedIn: true })
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
+      try {
+        const result = await computeReinstallPreflight({
+          organizationId: auth.organizationId,
+          slug: params.slug,
+          targetTemplateId: query.targetTemplateId,
+        })
+        return { ok: true, data: result }
+      } catch (err) {
+        if (err instanceof AppReinstallError) {
+          set.status = err.statusCode
+          return {
+            ok: false,
+            error: err.code,
+            message: err.message,
+          }
+        }
+        set.status = 500
+        return {
+          ok: false,
+          error: "PREFLIGHT_FAILED",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to compute reinstall preflight",
+        }
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+      }),
+      query: t.Object({
+        targetTemplateId: t.String(),
+      }),
+    }
+  )
+  .post(
+    "/:slug/reinstall",
+    async ({ params, body, set }) => {
+      const auth = await withAuth({ ensureSignedIn: true })
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
+      try {
+        const result = await executeReinstall({
+          organizationId: auth.organizationId,
+          slug: params.slug,
+          input: body,
+          authorUserId: auth.user.id,
+        })
+        return { ok: true, data: result }
+      } catch (err) {
+        if (err instanceof AppReinstallError) {
+          set.status = err.statusCode
+          return {
+            ok: false,
+            error: err.code,
+            message: err.message,
+          }
+        }
+        set.status = 500
+        return {
+          ok: false,
+          error: "REINSTALL_FAILED",
+          message:
+            err instanceof Error ? err.message : "Failed to execute reinstall",
+        }
+      }
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+      }),
+      body: t.Object({
+        targetTemplateId: t.String(),
+        dependencyMode: t.Optional(
+          t.Union([t.Literal("MANAGED"), t.Literal("BYOD")])
+        ),
+        byodCredentials: t.Optional(
+          t.Object({
+            host: t.String(),
+            port: t.Number(),
+            database: t.String(),
+            user: t.String(),
+            password: t.String(),
+          })
+        ),
+        customEnvs: t.Optional(t.Record(t.String(), t.String())),
+      }),
+    }
+  )
+  .post(
+    "/:slug/rollback",
+    async ({ params, set }) => {
+      const auth = await withAuth({ ensureSignedIn: true })
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
+      try {
+        const result = await executeRollback({
+          organizationId: auth.organizationId,
+          slug: params.slug,
+          authorUserId: auth.user.id,
+        })
+        return { ok: true, data: result }
+      } catch (err) {
+        if (err instanceof AppReinstallError) {
+          set.status = err.statusCode
+          return {
+            ok: false,
+            error: err.code,
+            message: err.message,
+          }
+        }
+        set.status = 500
+        return {
+          ok: false,
+          error: "ROLLBACK_FAILED",
+          message:
+            err instanceof Error ? err.message : "Failed to execute rollback",
         }
       }
     },

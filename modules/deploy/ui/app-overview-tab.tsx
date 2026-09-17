@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   ArrowSquareOut,
+  ArrowsClockwise,
   CaretDown,
   CheckCircle,
   Copy,
@@ -18,6 +19,7 @@ import {
 import { cn } from "@/lib/utils"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
+import { ReinstallTemplateDialog } from "./reinstall-template-dialog"
 import {
   Card,
   CardContent,
@@ -287,6 +289,7 @@ function CopyableRow({
 }
 
 export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
+  const [reinstallOpen, setReinstallOpen] = useState(false)
   const t = COPY[locale.startsWith("id") ? "id" : "en"]
   const targetDomain = stack.customDomain || stack.subdomain
 
@@ -583,12 +586,29 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                 <span className="text-muted-foreground">
                   {t.templateEngine}
                 </span>
-                <span className="font-medium text-foreground">
-                  {stack.templateName ??
-                    stack.framework ??
-                    stack.templateId ??
-                    "Custom Container"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">
+                    {stack.templateName ??
+                      stack.framework ??
+                      stack.templateId ??
+                      "Custom Container"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReinstallOpen(true)}
+                    className="h-6 gap-1 px-1.5 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
+                    title="Ganti Template / Reinstall"
+                  >
+                    <ArrowsClockwise size={12} />
+                    <span>
+                      {locale.startsWith("id")
+                        ? "Ganti Template"
+                        : "Change Template"}
+                    </span>
+                  </Button>
+                </div>
               </div>
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
                 <span className="text-muted-foreground">{t.servicePort}</span>
@@ -647,6 +667,12 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
           </p>
         </div>
       </div>
+
+      <ReinstallTemplateDialog
+        stack={stack}
+        open={reinstallOpen}
+        onOpenChange={setReinstallOpen}
+      />
     </div>
   )
 }

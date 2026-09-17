@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
@@ -34,6 +35,7 @@ import {
   DEPLOY_STATUS_TONE as STATUS_TONE,
 } from "@/modules/deploy/deploy.constants"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
+import { ReinstallTemplateDialog } from "./reinstall-template-dialog"
 
 export type WorkspaceTabKey =
   | "overview"
@@ -51,6 +53,7 @@ export type AppWorkspaceHeaderProps = {
   onSync?: () => void
   isSyncing?: boolean
   isTerminalActive?: boolean
+  onReinstallSuccess?: () => void
 }
 
 export function AppWorkspaceHeader({
@@ -61,7 +64,9 @@ export function AppWorkspaceHeader({
   onSync,
   isSyncing = false,
   isTerminalActive = false,
+  onReinstallSuccess,
 }: AppWorkspaceHeaderProps) {
+  const [reinstallOpen, setReinstallOpen] = useState(false)
   const params = useParams<{ lang?: string }>()
   const router = useRouter()
   const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
@@ -238,6 +243,17 @@ export function AppWorkspaceHeader({
 
         {/* Action Controls (Right-aligned CTA) */}
         <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setReinstallOpen(true)}
+            className="h-8 gap-1.5 px-3 text-xs"
+            title="Reinstall or change application template"
+          >
+            <ArrowsClockwise size={14} />
+            <span>Reinstall Template</span>
+          </Button>
           {onSync && (
             <Button
               type="button"
@@ -307,6 +323,16 @@ export function AppWorkspaceHeader({
           })}
         </nav>
       </div>
+
+      <ReinstallTemplateDialog
+        stack={selectedApp}
+        open={reinstallOpen}
+        onOpenChange={setReinstallOpen}
+        onSuccess={() => {
+          setReinstallOpen(false)
+          onReinstallSuccess?.()
+        }}
+      />
     </div>
   )
 }

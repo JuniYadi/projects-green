@@ -1,7 +1,9 @@
-import { describe, expect, it, mock } from "bun:test"
-import { render } from "@testing-library/react"
+import { afterEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, render } from "@testing-library/react"
 import { AppWorkspaceHeader } from "./app-workspace-header"
 import type { StackSummaryDTO } from "../deploy-monitor.dto"
+
+afterEach(cleanup)
 
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "id" }),
