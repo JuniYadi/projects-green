@@ -54,11 +54,10 @@ function formatRepoUrl(url: string): string {
 function formatComputePlan(
   tierName?: string,
   hourlyRate?: number,
-  currency?: string,
+  rateCurrency?: string,
   matchedPlan?: CatalogPlan | null
 ): string {
-  const isIdr =
-    currency === "IDR" && typeof hourlyRate === "number" && hourlyRate >= 1
+  const isIdr = rateCurrency === "IDR"
   const rateText =
     hourlyRate !== undefined
       ? isIdr
@@ -170,6 +169,12 @@ export function ExecutiveLaunchCard({
     )
   }, [catalogPlans, blueprint.computeTier])
 
+  const blueprintRateCurrency: "USD" | "IDR" =
+    blueprint.currency ||
+    (blueprint.hourlyRate !== undefined && blueprint.hourlyRate < 1
+      ? "USD"
+      : effectiveCurrency)
+
   const { planName, cpuText, memText, realHourlyRate, rateText } =
     useMemo(() => {
       if (matchedPlan) {
@@ -196,7 +201,7 @@ export function ExecutiveLaunchCard({
             ? `${Math.round(resources.mem / 1024)}GB RAM`
             : `${resources.mem}MB RAM`
         const formattedRate =
-          effectiveCurrency === "IDR" || rate >= 1
+          effectiveCurrency === "IDR"
             ? `IDR ${Math.round(rate)}/jam`
             : `$${rate.toFixed(4)}/hour`
         return {
@@ -207,12 +212,11 @@ export function ExecutiveLaunchCard({
           rateText: formattedRate,
         }
       }
-      const isIdr = effectiveCurrency === "IDR"
+      const isIdr = blueprintRateCurrency === "IDR"
       const fallbackRate = blueprint.hourlyRate ?? (isIdr ? 56 : 0.04)
-      const formattedRate =
-        isIdr || fallbackRate >= 1
-          ? `IDR ${Math.round(fallbackRate)}/jam`
-          : `$${fallbackRate.toFixed(2)}/hour`
+      const formattedRate = isIdr
+        ? `IDR ${Math.round(fallbackRate)}/jam`
+        : `$${fallbackRate.toFixed(2)}/hour`
       return {
         planName: blueprint.computeTier || "Medium Tier",
         cpuText: "1 vCPU",
@@ -225,6 +229,7 @@ export function ExecutiveLaunchCard({
       blueprint.computeTier,
       blueprint.hourlyRate,
       effectiveCurrency,
+      blueprintRateCurrency,
     ])
 
   const balanceLoading = !balanceFormatted && isLoadingAccount
@@ -241,7 +246,7 @@ export function ExecutiveLaunchCard({
   const computePlan = formatComputePlan(
     blueprint.computeTier,
     blueprint.hourlyRate,
-    effectiveCurrency,
+    blueprintRateCurrency,
     matchedPlan
   )
 
@@ -386,11 +391,7 @@ export function ExecutiveLaunchCard({
             <div className="sm:col-span-2">
               <BalanceGuard
                 hourlyRate={realHourlyRate}
-                rateCurrency={
-                  blueprint.currency === "IDR" || realHourlyRate >= 1
-                    ? "IDR"
-                    : "USD"
-                }
+                rateCurrency={blueprintRateCurrency}
                 currency={effectiveCurrency}
                 balanceFormatted={balanceFormatted}
                 account={account}
