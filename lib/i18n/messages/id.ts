@@ -807,6 +807,10 @@ export const idMessages: AppMessages = {
         howItWorksTitle: "Cara Kerja File Mount",
         howItWorksDesc:
           "File konfigurasi dan sertifikat yang diunggah disimpan terenkripsi dan otomatis di-mount ke filesystem container aplikasi Anda saat startup.",
+        comingSoonBadge: "Segera Hadir",
+        comingSoonTitle: "Fitur Storage Mounts Segera Hadir",
+        comingSoonDesc:
+          "Persistent volume (PVC) dan mount file konfigurasi kustom sedang dalam tahap pengembangan dan akan segera tersedia.",
       },
       gitDeploy: {
         review: {
@@ -1212,6 +1216,10 @@ export const idMessages: AppMessages = {
           "Secara otomatis memperbarui ukuran pod (membuat ulang pod jika diperlukan).",
         vpaExplainInitial: "Menetapkan pengaturan optimal hanya saat memulai.",
         vpaExplainOff: "Mesin rekomendasi berjalan dalam mode pasif.",
+        comingSoonBadge: "Segera Hadir",
+        comingSoonTitle: "Fitur Scaling & Resources Segera Hadir",
+        comingSoonDesc:
+          "Pengaturan batas sumber daya, replika pod, dan kebijakan autoscaling otomatis (HPA/VPA) sedang dalam tahap pengembangan dan akan segera tersedia.",
       },
       clusterTelemetryCards: {
         fallbackBanner:

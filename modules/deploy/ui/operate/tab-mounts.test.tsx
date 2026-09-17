@@ -157,4 +157,21 @@ describe("TabMounts", () => {
     expect(view.getByText("/app/data")).toBeDefined()
     expect(view.getByText("10 GB")).toBeDefined()
   })
+
+  it("renders disabled coming soon overlay when isComingSoon is true", () => {
+    const view = render(
+      <TabMounts
+        selectedEnv="dev"
+        mounts={{ dev: [], staging: [], prod: [] }}
+        setMounts={() => {}}
+        isComingSoon
+      />
+    )
+
+    expect(view.getByText("Coming Soon")).toBeDefined()
+    expect(view.getByText("Storage Mounts is Coming Soon")).toBeDefined()
+    const content = view.container.querySelector("[aria-hidden='true']")
+    expect(content).toBeDefined()
+    expect(content?.className).toContain("pointer-events-none")
+  })
 })
