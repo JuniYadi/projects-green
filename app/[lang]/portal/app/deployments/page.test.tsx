@@ -71,6 +71,8 @@ const mockGetDeployments = mock(async () => ({
 }))
 
 mock.module("@/lib/eden", () => ({
+  getApiBaseUrl: () => "http://localhost:3000",
+  getWsBaseUrl: () => "ws://localhost:3000",
   eden: {
     api: {
       admin: {
@@ -183,6 +185,8 @@ describe("AdminDeploymentsPage", () => {
             stackSlug: "store-api",
             stackName: "Store API",
             organizationId: "org_test",
+            organizationName: "Test Org",
+            framework: "Next.js",
             status: "FAILED",
             triggerType: "GIT_PUSH",
             commitSha: "deadbeef",

@@ -7,9 +7,9 @@ export type AdminDeploymentDTO = {
   stackId: string
   stackSlug: string
   stackName: string
-  framework: string | null
+  framework?: string | null
   organizationId: string
-  organizationName: string | null
+  organizationName?: string | null
   status: string
   triggerType: string
   commitSha: string | null
@@ -20,7 +20,7 @@ export type AdminDeploymentDTO = {
   completedAt: string | null
   durationMs: number | null
   failureReason: string | null
-  sanitizedFailureReason: string | null
+  sanitizedFailureReason?: string | null
   createdAt: string
   updatedAt: string
   eventsCount: number

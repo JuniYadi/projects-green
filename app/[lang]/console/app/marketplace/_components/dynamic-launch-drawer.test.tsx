@@ -39,6 +39,7 @@ mock.module("@/lib/billing-client", () => ({
 }))
 
 mock.module("@/lib/eden", () => ({
+  getApiBaseUrl: () => "http://localhost:3000",
   eden: {
     api: {
       payments: {
