@@ -1,7 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -98,6 +101,9 @@ function formatType(type: string): string {
 }
 
 export function DeliveryLogsView() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [logs, setLogs] = useState<EmailLogListItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -150,7 +156,10 @@ export function DeliveryLogsView() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <Input
-          placeholder="Search recipient..."
+          placeholder={
+            messages.pSettingsEmailsDeliveryLogsDeliveryLogsView
+              .searchRecipientPlaceholder
+          }
           value={recipient}
           onChange={(e) => {
             setRecipient(e.target.value)
@@ -201,14 +210,33 @@ export function DeliveryLogsView() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Recipient</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Related Entity</TableHead>
-              <TableHead>Sent At</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead>Preview</TableHead>
+              <TableHead>
+                {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.recipient}
+              </TableHead>
+              <TableHead>
+                {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.type}
+              </TableHead>
+              <TableHead>
+                {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.subject}
+              </TableHead>
+              <TableHead>
+                {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.status}
+              </TableHead>
+              <TableHead>
+                {
+                  messages.pSettingsEmailsDeliveryLogsDeliveryLogsView
+                    .relatedEntity
+                }
+              </TableHead>
+              <TableHead>
+                {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.sentAt}
+              </TableHead>
+              <TableHead>
+                {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.createdAt}
+              </TableHead>
+              <TableHead>
+                {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.preview}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -228,7 +256,10 @@ export function DeliveryLogsView() {
                   colSpan={8}
                   className="py-8 text-center text-muted-foreground"
                 >
-                  No email delivery logs found.
+                  {
+                    messages.pSettingsEmailsDeliveryLogsDeliveryLogsView
+                      .noLogsFound
+                  }
                 </TableCell>
               </TableRow>
             ) : (
@@ -278,11 +309,17 @@ export function DeliveryLogsView() {
                         size="sm"
                         onClick={() => setPreviewLog(log)}
                       >
-                        Preview
+                        {
+                          messages.pSettingsEmailsDeliveryLogsDeliveryLogsView
+                            .preview
+                        }
                       </Button>
                     ) : (
                       <span className="text-xs text-muted-foreground">
-                        No preview
+                        {
+                          messages.pSettingsEmailsDeliveryLogsDeliveryLogsView
+                            .noPreview
+                        }
                       </span>
                     )}
                   </TableCell>
@@ -297,8 +334,9 @@ export function DeliveryLogsView() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Showing {(page - 1) * PAGE_SIZE + 1}–
-            {Math.min(page * PAGE_SIZE, total)} of {total}
+            {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.showing}{" "}
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)}{" "}
+            {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.of} {total}
           </p>
           <div className="flex gap-2">
             <Button
@@ -307,7 +345,7 @@ export function DeliveryLogsView() {
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
             >
-              Previous
+              {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.previous}
             </Button>
             <Button
               variant="outline"
@@ -315,7 +353,7 @@ export function DeliveryLogsView() {
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
             >
-              Next
+              {messages.pSettingsEmailsDeliveryLogsDeliveryLogsView.next}
             </Button>
           </div>
         </div>
@@ -330,14 +368,22 @@ export function DeliveryLogsView() {
       >
         <DialogContent className="flex h-[80vh] max-w-3xl flex-col">
           <DialogHeader>
-            <DialogTitle>Email Preview</DialogTitle>
+            <DialogTitle>
+              {
+                messages.pSettingsEmailsDeliveryLogsDeliveryLogsView
+                  .emailPreviewTitle
+              }
+            </DialogTitle>
           </DialogHeader>
           {previewLog && (
             <iframe
               src={`/api/email-logs/${previewLog.id}/preview`}
               className="flex-1 rounded border"
               sandbox="allow-same-origin"
-              title="Email preview"
+              title={
+                messages.pSettingsEmailsDeliveryLogsDeliveryLogsView
+                  .emailPreviewIframeTitle
+              }
             />
           )}
         </DialogContent>
