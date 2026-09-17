@@ -90,6 +90,7 @@ const domainsMessages: DomainsPanelMessages = {
   cnameRecordHeading: "CNAME record for {hostname}:",
   apexRecordHeading: "A / AAAA records (Apex Domain @):",
   sslStatusActive: "SSL Active",
+  sslStatusIssuing: "Issuing (Let's Encrypt)...",
   sslStatusAuto: "Automatic (Let's Encrypt)",
   dnsStatusVerified: "Verified",
 }
@@ -468,5 +469,52 @@ describe("TabDomains", () => {
     expect(domainCard?.textContent).not.toContain("Singapore Production")
     expect(domainCard?.textContent).not.toContain("sg.pfnapp.dev")
     expect(domainCard?.textContent).not.toContain("sgp")
+  })
+
+  it("renders Issuing badge when DNS is verified but certificate is pending", () => {
+    const issuingDomain: TenantDomainDTO = {
+      ...sampleDomain,
+      dnsStatus: "VERIFIED",
+      certificate: {
+        source: "MANAGED",
+        status: "PENDING",
+        expiresAt: null,
+        fingerprint: null,
+        validationError: null,
+      },
+    }
+    const view = render(
+      <TabDomains
+        stackSlug="test-stack"
+        apiDomains={[issuingDomain]}
+        api={mockApi}
+        messages={domainsMessages}
+      />
+    )
+    expect(view.getByText("Issuing (Let's Encrypt)...")).toBeDefined()
+  })
+
+  it("renders SSL Active and expiration date when certificate is ACTIVE", () => {
+    const activeDomain: TenantDomainDTO = {
+      ...sampleDomain,
+      dnsStatus: "VERIFIED",
+      certificate: {
+        source: "MANAGED",
+        status: "ACTIVE",
+        expiresAt: "2026-12-14T19:17:05.000Z",
+        fingerprint: "abc",
+        validationError: null,
+      },
+    }
+    const view = render(
+      <TabDomains
+        stackSlug="test-stack"
+        apiDomains={[activeDomain]}
+        api={mockApi}
+        messages={domainsMessages}
+      />
+    )
+    expect(view.getByText("SSL Active")).toBeDefined()
+    expect(view.getByText(/Exp:/)).toBeDefined()
   })
 })

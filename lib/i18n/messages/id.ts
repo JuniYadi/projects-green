@@ -5278,6 +5278,7 @@ export const idMessages: AppMessages = {
           cnameRecordHeading: "Catatan CNAME untuk {hostname}:",
           apexRecordHeading: "Catatan A / AAAA (Domain Utama @):",
           sslStatusActive: "SSL Aktif",
+          sslStatusIssuing: "Menerbitkan (Let's Encrypt)...",
           sslStatusAuto: "Otomatis (Let's Encrypt)",
           dnsStatusVerified: "Terverifikasi",
         },

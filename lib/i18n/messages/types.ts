@@ -4775,6 +4775,7 @@ export type AppMessages = {
           cnameRecordHeading: string
           apexRecordHeading: string
           sslStatusActive: string
+          sslStatusIssuing: string
           sslStatusAuto: string
           dnsStatusVerified: string
         }

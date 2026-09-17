@@ -1,6 +1,7 @@
 import { createHash, createPrivateKey, X509Certificate } from "node:crypto"
 import { isIP } from "node:net"
 import { verifyDnsTarget } from "./dns-verification.service"
+import { probeDomainCertificate } from "./domain-tls-probe.service"
 import { prisma } from "@/lib/prisma"
 import {
   encrypt,
@@ -397,6 +398,31 @@ export async function verifyDomain(
       })
     } catch {
       // Non-fatal in testing or cluster-detached environments
+    }
+
+    try {
+      const tlsResult = await probeDomainCertificate(String(domain.hostname))
+      if (tlsResult.ok && tlsResult.validTo) {
+        const certRecord = await db.applicationDomainCertificate.upsert({
+          where: { domainId: input.domainId },
+          create: {
+            domainId: input.domainId,
+            source: "MANAGED",
+            status: "ACTIVE",
+            expiresAt: tlsResult.validTo,
+            fingerprint: tlsResult.fingerprint256,
+          },
+          update: {
+            status: "ACTIVE",
+            expiresAt: tlsResult.validTo,
+            fingerprint: tlsResult.fingerprint256,
+            validationError: null,
+          },
+        })
+        updated.certificate = certRecord
+      }
+    } catch {
+      // Non-fatal TLS probe
     }
   }
 

@@ -397,14 +397,18 @@ export function TabDomains({
                       domain.certificate?.status === "READY" ||
                         domain.certificate?.status === "ACTIVE"
                         ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
-                        : "border-muted border-muted-foreground/30 text-muted-foreground"
+                        : domain.dnsStatus === "VERIFIED"
+                          ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
+                          : "border-muted border-muted-foreground/30 text-muted-foreground"
                     )}
                   >
                     <span className="size-1.5 rounded-full bg-current" />
                     {domain.certificate?.status === "READY" ||
                     domain.certificate?.status === "ACTIVE"
                       ? t.sslStatusActive
-                      : t.sslStatusAuto}
+                      : domain.dnsStatus === "VERIFIED"
+                        ? t.sslStatusIssuing
+                        : t.sslStatusAuto}
                   </span>
                 </div>
                 {domain.certificate?.expiresAt ? (
