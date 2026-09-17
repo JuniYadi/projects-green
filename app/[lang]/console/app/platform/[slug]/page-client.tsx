@@ -337,6 +337,7 @@ export default function PlatformInstanceWorkspacePage() {
   const selectedEnv: K8sEnvironmentId = "prod"
   const messages = getMessages(locale)
   const tDeployments = messages.console.app.deployments
+  const tPage = messages.pConsolePlatformPageClient
 
   const rawTab = searchParams.get("tab") || "overview"
   const rawSection = searchParams.get("section")
@@ -783,14 +784,14 @@ export default function PlatformInstanceWorkspacePage() {
     <div className="flex w-full min-w-0 flex-1 flex-col gap-6">
       {overviewLoading ? (
         <div className="rounded-xl border border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-          Loading platform workspace for {slug}…
+          {tPage.loadingWorkspace.replace("{slug}", slug)}
         </div>
       ) : overviewError ? (
         <div
           className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive"
           role="alert"
         >
-          <p className="font-semibold">Failed to load platform</p>
+          <p className="font-semibold">{tPage.loadPlatformFailed}</p>
           <p className="mt-1 text-xs">{overviewError}</p>
         </div>
       ) : overview ? (
@@ -867,25 +868,21 @@ export default function PlatformInstanceWorkspacePage() {
             drawerState === "minimized" && (
               <div className="fixed right-6 bottom-4 z-40 flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950/95 px-3 py-1.5 text-xs text-zinc-200 shadow-xl backdrop-blur">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                <span className="font-mono text-xs">Terminal (Live)</span>
+                <span className="font-mono text-xs">{tPage.terminalLive}</span>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-6 px-2 text-[11px] text-zinc-300 hover:text-zinc-100"
                   onClick={() => setDrawerState("open")}
                 >
-                  {locale.startsWith("id") ? "Buka Drawer" : "Expand"}
+                  {tPage.expandDrawer}
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-100"
                   onClick={handlePopOutTerminal}
-                  title={
-                    locale.startsWith("id")
-                      ? "Buka di Jendela Baru"
-                      : "Open in new window"
-                  }
+                  title={tPage.openInNewWindow}
                 >
                   <ArrowSquareOut size={13} />
                 </Button>
@@ -902,7 +899,10 @@ export default function PlatformInstanceWorkspacePage() {
                   </CardTitle>
                   <CardDescription className="text-xs">
                     {historyMeta
-                      ? `${historyMeta.total} ${locale === "id" ? "rilis tercatat" : "recorded releases"}`
+                      ? tPage.recordedReleases.replace(
+                          "{count}",
+                          String(historyMeta.total)
+                        )
                       : tDeployments.historyDescription}
                   </CardDescription>
                 </CardHeader>
@@ -1060,12 +1060,12 @@ export default function PlatformInstanceWorkspacePage() {
             <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
               {/* Left Column: Vertical Sub-Navigation */}
               <nav
-                aria-label="Platform Settings"
+                aria-label={tPage.platformSettingsNav}
                 className="flex flex-col gap-1 rounded-xl border border-border bg-card p-2 lg:col-span-3"
               >
                 <div className="mb-1 px-3 py-1.5">
                   <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                    Settings
+                    {tPage.settingsHeading}
                   </h2>
                 </div>
 
@@ -1087,7 +1087,7 @@ export default function PlatformInstanceWorkspacePage() {
                         : "text-muted-foreground"
                     }
                   />
-                  <span className="flex-1">Environment Variables</span>
+                  <span className="flex-1">{tPage.envVarsNav}</span>
                 </button>
 
                 <button
@@ -1131,7 +1131,7 @@ export default function PlatformInstanceWorkspacePage() {
                         : "text-muted-foreground"
                     }
                   />
-                  <span className="flex-1">Scaling & Resources</span>
+                  <span className="flex-1">{tPage.scalingNav}</span>
                 </button>
 
                 <button
@@ -1152,7 +1152,7 @@ export default function PlatformInstanceWorkspacePage() {
                         : "text-muted-foreground"
                     }
                   />
-                  <span className="flex-1">Storage Mounts</span>
+                  <span className="flex-1">{tPage.storageMountsNav}</span>
                 </button>
 
                 <button
@@ -1173,7 +1173,7 @@ export default function PlatformInstanceWorkspacePage() {
                         : "text-muted-foreground"
                     }
                   />
-                  <span className="flex-1">Build & Deploy</span>
+                  <span className="flex-1">{tPage.buildDeployNav}</span>
                 </button>
 
                 <div className="my-1.5 border-t border-border" />
@@ -1196,7 +1196,7 @@ export default function PlatformInstanceWorkspacePage() {
                         : "text-muted-foreground"
                     }
                   />
-                  <span className="flex-1">Danger Zone</span>
+                  <span className="flex-1">{tPage.dangerZoneNav}</span>
                 </button>
               </nav>
 
@@ -1204,23 +1204,21 @@ export default function PlatformInstanceWorkspacePage() {
               <div className="min-w-0 lg:col-span-9">
                 {settingsLoading ? (
                   <div className="rounded-xl border border-border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-                    Loading application settings…
+                    {tPage.loadingSettings}
                   </div>
                 ) : settingsError ? (
                   <div
                     className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive"
                     role="alert"
                   >
-                    <p className="font-semibold">
-                      Failed to load application settings
-                    </p>
+                    <p className="font-semibold">{tPage.loadSettingsFailed}</p>
                     <p className="mt-1 text-xs">{settingsError}</p>
                     <Button
                       className="mt-4"
                       variant="outline"
                       onClick={() => void refreshSettings()}
                     >
-                      Retry
+                      {tPage.retry}
                     </Button>
                   </div>
                 ) : (

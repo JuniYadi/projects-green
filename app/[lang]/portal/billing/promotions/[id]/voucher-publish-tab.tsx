@@ -1,5 +1,7 @@
 "use client"
 
+import { useParams } from "next/navigation"
+
 import {
   CheckCircleIcon,
   WarningCircleIcon,
@@ -15,6 +17,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type FieldErrors = Record<string, string[]>
 
@@ -37,6 +41,11 @@ export function VoucherPublishTab({
   isSaving: boolean
   fieldErrors?: FieldErrors
 }) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingPromotionsVoucherPublishTab
+
   const validation = validateForPublish(voucher)
   const externalErrors = Object.values(fieldErrors).flat()
   const errors = [...validation.errors, ...externalErrors]
@@ -48,24 +57,24 @@ export function VoucherPublishTab({
 
   const statusLabel =
     voucher.status === "ACTIVE"
-      ? "Published (Active)"
+      ? t.statusPublishedActive
       : voucher.status === "DISABLED"
-        ? "Draft (Disabled)"
+        ? t.statusDraftDisabled
         : voucher.status === "EXPIRED"
-          ? "Expired"
+          ? t.statusExpired
           : voucher.status === "DEPLETED"
-            ? "Depleted"
+            ? t.statusDepleted
             : voucher.status
 
   return (
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>{isNew ? "Initial Status" : "Publish Status"}</CardTitle>
+          <CardTitle>
+            {isNew ? t.initialStatusTitle : t.publishStatusTitle}
+          </CardTitle>
           <CardDescription>
-            {isNew
-              ? "Choose whether to keep this promotion disabled as a draft or make it active after creation."
-              : "The current status is shown below. You can activate, disable, or mark the voucher as expired."}
+            {isNew ? t.initialStatusDescription : t.publishStatusDescription}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -78,7 +87,7 @@ export function VoucherPublishTab({
                   onUpdate({ status: value })
                 }
               }}
-              aria-label="Initial promotion status"
+              aria-label={t.initialPromotionStatusAriaLabel}
               className="grid w-full gap-3 sm:grid-cols-2"
             >
               <ToggleGroupItem
@@ -86,9 +95,9 @@ export function VoucherPublishTab({
                 className="h-auto min-h-20 justify-start rounded-lg border border-border px-4 py-3 text-left whitespace-normal data-[state=on]:border-primary data-[state=on]:bg-muted"
               >
                 <span className="flex flex-col gap-1">
-                  <span className="font-medium">Save as draft</span>
+                  <span className="font-medium">{t.saveAsDraftOption}</span>
                   <span className="text-xs text-muted-foreground">
-                    Persist as DISABLED until an administrator publishes it.
+                    {t.saveAsDraftOptionHint}
                   </span>
                 </span>
               </ToggleGroupItem>
@@ -97,9 +106,9 @@ export function VoucherPublishTab({
                 className="h-auto min-h-20 justify-start rounded-lg border border-border px-4 py-3 text-left whitespace-normal data-[state=on]:border-primary data-[state=on]:bg-muted"
               >
                 <span className="flex flex-col gap-1">
-                  <span className="font-medium">Publish now</span>
+                  <span className="font-medium">{t.publishNowOption}</span>
                   <span className="text-xs text-muted-foreground">
-                    Persist as ACTIVE after every validation passes.
+                    {t.publishNowOptionHint}
                   </span>
                 </span>
               </ToggleGroupItem>
@@ -108,7 +117,7 @@ export function VoucherPublishTab({
             <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm">
-                  <span className="font-medium">Current status:</span>{" "}
+                  <span className="font-medium">{t.currentStatusLabel}</span>{" "}
                   <Badge
                     variant={
                       voucher.status === "ACTIVE" ? "default" : "secondary"
@@ -126,7 +135,7 @@ export function VoucherPublishTab({
                       disabled={isSaving}
                       className="text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/20"
                     >
-                      Deactivate (Disable)
+                      {t.deactivateButton}
                     </Button>
                   )}
                   {voucher.status !== "EXPIRED" && isExpired && onExpire && (
@@ -136,16 +145,19 @@ export function VoucherPublishTab({
                       onClick={onExpire}
                       disabled={isSaving}
                     >
-                      Mark as Expired
+                      {t.markAsExpiredButton}
                     </Button>
                   )}
                 </div>
               </div>
               {isExpired && voucher.status !== "EXPIRED" && (
                 <p className="text-xs text-destructive">
-                  This voucher has passed its expiration date (
-                  {new Date(voucher.expiresAt).toLocaleString()}) but is still
-                  marked as {voucher.status}. You can mark it as Expired above.
+                  {t.expiredNotice
+                    .replace(
+                      "{date}",
+                      new Date(voucher.expiresAt).toLocaleString()
+                    )
+                    .replace("{status}", voucher.status)}
                 </p>
               )}
             </div>
@@ -155,10 +167,8 @@ export function VoucherPublishTab({
 
       <Card>
         <CardHeader>
-          <CardTitle>Validation</CardTitle>
-          <CardDescription>
-            Review any issues before saving or publishing.
-          </CardDescription>
+          <CardTitle>{t.validationTitle}</CardTitle>
+          <CardDescription>{t.validationDescription}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {errors.length > 0 && (
@@ -190,7 +200,7 @@ export function VoucherPublishTab({
           {errors.length === 0 && validation.warnings.length === 0 && (
             <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
               <CheckCircleIcon className="h-4 w-4" />
-              All validation checks passed.
+              {t.allChecksPassed}
             </div>
           )}
         </CardContent>
@@ -199,7 +209,7 @@ export function VoucherPublishTab({
       <div className="sticky bottom-0 rounded-lg border border-border bg-background/95 p-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center justify-end gap-3">
           <Button variant="outline" onClick={onSaveDraft} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Draft"}
+            {isSaving ? t.savingLabel : t.saveDraftButton}
           </Button>
           <Button
             onClick={onPublish}
@@ -207,21 +217,21 @@ export function VoucherPublishTab({
             variant={hasErrors ? "destructive" : "default"}
           >
             {isSaving
-              ? "Publishing..."
+              ? t.publishingLabel
               : hasErrors
-                ? "Fix errors to publish"
-                : "Publish Promotion"}
+                ? t.fixErrorsButton
+                : t.publishPromotionButton}
           </Button>
         </div>
 
         {hasErrors && (
           <p className="mt-2 text-xs text-destructive">
-            Resolve the highlighted fields before publishing this promotion.
+            {t.resolveErrorsNotice}
           </p>
         )}
         {hasWarnings && !hasErrors && (
           <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-            Publishing with warnings is allowed.
+            {t.warningsAllowedNotice}
           </p>
         )}
       </div>

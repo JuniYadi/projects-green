@@ -2,6 +2,7 @@
 
 import { eden } from "@/lib/eden"
 import { useState, useCallback } from "react"
+import { useParams } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,6 +16,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Pen, Check, X, WarningCircle } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 /**
  * Quota & Balance Card — Inline editable client component
@@ -62,6 +65,11 @@ export function QuotaBalanceCard({
   initialQuotaBaseOut,
   initialDailyLimitMessage,
 }: QuotaBalanceCardProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappDevicesQuotaBalanceCard
+
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [quotaBase, setQuotaBase] = useState(initialQuotaBase)
@@ -79,23 +87,19 @@ export function QuotaBalanceCard({
       } as never)
 
       if (!res?.ok) {
-        throw new Error(
-          (res as { message?: string })?.message ||
-            "Failed to update device limits."
-        )
+        throw new Error((res as { message?: string })?.message || t.updateError)
       }
 
-      toast.success("Device limits updated successfully.")
+      toast.success(t.updateSuccess)
       setEditing(false)
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to update device limits."
+      const message = err instanceof Error ? err.message : t.updateError
       setError(message)
       toast.error(message)
     } finally {
       setSaving(false)
     }
-  }, [deviceId, quotaBase, dailyLimit])
+  }, [deviceId, quotaBase, dailyLimit, t])
 
   const handleCancel = useCallback(() => {
     setQuotaBase(initialQuotaBase)
@@ -108,8 +112,8 @@ export function QuotaBalanceCard({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Quota & Balance</CardTitle>
-          <CardDescription>Saving changes...</CardDescription>
+          <CardTitle className="text-base">{t.title}</CardTitle>
+          <CardDescription>{t.savingChanges}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -127,8 +131,8 @@ export function QuotaBalanceCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-base">Quota & Balance</CardTitle>
-            <CardDescription>Usage limits and current balance</CardDescription>
+            <CardTitle className="text-base">{t.title}</CardTitle>
+            <CardDescription>{t.description}</CardDescription>
           </div>
           {!editing && (
             <Button
@@ -136,7 +140,7 @@ export function QuotaBalanceCard({
               size="icon"
               className="size-8"
               onClick={() => setEditing(true)}
-              aria-label="Edit quota and balance"
+              aria-label={t.editAriaLabel}
             >
               <Pen className="size-4" />
             </Button>
@@ -153,7 +157,7 @@ export function QuotaBalanceCard({
               size="icon"
               className="ml-auto size-6 shrink-0"
               onClick={() => setError(null)}
-              aria-label="Dismiss error"
+              aria-label={t.dismissErrorAriaLabel}
             >
               <X className="size-3" />
             </Button>
@@ -162,7 +166,7 @@ export function QuotaBalanceCard({
 
         <dl className="space-y-3">
           <InfoRow
-            label="Current Balance"
+            label={t.currentBalance}
             value={
               <span className="text-lg font-bold">
                 {formatCurrency(initialBalance)}
@@ -177,7 +181,7 @@ export function QuotaBalanceCard({
                   htmlFor="quotaBase"
                   className="text-sm text-muted-foreground"
                 >
-                  Quota Base (messages)
+                  {t.quotaBaseInputLabel}
                 </Label>
                 <Input
                   id="quotaBase"
@@ -192,7 +196,7 @@ export function QuotaBalanceCard({
                   htmlFor="dailyLimit"
                   className="text-sm text-muted-foreground"
                 >
-                  Daily Limit (messages)
+                  {t.dailyLimitInputLabel}
                 </Label>
                 <Input
                   id="dailyLimit"
@@ -210,18 +214,18 @@ export function QuotaBalanceCard({
                   disabled={saving}
                 >
                   <X className="mr-1 size-3" />
-                  Cancel
+                  {t.cancel}
                 </Button>
                 <Button size="sm" onClick={handleSave} disabled={saving}>
                   <Check className="mr-1 size-3" />
-                  {saving ? "Saving..." : "Save"}
+                  {saving ? t.saving : t.save}
                 </Button>
               </div>
             </>
           ) : (
             <>
               <InfoRow
-                label="Monthly Allowance"
+                label={t.monthlyAllowance}
                 value={`${initialQuotaBaseOut.toLocaleString()} / ${initialQuotaBase.toLocaleString()}`}
               />
               {initialQuotaBaseOut <= 0 && initialQuotaBase > 0 && (
@@ -234,13 +238,16 @@ export function QuotaBalanceCard({
                 >
                   <span className="font-medium">
                     {initialQuotaBaseOut < 0
-                      ? `Monthly allowance in overdraft (${Math.abs(initialQuotaBaseOut).toLocaleString()} over limit) — overage charges apply`
-                      : "Monthly allowance exhausted — overage charges apply"}
+                      ? t.monthlyAllowanceOverdraft.replace(
+                          "{count}",
+                          Math.abs(initialQuotaBaseOut).toLocaleString()
+                        )
+                      : t.monthlyAllowanceExhausted}
                   </span>
                 </div>
               )}
               <InfoRow
-                label="Daily Limit"
+                label={t.dailyLimit}
                 value={initialDailyLimitMessage.toLocaleString()}
               />
             </>
@@ -255,11 +262,16 @@ export function QuotaBalanceCard({
  * Loading skeleton for QuotaBalanceCard
  */
 export function QuotaBalanceCardSkeleton() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappDevicesQuotaBalanceCard
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Quota & Balance</CardTitle>
-        <CardDescription>Usage limits and current balance</CardDescription>
+        <CardTitle className="text-base">{t.title}</CardTitle>
+        <CardDescription>{t.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">

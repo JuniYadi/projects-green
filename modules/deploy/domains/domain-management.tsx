@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import { Globe, LockKey, Plus } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type CloudflareCredentialOption = {
   id: string
@@ -47,6 +50,9 @@ export function DomainManagement({
   cloudflareCredentials,
   onAddDomain,
 }: DomainManagementProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const activeCredentials = cloudflareCredentials.filter(
     (credential) =>
       (credential.type === undefined ||
@@ -82,7 +88,11 @@ export function DomainManagement({
       setCustomTls(false)
       setCredentialId(undefined)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to add domain.")
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : messages.pDeployDomainsDomainManagement.addDomainError
+      )
     } finally {
       setSubmitting(false)
     }
@@ -92,7 +102,7 @@ export function DomainManagement({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Globe size={20} /> Domain management
+          <Globe size={20} /> {messages.pDeployDomainsDomainManagement.title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -100,9 +110,13 @@ export function DomainManagement({
           role="status"
           className="rounded-lg border border-border bg-muted/30 p-3 text-sm"
         >
-          <p className="font-medium">Custom domain quota</p>
+          <p className="font-medium">
+            {messages.pDeployDomainsDomainManagement.quotaTitle}
+          </p>
           <p className="text-muted-foreground">
-            {quota.used} of {quota.maxCustomDomains} custom domains in use
+            {messages.pDeployDomainsDomainManagement.quotaUsage
+              .replace("{used}", String(quota.used))
+              .replace("{max}", String(quota.maxCustomDomains))}
           </p>
         </div>
         {error && (
@@ -112,7 +126,9 @@ export function DomainManagement({
         )}
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="custom-domain-hostname">Hostname</Label>
+            <Label htmlFor="custom-domain-hostname">
+              {messages.pDeployDomainsDomainManagement.hostnameLabel}
+            </Label>
             <Input
               id="custom-domain-hostname"
               value={hostname}
@@ -123,9 +139,11 @@ export function DomainManagement({
           </div>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <Label htmlFor="custom-domain-wildcard">Wildcard domain</Label>
+              <Label htmlFor="custom-domain-wildcard">
+                {messages.pDeployDomainsDomainManagement.wildcardLabel}
+              </Label>
               <p className="text-xs text-muted-foreground">
-                Route all subdomains through this application.
+                {messages.pDeployDomainsDomainManagement.wildcardDescription}
               </p>
             </div>
             <Switch
@@ -138,11 +156,16 @@ export function DomainManagement({
           {wildcard && (
             <div className="space-y-2 rounded-lg border border-border p-3">
               <Label htmlFor="cloudflare-credential">
-                Cloudflare API token
+                {messages.pDeployDomainsDomainManagement.cloudflareTokenLabel}
               </Label>
               <Select value={credentialId} onValueChange={setCredentialId}>
                 <SelectTrigger id="cloudflare-credential">
-                  <SelectValue placeholder="Select an active credential" />
+                  <SelectValue
+                    placeholder={
+                      messages.pDeployDomainsDomainManagement
+                        .credentialPlaceholder
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {activeCredentials.map((credential) => (
@@ -157,8 +180,7 @@ export function DomainManagement({
               </Select>
               {activeCredentials.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Add an active Cloudflare API token credential before using a
-                  wildcard domain.
+                  {messages.pDeployDomainsDomainManagement.noCredentialsHint}
                 </p>
               )}
             </div>
@@ -168,10 +190,10 @@ export function DomainManagement({
               <LockKey size={16} />
               <div>
                 <Label htmlFor="custom-domain-tls">
-                  Custom TLS certificate
+                  {messages.pDeployDomainsDomainManagement.customTlsLabel}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Use your own certificate for this hostname.
+                  {messages.pDeployDomainsDomainManagement.customTlsDescription}
                 </p>
               </div>
             </div>
@@ -184,7 +206,7 @@ export function DomainManagement({
           </div>
           <Button type="submit" disabled={submitting || !canSubmit}>
             <Plus size={16} className="mr-2" />
-            Add domain
+            {messages.pDeployDomainsDomainManagement.addDomain}
           </Button>
         </form>
       </CardContent>

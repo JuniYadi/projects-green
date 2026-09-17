@@ -32,6 +32,7 @@ import {
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -87,6 +88,7 @@ export function TemplateDetailView({
   const router = useRouter()
   const routeParams = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(routeParams?.lang)
+  const messages = getMessages(locale)
 
   // State for active language selection and variable overrides
   const defaultLang = template?.languages?.[0]?.lang ?? ""
@@ -208,35 +210,32 @@ export function TemplateDetailView({
 
   // Map Rejection Reasons to human explanations & fix recommendations
   const getHumanRejectionGuidance = (reason?: string | null) => {
+    const t = messages.pWhatsappTemplatesTemplateDetail
     switch (reason) {
       case "INCORRECT_CATEGORY":
         return {
-          title: "Kategori Template Tidak Sesuai",
-          explanation:
-            "Meta mendeteksi pesan ini berisi kode OTP/verifikasi atau promosi yang tidak sesuai dengan kategori yang dipilih.",
-          fix: "Ubah kategori menjadi AUTHENTICATION (jika OTP) atau MARKETING (jika pesan promo) lalu submit ulang.",
+          title: t.rejectIncorrectCategoryTitle,
+          explanation: t.rejectIncorrectCategoryExplanation,
+          fix: t.rejectIncorrectCategoryFix,
         }
       case "TAG_CONTENT_MISMATCH":
         return {
-          title: "Format Parameter {{1}} Tidak Valid",
-          explanation:
-            "Parameter placeholder melanggar kebijakan Meta (misalnya ditaruh di awal/akhir baris tanpa teks pembuka/penutup).",
-          fix: "Pastikan semua variabel {{1}}, {{2}} diapit oleh teks kalimat yang jelas.",
+          title: t.rejectTagMismatchTitle,
+          explanation: t.rejectTagMismatchExplanation,
+          fix: t.rejectTagMismatchFix,
         }
       case "PROMOTIONAL_CONTENT":
         return {
-          title: "Terdeteksi Konten Promosi pada Kategori Utility",
-          explanation:
-            "Template Utility/Notification tidak boleh mengandung diskon, promo, atau ajakan belanja.",
-          fix: "Ganti kategori template menjadi MARKETING atau hapus kata-kata promosi dari isi pesan.",
+          title: t.rejectPromotionalTitle,
+          explanation: t.rejectPromotionalExplanation,
+          fix: t.rejectPromotionalFix,
         }
       case "INVALID_FORMAT":
       default:
         return {
-          title: "Format Template Ditolak oleh Meta",
-          explanation:
-            "Template melanggar panduan format Meta WhatsApp (e.g. ejaan tidak baku, URL shortener terlarang, atau karakter spesial).",
-          fix: "Buat duplikat template, perbaiki teks pesan, dan pastikan tidak menggunakan URL shortener seperti bit.ly.",
+          title: t.rejectInvalidFormatTitle,
+          explanation: t.rejectInvalidFormatExplanation,
+          fix: t.rejectInvalidFormatFix,
         }
     }
   }
@@ -281,7 +280,7 @@ export function TemplateDetailView({
     if (!activeJsonString) return
     void navigator.clipboard.writeText(activeJsonString)
     setCopiedJson(true)
-    toast.success("Ready-to-use JSON payload copied!")
+    toast.success(messages.pWhatsappTemplatesTemplateDetail.jsonCopiedToast)
     setTimeout(() => setCopiedJson(false), 2000)
   }
 
@@ -297,12 +296,12 @@ export function TemplateDetailView({
             {isApproved ? (
               <Badge className="flex items-center gap-1 border-emerald-500/30 bg-emerald-500/15 text-emerald-600">
                 <CheckCircle weight="fill" className="size-3.5" />
-                Approved
+                {messages.pWhatsappTemplatesTemplateDetail.approved}
               </Badge>
             ) : isRejected ? (
               <Badge className="flex items-center gap-1 border-destructive/30 bg-destructive/15 text-destructive">
                 <XCircle weight="fill" className="size-3.5" />
-                Rejected
+                {messages.pWhatsappTemplatesTemplateDetail.rejected}
               </Badge>
             ) : (
               <Badge className="flex items-center gap-1 border-amber-500/30 bg-amber-500/15 text-amber-600">
@@ -320,15 +319,22 @@ export function TemplateDetailView({
               title={
                 template.requestedCategory &&
                 template.requestedCategory !== template.category
-                  ? `Diajukan sebagai ${template.requestedCategory}, namun disetujui Meta sebagai ${template.category}`
+                  ? messages.pWhatsappTemplatesTemplateDetail.requestedVsApproved
+                      .replace("{requested}", template.requestedCategory)
+                      .replace("{category}", template.category ?? "")
                   : undefined
               }
             >
-              Kategori Meta: {template.category ?? "Tidak tersedia"}
+              {messages.pWhatsappTemplatesTemplateDetail.metaCategoryLabel}{" "}
+              {template.category ??
+                messages.pWhatsappTemplatesTemplateDetail.notAvailable}
               {template.requestedCategory &&
                 template.requestedCategory !== template.category && (
                   <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400">
-                    (Diubah Meta dari {template.requestedCategory})
+                    {messages.pWhatsappTemplatesTemplateDetail.changedByMeta.replace(
+                      "{category}",
+                      template.requestedCategory
+                    )}
                   </span>
                 )}
             </Badge>
@@ -351,7 +357,12 @@ export function TemplateDetailView({
               </Badge>
             )}
             <span>•</span>
-            <span>Created {formatDate(template.createdAt)}</span>
+            <span>
+              {messages.pWhatsappTemplatesTemplateDetail.created.replace(
+                "{date}",
+                formatDate(template.createdAt)
+              )}
+            </span>
           </div>
         </div>
 
@@ -408,14 +419,16 @@ export function TemplateDetailView({
                 }
               >
                 <Copy weight="bold" className="size-4" />
-                Duplicate
+                {messages.pWhatsappTemplatesTemplateDetail.duplicate}
               </DropdownMenuItem>
               {onSync && (
                 <DropdownMenuItem onSelect={onSync} disabled={syncing}>
                   <ArrowsClockwise
                     className={`size-4 ${syncing ? "animate-spin" : ""}`}
                   />
-                  {syncing ? "Syncing..." : "Sync"}
+                  {syncing
+                    ? messages.pWhatsappTemplatesTemplateDetail.syncing
+                    : messages.pWhatsappTemplatesTemplateDetail.sync}
                 </DropdownMenuItem>
               )}
               {onDelete && (
@@ -449,7 +462,11 @@ export function TemplateDetailView({
                 {rejectionGuidance.explanation}
               </p>
               <p className="pt-1 text-xs text-muted-foreground">
-                💡 <strong>Solusi:</strong> {rejectionGuidance.fix}
+                💡{" "}
+                <strong>
+                  {messages.pWhatsappTemplatesTemplateDetail.solutionLabel}
+                </strong>{" "}
+                {rejectionGuidance.fix}
               </p>
             </div>
           </CardContent>
@@ -468,31 +485,26 @@ export function TemplateDetailView({
               <div className="flex-1 space-y-2">
                 <div>
                   <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                    {locale === "en"
-                      ? "Category Reclassified by Meta"
-                      : "Kategori Disesuaikan Otomatis oleh Meta"}
+                    {
+                      messages.pWhatsappTemplatesTemplateDetail
+                        .reclassifiedTitle
+                    }
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-amber-800/90 dark:text-amber-200/90">
-                    {locale === "en" ? (
-                      <>
-                        This template was originally submitted as{" "}
-                        <strong>{template.requestedCategory}</strong>, but Meta
-                        classified and approved it as{" "}
-                        <strong>{template.category}</strong> based on message
-                        content analysis. Billing will follow Meta&apos;s{" "}
-                        {template.category} rates.
-                      </>
-                    ) : (
-                      <>
-                        Template ini awalnya diajukan sebagai kategori{" "}
-                        <strong>{template.requestedCategory}</strong>, namun
-                        Meta secara otomatis menyetujuinya sebagai{" "}
-                        <strong>{template.category}</strong> berdasarkan hasil
-                        analisis konten pesan. Tarif pengiriman pesan akan
-                        mengikuti ketentuan kategori {template.category} dari
-                        Meta.
-                      </>
-                    )}
+                    {messages.pWhatsappTemplatesTemplateDetail.reclassifiedBody
+                      .replace("{rate}", template.category)
+                      .split(/(\{requested\}|\{category\})/)
+                      .map((part, index) =>
+                        part === "{requested}" ? (
+                          <strong key={index}>
+                            {template.requestedCategory}
+                          </strong>
+                        ) : part === "{category}" ? (
+                          <strong key={index}>{template.category}</strong>
+                        ) : (
+                          part
+                        )
+                      )}
                   </p>
                 </div>
 
@@ -508,9 +520,7 @@ export function TemplateDetailView({
                       weight="fill"
                       className="mr-1.5 size-3.5 text-amber-600 dark:text-amber-400"
                     />
-                    {locale === "en"
-                      ? "Ask P: Why Marketing & Get Fix Recommendations"
-                      : "Tanya P: Analisis Alasan Marketing & Rekomendasi"}
+                    {messages.pWhatsappTemplatesTemplateDetail.askPAudit}
                   </Button>
                 </div>
               </div>
@@ -530,7 +540,8 @@ export function TemplateDetailView({
               </p>
               <p className="text-xs leading-relaxed text-foreground/80">
                 <WhatsAppText id="s376" />{" "}
-                {template.category ?? "Tidak tersedia"}
+                {template.category ??
+                  messages.pWhatsappTemplatesTemplateDetail.notAvailable}
               </p>
               <p className="text-xs leading-relaxed text-foreground/80">
                 <WhatsAppText id="s377" /> {metaReason}
@@ -589,7 +600,7 @@ export function TemplateDetailView({
                       className="h-7 gap-1 px-2 text-xs"
                     >
                       <ChatsCircle className="size-3.5" />
-                      Bubble
+                      {messages.pWhatsappTemplatesTemplateDetail.bubbleTab}
                     </TabsTrigger>
                     <TabsTrigger
                       value="json"
@@ -629,7 +640,7 @@ export function TemplateDetailView({
                         {copiedJson ? (
                           <>
                             <Check className="size-3 text-emerald-500" />
-                            Copied
+                            {messages.pWhatsappTemplatesTemplateDetail.copied}
                           </>
                         ) : (
                           <>

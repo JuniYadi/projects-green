@@ -71,7 +71,9 @@ const POD_STATUS_META: Record<
 
 function getPodStatusLabel(
   status: PodStatus,
-  messages: ReturnType<typeof getMessages>["console"]["deploy"]["operateScaling"]
+  messages: ReturnType<
+    typeof getMessages
+  >["console"]["deploy"]["operateScaling"]
 ) {
   switch (status) {
     case "healthy":
@@ -130,7 +132,9 @@ export function TabScaling({
   locale = "en",
 }: TabScalingProps) {
   const activeLocale = resolveLocaleOrDefault(locale)
-  const messages = getMessages(activeLocale).console.deploy.operateScaling
+  const allMessages = getMessages(activeLocale)
+  const messages = allMessages.console.deploy.operateScaling
+  const scalingText = allMessages.pDeployOperateTabScaling
   const [cpuLimit, setCpuLimit] = useState(initialCpuLimit ?? "1000m")
   const [memRequest, setMemRequest] = useState("256Mi")
   const [memLimit, setMemLimit] = useState(initialMemLimit ?? "512Mi")
@@ -229,19 +233,31 @@ export function TabScaling({
               {/* Summary badges */}
               <div className="flex items-center gap-2 text-[10px] font-bold">
                 <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-muted-foreground">
-                  {messages.totalBadge.replace("{count}", String(podCounts.total))}
+                  {messages.totalBadge.replace(
+                    "{count}",
+                    String(podCounts.total)
+                  )}
                 </span>
                 <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-400">
-                  {messages.healthyBadge.replace("{count}", String(podCounts.healthy))}
+                  {messages.healthyBadge.replace(
+                    "{count}",
+                    String(podCounts.healthy)
+                  )}
                 </span>
                 {podCounts.warning > 0 && (
                   <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-amber-400">
-                    {messages.warningBadge.replace("{count}", String(podCounts.warning))}
+                    {messages.warningBadge.replace(
+                      "{count}",
+                      String(podCounts.warning)
+                    )}
                   </span>
                 )}
                 {podCounts.crashed > 0 && (
                   <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-red-400">
-                    {messages.crashedBadge.replace("{count}", String(podCounts.crashed))}
+                    {messages.crashedBadge.replace(
+                      "{count}",
+                      String(podCounts.crashed)
+                    )}
                   </span>
                 )}
               </div>
@@ -378,7 +394,8 @@ export function TabScaling({
         <Card size="sm" className="border-border bg-card shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-              <Cpu size={18} className="text-primary" /> {messages.resourceTuning}
+              <Cpu size={18} className="text-primary" />{" "}
+              {messages.resourceTuning}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
               {messages.resourceTuningDesc}
@@ -408,10 +425,9 @@ export function TabScaling({
                   className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary transition-all hover:bg-muted/80"
                 />
                 <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
-                  <span>128Mi</span>
-                  <span>256Mi</span>
-                  <span>512Mi</span>
-                  <span>1024Mi</span>
+                  {memRequestOptions.map((option) => (
+                    <span key={option}>{option}</span>
+                  ))}
                 </div>
               </div>
 
@@ -437,11 +453,9 @@ export function TabScaling({
                   className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary transition-all hover:bg-muted/80"
                 />
                 <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
-                  <span>256Mi</span>
-                  <span>512Mi</span>
-                  <span>1024Mi</span>
-                  <span>2048Mi</span>
-                  <span>4096Mi</span>
+                  {memLimitOptions.map((option) => (
+                    <span key={option}>{option}</span>
+                  ))}
                 </div>
                 <span className="block text-[10px] leading-tight text-muted-foreground/80">
                   {messages.adjustMemLimitOom}
@@ -502,7 +516,10 @@ export function TabScaling({
                 <span className="rounded-full border border-border bg-muted/40 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
                   {replicas === 1
                     ? messages.replicaSingular.replace("{count}", "1")
-                    : messages.replicaPlural.replace("{count}", String(replicas))}
+                    : messages.replicaPlural.replace(
+                        "{count}",
+                        String(replicas)
+                      )}
                 </span>
               </div>
 
@@ -538,7 +555,9 @@ export function TabScaling({
                       {messages.totalMemory}
                     </span>
                     <span className="font-mono text-xs font-semibold text-foreground">
-                      {totalMemoryMiB} MiB / {maxMemoryMiB} MiB
+                      {scalingText.totalMemoryFormat
+                        .replace("{used}", String(totalMemoryMiB))
+                        .replace("{max}", String(maxMemoryMiB))}
                     </span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -590,9 +609,7 @@ export function TabScaling({
               {hpaEnabled && (
                 <div className="flex gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-[10px] text-amber-300">
                   <ShieldWarning size={14} className="mt-0.5 shrink-0" />
-                  <span>
-                    {messages.hpaActiveLocked}
-                  </span>
+                  <span>{messages.hpaActiveLocked}</span>
                 </div>
               )}
               {!hpaEnabled && isQuotaCapReached && (
@@ -719,7 +736,10 @@ export function TabScaling({
                     <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-[10px] text-amber-400">
                       <Warning size={14} className="shrink-0" />
                       <span>
-                        {messages.hpaCappedWarning.replace("{ceiling}", String(hpaQuotaCeiling))}
+                        {messages.hpaCappedWarning.replace(
+                          "{ceiling}",
+                          String(hpaQuotaCeiling)
+                        )}
                       </span>
                     </div>
                   )}
@@ -785,9 +805,12 @@ export function TabScaling({
                   <div className="flex gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-[11px] leading-normal text-blue-300">
                     <ShieldCheck size={16} className="mt-0.5 shrink-0" />
                     <p>
-                      <strong>Auto:</strong> {messages.vpaExplainAuto}{" "}
-                      <strong>Initial:</strong> {messages.vpaExplainInitial}{" "}
-                      <strong>Off:</strong> {messages.vpaExplainOff}
+                      <strong>{scalingText.vpaModeAutoLabel}</strong>{" "}
+                      {messages.vpaExplainAuto}{" "}
+                      <strong>{scalingText.vpaModeInitialLabel}</strong>{" "}
+                      {messages.vpaExplainInitial}{" "}
+                      <strong>{scalingText.vpaModeOffLabel}</strong>{" "}
+                      {messages.vpaExplainOff}
                     </p>
                   </div>
                 </div>

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { eden } from "@/lib/eden"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
   PencilSimple,
@@ -24,6 +24,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type DeviceActionsProps = {
   deviceId: string
@@ -39,6 +41,10 @@ export function DeviceActions({
   editHref,
 }: DeviceActionsProps) {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappDevicesDeviceActions
   const [actionState, setActionState] = useState<ActionState>("idle")
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deactivateOpen, setDeactivateOpen] = useState(false)
@@ -55,7 +61,7 @@ export function DeviceActions({
 
       if (!data?.ok) {
         throw new Error(
-          (data as { message?: string })?.message || "Failed to verify device"
+          (data as { message?: string })?.message || t.verifyDeviceFailed
         )
       }
 
@@ -64,14 +70,19 @@ export function DeviceActions({
           ? (data as { health?: { ok: boolean; error?: string } }).health
           : null
       if (health?.ok) {
-        toast.success("Device is connected and healthy")
+        toast.success(t.deviceHealthy)
       } else {
-        toast.error(`Health check failed: ${health?.error || "Unknown error"}`)
+        toast.error(
+          t.healthCheckFailed.replace(
+            "{error}",
+            health?.error || t.unknownError
+          )
+        )
       }
       router.refresh()
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to verify device"
+        error instanceof Error ? error.message : t.verifyDeviceFailed
       toast.error(message)
     } finally {
       setActionState("idle")
@@ -86,7 +97,7 @@ export function DeviceActions({
 
       if (!res.ok) {
         throw new Error(
-          (res as { message?: string })?.message || "Failed to sync templates"
+          (res as { message?: string })?.message || t.syncTemplatesFailed
         )
       }
 
@@ -94,7 +105,7 @@ export function DeviceActions({
       router.refresh()
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to sync templates"
+        error instanceof Error ? error.message : t.syncTemplatesFailed
       toast.error(message)
     } finally {
       setActionState("idle")
@@ -107,18 +118,21 @@ export function DeviceActions({
 
       if (!res.ok) {
         throw new Error(
-          (res as { message?: string })?.message || "Failed to reset quota"
+          (res as { message?: string })?.message || t.resetQuotaFailed
         )
       }
 
       toast.success(
-        `Quota reset successfully to ${res.newQuotaBaseOut.toLocaleString()}`
+        t.resetQuotaSuccess.replace(
+          "{value}",
+          res.newQuotaBaseOut.toLocaleString()
+        )
       )
       setResetQuotaOpen(false)
       router.refresh()
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to reset quota"
+        error instanceof Error ? error.message : t.resetQuotaFailed
       toast.error(message)
     } finally {
       setIsResettingQuota(false)
@@ -134,17 +148,16 @@ export function DeviceActions({
 
       if (!data?.ok) {
         throw new Error(
-          (data as { message?: string })?.message ||
-            "Failed to deactivate device"
+          (data as { message?: string })?.message || t.deactivateDeviceFailed
         )
       }
 
-      toast.success("Device deactivated successfully")
+      toast.success(t.deactivateDeviceSuccess)
       setDeactivateOpen(false)
       router.refresh()
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to deactivate device"
+        error instanceof Error ? error.message : t.deactivateDeviceFailed
       toast.error(message)
     } finally {
       setIsDeactivating(false)
@@ -158,16 +171,16 @@ export function DeviceActions({
 
       if (!data?.ok) {
         throw new Error(
-          (data as { message?: string })?.message || "Failed to delete device"
+          (data as { message?: string })?.message || t.deleteDeviceFailed
         )
       }
 
-      toast.success("Device deleted successfully")
+      toast.success(t.deleteDeviceSuccess)
       setDeleteOpen(false)
       router.push("/portal/whatsapp/devices")
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to delete device"
+        error instanceof Error ? error.message : t.deleteDeviceFailed
       toast.error(message)
     } finally {
       setIsDeleting(false)
@@ -186,7 +199,7 @@ export function DeviceActions({
           disabled={actionState !== "idle"}
         >
           <Heartbeat weight="bold" className="mr-1.5 size-4" />
-          {actionState === "verifying" ? "Checking..." : "Health Check"}
+          {actionState === "verifying" ? t.checking : t.healthCheck}
         </Button>
         <Button
           size="sm"
@@ -195,7 +208,7 @@ export function DeviceActions({
           disabled={actionState !== "idle"}
         >
           <CloudArrowDown weight="bold" className="mr-1.5 size-4" />
-          {actionState === "syncing" ? "Syncing..." : "Template Sync"}
+          {actionState === "syncing" ? t.syncing : t.templateSync}
         </Button>
         <Button
           size="sm"
@@ -204,12 +217,12 @@ export function DeviceActions({
           disabled={actionState !== "idle"}
         >
           <ArrowCounterClockwise weight="bold" className="mr-1.5 size-4" />
-          Reset Quota
+          {t.resetQuota}
         </Button>
         <Button size="sm" variant="outline" asChild>
           <Link href={editHref}>
             <PencilSimple weight="bold" className="mr-1.5 size-4" />
-            Edit
+            {t.edit}
           </Link>
         </Button>
         {isActive && (
@@ -219,7 +232,7 @@ export function DeviceActions({
             onClick={() => setDeactivateOpen(true)}
           >
             <Pause weight="bold" className="mr-1.5 size-4" />
-            Deactivate
+            {t.deactivate}
           </Button>
         )}
         <Button
@@ -228,7 +241,7 @@ export function DeviceActions({
           onClick={() => setDeleteOpen(true)}
         >
           <Trash weight="bold" className="mr-1.5 size-4" />
-          Delete
+          {t.delete}
         </Button>
       </div>
 
@@ -236,10 +249,9 @@ export function DeviceActions({
       <Dialog open={resetQuotaOpen} onOpenChange={setResetQuotaOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset Monthly Quota</DialogTitle>
+            <DialogTitle>{t.resetQuotaDialogTitle}</DialogTitle>
             <DialogDescription>
-              This will reset the device remaining outbound quota (quotaBaseOut)
-              back to its base quota limit. An audit log will be recorded.
+              {t.resetQuotaDialogDescription}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -248,10 +260,10 @@ export function DeviceActions({
               onClick={() => setResetQuotaOpen(false)}
               disabled={isResettingQuota}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button onClick={handleResetQuota} disabled={isResettingQuota}>
-              {isResettingQuota ? "Resetting..." : "Confirm Reset"}
+              {isResettingQuota ? t.resetting : t.confirmReset}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -260,22 +272,21 @@ export function DeviceActions({
       <Dialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Deactivate Device</DialogTitle>
+            <DialogTitle>{t.deactivateDialogTitle}</DialogTitle>
             <DialogDescription>
-              This device will be set to non-active and will no longer be able
-              to send messages. Its data and history will be preserved.
+              {t.deactivateDialogDescription}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeactivateOpen(false)}>
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               variant="destructive"
               onClick={() => void handleDeactivate()}
               disabled={isDeactivating}
             >
-              {isDeactivating ? "Deactivating..." : "Deactivate Device"}
+              {isDeactivating ? t.deactivating : t.deactivateDialogTitle}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -285,23 +296,19 @@ export function DeviceActions({
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Device</DialogTitle>
-            <DialogDescription>
-              This action is permanent and cannot be undone. The device will be
-              removed from the system, and WhatsApp service for this number will
-              be terminated.
-            </DialogDescription>
+            <DialogTitle>{t.deleteDialogTitle}</DialogTitle>
+            <DialogDescription>{t.deleteDialogDescription}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               variant="destructive"
               onClick={() => void handleDelete()}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete Device"}
+              {isDeleting ? t.deleting : t.deleteDialogTitle}
             </Button>
           </DialogFooter>
         </DialogContent>

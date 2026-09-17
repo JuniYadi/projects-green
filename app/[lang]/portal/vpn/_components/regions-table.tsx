@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 
 import {
   Table,
@@ -26,6 +27,9 @@ import {
 } from "@/components/ui/dialog"
 import { PlusIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
 import {
   listVpnRegions,
   createVpnRegion,
@@ -39,6 +43,10 @@ type FormState = { name: string; countryCode: string; isActive: boolean }
 const EMPTY_FORM: FormState = { name: "", countryCode: "", isActive: true }
 
 export function RegionsTable() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [regions, setRegions] = useState<VpnRegionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -104,7 +112,13 @@ export function RegionsTable() {
   }
 
   const remove = async (region: VpnRegionItem) => {
-    if (!window.confirm(`Delete region "${region.name}"?`)) return
+    const confirmed = window.confirm(
+      messages.pPortalVpnRegionsTable.confirmDelete.replace(
+        "{name}",
+        region.name
+      )
+    )
+    if (!confirmed) return
     try {
       await deleteVpnRegion(region.id)
       await load()
@@ -118,7 +132,7 @@ export function RegionsTable() {
       <div className="flex items-center justify-end">
         <Button onClick={openCreate} size="sm">
           <PlusIcon className="mr-2 h-4 w-4" />
-          Add Region
+          {messages.pPortalVpnRegionsTable.addRegion}
         </Button>
       </div>
 
@@ -132,12 +146,16 @@ export function RegionsTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-16">Flag</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Servers</TableHead>
-              <TableHead>Active</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="w-16">
+                {messages.pPortalVpnRegionsTable.flag}
+              </TableHead>
+              <TableHead>{messages.pPortalVpnRegionsTable.name}</TableHead>
+              <TableHead>{messages.pPortalVpnRegionsTable.slug}</TableHead>
+              <TableHead>{messages.pPortalVpnRegionsTable.servers}</TableHead>
+              <TableHead>{messages.pPortalVpnRegionsTable.active}</TableHead>
+              <TableHead className="text-right">
+                {messages.pPortalVpnRegionsTable.actions}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -153,7 +171,7 @@ export function RegionsTable() {
                   colSpan={6}
                   className="text-center text-sm text-muted-foreground"
                 >
-                  No regions yet.
+                  {messages.pPortalVpnRegionsTable.noRegionsYet}
                 </TableCell>
               </TableRow>
             ) : (
@@ -175,7 +193,9 @@ export function RegionsTable() {
                   <TableCell>{region.serverCount}</TableCell>
                   <TableCell>
                     <Badge variant={region.isActive ? "default" : "secondary"}>
-                      {region.isActive ? "Active" : "Inactive"}
+                      {region.isActive
+                        ? messages.pPortalVpnRegionsTable.active
+                        : messages.pPortalVpnRegionsTable.inactive}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -184,7 +204,10 @@ export function RegionsTable() {
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(region)}
-                        aria-label={`Edit ${region.name}`}
+                        aria-label={messages.pPortalVpnRegionsTable.editRegionAria.replace(
+                          "{name}",
+                          region.name
+                        )}
                       >
                         <PencilSimpleIcon className="h-4 w-4" />
                       </Button>
@@ -193,7 +216,10 @@ export function RegionsTable() {
                         size="icon"
                         onClick={() => remove(region)}
                         disabled={region.serverCount > 0}
-                        aria-label={`Delete ${region.name}`}
+                        aria-label={messages.pPortalVpnRegionsTable.deleteRegionAria.replace(
+                          "{name}",
+                          region.name
+                        )}
                       >
                         <TrashIcon className="h-4 w-4" />
                       </Button>
@@ -209,23 +235,31 @@ export function RegionsTable() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Region" : "Add Region"}</DialogTitle>
+            <DialogTitle>
+              {editing
+                ? messages.pPortalVpnRegionsTable.editRegion
+                : messages.pPortalVpnRegionsTable.addRegion}
+            </DialogTitle>
             <DialogDescription>
-              Slug is auto-generated from the name.
+              {messages.pPortalVpnRegionsTable.slugAutoGenerated}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="region-name">Name</Label>
+              <Label htmlFor="region-name">
+                {messages.pPortalVpnRegionsTable.name}
+              </Label>
               <Input
                 id="region-name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Indonesia"
+                placeholder={messages.pPortalVpnRegionsTable.namePlaceholder}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="region-country">Country code</Label>
+              <Label htmlFor="region-country">
+                {messages.pPortalVpnRegionsTable.countryCode}
+              </Label>
               <Input
                 id="region-country"
                 value={form.countryCode}
@@ -244,7 +278,7 @@ export function RegionsTable() {
                   setForm({ ...form, isActive: e.target.checked })
                 }
               />
-              Active
+              {messages.pPortalVpnRegionsTable.active}
             </label>
             {formError && (
               <p className="text-sm text-red-600 dark:text-red-400">
@@ -254,10 +288,12 @@ export function RegionsTable() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {messages.pPortalVpnRegionsTable.cancel}
             </Button>
             <Button onClick={submit} disabled={saving}>
-              {saving ? "Saving..." : "Save"}
+              {saving
+                ? messages.pPortalVpnRegionsTable.saving
+                : messages.pPortalVpnRegionsTable.save}
             </Button>
           </DialogFooter>
         </DialogContent>

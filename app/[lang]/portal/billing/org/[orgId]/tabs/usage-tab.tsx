@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -13,19 +14,19 @@ import { CurrencyDollarIcon, LightningIcon } from "@phosphor-icons/react"
 import { getAdminUsage } from "@/lib/billing-client"
 import type { ChartConfig } from "@/components/ui/chart"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type UsageTabProps = {
   orgId: string
 }
 
-const chartConfig = {
-  cost: {
-    label: "Cost",
-    color: "var(--primary)",
-  },
-} satisfies ChartConfig
-
 export function UsageTab({ orgId }: UsageTabProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingOrgTabsUsageTab
+
   const [breakdown, setBreakdown] = useState<
     {
       category: string
@@ -37,6 +38,13 @@ export function UsageTab({ orgId }: UsageTabProps) {
   const [trend, setTrend] = useState<{ date: string; amount: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const chartConfig = {
+    cost: {
+      label: t.cost,
+      color: "var(--primary)",
+    },
+  } satisfies ChartConfig
 
   useEffect(() => {
     let cancelled = false
@@ -76,7 +84,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
     return (
       <Card>
         <CardContent className="py-6 text-center text-destructive">
-          Failed to load usage: {error}
+          {t.loadUsageFailed.replace("{message}", error)}
         </CardContent>
       </Card>
     )
@@ -91,40 +99,48 @@ export function UsageTab({ orgId }: UsageTabProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.totalCost}</CardTitle>
             <CurrencyDollarIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatBillingMoney(totalCost, "IDR")}
             </div>
-            <p className="text-xs text-muted-foreground">Last 30 days</p>
+            <p className="text-xs text-muted-foreground">{t.last30Days}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t.totalEvents}
+            </CardTitle>
             <LightningIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {totalEvents.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">All services</p>
+            <p className="text-xs text-muted-foreground">{t.allServices}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Services Used</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t.servicesUsed}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{breakdown.length}</div>
-            <p className="text-xs text-muted-foreground">Active categories</p>
+            <p className="text-xs text-muted-foreground">
+              {t.activeCategories}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Daily Average</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t.dailyAverage}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -137,7 +153,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
                 "IDR"
               )}
             </div>
-            <p className="text-xs text-muted-foreground">Last 30 days</p>
+            <p className="text-xs text-muted-foreground">{t.last30Days}</p>
           </CardContent>
         </Card>
       </div>
@@ -147,7 +163,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
         {/* Cost Breakdown */}
         <Card>
           <CardHeader>
-            <CardTitle>Cost by Service</CardTitle>
+            <CardTitle>{t.costByService}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -159,7 +175,10 @@ export function UsageTab({ orgId }: UsageTabProps) {
                         {item.category}
                       </span>
                       <span className="ml-2 text-xs text-muted-foreground">
-                        ({item.quantity.toLocaleString()} events)
+                        {t.eventsCount.replace(
+                          "{count}",
+                          item.quantity.toLocaleString()
+                        )}
                       </span>
                     </div>
                     <div className="text-right">
@@ -182,9 +201,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
                 </div>
               ))}
               {breakdown.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No usage data for this period.
-                </p>
+                <p className="text-sm text-muted-foreground">{t.noUsageData}</p>
               )}
             </div>
           </CardContent>
@@ -193,7 +210,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
         {/* Daily Trend Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Daily Trend (Last 30 Days)</CardTitle>
+            <CardTitle>{t.dailyTrend}</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
@@ -221,7 +238,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
                     <ChartTooltipContent
                       formatter={(value: number) => [
                         formatBillingMoney(value, "IDR"),
-                        "Cost",
+                        t.cost,
                       ]}
                       labelFormatter={(label: string) =>
                         new Date(label).toLocaleDateString("en-US", {

@@ -5,6 +5,7 @@ import { eden } from "@/lib/eden"
 import { z } from "zod"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react"
 
@@ -88,6 +89,7 @@ export function LoginForm({
 }: LoginFormProps) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const router = useRouter()
   const encodedNext = encodeURIComponent(nextPath)
   const signInWithGooglePath = `/login/start?next=${encodedNext}&provider=google`
@@ -336,7 +338,7 @@ export function LoginForm({
                   <Button
                     variant="outline"
                     type="button"
-                    aria-label="Login with Google"
+                    aria-label={messages.pLoginForm.loginWithGoogle}
                     className="w-full min-w-0 gap-2 px-2"
                     onClick={() => router.push(signInWithGooglePath)}
                   >
@@ -346,12 +348,12 @@ export function LoginForm({
                         fill="currentColor"
                       />
                     </svg>
-                    Google
+                    {messages.pLoginForm.google}
                   </Button>
                   <Button
                     variant="outline"
                     type="button"
-                    aria-label="Login with GitHub"
+                    aria-label={messages.pLoginForm.loginWithGithub}
                     className="w-full min-w-0 gap-2 px-2"
                     onClick={() => router.push(signInWithGithubPath)}
                   >
@@ -366,11 +368,13 @@ export function LoginForm({
                 </div>
               </Field>
               <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                Or continue with email code
+                {messages.pLoginForm.orContinueWithEmailCode}
               </FieldSeparator>
 
               <Field data-invalid={emailErrors.length > 0 ? "true" : "false"}>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <FieldLabel htmlFor="email">
+                  {messages.pLoginForm.emailLabel}
+                </FieldLabel>
                 <Input
                   id="email"
                   name="email"
@@ -400,14 +404,17 @@ export function LoginForm({
               className="items-center text-center"
             >
               <FieldLabel htmlFor="code" className="text-base">
-                Enter verification code
+                {messages.pLoginForm.enterVerificationCode}
               </FieldLabel>
               <FieldDescription className="text-center">
-                Check {email} for the 6-digit code.
+                {messages.pLoginForm.checkEmailForCode.replace(
+                  "{email}",
+                  email
+                )}
               </FieldDescription>
               <div
                 className="flex justify-center gap-2"
-                aria-label="Verification code"
+                aria-label={messages.pLoginForm.verificationCodeGroup}
               >
                 {VERIFICATION_CODE_INDEXES.map((index) => (
                   <Input
@@ -423,7 +430,10 @@ export function LoginForm({
                     pattern="[0-9]*"
                     maxLength={1}
                     value={codeDigits[index] ?? ""}
-                    aria-label={`Verification code digit ${index + 1}`}
+                    aria-label={messages.pLoginForm.verificationCodeDigit.replace(
+                      "{position}",
+                      String(index + 1)
+                    )}
                     aria-invalid={codeErrors.length > 0}
                     className="h-12 w-11 text-center text-lg font-semibold sm:w-12"
                     onChange={(event) =>
@@ -455,11 +465,11 @@ export function LoginForm({
             >
               {!isCodeStep
                 ? isRequestingCode
-                  ? "Sending code..."
-                  : "Send login code"
+                  ? messages.pLoginForm.sendingCode
+                  : messages.pLoginForm.sendLoginCode
                 : isVerifyingCode
-                  ? "Verifying..."
-                  : "Verify and login"}
+                  ? messages.pLoginForm.verifying
+                  : messages.pLoginForm.verifyAndLogin}
             </Button>
             {isCodeStep ? (
               <Button
@@ -474,31 +484,34 @@ export function LoginForm({
                   setSubmitSuccess(null)
                 }}
               >
-                Back to SSO or email
+                {messages.pLoginForm.backToSsoOrEmail}
               </Button>
             ) : null}
             <FieldDescription className="text-center">
-              New to PFNApp? <a href={createAccountPath}>Create your account</a>
+              {messages.pLoginForm.newToPfnapp}{" "}
+              <a href={createAccountPath}>
+                {messages.pLoginForm.createYourAccount}
+              </a>
             </FieldDescription>
           </Field>
         </FieldGroup>
       </form>
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our{" "}
+        {messages.pLoginForm.legalConsentPrefix}{" "}
         <Link
           href={`/${locale}/terms`}
           className="text-primary underline-offset-4 hover:underline"
         >
-          Terms of Service
+          {messages.pLoginForm.termsOfService}
         </Link>{" "}
-        and{" "}
+        {messages.pLoginForm.legalConsentConjunction}{" "}
         <Link
           href={`/${locale}/privacy`}
           className="text-primary underline-offset-4 hover:underline"
         >
-          Privacy Policy
+          {messages.pLoginForm.privacyPolicy}
         </Link>
-        .
+        {messages.pLoginForm.legalConsentSuffix}
       </FieldDescription>
     </div>
   )

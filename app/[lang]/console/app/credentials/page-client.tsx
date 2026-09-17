@@ -42,6 +42,8 @@ type CredentialListRequestState =
   | { status: "success"; data: AppCredentialListItem[] }
   | { status: "error"; message: string }
 
+type Messages = ReturnType<typeof getMessages>
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const CREDENTIAL_TYPE_OPTIONS = Object.keys(credentialTypeRegistry).map(
@@ -51,11 +53,23 @@ const CREDENTIAL_TYPE_OPTIONS = Object.keys(credentialTypeRegistry).map(
   })
 )
 
-const STATUS_OPTIONS = [
-  { label: "Active", value: "ACTIVE" },
-  { label: "Pending", value: "PENDING" },
-  { label: "Revoked", value: "REVOKED" },
-  { label: "Expired", value: "EXPIRED" },
+const getStatusOptions = (messages: Messages) => [
+  {
+    label: messages.pConsoleCredentialsPageClient.statusActive,
+    value: "ACTIVE",
+  },
+  {
+    label: messages.pConsoleCredentialsPageClient.statusPending,
+    value: "PENDING",
+  },
+  {
+    label: messages.pConsoleCredentialsPageClient.statusRevoked,
+    value: "REVOKED",
+  },
+  {
+    label: messages.pConsoleCredentialsPageClient.statusExpired,
+    value: "EXPIRED",
+  },
 ]
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -90,31 +104,41 @@ function formatDate(value: string | Date): string {
 
 const getColumns = (
   onRevoke: (id: string) => void,
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
+  messages: Messages
 ): ColumnDef<AppCredentialListItem>[] => [
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
+      <DataTableColumnHeader
+        column={column}
+        title={messages.pConsoleCredentialsPageClient.columnName}
+      />
     ),
   },
   {
     accessorKey: "type",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Type" />
+      <DataTableColumnHeader
+        column={column}
+        title={messages.pConsoleCredentialsPageClient.columnType}
+      />
     ),
     cell: ({ row }) => getCredentialTypeDef(row.original.type).label,
   },
   {
     accessorKey: "status",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
+      <DataTableColumnHeader
+        column={column}
+        title={messages.pConsoleCredentialsPageClient.columnStatus}
+      />
     ),
     cell: ({ row }) => <StatusPill status={row.original.status} />,
   },
   {
     accessorKey: "maskedPreview",
-    header: "Preview",
+    header: messages.pConsoleCredentialsPageClient.columnPreview,
     cell: ({ row }) => (
       <span className="font-mono text-xs text-muted-foreground">
         {row.original.maskedPreview}
@@ -125,21 +149,28 @@ const getColumns = (
   {
     accessorKey: "createdAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created" />
+      <DataTableColumnHeader
+        column={column}
+        title={messages.pConsoleCredentialsPageClient.columnCreated}
+      />
     ),
     cell: ({ row }) => formatDate(row.original.createdAt),
     sortingFn: "datetime",
   },
   {
     id: "actions",
-    header: () => <span>Actions</span>,
+    header: () => (
+      <span>{messages.pConsoleCredentialsPageClient.columnActions}</span>
+    ),
     cell: ({ row }) => {
       const cred = row.original
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 px-2">
-              <span className="sr-only">Open actions</span>
+              <span className="sr-only">
+                {messages.pConsoleCredentialsPageClient.openActions}
+              </span>
               &#8942;
             </Button>
           </DropdownMenuTrigger>
@@ -147,20 +178,29 @@ const getColumns = (
             {cred.status === "ACTIVE" && (
               <DropdownMenuItem
                 onClick={() => {
-                  if (window.confirm("Revoke this credential?"))
+                  if (
+                    window.confirm(
+                      messages.pConsoleCredentialsPageClient.confirmRevoke
+                    )
+                  )
                     onRevoke(cred.id)
                 }}
               >
-                Revoke
+                {messages.pConsoleCredentialsPageClient.revokeAction}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
               className="text-destructive"
               onClick={() => {
-                if (window.confirm("Delete this credential?")) onDelete(cred.id)
+                if (
+                  window.confirm(
+                    messages.pConsoleCredentialsPageClient.confirmDelete
+                  )
+                )
+                  onDelete(cred.id)
               }}
             >
-              Delete
+              {messages.pConsoleCredentialsPageClient.deleteAction}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -196,34 +236,37 @@ export default function CredentialsPage() {
     }
   }, [searchParams])
 
-  const fetchCredentials = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const { data: payload } = await eden.api.app.credentials.get({
-        $fetch: { signal },
-      })
+  const fetchCredentials = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const { data: payload } = await eden.api.app.credentials.get({
+          $fetch: { signal },
+        })
 
-      if (!payload || payload.ok !== true) {
-        let message = "Unable to load credentials."
-        if (
-          payload &&
-          "error" in payload &&
-          typeof payload.error === "string"
-        ) {
-          message = payload.error
+        if (!payload || payload.ok !== true) {
+          let message = messages.pConsoleCredentialsPageClient.loadError
+          if (
+            payload &&
+            "error" in payload &&
+            typeof payload.error === "string"
+          ) {
+            message = payload.error
+          }
+          setState({ status: "error", message })
+          return
         }
-        setState({ status: "error", message })
-        return
-      }
 
-      setState({ status: "success", data: payload.credentials ?? [] })
-    } catch {
-      if (signal?.aborted) return
-      setState({
-        status: "error",
-        message: "Unable to load credentials. Please try again.",
-      })
-    }
-  }, [])
+        setState({ status: "success", data: payload.credentials ?? [] })
+      } catch {
+        if (signal?.aborted) return
+        setState({
+          status: "error",
+          message: messages.pConsoleCredentialsPageClient.loadErrorRetry,
+        })
+      }
+    },
+    [messages]
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -242,11 +285,11 @@ export default function CredentialsPage() {
         alert(
           payload && "error" in payload && typeof payload.error === "string"
             ? payload.error
-            : "Failed to revoke credential."
+            : messages.pConsoleCredentialsPageClient.revokeFailed
         )
       }
     } catch {
-      alert("Network error.")
+      alert(messages.pConsoleCredentialsPageClient.networkError)
     }
   }
 
@@ -260,18 +303,18 @@ export default function CredentialsPage() {
         alert(
           payload && "error" in payload && typeof payload.error === "string"
             ? payload.error
-            : "Failed to delete credential."
+            : messages.pConsoleCredentialsPageClient.deleteFailed
         )
       }
     } catch {
-      alert("Network error.")
+      alert(messages.pConsoleCredentialsPageClient.networkError)
     }
   }
 
   const columns = useMemo(
-    () => getColumns(handleRevoke, handleDelete),
+    () => getColumns(handleRevoke, handleDelete, messages),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [messages]
   )
 
   if (state.status === "loading") {
@@ -282,7 +325,7 @@ export default function CredentialsPage() {
       >
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner className="size-4 animate-spin" />
-          Loading credentials…
+          {messages.pConsoleCredentialsPageClient.loadingCredentials}
         </div>
       </LifecyclePageShell>
     )
@@ -303,7 +346,7 @@ export default function CredentialsPage() {
               variant="outline"
               onClick={() => void fetchCredentials()}
             >
-              Retry
+              {messages.pConsoleCredentialsPageClient.retry}
             </Button>
           </div>
         </div>
@@ -318,7 +361,7 @@ export default function CredentialsPage() {
     >
       <div className="flex justify-end">
         <Button size="sm" onClick={() => setAddDialogOpen(true)}>
-          Add Credential
+          {messages.pConsoleCredentialsPageClient.addCredential}
         </Button>
       </div>
 
@@ -332,24 +375,26 @@ export default function CredentialsPage() {
         tableId="console-credentials"
         columns={columns}
         data={state.data}
-        searchPlaceholder="Filter by name…"
+        searchPlaceholder={
+          messages.pConsoleCredentialsPageClient.searchPlaceholder
+        }
         searchableColumns={["name"]}
         facetFilters={[
           {
             columnId: "type",
-            label: "Type",
-            allLabel: "All types",
+            label: messages.pConsoleCredentialsPageClient.columnType,
+            allLabel: messages.pConsoleCredentialsPageClient.allTypes,
             options: CREDENTIAL_TYPE_OPTIONS,
           },
           {
             columnId: "status",
-            label: "Status",
-            allLabel: "All status",
-            options: STATUS_OPTIONS,
+            label: messages.pConsoleCredentialsPageClient.columnStatus,
+            allLabel: messages.pConsoleCredentialsPageClient.allStatus,
+            options: getStatusOptions(messages),
           },
         ]}
         initialSorting={[{ id: "createdAt", desc: true }]}
-        emptyMessage="No credentials found."
+        emptyMessage={messages.pConsoleCredentialsPageClient.emptyMessage}
       />
     </LifecyclePageShell>
   )

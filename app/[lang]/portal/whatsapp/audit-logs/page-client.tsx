@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useSearchParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,8 @@ import {
   AuditLogTable,
   type AuditLogDTO,
 } from "@/modules/whatsapp/audit/ui/whatsapp-audit-table"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const AUDIT_ACTIONS = [
   "TEMPLATE_SYNC_REQUESTED",
@@ -34,6 +36,9 @@ const AUDIT_ACTIONS = [
 const AUDIT_STATUSES = ["OK", "FAILED", "STARTED", "PENDING"]
 
 export default function PortalWhatsAppAuditLogsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const searchParams = useSearchParams()
 
   const [logs, setLogs] = React.useState<AuditLogDTO[]>([])
@@ -60,6 +65,9 @@ export default function PortalWhatsAppAuditLogsPage() {
     searchParams.get("from") ?? ""
   )
   const [filterTo, setFilterTo] = React.useState(searchParams.get("to") ?? "")
+
+  const loadFailedMessage =
+    messages.pPortalWhatsappAuditLogsPageClient.loadFailed
 
   const buildQuery = React.useCallback(() => {
     const q: Record<string, string> = { page: String(page), limit: "50" }
@@ -102,7 +110,7 @@ export default function PortalWhatsAppAuditLogsPage() {
           setPage(result.pagination.page)
           setPageState("loaded")
         } else {
-          setErrorMessage("Failed to load logs")
+          setErrorMessage(loadFailedMessage)
           setPageState("error")
         }
       } catch (err) {
@@ -121,6 +129,7 @@ export default function PortalWhatsAppAuditLogsPage() {
     filterFrom,
     filterTo,
     buildQuery,
+    loadFailedMessage,
   ])
 
   const handleResetFilters = () => {
@@ -145,9 +154,11 @@ export default function PortalWhatsAppAuditLogsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header>
-        <h1 className="text-2xl font-semibold">WhatsApp Audit Logs</h1>
+        <h1 className="text-2xl font-semibold">
+          {messages.pPortalWhatsappAuditLogsPageClient.pageTitle}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Track all admin actions related to WhatsApp.
+          {messages.pPortalWhatsappAuditLogsPageClient.pageDescription}
         </p>
       </header>
 
@@ -155,14 +166,16 @@ export default function PortalWhatsAppAuditLogsPage() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Action
+            {messages.pPortalWhatsappAuditLogsPageClient.actionLabel}
           </label>
           <select
             className="h-9 rounded-md border px-3 text-sm"
             value={filterAction}
             onChange={(e) => setFilterAction(e.target.value)}
           >
-            <option value="">All</option>
+            <option value="">
+              {messages.pPortalWhatsappAuditLogsPageClient.allOption}
+            </option>
             {AUDIT_ACTIONS.map((a) => (
               <option key={a} value={a}>
                 {a}
@@ -173,14 +186,16 @@ export default function PortalWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Status
+            {messages.pPortalWhatsappAuditLogsPageClient.statusLabel}
           </label>
           <select
             className="h-9 rounded-md border px-3 text-sm"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
-            <option value="">All</option>
+            <option value="">
+              {messages.pPortalWhatsappAuditLogsPageClient.allOption}
+            </option>
             {AUDIT_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -191,10 +206,12 @@ export default function PortalWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Device ID
+            {messages.pPortalWhatsappAuditLogsPageClient.deviceIdLabel}
           </label>
           <Input
-            placeholder="deviceId"
+            placeholder={
+              messages.pPortalWhatsappAuditLogsPageClient.deviceIdLabel
+            }
             className="h-9 w-40"
             value={filterDeviceId}
             onChange={(e) => setFilterDeviceId(e.target.value)}
@@ -203,10 +220,12 @@ export default function PortalWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Search
+            {messages.pPortalWhatsappAuditLogsPageClient.searchLabel}
           </label>
           <Input
-            placeholder="message, adminId, deviceId"
+            placeholder={
+              messages.pPortalWhatsappAuditLogsPageClient.searchPlaceholder
+            }
             className="h-9 w-48"
             value={filterQ}
             onChange={(e) => setFilterQ(e.target.value)}
@@ -215,7 +234,7 @@ export default function PortalWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            From
+            {messages.pPortalWhatsappAuditLogsPageClient.fromLabel}
           </label>
           <Input
             type="date"
@@ -227,7 +246,7 @@ export default function PortalWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            To
+            {messages.pPortalWhatsappAuditLogsPageClient.toLabel}
           </label>
           <Input
             type="date"
@@ -239,10 +258,10 @@ export default function PortalWhatsAppAuditLogsPage() {
 
         <div className="flex gap-2">
           <Button size="sm" onClick={handleApplyFilters}>
-            Apply
+            {messages.pPortalWhatsappAuditLogsPageClient.apply}
           </Button>
           <Button variant="outline" size="sm" onClick={handleResetFilters}>
-            Reset
+            {messages.pPortalWhatsappAuditLogsPageClient.reset}
           </Button>
         </div>
       </div>

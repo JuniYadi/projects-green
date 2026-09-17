@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { getAdminAuditLogs, type AdminAuditLogItem } from "@/lib/billing-client"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-US", {
@@ -48,6 +51,11 @@ function ActionBadge({ action }: { action: string }) {
 }
 
 export default function AuditLogsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingAuditLogsPageClient
+
   const [logs, setLogs] = useState<AdminAuditLogItem[]>([])
   const [pagination, setPagination] = useState<{ total: number }>({ total: 0 })
   const [isLoading, setIsLoading] = useState(true)
@@ -66,10 +74,8 @@ export default function AuditLogsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Audit Logs</h1>
-        <p className="text-sm text-muted-foreground">
-          Platform-wide billing audit trail
-        </p>
+        <h1 className="text-2xl font-semibold">{t.title}</h1>
+        <p className="text-sm text-muted-foreground">{t.subtitle}</p>
       </header>
 
       {isLoading && <Skeleton className="h-96" />}
@@ -77,7 +83,7 @@ export default function AuditLogsPage() {
       {error && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Failed to load audit logs: {error}
+            {t.loadError.replace("{error}", error)}
           </CardContent>
         </Card>
       )}
@@ -85,7 +91,7 @@ export default function AuditLogsPage() {
       {!isLoading && !error && logs.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No audit logs found.
+            {t.empty}
           </CardContent>
         </Card>
       )}
@@ -95,7 +101,7 @@ export default function AuditLogsPage() {
           <Card>
             <CardHeader className="pb-0">
               <CardTitle className="text-base font-medium">
-                Billing Audit Trail ({pagination.total} total)
+                {t.cardTitle.replace("{total}", String(pagination.total))}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
@@ -103,12 +109,12 @@ export default function AuditLogsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
-                      <th className="pr-4 pb-2 font-medium">Timestamp</th>
-                      <th className="pr-4 pb-2 font-medium">Entity Type</th>
-                      <th className="pr-4 pb-2 font-medium">Entity ID</th>
-                      <th className="pr-4 pb-2 font-medium">Action</th>
-                      <th className="pr-4 pb-2 font-medium">Actor</th>
-                      <th className="pb-2 font-medium">Context</th>
+                      <th className="pr-4 pb-2 font-medium">{t.timestamp}</th>
+                      <th className="pr-4 pb-2 font-medium">{t.entityType}</th>
+                      <th className="pr-4 pb-2 font-medium">{t.entityId}</th>
+                      <th className="pr-4 pb-2 font-medium">{t.action}</th>
+                      <th className="pr-4 pb-2 font-medium">{t.actor}</th>
+                      <th className="pb-2 font-medium">{t.context}</th>
                     </tr>
                   </thead>
                   <tbody>

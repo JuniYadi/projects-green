@@ -59,15 +59,11 @@ import {
   validateProductPlanIdentities,
   validateProductPublish,
 } from "@/components/billing/admin/catalog/catalog-editor.types"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { toast } from "sonner"
 
-const TABS = [
-  { id: "basics", label: "Basics" },
-  { id: "plans", label: "Plans" },
-  { id: "addons", label: "Add-ons" },
-  { id: "details", label: "Product details" },
-  { id: "publish", label: "Publish" },
-] as const
+const TAB_IDS = ["basics", "plans", "addons", "details", "publish"] as const
 
 function safeReturnPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return null
@@ -144,19 +140,17 @@ function productToEditorState(
               ),
             ]
           : ["MONTHLY"],
-      offers: plan.offers.map(
-        (offer): ProductPlanOfferForm => ({
-          id: offer.id,
-          billingPeriod:
-            offer.billingPeriod as ProductPlanOfferForm["billingPeriod"],
-          periodPrice: offer.periodPrice,
-          currency: offer.currency,
-          chargeUnit: offer.chargeUnit,
-          effectiveFrom: offer.effectiveFrom,
-          effectiveTo: offer.effectiveTo ?? "",
-          isActive: true,
-        })
-      ),
+      offers: plan.offers.map((offer): ProductPlanOfferForm => ({
+        id: offer.id,
+        billingPeriod:
+          offer.billingPeriod as ProductPlanOfferForm["billingPeriod"],
+        periodPrice: offer.periodPrice,
+        currency: offer.currency,
+        chargeUnit: offer.chargeUnit,
+        effectiveFrom: offer.effectiveFrom,
+        effectiveTo: offer.effectiveTo ?? "",
+        isActive: true,
+      })),
     })),
     addons: [],
     publishState: "draft",
@@ -174,6 +168,8 @@ export function ProductEditor({
   const router = useRouter()
   const searchParams = useSearchParams()
   const { lang } = useParams<{ lang: string }>()
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
   const productCode = requestedProductCode
   const selectedPlanId = searchParams.get("planId")
   const returnTo = safeReturnPath(searchParams.get("returnTo"))
@@ -222,7 +218,7 @@ export function ProductEditor({
         const response: CatalogProductDetailResponse =
           await getAdminCatalogProduct(productCode)
         if (!response?.product) {
-          setError("Product not found in catalog.")
+          setError(messages.pBillingAdminCatalogProductEditor.productNotFound)
           return
         }
         setState(productToEditorState(response.product, response.currency))
@@ -232,12 +228,14 @@ export function ProductEditor({
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to load product"
+        err instanceof Error
+          ? err.message
+          : messages.pBillingAdminCatalogProductEditor.failedToLoadProduct
       setError(message)
     } finally {
       setLoading(false)
     }
-  }, [productCode, isNew])
+  }, [productCode, isNew, messages])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -262,6 +260,14 @@ export function ProductEditor({
 
   const activeTab =
     searchParams.get("tab") ?? (selectedPlanId ? "plans" : "basics")
+
+  const tabLabels: Record<(typeof TAB_IDS)[number], string> = {
+    basics: messages.pBillingAdminCatalogProductEditor.basics,
+    plans: messages.pBillingAdminCatalogProductEditor.plans,
+    addons: messages.pBillingAdminCatalogProductEditor.addons,
+    details: messages.pBillingAdminCatalogProductEditor.productDetails,
+    publish: messages.pBillingAdminCatalogProductEditor.publish,
+  }
 
   const markModified = (tabId: string) => {
     setModifiedTabs((prev) => new Set([...prev, tabId]))
@@ -347,12 +353,15 @@ export function ProductEditor({
     try {
       const payload = buildPublishPayload()
       await publishCatalogProduct(productCode, payload)
-      toast.success("Product saved")
+      toast.success(messages.pBillingAdminCatalogProductEditor.productSaved)
       setModifiedTabs(new Set())
       // Clear any localStorage drafts
       localStorage.removeItem(`catalog-draft-${productCode}`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to save"
+      const message =
+        err instanceof Error
+          ? err.message
+          : messages.pBillingAdminCatalogProductEditor.failedToSave
       toast.error(message)
       // Fall back to localStorage if server save fails
       const draftKey = `catalog-draft-${productCode}`
@@ -365,7 +374,9 @@ export function ProductEditor({
   const handlePublish = async () => {
     if (!publishValidation.valid) {
       setInvalidTabs(new Set(publishValidation.invalidTabs))
-      toast.error("Complete every enabled price before publishing.")
+      toast.error(
+        messages.pBillingAdminCatalogProductEditor.completeEnabledPrices
+      )
       return
     }
     setInvalidTabs(new Set())
@@ -378,12 +389,15 @@ export function ProductEditor({
         publishState: "published",
       }
       setState(nextState)
-      toast.success("Product published")
+      toast.success(messages.pBillingAdminCatalogProductEditor.productPublished)
       setModifiedTabs(new Set())
       // Clear localStorage draft
       localStorage.removeItem(`catalog-draft-${productCode}`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to publish"
+      const message =
+        err instanceof Error
+          ? err.message
+          : messages.pBillingAdminCatalogProductEditor.failedToPublish
       toast.error(message)
     } finally {
       setPublishing(false)
@@ -409,7 +423,7 @@ export function ProductEditor({
               {state.basics.name || state.basics.code}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Product code:{" "}
+              {messages.pBillingAdminCatalogProductEditor.productCodeLabel}{" "}
               <span className="font-mono">{state.basics.code}</span>
             </p>
             {returnTo && (
@@ -417,7 +431,7 @@ export function ProductEditor({
                 className="text-sm text-primary hover:underline"
                 href={returnTo}
               >
-                Back to VPN packages
+                {messages.pBillingAdminCatalogProductEditor.backToVpnPackages}
               </Link>
             )}
           </div>
@@ -426,7 +440,7 @@ export function ProductEditor({
         <div className="flex items-center gap-3">
           {hasUnsavedChanges && (
             <Badge variant="outline" className="text-xs">
-              Unsaved changes
+              {messages.pBillingAdminCatalogProductEditor.unsavedChanges}
             </Badge>
           )}
           <Badge
@@ -448,13 +462,13 @@ export function ProductEditor({
         <div className="flex items-center justify-between gap-4">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList>
-              {TABS.map((tab) => (
-                <TabsTrigger key={tab.id} value={tab.id}>
-                  {tab.label}
-                  {(modifiedTabs.has(tab.id) || invalidTabs.has(tab.id)) && (
+              {TAB_IDS.map((tabId) => (
+                <TabsTrigger key={tabId} value={tabId}>
+                  {tabLabels[tabId]}
+                  {(modifiedTabs.has(tabId) || invalidTabs.has(tabId)) && (
                     <Badge
                       variant={
-                        invalidTabs.has(tab.id) ? "destructive" : "secondary"
+                        invalidTabs.has(tabId) ? "destructive" : "secondary"
                       }
                       className="ml-1.5 h-4 min-w-[1.25rem] px-1 text-xs"
                     >
@@ -473,7 +487,9 @@ export function ProductEditor({
               onClick={() => handlePreviewToggle(!showPreview)}
             >
               <EyeIcon className="mr-2 h-4 w-4" />
-              {showPreview ? "Edit" : "Preview"}
+              {showPreview
+                ? messages.pBillingAdminCatalogProductEditor.edit
+                : messages.pBillingAdminCatalogProductEditor.preview}
             </Button>
             <Button
               variant="outline"
@@ -481,7 +497,9 @@ export function ProductEditor({
               onClick={handleSaveDraft}
               disabled={saving || hasPlanIdentityErrors}
             >
-              {saving ? "Saving…" : "Save draft"}
+              {saving
+                ? messages.pBillingAdminCatalogProductEditor.saving
+                : messages.pBillingAdminCatalogProductEditor.saveDraft}
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -491,22 +509,32 @@ export function ProductEditor({
                     publishing || !hasUnsavedChanges || !publishValidation.valid
                   }
                 >
-                  {publishing ? "Publishing…" : "Publish"}
+                  {publishing
+                    ? messages.pBillingAdminCatalogProductEditor.publishing
+                    : messages.pBillingAdminCatalogProductEditor.publish}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Publish product?</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {
+                      messages.pBillingAdminCatalogProductEditor
+                        .publishProductTitle
+                    }
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Publishing makes this product live in the catalog. Customers
-                    will be able to subscribe to the plans and add-ons
-                    configured here.
+                    {
+                      messages.pBillingAdminCatalogProductEditor
+                        .publishProductDescription
+                    }
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>
+                    {messages.pBillingAdminCatalogProductEditor.cancel}
+                  </AlertDialogCancel>
                   <AlertDialogAction onClick={handlePublish}>
-                    Publish
+                    {messages.pBillingAdminCatalogProductEditor.publish}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -517,24 +545,29 @@ export function ProductEditor({
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="hidden">
-          {TABS.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} />
+          {TAB_IDS.map((tabId) => (
+            <TabsTrigger key={tabId} value={tabId} />
           ))}
         </TabsList>
 
         <TabsContent value="basics" className="mt-0">
           <Card>
             <CardHeader>
-              <CardTitle>Basics</CardTitle>
+              <CardTitle>
+                {messages.pBillingAdminCatalogProductEditor.basics}
+              </CardTitle>
               <CardDescription>
-                Core product identity and availability.
+                {messages.pBillingAdminCatalogProductEditor.basicsDescription}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {!state.basics.name && (
                 <div className="mb-4 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
                   <WarningIcon className="h-4 w-4" />
-                  Product name is required.
+                  {
+                    messages.pBillingAdminCatalogProductEditor
+                      .productNameRequired
+                  }
                 </div>
               )}
               <CatalogBasicsTab basics={state.basics} onChange={updateBasics} />
@@ -544,9 +577,11 @@ export function ProductEditor({
         <TabsContent value="plans" className="mt-0">
           <Card>
             <CardHeader>
-              <CardTitle>Plans</CardTitle>
+              <CardTitle>
+                {messages.pBillingAdminCatalogProductEditor.plans}
+              </CardTitle>
               <CardDescription>
-                Configure billing plans and explicit currency-by-term pricing.
+                {messages.pBillingAdminCatalogProductEditor.plansDescription}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -565,9 +600,11 @@ export function ProductEditor({
         <TabsContent value="addons" className="mt-0">
           <Card>
             <CardHeader>
-              <CardTitle>Add-ons</CardTitle>
+              <CardTitle>
+                {messages.pBillingAdminCatalogProductEditor.addons}
+              </CardTitle>
               <CardDescription>
-                Attach reusable add-ons to this product&apos;s plans.
+                {messages.pBillingAdminCatalogProductEditor.addonsDescription}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -583,9 +620,14 @@ export function ProductEditor({
         <TabsContent value="details" className="mt-0">
           <Card>
             <CardHeader>
-              <CardTitle>Product details</CardTitle>
+              <CardTitle>
+                {messages.pBillingAdminCatalogProductEditor.productDetails}
+              </CardTitle>
               <CardDescription>
-                Metadata and additional configuration.
+                {
+                  messages.pBillingAdminCatalogProductEditor
+                    .productDetailsDescription
+                }
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -12,6 +13,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { PaymentConfirmationDTO } from "@/modules/invoices/invoices.types"
 
 type ConfirmPaymentDialogProps = {
@@ -29,6 +32,11 @@ export function ConfirmPaymentDialog({
   canManage,
   onActionComplete,
 }: ConfirmPaymentDialogProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pInvoicesConfirmPaymentDialog
+
   const [rejectReason, setRejectReason] = useState("")
   const [action, setAction] = useState<"approve" | "reject" | null>(null)
   const [loading, setLoading] = useState(false)
@@ -36,6 +44,8 @@ export function ConfirmPaymentDialog({
 
   const handleAction = async () => {
     if (!action) return
+
+    const fallbackError = action === "reject" ? t.rejectFailed : t.approveFailed
 
     setLoading(true)
     setError(null)
@@ -61,7 +71,7 @@ export function ConfirmPaymentDialog({
       } | null
 
       if (!response.ok || !payload?.ok) {
-        setError(payload?.message ?? `Failed to ${action} confirmation.`)
+        setError(payload?.message ?? fallbackError)
         setLoading(false)
         return
       }
@@ -69,9 +79,7 @@ export function ConfirmPaymentDialog({
       onOpenChange(false)
       onActionComplete()
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : `Unable to ${action} confirmation.`
-      )
+      setError(err instanceof Error ? err.message : fallbackError)
     } finally {
       setLoading(false)
     }
@@ -95,23 +103,25 @@ export function ConfirmPaymentDialog({
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle>
-            {action === "reject" ? "Reject Payment" : "Approve Payment"}
+            {action === "reject" ? t.rejectPaymentTitle : t.approvePaymentTitle}
           </SheetTitle>
           <SheetDescription>
             {confirmation.senderName
-              ? `From: ${confirmation.senderName}`
-              : `Amount: ${confirmation.amount} ${confirmation.currency}`}
+              ? t.fromSender.replace("{name}", confirmation.senderName)
+              : t.amountSummary
+                  .replace("{amount}", String(confirmation.amount))
+                  .replace("{currency}", confirmation.currency)}
           </SheetDescription>
         </SheetHeader>
 
         <div className="grid gap-4 px-4 pt-4 text-sm">
           <div className="grid gap-2">
-            <p className="text-xs text-muted-foreground">Bank</p>
+            <p className="text-xs text-muted-foreground">{t.bankLabel}</p>
             <p className="font-medium">{confirmation.bankName}</p>
           </div>
 
           <div className="grid gap-2">
-            <p className="text-xs text-muted-foreground">Amount</p>
+            <p className="text-xs text-muted-foreground">{t.amountLabel}</p>
             <p className="font-medium">
               {confirmation.amount.toLocaleString()} {confirmation.currency}
             </p>
@@ -119,20 +129,24 @@ export function ConfirmPaymentDialog({
 
           {confirmation.senderName ? (
             <div className="grid gap-2">
-              <p className="text-xs text-muted-foreground">Sender</p>
+              <p className="text-xs text-muted-foreground">{t.senderLabel}</p>
               <p className="font-medium">{confirmation.senderName}</p>
             </div>
           ) : null}
 
           {confirmation.senderBankName ? (
             <div className="grid gap-2">
-              <p className="text-xs text-muted-foreground">Sender Bank</p>
+              <p className="text-xs text-muted-foreground">
+                {t.senderBankLabel}
+              </p>
               <p className="font-medium">{confirmation.senderBankName}</p>
             </div>
           ) : null}
 
           <div className="grid gap-2">
-            <p className="text-xs text-muted-foreground">Payment Date</p>
+            <p className="text-xs text-muted-foreground">
+              {t.paymentDateLabel}
+            </p>
             <p className="font-medium">
               {new Date(confirmation.paymentDateTime).toLocaleDateString()}
             </p>
@@ -140,21 +154,23 @@ export function ConfirmPaymentDialog({
 
           {confirmation.screenshotUrl ? (
             <div className="grid gap-2">
-              <p className="text-xs text-muted-foreground">Screenshot</p>
+              <p className="text-xs text-muted-foreground">
+                {t.screenshotLabel}
+              </p>
               <a
                 href={confirmation.screenshotUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-blue-600 underline-offset-2 hover:underline"
               >
-                View Screenshot
+                {t.viewScreenshot}
               </a>
             </div>
           ) : null}
 
           {confirmation.notes ? (
             <div className="grid gap-2">
-              <p className="text-xs text-muted-foreground">Notes</p>
+              <p className="text-xs text-muted-foreground">{t.notesLabel}</p>
               <p className="text-sm text-muted-foreground">
                 {confirmation.notes}
               </p>
@@ -168,14 +184,14 @@ export function ConfirmPaymentDialog({
                 variant="default"
                 onClick={() => setAction("approve")}
               >
-                Approve
+                {t.approve}
               </Button>
               <Button
                 type="button"
                 variant="destructive"
                 onClick={() => setAction("reject")}
               >
-                Reject
+                {t.reject}
               </Button>
             </div>
           ) : null}
@@ -186,13 +202,13 @@ export function ConfirmPaymentDialog({
                 htmlFor="reject-reason"
                 className="text-xs font-medium text-muted-foreground"
               >
-                Rejection Reason
+                {t.rejectionReasonLabel}
               </label>
               <Textarea
                 id="reject-reason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Explain why this payment is being rejected..."
+                placeholder={t.rejectionReasonPlaceholder}
                 className="min-h-[80px]"
               />
             </div>
@@ -209,7 +225,7 @@ export function ConfirmPaymentDialog({
               onClick={() => resetState()}
               disabled={loading}
             >
-              Back
+              {t.back}
             </Button>
             <Button
               type="button"
@@ -220,10 +236,10 @@ export function ConfirmPaymentDialog({
               }
             >
               {loading
-                ? "Processing..."
+                ? t.processing
                 : action === "reject"
-                  ? "Confirm Reject"
-                  : "Confirm Approve"}
+                  ? t.confirmReject
+                  : t.confirmApprove}
             </Button>
           </SheetFooter>
         ) : null}

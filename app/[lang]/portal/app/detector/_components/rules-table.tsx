@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table"
 import { eden } from "@/lib/eden"
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 
 import { DataTable } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,9 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PlusIcon, PencilIcon, TrashIcon } from "@phosphor-icons/react"
 import { toast } from "sonner"
+
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type DetectorRule = {
   id: string
@@ -52,18 +56,24 @@ const EMPTY_FORM: RuleFormData = {
   priority: 0,
 }
 
+// Literal JSON samples shown in the textareas — data, not translatable copy.
+const PATTERN_JSON_SAMPLE = '{"files": ["artisan"], "dependencies": []}'
+const IMPLICATIONS_JSON_SAMPLE = '{"framework": "laravel", "impact": "HINT"}'
+
 function RuleFormDialog({
   open,
   onOpenChange,
   initialData,
   onSubmit,
   isEditing,
+  messages,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialData?: RuleFormData
   onSubmit: (data: RuleFormData) => Promise<void>
   isEditing: boolean
+  messages: ReturnType<typeof getMessages>
 }) {
   const [form, setForm] = useState<RuleFormData>(initialData ?? EMPTY_FORM)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -75,7 +85,7 @@ function RuleFormDialog({
       setJsonError(null)
       return true
     } catch {
-      setJsonError("Invalid JSON")
+      setJsonError(messages.pPortalDetectorRulesTable.invalidJson)
       return false
     }
   }
@@ -92,7 +102,7 @@ function RuleFormDialog({
       await onSubmit(form)
       onOpenChange(false)
     } catch {
-      toast.error("Failed to save rule")
+      toast.error(messages.pPortalDetectorRulesTable.failedToSaveRule)
     } finally {
       setIsSubmitting(false)
     }
@@ -103,39 +113,49 @@ function RuleFormDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Edit Detection Rule" : "Create Detection Rule"}
+            {isEditing
+              ? messages.pPortalDetectorRulesTable.editRuleTitle
+              : messages.pPortalDetectorRulesTable.createRuleTitle}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the detection rule configuration."
-              : "Define a new detection rule for the AI framework detector."}
+              ? messages.pPortalDetectorRulesTable.editRuleDescription
+              : messages.pPortalDetectorRulesTable.createRuleDescription}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">
+              {messages.pPortalDetectorRulesTable.name}
+            </Label>
             <Input
               id="name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g., Laravel Artisan Detection"
+              placeholder={messages.pPortalDetectorRulesTable.namePlaceholder}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">
+              {messages.pPortalDetectorRulesTable.description}
+            </Label>
             <Input
               id="description"
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
-              placeholder="Optional description"
+              placeholder={
+                messages.pPortalDetectorRulesTable.descriptionPlaceholder
+              }
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="patternJson">Pattern (JSON)</Label>
+              <Label htmlFor="patternJson">
+                {messages.pPortalDetectorRulesTable.patternJsonLabel}
+              </Label>
               <textarea
                 id="patternJson"
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
@@ -144,14 +164,16 @@ function RuleFormDialog({
                   setForm({ ...form, patternJson: e.target.value })
                   validateJson(e.target.value)
                 }}
-                placeholder='{"files": ["artisan"], "dependencies": []}'
+                placeholder={PATTERN_JSON_SAMPLE}
               />
               {jsonError && (
                 <p className="text-xs text-destructive">{jsonError}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="implicationsJson">Implications (JSON)</Label>
+              <Label htmlFor="implicationsJson">
+                {messages.pPortalDetectorRulesTable.implicationsJsonLabel}
+              </Label>
               <textarea
                 id="implicationsJson"
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
@@ -160,7 +182,7 @@ function RuleFormDialog({
                   setForm({ ...form, implicationsJson: e.target.value })
                   validateJson(e.target.value)
                 }}
-                placeholder='{"framework": "laravel", "impact": "HINT"}'
+                placeholder={IMPLICATIONS_JSON_SAMPLE}
               />
               {jsonError && (
                 <p className="text-xs text-destructive">{jsonError}</p>
@@ -169,7 +191,9 @@ function RuleFormDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="confidenceWeight">Confidence Weight</Label>
+              <Label htmlFor="confidenceWeight">
+                {messages.pPortalDetectorRulesTable.confidenceWeight}
+              </Label>
               <Input
                 id="confidenceWeight"
                 type="number"
@@ -186,7 +210,9 @@ function RuleFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
+              <Label htmlFor="priority">
+                {messages.pPortalDetectorRulesTable.priority}
+              </Label>
               <Input
                 id="priority"
                 type="number"
@@ -206,14 +232,14 @@ function RuleFormDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {messages.pPortalDetectorRulesTable.cancel}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting
-                ? "Saving..."
+                ? messages.pPortalDetectorRulesTable.saving
                 : isEditing
-                  ? "Update Rule"
-                  : "Create Rule"}
+                  ? messages.pPortalDetectorRulesTable.updateRule
+                  : messages.pPortalDetectorRulesTable.createRule}
             </Button>
           </DialogFooter>
         </form>
@@ -223,6 +249,10 @@ function RuleFormDialog({
 }
 
 export function RulesTable() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [rules, setRules] = useState<DetectorRule[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -247,13 +277,20 @@ export function RulesTable() {
           $fetch: { signal: abortController.signal },
         })
         if (!data?.ok) {
-          setError(data?.message || "Failed to load rules")
+          setError(
+            data?.message ||
+              messages.pPortalDetectorRulesTable.failedToLoadRules
+          )
           return
         }
         setRules(data.data as never)
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
-        setError(err instanceof Error ? err.message : "An error occurred")
+        setError(
+          err instanceof Error
+            ? err.message
+            : messages.pPortalDetectorRulesTable.genericError
+        )
       } finally {
         setIsLoading(false)
       }
@@ -261,7 +298,7 @@ export function RulesTable() {
 
     void fetchRules()
     return () => abortController.abort()
-  }, [includeInactive, refreshKey])
+  }, [includeInactive, refreshKey, messages])
 
   const handleCreate = async (formData: RuleFormData) => {
     const { data } = await eden.api.admin.detector.rules.post({
@@ -272,8 +309,11 @@ export function RulesTable() {
       confidenceWeight: formData.confidenceWeight,
       priority: formData.priority,
     })
-    if (!data?.ok) throw new Error(data?.message || "Failed to create rule")
-    toast.success("Rule created successfully")
+    if (!data?.ok)
+      throw new Error(
+        data?.message || messages.pPortalDetectorRulesTable.failedToCreateRule
+      )
+    toast.success(messages.pPortalDetectorRulesTable.ruleCreated)
     refresh()
   }
 
@@ -287,8 +327,11 @@ export function RulesTable() {
       confidenceWeight: formData.confidenceWeight,
       priority: formData.priority,
     })
-    if (!data?.ok) throw new Error(data?.message || "Failed to update rule")
-    toast.success("Rule updated successfully")
+    if (!data?.ok)
+      throw new Error(
+        data?.message || messages.pPortalDetectorRulesTable.failedToUpdateRule
+      )
+    toast.success(messages.pPortalDetectorRulesTable.ruleUpdated)
     refresh()
   }
 
@@ -297,37 +340,47 @@ export function RulesTable() {
       isActive: !rule.isActive,
     })
     if (!data?.ok) {
-      toast.error(data?.message || "Failed to toggle rule status")
+      toast.error(
+        data?.message || messages.pPortalDetectorRulesTable.failedToToggleRule
+      )
       return
     }
     toast.success(
-      `Rule ${rule.isActive ? "deactivated" : "activated"} successfully`
+      rule.isActive
+        ? messages.pPortalDetectorRulesTable.ruleDeactivated
+        : messages.pPortalDetectorRulesTable.ruleActivated
     )
     refresh()
   }
 
   const handleDelete = async (rule: DetectorRule) => {
-    if (!window.confirm(`Are you sure you want to delete rule "${rule.name}"?`))
-      return
+    const confirmMessage =
+      messages.pPortalDetectorRulesTable.confirmDeleteRule.replace(
+        "{name}",
+        rule.name
+      )
+    if (!window.confirm(confirmMessage)) return
 
     const { data } = await eden.api.admin.detector.rules[rule.id].delete()
     if (!data?.ok) {
-      toast.error(data?.message || "Failed to delete rule")
+      toast.error(
+        data?.message || messages.pPortalDetectorRulesTable.failedToDeleteRule
+      )
       return
     }
-    toast.success("Rule deleted successfully")
+    toast.success(messages.pPortalDetectorRulesTable.ruleDeleted)
     refresh()
   }
 
   const columns: ColumnDef<DetectorRule>[] = [
     {
       accessorKey: "name",
-      header: "Name",
+      header: messages.pPortalDetectorRulesTable.name,
       cell: ({ row }) => <div className="font-medium">{row.original.name}</div>,
     },
     {
       accessorKey: "implicationsJson",
-      header: "Impact",
+      header: messages.pPortalDetectorRulesTable.impact,
       cell: ({ row }) => {
         const impl = row.original.implicationsJson as {
           framework?: string
@@ -355,27 +408,30 @@ export function RulesTable() {
     },
     {
       accessorKey: "priority",
-      header: "Priority",
+      header: messages.pPortalDetectorRulesTable.priority,
       cell: ({ row }) => <div>{row.original.priority}</div>,
     },
     {
       accessorKey: "isActive",
-      header: "Status",
+      header: messages.pPortalDetectorRulesTable.status,
       cell: ({ row }) => (
         <Badge variant={row.original.isActive ? "default" : "secondary"}>
-          {row.original.isActive ? "Active" : "Inactive"}
+          {row.original.isActive
+            ? messages.pPortalDetectorRulesTable.active
+            : messages.pPortalDetectorRulesTable.inactive}
         </Badge>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: messages.pPortalDetectorRulesTable.actions,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setEditingRule(row.original)}
+            aria-label={messages.pPortalDetectorRulesTable.editRule}
           >
             <PencilIcon className="h-4 w-4" />
           </Button>
@@ -384,12 +440,15 @@ export function RulesTable() {
             size="sm"
             onClick={() => handleToggleActive(row.original)}
           >
-            {row.original.isActive ? "Deactivate" : "Activate"}
+            {row.original.isActive
+              ? messages.pPortalDetectorRulesTable.deactivate
+              : messages.pPortalDetectorRulesTable.activate}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => handleDelete(row.original)}
+            aria-label={messages.pPortalDetectorRulesTable.deleteRule}
           >
             <TrashIcon className="h-4 w-4 text-destructive" />
           </Button>
@@ -422,12 +481,14 @@ export function RulesTable() {
             size="sm"
             onClick={() => setIncludeInactive(!includeInactive)}
           >
-            {includeInactive ? "Hide Inactive" : "Show Inactive"}
+            {includeInactive
+              ? messages.pPortalDetectorRulesTable.hideInactive
+              : messages.pPortalDetectorRulesTable.showInactive}
           </Button>
         </div>
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <PlusIcon className="mr-2 h-4 w-4" />
-          Add Rule
+          {messages.pPortalDetectorRulesTable.addRule}
         </Button>
       </div>
       <DataTable
@@ -435,8 +496,8 @@ export function RulesTable() {
         columns={columns}
         data={rules}
         searchableColumns={["name"]}
-        searchPlaceholder="Search rules..."
-        emptyMessage="No detection rules found."
+        searchPlaceholder={messages.pPortalDetectorRulesTable.searchPlaceholder}
+        emptyMessage={messages.pPortalDetectorRulesTable.emptyMessage}
       />
       <RuleFormDialog
         key={`create-${showCreate}`}
@@ -444,6 +505,7 @@ export function RulesTable() {
         onOpenChange={setShowCreate}
         onSubmit={handleCreate}
         isEditing={false}
+        messages={messages}
       />
       {editingRule && (
         <RuleFormDialog
@@ -466,6 +528,7 @@ export function RulesTable() {
           }}
           onSubmit={handleUpdate}
           isEditing
+          messages={messages}
         />
       )}
     </div>

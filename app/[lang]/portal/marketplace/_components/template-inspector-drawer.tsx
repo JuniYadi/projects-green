@@ -73,7 +73,9 @@ export function TemplateInspectorDrawer({
   const params = useParams()
   const lang = typeof params?.lang === "string" ? params.lang : "en"
   const locale = resolveLocaleOrDefault(lang)
-  const messages = getMessages(locale).console.templateInspectorDrawer
+  const appMessages = getMessages(locale)
+  const messages = appMessages.console.templateInspectorDrawer
+  const fieldMessages = appMessages.pPortalMarketplaceTemplateInspectorDrawer
 
   const [rejectNote, setRejectNote] = useState("")
   const [showRejectForm, setShowRejectForm] = useState(false)
@@ -168,7 +170,9 @@ export function TemplateInspectorDrawer({
               <Star
                 className={`size-4 ${template.isFeatured ? "fill-amber-400" : ""}`}
               />
-              {template.isFeatured ? messages.featured : messages.featureOnMarketplace}
+              {template.isFeatured
+                ? messages.featured
+                : messages.featureOnMarketplace}
             </Button>
           </div>
           <SheetTitle className="text-xl font-bold">{template.name}</SheetTitle>
@@ -196,18 +200,20 @@ export function TemplateInspectorDrawer({
               </h4>
               <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
                 <div>
-                  <span className="text-xs text-muted-foreground">Image:</span>
+                  <span className="text-xs text-muted-foreground">
+                    {fieldMessages.imageLabel}
+                  </span>
                   <p className="font-mono font-medium">{runtime.image}</p>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">
-                    Default Port:
+                    {fieldMessages.defaultPortLabel}
                   </span>
                   <p className="font-mono font-medium">{runtime.defaultPort}</p>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">
-                    Non-Root Security:
+                    {fieldMessages.nonRootSecurityLabel}
                   </span>
                   <p className="font-medium">
                     {runtime.runAsNonRoot ? "Enforced (true)" : "Root (false)"}
@@ -215,7 +221,7 @@ export function TemplateInspectorDrawer({
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">
-                    Health Check Path:
+                    {fieldMessages.healthCheckPathLabel}
                   </span>
                   <p className="font-mono font-medium">
                     {runtime.healthCheckPath || "N/A"}
@@ -224,7 +230,7 @@ export function TemplateInspectorDrawer({
                 {Boolean(runtime.command && runtime.command.length > 0) && (
                   <div>
                     <span className="text-xs text-muted-foreground">
-                      Command:
+                      {fieldMessages.commandLabel}
                     </span>
                     <p className="font-mono font-medium">
                       {runtime.command?.join(" ")}
@@ -234,7 +240,7 @@ export function TemplateInspectorDrawer({
                 {Boolean(runtime.args && runtime.args.length > 0) && (
                   <div>
                     <span className="text-xs text-muted-foreground">
-                      Arguments:
+                      {fieldMessages.argumentsLabel}
                     </span>
                     <p className="font-mono font-medium">
                       {runtime.args?.join(" ")}
@@ -252,27 +258,29 @@ export function TemplateInspectorDrawer({
               <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
                 <div>
                   <span className="text-xs text-muted-foreground">
-                    Default CPU:
+                    {fieldMessages.defaultCpuLabel}
                   </span>
                   <p className="font-mono font-medium">
-                    {resources.defaultCpu}m
+                    {`${resources.defaultCpu}m`}
                   </p>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">
-                    Default Memory:
+                    {fieldMessages.defaultMemoryLabel}
                   </span>
                   <p className="font-mono font-medium">
-                    {resources.defaultMemory}Mi
+                    {`${resources.defaultMemory}Mi`}
                   </p>
                 </div>
                 {storage?.enabled && (
                   <div className="col-span-2">
                     <span className="text-xs text-muted-foreground">
-                      Persistent Volume:
+                      {fieldMessages.persistentVolumeLabel}
                     </span>
                     <p className="font-mono font-medium">
-                      {storage.sizeGbDefault}GB mounted at {storage.mountPath}
+                      {fieldMessages.persistentVolumeSummary
+                        .replace("{size}", String(storage.sizeGbDefault ?? ""))
+                        .replace("{path}", storage.mountPath ?? "")}
                     </p>
                   </div>
                 )}
@@ -302,7 +310,7 @@ export function TemplateInspectorDrawer({
                         <span className="font-medium">{dep.alias}</span>
                       </div>
                       <span className="font-mono text-muted-foreground">
-                        Prefix: {dep.envPrefix}
+                        {fieldMessages.prefixLabel} {dep.envPrefix}
                       </span>
                     </div>
                   ))}
@@ -369,7 +377,8 @@ export function TemplateInspectorDrawer({
                               variant="outline"
                               className="h-4 border-blue-500/30 px-1 text-[10px] text-blue-600 dark:text-blue-400"
                             >
-                              Random Hex: {env.generateRandomHex}
+                              {fieldMessages.randomHexLabel}{" "}
+                              {env.generateRandomHex}
                             </Badge>
                           )}
                           <Badge
@@ -386,12 +395,12 @@ export function TemplateInspectorDrawer({
                       </p>
                       {env.defaultValue && (
                         <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                          Default: {env.defaultValue}
+                          {fieldMessages.defaultValueLabel} {env.defaultValue}
                         </p>
                       )}
                       {env.options && env.options.length > 0 && (
                         <p className="mt-1 text-[11px] text-muted-foreground">
-                          Options: {env.options.join(", ")}
+                          {fieldMessages.optionsLabel} {env.options.join(", ")}
                         </p>
                       )}
                     </div>

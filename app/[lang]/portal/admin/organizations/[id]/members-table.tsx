@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState, useMemo } from "react"
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -8,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { type ColumnDef } from "@tanstack/react-table"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type Membership = {
   id: string
@@ -31,31 +34,44 @@ type MembersTableProps = {
   organizationId: string
 }
 
-const formatRelativeTime = (date: string) => {
+const formatRelativeTime = (
+  date: string,
+  messages: ReturnType<typeof getMessages>
+) => {
+  const t = messages.pPortalAdminOrganizationsMembersTable
   const now = new Date()
   const then = new Date(date)
   const diffMs = now.getTime() - then.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffDays === 0) return "Today"
-  if (diffDays === 1) return "Yesterday"
-  if (diffDays < 7) return `${diffDays} days ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-  return `${Math.floor(diffDays / 30)} months ago`
+  if (diffDays === 0) return t.today
+  if (diffDays === 1) return t.yesterday
+  if (diffDays < 7) return t.daysAgo.replace("{count}", String(diffDays))
+  if (diffDays < 30)
+    return t.weeksAgo.replace("{count}", String(Math.floor(diffDays / 7)))
+  return t.monthsAgo.replace("{count}", String(Math.floor(diffDays / 30)))
 }
 
-const formatExpiresAt = (date: string) => {
+const formatExpiresAt = (
+  date: string,
+  messages: ReturnType<typeof getMessages>
+) => {
+  const t = messages.pPortalAdminOrganizationsMembersTable
   const now = new Date()
   const expires = new Date(date)
   const diffMs = expires.getTime() - now.getTime()
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffDays <= 0) return "Expired"
-  if (diffDays === 1) return "1 day remaining"
-  return `${diffDays} days remaining`
+  if (diffDays <= 0) return t.expired
+  if (diffDays === 1) return t.oneDayRemaining
+  return t.daysRemaining.replace("{count}", String(diffDays))
 }
 
 export function MembersTable({ organizationId }: MembersTableProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [pendingInvitations, setPendingInvitations] = useState<
     PendingInvitation[]
@@ -72,7 +88,9 @@ export function MembersTable({ organizationId }: MembersTableProps) {
 
       if (!data || !data.ok) {
         setError(
-          data && "message" in data ? data.message : "Failed to load members"
+          data && "message" in data
+            ? data.message
+            : messages.pPortalAdminOrganizationsMembersTable.loadFailed
         )
         return
       }
@@ -80,12 +98,14 @@ export function MembersTable({ organizationId }: MembersTableProps) {
       setPendingInvitations(data.data.pendingInvitations)
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "An unexpected error occurred"
+        err instanceof Error
+          ? err.message
+          : messages.pPortalAdminOrganizationsMembersTable.unexpectedError
       )
     } finally {
       setIsLoading(false)
     }
-  }, [organizationId])
+  }, [organizationId, messages])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -99,7 +119,10 @@ export function MembersTable({ organizationId }: MembersTableProps) {
         accessorFn: (row) =>
           `${row.firstName ?? ""} ${row.lastName ?? ""}`.trim(),
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Name" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminOrganizationsMembersTable.name}
+          />
         ),
         cell: ({ row }) => (
           <span className="font-medium">
@@ -110,14 +133,20 @@ export function MembersTable({ organizationId }: MembersTableProps) {
       {
         accessorKey: "email",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Email" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminOrganizationsMembersTable.email}
+          />
         ),
         cell: ({ row }) => <span>{row.original.email}</span>,
       },
       {
         accessorKey: "roleSlug",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Role" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminOrganizationsMembersTable.role}
+          />
         ),
         cell: ({ row }) => (
           <Badge variant="secondary">{row.original.roleSlug}</Badge>
@@ -126,28 +155,37 @@ export function MembersTable({ organizationId }: MembersTableProps) {
       {
         accessorKey: "joinedAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Joined" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminOrganizationsMembersTable.joined}
+          />
         ),
         cell: ({ row }) => (
           <span>{new Date(row.original.joinedAt).toLocaleDateString()}</span>
         ),
       },
     ]
-  }, [])
+  }, [messages])
 
   const invitationColumns = useMemo<ColumnDef<PendingInvitation>[]>(() => {
     return [
       {
         accessorKey: "email",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Email" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminOrganizationsMembersTable.email}
+          />
         ),
         cell: ({ row }) => <span>{row.original.email}</span>,
       },
       {
         accessorKey: "roleSlug",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Role" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminOrganizationsMembersTable.role}
+          />
         ),
         cell: ({ row }) => (
           <Badge variant="secondary">{row.original.roleSlug}</Badge>
@@ -157,23 +195,29 @@ export function MembersTable({ organizationId }: MembersTableProps) {
         id: "createdAt",
         accessorFn: (row) => row.createdAt,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Sent" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminOrganizationsMembersTable.sent}
+          />
         ),
         cell: ({ row }) => (
-          <span>{formatRelativeTime(row.original.createdAt)}</span>
+          <span>{formatRelativeTime(row.original.createdAt, messages)}</span>
         ),
       },
       {
         accessorKey: "expiresAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Expires" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.pPortalAdminOrganizationsMembersTable.expires}
+          />
         ),
         cell: ({ row }) => (
-          <span>{formatExpiresAt(row.original.expiresAt)}</span>
+          <span>{formatExpiresAt(row.original.expiresAt, messages)}</span>
         ),
       },
     ]
-  }, [])
+  }, [messages])
 
   if (isLoading) {
     return (
@@ -195,10 +239,16 @@ export function MembersTable({ organizationId }: MembersTableProps) {
       <Tabs defaultValue="members">
         <TabsList>
           <TabsTrigger value="members">
-            Active Members ({memberships.length})
+            {messages.pPortalAdminOrganizationsMembersTable.activeMembersTab.replace(
+              "{count}",
+              String(memberships.length)
+            )}
           </TabsTrigger>
           <TabsTrigger value="invitations">
-            Pending Invitations ({pendingInvitations.length})
+            {messages.pPortalAdminOrganizationsMembersTable.pendingInvitationsTab.replace(
+              "{count}",
+              String(pendingInvitations.length)
+            )}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="members">
@@ -207,12 +257,17 @@ export function MembersTable({ organizationId }: MembersTableProps) {
             columns={memberColumns}
             data={memberships}
             searchableColumns={["firstName", "lastName", "email"]}
-            searchPlaceholder="Search members..."
+            searchPlaceholder={
+              messages.pPortalAdminOrganizationsMembersTable
+                .searchMembersPlaceholder
+            }
             defaultColumnVisibility={{
               email: false,
               joinedAt: false,
             }}
-            emptyMessage="No active members"
+            emptyMessage={
+              messages.pPortalAdminOrganizationsMembersTable.noActiveMembers
+            }
           />
         </TabsContent>
         <TabsContent value="invitations">
@@ -221,11 +276,17 @@ export function MembersTable({ organizationId }: MembersTableProps) {
             columns={invitationColumns}
             data={pendingInvitations}
             searchableColumns={["email"]}
-            searchPlaceholder="Search invitations..."
+            searchPlaceholder={
+              messages.pPortalAdminOrganizationsMembersTable
+                .searchInvitationsPlaceholder
+            }
             defaultColumnVisibility={{
               createdAt: false,
             }}
-            emptyMessage="No pending invitations"
+            emptyMessage={
+              messages.pPortalAdminOrganizationsMembersTable
+                .noPendingInvitations
+            }
           />
         </TabsContent>
       </Tabs>
