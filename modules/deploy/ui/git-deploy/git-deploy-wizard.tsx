@@ -90,13 +90,22 @@ export function GitDeployWizard({
     setIsLaunching(true)
     const tier = blueprint.computeTier || "Medium"
     const subdomain = blueprint.subdomain || "app"
+    const isSmall = tier.toLowerCase().includes("small")
+    const cpu = isSmall ? 500 : 1000
+    const memory = isSmall ? 512 : 2048
+    const defaultMonthlyPrice =
+      currency === "IDR" ? (isSmall ? 20000 : 40000) : isSmall ? 2 : 4
+    const defaultHourlyRate =
+      currency === "IDR"
+        ? Math.ceil(defaultMonthlyPrice / 720)
+        : Number((defaultMonthlyPrice / 720).toFixed(4))
     const sizing: GitSizingConfig = {
       tier,
-      cpu: 1000,
-      memory: 2048,
-      hourlyRate: blueprint.hourlyRate ?? 0.04,
+      cpu,
+      memory,
+      hourlyRate: blueprint.hourlyRate ?? defaultHourlyRate,
       subdomain,
-      monthlyPrice: 30,
+      monthlyPrice: defaultMonthlyPrice,
       currency,
     }
     setSizingConfig(sizing)
@@ -113,7 +122,9 @@ export function GitDeployWizard({
             body: JSON.stringify({
               subdomain,
               resources: {
-                package: tier.toLowerCase(),
+                package: isSmall ? "small" : "medium",
+                cpu,
+                memory,
               },
             }),
           }

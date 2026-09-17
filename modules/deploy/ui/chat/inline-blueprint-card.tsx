@@ -20,6 +20,7 @@ export type InlineBlueprintData = {
   startCommand?: string
   envVarsCount?: number
   hourlyRate?: number
+  currency?: "USD" | "IDR"
 }
 
 export type InlineBlueprintCardProps = {
@@ -53,7 +54,10 @@ export function InlineBlueprintCard({
       ? blueprint.hourlyRate.toFixed(2)
       : "0.04"
   const tier = blueprint.computeTier || "Medium (2GB RAM)"
-  const compute = `${tier} · $${hourlyRateFormatted}/jam`
+  const isRealIdr = blueprint.currency === "IDR"
+  const compute = isRealIdr
+    ? `${tier} · IDR ${Math.round(blueprint.hourlyRate ?? 56)}/jam`
+    : `${tier} · $${hourlyRateFormatted}/jam`
 
   const domain = `${blueprint.subdomain || "app"}.pfnapp.dev`
   const envVars = `${blueprint.envVarsCount ?? 0} keys from .env.example ready`
