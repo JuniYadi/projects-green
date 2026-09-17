@@ -486,11 +486,11 @@ async function main() {
             period: monthArg,
           },
           line: {
-            description: "WhatsApp overage quota credit (UTILITY)",
+            description: `WhatsApp overage charge (${monthArg}: ${targetUnbilledLedgers.length} messages)`,
             quantity: new Prisma.Decimal(targetUnbilledLedgers.length),
             unitPrice: new Prisma.Decimal(defaultUtilityPrice),
             lineType: "USAGE",
-            category: "whatsapp-utility",
+            category: "whatsapp",
           },
         },
         tx as unknown as typeof prisma

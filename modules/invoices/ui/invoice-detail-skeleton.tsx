@@ -105,6 +105,10 @@ export function InvoiceDetailSkeleton() {
                     <Skeleton className="h-3 w-8" />
                     <Skeleton className="h-4 w-16" />
                   </div>
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
                   <div className="flex items-center justify-between border-t pt-2">
                     <Skeleton className="h-4 w-12" />
                     <Skeleton className="h-4 w-24" />
@@ -122,7 +126,7 @@ export function InvoiceDetailSkeleton() {
               <CardTitle className="text-base">Overview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 divide-y">
-              {Array.from({ length: 6 }).map((_, i) => (
+              {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
                   className="flex items-center justify-between py-2 first:pt-0"
