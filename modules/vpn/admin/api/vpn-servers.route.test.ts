@@ -79,11 +79,14 @@ const mockSshExecutorExec = mock<() => Promise<SshResult>>(async () => {
 // OpenVPN adapter mock
 // ---------------------------------------------------------------------------
 
-let openVpnResponses: ScanResult[][] = []
+let openVpnResponses: unknown[] = []
 let openVpnCallIndex = 0
-const mockOpenVpnListClients = mock<() => Promise<ScanResult[]>>(async () => {
+const mockOpenVpnListClients = mock<() => Promise<unknown>>(async () => {
   const result = openVpnResponses[openVpnCallIndex] ?? []
   openVpnCallIndex++
+  if (result instanceof Error) {
+    throw result
+  }
   return result
 })
 
@@ -799,6 +802,312 @@ describe("createAdminVpnServersRoutes", () => {
 
       expect(res.status).toBe(200)
       const body = await res.json()
+      expect(body.data).toEqual([
+        {
+          serverId: "srv-1",
+          serverName: "ID-01",
+          protocol: "WIREGUARD",
+          username: "user-1",
+          ip: "10.0.0.2",
+          status: "Online",
+          handshake: "4s ago",
+          rx: "2M",
+          tx: "3M",
+        },
+      ])
+    })
+
+    it("aggregates WireGuard and OpenVPN sessions across multiple servers", async () => {
+      vpnServerFindManyQueue = [
+        makeServer({
+          id: "srv-wg",
+          name: "WG-01",
+          hasOpenVpn: false,
+          hasWireGuard: true,
+        }),
+        makeServer({
+          id: "srv-ovpn",
+          name: "OVPN-01",
+          hasOpenVpn: true,
+          hasWireGuard: false,
+        }),
+        makeServer({
+          id: "srv-fail",
+          name: "FAIL-01",
+          hasOpenVpn: true,
+          hasWireGuard: false,
+        }),
+      ]
+
+      sshResponses = [
+        {
+          stdout:
+            "\n" +
+            "some preamble noise\n" +
+            "USERNAME | IP | STATUS | HANDSHAKE | RX | TX\n" +
+            "---------------------------------------------\n" +
+            "wg-user-online | 10.0.0.2 | Online | 1m ago | 10M | 20M\n" +
+            "wg-user-stale  | 10.0.0.3 | Stale  | 3h ago | 1M  | 2M\n" +
+            "wg-user-off    | 10.0.0.4 | Offline| -      | 0B  | 0B\n" +
+            "invalid line\n" +
+            "Active: 3 total, 1 connected\n" +
+            "trailing line after active",
+          stderr: "",
+          exitCode: 0,
+        },
+      ]
+
+      openVpnResponses = [
+        [
+          {
+            clientName: "ovpn-user-1",
+            connected: true,
+            virtualAddress: "10.8.0.2",
+            connectedSince: "10m ago",
+            bytesReceived: 2 * 1024 ** 3,
+            bytesSent: 1.5 * 1024 ** 2,
+          },
+          {
+            clientName: "ovpn-user-2",
+            connected: true,
+            virtualAddress: null,
+            ipAllocation: "10.8.0.3",
+            connectedSince: null,
+            bytesReceived: 50 * 1024,
+            bytesSent: 42,
+          },
+          {
+            clientName: "ovpn-user-3",
+            connected: true,
+            virtualAddress: null,
+            ipAllocation: null,
+            connectedSince: "1m ago",
+            bytesReceived: null,
+            bytesSent: 0,
+          },
+          {
+            clientName: "ovpn-user-disconnected",
+            connected: false,
+            virtualAddress: "10.8.0.4",
+            connectedSince: "1h ago",
+            bytesReceived: 100,
+            bytesSent: 100,
+          },
+        ],
+        new Error("OpenVPN failed to list clients"),
+      ]
+
+      const res = await createApp().handle(
+        new Request("http://localhost/admin/vpn/wireguard-sessions")
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data).toEqual([
+        {
+          serverId: "srv-wg",
+          serverName: "WG-01",
+          protocol: "WIREGUARD",
+          username: "wg-user-online",
+          ip: "10.0.0.2",
+          status: "Online",
+          handshake: "1m ago",
+          rx: "10M",
+          tx: "20M",
+        },
+        {
+          serverId: "srv-ovpn",
+          serverName: "OVPN-01",
+          protocol: "OPENVPN",
+          username: "ovpn-user-1",
+          ip: "10.8.0.2",
+          status: "Online",
+          handshake: "10m ago",
+          rx: "2.0 GB",
+          tx: "1.5 MB",
+        },
+        {
+          serverId: "srv-ovpn",
+          serverName: "OVPN-01",
+          protocol: "OPENVPN",
+          username: "ovpn-user-2",
+          ip: "10.8.0.3",
+          status: "Online",
+          handshake: "-",
+          rx: "50.0 KB",
+          tx: "42 B",
+        },
+        {
+          serverId: "srv-ovpn",
+          serverName: "OVPN-01",
+          protocol: "OPENVPN",
+          username: "ovpn-user-3",
+          ip: "-",
+          status: "Online",
+          handshake: "1m ago",
+          rx: "0 B",
+          tx: "0 B",
+        },
+      ])
+    })
+
+    it("falls back to wg-list.sh when we-list.sh fails", async () => {
+      vpnServerFindManyQueue = [
+        makeServer({
+          hasOpenVpn: false,
+          hasWireGuard: true,
+        }),
+      ]
+      sshResponses = [
+        { stdout: "", stderr: "command not found", exitCode: 127 },
+        {
+          stdout:
+            "USERNAME | IP | STATUS | HANDSHAKE | RX | TX\n" +
+            "user-fallback | 10.0.0.5 | Online | 10s ago | 1M | 1M\n",
+          stderr: "",
+          exitCode: 0,
+        },
+      ]
+
+      const res = await createApp().handle(
+        new Request("http://localhost/admin/vpn/wireguard-sessions")
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.data).toEqual([
+        {
+          serverId: "srv-1",
+          serverName: "ID-01",
+          protocol: "WIREGUARD",
+          username: "user-fallback",
+          ip: "10.0.0.5",
+          status: "Online",
+          handshake: "10s ago",
+          rx: "1M",
+          tx: "1M",
+        },
+      ])
+    })
+
+    it("returns 403 when the actor is not a super admin", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminVpnServersRoutes({
+            requireSuperAdmin: forbiddenGuard,
+            service,
+          })
+        )
+        .compile()
+
+      const res = await app.handle(
+        new Request("http://localhost/admin/vpn/wireguard-sessions")
+      )
+
+      expect(res.status).toBe(403)
+    })
+  })
+
+  // ── GET /admin/vpn/servers/:id/wireguard-sessions ─────────────────────────
+
+  describe("GET /admin/vpn/servers/:id/wireguard-sessions", () => {
+    it("returns 403 when the actor is not a super admin", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminVpnServersRoutes({
+            requireSuperAdmin: forbiddenGuard,
+            service,
+          })
+        )
+        .compile()
+
+      const res = await app.handle(
+        new Request(
+          "http://localhost/admin/vpn/servers/srv-1/wireguard-sessions"
+        )
+      )
+
+      expect(res.status).toBe(403)
+    })
+
+    it("returns 404 when server is not found", async () => {
+      vpnServerFindUniqueValue = null
+
+      const res = await createApp().handle(
+        new Request(
+          "http://localhost/admin/vpn/servers/srv-missing/wireguard-sessions"
+        )
+      )
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("returns empty array when server does not have WireGuard enabled", async () => {
+      vpnServerFindUniqueValue = makeServer({ hasWireGuard: false })
+
+      const res = await createApp().handle(
+        new Request(
+          "http://localhost/admin/vpn/servers/srv-1/wireguard-sessions"
+        )
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data).toEqual([])
+    })
+
+    it("returns 503 when SSH command fails on server", async () => {
+      vpnServerFindUniqueValue = makeServer({ hasWireGuard: true })
+      sshResponses = [
+        { stdout: "", stderr: "command not found", exitCode: 127 },
+        { stdout: "", stderr: "permission denied", exitCode: 1 },
+      ]
+
+      const res = await createApp().handle(
+        new Request(
+          "http://localhost/admin/vpn/servers/srv-1/wireguard-sessions"
+        )
+      )
+
+      expect(res.status).toBe(503)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("SSH_COMMAND_FAILED")
+      expect(body.message).toBe("permission denied")
+    })
+
+    it("returns online WireGuard sessions when SSH succeeds", async () => {
+      vpnServerFindUniqueValue = makeServer({
+        id: "srv-1",
+        name: "ID-01",
+        hasWireGuard: true,
+      })
+      sshResponses = [
+        {
+          stdout:
+            "USERNAME | IP | STATUS | HANDSHAKE | RX | TX\n" +
+            "user-1 | 10.0.0.2 | Online | 4s ago | 2M | 3M\n" +
+            "user-2 | 10.0.0.3 | Stale | 2h ago | 1M | 1M\n" +
+            "Active: 2 total, 1 connected",
+          stderr: "",
+          exitCode: 0,
+        },
+      ]
+
+      const res = await createApp().handle(
+        new Request(
+          "http://localhost/admin/vpn/servers/srv-1/wireguard-sessions"
+        )
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
       expect(body.data).toEqual([
         {
           serverId: "srv-1",

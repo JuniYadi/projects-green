@@ -22,19 +22,25 @@ import {
   type WireGuardSessionItem,
 } from "../_components/vpn-admin-client"
 
-function SessionTable({ sessions }: { sessions: WireGuardSessionItem[] }) {
+function SessionTable({
+  sessions,
+  messages,
+}: {
+  sessions: WireGuardSessionItem[]
+  messages: ReturnType<typeof getMessages>["pPortalVpnWireguardPageClient"]
+}) {
   return (
     <div className="overflow-x-auto rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Server</TableHead>
-            <TableHead>Protocol</TableHead>
-            <TableHead>Username</TableHead>
-            <TableHead>IP address</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Handshake</TableHead>
-            <TableHead>Transfer</TableHead>
+            <TableHead>{messages.thServer}</TableHead>
+            <TableHead>{messages.thProtocol}</TableHead>
+            <TableHead>{messages.thUsername}</TableHead>
+            <TableHead>{messages.thVpnIp}</TableHead>
+            <TableHead>{messages.wireguardStatus}</TableHead>
+            <TableHead>{messages.wireguardHandshake}</TableHead>
+            <TableHead>{messages.wireguardTransfer}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -49,7 +55,13 @@ function SessionTable({ sessions }: { sessions: WireGuardSessionItem[] }) {
               </TableCell>
               <TableCell className="font-mono text-xs">{session.ip}</TableCell>
               <TableCell>
-                <Badge variant="default">{session.status}</Badge>
+                <Badge
+                  variant={
+                    session.status === "Online" ? "default" : "secondary"
+                  }
+                >
+                  {session.status}
+                </Badge>
               </TableCell>
               <TableCell className="text-xs">{session.handshake}</TableCell>
               <TableCell className="font-mono text-xs">
@@ -110,7 +122,7 @@ export default function WireGuardPage() {
           {messages.noSessions}
         </div>
       ) : (
-        <SessionTable sessions={sessions} />
+        <SessionTable sessions={sessions} messages={messages} />
       )}
     </main>
   )

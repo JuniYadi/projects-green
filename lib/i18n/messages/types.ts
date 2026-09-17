@@ -6070,26 +6070,13 @@ export type AppMessages = {
     refreshing: string
     loadError: string
     noSessions: string
-    addPeerButton: string
-    peerCreatedPrefix: string
-    peerCreatedSuffix: string
-    downloadConfButton: string
-    showQrButton: string
-    doneButton: string
-    usernamePlaceholder: string
-    peersCountPrefix: string
-    usernameColumn: string
-    ipAddressColumn: string
-    statusColumn: string
-    handshakeColumn: string
-    transferColumn: string
-    actionsColumn: string
-    noPeersFound: string
-    statusOnline: string
-    statusOffline: string
-    downloadConfigTitle: string
-    removePeerTitle: string
-    qrCodeDialogTitle: string
+    thServer: string
+    thProtocol: string
+    thUsername: string
+    thVpnIp: string
+    wireguardStatus: string
+    wireguardHandshake: string
+    wireguardTransfer: string
   }
   pWhatsappBroadcastsNewPageClient: {
     pageTitle: string
