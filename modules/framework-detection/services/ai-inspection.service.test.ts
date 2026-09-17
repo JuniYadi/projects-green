@@ -84,7 +84,11 @@ describe("ai-inspection.service & repo-inspector.tools", () => {
         onStep: (step) => traces.push(step),
       })
 
-      const result = await tools.list_repo_files.execute(
+      const executeList = tools.list_repo_files.execute as (
+        args: { path?: string },
+        ctx: unknown
+      ) => Promise<{ files: string[]; truncated: boolean }>
+      const result = await executeList(
         { path: "src" },
         { toolCallId: "call-1", messages: [] }
       )
@@ -117,11 +121,12 @@ describe("ai-inspection.service & repo-inspector.tools", () => {
         onStep: (step) => traces.push(step),
       })
 
+      const executeList = tools.list_repo_files.execute as (
+        args: { path?: string },
+        ctx: unknown
+      ) => Promise<{ files: string[]; truncated: boolean }>
       expect(
-        tools.list_repo_files.execute(
-          {},
-          { toolCallId: "call-err", messages: [] }
-        )
+        executeList({}, { toolCallId: "call-err", messages: [] })
       ).rejects.toThrow("Git tree not found")
 
       // Allow microtask to settle
@@ -147,7 +152,11 @@ describe("ai-inspection.service & repo-inspector.tools", () => {
         onStep: (step) => traces.push(step),
       })
 
-      const result = await tools.read_repo_file.execute(
+      const executeRead = tools.read_repo_file.execute as (
+        args: { filePath: string },
+        ctx: unknown
+      ) => Promise<{ content: string; path: string; size: number }>
+      const result = await executeRead(
         { filePath: ".env" },
         { toolCallId: "call-2", messages: [] }
       )
@@ -320,7 +329,6 @@ describe("ai-inspection.service & repo-inspector.tools", () => {
       const actor: AiDeploymentSessionActor = {
         organizationId: "org_test",
         userId: "user_test",
-        role: "developer",
       }
 
       const result = await inspectRepoWithAi({

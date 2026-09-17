@@ -14,7 +14,6 @@ import {
 const mockActor: AiDeploymentSessionActor = {
   userId: "user-123",
   organizationId: "org-456",
-  role: "admin",
 }
 
 describe("GitHubProviderAdapter", () => {
@@ -127,7 +126,7 @@ describe("GitHubProviderAdapter", () => {
         githubRepositoryConnection: {
           findFirst: mock(async () => ({
             installation: {
-              githubInstallationId: 9999n,
+              githubInstallationId: BigInt(9999),
             },
           })),
         },

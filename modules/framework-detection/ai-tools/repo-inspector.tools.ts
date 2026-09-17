@@ -22,7 +22,7 @@ export function createRepoInspectorTools(
     list_repo_files: tool({
       description:
         "List files in the repository using the Git provider. Returns an array of file paths.",
-      parameters: z.object({
+      inputSchema: z.object({
         path: z
           .string()
           .optional()
@@ -72,7 +72,7 @@ export function createRepoInspectorTools(
     read_repo_file: tool({
       description:
         "Read the content of a file in the repository (e.g. package.json, composer.json, Dockerfile, .env.example).",
-      parameters: z.object({
+      inputSchema: z.object({
         filePath: z.string().describe("Path to the file to read"),
       }),
       execute: async ({ filePath }: { filePath: string }) => {
