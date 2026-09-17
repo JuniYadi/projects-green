@@ -1,6 +1,9 @@
 "use client"
 
 import React, { useState } from "react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Table,
   TableBody,
@@ -39,6 +42,9 @@ export function TemplateModerationTable({
   onReject: _onReject,
   onToggleFeatured,
 }: TemplateModerationTableProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("ALL")
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
@@ -81,7 +87,10 @@ export function TemplateModerationTable({
         <div className="relative flex-1 sm:max-w-xs">
           <MagnifyingGlass className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
           <Input
-            placeholder="Search templates..."
+            placeholder={
+              messages.pPortalMarketplaceTemplateModerationTable
+                .searchPlaceholder
+            }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8 text-sm"
@@ -90,16 +99,50 @@ export function TemplateModerationTable({
         <div className="flex items-center gap-2">
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-[180px] text-sm">
-              <SelectValue placeholder="Category" />
+              <SelectValue
+                placeholder={
+                  messages.pPortalMarketplaceTemplateModerationTable
+                    .categoryPlaceholder
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Categories</SelectItem>
-              <SelectItem value="AI">AI</SelectItem>
-              <SelectItem value="CMS">CMS</SelectItem>
-              <SelectItem value="DATABASE">Database</SelectItem>
-              <SelectItem value="DEVELOPER_TOOLS">Developer Tools</SelectItem>
-              <SelectItem value="ANALYTICS">Analytics</SelectItem>
-              <SelectItem value="UTILITIES">Utilities</SelectItem>
+              <SelectItem value="ALL">
+                {
+                  messages.pPortalMarketplaceTemplateModerationTable
+                    .allCategoriesOption
+                }
+              </SelectItem>
+              <SelectItem value="AI">
+                {messages.pPortalMarketplaceTemplateModerationTable.categoryAi}
+              </SelectItem>
+              <SelectItem value="CMS">
+                {messages.pPortalMarketplaceTemplateModerationTable.categoryCms}
+              </SelectItem>
+              <SelectItem value="DATABASE">
+                {
+                  messages.pPortalMarketplaceTemplateModerationTable
+                    .categoryDatabase
+                }
+              </SelectItem>
+              <SelectItem value="DEVELOPER_TOOLS">
+                {
+                  messages.pPortalMarketplaceTemplateModerationTable
+                    .categoryDeveloperTools
+                }
+              </SelectItem>
+              <SelectItem value="ANALYTICS">
+                {
+                  messages.pPortalMarketplaceTemplateModerationTable
+                    .categoryAnalytics
+                }
+              </SelectItem>
+              <SelectItem value="UTILITIES">
+                {
+                  messages.pPortalMarketplaceTemplateModerationTable
+                    .categoryUtilities
+                }
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -110,19 +153,40 @@ export function TemplateModerationTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[280px]">Template</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Runtime Image</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Featured</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="w-[280px]">
+                {messages.pPortalMarketplaceTemplateModerationTable.colTemplate}
+              </TableHead>
+              <TableHead>
+                {
+                  messages.pPortalMarketplaceTemplateModerationTable
+                    .categoryPlaceholder
+                }
+              </TableHead>
+              <TableHead>
+                {
+                  messages.pPortalMarketplaceTemplateModerationTable
+                    .colRuntimeImage
+                }
+              </TableHead>
+              <TableHead>
+                {messages.pPortalMarketplaceTemplateModerationTable.colStatus}
+              </TableHead>
+              <TableHead>
+                {messages.pPortalMarketplaceTemplateModerationTable.colFeatured}
+              </TableHead>
+              <TableHead className="text-right">
+                {messages.pPortalMarketplaceTemplateModerationTable.colActions}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-sm">
-                  Loading templates...
+                  {
+                    messages.pPortalMarketplaceTemplateModerationTable
+                      .loadingTemplates
+                  }
                 </TableCell>
               </TableRow>
             ) : filteredTemplates.length === 0 ? (
@@ -131,7 +195,10 @@ export function TemplateModerationTable({
                   colSpan={6}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
-                  No templates found in this view.
+                  {
+                    messages.pPortalMarketplaceTemplateModerationTable
+                      .noTemplatesFound
+                  }
                 </TableCell>
               </TableRow>
             ) : (
@@ -176,7 +243,10 @@ export function TemplateModerationTable({
                       </Badge>
                       {template.isOfficial && (
                         <Badge variant="outline" className="text-[10px]">
-                          Official
+                          {
+                            messages.pPortalMarketplaceTemplateModerationTable
+                              .officialBadge
+                          }
                         </Badge>
                       )}
                     </div>
@@ -206,7 +276,11 @@ export function TemplateModerationTable({
                         onClick={() => onInspect(template)}
                         className="h-8 gap-1 text-xs"
                       >
-                        <Eye className="size-3.5" /> Inspect
+                        <Eye className="size-3.5" />{" "}
+                        {
+                          messages.pPortalMarketplaceTemplateModerationTable
+                            .inspectAction
+                        }
                       </Button>
                       {template.visibility === "PENDING_REVIEW" && (
                         <Button
@@ -215,7 +289,11 @@ export function TemplateModerationTable({
                           disabled={actionLoadingId === template.id}
                           className="h-8 gap-1 text-xs"
                         >
-                          <CheckCircle className="size-3.5" /> Approve
+                          <CheckCircle className="size-3.5" />{" "}
+                          {
+                            messages.pPortalMarketplaceTemplateModerationTable
+                              .approveAction
+                          }
                         </Button>
                       )}
                     </div>
