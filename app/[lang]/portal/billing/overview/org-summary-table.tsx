@@ -24,18 +24,26 @@ import {
 } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 import { defaultLocale } from "@/lib/i18n/config"
+import { getMessages } from "@/lib/i18n/messages"
 import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 
 function makeColumns(
   linkPrefix: string,
-  linkSuffix?: string
+  linkSuffix: string | undefined,
+  messages: ReturnType<typeof getMessages>
 ): ColumnDef<AdminOrgSummary>[] {
   const suffix = linkSuffix ?? ""
   return [
     {
       accessorKey: "orgName",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Organization" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalBillingOverviewOrgSummaryTable
+              .organizationColumnTitle
+          }
+        />
       ),
       cell: ({ row }) => (
         <Link
@@ -63,7 +71,12 @@ function makeColumns(
     {
       accessorKey: "balance",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Balance" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalBillingOverviewOrgSummaryTable.balanceColumnTitle
+          }
+        />
       ),
       cell: ({ row }) =>
         formatBillingMoney(row.original.balance, row.original.currency),
@@ -71,13 +84,25 @@ function makeColumns(
     {
       accessorKey: "activeSubscriptions",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Subscriptions" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalBillingOverviewOrgSummaryTable
+              .subscriptionsColumnTitle
+          }
+        />
       ),
     },
     {
       accessorKey: "monthlySpend",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Monthly Spend" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalBillingOverviewOrgSummaryTable
+              .monthlySpendColumnTitle
+          }
+        />
       ),
       cell: ({ row }) =>
         formatBillingMoney(row.original.monthlySpend, row.original.currency),
@@ -101,6 +126,7 @@ export function OrgSummaryTable({
     pathname: "/portal/orgs",
     locale: activeLocale,
   })
+  const messages = getMessages(activeLocale)
 
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
@@ -186,7 +212,11 @@ export function OrgSummaryTable({
     return (
       <Card>
         <CardContent className="py-6 text-center text-destructive">
-          Failed to load organizations: {error}
+          {
+            messages.pPortalBillingOverviewOrgSummaryTable
+              .failedToLoadOrganizations
+          }{" "}
+          {error}
         </CardContent>
       </Card>
     )
@@ -196,29 +226,50 @@ export function OrgSummaryTable({
     <Card>
       <CardHeader>
         <div className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Organizations</CardTitle>
+          <CardTitle>
+            {
+              messages.pPortalBillingOverviewOrgSummaryTable
+                .organizationsCardTitle
+            }
+          </CardTitle>
           <Link
             href={orgsHref}
             className="text-sm font-medium text-primary hover:underline"
           >
-            View all organizations
+            {
+              messages.pPortalBillingOverviewOrgSummaryTable
+                .viewAllOrganizationsLink
+            }
           </Link>
         </div>
       </CardHeader>
       <CardContent className="p-0">
         <div className="flex flex-col gap-3 p-4 sm:flex-row">
           <Input
-            placeholder="Search organizations..."
+            placeholder={
+              messages.pPortalBillingOverviewOrgSummaryTable
+                .searchOrganizationsPlaceholder
+            }
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="max-w-xs"
           />
           <Select value={currency} onValueChange={handleCurrencyChange}>
             <SelectTrigger className="w-36">
-              <SelectValue placeholder="All currencies" />
+              <SelectValue
+                placeholder={
+                  messages.pPortalBillingOverviewOrgSummaryTable
+                    .allCurrenciesOption
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All currencies</SelectItem>
+              <SelectItem value="all">
+                {
+                  messages.pPortalBillingOverviewOrgSummaryTable
+                    .allCurrenciesOption
+                }
+              </SelectItem>
               <SelectItem value="IDR">IDR</SelectItem>
               <SelectItem value="USD">USD</SelectItem>
             </SelectContent>
@@ -229,24 +280,40 @@ export function OrgSummaryTable({
             onClick={handleRefresh}
             disabled={isLoading || orgs.length === 0}
           >
-            Refresh metadata
+            {
+              messages.pPortalBillingOverviewOrgSummaryTable
+                .refreshMetadataButton
+            }
           </Button>
         </div>
         <DataTable
           tableId="portal-billing-org-summary"
-          columns={makeColumns(linkPrefix, linkSuffix)}
+          columns={makeColumns(linkPrefix, linkSuffix, messages)}
           data={orgs}
-          searchPlaceholder="Search loaded organizations..."
+          searchPlaceholder={
+            messages.pPortalBillingOverviewOrgSummaryTable
+              .searchLoadedOrganizationsPlaceholder
+          }
           searchableColumns={[]}
         />
         {error && <p className="px-4 pb-2 text-sm text-destructive">{error}</p>}
         <div className="flex items-center justify-between border-t px-4 py-3">
           <span className="text-sm text-muted-foreground">
-            Showing {orgs.length} of {pagination?.total ?? 0} organizations
+            {messages.pPortalBillingOverviewOrgSummaryTable.showingLabel}{" "}
+            {orgs.length}{" "}
+            {messages.pPortalBillingOverviewOrgSummaryTable.ofLabel}{" "}
+            {pagination?.total ?? 0}{" "}
+            {
+              messages.pPortalBillingOverviewOrgSummaryTable
+                .organizationsCountLabel
+            }
           </span>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              Page {pagination?.page ?? page} of {pagination?.totalPages ?? 1}
+              {messages.pPortalBillingOverviewOrgSummaryTable.pageLabel}{" "}
+              {pagination?.page ?? page}{" "}
+              {messages.pPortalBillingOverviewOrgSummaryTable.ofLabel}{" "}
+              {pagination?.totalPages ?? 1}
             </span>
             <Button
               variant="outline"
@@ -254,7 +321,7 @@ export function OrgSummaryTable({
               onClick={() => setPage((v) => Math.max(1, v - 1))}
               disabled={isLoading || page <= 1}
             >
-              Previous
+              {messages.pPortalBillingOverviewOrgSummaryTable.previousButton}
             </Button>
             <Button
               variant="outline"
@@ -264,7 +331,7 @@ export function OrgSummaryTable({
                 isLoading || !pagination || page >= pagination.totalPages
               }
             >
-              Next
+              {messages.pPortalBillingOverviewOrgSummaryTable.nextButton}
             </Button>
           </div>
         </div>
