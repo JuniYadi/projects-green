@@ -75,7 +75,9 @@ function createMockTx(overrides: Record<string, unknown> = {}) {
       update: mock(async () => ({ id: "inv1" })),
     },
     billingInvoiceLine: {
+      findFirst: mock(async () => null),
       create: mock(async () => ({ id: "line1" })),
+      update: mock(async () => ({ id: "line1" })),
     },
     ...overrides,
   }

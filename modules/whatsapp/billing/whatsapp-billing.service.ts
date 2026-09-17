@@ -55,6 +55,7 @@ export type OverageInput = {
   quotaCredit: Prisma.Decimal
   unitPrice: Prisma.Decimal
   idempotencyKey: string
+  category?: WhatsappBillingCategory
 }
 
 export type ConsumeMessageBillingInput = {
@@ -310,6 +311,9 @@ export class WhatsappBillingService {
       const overageCredit = credit.minus(combined)
       const amount = input.unitPrice.times(overageCredit)
 
+      const categoryLabel = input.category ? ` (${input.category})` : ""
+      const lineDescription = `WhatsApp overage quota credit${categoryLabel}`
+
       // Charge BEFORE mutating allowance — if charge fails, allowance is untouched
       const result = await this.transactions.debitServiceBalance(
         {
@@ -323,12 +327,16 @@ export class WhatsappBillingService {
             deviceId: input.deviceId,
             quotaCredit: input.quotaCredit.toString(),
             overageCredit: overageCredit.toString(),
+            ...(input.category ? { category: input.category } : {}),
           },
           line: {
-            description: "WhatsApp overage quota credit",
+            description: lineDescription,
             quantity: overageCredit,
             unitPrice: input.unitPrice,
             lineType: "USAGE",
+            category: input.category
+              ? `whatsapp-${input.category.toLowerCase()}`
+              : "whatsapp",
           },
         },
         tx
@@ -447,6 +455,7 @@ export class WhatsappBillingService {
         quotaCredit,
         unitPrice,
         idempotencyKey: input.idempotencyKey,
+        category: resolvedCategory,
       })
 
       return {
