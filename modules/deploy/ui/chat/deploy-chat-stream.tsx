@@ -22,6 +22,7 @@ import {
   LowConfidenceFallbackCard,
   type LowConfidenceOverrides,
 } from "./low-confidence-fallback-card"
+import { getCatalogProduct, type CatalogPlan } from "@/lib/billing-client"
 import type { ConnectedRepository } from "../git-deploy/types"
 
 export type ChatMessage = {
@@ -95,6 +96,21 @@ export function DeployChatStream({
   const [lastSourceUrl, setLastSourceUrl] = useState<string>("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [repos, setRepos] = useState<ConnectedRepository[]>([])
+  const [catalogPlans, setCatalogPlans] = useState<CatalogPlan[]>([])
+
+  // Fetch real catalog plans from database
+  useEffect(() => {
+    let active = true
+    getCatalogProduct("APP_HOSTING", isId ? "IDR" : "USD")
+      .then((res) => {
+        if (!active || !res?.product?.plans) return
+        setCatalogPlans(res.product.plans)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [isId])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -195,9 +211,18 @@ export function DeployChatStream({
                 framework?: string
                 version?: string
                 primaryEngine?: string
-                primaryFramework?: { name?: string; id?: string }
+                primaryFramework?: {
+                  name?: string
+                  id?: string
+                  ecosystem?: string
+                }
                 frameworkVersion?: string
-                requiredDependencies?: Array<{ name: string; version: string }>
+                enforcedRuntimes?: Array<{ runtimeId: string; version: string }>
+                requiredDependencies?: Array<{
+                  name?: string
+                  id?: string
+                  version?: string
+                }>
                 port?: number
                 defaultPort?: number
                 startCommand?: string
@@ -482,26 +507,83 @@ export function DeployChatStream({
           ""
         const framework = `${frameworkName} ${frameworkVer}`.trim()
 
-        const runtimeName =
-          detection?.requiredDependencies?.[0]?.name ||
-          detection?.primaryEngine ||
-          plan?.detection?.runtime ||
-          "Node.js"
+        const enforcedRuntime = detection?.enforcedRuntimes?.[0]
+        const isPhp =
+          detection?.primaryFramework?.ecosystem === "php" ||
+          frameworkName.toLowerCase().includes("laravel") ||
+          plan?.detection?.runtime === "php" ||
+          enforcedRuntime?.runtimeId === "php"
+
+        const isPython =
+          detection?.primaryFramework?.ecosystem === "python" ||
+          plan?.detection?.runtime === "python" ||
+          enforcedRuntime?.runtimeId === "python"
+
+        const isGo =
+          detection?.primaryFramework?.ecosystem === "go" ||
+          plan?.detection?.runtime === "go" ||
+          enforcedRuntime?.runtimeId === "go"
+
+        const runtimeName = isPhp
+          ? "PHP"
+          : isPython
+            ? "Python"
+            : isGo
+              ? "Go"
+              : enforcedRuntime?.runtimeId === "node" ||
+                  plan?.detection?.runtime === "node"
+                ? "Node.js"
+                : enforcedRuntime?.runtimeId
+                  ? enforcedRuntime.runtimeId.charAt(0).toUpperCase() +
+                    enforcedRuntime.runtimeId.slice(1)
+                  : detection?.primaryEngine ||
+                    plan?.detection?.runtime ||
+                    "Node.js"
+
         const runtimeVer =
-          detection?.requiredDependencies?.[0]?.version ||
-          (detection?.primaryEngine ? "" : "20")
+          enforcedRuntime?.version && enforcedRuntime.version !== "default"
+            ? enforcedRuntime.version
+            : isPhp
+              ? "8.2"
+              : isPython
+                ? "3.11"
+                : isGo
+                  ? "1.22"
+                  : detection?.primaryEngine
+                    ? ""
+                    : "20"
+
         const runtime = `${runtimeName} ${runtimeVer}`.trim()
 
         const port =
           detection?.port ??
           detection?.defaultPort ??
           plan?.detection?.port ??
-          3000
+          (isPhp ? 80 : 3000)
 
-        const computeTier = plan?.resources?.package
-          ? plan.resources.package.charAt(0).toUpperCase() +
-            plan.resources.package.slice(1)
-          : "Medium (2GB RAM)"
+        // Load real plan and rate from database catalog
+        const defaultPlan =
+          catalogPlans.find((p) => p.code === "MEDIUM") || catalogPlans[0]
+        const defaultHourlyRate = defaultPlan
+          ? (() => {
+              const offer =
+                defaultPlan.offers?.find(
+                  (o) => o.billingPeriod === "MONTHLY"
+                ) || defaultPlan.offers?.[0]
+              const periodPrice = offer?.periodPrice
+                ? Number(offer.periodPrice)
+                : isId
+                  ? 40000
+                  : 4
+              return isId
+                ? Math.ceil(periodPrice / 720)
+                : Number((periodPrice / 720).toFixed(4))
+            })()
+          : isId
+            ? 56
+            : 0.04
+
+        const computeTier = defaultPlan?.name || "Medium (2GB RAM)"
 
         const repoSubdomain =
           plan?.domain?.hostname ||
@@ -510,7 +592,8 @@ export function DeployChatStream({
 
         const startCommand = Array.isArray(plan?.detection?.commands)
           ? plan.detection.commands[1] || plan.detection.commands[0]
-          : detection?.startCommand || "pnpm start"
+          : detection?.startCommand ||
+            (isPhp ? "php artisan serve" : "pnpm start")
 
         const envVarsCount = trimmed.includes("laravel") ? 12 : 3
 
@@ -528,7 +611,8 @@ export function DeployChatStream({
           subdomain: repoSubdomain,
           startCommand,
           envVarsCount,
-          hourlyRate: 0.04,
+          hourlyRate: defaultHourlyRate,
+          currency: isId ? "IDR" : "USD",
         }
 
         setActiveBlueprint(bp)
@@ -996,21 +1080,37 @@ export function DeployChatStream({
                   : "w-full border border-border bg-card text-foreground shadow-xs"
               }`}
             >
-              {/* Tool Execution Telemetry Badges */}
+              {/* Tool Execution Telemetry Badges (collapsed when finished) */}
               {msg.telemetry && msg.telemetry.length > 0 && (
-                <div className="flex flex-col gap-1.5 pt-0.5">
-                  {msg.telemetry.map((tel, idx) => (
-                    <ToolTelemetryBadge
-                      key={idx}
-                      toolName={tel.toolName}
-                      args={tel.args}
-                      result={tel.result}
-                      durationMs={tel.durationMs}
-                      message={tel.message}
-                      lang={lang}
-                    />
-                  ))}
-                </div>
+                <details className="group pt-0.5" open={msg.isStreaming}>
+                  <summary className="flex cursor-pointer list-none items-center gap-1.5 py-0.5 text-[11px] text-muted-foreground/60 select-none hover:text-muted-foreground [&::-webkit-details-marker]:hidden">
+                    <span className="text-[10px] transition-transform group-open:rotate-90">
+                      ▸
+                    </span>
+                    <span>
+                      {msg.isStreaming
+                        ? isId
+                          ? "Mengeksekusi tool analisis..."
+                          : "Executing analysis tools..."
+                        : isId
+                          ? `Detail analisis (${msg.telemetry.length} tool)`
+                          : `Analysis details (${msg.telemetry.length} tools)`}
+                    </span>
+                  </summary>
+                  <div className="mt-1.5 flex flex-col gap-1.5 border-l border-border/40 pl-2.5">
+                    {msg.telemetry.map((tel, idx) => (
+                      <ToolTelemetryBadge
+                        key={idx}
+                        toolName={tel.toolName}
+                        args={tel.args}
+                        result={tel.result}
+                        durationMs={tel.durationMs}
+                        message={tel.message}
+                        lang={lang}
+                      />
+                    ))}
+                  </div>
+                </details>
               )}
 
               {/* Error Callout */}

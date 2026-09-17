@@ -106,10 +106,20 @@ export function BalanceGuard({
   }, [account, balance, balanceFormatted, currency])
 
   // Compute 24-hour buffer: hourlyRate * 24
-  const bufferUsd = useMemo(() => hourlyRate * 24, [hourlyRate])
+  const isRateInIdr = hourlyRate >= 1
   const bufferIdr = useMemo(
-    () => Math.round(bufferUsd * DEFAULT_USD_TO_IDR),
-    [bufferUsd]
+    () =>
+      isRateInIdr
+        ? Math.round(hourlyRate * 24)
+        : Math.round(hourlyRate * 24 * DEFAULT_USD_TO_IDR),
+    [hourlyRate, isRateInIdr]
+  )
+  const bufferUsd = useMemo(
+    () =>
+      isRateInIdr
+        ? Number((bufferIdr / DEFAULT_USD_TO_IDR).toFixed(2))
+        : Number((hourlyRate * 24).toFixed(2)),
+    [bufferIdr, hourlyRate, isRateInIdr]
   )
 
   const effectiveCurrency =

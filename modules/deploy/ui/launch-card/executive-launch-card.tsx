@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { CheckCircle, RocketLaunch, Spinner } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
-import { getAccount, type BillingAccount } from "@/lib/billing-client"
+import {
+  getAccount,
+  getCatalogProduct,
+  type BillingAccount,
+  type CatalogPlan,
+} from "@/lib/billing-client"
+import { getPlanResources } from "@/modules/deploy/catalog-plan-utils"
 import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { cn } from "@/lib/utils"
 import type { InlineBlueprintData } from "../chat/inline-blueprint-card"
@@ -45,16 +51,31 @@ function formatRepoUrl(url: string): string {
     .replace(/\.git$/i, "")
 }
 
-function formatComputePlan(tierName?: string, hourlyRate?: number): string {
-  const rate = hourlyRate !== undefined ? hourlyRate.toFixed(2) : "0.04"
-  const lower = (tierName || "").toLowerCase()
+function formatComputePlan(
+  tierName?: string,
+  hourlyRate?: number,
+  currency?: string,
+  matchedPlan?: CatalogPlan | null
+): string {
+  const isIdr =
+    currency === "IDR" && typeof hourlyRate === "number" && hourlyRate >= 1
+  const rateText =
+    hourlyRate !== undefined
+      ? isIdr
+        ? `IDR ${Math.round(hourlyRate)}/jam`
+        : `$${hourlyRate.toFixed(2)}/hour`
+      : isIdr
+        ? "IDR 56/jam"
+        : "$0.04/hour"
+
+  const lower = (tierName || matchedPlan?.name || "").toLowerCase()
   if (lower.includes("small") || lower.includes("starter")) {
-    return `Starter Tier (0.5 vCPU · 512MB RAM · $${rate}/hour)`
+    return `Starter Tier (0.5 vCPU · 512MB RAM · ${rateText})`
   }
   if (lower.includes("large") || lower.includes("pro")) {
-    return `Large Tier (2 vCPU · 4GB RAM · $${rate}/hour)`
+    return `Large Tier (2 vCPU · 4GB RAM · ${rateText})`
   }
-  return `Medium Tier (1 vCPU · 2GB RAM · $${rate}/hour)`
+  return `Medium Tier (1 vCPU · 2GB RAM · ${rateText})`
 }
 
 export function ExecutiveLaunchCard({
@@ -120,6 +141,92 @@ export function ExecutiveLaunchCard({
     }
   }, [balanceFormatted])
 
+  const effectiveCurrency: "USD" | "IDR" =
+    account?.currency === "IDR" || currency === "IDR" ? "IDR" : "USD"
+
+  // Load real catalog plans from database
+  const [catalogPlans, setCatalogPlans] = useState<CatalogPlan[]>([])
+
+  useEffect(() => {
+    let active = true
+    getCatalogProduct("APP_HOSTING", effectiveCurrency)
+      .then((res) => {
+        if (!active || !res?.product?.plans) return
+        setCatalogPlans(res.product.plans)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [effectiveCurrency])
+
+  const matchedPlan = useMemo(() => {
+    if (!catalogPlans.length) return null
+    const tierCode = (blueprint.computeTier || "MEDIUM").toUpperCase()
+    return (
+      catalogPlans.find((p) => tierCode.includes(p.code)) ||
+      catalogPlans.find((p) => p.code === "MEDIUM") ||
+      catalogPlans[0]
+    )
+  }, [catalogPlans, blueprint.computeTier])
+
+  const { planName, cpuText, memText, realHourlyRate, rateText } =
+    useMemo(() => {
+      if (matchedPlan) {
+        const resources = getPlanResources(matchedPlan)
+        const offer =
+          matchedPlan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+          matchedPlan.offers?.[0]
+        const periodPrice = offer?.periodPrice
+          ? Number(offer.periodPrice)
+          : effectiveCurrency === "IDR"
+            ? 40000
+            : 4
+        const calculatedRate =
+          effectiveCurrency === "IDR"
+            ? Math.ceil(periodPrice / 720)
+            : Number((periodPrice / 720).toFixed(4))
+        const rate = blueprint.hourlyRate ?? calculatedRate
+        const cpu =
+          resources.cpu >= 1000
+            ? `${(resources.cpu / 1000).toFixed(1).replace(/\.0$/, "")} vCPU`
+            : `${resources.cpu}m CPU`
+        const mem =
+          resources.mem >= 1024
+            ? `${Math.round(resources.mem / 1024)}GB RAM`
+            : `${resources.mem}MB RAM`
+        const formattedRate =
+          effectiveCurrency === "IDR" || rate >= 1
+            ? `IDR ${Math.round(rate)}/jam`
+            : `$${rate.toFixed(4)}/hour`
+        return {
+          planName: matchedPlan.name || `${matchedPlan.code} Tier`,
+          cpuText: cpu,
+          memText: mem,
+          realHourlyRate: rate,
+          rateText: formattedRate,
+        }
+      }
+      const isIdr = effectiveCurrency === "IDR"
+      const fallbackRate = blueprint.hourlyRate ?? (isIdr ? 56 : 0.04)
+      const formattedRate =
+        isIdr || fallbackRate >= 1
+          ? `IDR ${Math.round(fallbackRate)}/jam`
+          : `$${fallbackRate.toFixed(2)}/hour`
+      return {
+        planName: blueprint.computeTier || "Medium Tier",
+        cpuText: "1 vCPU",
+        memText: "2GB RAM",
+        realHourlyRate: fallbackRate,
+        rateText: formattedRate,
+      }
+    }, [
+      matchedPlan,
+      blueprint.computeTier,
+      blueprint.hourlyRate,
+      effectiveCurrency,
+    ])
+
   const balanceLoading = !balanceFormatted && isLoadingAccount
 
   const targetStack = useMemo(() => {
@@ -133,11 +240,10 @@ export function ExecutiveLaunchCard({
   const subdomain = blueprint.subdomain || "app"
   const computePlan = formatComputePlan(
     blueprint.computeTier,
-    blueprint.hourlyRate
+    blueprint.hourlyRate,
+    effectiveCurrency,
+    matchedPlan
   )
-
-  const effectiveCurrency: "USD" | "IDR" =
-    account?.currency === "IDR" || currency === "IDR" ? "IDR" : "USD"
 
   const balanceText = useMemo(() => {
     if (balanceFormatted) return balanceFormatted
@@ -279,7 +385,7 @@ export function ExecutiveLaunchCard({
           {!balanceError && !balanceLoading && (
             <div className="sm:col-span-2">
               <BalanceGuard
-                hourlyRate={blueprint.hourlyRate ?? 0.04}
+                hourlyRate={realHourlyRate}
                 currency={effectiveCurrency}
                 balanceFormatted={balanceFormatted}
                 account={account}
