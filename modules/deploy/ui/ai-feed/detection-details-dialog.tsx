@@ -1,5 +1,6 @@
 "use client"
 
+import { useParams } from "next/navigation"
 import {
   Dialog,
   DialogClose,
@@ -10,6 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { AiDetectionDTO, AiManualOverrideDTO } from "./ai-deploy.types"
 
 type Props = {
@@ -20,7 +23,8 @@ type Props = {
   onChangeSettings: () => void
 }
 
-const value = (v: string | number | null | undefined) => v ?? "Not detected"
+const value = (v: string | number | null | undefined, fallback: string) =>
+  v ?? fallback
 
 export function DetectionDetailsDialog({
   open,
@@ -28,49 +32,66 @@ export function DetectionDetailsDialog({
   detection,
   onChangeSettings,
 }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const notDetected = messages.pDeployAiFeedDetectionDetailsDialog.notDetected
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Detection details</DialogTitle>
+          <DialogTitle>
+            {messages.pDeployAiFeedDetectionDetailsDialog.title}
+          </DialogTitle>
           <DialogDescription>
-            Evidence collected from your source.
+            {messages.pDeployAiFeedDetectionDetailsDialog.description}
           </DialogDescription>
         </DialogHeader>
         {!detection ? (
-          <p className="py-4 text-sm text-muted-foreground">Not detected</p>
+          <p className="py-4 text-sm text-muted-foreground">{notDetected}</p>
         ) : (
           <div className="space-y-4 text-sm">
             <dl className="grid grid-cols-2 gap-3">
-              <dt>Framework</dt>
-              <dd>{value(detection.framework)}</dd>
-              <dt>Framework Version</dt>
-              <dd>{value(detection.frameworkVersion)}</dd>
-              <dt>Runtime</dt>
-              <dd>{value(detection.primaryEngine)}</dd>
-              <dt>Runtime Version</dt>
-              <dd>{value(detection.primaryEngineVersion)}</dd>
-              <dt>Build command</dt>
-              <dd>{value(detection.buildCommand)}</dd>
-              <dt>Start command</dt>
-              <dd>{value(detection.startCommand)}</dd>
-              <dt>Port</dt>
-              <dd>{value(detection.defaultPort)}</dd>
+              <dt>{messages.pDeployAiFeedDetectionDetailsDialog.framework}</dt>
+              <dd>{value(detection.framework, notDetected)}</dd>
+              <dt>
+                {messages.pDeployAiFeedDetectionDetailsDialog.frameworkVersion}
+              </dt>
+              <dd>{value(detection.frameworkVersion, notDetected)}</dd>
+              <dt>{messages.pDeployAiFeedDetectionDetailsDialog.runtime}</dt>
+              <dd>{value(detection.primaryEngine, notDetected)}</dd>
+              <dt>
+                {messages.pDeployAiFeedDetectionDetailsDialog.runtimeVersion}
+              </dt>
+              <dd>{value(detection.primaryEngineVersion, notDetected)}</dd>
+              <dt>
+                {messages.pDeployAiFeedDetectionDetailsDialog.buildCommand}
+              </dt>
+              <dd>{value(detection.buildCommand, notDetected)}</dd>
+              <dt>
+                {messages.pDeployAiFeedDetectionDetailsDialog.startCommand}
+              </dt>
+              <dd>{value(detection.startCommand, notDetected)}</dd>
+              <dt>{messages.pDeployAiFeedDetectionDetailsDialog.port}</dt>
+              <dd>{value(detection.defaultPort, notDetected)}</dd>
               <dt>Dockerfile</dt>
               <dd>
                 {detection.useDockerfile
-                  ? value(detection.dockerfilePath)
-                  : "Not detected"}
+                  ? value(detection.dockerfilePath, notDetected)
+                  : notDetected}
               </dd>
-              <dt>Confidence</dt>
+              <dt>{messages.pDeployAiFeedDetectionDetailsDialog.confidence}</dt>
               <dd>
                 {detection.confidence == null
-                  ? "Not detected"
+                  ? notDetected
                   : `${Math.round(detection.confidence * 100)}%`}
               </dd>
             </dl>
             <div>
-              <h4 className="font-medium">Evidence</h4>
+              <h4 className="font-medium">
+                {messages.pDeployAiFeedDetectionDetailsDialog.evidence}
+              </h4>
               <ul className="mt-2 space-y-1">
                 {detection.evidence.map((item, i) => (
                   <li key={`${item.kind}-${i}`}>
@@ -84,10 +105,12 @@ export function DetectionDetailsDialog({
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onChangeSettings}>
-            Change settings
+            {messages.pDeployAiFeedDetectionDetailsDialog.changeSettings}
           </Button>
           <DialogClose asChild>
-            <Button>Close</Button>
+            <Button>
+              {messages.pDeployAiFeedDetectionDetailsDialog.close}
+            </Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>

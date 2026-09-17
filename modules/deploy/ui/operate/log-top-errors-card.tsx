@@ -1,4 +1,7 @@
+"use client"
+
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -21,6 +24,8 @@ import {
   ArrowSquareOut,
   CheckCircle,
 } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { LogErrorSignature } from "../../opensearch/opensearch-log-health.types"
 
 export interface LogTopErrorsCardProps {
@@ -34,6 +39,11 @@ export function LogTopErrorsCard({
   topErrors,
   onFilterLogText,
 }: LogTopErrorsCardProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployOperateLogTopErrorsCard
+
   const [isDrilldownOpen, setIsDrilldownOpen] = useState(false)
   const [drilldownLogs, setDrilldownLogs] = useState<LogErrorSignature[]>([])
   const [isLoadingDrilldown, setIsLoadingDrilldown] = useState(false)
@@ -66,10 +76,10 @@ export function LogTopErrorsCard({
               <WarningCircle size={18} className="text-muted-foreground" />
               <div>
                 <CardTitle className="text-sm font-semibold text-foreground">
-                  Daftar Masalah & Exception Terdeteksi
+                  {t.title}
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Ringkasan error paling sering muncul (Top 10)
+                  {t.description}
                 </CardDescription>
               </div>
             </div>
@@ -80,7 +90,7 @@ export function LogTopErrorsCard({
                 onClick={handleOpenDrilldown}
                 className="gap-1.5 text-xs"
               >
-                <span>Lihat Semua Masalah</span>
+                <span>{t.viewAllIssues}</span>
                 <ArrowSquareOut size={13} />
               </Button>
             )}
@@ -91,10 +101,8 @@ export function LogTopErrorsCard({
             <div className="flex h-36 flex-col items-center justify-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-center text-xs text-emerald-500">
               <CheckCircle size={24} weight="duotone" />
               <div>
-                <p className="font-semibold">Aplikasi Berjalan Sempurna!</p>
-                <p className="text-muted-foreground">
-                  Tidak ada error atau exception yang dicatat oleh pod aplikasi.
-                </p>
+                <p className="font-semibold">{t.healthyTitle}</p>
+                <p className="text-muted-foreground">{t.healthyDescription}</p>
               </div>
             </div>
           ) : (
@@ -120,7 +128,12 @@ export function LogTopErrorsCard({
                       variant="outline"
                       className="border-destructive/30 bg-destructive/10 text-[11px] text-destructive"
                     >
-                      {err.count.toLocaleString("id-ID")}x insiden
+                      {t.incidentsBadge.replace(
+                        "{count}",
+                        err.count.toLocaleString(
+                          locale === "en" ? "en-US" : "id-ID"
+                        )
+                      )}
                     </Badge>
                     {onFilterLogText && (
                       <Button
@@ -130,7 +143,7 @@ export function LogTopErrorsCard({
                         className="h-6 gap-1 text-[11px] text-muted-foreground hover:text-foreground"
                       >
                         <MagnifyingGlass size={12} />
-                        <span>Filter Log</span>
+                        <span>{t.filterLog}</span>
                       </Button>
                     )}
                   </div>
@@ -146,22 +159,21 @@ export function LogTopErrorsCard({
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
-              Katalog Lengkap Masalah & Exception
+              {t.drilldownTitle}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Daftar seluruh error yang dicatat oleh pod aplikasi {appSlug} dari
-              OpenSearch
+              {t.drilldownDescription.replace("{app}", appSlug)}
             </DialogDescription>
           </DialogHeader>
 
           <div className="max-h-[60vh] space-y-2 overflow-y-auto pt-2">
             {isLoadingDrilldown ? (
               <p className="p-8 text-center text-xs text-muted-foreground">
-                Memuat katalog error dari OpenSearch...
+                {t.loadingCatalog}
               </p>
             ) : drilldownLogs.length === 0 ? (
               <p className="p-8 text-center text-xs text-muted-foreground">
-                Tidak ada error tambahan yang ditemukan.
+                {t.noAdditionalErrors}
               </p>
             ) : (
               drilldownLogs.map((err, idx) => (
@@ -194,7 +206,7 @@ export function LogTopErrorsCard({
                         }}
                         className="text-[10px]"
                       >
-                        Filter di Konsol
+                        {t.filterInConsole}
                       </Button>
                     )}
                   </div>

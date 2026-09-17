@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 
 import {
   Table,
@@ -25,6 +26,9 @@ import {
 } from "@/components/ui/dialog"
 import { PlusIcon, TrashIcon } from "@phosphor-icons/react"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
 import {
   listVpnSshKeys,
   createVpnSshKey,
@@ -33,6 +37,10 @@ import {
 } from "./vpn-admin-client"
 
 export function SshKeysTable() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [keys, setKeys] = useState<VpnSshKeyItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -82,7 +90,12 @@ export function SshKeysTable() {
   }
 
   const remove = async (key: VpnSshKeyItem) => {
-    if (!window.confirm(`Delete SSH key "${key.name}"?`)) return
+    const confirmMessage =
+      messages.pPortalVpnSshKeysTable.confirmDeleteKey.replace(
+        "{name}",
+        key.name
+      )
+    if (!window.confirm(confirmMessage)) return
     try {
       await deleteVpnSshKey(key.id)
       await load()
@@ -96,7 +109,7 @@ export function SshKeysTable() {
       <div className="flex items-center justify-end">
         <Button onClick={openCreate} size="sm">
           <PlusIcon className="mr-2 h-4 w-4" />
-          Add SSH Key
+          {messages.pPortalVpnSshKeysTable.addSshKey}
         </Button>
       </div>
 
@@ -110,10 +123,14 @@ export function SshKeysTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Fingerprint</TableHead>
-              <TableHead>Used By</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{messages.pPortalVpnSshKeysTable.name}</TableHead>
+              <TableHead>
+                {messages.pPortalVpnSshKeysTable.fingerprint}
+              </TableHead>
+              <TableHead>{messages.pPortalVpnSshKeysTable.usedBy}</TableHead>
+              <TableHead className="text-right">
+                {messages.pPortalVpnSshKeysTable.actions}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -129,7 +146,7 @@ export function SshKeysTable() {
                   colSpan={4}
                   className="text-center text-sm text-muted-foreground"
                 >
-                  No SSH keys yet.
+                  {messages.pPortalVpnSshKeysTable.noSshKeysYet}
                 </TableCell>
               </TableRow>
             ) : (
@@ -150,7 +167,10 @@ export function SshKeysTable() {
                       size="icon"
                       onClick={() => remove(key)}
                       disabled={key.usedByServerNames.length > 0}
-                      aria-label={`Delete ${key.name}`}
+                      aria-label={messages.pPortalVpnSshKeysTable.deleteKeyAria.replace(
+                        "{name}",
+                        key.name
+                      )}
                     >
                       <TrashIcon className="h-4 w-4" />
                     </Button>
@@ -165,26 +185,31 @@ export function SshKeysTable() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add SSH Key</DialogTitle>
+            <DialogTitle>
+              {messages.pPortalVpnSshKeysTable.addSshKey}
+            </DialogTitle>
             <DialogDescription>
-              Stored encrypted. Label clearly so you can find it when adding
-              servers. Supported: OpenSSH private key (
-              <code className="text-xs">ssh-keygen -t ed25519</code>), PKCS#8
-              PEM, and RSA PEM. Encrypted keys not supported.
+              {messages.pPortalVpnSshKeysTable.dialogDescriptionPrefix}
+              <code className="text-xs">ssh-keygen -t ed25519</code>
+              {messages.pPortalVpnSshKeysTable.dialogDescriptionSuffix}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="key-name">Name</Label>
+              <Label htmlFor="key-name">
+                {messages.pPortalVpnSshKeysTable.name}
+              </Label>
               <Input
                 id="key-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Production VPN Key"
+                placeholder={messages.pPortalVpnSshKeysTable.namePlaceholder}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="key-material">Private key</Label>
+              <Label htmlFor="key-material">
+                {messages.pPortalVpnSshKeysTable.privateKeyLabel}
+              </Label>
               <Textarea
                 id="key-material"
                 value={privateKey}
@@ -202,10 +227,12 @@ export function SshKeysTable() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {messages.pPortalVpnSshKeysTable.cancel}
             </Button>
             <Button onClick={submit} disabled={saving}>
-              {saving ? "Saving..." : "Add Key"}
+              {saving
+                ? messages.pPortalVpnSshKeysTable.saving
+                : messages.pPortalVpnSshKeysTable.addKey}
             </Button>
           </DialogFooter>
         </DialogContent>

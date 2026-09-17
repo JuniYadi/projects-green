@@ -3,6 +3,8 @@ import type { Metadata } from "next"
 import Link from "next/link"
 
 import { prisma } from "@/lib/prisma"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -26,11 +28,22 @@ type WebhookDetailPageProps = {
   }>
 }
 
-const AUTH_LABELS: Record<string, string> = {
-  bearer: "Bearer Token",
-  basic: "Basic Auth",
-  "custom-header": "Custom Header",
-  none: "None",
+const resolveAuthTypeLabel = (
+  authType: string | null | undefined,
+  messages: ReturnType<typeof getMessages>
+) => {
+  const labels: Record<string, string> = {
+    bearer: messages.pPortalWhatsappWebhooksPage.authBearerToken,
+    basic: messages.pPortalWhatsappWebhooksPage.authBasicAuth,
+    "custom-header": messages.pPortalWhatsappWebhooksPage.authCustomHeader,
+    none: messages.pPortalWhatsappWebhooksPage.authNone,
+  }
+
+  return (
+    labels[authType ?? ""] ??
+    authType ??
+    messages.pPortalWhatsappWebhooksPage.authNone
+  )
 }
 
 const formatDate = (date: Date | string | null | undefined) => {
@@ -48,7 +61,8 @@ const formatDate = (date: Date | string | null | undefined) => {
 export default async function PortalWebhookDetailPage({
   params,
 }: WebhookDetailPageProps) {
-  const { webhookId } = await params
+  const { lang, webhookId } = await params
+  const messages = getMessages(resolveLocaleOrDefault(lang))
 
   await withAuth({ ensureSignedIn: true })
 
@@ -60,10 +74,16 @@ export default async function PortalWebhookDetailPage({
   if (!webhook) {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-        <h1 className="text-2xl font-semibold">Not Found</h1>
-        <p className="text-sm text-muted-foreground">Webhook not found.</p>
+        <h1 className="text-2xl font-semibold">
+          {messages.pPortalWhatsappWebhooksPage.notFoundTitle}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {messages.pPortalWhatsappWebhooksPage.webhookNotFound}
+        </p>
         <Button variant="outline" asChild>
-          <Link href="/portal/whatsapp/webhooks">Back to Webhooks</Link>
+          <Link href="/portal/whatsapp/webhooks">
+            {messages.pPortalWhatsappWebhooksPage.backToWebhooks}
+          </Link>
         </Button>
       </main>
     )
@@ -75,63 +95,71 @@ export default async function PortalWebhookDetailPage({
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <Button variant="ghost" size="sm" className="w-fit px-0" asChild>
-          <Link href="/portal/whatsapp/webhooks">← Back to Webhooks</Link>
+          <Link href="/portal/whatsapp/webhooks">
+            ← {messages.pPortalWhatsappWebhooksPage.backToWebhooks}
+          </Link>
         </Button>
-        <h1 className="text-2xl font-semibold">Webhook Detail</h1>
+        <h1 className="text-2xl font-semibold">
+          {messages.pPortalWhatsappWebhooksPage.pageTitle}
+        </h1>
       </header>
 
       {/* Config Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Configuration</CardTitle>
+          <CardTitle>
+            {messages.pPortalWhatsappWebhooksPage.configurationTitle}
+          </CardTitle>
           <CardDescription>
-            Outgoing webhook settings for device{" "}
-            {webhook.whatsappDevice?.phoneNumber ?? webhook.whatsappDeviceId}
+            {messages.pPortalWhatsappWebhooksPage.configurationDescription.replace(
+              "{device}",
+              webhook.whatsappDevice?.phoneNumber ?? webhook.whatsappDeviceId
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Webhook URL
+                {messages.pPortalWhatsappWebhooksPage.webhookUrlLabel}
               </dt>
               <dd className="mt-1 font-mono text-sm">{webhook.webhookUrl}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Status
+                {messages.pPortalWhatsappWebhooksPage.statusLabel}
               </dt>
               <dd className="mt-1">
                 <Badge variant={webhook.active ? "success" : "secondary"}>
-                  {webhook.active ? "Active" : "Inactive"}
+                  {webhook.active
+                    ? messages.pPortalWhatsappWebhooksPage.statusActive
+                    : messages.pPortalWhatsappWebhooksPage.statusInactive}
                 </Badge>
               </dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Auth Type
+                {messages.pPortalWhatsappWebhooksPage.authTypeLabel}
               </dt>
               <dd className="mt-1 text-sm">
-                {AUTH_LABELS[webhook.authType ?? ""] ??
-                  webhook.authType ??
-                  "None"}
+                {resolveAuthTypeLabel(webhook.authType, messages)}
               </dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Retry Max Attempts
+                {messages.pPortalWhatsappWebhooksPage.retryMaxAttemptsLabel}
               </dt>
               <dd className="mt-1 text-sm">{webhook.retryMaxAttempts}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Retry Interval
+                {messages.pPortalWhatsappWebhooksPage.retryIntervalLabel}
               </dt>
-              <dd className="mt-1 text-sm">{webhook.retryIntervalMs}ms</dd>
+              <dd className="mt-1 text-sm">{`${webhook.retryIntervalMs}ms`}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Created
+                {messages.pPortalWhatsappWebhooksPage.createdLabel}
               </dt>
               <dd className="mt-1 text-sm">{formatDate(webhook.createdAt)}</dd>
             </div>
@@ -144,9 +172,11 @@ export default async function PortalWebhookDetailPage({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Delivery Logs</CardTitle>
+              <CardTitle>
+                {messages.pPortalWhatsappWebhooksPage.deliveryLogsTitle}
+              </CardTitle>
               <CardDescription>
-                Outgoing webhook delivery attempts.
+                {messages.pPortalWhatsappWebhooksPage.deliveryLogsDescription}
               </CardDescription>
             </div>
             <TestPingButton webhookId={webhookId} />

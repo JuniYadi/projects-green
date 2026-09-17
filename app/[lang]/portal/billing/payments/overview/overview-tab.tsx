@@ -2,6 +2,9 @@
 
 import { eden } from "@/lib/eden"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
@@ -35,6 +38,11 @@ type StatsRequestState =
   | { status: "error"; message: string }
 
 export function OverviewTab() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingPaymentsOverviewTab
+
   const [state, setState] = useState<StatsRequestState>({ status: "loading" })
 
   const fetchStats = useCallback(async () => {
@@ -52,7 +60,7 @@ export function OverviewTab() {
         bankAccountsRes.error ||
         confirmationsRes.error
       ) {
-        setState({ status: "error", message: "Failed to load payment data" })
+        setState({ status: "error", message: t.failedToLoadPaymentData })
         return
       }
 
@@ -77,7 +85,7 @@ export function OverviewTab() {
         },
       })
     } catch {
-      setState({ status: "error", message: "Failed to load payment stats" })
+      setState({ status: "error", message: t.failedToLoadPaymentStats })
     }
   }, [])
 
@@ -119,13 +127,13 @@ export function OverviewTab() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Payment Gateways
+              {t.paymentGatewaysTitle}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.totalGateways}</div>
             <p className="text-xs text-muted-foreground">
-              {data.activeGateways} active
+              {t.activeGateways.replace("{count}", String(data.activeGateways))}
             </p>
           </CardContent>
         </Card>
@@ -133,13 +141,16 @@ export function OverviewTab() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Bank Accounts
+              {t.bankAccountsTitle}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.totalBankAccounts}</div>
             <p className="text-xs text-muted-foreground">
-              {data.verifiedBankAccounts} verified
+              {t.verifiedBankAccounts.replace(
+                "{count}",
+                String(data.verifiedBankAccounts)
+              )}
             </p>
           </CardContent>
         </Card>
@@ -147,32 +158,34 @@ export function OverviewTab() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pending Confirmations
+              {t.pendingConfirmationsTitle}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {data.pendingConfirmations}
             </div>
-            <p className="text-xs text-muted-foreground">Awaiting review</p>
+            <p className="text-xs text-muted-foreground">{t.awaitingReview}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Pending Confirmations</CardTitle>
+          <CardTitle className="text-base">
+            {t.pendingConfirmationsTitle}
+          </CardTitle>
           <Link
             href="/portal/billing/payments?tab=confirmations"
             className="text-sm text-primary hover:underline"
           >
-            See All →
+            {t.seeAll}
           </Link>
         </CardHeader>
         <CardContent>
           {pendingItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No pending confirmations
+              {t.noPendingConfirmations}
             </p>
           ) : (
             <ul className="space-y-3">
@@ -183,7 +196,7 @@ export function OverviewTab() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">
-                      {item.bankName || "Unknown Bank"}
+                      {item.bankName || t.unknownBank}
                       {item.accountName ? ` — ${item.accountName}` : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,6 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { AdminPricing } from "@/lib/billing-client"
 
 export type PricingVariantFormValue = {
@@ -34,6 +37,9 @@ export function PricingVariantForm({
   onSubmit: (value: PricingVariantFormValue) => void | Promise<void>
   submitting?: boolean
 }) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [value, setValue] = useState<PricingVariantFormValue>({
     planId: initial?.planId ?? "",
     regionId: initial?.regionId ?? "",
@@ -61,7 +67,9 @@ export function PricingVariantForm({
     >
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="pricing-plan-id">Plan ID</Label>
+          <Label htmlFor="pricing-plan-id">
+            {messages.pBillingAdminPricingVariantForm.planIdLabel}
+          </Label>
           <Input
             id="pricing-plan-id"
             value={value.planId}
@@ -70,7 +78,9 @@ export function PricingVariantForm({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="pricing-region-id">Region ID</Label>
+          <Label htmlFor="pricing-region-id">
+            {messages.pBillingAdminPricingVariantForm.regionIdLabel}
+          </Label>
           <Input
             id="pricing-region-id"
             value={value.regionId}
@@ -80,7 +90,9 @@ export function PricingVariantForm({
         </div>
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="pricing-period-price">Price for entire period</Label>
+        <Label htmlFor="pricing-period-price">
+          {messages.pBillingAdminPricingVariantForm.periodPriceLabel}
+        </Label>
         <Input
           id="pricing-period-price"
           type="number"
@@ -93,7 +105,9 @@ export function PricingVariantForm({
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label>Billing period</Label>
+          <Label>
+            {messages.pBillingAdminPricingVariantForm.billingPeriodLabel}
+          </Label>
           <Select
             value={value.billingPeriod}
             onValueChange={(next) =>
@@ -107,15 +121,31 @@ export function PricingVariantForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="MONTHLY">Monthly</SelectItem>
-              <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-              <SelectItem value="SEMI_ANNUAL">Semi-Annual</SelectItem>
-              <SelectItem value="ANNUAL">Annual</SelectItem>
+              <SelectItem value="MONTHLY">
+                {messages.pBillingAdminPricingVariantForm.billingPeriodMonthly}
+              </SelectItem>
+              <SelectItem value="QUARTERLY">
+                {
+                  messages.pBillingAdminPricingVariantForm
+                    .billingPeriodQuarterly
+                }
+              </SelectItem>
+              <SelectItem value="SEMI_ANNUAL">
+                {
+                  messages.pBillingAdminPricingVariantForm
+                    .billingPeriodSemiAnnual
+                }
+              </SelectItem>
+              <SelectItem value="ANNUAL">
+                {messages.pBillingAdminPricingVariantForm.billingPeriodAnnual}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="grid gap-2">
-          <Label>Charge unit</Label>
+          <Label>
+            {messages.pBillingAdminPricingVariantForm.chargeUnitLabel}
+          </Label>
           <Select
             value={value.chargeUnit}
             onValueChange={(next) =>
@@ -129,15 +159,24 @@ export function PricingVariantForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="SUBSCRIPTION">Per subscription</SelectItem>
-              <SelectItem value="DEVICE">Per device</SelectItem>
+              <SelectItem value="SUBSCRIPTION">
+                {
+                  messages.pBillingAdminPricingVariantForm
+                    .chargeUnitSubscription
+                }
+              </SelectItem>
+              <SelectItem value="DEVICE">
+                {messages.pBillingAdminPricingVariantForm.chargeUnitDevice}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="grid gap-2">
-          <Label>Currency</Label>
+          <Label>
+            {messages.pBillingAdminPricingVariantForm.currencyLabel}
+          </Label>
           <Select
             value={value.currency}
             onValueChange={(next) => update("currency", next)}
@@ -152,7 +191,9 @@ export function PricingVariantForm({
           </Select>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="pricing-effective-from">Effective from</Label>
+          <Label htmlFor="pricing-effective-from">
+            {messages.pBillingAdminPricingVariantForm.effectiveFromLabel}
+          </Label>
           <Input
             id="pricing-effective-from"
             type="date"
@@ -162,7 +203,9 @@ export function PricingVariantForm({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="pricing-effective-to">Effective to</Label>
+          <Label htmlFor="pricing-effective-to">
+            {messages.pBillingAdminPricingVariantForm.effectiveToLabel}
+          </Label>
           <Input
             id="pricing-effective-to"
             type="date"
@@ -179,10 +222,12 @@ export function PricingVariantForm({
           checked={value.isActive}
           onChange={(event) => update("isActive", event.target.checked)}
         />{" "}
-        Active
+        {messages.pBillingAdminPricingVariantForm.activeLabel}
       </label>
       <Button type="submit" disabled={submitting}>
-        {submitting ? "Saving…" : "Save pricing variant"}
+        {submitting
+          ? messages.pBillingAdminPricingVariantForm.saving
+          : messages.pBillingAdminPricingVariantForm.submit}
       </Button>
     </form>
   )

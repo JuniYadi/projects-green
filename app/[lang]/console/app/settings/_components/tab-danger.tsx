@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 
@@ -22,16 +23,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
 
 type TabDangerProps = {
   stack: StackSummaryDTO
 }
 
-function formatRenewalDate(renewalAt?: string | null): string {
-  if (!renewalAt) return "end of current billing period"
+function formatRenewalDate(
+  renewalAt: string | null | undefined,
+  fallback: string
+): string {
+  if (!renewalAt) return fallback
   const date = new Date(renewalAt)
-  if (isNaN(date.getTime())) return "end of current billing period"
+  if (isNaN(date.getTime())) return fallback
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -41,6 +47,10 @@ function formatRenewalDate(renewalAt?: string | null): string {
 }
 
 export function TabDanger({ stack }: TabDangerProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [confirmText, setConfirmText] = useState("")
   const [open, setOpen] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
@@ -48,7 +58,10 @@ export function TabDanger({ stack }: TabDangerProps) {
     Boolean(stack.cancellationScheduled)
   )
 
-  const formattedRenewalDate = formatRenewalDate(stack.renewalAt)
+  const formattedRenewalDate = formatRenewalDate(
+    stack.renewalAt,
+    messages.pConsoleSettingsTabDanger.endOfBillingPeriod
+  )
 
   const handleCancel = async () => {
     if (confirmText.length > 0 && confirmText !== stack.name) return
@@ -61,17 +74,20 @@ export function TabDanger({ stack }: TabDangerProps) {
         const errorMessage =
           errValue && typeof errValue === "object" && "message" in errValue
             ? String(errValue.message)
-            : (res.data?.message ?? "Failed to cancel subscription")
+            : (res.data?.message ??
+              messages.pConsoleSettingsTabDanger.cancelFailed)
         throw new Error(errorMessage)
       }
       setIsCancelled(true)
       toast.success(
-        "Service cancellation scheduled. Workloads remain active until " +
-          `${formattedRenewalDate}.`
+        messages.pConsoleSettingsTabDanger.cancelScheduledToast.replace(
+          "{date}",
+          formattedRenewalDate
+        )
       )
       setOpen(false)
     } catch {
-      toast.error("Failed to cancel subscription. Please try again.")
+      toast.error(messages.pConsoleSettingsTabDanger.cancelFailedRetry)
     } finally {
       setIsCancelling(false)
     }
@@ -81,10 +97,10 @@ export function TabDanger({ stack }: TabDangerProps) {
     <Card className="border-destructive/30">
       <CardHeader>
         <CardTitle className="text-base text-destructive">
-          Service Cancellation
+          {messages.pConsoleSettingsTabDanger.serviceCancellation}
         </CardTitle>
         <CardDescription>
-          Cancel service renewal for this application.
+          {messages.pConsoleSettingsTabDanger.serviceCancellationDescription}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -99,11 +115,13 @@ export function TabDanger({ stack }: TabDangerProps) {
                 "text-sm font-semibold text-amber-600 dark:text-amber-400"
               }
             >
-              Cancellation Scheduled
+              {messages.pConsoleSettingsTabDanger.cancellationScheduled}
             </h4>
             <p className="mt-1 text-xs text-muted-foreground">
-              Cancellation scheduled for {formattedRenewalDate}. Active until
-              renewal date.
+              {messages.pConsoleSettingsTabDanger.cancellationScheduledFor.replace(
+                "{date}",
+                formattedRenewalDate
+              )}
             </p>
           </div>
         ) : (
@@ -113,43 +131,47 @@ export function TabDanger({ stack }: TabDangerProps) {
             }
           >
             <h4 className="text-sm font-semibold text-destructive">
-              Service Cancellation
+              {messages.pConsoleSettingsTabDanger.serviceCancellation}
             </h4>
             <p className="mt-1 text-xs text-muted-foreground">
-              Cancel service renewal for this application.
+              {
+                messages.pConsoleSettingsTabDanger
+                  .serviceCancellationDescription
+              }
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
-              Your service will remain active with full resources and traffic
-              routing until the end of your current billing period (
+              {messages.pConsoleSettingsTabDanger.billingNoticeBefore}
               <strong className="text-foreground">
                 {formattedRenewalDate}
               </strong>
-              ). After that date, the subscription will not renew, and workloads
-              will be cleanly decommissioned.
+              {messages.pConsoleSettingsTabDanger.billingNoticeAfter}
             </p>
 
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button variant="destructive" size="sm" className="mt-4">
-                  Cancel Subscription
+                  {messages.pConsoleSettingsTabDanger.cancelSubscription}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>
-                    Cancel Subscription for {stack.name}
+                    {messages.pConsoleSettingsTabDanger.cancelSubscriptionFor.replace(
+                      "{name}",
+                      stack.name
+                    )}
                   </DialogTitle>
                   <DialogDescription>
-                    This will schedule cancellation of your application
-                    subscription at the end of the billing period (
-                    {formattedRenewalDate}). You will not be billed for
-                    subsequent periods.
+                    {messages.pConsoleSettingsTabDanger.cancelSubscriptionIntro.replace(
+                      "{date}",
+                      formattedRenewalDate
+                    )}
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Type{" "}
+                    {messages.pConsoleSettingsTabDanger.typePrefix}{" "}
                     <code
                       className={
                         "rounded bg-muted px-1.5 py-0.5 text-xs font-semibold"
@@ -157,7 +179,7 @@ export function TabDanger({ stack }: TabDangerProps) {
                     >
                       {stack.name}
                     </code>{" "}
-                    to confirm:
+                    {messages.pConsoleSettingsTabDanger.typeSuffix}
                   </p>
                   <Input
                     value={confirmText}
@@ -172,7 +194,7 @@ export function TabDanger({ stack }: TabDangerProps) {
                     size="sm"
                     onClick={() => setOpen(false)}
                   >
-                    Cancel
+                    {messages.pConsoleSettingsTabDanger.cancel}
                   </Button>
                   <Button
                     variant="destructive"
@@ -180,7 +202,9 @@ export function TabDanger({ stack }: TabDangerProps) {
                     disabled={isCancelling || confirmText !== stack.name}
                     onClick={handleCancel}
                   >
-                    {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
+                    {isCancelling
+                      ? messages.pConsoleSettingsTabDanger.cancelling
+                      : messages.pConsoleSettingsTabDanger.confirmCancellation}
                   </Button>
                 </DialogFooter>
               </DialogContent>

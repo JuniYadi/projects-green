@@ -14,6 +14,8 @@ import { Globe, Clock, ShieldCheck, Plus } from "@phosphor-icons/react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { TemplateModerationTable } from "./_components/template-moderation-table"
 import type { AdminTemplateRecord } from "./_components/template-inspector-drawer"
 
@@ -21,6 +23,8 @@ export default function PortalMarketplaceModerationPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
   const lang = params?.lang || "en"
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [templates, setTemplates] = useState<AdminTemplateRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("pending")
@@ -148,11 +152,10 @@ export default function PortalMarketplaceModerationPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">
-            Marketplace Moderation & Governance
+            {messages.pPortalMarketplacePageClient.pageTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Review community blueprints, verify security isolation parameters,
-            and manage featured marketplace catalog applications.
+            {messages.pPortalMarketplacePageClient.pageDescription}
           </p>
         </div>
         <Button
@@ -161,7 +164,7 @@ export default function PortalMarketplaceModerationPage() {
           className="w-fit gap-1.5 bg-primary text-primary-foreground"
         >
           <Plus className="size-4" />
-          <span>New Template</span>
+          <span>{messages.pPortalMarketplacePageClient.newTemplate}</span>
         </Button>
       </div>
 
@@ -173,7 +176,9 @@ export default function PortalMarketplaceModerationPage() {
         <TabsList className="grid w-full grid-cols-3 md:inline-flex md:w-auto">
           <TabsTrigger value="pending" className="gap-2">
             <Clock className="size-4" />
-            <span>Pending Review</span>
+            <span>
+              {messages.pPortalMarketplacePageClient.tabPendingReview}
+            </span>
             {pendingTemplates.length > 0 && (
               <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-xs">
                 {pendingTemplates.length}
@@ -182,14 +187,18 @@ export default function PortalMarketplaceModerationPage() {
           </TabsTrigger>
           <TabsTrigger value="live" className="gap-2">
             <Globe className="size-4" />
-            <span>Live Marketplace</span>
+            <span>
+              {messages.pPortalMarketplacePageClient.tabLiveMarketplace}
+            </span>
             <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
               {liveTemplates.length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="official" className="gap-2">
             <ShieldCheck className="size-4" />
-            <span>Official Templates</span>
+            <span>
+              {messages.pPortalMarketplacePageClient.tabOfficialTemplates}
+            </span>
             <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
               {officialTemplates.length}
             </Badge>
@@ -199,11 +208,11 @@ export default function PortalMarketplaceModerationPage() {
         <TabsContent value="pending" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Community Submissions Requiring Review</CardTitle>
+              <CardTitle>
+                {messages.pPortalMarketplacePageClient.pendingCardTitle}
+              </CardTitle>
               <CardDescription>
-                Examine container images, exposed ports, non-root user
-                execution, and requested managed databases prior to public
-                listing.
+                {messages.pPortalMarketplacePageClient.pendingCardDescription}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -222,10 +231,11 @@ export default function PortalMarketplaceModerationPage() {
         <TabsContent value="live" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Live Community Catalog</CardTitle>
+              <CardTitle>
+                {messages.pPortalMarketplacePageClient.liveCardTitle}
+              </CardTitle>
               <CardDescription>
-                Public verified community templates currently installable across
-                tenants.
+                {messages.pPortalMarketplacePageClient.liveCardDescription}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -244,10 +254,11 @@ export default function PortalMarketplaceModerationPage() {
         <TabsContent value="official" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>First-Party Official Stacks</CardTitle>
+              <CardTitle>
+                {messages.pPortalMarketplacePageClient.officialCardTitle}
+              </CardTitle>
               <CardDescription>
-                Platform-maintained blueprints built and guaranteed by the core
-                engineering team.
+                {messages.pPortalMarketplacePageClient.officialCardDescription}
               </CardDescription>
             </CardHeader>
             <CardContent>

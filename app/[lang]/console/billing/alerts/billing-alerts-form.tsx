@@ -37,8 +37,9 @@ const defaultPreferences: AlertPreferences = {
 
 export function BillingAlertsForm() {
   const params = useParams<{ lang?: string }>()
-  const page = getMessages(resolveLocaleOrDefault(params?.lang)).console.billing
-    .alertsPage
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const page = messages.console.billing.alertsPage
   const [preferences, setPreferences] =
     useState<AlertPreferences>(defaultPreferences)
   const [initialPrefs, setInitialPrefs] =
@@ -294,14 +295,24 @@ export function BillingAlertsForm() {
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <CardTitle>WhatsApp API Quota & Usage Alerts</CardTitle>
+                  <CardTitle>
+                    {
+                      messages.pConsoleBillingAlertsBillingAlertsForm
+                        .whatsappAlertsTitle
+                    }
+                  </CardTitle>
                   <Badge variant="outline" className="text-xs font-normal">
-                    Multi-Device Unified
+                    {
+                      messages.pConsoleBillingAlertsBillingAlertsForm
+                        .multiDeviceUnifiedBadge
+                    }
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Automated email alerts sent to Billing Contacts when any
-                  WhatsApp device crosses usage thresholds.
+                  {
+                    messages.pConsoleBillingAlertsBillingAlertsForm
+                      .whatsappAlertsDesc
+                  }
                 </p>
               </div>
             </div>
@@ -312,32 +323,52 @@ export function BillingAlertsForm() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">
-                  Automatic Quota Thresholds (All Devices)
+                  {
+                    messages.pConsoleBillingAlertsBillingAlertsForm
+                      .automaticQuotaThresholds
+                  }
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Triggers instant email notification per-device at predefined
-                  levels:
+                  {
+                    messages.pConsoleBillingAlertsBillingAlertsForm
+                      .automaticQuotaThresholdsDesc
+                  }
                 </p>
               </div>
               <Badge
                 variant="secondary"
                 className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
               >
-                Active (50%, 80%, 90%, 100%)
+                {
+                  messages.pConsoleBillingAlertsBillingAlertsForm
+                    .quotaThresholdsActive
+                }
               </Badge>
             </div>
             <div className="flex flex-wrap gap-2 pt-1">
               <span className="inline-flex items-center rounded-md border bg-background px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                50% Notice
+                {
+                  messages.pConsoleBillingAlertsBillingAlertsForm
+                    .threshold50Notice
+                }
               </span>
               <span className="inline-flex items-center rounded-md border bg-background px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                80% Warning
+                {
+                  messages.pConsoleBillingAlertsBillingAlertsForm
+                    .threshold80Warning
+                }
               </span>
               <span className="inline-flex items-center rounded-md border bg-background px-2.5 py-1 text-xs font-semibold text-amber-800 dark:text-amber-300">
-                90% Critical
+                {
+                  messages.pConsoleBillingAlertsBillingAlertsForm
+                    .threshold90Critical
+                }
               </span>
               <span className="inline-flex items-center rounded-md border bg-background px-2.5 py-1 text-xs font-semibold text-destructive">
-                100% Exhausted (PAYG)
+                {
+                  messages.pConsoleBillingAlertsBillingAlertsForm
+                    .threshold100Exhausted
+                }
               </span>
             </div>
           </div>
@@ -351,17 +382,27 @@ export function BillingAlertsForm() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CloudCheck size={20} className="text-muted-foreground" />
-                <CardTitle className="text-sm">App Hosting Alerts</CardTitle>
+                <CardTitle className="text-sm">
+                  {
+                    messages.pConsoleBillingAlertsBillingAlertsForm
+                      .appHostingAlertsTitle
+                  }
+                </CardTitle>
               </div>
               <Badge variant="secondary" className="text-[10px]">
-                Coming Soon
+                {
+                  messages.pConsoleBillingAlertsBillingAlertsForm
+                    .comingSoonBadge
+                }
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              CPU, RAM spikes, container crash-loops, and egress bandwidth
-              threshold alerts.
+              {
+                messages.pConsoleBillingAlertsBillingAlertsForm
+                  .appHostingAlertsDesc
+              }
             </p>
           </CardContent>
         </Card>
@@ -371,17 +412,24 @@ export function BillingAlertsForm() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={20} className="text-muted-foreground" />
-                <CardTitle className="text-sm">VPN WireGuard Alerts</CardTitle>
+                <CardTitle className="text-sm">
+                  {
+                    messages.pConsoleBillingAlertsBillingAlertsForm
+                      .vpnAlertsTitle
+                  }
+                </CardTitle>
               </div>
               <Badge variant="secondary" className="text-[10px]">
-                Coming Soon
+                {
+                  messages.pConsoleBillingAlertsBillingAlertsForm
+                    .comingSoonBadge
+                }
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              Subscription expiry warning and bandwidth limit notification for
-              client devices.
+              {messages.pConsoleBillingAlertsBillingAlertsForm.vpnAlertsDesc}
             </p>
           </CardContent>
         </Card>
@@ -406,7 +454,7 @@ export function BillingAlertsForm() {
           <p className="text-sm text-muted-foreground">
             {page.invoiceRemindersNotice}{" "}
             <Link
-              href={`/${resolveLocaleOrDefault(params?.lang)}/console/billing/contacts`}
+              href={`/${locale}/console/billing/contacts`}
               className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
             >
               {page.contactsLink}

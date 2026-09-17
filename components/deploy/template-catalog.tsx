@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import type { Icon } from "@phosphor-icons/react"
 import {
   ArrowsSplit,
@@ -38,11 +39,17 @@ import {
 } from "@/modules/deploy/managed-app-templates"
 import { cn } from "@/lib/utils"
 import { getCatalogProduct, type CatalogPlan } from "@/lib/billing-client"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 import { getPlanResources } from "@/modules/deploy/catalog-plan-utils"
+
+type TemplateDescriptionToken =
+  "workflowAutomation" | "aiAgentUi" | "aiLlmRouter" | "privacyAnalytics"
+
 type TemplateVisual = {
   icon: Icon
-  description: string
+  descriptionToken: TemplateDescriptionToken
   iconClassName: string
   iconBackgroundClassName: string
 }
@@ -50,25 +57,25 @@ type TemplateVisual = {
 const TEMPLATE_VISUALS: Record<ManagedAppTemplate["id"], TemplateVisual> = {
   n8n: {
     icon: Workflow,
-    description: "Workflow Automation",
+    descriptionToken: "workflowAutomation",
     iconClassName: "text-indigo-500",
     iconBackgroundClassName: "bg-indigo-500/10",
   },
   hermes: {
     icon: Robot,
-    description: "AI Agent UI",
+    descriptionToken: "aiAgentUi",
     iconClassName: "text-violet-500",
     iconBackgroundClassName: "bg-violet-500/10",
   },
   "9router": {
     icon: ArrowsSplit,
-    description: "AI LLM Router",
+    descriptionToken: "aiLlmRouter",
     iconClassName: "text-emerald-500",
     iconBackgroundClassName: "bg-emerald-500/10",
   },
   umami: {
     icon: ChartBar,
-    description: "Privacy Analytics",
+    descriptionToken: "privacyAnalytics",
     iconClassName: "text-amber-500",
     iconBackgroundClassName: "bg-amber-500/10",
   },
@@ -83,6 +90,11 @@ function TemplateCatalog({
   onSelect,
   isDeploying = false,
 }: TemplateCatalogProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployTemplateCatalog
+
   return (
     <section aria-labelledby="ready-made-app-heading" className="space-y-4">
       <div className="flex items-center gap-3">
@@ -90,7 +102,7 @@ function TemplateCatalog({
           id="ready-made-app-heading"
           className="text-sm font-semibold whitespace-nowrap"
         >
-          Or launch a ready-made app
+          {t.orLaunchReadyMadeApp}
         </h2>
         <div className="h-px flex-1 bg-border" />
       </div>
@@ -118,7 +130,7 @@ function TemplateCatalog({
                     {template.name}
                   </CardTitle>
                   <CardDescription className="line-clamp-2 text-xs">
-                    {visual.description}
+                    {t[visual.descriptionToken]}
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -132,7 +144,7 @@ function TemplateCatalog({
                   ) : (
                     <>
                       <HardDrives className="size-3" />
-                      Persistent storage
+                      {t.persistentStorage}
                     </>
                   )}
                 </Badge>
@@ -145,7 +157,7 @@ function TemplateCatalog({
                   onClick={() => onSelect(template)}
                   disabled={isDeploying}
                 >
-                  {isDeploying ? "Deploying…" : "Deploy"}
+                  {isDeploying ? t.deploying : t.deploy}
                 </Button>
               </CardFooter>
             </Card>
@@ -178,6 +190,11 @@ function QuickDeployDialog({
   onClose,
   onConfirm,
 }: QuickDeployDialogProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployTemplateCatalog
+
   const [subdomain, setSubdomain] = useState(() =>
     template ? makeSubdomain(template) : ""
   )
@@ -248,15 +265,15 @@ function QuickDeployDialog({
         {template && (
           <>
             <DialogHeader>
-              <DialogTitle>Deploy {template.name}</DialogTitle>
-              <DialogDescription>
-                Configure your app before launching it to Kubernetes.
-              </DialogDescription>
+              <DialogTitle>
+                {t.deployTemplateTitle.replace("{name}", template.name)}
+              </DialogTitle>
+              <DialogDescription>{t.configureBeforeLaunch}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <label htmlFor="quick-deploy-subdomain" className="text-sm">
-                  Subdomain
+                  {t.subdomainLabel}
                 </label>
                 <Input
                   id="quick-deploy-subdomain"
@@ -272,13 +289,13 @@ function QuickDeployDialog({
                     htmlFor="quick-deploy-plan"
                     className="text-sm font-medium"
                   >
-                    Package Plan
+                    {t.packagePlanLabel}
                   </label>
                   <Badge
                     variant="outline"
                     className="text-[10px] text-muted-foreground"
                   >
-                    Monthly Subscription
+                    {t.monthlySubscription}
                   </Badge>
                 </div>
                 {plans.length > 0 ? (
@@ -309,14 +326,20 @@ function QuickDeployDialog({
                             <span>{pkg.name}</span>
                             {isSelected && (
                               <Badge className="h-4 px-1 text-[9px]">
-                                Active
+                                {t.activeBadge}
                               </Badge>
                             )}
                           </div>
                           <span className="mt-0.5 text-[10px] text-muted-foreground">
                             {monthlyOffer?.periodPrice
-                              ? `${formatBillingMoney(monthlyOffer.periodPrice, monthlyOffer.currency || "IDR")} / mo`
-                              : "Included"}
+                              ? t.pricePerMonth.replace(
+                                  "{price}",
+                                  formatBillingMoney(
+                                    monthlyOffer.periodPrice,
+                                    monthlyOffer.currency || "IDR"
+                                  )
+                                )
+                              : t.included}
                           </span>
                         </button>
                       )
@@ -324,7 +347,7 @@ function QuickDeployDialog({
                   </div>
                 ) : (
                   <div className="rounded-lg border bg-muted/20 p-2.5 text-xs text-muted-foreground">
-                    Starter Plan — Monthly Subscription
+                    {t.starterPlanFallback}
                   </div>
                 )}
               </div>
@@ -334,7 +357,7 @@ function QuickDeployDialog({
                     htmlFor="quick-deploy-cpu"
                     className="text-xs font-medium"
                   >
-                    CPU (mCore)
+                    {t.cpuLabel}
                   </label>
                   <Input
                     id="quick-deploy-cpu"
@@ -352,7 +375,7 @@ function QuickDeployDialog({
                     htmlFor="quick-deploy-memory"
                     className="text-xs font-medium"
                   >
-                    Memory (MB)
+                    {t.memoryLabel}
                   </label>
                   <Input
                     id="quick-deploy-memory"
@@ -375,8 +398,11 @@ function QuickDeployDialog({
                 <WarningCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
                 <span>
                   {template.engineType
-                    ? `A managed ${template.engineType} database slot will be allocated automatically.`
-                    : "This app keeps its data on its own persistent volume. No managed database slot is allocated."}
+                    ? t.managedDatabaseNote.replace(
+                        "{engine}",
+                        template.engineType
+                      )
+                    : t.persistentVolumeNote}
                 </span>
               </p>
             </div>
@@ -387,7 +413,7 @@ function QuickDeployDialog({
                 onClick={onClose}
                 disabled={submitting}
               >
-                Cancel
+                {t.cancel}
               </Button>
               <Button
                 type="button"
@@ -395,7 +421,7 @@ function QuickDeployDialog({
                 disabled={submitting || !subdomain.trim()}
               >
                 <RocketLaunch className="size-4" />
-                {submitting ? "Launching…" : "Launch to Kubernetes"}
+                {submitting ? t.launching : t.launchToKubernetes}
               </Button>
             </DialogFooter>
           </>

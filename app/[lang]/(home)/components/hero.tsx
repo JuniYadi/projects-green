@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import {
   ArrowRight,
   Play,
@@ -9,6 +10,13 @@ import {
   CheckCircle,
 } from "@phosphor-icons/react"
 import { useEffect, useRef, useState } from "react"
+
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
+// Shell session title rendered in the mock terminal chrome — a technical
+// literal, identical in every locale.
+const TERMINAL_TITLE = "pfn-cli — zsh"
 
 const codeLines = [
   { delay: 0, content: "$ pfn deploy", color: "text-emerald-400" },
@@ -75,7 +83,7 @@ function AnimatedTerminal() {
         <div className="flex flex-1 items-center justify-center">
           <span className="flex items-center gap-1.5 font-mono text-xs text-white/30">
             <Terminal className="h-3 w-3" />
-            pfn-cli — zsh
+            {TERMINAL_TITLE}
           </span>
         </div>
       </div>
@@ -97,20 +105,25 @@ function AnimatedTerminal() {
   )
 }
 
-const stats = [
-  { value: "99.99%", label: "Uptime SLA" },
-  { value: "42", label: "Global regions" },
-  { value: "<50ms", label: "Avg. latency" },
-  { value: "10K+", label: "Developers" },
-]
-
-const badges = [
-  { icon: CheckCircle, label: "SOC 2 Type II" },
-  { icon: GitBranch, label: "Git-native deploys" },
-  { icon: Play, label: "1-click rollbacks" },
-]
-
 export function HeroSection() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
+  const stats = [
+    { value: "99.99%", label: messages.pHomeHero.statUptimeLabel },
+    { value: "42", label: messages.pHomeHero.statRegionsLabel },
+    { value: "<50ms", label: messages.pHomeHero.statLatencyLabel },
+    { value: "10K+", label: messages.pHomeHero.statDevelopersLabel },
+  ]
+
+  const badges = [
+    // Certification name — a proper noun, not localized.
+    { icon: CheckCircle, label: "SOC 2 Type II" },
+    { icon: GitBranch, label: messages.pHomeHero.badgeGitNative },
+    { icon: Play, label: messages.pHomeHero.badgeRollbacks },
+  ]
+
   return (
     <section className="relative flex min-h-screen items-center overflow-hidden pt-16">
       {/* Background */}
@@ -138,22 +151,20 @@ export function HeroSection() {
           <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5">
             <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
             <span className="text-sm font-medium text-emerald-400">
-              Now in Public Beta — Free forever plan available
+              {messages.pHomeHero.betaBanner}
             </span>
           </div>
 
           <h1 className="mb-6 text-5xl leading-[1.08] font-bold tracking-tight text-white lg:text-6xl xl:text-7xl">
-            Your full-stack{" "}
+            {messages.pHomeHero.headlineStart}{" "}
             <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              cloud platform
+              {messages.pHomeHero.headlineHighlight}
             </span>{" "}
-            in one place
+            {messages.pHomeHero.headlineEnd}
           </h1>
 
           <p className="mb-10 max-w-xl text-lg leading-relaxed text-white/50">
-            Deploy apps, send emails & SMS, store files, and scale your
-            infrastructure — all from a single developer-first platform. Ship
-            faster, scale effortlessly.
+            {messages.pHomeHero.subheadline}
           </p>
 
           {/* Badges */}
@@ -179,7 +190,7 @@ export function HeroSection() {
               id="hero-cta-signup"
               className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-7 py-3.5 font-semibold text-white shadow-xl shadow-emerald-500/25 transition-all hover:scale-105 hover:from-emerald-400 hover:to-cyan-400 hover:shadow-emerald-500/40"
             >
-              Start building free
+              {messages.pHomeHero.ctaStartBuilding}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
@@ -188,7 +199,7 @@ export function HeroSection() {
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-7 py-3.5 font-semibold text-white transition-all hover:bg-white/10"
             >
               <Play weight="fill" className="h-4 w-4 text-emerald-400" />
-              Watch demo
+              {messages.pHomeHero.ctaWatchDemo}
             </Link>
           </div>
 
@@ -215,9 +226,11 @@ export function HeroSection() {
               </div>
               <div>
                 <div className="text-xs font-semibold text-white">
-                  Deployment
+                  {messages.pHomeHero.cardDeploymentTitle}
                 </div>
-                <div className="text-xs text-emerald-400">Active · v2.4.1</div>
+                <div className="text-xs text-emerald-400">
+                  {messages.pHomeHero.cardDeploymentStatus}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
@@ -225,8 +238,12 @@ export function HeroSection() {
                 <span className="text-base">📊</span>
               </div>
               <div>
-                <div className="text-xs font-semibold text-white">Requests</div>
-                <div className="text-xs text-cyan-400">1.2M today</div>
+                <div className="text-xs font-semibold text-white">
+                  {messages.pHomeHero.cardRequestsTitle}
+                </div>
+                <div className="text-xs text-cyan-400">
+                  {messages.pHomeHero.cardRequestsValue}
+                </div>
               </div>
             </div>
           </div>

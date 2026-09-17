@@ -1,5 +1,8 @@
 "use client"
 
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -18,6 +21,11 @@ export function VoucherAudienceTab({
   voucher: VoucherDetailDTO
   onUpdate: (updates: Record<string, unknown>) => void
 }) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingPromotionsVoucherAudienceTab
+
   const targetWorkosUserId = voucher.targetWorkosUserId ?? ""
   const targetOrganizationId = voucher.targetOrganizationId ?? ""
 
@@ -27,59 +35,51 @@ export function VoucherAudienceTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Audience Targeting</CardTitle>
-        <CardDescription>
-          Restrict who can redeem this voucher. Leave both fields blank to make
-          it available to everyone.
-        </CardDescription>
+        <CardTitle>{t.audienceTargetingTitle}</CardTitle>
+        <CardDescription>{t.audienceTargetingDescription}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
           <div>
-            <Label htmlFor="voucher-target-user">Target WorkOS User ID</Label>
+            <Label htmlFor="voucher-target-user">{t.targetUserLabel}</Label>
             <Input
               id="voucher-target-user"
               value={targetWorkosUserId}
               onChange={(e) =>
                 onUpdate({ targetWorkosUserId: e.target.value || null })
               }
-              placeholder="e.g. user_abc123"
+              placeholder={t.targetUserPlaceholder}
               className="font-mono"
             />
-            <p className="text-xs text-muted-foreground">
-              Only this specific user can redeem the voucher. Find the user ID
-              in your WorkOS dashboard.
-            </p>
+            <p className="text-xs text-muted-foreground">{t.targetUserHelp}</p>
           </div>
 
           <div>
-            <Label htmlFor="voucher-target-org">
-              Target WorkOS Organization ID
-            </Label>
+            <Label htmlFor="voucher-target-org">{t.targetOrgLabel}</Label>
             <Input
               id="voucher-target-org"
               value={targetOrganizationId}
               onChange={(e) =>
                 onUpdate({ targetOrganizationId: e.target.value || null })
               }
-              placeholder="e.g. org_xyz789"
+              placeholder={t.targetOrgPlaceholder}
               className="font-mono"
             />
-            <p className="text-xs text-muted-foreground">
-              Only users in this organization can redeem the voucher.
-            </p>
+            <p className="text-xs text-muted-foreground">{t.targetOrgHelp}</p>
           </div>
         </div>
 
         {(hasUserTarget || hasOrgTarget) && (
           <div className="rounded-md bg-muted/50 p-3 text-sm">
-            <p className="font-medium">Targeting active</p>
+            <p className="font-medium">{t.targetingActiveTitle}</p>
             <p className="text-muted-foreground">
               {hasUserTarget && hasOrgTarget
-                ? `This voucher is restricted to user ${targetWorkosUserId} in organization ${targetOrganizationId}.`
+                ? t.targetingUserAndOrg
+                    .replace("{userId}", targetWorkosUserId)
+                    .replace("{orgId}", targetOrganizationId)
                 : hasUserTarget
-                  ? `This voucher is restricted to user ${targetWorkosUserId}.`
-                  : `This voucher is restricted to organization ${targetOrganizationId}.`}
+                  ? t.targetingUserOnly.replace("{userId}", targetWorkosUserId)
+                  : t.targetingOrgOnly.replace("{orgId}", targetOrganizationId)}
             </p>
           </div>
         )}
@@ -87,10 +87,10 @@ export function VoucherAudienceTab({
         {!hasUserTarget && !hasOrgTarget && (
           <div className="rounded-md border border-green-200 bg-green-50/50 p-3 text-sm dark:border-green-900 dark:bg-green-900/10">
             <p className="font-medium text-green-800 dark:text-green-200">
-              Public voucher
+              {t.publicVoucherTitle}
             </p>
             <p className="text-muted-foreground dark:text-green-300/80">
-              Anyone with the voucher code can redeem it.
+              {t.publicVoucherDescription}
             </p>
           </div>
         )}

@@ -1,5 +1,8 @@
 "use client"
 
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -16,32 +19,6 @@ import {
 } from "@/components/ui/phosphor-icons"
 import type { ProductPublishState } from "@/components/billing/admin/catalog/catalog-editor.types"
 
-const PUBLISH_STATE_CONFIG: Record<
-  ProductPublishState,
-  {
-    label: string
-    icon: React.ReactNode
-    description: string
-  }
-> = {
-  draft: {
-    label: "Draft",
-    icon: <ClockIcon className="h-5 w-5 text-amber-500" />,
-    description: "This product is a draft and not visible to customers.",
-  },
-  published: {
-    label: "Published",
-    icon: <CheckCircleIcon className="h-5 w-5 text-green-500" />,
-    description: "This product is live and visible in the catalog.",
-  },
-  archived: {
-    label: "Archived",
-    icon: <ArchiveBoxIcon className="h-5 w-5 text-gray-500" />,
-    description:
-      "This product is archived and no longer available for new subscriptions.",
-  },
-}
-
 export function CatalogPublishTab({
   publishState,
   onChange,
@@ -51,16 +28,43 @@ export function CatalogPublishTab({
   onChange: (state: ProductPublishState) => void
   hasUnsavedChanges: boolean
 }>) {
-  const config = PUBLISH_STATE_CONFIG[publishState]
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingCatalogPublishTab
 
+  const publishStateConfig: Record<
+    ProductPublishState,
+    {
+      label: string
+      icon: React.ReactNode
+      description: string
+    }
+  > = {
+    draft: {
+      label: t.stateDraftLabel,
+      icon: <ClockIcon className="h-5 w-5 text-amber-500" />,
+      description: t.stateDraftDescription,
+    },
+    published: {
+      label: t.statePublishedLabel,
+      icon: <CheckCircleIcon className="h-5 w-5 text-green-500" />,
+      description: t.statePublishedDescription,
+    },
+    archived: {
+      label: t.stateArchivedLabel,
+      icon: <ArchiveBoxIcon className="h-5 w-5 text-gray-500" />,
+      description: t.stateArchivedDescription,
+    },
+  }
+
+  const config = publishStateConfig[publishState]
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Publish status</CardTitle>
-          <CardDescription>
-            Control the visibility of this product in the catalog.
-          </CardDescription>
+          <CardTitle>{t.publishStatusTitle}</CardTitle>
+          <CardDescription>{t.publishStatusDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3">
@@ -79,29 +83,28 @@ export function CatalogPublishTab({
               size="sm"
               onClick={() => onChange("draft")}
             >
-              Draft
+              {t.stateDraftLabel}
             </Button>
             <Button
               variant={publishState === "published" ? "default" : "outline"}
               size="sm"
               onClick={() => onChange("published")}
             >
-              Published
+              {t.statePublishedLabel}
             </Button>
             <Button
               variant={publishState === "archived" ? "default" : "outline"}
               size="sm"
               onClick={() => onChange("archived")}
             >
-              Archived
+              {t.stateArchivedLabel}
             </Button>
           </div>
 
           {publishState === "published" && hasUnsavedChanges && (
             <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
               <WarningIcon className="h-4 w-4" />
-              You have unsaved changes. Save draft and publish again to update
-              the live product.
+              {t.unsavedChangesWarning}
             </div>
           )}
         </CardContent>
@@ -109,23 +112,21 @@ export function CatalogPublishTab({
 
       <Card>
         <CardHeader>
-          <CardTitle>Validation summary</CardTitle>
-          <CardDescription>
-            Checklist before publishing this product.
-          </CardDescription>
+          <CardTitle>{t.validationSummaryTitle}</CardTitle>
+          <CardDescription>{t.validationSummaryDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
             <CheckCircleIcon className="h-4 w-4 text-green-500" />
-            <span className="text-sm">Product basics configured</span>
+            <span className="text-sm">{t.checkBasicsConfigured}</span>
           </div>
           <div className="flex items-center gap-2">
             <CheckCircleIcon className="h-4 w-4 text-green-500" />
-            <span className="text-sm">At least one plan with pricing</span>
+            <span className="text-sm">{t.checkPricingConfigured}</span>
           </div>
           <div className="flex items-center gap-2">
             <CheckCircleIcon className="h-4 w-4 text-green-500" />
-            <span className="text-sm">Add-ons validated</span>
+            <span className="text-sm">{t.checkAddonsValidated}</span>
           </div>
         </CardContent>
       </Card>

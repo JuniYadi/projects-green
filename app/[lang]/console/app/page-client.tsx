@@ -57,7 +57,9 @@ export default function ApplicationsPage() {
       try {
         const { data: payload } = await eden.api.deploy.apps.get()
         if (!payload || !payload.ok || !Array.isArray(payload.data)) {
-          throw new Error(payload?.message ?? "Unable to load applications.")
+          throw new Error(
+            payload?.message ?? messages.pConsolePageClient.loadAppsError
+          )
         }
 
         if (cancelled) return
@@ -68,7 +70,7 @@ export default function ApplicationsPage() {
         setError(
           cause instanceof Error
             ? cause.message
-            : "Unable to load applications."
+            : messages.pConsolePageClient.loadAppsError
         )
       } finally {
         if (!cancelled) setLoading(false)
@@ -79,7 +81,7 @@ export default function ApplicationsPage() {
     return () => {
       cancelled = true
     }
-  }, [retry])
+  }, [retry, messages])
 
   const handleRetry = () => setRetry((v) => v + 1)
 
@@ -116,7 +118,7 @@ export default function ApplicationsPage() {
               })}
             >
               <Storefront size={14} />
-              <span>Marketplace</span>
+              <span>{messages.pConsolePageClient.marketplace}</span>
             </Link>
           </Button>
           <Button asChild size="sm" className="h-8 gap-1.5 text-xs">
@@ -127,7 +129,7 @@ export default function ApplicationsPage() {
               })}
             >
               <RocketLaunch size={14} />
-              <span>Deploy New App</span>
+              <span>{messages.pConsolePageClient.deployNewApp}</span>
             </Link>
           </Button>
         </div>
@@ -139,7 +141,7 @@ export default function ApplicationsPage() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-xl border border-border bg-card p-4">
             <span className="text-xs font-medium text-muted-foreground">
-              Total Platforms
+              {messages.pConsolePageClient.totalPlatforms}
             </span>
             <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
               {apps.length}
@@ -147,7 +149,7 @@ export default function ApplicationsPage() {
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <span className="text-xs font-medium text-muted-foreground">
-              Active & Live
+              {messages.pConsolePageClient.activeAndLive}
             </span>
             <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-500">
               {apps.filter((a) => a.status === "running").length}
@@ -155,7 +157,7 @@ export default function ApplicationsPage() {
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <span className="text-xs font-medium text-muted-foreground">
-              Deploying / Queued
+              {messages.pConsolePageClient.deployingQueued}
             </span>
             <p className="mt-1 text-2xl font-bold tracking-tight text-sky-500">
               {
@@ -170,7 +172,7 @@ export default function ApplicationsPage() {
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <span className="text-xs font-medium text-muted-foreground">
-              Needs Attention
+              {messages.pConsolePageClient.needsAttention}
             </span>
             <p className="mt-1 text-2xl font-bold tracking-tight text-rose-500">
               {apps.filter((a) => a.status === "failed").length}
@@ -206,7 +208,7 @@ export default function ApplicationsPage() {
               {messages.console.app.manage.noApps}
             </p>
             <p className="text-xs text-muted-foreground">
-              Deploy your first application to get started.
+              {messages.pConsolePageClient.emptyHint}
             </p>
           </div>
           <Button asChild size="sm">
@@ -224,7 +226,10 @@ export default function ApplicationsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-foreground">
-              Active Platforms ({apps.length})
+              {messages.pConsolePageClient.activePlatformsCount.replace(
+                "{count}",
+                String(apps.length)
+              )}
             </h2>
             <Button
               asChild
@@ -238,7 +243,7 @@ export default function ApplicationsPage() {
                   locale,
                 })}
               >
-                <span>View all platforms</span>
+                <span>{messages.pConsolePageClient.viewAllPlatforms}</span>
                 <ArrowRight size={14} />
               </Link>
             </Button>
@@ -266,10 +271,14 @@ export default function ApplicationsPage() {
                           {app.name}
                         </Link>
                         <p className="truncate text-xs text-muted-foreground">
-                          {app.framework ??
-                            app.templateId ??
-                            "Custom Container"}{" "}
-                          &bull; branch {app.branchName}
+                          {messages.pConsolePageClient.frameworkBranch
+                            .replace(
+                              "{framework}",
+                              app.framework ??
+                                app.templateId ??
+                                messages.pConsolePageClient.customContainer
+                            )
+                            .replace("{branch}", app.branchName)}
                         </p>
                       </div>
                       <span
@@ -298,14 +307,18 @@ export default function ApplicationsPage() {
                     <span className="text-muted-foreground">
                       {app.lastDeployedAt
                         ? formatRelativeTime(app.lastDeployedAt, locale)
-                        : "Never deployed"}
+                        : messages.pConsolePageClient.neverDeployed}
                     </span>
                     <div className="flex gap-1.5">
                       <Button asChild variant="outline" size="xs">
-                        <Link href={deploymentsHref}>Deployments</Link>
+                        <Link href={deploymentsHref}>
+                          {messages.pConsolePageClient.deployments}
+                        </Link>
                       </Button>
                       <Button asChild variant="outline" size="xs">
-                        <Link href={settingsHref}>Env</Link>
+                        <Link href={settingsHref}>
+                          {messages.pConsolePageClient.env}
+                        </Link>
                       </Button>
                     </div>
                   </div>

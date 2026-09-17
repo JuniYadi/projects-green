@@ -1,8 +1,12 @@
 "use client"
 
+import { useParams } from "next/navigation"
+
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MetaAppSelector } from "@/components/whatsapp/meta-app-selector"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { WizardData } from "./device-create-wizard"
 
 type Props = {
@@ -12,11 +16,16 @@ type Props = {
 }
 
 export function StepWhatsappIds({ data, updateData, errors }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappDevicesNewStepWhatsappIds
+
   return (
     <div className="grid gap-4">
-      <h2 className="text-lg font-semibold">WhatsApp Business IDs</h2>
+      <h2 className="text-lg font-semibold">{t.heading}</h2>
       <div className="grid gap-2">
-        <Label htmlFor="device-environment">Environment</Label>
+        <Label htmlFor="device-environment">{t.environmentLabel}</Label>
         <select
           id="device-environment"
           value={data.environment}
@@ -27,8 +36,8 @@ export function StepWhatsappIds({ data, updateData, errors }: Props) {
           }
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
         >
-          <option value="LIVE">Live</option>
-          <option value="SANDBOX">Sandbox</option>
+          <option value="LIVE">{t.environmentLive}</option>
+          <option value="SANDBOX">{t.environmentSandbox}</option>
         </select>
       </div>
       <MetaAppSelector
@@ -38,14 +47,14 @@ export function StepWhatsappIds({ data, updateData, errors }: Props) {
         error={errors.whatsappMetaAppId}
       />
       <div className="grid gap-2">
-        <Label htmlFor="waba-id">WhatsApp Business Account ID</Label>
+        <Label htmlFor="waba-id">{t.wabaIdLabel}</Label>
         <Input
           id="waba-id"
           value={data.whatsappBusinessAccountId}
           onChange={(e) =>
             updateData({ whatsappBusinessAccountId: e.target.value })
           }
-          placeholder="WABA-xxxxxxxxxxxx"
+          placeholder={t.wabaIdPlaceholder}
           aria-invalid={!!errors.whatsappBusinessAccountId}
         />
         {errors.whatsappBusinessAccountId && (
@@ -55,12 +64,12 @@ export function StepWhatsappIds({ data, updateData, errors }: Props) {
         )}
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="phone-id">WhatsApp Phone ID</Label>
+        <Label htmlFor="phone-id">{t.phoneIdLabel}</Label>
         <Input
           id="phone-id"
           value={data.whatsappPhoneId}
           onChange={(e) => updateData({ whatsappPhoneId: e.target.value })}
-          placeholder="Phone-xxxxxxxxxxxx"
+          placeholder={t.phoneIdPlaceholder}
           aria-invalid={!!errors.whatsappPhoneId}
         />
         {errors.whatsappPhoneId && (
@@ -68,14 +77,14 @@ export function StepWhatsappIds({ data, updateData, errors }: Props) {
         )}
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="app-id">WhatsApp Application ID</Label>
+        <Label htmlFor="app-id">{t.applicationIdLabel}</Label>
         <Input
           id="app-id"
           value={data.whatsappApplicationId}
           onChange={(e) =>
             updateData({ whatsappApplicationId: e.target.value })
           }
-          placeholder="App-xxxxxxxxxxxx"
+          placeholder={t.applicationIdPlaceholder}
           aria-invalid={!!errors.whatsappApplicationId}
         />
         {errors.whatsappApplicationId && (
@@ -85,19 +94,17 @@ export function StepWhatsappIds({ data, updateData, errors }: Props) {
         )}
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="wa-version">WhatsApp Version</Label>
+        <Label htmlFor="wa-version">{t.versionLabel}</Label>
         <Input
           id="wa-version"
           value={data.whatsappVersion}
           onChange={(e) => updateData({ whatsappVersion: e.target.value })}
-          placeholder="v24.0 (leave blank to inherit from Meta App)"
+          placeholder={t.versionPlaceholder}
         />
-        <p className="text-xs text-muted-foreground">
-          Default: inherited from linked Meta App (e.g. v24.0)
-        </p>
+        <p className="text-xs text-muted-foreground">{t.versionHint}</p>
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="callback">Callback URL</Label>
+        <Label htmlFor="callback">{t.callbackUrlLabel}</Label>
         <Input
           id="callback"
           value={data.callbackUrl}

@@ -1,5 +1,7 @@
 "use client"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import Link from "next/link"
 import { useRouter, useSearchParams, useParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
@@ -75,6 +77,11 @@ function VoucherEditorShell({
   activeTab,
   onTabChange,
 }: VoucherEditorShellProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingPromotionsPageClient
+
   const [voucher, setVoucher] = useState<NullableVoucher>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -91,18 +98,16 @@ function VoucherEditorShell({
       const { data } = await eden.api.vouchers.portal[voucherId].get()
 
       if (!data) {
-        setError("Failed to load voucher")
+        setError(t.failedToLoadVoucher)
         return
       }
       if (!data.ok) {
-        setError(data.message || "Failed to load voucher")
+        setError(data.message || t.failedToLoadVoucher)
         return
       }
       setVoucher(data.data as unknown as VoucherDetailDTO)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unexpected error occurred"
-      )
+      setError(err instanceof Error ? err.message : t.unexpectedError)
     } finally {
       setIsLoading(false)
     }
@@ -124,7 +129,7 @@ function VoucherEditorShell({
     async (draft: boolean) => {
       if (!voucher || !voucherId) return
 
-      const errors = validateVoucher(voucher)
+      const errors = validateVoucher(voucher, t)
       setValidationErrors(errors)
       if (Object.keys(errors).length > 0) return
 
@@ -136,7 +141,7 @@ function VoucherEditorShell({
         }
         await eden.api.vouchers.portal[voucherId].patch(update as never)
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to save voucher")
+        setError(err instanceof Error ? err.message : t.failedToSaveVoucher)
       } finally {
         setIsSaving(false)
       }
@@ -155,11 +160,11 @@ function VoucherEditorShell({
       } else {
         setError(
           (data && "message" in data ? (data.message as string) : null) ||
-            "Failed to disable voucher"
+            t.failedToDisableVoucher
         )
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to disable voucher")
+      setError(err instanceof Error ? err.message : t.failedToDisableVoucher)
     } finally {
       setIsSaving(false)
     }
@@ -176,13 +181,11 @@ function VoucherEditorShell({
       } else {
         setError(
           (data && "message" in data ? (data.message as string) : null) ||
-            "Failed to mark voucher as expired"
+            t.failedToExpireVoucher
         )
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to mark voucher as expired"
-      )
+      setError(err instanceof Error ? err.message : t.failedToExpireVoucher)
     } finally {
       setIsSaving(false)
     }
@@ -210,10 +213,10 @@ function VoucherEditorShell({
       <Card>
         <CardContent className="py-8 text-center">
           <p className="text-sm font-medium text-foreground">
-            Voucher not found.
+            {t.voucherNotFoundTitle}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            The voucher you are looking for does not exist.
+            {t.voucherNotFoundDesc}
           </p>
         </CardContent>
       </Card>
@@ -261,6 +264,11 @@ function VoucherEditorLayout({
   onExpire,
   isSaving,
 }: VoucherEditorLayoutProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingPromotionsPageClient
+
   const isExpired =
     voucher.status === "EXPIRED" || new Date(voucher.expiresAt) <= new Date()
 
@@ -284,8 +292,10 @@ function VoucherEditorLayout({
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {voucherKindLabel(voucher.kind)} · {voucher.claimedCount} /{" "}
-              {voucher.maxClaims} claims used
+              {voucherKindLabel(voucher.kind)} ·{" "}
+              {t.claimsUsed
+                .replace("{claimed}", String(voucher.claimedCount))
+                .replace("{max}", String(voucher.maxClaims))}
             </p>
           </div>
         </div>
@@ -301,7 +311,7 @@ function VoucherEditorLayout({
               disabled={isSaving}
               className="text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/20"
             >
-              {isSaving ? "Updating..." : "Deactivate (Disable)"}
+              {isSaving ? t.updatingButton : t.deactivateButton}
             </Button>
           )}
 
@@ -311,7 +321,7 @@ function VoucherEditorLayout({
               onClick={onExpire}
               disabled={isSaving}
             >
-              {isSaving ? "Updating..." : "Mark as Expired"}
+              {isSaving ? t.updatingButton : t.markExpiredButton}
             </Button>
           )}
 
@@ -320,22 +330,22 @@ function VoucherEditorLayout({
             onClick={() => void onSave(true)}
             disabled={isSaving}
           >
-            {isSaving ? "Saving..." : "Save Draft"}
+            {isSaving ? t.savingButton : t.saveDraftButton}
           </Button>
           <Button onClick={() => void onSave(false)} disabled={isSaving}>
-            {isSaving ? "Publishing..." : "Publish"}
+            {isSaving ? t.publishingButton : t.publishButton}
           </Button>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={onTabChange}>
         <TabsList className="flex-wrap">
-          <TabsTrigger value="type">Type</TabsTrigger>
-          <TabsTrigger value="audience">Audience</TabsTrigger>
-          <TabsTrigger value="rules">Rules</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
-          <TabsTrigger value="publish">Publish</TabsTrigger>
-          <TabsTrigger value="claims">Claims</TabsTrigger>
+          <TabsTrigger value="type">{t.tabType}</TabsTrigger>
+          <TabsTrigger value="audience">{t.tabAudience}</TabsTrigger>
+          <TabsTrigger value="rules">{t.tabRules}</TabsTrigger>
+          <TabsTrigger value="preview">{t.tabPreview}</TabsTrigger>
+          <TabsTrigger value="publish">{t.tabPublish}</TabsTrigger>
+          <TabsTrigger value="claims">{t.tabClaims}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="type" className="space-y-4">
@@ -376,17 +386,18 @@ function VoucherEditorLayout({
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 
-function validateVoucher(voucher: VoucherDetailDTO): Record<string, string[]> {
+function validateVoucher(
+  voucher: VoucherDetailDTO,
+  t: Record<string, string>
+): Record<string, string[]> {
   const errors: Record<string, string[]> = {}
 
   if (voucher.kind === "PRODUCT_PROMOTION") {
     if (!voucher.discountType) {
-      errors.discountType = ["Discount type is required for product promotions"]
+      errors.discountType = [t.discountTypeRequired]
     }
     if (!voucher.discountValue) {
-      errors.discountValue = [
-        "Discount value is required for product promotions",
-      ]
+      errors.discountValue = [t.discountValueRequired]
     }
   }
 
@@ -397,7 +408,7 @@ function validateVoucher(voucher: VoucherDetailDTO): Record<string, string[]> {
   ) {
     const val = Number(voucher.discountValue)
     if (val <= 0 || val > 100) {
-      errors.discountValue = ["Percentage must be between 1 and 100"]
+      errors.discountValue = [t.percentageRangeError]
     }
   }
 
@@ -407,16 +418,16 @@ function validateVoucher(voucher: VoucherDetailDTO): Record<string, string[]> {
     voucher.discountValue !== undefined
   ) {
     if (Number(voucher.discountValue) <= 0) {
-      errors.discountValue = ["Fixed amount must be greater than 0"]
+      errors.discountValue = [t.fixedAmountMinError]
     }
   }
 
   if (voucher.maxClaims < 1) {
-    errors.maxClaims = ["Max claims must be at least 1"]
+    errors.maxClaims = [t.maxClaimsMinError]
   }
 
   if (new Date(voucher.expiresAt) <= new Date()) {
-    errors.expiresAt = ["Expiration date must be in the future"]
+    errors.expiresAt = [t.expiresAtFutureError]
   }
 
   return errors

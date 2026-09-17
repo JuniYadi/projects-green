@@ -44,12 +44,16 @@ type AppMonitorProps = {
   hideSummaryHeader?: boolean
 }
 
-const BILLING_NOTE: Record<StackBillingState, string | null> = {
-  ACTIVE: null,
-  PAYMENT_GRACE:
-    "Payment grace period active. Top up your balance to avoid suspension.",
-  SUSPENDED:
-    "This app is suspended due to payment issues. Top up your balance to resume.",
+function resolveBillingNote(
+  state: StackBillingState,
+  messages: ReturnType<typeof getMessages>
+): string | null {
+  const notes: Record<StackBillingState, string | null> = {
+    ACTIVE: null,
+    PAYMENT_GRACE: messages.pDeployOperateAppMonitor.billingGraceNote,
+    SUSPENDED: messages.pDeployOperateAppMonitor.billingSuspendedNote,
+  }
+  return notes[state]
 }
 
 export function AppMonitor({
@@ -68,7 +72,7 @@ export function AppMonitor({
   const tMonitor = messages.console.app.timeline.monitor
   const status = deployment?.status ?? stack.status
   const tone = STATUS_TONE[status] ?? STATUS_TONE.idle
-  const billingNote = BILLING_NOTE[stack.billingState]
+  const billingNote = resolveBillingNote(stack.billingState, messages)
   const targetDomain = liveDomain ?? (stack.customDomain || stack.subdomain)
   const deployId = deployment?.id ?? stack.latestDeploymentId ?? undefined
 
@@ -80,19 +84,27 @@ export function AppMonitor({
             <div className="space-y-1">
               <p className="flex items-center gap-1.5 font-semibold text-destructive">
                 <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
-                Deployment Failed
+                {messages.pDeployOperateAppMonitor.deploymentFailed}
               </p>
               <p className="text-foreground">
                 {deployment.failureReason ||
-                  "The deployment encountered an unexpected error during build or cluster synchronization."}
+                  messages.pDeployOperateAppMonitor.genericFailureReason}
               </p>
               {deployment.failureReason?.includes("REGISTRY") ? (
                 <p className="pt-1 text-muted-foreground">
-                  💡 <strong>Action Required:</strong> {tMonitor.registryHint}
+                  💡{" "}
+                  <strong>
+                    {messages.pDeployOperateAppMonitor.actionRequired}
+                  </strong>{" "}
+                  {tMonitor.registryHint}
                 </p>
               ) : deployment.failureReason?.includes("timed out") ? (
                 <p className="pt-1 text-muted-foreground">
-                  💡 <strong>Action Required:</strong> {tMonitor.timeoutHint}
+                  💡{" "}
+                  <strong>
+                    {messages.pDeployOperateAppMonitor.actionRequired}
+                  </strong>{" "}
+                  {tMonitor.timeoutHint}
                 </p>
               ) : null}
             </div>
@@ -105,7 +117,7 @@ export function AppMonitor({
                 className="shrink-0"
               >
                 <ArrowClockwise className="mr-1.5 h-3.5 w-3.5" />
-                Retry Deploy
+                {messages.pDeployOperateAppMonitor.retryDeploy}
               </Button>
             ) : null}
           </div>
@@ -130,14 +142,14 @@ export function AppMonitor({
                       ? stack.templateId && stack.templateId.length < 20
                         ? `${stack.templateId.charAt(0).toUpperCase() + stack.templateId.slice(1)} (Template)`
                         : "Template"
-                      : "Custom Workload")}{" "}
+                      : messages.pDeployOperateAppMonitor.customWorkload)}{" "}
                   <span className="font-medium text-foreground">
                     {stack.branchName}
                   </span>
                   {stack.resourcePlanId ? (
                     <>
                       {" "}
-                      &bull; plan{" "}
+                      &bull; {messages.pDeployOperateAppMonitor.planLabel}{" "}
                       <span className="font-medium text-foreground">
                         {stack.resourcePlanId}
                       </span>
@@ -156,7 +168,9 @@ export function AppMonitor({
                     href={`${localizePathname({ pathname: "/console/app/settings", locale })}?app=${stack.slug}&tab=env`}
                   >
                     <GearSix className="size-3.5" />
-                    <span>Settings & Env</span>
+                    <span>
+                      {messages.pDeployOperateAppMonitor.settingsAndEnv}
+                    </span>
                   </Link>
                 </Button>
                 <Button
@@ -169,7 +183,7 @@ export function AppMonitor({
                     href={`${localizePathname({ pathname: "/console/app/logs", locale })}?app=${stack.slug}`}
                   >
                     <ListMagnifyingGlass className="size-3.5" />
-                    <span>Logs</span>
+                    <span>{messages.pDeployOperateAppMonitor.logs}</span>
                   </Link>
                 </Button>
                 <Button
@@ -182,7 +196,7 @@ export function AppMonitor({
                     href={`${localizePathname({ pathname: "/console/app/metrics", locale })}?app=${stack.slug}`}
                   >
                     <ChartLine className="size-3.5" />
-                    <span>Metrics</span>
+                    <span>{messages.pDeployOperateAppMonitor.metrics}</span>
                   </Link>
                 </Button>
                 {targetDomain ? (
@@ -196,7 +210,7 @@ export function AppMonitor({
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <span>Open App</span>
+                      <span>{messages.pDeployOperateAppMonitor.openApp}</span>
                       <ArrowSquareOut className="size-3.5" />
                     </a>
                   </Button>
@@ -215,7 +229,7 @@ export function AppMonitor({
                   href="/console/billing/topup"
                   className="font-semibold underline underline-offset-4"
                 >
-                  Top up
+                  {messages.pDeployOperateAppMonitor.topUp}
                 </Link>
               </div>
             ) : null}
@@ -223,7 +237,7 @@ export function AppMonitor({
             <dl className="grid gap-3 text-xs sm:grid-cols-3">
               <div className="space-y-1">
                 <dt className="tracking-wide text-muted-foreground uppercase">
-                  Domain
+                  {messages.pDeployOperateAppMonitor.domainLabel}
                 </dt>
                 <dd className="font-medium text-foreground">
                   {targetDomain ? (
@@ -237,23 +251,23 @@ export function AppMonitor({
                       <ArrowSquareOut className="size-3" />
                     </a>
                   ) : (
-                    "Not configured"
+                    messages.pDeployOperateAppMonitor.notConfigured
                   )}
                 </dd>
               </div>
               <div className="space-y-1">
                 <dt className="tracking-wide text-muted-foreground uppercase">
-                  Last deployed
+                  {messages.pDeployOperateAppMonitor.lastDeployedLabel}
                 </dt>
                 <dd className="font-medium text-foreground">
                   {stack.lastDeployedAt
                     ? new Date(stack.lastDeployedAt).toLocaleString()
-                    : "Never"}
+                    : messages.pDeployOperateAppMonitor.never}
                 </dd>
               </div>
               <div className="space-y-1">
                 <dt className="tracking-wide text-muted-foreground uppercase">
-                  Attempt
+                  {messages.pDeployOperateAppMonitor.attemptLabel}
                 </dt>
                 <dd className="font-medium text-foreground">
                   {deployment ? deployment.attempt : "—"}
@@ -267,20 +281,26 @@ export function AppMonitor({
                   <div className="space-y-1">
                     <p className="flex items-center gap-1.5 font-semibold text-destructive">
                       <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
-                      Deployment Failed
+                      {messages.pDeployOperateAppMonitor.deploymentFailed}
                     </p>
                     <p className="text-foreground">
                       {deployment.failureReason ||
-                        "The deployment encountered an unexpected error during build or cluster synchronization."}
+                        messages.pDeployOperateAppMonitor.genericFailureReason}
                     </p>
                     {deployment.failureReason?.includes("REGISTRY") ? (
                       <p className="pt-1 text-muted-foreground">
-                        💡 <strong>Action Required:</strong>{" "}
+                        💡{" "}
+                        <strong>
+                          {messages.pDeployOperateAppMonitor.actionRequired}
+                        </strong>{" "}
                         {tMonitor.registryHint}
                       </p>
                     ) : deployment.failureReason?.includes("timed out") ? (
                       <p className="pt-1 text-muted-foreground">
-                        💡 <strong>Action Required:</strong>{" "}
+                        💡{" "}
+                        <strong>
+                          {messages.pDeployOperateAppMonitor.actionRequired}
+                        </strong>{" "}
                         {tMonitor.timeoutHint}
                       </p>
                     ) : null}
@@ -294,7 +314,7 @@ export function AppMonitor({
                       className="shrink-0"
                     >
                       <ArrowClockwise className="mr-1.5 h-3.5 w-3.5" />
-                      Retry Deploy
+                      {messages.pDeployOperateAppMonitor.retryDeploy}
                     </Button>
                   ) : null}
                 </div>

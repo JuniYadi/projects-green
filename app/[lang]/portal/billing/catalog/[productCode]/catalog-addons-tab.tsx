@@ -1,5 +1,7 @@
 "use client"
 
+import { useParams } from "next/navigation"
+
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -28,6 +30,8 @@ import type {
   PlanAddonAttachmentForm,
   ProductPlanEditorForm,
 } from "@/components/billing/admin/catalog/catalog-editor.types"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export function CatalogAddonsTab({
   addons,
@@ -38,6 +42,10 @@ export function CatalogAddonsTab({
   plans: ProductPlanEditorForm[]
   onChange: (addons: PlanAddonAttachmentForm[]) => void
 }>) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   // In a real implementation this would come from the addon catalog API.
   // For the UI-local mock, we provide a static list.
   const MOCK_AVAILABLE_ADDONS = [
@@ -96,12 +104,14 @@ export function CatalogAddonsTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {addons.length} add-on
-          {addons.length !== 1 ? "s" : ""} attached to this product.
+          {(addons.length === 1
+            ? messages.pPortalBillingCatalogCatalogAddonsTab.addonsAttachedOne
+            : messages.pPortalBillingCatalogCatalogAddonsTab.addonsAttachedMany
+          ).replace("{count}", String(addons.length))}
         </p>
         <Button variant="outline" size="sm" onClick={attachAddon}>
           <PlusIcon className="mr-2 h-4 w-4" />
-          Attach add-on
+          {messages.pPortalBillingCatalogCatalogAddonsTab.attachAddon}
         </Button>
       </div>
 
@@ -111,8 +121,7 @@ export function CatalogAddonsTab({
             <PlusIcon className="h-10 w-10 text-muted-foreground/50" />
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                No add-ons attached. Attach reusable add-ons to make them
-                available as optional or required selections during checkout.
+                {messages.pPortalBillingCatalogCatalogAddonsTab.emptyState}
               </p>
             </div>
           </CardContent>
@@ -132,7 +141,9 @@ export function CatalogAddonsTab({
                       size="sm"
                       onClick={() => moveAddon(addon.id, "up")}
                       disabled={index === 0}
-                      aria-label="Move up"
+                      aria-label={
+                        messages.pPortalBillingCatalogCatalogAddonsTab.moveUp
+                      }
                     >
                       <ArrowUpIcon className="h-3 w-3" />
                     </Button>
@@ -141,7 +152,9 @@ export function CatalogAddonsTab({
                       size="sm"
                       onClick={() => moveAddon(addon.id, "down")}
                       disabled={index === addons.length - 1}
-                      aria-label="Move down"
+                      aria-label={
+                        messages.pPortalBillingCatalogCatalogAddonsTab.moveDown
+                      }
                     >
                       <ArrowDownIcon className="h-3 w-3" />
                     </Button>
@@ -149,7 +162,10 @@ export function CatalogAddonsTab({
                       variant="ghost"
                       size="sm"
                       onClick={() => removeAddon(addon.id)}
-                      aria-label="Remove add-on"
+                      aria-label={
+                        messages.pPortalBillingCatalogCatalogAddonsTab
+                          .removeAddon
+                      }
                     >
                       <TrashIcon className="h-4 w-4 text-destructive" />
                     </Button>
@@ -158,7 +174,9 @@ export function CatalogAddonsTab({
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Add-on</Label>
+                  <Label>
+                    {messages.pPortalBillingCatalogCatalogAddonsTab.addonLabel}
+                  </Label>
                   <Select
                     value={addon.addonId}
                     onValueChange={(value) =>
@@ -166,7 +184,12 @@ export function CatalogAddonsTab({
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select an add-on" />
+                      <SelectValue
+                        placeholder={
+                          messages.pPortalBillingCatalogCatalogAddonsTab
+                            .selectAddonPlaceholder
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {MOCK_AVAILABLE_ADDONS.filter(
@@ -181,23 +204,39 @@ export function CatalogAddonsTab({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Label</Label>
+                  <Label>
+                    {
+                      messages.pPortalBillingCatalogCatalogAddonsTab
+                        .displayLabel
+                    }
+                  </Label>
                   <Input
                     value={addon.label}
                     onChange={(e) =>
                       updateAddon(addon.id, { label: e.target.value })
                     }
-                    placeholder="Display label"
+                    placeholder={
+                      messages.pPortalBillingCatalogCatalogAddonsTab
+                        .displayLabelPlaceholder
+                    }
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Description</Label>
+                  <Label>
+                    {
+                      messages.pPortalBillingCatalogCatalogAddonsTab
+                        .descriptionLabel
+                    }
+                  </Label>
                   <Input
                     value={addon.description}
                     onChange={(e) =>
                       updateAddon(addon.id, { description: e.target.value })
                     }
-                    placeholder="Add-on description shown to customers"
+                    placeholder={
+                      messages.pPortalBillingCatalogCatalogAddonsTab
+                        .descriptionPlaceholder
+                    }
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -207,7 +246,12 @@ export function CatalogAddonsTab({
                       updateAddon(addon.id, { isRequired: checked })
                     }
                   />
-                  <Label className="text-xs">Required</Label>
+                  <Label className="text-xs">
+                    {
+                      messages.pPortalBillingCatalogCatalogAddonsTab
+                        .requiredLabel
+                    }
+                  </Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
@@ -216,7 +260,9 @@ export function CatalogAddonsTab({
                       updateAddon(addon.id, { isActive: checked })
                     }
                   />
-                  <Label className="text-xs">Active</Label>
+                  <Label className="text-xs">
+                    {messages.pPortalBillingCatalogCatalogAddonsTab.activeLabel}
+                  </Label>
                 </div>
               </CardContent>
             </Card>
@@ -225,7 +271,10 @@ export function CatalogAddonsTab({
       )}
 
       <CardDescription className="block">
-        Plans available in this product: {plans.length}
+        {messages.pPortalBillingCatalogCatalogAddonsTab.plansAvailable.replace(
+          "{count}",
+          String(plans.length)
+        )}
       </CardDescription>
     </div>
   )

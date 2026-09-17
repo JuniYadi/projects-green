@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Spinner } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -51,13 +54,19 @@ export type AddCredentialDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  locale?: string
 }
 
 export function AddCredentialDialog({
   open,
   onOpenChange,
   onSuccess,
+  locale: propLocale,
 }: AddCredentialDialogProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(propLocale ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pConsoleAppCredentialsAddCredentialDialog
   const [type, setType] = useState<AppCredentialType | "">("")
   const [name, setName] = useState("")
   const [metadata, setMetadata] = useState<Record<string, string>>({})
@@ -108,14 +117,14 @@ export function AddCredentialDialog({
       })
 
       if (payload?.ok) {
-        toast.success("Credential created.")
+        toast.success(t.credentialCreated)
         handleOpenChange(false)
         onSuccess()
       } else {
-        toast.error("Failed to create credential.")
+        toast.error(t.createFailed)
       }
     } catch {
-      toast.error("Network error.")
+      toast.error(t.networkError)
     } finally {
       setSubmitting(false)
     }
@@ -125,17 +134,17 @@ export function AddCredentialDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add Credential</DialogTitle>
+          <DialogTitle>{t.addCredentialTitle}</DialogTitle>
           <DialogDescription>
             {typeDef
-              ? `Add a new ${typeDef.label} to your application.`
-              : "Add a new credential or API token for your application."}
+              ? `${t.dialogDescriptionPrefix} ${typeDef.label} ${t.dialogDescriptionSuffix}`
+              : t.dialogDescriptionDefault}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="cred-type">Type</Label>
+            <Label htmlFor="cred-type">{t.typeLabel}</Label>
             <Select
               value={type}
               onValueChange={(v) => {
@@ -145,7 +154,7 @@ export function AddCredentialDialog({
               }}
             >
               <SelectTrigger id="cred-type" className="w-full">
-                <SelectValue placeholder="Select credential type" />
+                <SelectValue placeholder={t.selectTypePlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {TYPE_OPTIONS.map((opt) => (
@@ -159,17 +168,17 @@ export function AddCredentialDialog({
 
           {!typeDef && (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Select a credential type above to configure the required fields.
+              {t.selectTypeHint}
             </div>
           )}
 
           {typeDef && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="cred-name">Name</Label>
+                <Label htmlFor="cred-name">{t.nameLabel}</Label>
                 <Input
                   id="cred-name"
-                  placeholder="e.g. Production API Token"
+                  placeholder={t.namePlaceholder}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -212,8 +221,7 @@ export function AddCredentialDialog({
 
               {secretFields.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  This credential type is created automatically — no secrets to
-                  enter.
+                  {t.noSecretsHint}
                 </p>
               )}
             </>
@@ -225,16 +233,16 @@ export function AddCredentialDialog({
               variant="outline"
               onClick={() => handleOpenChange(false)}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button type="submit" disabled={submitting || !canSubmit}>
               {submitting ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4 animate-spin" />
-                  Creating…
+                  {t.creating}
                 </>
               ) : (
-                "Create Credential"
+                t.createCredential
               )}
             </Button>
           </DialogFooter>

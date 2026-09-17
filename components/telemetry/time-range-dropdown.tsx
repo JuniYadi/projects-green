@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import {
   Clock,
   CaretDown,
@@ -32,6 +33,8 @@ import {
   PRESET_LABELS,
   format24hDateTime,
 } from "@/lib/time-range"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const PRESET_OPTIONS: PredefinedTimeRange[] = [
   "5m",
@@ -86,6 +89,10 @@ export function TimeRangeDropdown({
   disabled = false,
   className,
 }: TimeRangeDropdownProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pTelemetryTimeRangeDropdown
   const [isOpen, setIsOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
   const [fromInput, setFromInput] = React.useState("")
@@ -143,12 +150,12 @@ export function TimeRangeDropdown({
     const toDate = new Date(toInput)
 
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      setValidationError("Please select valid From and To dates.")
+      setValidationError(t.invalidDatesError)
       return
     }
 
     if (fromDate.getTime() >= toDate.getTime()) {
-      setValidationError("The 'From' time must be earlier than the 'To' time.")
+      setValidationError(t.fromAfterToError)
       return
     }
 
@@ -169,8 +176,9 @@ export function TimeRangeDropdown({
 
   const refreshIntervalLabel = React.useMemo(() => {
     const opt = REFRESH_OPTIONS.find((o) => o.value === refreshInterval)
-    return opt?.label ?? "30s"
-  }, [refreshInterval])
+    if (!opt) return "30s"
+    return opt.value === false ? t.autoRefreshOff : opt.label
+  }, [refreshInterval, t])
 
   return (
     <div className={cn("flex items-center gap-1", className)}>
@@ -204,7 +212,7 @@ export function TimeRangeDropdown({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-foreground">
-                    Absolute time range
+                    {t.absoluteTimeRange}
                   </span>
                 </div>
 
@@ -213,7 +221,7 @@ export function TimeRangeDropdown({
                     htmlFor="time-range-from"
                     className="text-[11px] font-medium text-muted-foreground"
                   >
-                    From
+                    {t.fromLabel}
                   </label>
                   <Input
                     id="time-range-from"
@@ -233,7 +241,7 @@ export function TimeRangeDropdown({
                     htmlFor="time-range-to"
                     className="text-[11px] font-medium text-muted-foreground"
                   >
-                    To
+                    {t.toLabel}
                   </label>
                   <Input
                     id="time-range-to"
@@ -265,7 +273,7 @@ export function TimeRangeDropdown({
                     }}
                     className="h-6 text-[10px]"
                   >
-                    Set To: Now
+                    {t.setToNow}
                   </Button>
                   <Button
                     type="button"
@@ -286,7 +294,7 @@ export function TimeRangeDropdown({
                     }}
                     className="h-6 text-[10px]"
                   >
-                    Today
+                    {t.today}
                   </Button>
                 </div>
               </div>
@@ -297,13 +305,13 @@ export function TimeRangeDropdown({
                   size="sm"
                   className="h-8 w-full text-xs font-medium"
                 >
-                  Apply time range
+                  {t.applyTimeRange}
                 </Button>
 
                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                   <Globe size={12} className="shrink-0" />
                   <span className="truncate">
-                    Browser Time: {userTimeZone} (24h)
+                    {t.browserTime.replace("{timezone}", userTimeZone)}
                   </span>
                 </div>
               </div>
@@ -317,7 +325,7 @@ export function TimeRangeDropdown({
                   className="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
                 />
                 <Input
-                  placeholder="Search quick ranges..."
+                  placeholder={t.searchQuickRangesPlaceholder}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="h-7 pl-7 text-xs"
@@ -347,7 +355,7 @@ export function TimeRangeDropdown({
                 })}
                 {filteredPresets.length === 0 && (
                   <p className="py-4 text-center text-xs text-muted-foreground">
-                    No ranges match &ldquo;{search}&rdquo;
+                    {t.noRangesMatch.replace("{query}", search)}
                   </p>
                 )}
               </div>
@@ -365,7 +373,7 @@ export function TimeRangeDropdown({
           onClick={onRefresh}
           disabled={disabled || isFetching}
           className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-          title="Refresh metrics now"
+          title={t.refreshMetricsNowTitle}
           data-testid="telemetry-refresh-button"
         >
           <ArrowsClockwise
@@ -384,7 +392,7 @@ export function TimeRangeDropdown({
               size="xs"
               disabled={disabled}
               className="h-7 gap-1 px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
-              title="Auto-refresh interval"
+              title={t.autoRefreshIntervalTitle}
               data-testid="auto-refresh-trigger"
             >
               <span>{refreshIntervalLabel}</span>
@@ -393,7 +401,7 @@ export function TimeRangeDropdown({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-32">
             <DropdownMenuLabel className="text-[11px] text-muted-foreground">
-              Auto refresh
+              {t.autoRefresh}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {REFRESH_OPTIONS.map((opt) => (
@@ -402,7 +410,9 @@ export function TimeRangeDropdown({
                 onClick={() => onRefreshIntervalChange(opt.value)}
                 className="flex items-center justify-between text-xs"
               >
-                <span>{opt.label}</span>
+                <span>
+                  {opt.value === false ? t.autoRefreshOff : opt.label}
+                </span>
                 {refreshInterval === opt.value && (
                   <Check size={13} className="text-primary" />
                 )}

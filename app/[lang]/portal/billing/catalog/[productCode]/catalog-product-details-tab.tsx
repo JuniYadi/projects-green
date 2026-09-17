@@ -1,7 +1,9 @@
 "use client"
-
+import { useParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/field"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Card,
@@ -20,18 +22,21 @@ export function CatalogProductDetailsTab({
   basics: ProductBasicsForm
   onChange: (next: Partial<ProductBasicsForm>) => void
 }>) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingCatalogProductDetailsTab
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Metadata</CardTitle>
-          <CardDescription>
-            Internal identifiers and product metadata.
-          </CardDescription>
+          <CardTitle>{t.metadataTitle}</CardTitle>
+          <CardDescription>{t.metadataDescription}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="meta-product-code">Internal code</Label>
+            <Label htmlFor="meta-product-code">{t.internalCodeLabel}</Label>
             <Input
               id="meta-product-code"
               value={basics.code}
@@ -43,7 +48,7 @@ export function CatalogProductDetailsTab({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="meta-product-name">Display name</Label>
+            <Label htmlFor="meta-product-name">{t.displayNameLabel}</Label>
             <Input
               id="meta-product-name"
               value={basics.name}
@@ -55,15 +60,13 @@ export function CatalogProductDetailsTab({
 
       <Card>
         <CardHeader>
-          <CardTitle>Pricing metadata</CardTitle>
-          <CardDescription>
-            Default currency and billing configuration for this product.
-          </CardDescription>
+          <CardTitle>{t.pricingMetadataTitle}</CardTitle>
+          <CardDescription>{t.pricingMetadataDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="meta-currency">Default currency</Label>
+              <Label htmlFor="meta-currency">{t.defaultCurrencyLabel}</Label>
               <Input
                 id="meta-currency"
                 value={basics.currency ?? "IDR"}
@@ -80,7 +83,7 @@ export function CatalogProductDetailsTab({
                 onCheckedChange={(checked) => onChange({ isActive: checked })}
               />
               <Label htmlFor="meta-active" className="mb-0">
-                Product is active
+                {t.productIsActiveLabel}
               </Label>
             </div>
           </div>
@@ -89,16 +92,14 @@ export function CatalogProductDetailsTab({
 
       <Card>
         <CardHeader>
-          <CardTitle>Long description</CardTitle>
-          <CardDescription>
-            Full product description shown on catalog and checkout pages.
-          </CardDescription>
+          <CardTitle>{t.longDescriptionTitle}</CardTitle>
+          <CardDescription>{t.longDescriptionDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
             value={basics.description}
             onChange={(e) => onChange({ description: e.target.value })}
-            placeholder="Detailed product description..."
+            placeholder={t.descriptionPlaceholder}
             rows={6}
           />
         </CardContent>

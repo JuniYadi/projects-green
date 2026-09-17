@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -18,6 +19,8 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   getVpnStatus,
   revokeVpnClient,
@@ -40,6 +43,11 @@ type HealthState = {
 } | null
 
 export default function PortalVpnPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalVpnPageClient
+
   const [clients, setClients] = useState<VpnClientStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [health, setHealth] = useState<HealthState>(null)
@@ -70,7 +78,7 @@ export default function PortalVpnPage() {
       const result = await getVpnAdminHealth()
       setHealth(result.health)
     } catch {
-      setHealth({ ok: false, output: "Health check failed" })
+      setHealth({ ok: false, output: t.healthCheckFailed })
     } finally {
       setHealthLoading(false)
     }
@@ -95,10 +103,8 @@ export default function PortalVpnPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">VPN Clients</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage OpenVPN clients and check server health.
-        </p>
+        <h1 className="text-2xl font-semibold">{t.title}</h1>
+        <p className="text-sm text-muted-foreground">{t.subtitle}</p>
       </header>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -106,7 +112,7 @@ export default function PortalVpnPage() {
           <CardHeader className="flex flex-row items-center gap-2 pb-2">
             <GlobeIcon className="h-4 w-4" />
             <CardTitle className="text-sm font-medium">
-              Active Clients
+              {t.activeClients}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -121,7 +127,9 @@ export default function PortalVpnPage() {
         <Card>
           <CardHeader className="flex flex-row items-center gap-2 pb-2">
             <ShieldCheckIcon className="h-4 w-4" />
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t.totalClients}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
@@ -139,15 +147,17 @@ export default function PortalVpnPage() {
             ) : (
               <ShieldWarningIcon className="h-4 w-4" />
             )}
-            <CardTitle className="text-sm font-medium">Server Health</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t.serverHealth}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm text-muted-foreground">
               {health === null
-                ? "Not checked"
+                ? t.notChecked
                 : health.ok
-                  ? `Healthy: ${health.output}`
-                  : `Unhealthy: ${health.output}`}
+                  ? t.healthy.replace("{output}", health.output)
+                  : t.unhealthy.replace("{output}", health.output)}
             </p>
             <Button
               size="sm"
@@ -155,7 +165,7 @@ export default function PortalVpnPage() {
               onClick={handleHealthCheck}
               disabled={healthLoading}
             >
-              {healthLoading ? "Checking..." : "Check Health"}
+              {healthLoading ? t.checking : t.checkHealth}
             </Button>
           </CardContent>
         </Card>
@@ -165,10 +175,8 @@ export default function PortalVpnPage() {
         <CardHeader className="pb-3">
           <div className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base">VPN Clients</CardTitle>
-              <CardDescription>
-                All VPN clients across organizations
-              </CardDescription>
+              <CardTitle className="text-base">{t.title}</CardTitle>
+              <CardDescription>{t.tableDescription}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -182,21 +190,18 @@ export default function PortalVpnPage() {
           ) : clients.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <GlobeIcon className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                No VPN clients found. Clients will appear here after customers
-                activate VPN subscriptions.
-              </p>
+              <p className="text-sm text-muted-foreground">{t.emptyState}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Client Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Period Start</TableHead>
-                  <TableHead>Period End</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.colClientName}</TableHead>
+                  <TableHead>{t.colStatus}</TableHead>
+                  <TableHead>{t.colRegion}</TableHead>
+                  <TableHead>{t.colPeriodStart}</TableHead>
+                  <TableHead>{t.colPeriodEnd}</TableHead>
+                  <TableHead className="text-right">{t.colActions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -241,7 +246,7 @@ export default function PortalVpnPage() {
                               onClick={() => handleDownload(client.id)}
                             >
                               <DownloadIcon className="mr-1 h-3 w-3" />
-                              Download
+                              {t.download}
                             </Button>
                             <Button
                               size="sm"
@@ -251,8 +256,8 @@ export default function PortalVpnPage() {
                             >
                               <TrashIcon className="mr-1 h-3 w-3" />
                               {revokeLoading === client.id
-                                ? "Revoking..."
-                                : "Revoke"}
+                                ? t.revoking
+                                : t.revoke}
                             </Button>
                           </>
                         )}

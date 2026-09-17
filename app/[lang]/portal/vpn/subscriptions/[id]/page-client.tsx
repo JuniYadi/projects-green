@@ -132,7 +132,13 @@ function formatCurrency(amount: string, currency: string) {
   }).format(num)
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({
+  text,
+  messages,
+}: {
+  text: string
+  messages: ReturnType<typeof getMessages>
+}) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -153,7 +159,11 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
     >
       <Copy className="h-3.5 w-3.5" />
-      {copied && <span className="sr-only">Copied!</span>}
+      {copied && (
+        <span className="sr-only">
+          {messages.pPortalVpnSubscriptionsPageClient.copied}
+        </span>
+      )}
     </Button>
   )
 }
@@ -161,10 +171,12 @@ function CopyButton({ text }: { text: string }) {
 function InfoRow({
   label,
   value,
+  messages,
   copyable = false,
 }: {
   label: string
   value: React.ReactNode
+  messages: ReturnType<typeof getMessages>
   copyable?: boolean
 }) {
   return (
@@ -172,7 +184,9 @@ function InfoRow({
       <span className="text-sm text-muted-foreground">{label}</span>
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">{value}</span>
-        {copyable && typeof value === "string" && <CopyButton text={value} />}
+        {copyable && typeof value === "string" && (
+          <CopyButton text={value} messages={messages} />
+        )}
       </div>
     </div>
   )
@@ -184,6 +198,7 @@ function ServerAccountCard({
   busy,
   onAction,
   onAudit,
+  messages,
 }: {
   account: VpnServerAccountEntry
   subscriptionId: string
@@ -193,7 +208,9 @@ function ServerAccountCard({
     action: "retry" | "revoke" | "validate" | "recreate"
   ) => void
   onAudit: (account: VpnServerAccountEntry) => void
+  messages: ReturnType<typeof getMessages>
 }) {
+  const t = messages.pPortalVpnSubscriptionsPageClient
   const configExtension = account.protocol === "WIREGUARD" ? ".conf" : ".ovpn"
 
   return (
@@ -212,12 +229,12 @@ function ServerAccountCard({
               </Badge>
               {account.hasConfig && (
                 <Badge variant="outline" className="w-fit">
-                  Config
+                  {t.badgeConfig}
                 </Badge>
               )}
               {account.hasCredentials && (
                 <Badge variant="outline" className="w-fit">
-                  Credentials
+                  {t.badgeCredentials}
                 </Badge>
               )}
             </div>
@@ -226,13 +243,15 @@ function ServerAccountCard({
               {account.port != null && (
                 <span className="font-mono">:{account.port}</span>
               )}
-              <span>Created {formatDate(account.createdAt)}</span>
+              <span>
+                {t.createdAt.replace("{date}", formatDate(account.createdAt))}
+              </span>
             </div>
             <div className="text-xs text-muted-foreground">
-              Account ID: {account.id}
+              {t.accountIdLabel} {account.id}
             </div>
             <div className="text-xs text-muted-foreground">
-              Updated {formatDate(account.updatedAt)}
+              {t.updatedAt.replace("{date}", formatDate(account.updatedAt))}
             </div>
             {account.failureReason && (
               <span className="text-sm text-red-500">
@@ -246,7 +265,7 @@ function ServerAccountCard({
             <Button
               variant="ghost"
               size="icon"
-              title="View Audit Log"
+              title={t.viewAuditLog}
               onClick={() => onAudit(account)}
             >
               <Eye className="h-4 w-4" />
@@ -257,7 +276,7 @@ function ServerAccountCard({
                   href={vpnAdminConfigDownloadUrl(subscriptionId, account.id)}
                   download
                 >
-                  Download {configExtension}
+                  {t.download.replace("{ext}", configExtension)}
                 </a>
               </Button>
             )}
@@ -267,7 +286,7 @@ function ServerAccountCard({
               disabled={busy?.endsWith(account.id)}
               onClick={() => onAction(account, "validate")}
             >
-              {busy === `validate:${account.id}` ? "Validating..." : "Validate"}
+              {busy === `validate:${account.id}` ? t.validating : t.validate}
             </Button>
             <Button
               variant="outline"
@@ -275,7 +294,7 @@ function ServerAccountCard({
               disabled={busy?.endsWith(account.id)}
               onClick={() => onAction(account, "recreate")}
             >
-              {busy === `recreate:${account.id}` ? "Recreating..." : "Recreate"}
+              {busy === `recreate:${account.id}` ? t.recreating : t.recreate}
             </Button>
             {(account.provisioningStatus === "FAILED" ||
               account.provisioningStatus === "PENDING") && (
@@ -285,7 +304,7 @@ function ServerAccountCard({
                 disabled={busy?.endsWith(account.id)}
                 onClick={() => onAction(account, "retry")}
               >
-                Retry
+                {t.retry}
               </Button>
             )}
             {(account.provisioningStatus === "ACTIVE" ||
@@ -297,7 +316,7 @@ function ServerAccountCard({
                 disabled={busy?.endsWith(account.id)}
                 onClick={() => onAction(account, "revoke")}
               >
-                Revoke
+                {t.revoke}
               </Button>
             )}
           </div>
@@ -307,30 +326,38 @@ function ServerAccountCard({
   )
 }
 
-function SummaryBadges({ summary }: { summary: ProvisioningStatusSummary }) {
+function SummaryBadges({
+  summary,
+  messages,
+}: {
+  summary: ProvisioningStatusSummary
+  messages: ReturnType<typeof getMessages>
+}) {
+  const t = messages.pPortalVpnSubscriptionsPageClient
+
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <Badge variant="secondary" className="text-xs">
-        {summary.total} accounts
+        {t.countAccounts.replace("{count}", String(summary.total))}
       </Badge>
       {summary.active > 0 && (
         <Badge variant="default" className="text-xs">
-          {summary.active} active
+          {t.countActive.replace("{count}", String(summary.active))}
         </Badge>
       )}
       {summary.pending > 0 && (
         <Badge variant="outline" className="text-xs">
-          {summary.pending} pending
+          {t.countPending.replace("{count}", String(summary.pending))}
         </Badge>
       )}
       {summary.failed > 0 && (
         <Badge variant="destructive" className="text-xs">
-          {summary.failed} failed
+          {t.countFailed.replace("{count}", String(summary.failed))}
         </Badge>
       )}
       {summary.revoked > 0 && (
         <Badge variant="secondary" className="text-xs">
-          {summary.revoked} revoked
+          {t.countRevoked.replace("{count}", String(summary.revoked))}
         </Badge>
       )}
     </div>
@@ -338,9 +365,10 @@ function SummaryBadges({ summary }: { summary: ProvisioningStatusSummary }) {
 }
 
 export default function SubscriptionDetailPage() {
-  const params = useParams()
-  const locale = resolveLocaleOrDefault(params?.lang as string)
-  const messages = getMessages(locale).console.vpn.subscriptionDetail
+  const params = useParams<{ lang?: string; id?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const detail = messages.console.vpn.subscriptionDetail
   const subscriptionId = params.id as string
 
   const [subscription, setSubscription] = useState<VpnSubscriptionItem | null>(
@@ -480,10 +508,10 @@ export default function SubscriptionDetailPage() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">{messages.notFoundTitle}</h1>
+          <h1 className="text-2xl font-semibold">{detail.notFoundTitle}</h1>
         </div>
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-          {error ?? messages.notFoundDefault}
+          {error ?? detail.notFoundDefault}
         </div>
       </main>
     )
@@ -502,7 +530,7 @@ export default function SubscriptionDetailPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-semibold">
-            {messages.operationDetailsTitle}
+            {detail.operationDetailsTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
             {subscription.packageName} ·{" "}
@@ -523,7 +551,9 @@ export default function SubscriptionDetailPage() {
               disabled={busy === subscriptionId}
               onClick={retryAllFailed}
             >
-              {busy === subscriptionId ? messages.retrying : messages.retryAllFailed}
+              {busy === subscriptionId
+                ? detail.retrying
+                : detail.retryAllFailed}
             </Button>
           )}
         </div>
@@ -533,32 +563,43 @@ export default function SubscriptionDetailPage() {
         {/* Subscription Info */}
         <Card>
           <CardHeader>
-            <CardTitle>{messages.subscriptionInfoTitle}</CardTitle>
-            <CardDescription>{messages.subscriptionInfoDesc}</CardDescription>
+            <CardTitle>{detail.subscriptionInfoTitle}</CardTitle>
+            <CardDescription>{detail.subscriptionInfoDesc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1">
-            <InfoRow label={messages.labelId} value={subscription.id} copyable />
+            <InfoRow
+              label={detail.labelId}
+              value={subscription.id}
+              messages={messages}
+              copyable
+            />
             <Separator />
             <InfoRow
-              label={messages.labelOrganization}
+              label={detail.labelOrganization}
               value={
                 subscription.organizationName ?? subscription.organizationId
               }
+              messages={messages}
             />
             <Separator />
-            <InfoRow label={messages.labelPackage} value={subscription.packageName} />
+            <InfoRow
+              label={detail.labelPackage}
+              value={subscription.packageName}
+              messages={messages}
+            />
             <Separator />
             <InfoRow
-              label={messages.labelStatus}
+              label={detail.labelStatus}
               value={
                 <Badge variant={STATUS_VARIANT[subscription.status]}>
                   {subscription.status}
                 </Badge>
               }
+              messages={messages}
             />
             <Separator />
             <InfoRow
-              label={messages.labelDevices}
+              label={detail.labelDevices}
               value={
                 <Link
                   href={`/portal/vpn/devices?subscriptionId=${subscription.id}`}
@@ -568,6 +609,7 @@ export default function SubscriptionDetailPage() {
                   {subscription.deviceCount}
                 </Link>
               }
+              messages={messages}
             />
           </CardContent>
         </Card>
@@ -575,45 +617,50 @@ export default function SubscriptionDetailPage() {
         {/* Billing Info */}
         <Card>
           <CardHeader>
-            <CardTitle>{messages.commercialContextTitle}</CardTitle>
-            <CardDescription>
-              {messages.commercialContextDesc}
-            </CardDescription>
+            <CardTitle>{detail.commercialContextTitle}</CardTitle>
+            <CardDescription>{detail.commercialContextDesc}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1">
             <InfoRow
-              label={messages.labelBillingRecord}
+              label={detail.labelBillingRecord}
               value={
                 subscription.serviceSubscriptionId ? (
                   <Link
                     href={`/portal/billing/subscriptions?subscriptionId=${encodeURIComponent(subscription.serviceSubscriptionId)}`}
                     className="text-sm font-medium text-primary hover:underline"
                   >
-                    {messages.viewInBilling}
+                    {detail.viewInBilling}
                   </Link>
                 ) : (
                   <span className="text-sm text-muted-foreground">
-                    {messages.billingUnavailable}
+                    {detail.billingUnavailable}
                   </span>
                 )
               }
+              messages={messages}
             />
             <Separator />
             <InfoRow
-              label={messages.labelPrice}
+              label={detail.labelPrice}
               value={formatCurrency(
                 subscription.priceLocked,
                 subscription.currency
               )}
+              messages={messages}
             />
             <Separator />
-            <InfoRow label={messages.labelCurrency} value={subscription.currency} />
+            <InfoRow
+              label={detail.labelCurrency}
+              value={subscription.currency}
+              messages={messages}
+            />
             {subscription.originalPrice && subscription.originalCurrency && (
               <>
                 <Separator />
                 <InfoRow
-                  label={messages.labelOriginalPrice}
+                  label={detail.labelOriginalPrice}
                   value={`${formatCurrency(subscription.originalPrice, subscription.originalCurrency)} (${subscription.originalCurrency})`}
+                  messages={messages}
                 />
               </>
             )}
@@ -621,30 +668,35 @@ export default function SubscriptionDetailPage() {
               <>
                 <Separator />
                 <InfoRow
-                  label={messages.labelExchangeRate}
+                  label={detail.labelExchangeRate}
                   value={subscription.exchangeRate.toFixed(4)}
+                  messages={messages}
                 />
               </>
             )}
             <Separator />
             <InfoRow
-              label={messages.labelPeriodStart}
+              label={detail.labelPeriodStart}
               value={formatDate(subscription.currentPeriodStart)}
+              messages={messages}
             />
             <Separator />
             <InfoRow
-              label={messages.labelPeriodEnd}
+              label={detail.labelPeriodEnd}
               value={formatDate(subscription.currentPeriodEnd)}
+              messages={messages}
             />
             <Separator />
             <InfoRow
-              label={messages.labelCreated}
+              label={detail.labelCreated}
               value={formatDate(subscription.createdAt)}
+              messages={messages}
             />
             <Separator />
             <InfoRow
-              label={messages.labelUpdated}
+              label={detail.labelUpdated}
               value={formatDate(subscription.updatedAt)}
+              messages={messages}
             />
           </CardContent>
         </Card>
@@ -653,10 +705,8 @@ export default function SubscriptionDetailPage() {
       {/* Mobile Pairing */}
       <Card>
         <CardHeader>
-          <CardTitle>{messages.mobilePairingTitle}</CardTitle>
-          <CardDescription>
-            {messages.mobilePairingDesc}
-          </CardDescription>
+          <CardTitle>{detail.mobilePairingTitle}</CardTitle>
+          <CardDescription>{detail.mobilePairingDesc}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
@@ -669,11 +719,9 @@ export default function SubscriptionDetailPage() {
                 ? `${subscription.id.slice(0, 28)}…`
                 : subscription.id}
             </span>
-            <CopyButton text={subscription.id} />
+            <CopyButton text={subscription.id} messages={messages} />
           </div>
-          <p className="text-sm text-muted-foreground">
-            {messages.scanQrPrompt}
-          </p>
+          <p className="text-sm text-muted-foreground">{detail.scanQrPrompt}</p>
           <Button
             variant="outline"
             size="sm"
@@ -681,7 +729,7 @@ export default function SubscriptionDetailPage() {
             onClick={() => setPairingOpen(true)}
           >
             <DeviceMobileIcon className="mr-1.5 h-4 w-4" />
-            {messages.pairNewDevice}
+            {detail.pairNewDevice}
           </Button>
         </CardContent>
       </Card>
@@ -698,9 +746,9 @@ export default function SubscriptionDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>{messages.provisioningSummaryTitle}</CardTitle>
+              <CardTitle>{detail.provisioningSummaryTitle}</CardTitle>
               <CardDescription>
-                {messages.provisioningSummaryDesc}
+                {detail.provisioningSummaryDesc}
               </CardDescription>
             </div>
             {provisioningSummary.failed > 0 && (
@@ -710,7 +758,9 @@ export default function SubscriptionDetailPage() {
                 disabled={busy === subscriptionId}
                 onClick={retryAllFailed}
               >
-                {busy === subscriptionId ? messages.retrying : messages.retryAllFailed}
+                {busy === subscriptionId
+                  ? detail.retrying
+                  : detail.retryAllFailed}
               </Button>
             )}
           </div>
@@ -721,25 +771,33 @@ export default function SubscriptionDetailPage() {
               <div className="text-2xl font-bold text-green-600">
                 {provisioningSummary.active}
               </div>
-              <div className="text-xs text-muted-foreground">{messages.statusActive}</div>
+              <div className="text-xs text-muted-foreground">
+                {detail.statusActive}
+              </div>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <div className="text-2xl font-bold text-yellow-600">
                 {provisioningSummary.pending}
               </div>
-              <div className="text-xs text-muted-foreground">{messages.statusPending}</div>
+              <div className="text-xs text-muted-foreground">
+                {detail.statusPending}
+              </div>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <div className="text-2xl font-bold text-red-600">
                 {provisioningSummary.failed}
               </div>
-              <div className="text-xs text-muted-foreground">{messages.statusFailed}</div>
+              <div className="text-xs text-muted-foreground">
+                {detail.statusFailed}
+              </div>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <div className="text-2xl font-bold text-gray-600">
                 {provisioningSummary.revoked}
               </div>
-              <div className="text-xs text-muted-foreground">{messages.statusRevoked}</div>
+              <div className="text-xs text-muted-foreground">
+                {detail.statusRevoked}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -772,17 +830,23 @@ export default function SubscriptionDetailPage() {
                             <span>{group.region.name}</span>
                           </>
                         ) : (
-                          <span>{messages.noRegion}</span>
+                          <span>{detail.noRegion}</span>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span>{messages.labelHost} {group.hostname || "—"}</span>
-                        <span>{messages.labelIp} {group.ipAddress || "—"}</span>
-                        <span>{messages.labelProtocols} {protocols.join(" + ")}</span>
+                        <span>
+                          {detail.labelHost} {group.hostname || "—"}
+                        </span>
+                        <span>
+                          {detail.labelIp} {group.ipAddress || "—"}
+                        </span>
+                        <span>
+                          {detail.labelProtocols} {protocols.join(" + ")}
+                        </span>
                       </div>
                     </div>
                   </CollapsibleTrigger>
-                  <SummaryBadges summary={group.summary} />
+                  <SummaryBadges summary={group.summary} messages={messages} />
                 </div>
               </CardHeader>
               <CollapsibleContent>
@@ -796,6 +860,7 @@ export default function SubscriptionDetailPage() {
                         busy={busy}
                         onAction={act}
                         onAudit={setAuditAccount}
+                        messages={messages}
                       />
                     ))}
                   </div>

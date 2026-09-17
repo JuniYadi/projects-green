@@ -2,6 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import type { Metadata } from "next"
 import Link from "next/link"
 
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
@@ -63,6 +64,7 @@ export default async function PortalWebhooksPage({
   const { lang } = await params
   const { organizationId } = await searchParams
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
 
   const auth = await withAuth({ ensureSignedIn: true })
   const platformRole = await getPlatformRoleForUser({
@@ -106,9 +108,11 @@ export default async function PortalWebhooksPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">WhatsApp Webhooks</h1>
+        <h1 className="text-2xl font-semibold">
+          {messages.pPortalWhatsappWebhooksPage2.pageTitle}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Manage outgoing webhook configurations across organizations.
+          {messages.pPortalWhatsappWebhooksPage2.pageDescription}
         </p>
       </header>
 
@@ -117,9 +121,11 @@ export default async function PortalWebhooksPage({
           <CardHeader className="pb-3">
             <div className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base">All Webhooks</CardTitle>
+                <CardTitle className="text-base">
+                  {messages.pPortalWhatsappWebhooksPage2.allWebhooksTitle}
+                </CardTitle>
                 <CardDescription>
-                  View and manage outgoing webhook URLs for WhatsApp events.
+                  {messages.pPortalWhatsappWebhooksPage2.allWebhooksDescription}
                 </CardDescription>
               </div>
               <form
@@ -133,9 +139,14 @@ export default async function PortalWebhooksPage({
                   name="organizationId"
                   defaultValue={selectedOrganizationId ?? "all"}
                   className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs"
-                  aria-label="Filter by organization"
+                  aria-label={
+                    messages.pPortalWhatsappWebhooksPage2
+                      .filterByOrganizationAriaLabel
+                  }
                 >
-                  <option value="all">All organizations</option>
+                  <option value="all">
+                    {messages.pPortalWhatsappWebhooksPage2.allOrganizations}
+                  </option>
                   {organizationOptions.map((org) => (
                     <option key={org.id} value={org.id}>
                       {org.name}
@@ -143,7 +154,7 @@ export default async function PortalWebhooksPage({
                   ))}
                 </select>
                 <Button type="submit" size="sm" variant="outline">
-                  Filter
+                  {messages.pPortalWhatsappWebhooksPage2.filterAction}
                 </Button>
               </form>
             </div>
@@ -151,19 +162,37 @@ export default async function PortalWebhooksPage({
           <CardContent>
             {webhooks.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No webhooks configured yet.
+                {messages.pPortalWhatsappWebhooksPage2.emptyState}
               </p>
             ) : (
               <div className="overflow-x-auto rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Organization</TableHead>
-                      <TableHead>Phone Number</TableHead>
-                      <TableHead>Webhook URL</TableHead>
-                      <TableHead>Auth</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead>
+                        {
+                          messages.pPortalWhatsappWebhooksPage2
+                            .organizationColumn
+                        }
+                      </TableHead>
+                      <TableHead>
+                        {
+                          messages.pPortalWhatsappWebhooksPage2
+                            .phoneNumberColumn
+                        }
+                      </TableHead>
+                      <TableHead>
+                        {messages.pPortalWhatsappWebhooksPage2.webhookUrlColumn}
+                      </TableHead>
+                      <TableHead>
+                        {messages.pPortalWhatsappWebhooksPage2.authColumn}
+                      </TableHead>
+                      <TableHead>
+                        {messages.pPortalWhatsappWebhooksPage2.statusColumn}
+                      </TableHead>
+                      <TableHead>
+                        {messages.pPortalWhatsappWebhooksPage2.createdColumn}
+                      </TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -189,7 +218,11 @@ export default async function PortalWebhooksPage({
                         </TableCell>
                         <TableCell>
                           <Badge variant={wh.active ? "success" : "secondary"}>
-                            {wh.active ? "Active" : "Inactive"}
+                            {wh.active
+                              ? messages.pPortalWhatsappWebhooksPage2
+                                  .statusActive
+                              : messages.pPortalWhatsappWebhooksPage2
+                                  .statusInactive}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
@@ -198,7 +231,7 @@ export default async function PortalWebhooksPage({
                         <TableCell>
                           <Button variant="outline" size="sm" asChild>
                             <Link href={`/portal/whatsapp/webhooks/${wh.id}`}>
-                              Detail
+                              {messages.pPortalWhatsappWebhooksPage2.detail}
                             </Link>
                           </Button>
                         </TableCell>

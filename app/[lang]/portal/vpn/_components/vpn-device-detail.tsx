@@ -1,5 +1,7 @@
 "use client"
 
+import { useParams } from "next/navigation"
+
 import {
   Card,
   CardContent,
@@ -9,6 +11,9 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
 import type { AdminDeviceEntry } from "./vpn-devices-table"
 
 type Props = {
@@ -34,13 +39,20 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
 }
 
 export function VpnDeviceDetail({ device, onRevoke, onBack }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalVpnVpnDeviceDetail
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div>
             <CardTitle>{device.deviceName}</CardTitle>
-            <CardDescription>Device ID: {device.id}</CardDescription>
+            <CardDescription>
+              {t.deviceIdLabel.replace("{id}", device.id)}
+            </CardDescription>
           </div>
           <Badge variant={STATUS_VARIANT[device.status] ?? "outline"}>
             {device.status}
@@ -49,20 +61,20 @@ export function VpnDeviceDetail({ device, onRevoke, onBack }: Props) {
       </CardHeader>
       <CardContent>
         <div className="space-y-1">
-          <DetailRow label="Platform" value={device.platform} />
-          <DetailRow label="OS Version" value={device.osVersion} />
-          <DetailRow label="Paired Via" value={device.pairedVia} />
-          <DetailRow label="Paired At" value={device.pairedAt} />
-          <DetailRow label="Last Seen" value={device.lastSeenAt} />
-          <DetailRow label="Subscription" value={device.subscriptionId} />
+          <DetailRow label={t.platform} value={device.platform} />
+          <DetailRow label={t.osVersion} value={device.osVersion} />
+          <DetailRow label={t.pairedVia} value={device.pairedVia} />
+          <DetailRow label={t.pairedAt} value={device.pairedAt} />
+          <DetailRow label={t.lastSeen} value={device.lastSeenAt} />
+          <DetailRow label={t.subscription} value={device.subscriptionId} />
           <DetailRow
-            label="Organization"
+            label={t.organization}
             value={device.organizationName ?? device.organizationId}
           />
           {device.status === "REVOKED" && (
             <>
-              <DetailRow label="Revoked At" value={device.revokedAt} />
-              <DetailRow label="Revoked Reason" value={device.revokedReason} />
+              <DetailRow label={t.revokedAt} value={device.revokedAt} />
+              <DetailRow label={t.revokedReason} value={device.revokedReason} />
             </>
           )}
         </div>
@@ -74,10 +86,10 @@ export function VpnDeviceDetail({ device, onRevoke, onBack }: Props) {
               size="sm"
               onClick={() => onRevoke(device.id)}
             >
-              Revoke Device
+              {t.revokeDevice}
             </Button>
             <Button variant="outline" size="sm" onClick={onBack}>
-              Back to list
+              {t.backToList}
             </Button>
           </div>
         )}

@@ -1,4 +1,7 @@
+"use client"
+
 import { useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -6,6 +9,8 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { TrafficTrendItem } from "../../opensearch/opensearch-traffic.types"
 
 export interface TrafficHourlyChartProps {
@@ -21,6 +26,9 @@ export function TrafficHourlyChart({
   granularity,
   periodLabel,
 }: TrafficHourlyChartProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [metric, setMetric] = useState<ChartMetric>("visitors")
 
   const maxValue = useMemo(() => {
@@ -34,10 +42,13 @@ export function TrafficHourlyChart({
 
   const axisSubtitle =
     granularity === "daily"
-      ? "Distribusi per jam (00:00 - 23:00 UTC)"
+      ? messages.pDeployOperateTrafficHourlyChart.axisSubtitleDaily
       : granularity === "monthly"
-        ? "Distribusi per tanggal (1 - 31)"
-        : "Distribusi per bulan (Jan - Des)"
+        ? messages.pDeployOperateTrafficHourlyChart.axisSubtitleMonthly
+        : messages.pDeployOperateTrafficHourlyChart.axisSubtitleYearly
+
+  const dayAxisLabel = (day: string) =>
+    messages.pDeployOperateTrafficHourlyChart.dayAxisLabel.replace("{day}", day)
 
   return (
     <Card className="border-border bg-card">
@@ -46,12 +57,14 @@ export function TrafficHourlyChart({
           <div>
             <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
               {metric === "visitors"
-                ? "Estimasi Pengunjung"
-                : "Komposisi Permintaan"}
+                ? messages.pDeployOperateTrafficHourlyChart.visitorsTitle
+                : messages.pDeployOperateTrafficHourlyChart.requestsTitle}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
               {axisSubtitle} — {periodLabel}
-              {metric === "visitors" ? " (estimasi, bukan angka pasti)" : ""}
+              {metric === "visitors"
+                ? ` ${messages.pDeployOperateTrafficHourlyChart.estimateDisclaimer}`
+                : ""}
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
@@ -65,7 +78,7 @@ export function TrafficHourlyChart({
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Visitors
+                {messages.pDeployOperateTrafficHourlyChart.visitorsTab}
               </button>
               <button
                 type="button"
@@ -76,18 +89,22 @@ export function TrafficHourlyChart({
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Requests
+                {messages.pDeployOperateTrafficHourlyChart.requestsTab}
               </button>
             </div>
             {metric === "requests" && (
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
-                  <span>Human-like</span>
+                  <span>
+                    {messages.pDeployOperateTrafficHourlyChart.humanLikeLegend}
+                  </span>
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" />
-                  <span>Automated</span>
+                  <span>
+                    {messages.pDeployOperateTrafficHourlyChart.automatedLegend}
+                  </span>
                 </span>
               </div>
             )}
@@ -97,7 +114,7 @@ export function TrafficHourlyChart({
       <CardContent>
         {trend.length === 0 || trend.every((t) => t.requests === 0) ? (
           <div className="flex h-44 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/5 text-xs text-muted-foreground">
-            <p>Belum ada rekaman aktivitas kunjungan pada periode ini.</p>
+            <p>{messages.pDeployOperateTrafficHourlyChart.emptyState}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -125,22 +142,38 @@ export function TrafficHourlyChart({
                       <span className="font-semibold">{item.label}</span>
                       {metric === "visitors" ? (
                         <span>
-                          ~{item.visitors.toLocaleString("id-ID")} pengunjung
+                          {messages.pDeployOperateTrafficHourlyChart.tooltipVisitors.replace(
+                            "{count}",
+                            item.visitors.toLocaleString("id-ID")
+                          )}
                         </span>
                       ) : (
                         <>
                           <span>
-                            {item.requests.toLocaleString("id-ID")} permintaan
+                            {messages.pDeployOperateTrafficHourlyChart.tooltipRequests.replace(
+                              "{count}",
+                              item.requests.toLocaleString("id-ID")
+                            )}
                           </span>
                           <span>
-                            {item.humanLike.toLocaleString("id-ID")} human-like,{" "}
-                            {item.automated.toLocaleString("id-ID")} automated
+                            {messages.pDeployOperateTrafficHourlyChart.tooltipBreakdown
+                              .replace(
+                                "{humanLike}",
+                                item.humanLike.toLocaleString("id-ID")
+                              )
+                              .replace(
+                                "{automated}",
+                                item.automated.toLocaleString("id-ID")
+                              )}
                           </span>
                         </>
                       )}
                       {item.errors > 0 && (
                         <span className="text-destructive">
-                          {item.errors.toLocaleString("id-ID")} error
+                          {messages.pDeployOperateTrafficHourlyChart.tooltipErrors.replace(
+                            "{count}",
+                            item.errors.toLocaleString("id-ID")
+                          )}
                         </span>
                       )}
                     </div>
@@ -184,11 +217,11 @@ export function TrafficHourlyChart({
               ) : trend.length <= 31 ? (
                 // Monthly (31 days)
                 <>
-                  <span>Tgl 01</span>
-                  <span>Tgl 08</span>
-                  <span>Tgl 15</span>
-                  <span>Tgl 22</span>
-                  <span>Tgl {trend.length}</span>
+                  <span>{dayAxisLabel("01")}</span>
+                  <span>{dayAxisLabel("08")}</span>
+                  <span>{dayAxisLabel("15")}</span>
+                  <span>{dayAxisLabel("22")}</span>
+                  <span>{dayAxisLabel(String(trend.length))}</span>
                 </>
               ) : (
                 // Yearly (12 months)

@@ -1,6 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,13 +37,6 @@ type PaymentMethodOption = {
   label: string
 }
 
-const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
-  { value: "MANUAL_BANK", label: "Manual Bank Transfer" },
-  { value: "CASH", label: "Cash" },
-  { value: "CHEQUE", label: "Cheque" },
-  { value: "OTHER", label: "Other" },
-]
-
 export function MarkPaidDialog({
   invoiceId,
   invoiceNumber,
@@ -48,12 +44,23 @@ export function MarkPaidDialog({
   onOpenChange,
   onSuccess,
 }: MarkPaidDialogProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pInvoicesMarkPaidDialog
+
+  const paymentMethodOptions: PaymentMethodOption[] = [
+    { value: "MANUAL_BANK", label: t.methodManualBank },
+    { value: "CASH", label: t.methodCash },
+    { value: "CHEQUE", label: t.methodCheque },
+    { value: "OTHER", label: t.methodOther },
+  ]
+
   const [paymentMethod, setPaymentMethod] = useState<string>("MANUAL_BANK")
   const [referenceNumber, setReferenceNumber] = useState("")
   const [notes, setNotes] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const resetState = () => {
     setPaymentMethod("MANUAL_BANK")
     setReferenceNumber("")
@@ -84,9 +91,9 @@ export function MarkPaidDialog({
 
       if (!response.ok || !payload?.ok) {
         if (response.status === 409) {
-          setError("Invoice has already been marked as paid.")
+          setError(t.errorAlreadyPaid)
         } else {
-          setError(payload?.message ?? "Failed to mark invoice as paid.")
+          setError(payload?.message ?? t.errorFailedToMark)
         }
         setLoading(false)
         return
@@ -96,9 +103,7 @@ export function MarkPaidDialog({
       resetState()
       onSuccess()
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to mark invoice as paid."
-      )
+      setError(err instanceof Error ? err.message : t.errorUnableToMark)
     } finally {
       setLoading(false)
     }
@@ -115,10 +120,9 @@ export function MarkPaidDialog({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Mark as Paid</SheetTitle>
+          <SheetTitle>{t.sheetTitle}</SheetTitle>
           <SheetDescription>
-            Manually mark invoice {invoiceNumber} as paid and credit the
-            customer&apos;s balance.
+            {t.sheetDescription.replace("{invoiceNumber}", invoiceNumber)}
           </SheetDescription>
         </SheetHeader>
 
@@ -128,14 +132,14 @@ export function MarkPaidDialog({
               htmlFor="payment-method"
               className="text-xs font-medium text-muted-foreground"
             >
-              Payment Method
+              {t.paymentMethodLabel}
             </label>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
               <SelectTrigger id="payment-method">
-                <SelectValue placeholder="Select payment method" />
+                <SelectValue placeholder={t.selectPaymentMethodPlaceholder} />
               </SelectTrigger>
               <SelectContent>
-                {PAYMENT_METHOD_OPTIONS.map((option) => (
+                {paymentMethodOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -149,13 +153,13 @@ export function MarkPaidDialog({
               htmlFor="reference-number"
               className="text-xs font-medium text-muted-foreground"
             >
-              Reference Number (optional)
+              {t.referenceNumberLabel}
             </label>
             <Input
               id="reference-number"
               value={referenceNumber}
               onChange={(e) => setReferenceNumber(e.target.value)}
-              placeholder="e.g. cheque number, transaction ID"
+              placeholder={t.referenceNumberPlaceholder}
             />
           </div>
 
@@ -164,13 +168,13 @@ export function MarkPaidDialog({
               htmlFor="notes"
               className="text-xs font-medium text-muted-foreground"
             >
-              Notes (optional)
+              {t.notesLabel}
             </label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any additional notes about this payment"
+              placeholder={t.notesPlaceholder}
               className="min-h-[80px]"
             />
           </div>
@@ -185,14 +189,14 @@ export function MarkPaidDialog({
             onClick={() => handleOpenChange(false)}
             disabled={loading}
           >
-            Cancel
+            {t.cancelButton}
           </Button>
           <Button
             type="button"
             onClick={() => void handleSubmit()}
             disabled={loading}
           >
-            {loading ? "Processing..." : "Confirm Mark as Paid"}
+            {loading ? t.processingButton : t.confirmButton}
           </Button>
         </SheetFooter>
       </SheetContent>

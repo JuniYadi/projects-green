@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table"
 import { eden } from "@/lib/eden"
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 
 import { DataTable } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,9 @@ import {
 } from "@/components/ui/select"
 import { PlusIcon, PencilIcon, TrashIcon } from "@phosphor-icons/react"
 import { toast } from "sonner"
+
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type RuntimeMapping = {
   id: string
@@ -73,13 +77,16 @@ function MappingFormDialog({
   initialData,
   onSubmit,
   isEditing,
+  messages,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialData?: MappingFormData
   onSubmit: (data: MappingFormData) => Promise<void>
   isEditing: boolean
+  messages: ReturnType<typeof getMessages>
 }) {
+  const t = messages.pPortalDetectorMatrixTable
   const [form, setForm] = useState<MappingFormData>(initialData ?? EMPTY_FORM)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -93,7 +100,7 @@ function MappingFormDialog({
       await onSubmit(form)
       onOpenChange(false)
     } catch {
-      toast.error("Failed to save mapping")
+      toast.error(t.saveFailed)
     } finally {
       setIsSubmitting(false)
     }
@@ -103,32 +110,28 @@ function MappingFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Edit Runtime Mapping" : "Create Runtime Mapping"}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? t.editTitle : t.createTitle}</DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? "Update the runtime mapping configuration."
-              : "Define a new framework-to-runtime mapping."}
+            {isEditing ? t.editDescription : t.createDescription}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="frameworkId">Framework ID</Label>
+              <Label htmlFor="frameworkId">{t.frameworkIdLabel}</Label>
               <Input
                 id="frameworkId"
                 value={form.frameworkId}
                 onChange={(e) =>
                   setForm({ ...form, frameworkId: e.target.value })
                 }
-                placeholder="e.g., laravel, nextjs"
+                placeholder={t.frameworkIdPlaceholder}
                 required
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="frameworkVersion">
-                Framework Version (blank = wildcard)
+                {t.frameworkVersionLabel}
               </Label>
               <Input
                 id="frameworkVersion"
@@ -136,13 +139,13 @@ function MappingFormDialog({
                 onChange={(e) =>
                   setForm({ ...form, frameworkVersion: e.target.value })
                 }
-                placeholder="e.g., 10, 14"
+                placeholder={t.frameworkVersionPlaceholder}
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="runtimeId">Runtime</Label>
+              <Label htmlFor="runtimeId">{t.runtimeLabel}</Label>
               <Select
                 value={form.runtimeId}
                 onValueChange={(value) =>
@@ -162,32 +165,34 @@ function MappingFormDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="runtimeVersion">Runtime Version</Label>
+              <Label htmlFor="runtimeVersion">{t.runtimeVersionLabel}</Label>
               <Input
                 id="runtimeVersion"
                 value={form.runtimeVersion}
                 onChange={(e) =>
                   setForm({ ...form, runtimeVersion: e.target.value })
                 }
-                placeholder="e.g., 8.2, 20"
+                placeholder={t.runtimeVersionPlaceholder}
                 required
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="buildVersion">Build Version (optional)</Label>
+              <Label htmlFor="buildVersion">
+                {t.buildVersionOptionalLabel}
+              </Label>
               <Input
                 id="buildVersion"
                 value={form.buildVersion}
                 onChange={(e) =>
                   setForm({ ...form, buildVersion: e.target.value })
                 }
-                placeholder="e.g., node-20"
+                placeholder={t.buildVersionPlaceholder}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
+              <Label htmlFor="priority">{t.priorityLabel}</Label>
               <Input
                 id="priority"
                 type="number"
@@ -207,14 +212,14 @@ function MappingFormDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting
-                ? "Saving..."
+                ? t.saving
                 : isEditing
-                  ? "Update Mapping"
-                  : "Create Mapping"}
+                  ? t.updateMapping
+                  : t.createMapping}
             </Button>
           </DialogFooter>
         </form>
@@ -224,6 +229,11 @@ function MappingFormDialog({
 }
 
 export function MatrixTable() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalDetectorMatrixTable
+
   const [mappings, setMappings] = useState<RuntimeMapping[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -250,13 +260,13 @@ export function MatrixTable() {
           $fetch: { signal: abortController.signal },
         })
         if (!data?.ok) {
-          setError(data?.message || "Failed to load mappings")
+          setError(data?.message || t.loadFailed)
           return
         }
         setMappings(data.data)
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return
-        setError(err instanceof Error ? err.message : "An error occurred")
+        setError(err instanceof Error ? err.message : t.genericError)
       } finally {
         setIsLoading(false)
       }
@@ -264,7 +274,7 @@ export function MatrixTable() {
 
     void fetchMappings()
     return () => abortController.abort()
-  }, [includeInactive, refreshKey])
+  }, [includeInactive, refreshKey, t.loadFailed, t.genericError])
 
   const handleCreate = async (formData: MappingFormData) => {
     const { data } = await eden.api.admin.detector.mappings.post({
@@ -275,8 +285,8 @@ export function MatrixTable() {
       buildVersion: formData.buildVersion || undefined,
       priority: formData.priority,
     })
-    if (!data?.ok) throw new Error(data?.message || "Failed to create mapping")
-    toast.success("Mapping created successfully")
+    if (!data?.ok) throw new Error(data?.message || t.createFailed)
+    toast.success(t.createSuccess)
     refresh()
   }
 
@@ -292,8 +302,8 @@ export function MatrixTable() {
       buildVersion: formData.buildVersion || null,
       priority: formData.priority,
     })
-    if (!data?.ok) throw new Error(data?.message || "Failed to update mapping")
-    toast.success("Mapping updated successfully")
+    if (!data?.ok) throw new Error(data?.message || t.updateFailed)
+    toast.success(t.updateSuccess)
     refresh()
   }
 
@@ -302,36 +312,37 @@ export function MatrixTable() {
       isActive: !mapping.isActive,
     })
     if (!data?.ok) {
-      toast.error(data?.message || "Failed to toggle mapping status")
+      toast.error(data?.message || t.toggleFailed)
       return
     }
-    toast.success(
-      `Mapping ${mapping.isActive ? "deactivated" : "activated"} successfully`
-    )
+    toast.success(mapping.isActive ? t.deactivateSuccess : t.activateSuccess)
     refresh()
   }
 
   const handleDelete = async (mapping: RuntimeMapping) => {
     if (
       !window.confirm(
-        `Delete mapping ${mapping.frameworkId} -> ${mapping.runtimeId} ${mapping.runtimeVersion}?`
+        t.deleteConfirm
+          .replace("{framework}", mapping.frameworkId)
+          .replace("{runtime}", mapping.runtimeId)
+          .replace("{version}", mapping.runtimeVersion)
       )
     )
       return
 
     const { data } = await eden.api.admin.detector.mappings[mapping.id].delete()
     if (!data?.ok) {
-      toast.error(data?.message || "Failed to delete mapping")
+      toast.error(data?.message || t.deleteFailed)
       return
     }
-    toast.success("Mapping deleted successfully")
+    toast.success(t.deleteSuccess)
     refresh()
   }
 
   const columns: ColumnDef<RuntimeMapping>[] = [
     {
       accessorKey: "frameworkId",
-      header: "Framework",
+      header: t.frameworkHeader,
       cell: ({ row }) => (
         <div className="font-medium">
           {row.original.frameworkId}
@@ -342,7 +353,7 @@ export function MatrixTable() {
           )}
           {!row.original.frameworkVersion && (
             <span className="ml-1 text-xs text-muted-foreground">
-              (all versions)
+              {t.allVersions}
             </span>
           )}
         </div>
@@ -350,7 +361,7 @@ export function MatrixTable() {
     },
     {
       accessorKey: "runtimeId",
-      header: "Runtime",
+      header: t.runtimeLabel,
       cell: ({ row }) => (
         <div>
           <Badge variant="outline">{row.original.runtimeId}</Badge>
@@ -360,7 +371,7 @@ export function MatrixTable() {
     },
     {
       accessorKey: "buildVersion",
-      header: "Build Version",
+      header: t.buildVersionHeader,
       cell: ({ row }) => (
         <div className="text-muted-foreground">
           {row.original.buildVersion ?? "—"}
@@ -369,25 +380,26 @@ export function MatrixTable() {
     },
     {
       accessorKey: "priority",
-      header: "Priority",
+      header: t.priorityLabel,
     },
     {
       accessorKey: "isActive",
-      header: "Status",
+      header: t.statusHeader,
       cell: ({ row }) => (
         <Badge variant={row.original.isActive ? "default" : "secondary"}>
-          {row.original.isActive ? "Active" : "Inactive"}
+          {row.original.isActive ? t.active : t.inactive}
         </Badge>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t.actionsHeader,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
+            aria-label={t.editMapping}
             onClick={() => setEditingMapping(row.original)}
           >
             <PencilIcon className="h-4 w-4" />
@@ -397,11 +409,12 @@ export function MatrixTable() {
             size="sm"
             onClick={() => handleToggleActive(row.original)}
           >
-            {row.original.isActive ? "Deactivate" : "Activate"}
+            {row.original.isActive ? t.deactivate : t.activate}
           </Button>
           <Button
             variant="ghost"
             size="sm"
+            aria-label={t.deleteMapping}
             onClick={() => handleDelete(row.original)}
           >
             <TrashIcon className="h-4 w-4 text-destructive" />
@@ -434,11 +447,11 @@ export function MatrixTable() {
           size="sm"
           onClick={() => setIncludeInactive(!includeInactive)}
         >
-          {includeInactive ? "Hide Inactive" : "Show Inactive"}
+          {includeInactive ? t.hideInactive : t.showInactive}
         </Button>
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <PlusIcon className="mr-2 h-4 w-4" />
-          Add Mapping
+          {t.addMapping}
         </Button>
       </div>
       <DataTable
@@ -446,8 +459,8 @@ export function MatrixTable() {
         columns={columns}
         data={mappings}
         searchableColumns={["frameworkId", "runtimeId"]}
-        searchPlaceholder="Search mappings..."
-        emptyMessage="No runtime mappings found."
+        searchPlaceholder={t.searchPlaceholder}
+        emptyMessage={t.emptyMessage}
       />
       <MappingFormDialog
         key={`create-${showCreate}`}
@@ -455,6 +468,7 @@ export function MatrixTable() {
         onOpenChange={setShowCreate}
         onSubmit={handleCreate}
         isEditing={false}
+        messages={messages}
       />
       {editingMapping && (
         <MappingFormDialog
@@ -473,6 +487,7 @@ export function MatrixTable() {
           }}
           onSubmit={handleUpdate}
           isEditing
+          messages={messages}
         />
       )}
     </div>

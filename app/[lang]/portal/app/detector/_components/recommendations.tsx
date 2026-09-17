@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
-
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -29,30 +31,32 @@ type RuleRecommendation = {
 }
 
 export function Recommendations() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalDetectorRecommendations
+
   const [recommendations, setRecommendations] = useState<RuleRecommendation[]>(
     []
   )
   const [isGenerating, setIsGenerating] = useState(false)
   const [hasGenerated, setHasGenerated] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
-
   const handleGenerate = async () => {
     setIsGenerating(true)
     try {
       const { data } = await eden.api.admin.detector.recommend.post()
       if (!data?.ok) {
-        toast.error(data?.message || "Failed to generate recommendations")
+        toast.error(data?.message || t.errorGenerate)
         return
       }
       setRecommendations(data.data)
       setHasGenerated(true)
       if (data.data.length === 0) {
-        toast.info(
-          "No new recommendations found. The system needs more inspection data."
-        )
+        toast.info(t.noNewRecommendations)
       }
     } catch {
-      toast.error("Failed to generate recommendations")
+      toast.error(t.errorGenerate)
     } finally {
       setIsGenerating(false)
     }
@@ -73,13 +77,13 @@ export function Recommendations() {
         priority: rec.suggestedPriority,
       })
       if (res?.ok) {
-        toast.success(`Rule "${rec.suggestedName}" created successfully`)
+        toast.success(t.ruleCreatedSuccess.replace("{name}", rec.suggestedName))
         setRecommendations((prev) => prev.filter((r) => r.id !== rec.id))
       } else {
-        toast.error(res?.message || "Failed to create rule")
+        toast.error(res?.message || t.errorCreateRule)
       }
     } catch {
-      toast.error("Failed to create rule from recommendation")
+      toast.error(t.errorCreateRuleFromRec)
     } finally {
       setApprovingId(null)
     }
@@ -88,16 +92,14 @@ export function Recommendations() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          AI analyzes recent inspection logs to suggest new detection rules.
-        </p>
+        <p className="text-sm text-muted-foreground">{t.description}</p>
         <Button onClick={handleGenerate} disabled={isGenerating} size="sm">
           <LightningIcon className="mr-2 h-4 w-4" />
           {isGenerating
-            ? "Analyzing..."
+            ? t.analyzingButton
             : hasGenerated
-              ? "Re-analyze"
-              : "Analyze Logs"}
+              ? t.reanalyzeButton
+              : t.analyzeLogsButton}
         </Button>
       </div>
 
@@ -112,10 +114,9 @@ export function Recommendations() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <CheckIcon className="mb-4 h-12 w-12 text-emerald-500" />
-            <p className="text-lg font-medium">All caught up!</p>
+            <p className="text-lg font-medium">{t.allCaughtUpTitle}</p>
             <p className="text-sm text-muted-foreground">
-              No new rule recommendations at this time. The AI needs more
-              diverse inspection data to make suggestions.
+              {t.allCaughtUpDescription}
             </p>
           </CardContent>
         </Card>
@@ -135,37 +136,41 @@ export function Recommendations() {
                 disabled={approvingId === rec.id}
               >
                 <CheckIcon className="mr-2 h-4 w-4" />
-                {approvingId === rec.id ? "Approving..." : "Approve"}
+                {approvingId === rec.id ? t.approvingButton : t.approveButton}
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div>
-                <p className="text-sm font-medium">AI Reasoning</p>
+                <p className="text-sm font-medium">{t.aiReasoningLabel}</p>
                 <p className="text-sm text-muted-foreground">{rec.reasoning}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">
-                  Confidence: {(rec.suggestedConfidenceWeight * 100).toFixed(0)}
-                  %
+                  {t.confidenceLabel}:{" "}
+                  {(rec.suggestedConfidenceWeight * 100).toFixed(0)}%
                 </Badge>
                 <Badge variant="outline">
-                  Priority: {rec.suggestedPriority}
+                  {t.priorityLabel}: {rec.suggestedPriority}
                 </Badge>
                 <Badge variant="outline">
-                  Based on {rec.basedOnLogIds.length} log
-                  {rec.basedOnLogIds.length !== 1 ? "s" : ""}
+                  {t.basedOnLogsLabel.replace(
+                    "{count}",
+                    String(rec.basedOnLogIds.length)
+                  )}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm font-medium">Suggested Pattern</p>
+                <p className="text-sm font-medium">{t.suggestedPatternLabel}</p>
                 <pre className="mt-1 overflow-x-auto rounded-md bg-muted p-2 text-xs">
                   {JSON.stringify(rec.suggestedPatternJson, null, 2)}
                 </pre>
               </div>
               <div>
-                <p className="text-sm font-medium">Suggested Implications</p>
+                <p className="text-sm font-medium">
+                  {t.suggestedImplicationsLabel}
+                </p>
                 <pre className="mt-1 overflow-x-auto rounded-md bg-muted p-2 text-xs">
                   {JSON.stringify(rec.suggestedImplicationsJson, null, 2)}
                 </pre>

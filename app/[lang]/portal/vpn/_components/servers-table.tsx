@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 
 import {
   Table,
@@ -32,6 +33,9 @@ import {
   MagnifyingGlassIcon,
   EyeIcon,
 } from "@phosphor-icons/react"
+
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { ServerForm } from "./server-form"
 import { ConnectionTestModal } from "./connection-test-modal"
@@ -70,6 +74,10 @@ function ProtocolCell({
 }
 
 export function ServersTable() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [servers, setServers] = useState<VpnServerItem[]>([])
   const [regions, setRegions] = useState<VpnRegionItem[]>([])
   const [sshKeys, setSshKeys] = useState<VpnSshKeyItem[]>([])
@@ -152,7 +160,11 @@ export function ServersTable() {
   }
 
   const remove = async (server: VpnServerItem) => {
-    if (!window.confirm(`Delete server "${server.name}"?`)) return
+    const confirmText = messages.pPortalVpnServersTable.confirmDelete.replace(
+      "{name}",
+      server.name
+    )
+    if (!window.confirm(confirmText)) return
     try {
       await deleteVpnServer(server.id)
       await loadServers(regionFilter, searchDebounced)
@@ -188,18 +200,22 @@ export function ServersTable() {
             onKeyDown={(e) => {
               if (e.key === "Escape") setSearchFilter("")
             }}
-            placeholder="Search hostname or IP..."
+            placeholder={messages.pPortalVpnServersTable.searchPlaceholder}
             className="pl-8"
-            aria-label="Search servers by hostname or IP"
+            aria-label={messages.pPortalVpnServersTable.searchAriaLabel}
           />
         </div>
         <div className="flex items-center gap-2">
           <Select value={regionFilter} onValueChange={setRegionFilter}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Region" />
+              <SelectValue
+                placeholder={messages.pPortalVpnServersTable.region}
+              />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All regions</SelectItem>
+              <SelectItem value="all">
+                {messages.pPortalVpnServersTable.allRegions}
+              </SelectItem>
               {regions.map((region) => (
                 <SelectItem key={region.id} value={region.id}>
                   <CountryFlag
@@ -213,7 +229,7 @@ export function ServersTable() {
           </Select>
           <Button onClick={openCreate} size="sm">
             <PlusIcon className="mr-2 h-4 w-4" />
-            Add Server
+            {messages.pPortalVpnServersTable.addServer}
           </Button>
         </div>
       </div>
@@ -229,18 +245,32 @@ export function ServersTable() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[140px]">Name</TableHead>
-                <TableHead className="min-w-[140px]">Region</TableHead>
-                <TableHead className="min-w-[140px]">Host</TableHead>
+                <TableHead className="min-w-[140px]">
+                  {messages.pPortalVpnServersTable.name}
+                </TableHead>
+                <TableHead className="min-w-[140px]">
+                  {messages.pPortalVpnServersTable.region}
+                </TableHead>
+                <TableHead className="min-w-[140px]">
+                  {messages.pPortalVpnServersTable.host}
+                </TableHead>
                 <TableHead className="min-w-[120px]">IP</TableHead>
                 <TableHead className="min-w-[80px]">OVPN</TableHead>
-                <TableHead className="min-w-[80px]">WG</TableHead>
-                <TableHead className="min-w-[80px]">Proxy</TableHead>
-                <TableHead className="min-w-[80px]">Health</TableHead>
-                <TableHead className="min-w-[90px]">Active</TableHead>
+                <TableHead className="min-w-[80px]">
+                  {messages.pPortalVpnServersTable.wireGuard}
+                </TableHead>
+                <TableHead className="min-w-[80px]">
+                  {messages.pPortalVpnServersTable.proxy}
+                </TableHead>
+                <TableHead className="min-w-[80px]">
+                  {messages.pPortalVpnServersTable.health}
+                </TableHead>
+                <TableHead className="min-w-[90px]">
+                  {messages.pPortalVpnServersTable.active}
+                </TableHead>
                 <TableHead className="min-w-[60px] text-center">📍</TableHead>
                 <TableHead className="min-w-[180px] text-right">
-                  Actions
+                  {messages.pPortalVpnServersTable.actions}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -257,7 +287,7 @@ export function ServersTable() {
                     colSpan={11}
                     className="text-center text-sm text-muted-foreground"
                   >
-                    No servers yet.
+                    {messages.pPortalVpnServersTable.noServersYet}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -322,7 +352,9 @@ export function ServersTable() {
                       <Badge
                         variant={server.isActive ? "default" : "secondary"}
                       >
-                        {server.isActive ? "Active" : "Inactive"}
+                        {server.isActive
+                          ? messages.pPortalVpnServersTable.active
+                          : messages.pPortalVpnServersTable.inactive}
                       </Badge>
                     </TableCell>
                     <TableCell
@@ -340,7 +372,10 @@ export function ServersTable() {
                         <Button variant="ghost" size="icon" asChild>
                           <Link
                             href={`/portal/vpn/servers/${server.id}`}
-                            aria-label={`View details for ${server.name}`}
+                            aria-label={messages.pPortalVpnServersTable.viewDetailsAria.replace(
+                              "{name}",
+                              server.name
+                            )}
                           >
                             <EyeIcon className="h-4 w-4" />
                           </Link>
@@ -350,7 +385,10 @@ export function ServersTable() {
                           size="icon"
                           onClick={() => testConnection(server)}
                           disabled={testingId === server.id}
-                          aria-label={`Test connection to ${server.name}`}
+                          aria-label={messages.pPortalVpnServersTable.testConnectionAria.replace(
+                            "{name}",
+                            server.name
+                          )}
                         >
                           <PlugIcon className="h-4 w-4" />
                         </Button>
@@ -359,7 +397,10 @@ export function ServersTable() {
                             variant="ghost"
                             size="icon"
                             onClick={() => openDuplicate(server)}
-                            aria-label={`Duplicate ${server.name}`}
+                            aria-label={messages.pPortalVpnServersTable.duplicateAria.replace(
+                              "{name}",
+                              server.name
+                            )}
                           >
                             <CopyIcon className="h-4 w-4" />
                           </Button>
@@ -368,7 +409,10 @@ export function ServersTable() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openEdit(server)}
-                          aria-label={`Edit ${server.name}`}
+                          aria-label={messages.pPortalVpnServersTable.editAria.replace(
+                            "{name}",
+                            server.name
+                          )}
                         >
                           <PencilSimpleIcon className="h-4 w-4" />
                         </Button>
@@ -376,7 +420,10 @@ export function ServersTable() {
                           variant="ghost"
                           size="icon"
                           onClick={() => remove(server)}
-                          aria-label={`Delete ${server.name}`}
+                          aria-label={messages.pPortalVpnServersTable.deleteAria.replace(
+                            "{name}",
+                            server.name
+                          )}
                         >
                           <TrashIcon className="h-4 w-4" />
                         </Button>

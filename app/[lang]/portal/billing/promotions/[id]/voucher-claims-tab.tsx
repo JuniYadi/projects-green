@@ -1,5 +1,8 @@
 "use client"
 
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useState } from "react"
 import {
   Card,
@@ -30,6 +33,11 @@ export function VoucherClaimsTab({
   voucherId: string
   claims: VoucherClaimDTO[]
 }) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingPromotionsVoucherClaimsTab
+
   const [search, setSearch] = useState("")
   const [offset, setOffset] = useState(0)
 
@@ -54,16 +62,14 @@ export function VoucherClaimsTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Claim History</CardTitle>
-        <CardDescription>
-          Everyone who has redeemed this voucher.
-        </CardDescription>
+        <CardTitle>{t.cardTitle}</CardTitle>
+        <CardDescription>{t.cardDescription}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="relative">
           <Input
             type="search"
-            placeholder="Filter by user or org..."
+            placeholder={t.searchPlaceholder}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value)
@@ -78,11 +84,11 @@ export function VoucherClaimsTab({
             <TableHeader>
               <TableRow>
                 <TableHead>#</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Organization</TableHead>
-                <TableHead>Discount</TableHead>
-                <TableHead>Adjustment ID</TableHead>
-                <TableHead>Claimed At</TableHead>
+                <TableHead>{t.userColumn}</TableHead>
+                <TableHead>{t.organizationColumn}</TableHead>
+                <TableHead>{t.discountColumn}</TableHead>
+                <TableHead>{t.adjustmentIdColumn}</TableHead>
+                <TableHead>{t.claimedAtColumn}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,7 +98,7 @@ export function VoucherClaimsTab({
                     colSpan={6}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    No claims found.
+                    {t.noClaimsFound}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -137,7 +143,7 @@ export function VoucherClaimsTab({
         {filtered.length > CLAIMS_PAGE_SIZE &&
           offset + CLAIMS_PAGE_SIZE < filtered.length && (
             <Button variant="outline" size="sm" onClick={loadMore}>
-              Load more
+              {t.loadMore}
             </Button>
           )}
       </CardContent>

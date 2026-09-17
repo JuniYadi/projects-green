@@ -136,7 +136,9 @@ export function TabScaling({
   isComingSoon,
 }: TabScalingProps) {
   const activeLocale = resolveLocaleOrDefault(locale)
-  const messages = getMessages(activeLocale).console.deploy.operateScaling
+  const allMessages = getMessages(activeLocale)
+  const messages = allMessages.console.deploy.operateScaling
+  const scalingText = allMessages.pDeployOperateTabScaling
   const [cpuLimit, setCpuLimit] = useState(initialCpuLimit ?? "1000m")
   const [memRequest, setMemRequest] = useState("256Mi")
   const [memLimit, setMemLimit] = useState(initialMemLimit ?? "512Mi")
@@ -435,10 +437,9 @@ export function TabScaling({
                     className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary transition-all hover:bg-muted/80"
                   />
                   <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
-                    <span>128Mi</span>
-                    <span>256Mi</span>
-                    <span>512Mi</span>
-                    <span>1024Mi</span>
+                    {memRequestOptions.map((option) => (
+                      <span key={option}>{option}</span>
+                    ))}
                   </div>
                 </div>
 
@@ -464,11 +465,9 @@ export function TabScaling({
                     className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary transition-all hover:bg-muted/80"
                   />
                   <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
-                    <span>256Mi</span>
-                    <span>512Mi</span>
-                    <span>1024Mi</span>
-                    <span>2048Mi</span>
-                    <span>4096Mi</span>
+                    {memLimitOptions.map((option) => (
+                      <span key={option}>{option}</span>
+                    ))}
                   </div>
                   <span className="block text-[10px] leading-tight text-muted-foreground/80">
                     {messages.adjustMemLimitOom}
@@ -574,7 +573,9 @@ export function TabScaling({
                         {messages.totalMemory}
                       </span>
                       <span className="font-mono text-xs font-semibold text-foreground">
-                        {totalMemoryMiB} MiB / {maxMemoryMiB} MiB
+                        {scalingText.totalMemoryFormat
+                          .replace("{used}", String(totalMemoryMiB))
+                          .replace("{max}", String(maxMemoryMiB))}
                       </span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -825,9 +826,12 @@ export function TabScaling({
                     <div className="flex gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-[11px] leading-normal text-blue-300">
                       <ShieldCheck size={16} className="mt-0.5 shrink-0" />
                       <p>
-                        <strong>Auto:</strong> {messages.vpaExplainAuto}{" "}
-                        <strong>Initial:</strong> {messages.vpaExplainInitial}{" "}
-                        <strong>Off:</strong> {messages.vpaExplainOff}
+                        <strong>{scalingText.vpaModeAutoLabel}</strong>{" "}
+                        {messages.vpaExplainAuto}{" "}
+                        <strong>{scalingText.vpaModeInitialLabel}</strong>{" "}
+                        {messages.vpaExplainInitial}{" "}
+                        <strong>{scalingText.vpaModeOffLabel}</strong>{" "}
+                        {messages.vpaExplainOff}
                       </p>
                     </div>
                   </div>

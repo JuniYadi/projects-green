@@ -86,7 +86,9 @@ export function QuickTopUpDialog({
   onSuccess,
 }: QuickTopUpDialogProps) {
   const locale = resolveLocaleOrDefault(lang)
-  const billingMessages = getMessages(locale).console.billing
+  const appMessages = getMessages(locale)
+  const billingMessages = appMessages.console.billing
+  const dialogMessages = appMessages.pBillingQuickTopUpDialog
   const t = messages ?? billingMessages.expressTopUp
   const topupMessages = billingMessages.topUpForm
 
@@ -394,7 +396,10 @@ export function QuickTopUpDialog({
                 </label>
                 {suggestedAmount && suggestedAmount > 0 ? (
                   <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                    Shortage: +{formatCurrency(suggestedAmount)}
+                    {dialogMessages.shortageAmount.replace(
+                      "{amount}",
+                      formatCurrency(suggestedAmount)
+                    )}
                   </span>
                 ) : null}
               </div>
@@ -417,7 +422,7 @@ export function QuickTopUpDialog({
                       setCustomAmount("")
                     }}
                   >
-                    <span>Exact Shortage</span>
+                    <span>{dialogMessages.exactShortage}</span>
                     <span className="font-semibold">
                       +{formatCurrency(suggestedAmount)}
                     </span>
@@ -651,7 +656,7 @@ export function QuickTopUpDialog({
                         variant="ghost"
                         className="size-8"
                         onClick={() => handleCopy(vaNumber)}
-                        title="Copy VA Number"
+                        title={dialogMessages.copyVaNumber}
                       >
                         {copied ? (
                           <CheckCircle className="size-4 text-emerald-600" />
@@ -700,19 +705,22 @@ export function QuickTopUpDialog({
                           {targetBank.bankName}
                         </span>
                         <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                          Manual Transfer
+                          {dialogMessages.manualTransferBadge}
                         </span>
                       </div>
                       <div className="mt-2.5 flex items-center justify-between">
                         <div>
                           <span className="text-[10px] text-muted-foreground">
-                            No. Rekening
+                            {dialogMessages.accountNumberLabel}
                           </span>
                           <p className="font-mono text-base font-bold tracking-wider text-foreground">
                             {targetBank.accountNumber}
                           </p>
                           <p className="text-[11px] text-muted-foreground">
-                            a.n. {targetBank.accountName}
+                            {dialogMessages.accountHolder.replace(
+                              "{name}",
+                              targetBank.accountName
+                            )}
                           </p>
                         </div>
                         <Button
@@ -720,7 +728,7 @@ export function QuickTopUpDialog({
                           variant="ghost"
                           className="size-8"
                           onClick={() => handleCopy(targetBank.accountNumber)}
-                          title="Copy Account Number"
+                          title={dialogMessages.copyAccountNumber}
                         >
                           {copied ? (
                             <CheckCircle className="size-4 text-emerald-600" />
@@ -739,14 +747,15 @@ export function QuickTopUpDialog({
                 })()}
 
                 <div className="rounded-md bg-amber-500/10 p-2.5 text-left text-[11px] text-amber-900 dark:text-amber-300">
-                  <p className="font-medium">Instruksi Pembayaran:</p>
+                  <p className="font-medium">
+                    {dialogMessages.paymentInstructionsTitle}
+                  </p>
                   <p className="mt-0.5 text-muted-foreground">
-                    Transfer tepat sebesar{" "}
+                    {dialogMessages.transferInstructionBefore}{" "}
                     <strong className="text-foreground">
                       {formatCurrency(amount)}
                     </strong>{" "}
-                    ke rekening di atas, lalu konfirmasi pembayaran atau tunggu
-                    verifikasi admin.
+                    {dialogMessages.transferInstructionAfter}
                   </p>
                 </div>
 
@@ -763,7 +772,7 @@ export function QuickTopUpDialog({
                     })}
                     target="_blank"
                   >
-                    <span>Konfirmasi Pembayaran Transfer</span>
+                    <span>{dialogMessages.confirmTransferPayment}</span>
                     <ArrowsOutSimple className="ml-1.5 size-3.5" />
                   </Link>
                 </Button>
@@ -783,7 +792,7 @@ export function QuickTopUpDialog({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <span>Lanjutkan ke PayPal</span>
+                    <span>{dialogMessages.continueToPaypal}</span>
                     <ArrowsOutSimple className="ml-1.5 size-3.5" />
                   </a>
                 </Button>
@@ -810,7 +819,7 @@ export function QuickTopUpDialog({
                     target="_blank"
                   >
                     <ReceiptIcon className="size-3" />
-                    <span>View full invoice details</span>
+                    <span>{dialogMessages.viewFullInvoiceDetails}</span>
                   </Link>
                 </div>
               )}
@@ -849,7 +858,7 @@ export function QuickTopUpDialog({
                   target="_blank"
                 >
                   <ReceiptIcon className="size-3.5" />
-                  <span>View invoice in Billing</span>
+                  <span>{dialogMessages.viewInvoiceInBilling}</span>
                 </Link>
               )}
             </div>

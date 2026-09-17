@@ -118,7 +118,7 @@ describe("Traffic Investigation Components", () => {
 
   describe("TabTraffic Workspace Modes", () => {
     it("renders Chart and Table mode toggles and switches modes", () => {
-      const view = renderWithQuery(<TabTraffic appSlug="my-app" />)
+      const view = renderWithQuery(<TabTraffic appSlug="my-app" locale="id" />)
       expect(view.getByText("Chart")).toBeTruthy()
       expect(view.getByText("Investigasi IP")).toBeTruthy()
       expect(view.getByText("Harian")).toBeTruthy()

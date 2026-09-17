@@ -114,6 +114,7 @@ export function AiAgentSummaryCard({
 }: AiAgentSummaryCardProps) {
   const messages = getMessagesForMaybeLocale(lang)
   const agentMessages = messages.console.app.deployAgent
+  const t = messages.pDeployGitDeployAiAgentSummaryCard
 
   const detection = useMemo(
     () => (inspectionData?.detection ?? {}) as Record<string, unknown>,
@@ -477,39 +478,22 @@ export function AiAgentSummaryCard({
     toast.success(agentMessages.prefillSuccess)
   }
 
-  const insightEntrypoint = useMemo(() => {
-    const versionLabel = frameworkVersion ? ` ${frameworkVersion}` : ""
-    if (detectedFrameworkId === "laravel" || ecosystem === "php") {
-      return lang === "id"
-        ? `Terverifikasi aplikasi Laravel${versionLabel} melalui file composer.json dan entrypoint artisan.`
-        : `Verified Laravel${versionLabel} application with composer.json dependencies and artisan entrypoint.`
-    }
-    if (detectedFrameworkId === "django" || ecosystem === "python") {
-      return lang === "id"
-        ? `Terverifikasi aplikasi Python${versionLabel} melalui requirements dan entrypoint WSGI/ASGI.`
-        : `Verified Python${versionLabel} application with requirements and WSGI/ASGI entrypoint.`
-    }
-    return lang === "id"
-      ? `Terverifikasi stack ${frameworkName}${versionLabel} dengan konfigurasi siap-pakai.`
-      : `Verified ${frameworkName}${versionLabel} stack with production-ready defaults.`
-  }, [detectedFrameworkId, ecosystem, frameworkName, frameworkVersion, lang])
+  const versionLabel = frameworkVersion ? ` ${frameworkVersion}` : ""
+  const insightEntrypoint =
+    detectedFrameworkId === "laravel" || ecosystem === "php"
+      ? t.insightEntrypointLaravel.replace("{version}", versionLabel)
+      : detectedFrameworkId === "django" || ecosystem === "python"
+        ? t.insightEntrypointPython.replace("{version}", versionLabel)
+        : t.insightEntrypointGeneric
+            .replace("{framework}", frameworkName)
+            .replace("{version}", versionLabel)
 
-  const insightCompute = useMemo(() => {
-    if (detectedFrameworkId === "laravel" || ecosystem === "php") {
-      return lang === "id"
-        ? "Disarankan ukuran Medium (2GB RAM) agar worker PHP-FPM dan cache Composer stabil."
-        : "Recommended Medium compute (2GB RAM) for smooth PHP-FPM workers and Composer caching."
-    }
-    return lang === "id"
-      ? "Disarankan ukuran Standard / Medium untuk isolasi container dan build yang optimal."
-      : "Recommended Standard compute (1024MB RAM) for optimal container execution and build isolation."
-  }, [detectedFrameworkId, ecosystem, lang])
+  const insightCompute =
+    detectedFrameworkId === "laravel" || ecosystem === "php"
+      ? t.insightComputeLaravel
+      : t.insightComputeDefault
 
-  const insightEnv = useMemo(() => {
-    return lang === "id"
-      ? "Variabel lingkungan dari .env.example telah diisi otomatis. Anda dapat menyesuaikan nilainya di bawah."
-      : "Environment variables from .env.example have been auto-configured. You can customize any values below."
-  }, [lang])
+  const insightEnv = t.insightEnvAuto
 
   useEffect(() => {
     let isMounted = true
@@ -904,7 +888,7 @@ export function AiAgentSummaryCard({
                     <Input
                       value={item.value}
                       onChange={(e) => handleUpdateEnvVar(idx, e.target.value)}
-                      placeholder="Value"
+                      placeholder={t.envValuePlaceholder}
                       className="h-7 flex-1 bg-background/50 font-mono text-xs"
                     />
                     <Button
@@ -925,13 +909,13 @@ export function AiAgentSummaryCard({
               <Input
                 value={newKey}
                 onChange={(e) => setNewKey(e.target.value)}
-                placeholder="VARIABLE_NAME"
+                placeholder={t.envKeyPlaceholder}
                 className="h-8 font-mono text-xs uppercase"
               />
               <Input
                 value={newValue}
                 onChange={(e) => setNewValue(e.target.value)}
-                placeholder="Value"
+                placeholder={t.envValuePlaceholder}
                 className="h-8 font-mono text-xs"
               />
               <Button
@@ -1043,7 +1027,7 @@ export function AiAgentSummaryCard({
             {accountStatus === "loading" && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Spinner className="h-3.5 w-3.5 animate-spin" />
-                <span>Checking balance…</span>
+                <span>{t.checkingBalance}</span>
               </div>
             )}
 
@@ -1062,7 +1046,7 @@ export function AiAgentSummaryCard({
                 <p className="mt-0.5 font-mono text-sm text-muted-foreground">
                   {account.formattedBalance ||
                     `${currency} ${account.balanceIdr || "0"}`}{" "}
-                  {lang === "id" ? "tersedia" : "available"}
+                  {t.balanceAvailable}
                 </p>
                 {!isBalanceSufficient && (
                   <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400">
@@ -1107,7 +1091,7 @@ export function AiAgentSummaryCard({
               {deploying ? (
                 <>
                   <Spinner className="h-4 w-4 animate-spin" />
-                  <span>Initiating deployment…</span>
+                  <span>{t.initiatingDeployment}</span>
                 </>
               ) : (
                 <>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import {
   Copy,
   Check,
@@ -11,6 +12,8 @@ import {
   ListDashes,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Sheet,
   SheetContent,
@@ -40,6 +43,7 @@ type LogInspectorDrawerProps = {
   selectedColumns?: string[]
   onAddColumn?: (field: string) => void
   onApplyFilter?: (text: string) => void
+  locale?: string
 }
 
 export function LogInspectorDrawer({
@@ -49,7 +53,12 @@ export function LogInspectorDrawer({
   selectedColumns = [],
   onAddColumn,
   onApplyFilter,
+  locale: localeProp,
 }: LogInspectorDrawerProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployOperateLogInspectorDrawer
   const [attributeSearch, setAttributeSearch] = useState("")
   const [activeTab, setActiveTab] = useState("attributes")
   const [copiedRaw, setCopiedRaw] = useState(false)
@@ -87,14 +96,14 @@ export function LogInspectorDrawer({
     if (!rawJsonString) return
     void navigator.clipboard.writeText(rawJsonString)
     setCopiedRaw(true)
-    toast.success("JSON log berhasil disalin ke clipboard")
+    toast.success(t.copiedJsonSuccess)
     setTimeout(() => setCopiedRaw(false), 2000)
   }
 
   const handleCopyValue = (key: string, val: string) => {
     void navigator.clipboard.writeText(val)
     setCopiedKey(key)
-    toast.success(`Nilai ${key} disalin`)
+    toast.success(t.copiedValueSuccess.replace("{key}", key))
     setTimeout(() => setCopiedKey(null), 1500)
   }
 
@@ -131,10 +140,10 @@ export function LogInspectorDrawer({
           </div>
 
           <SheetTitle className="line-clamp-2 pt-2 text-left text-sm font-semibold text-foreground">
-            {log.message || "Log Event Details"}
+            {log.message || t.logEventDetails}
           </SheetTitle>
           <SheetDescription className="sr-only">
-            Detail inspeksi log event dan seluruh metadata JSON
+            {t.drawerDescription}
           </SheetDescription>
 
           {/* Quick actions toolbar */}
@@ -151,7 +160,7 @@ export function LogInspectorDrawer({
               ) : (
                 <Copy size={13} />
               )}
-              <span>{copiedRaw ? "Tersalin" : "Salin JSON"}</span>
+              <span>{copiedRaw ? t.copied : t.copyJson}</span>
             </Button>
 
             {onApplyFilter && (
@@ -166,7 +175,7 @@ export function LogInspectorDrawer({
                 className="flex h-7 items-center gap-1.5 rounded-lg text-xs"
               >
                 <Funnel size={13} />
-                <span>Filter Pesan Ini</span>
+                <span>{t.filterThisMessage}</span>
               </Button>
             )}
           </div>
@@ -185,14 +194,19 @@ export function LogInspectorDrawer({
                   className="flex items-center gap-1.5 text-xs"
                 >
                   <ListDashes size={13} />
-                  <span>Atribut ({flattenedAttributes.length})</span>
+                  <span>
+                    {t.attributesTab.replace(
+                      "{count}",
+                      String(flattenedAttributes.length)
+                    )}
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="raw"
                   className="flex items-center gap-1.5 text-xs"
                 >
                   <Code size={13} />
-                  <span>Raw JSON</span>
+                  <span>{t.rawJsonTab}</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -203,7 +217,7 @@ export function LogInspectorDrawer({
                 />
                 <Input
                   type="text"
-                  placeholder="Cari atribut..."
+                  placeholder={t.searchPlaceholder}
                   value={attributeSearch}
                   onChange={(e) => setAttributeSearch(e.target.value)}
                   className="h-7 rounded-lg pl-7 text-[11px]"
@@ -219,13 +233,13 @@ export function LogInspectorDrawer({
                 <TableHeader className="sticky top-0 z-10 bg-muted/40">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-1/3 text-xs font-semibold text-foreground">
-                      Field
+                      {t.tableHeaderField}
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-foreground">
-                      Nilai
+                      {t.tableHeaderValue}
                     </TableHead>
                     <TableHead className="w-24 text-right text-xs font-semibold text-foreground">
-                      Aksi
+                      {t.tableHeaderAction}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -236,7 +250,7 @@ export function LogInspectorDrawer({
                         colSpan={3}
                         className="py-8 text-center text-xs text-muted-foreground"
                       >
-                        Tidak ada atribut yang cocok.
+                        {t.noMatchingAttributes}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -261,7 +275,7 @@ export function LogInspectorDrawer({
                                   handleCopyValue(attr.key, attr.value)
                                 }
                                 className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                title="Salin nilai"
+                                title={t.copyValueTooltip}
                               >
                                 {copiedKey === attr.key ? (
                                   <Check
@@ -281,7 +295,7 @@ export function LogInspectorDrawer({
                                     onOpenChange(false)
                                   }}
                                   className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                  title="Filter nilai ini"
+                                  title={t.filterValueTooltip}
                                 >
                                   <Funnel size={12} />
                                 </button>
@@ -298,8 +312,8 @@ export function LogInspectorDrawer({
                                   }`}
                                   title={
                                     isColumnActive
-                                      ? "Kolom sudah aktif"
-                                      : "Tambah ke kolom tabel"
+                                      ? t.columnAlreadyActive
+                                      : t.addToTableColumns
                                   }
                                 >
                                   <Columns size={12} />
