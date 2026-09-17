@@ -46,8 +46,11 @@ import {
 import { CountryFlag } from "@/components/ui/country-flag"
 import {
   formatTemplateSlug,
+  normalizeTemplateButtons,
   validateTemplateBodyRules,
+  validateTemplateButtons,
 } from "../template-validator"
+import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 import {
   WhatsAppTemplatePreview,
   getLanguageDisplay,
@@ -416,6 +419,13 @@ export function TemplateForm({
         newErrors.headerText =
           "Header text is required when TEXT header is chosen."
       }
+
+      if (buttons.length > 0) {
+        const btnValidation = validateTemplateButtons(buttons)
+        if (!btnValidation.isValid && btnValidation.errors.length > 0) {
+          newErrors.buttons = btnValidation.errors[0]
+        }
+      }
     }
 
     setErrors(newErrors)
@@ -435,6 +445,16 @@ export function TemplateForm({
       type: "BODY" as const,
       text: sampleValues[idx]?.trim() || `Sample ${idx}`,
     }))
+
+    const sanitizedButtons =
+      buttons.length > 0
+        ? (normalizeTemplateButtons(
+            buttons.map((b) => ({
+              ...b,
+              ...("text" in b ? { text: b.text.trim() } : {}),
+            }))
+          ) as TemplateButton[])
+        : undefined
 
     const languagePayload = {
       lang,
@@ -471,9 +491,7 @@ export function TemplateForm({
               text: otpButtonText,
             },
           ]
-        : buttons.length > 0
-          ? buttons
-          : undefined,
+        : sanitizedButtons,
       authConfig: isAuth
         ? {
             addSecurityRecommendation,
@@ -1422,6 +1440,14 @@ export function TemplateForm({
                             onChange={(e) =>
                               updateButton(i, { phoneNumber: e.target.value })
                             }
+                            onBlur={(e) => {
+                              const normalized = normalizeIndonesianPhoneNumber(
+                                e.target.value
+                              )
+                              if (normalized) {
+                                updateButton(i, { phoneNumber: normalized })
+                              }
+                            }}
                             placeholder="+6281234567890"
                             className="font-mono text-xs"
                           />
@@ -1438,6 +1464,9 @@ export function TemplateForm({
                       </Button>
                     </div>
                   ))
+                )}
+                {errors.buttons && (
+                  <p className="text-xs text-destructive">{errors.buttons}</p>
                 )}
               </CardContent>
             </Card>
