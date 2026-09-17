@@ -1,12 +1,15 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import {
   ArrowsClockwise,
   CaretRight,
   MagnifyingGlass,
 } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { LogHealthSummaryCards } from "./log-health-summary-cards"
 import { LogHourlyChart } from "./log-hourly-chart"
 import { LogTopErrorsCard } from "./log-top-errors-card"
@@ -53,6 +56,9 @@ export function TabLogs({
   diagnosticMode = "production",
   appSlug,
 }: TabLogsProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [granularity, setGranularity] = useState<
     "daily" | "monthly" | "yearly"
   >("daily")
@@ -330,10 +336,10 @@ export function TabLogs({
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-base font-semibold tracking-tight text-foreground">
-                Laporan Kesehatan Aplikasi (Logs Health)
+                {messages.pDeployOperateTabLogs.appHealthReportTitle}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Skor stabilitas dan deteksi insiden runtime pod container
+                {messages.pDeployOperateTabLogs.appHealthReportDescription}
               </p>
             </div>
 
@@ -348,7 +354,7 @@ export function TabLogs({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Harian
+                  {messages.pDeployOperateTabLogs.granularityDaily}
                 </button>
                 <button
                   type="button"
@@ -359,7 +365,7 @@ export function TabLogs({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Bulanan
+                  {messages.pDeployOperateTabLogs.granularityMonthly}
                 </button>
                 <button
                   type="button"
@@ -370,7 +376,7 @@ export function TabLogs({
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Tahunan
+                  {messages.pDeployOperateTabLogs.granularityYearly}
                 </button>
               </div>
 
@@ -395,7 +401,7 @@ export function TabLogs({
                   type="number"
                   min="2024"
                   max="2035"
-                  placeholder="Tahun"
+                  placeholder={messages.pDeployOperateTabLogs.yearPlaceholder}
                   value={targetYear}
                   onChange={(e) => setTargetYear(e.target.value)}
                   className="h-8 w-24 rounded-md border border-border bg-background px-2.5 text-xs text-foreground"
@@ -435,10 +441,10 @@ export function TabLogs({
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div className="space-y-1">
             <CardTitle className="text-base font-bold text-foreground">
-              Opensearch Log Viewer
+              {messages.pDeployOperateTabLogs.opensearchLogViewerTitle}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Live streaming log aggregates index from this workspace cluster
+              {messages.pDeployOperateTabLogs.opensearchLogViewerDescription}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -465,19 +471,19 @@ export function TabLogs({
                   size={13}
                   className={isRefreshing ? "animate-spin" : ""}
                 />
-                <span>Refresh</span>
+                <span>{messages.pDeployOperateTabLogs.refreshButton}</span>
               </Button>
             )}
             <span
               className="cursor-pointer text-xs text-muted-foreground select-none"
               onClick={() => setIsLiveTailing(!isLiveTailing)}
             >
-              Live Tail (30s)
+              {messages.pDeployOperateTabLogs.liveTailToggleLabel}
             </span>
             <Switch
               checked={isLiveTailing}
               onCheckedChange={setIsLiveTailing}
-              aria-label="Live Tail"
+              aria-label={messages.pDeployOperateTabLogs.liveTailAriaLabel}
             />
           </div>
         </CardHeader>
@@ -491,7 +497,9 @@ export function TabLogs({
               />
               <Input
                 type="text"
-                placeholder="Search logs (e.g. nginx, connect, database)..."
+                placeholder={
+                  messages.pDeployOperateTabLogs.searchLogsPlaceholder
+                }
                 value={logFilterQuery}
                 onChange={(e) => setLogFilterQuery(e.target.value)}
                 className="h-8 rounded-lg pl-9 text-xs"
@@ -537,13 +545,13 @@ export function TabLogs({
                   <TableRow className="border-b border-border hover:bg-transparent">
                     <TableHead className="w-8 px-2" />
                     <TableHead className="w-24 font-semibold text-foreground">
-                      Waktu
+                      {messages.pDeployOperateTabLogs.colTime}
                     </TableHead>
                     <TableHead className="w-20 font-semibold text-foreground">
-                      Level
+                      {messages.pDeployOperateTabLogs.colLevel}
                     </TableHead>
                     <TableHead className="w-24 font-semibold text-foreground">
-                      Sumber
+                      {messages.pDeployOperateTabLogs.colSource}
                     </TableHead>
                     {selectedColumns.map((col) => (
                       <TableHead
@@ -554,7 +562,7 @@ export function TabLogs({
                       </TableHead>
                     ))}
                     <TableHead className="font-semibold text-foreground">
-                      Pesan / Ringkasan Log
+                      {messages.pDeployOperateTabLogs.colMessage}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -571,7 +579,7 @@ export function TabLogs({
                             className="animate-spin text-primary"
                           />
                           <p className="text-xs">
-                            Memuat log dari OpenSearch cluster...
+                            {messages.pDeployOperateTabLogs.loadingLogs}
                           </p>
                         </div>
                       </TableCell>
@@ -583,13 +591,9 @@ export function TabLogs({
                         className="h-48 text-center"
                       >
                         <div className="flex flex-col items-center justify-center gap-2 p-8 font-sans text-xs font-medium text-muted-foreground/80">
-                          <p>
-                            Belum ada output log di OpenSearch untuk service
-                            ini.
-                          </p>
+                          <p>{messages.pDeployOperateTabLogs.emptyLogsTitle}</p>
                           <p className="text-[11px] text-muted-foreground/60">
-                            Pod mungkin sedang proses booting atau belum
-                            menghasilkan output stdout/stderr.
+                            {messages.pDeployOperateTabLogs.emptyLogsSubtitle}
                           </p>
                           <Button
                             type="button"
@@ -601,7 +605,7 @@ export function TabLogs({
                             }}
                             className="mt-2 text-xs"
                           >
-                            Cek Ulang
+                            {messages.pDeployOperateTabLogs.recheckButton}
                           </Button>
                         </div>
                       </TableCell>
