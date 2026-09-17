@@ -239,4 +239,255 @@ describe("DeployChatStream", () => {
       expect(view.getByText(/Inspection Failed/i)).toBeTruthy()
     })
   })
+
+  it("renders AuthRecoveryCard when inspecting private repository requiring access", async () => {
+    mockFetch.mockImplementation(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/deploy/ai-sessions/inspect")) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              data: {
+                status: "access_required",
+                reasonCode: "ACCESS_REQUIRED",
+                access: { state: "connection_required" },
+              },
+            }),
+            { status: 401, headers: { "Content-Type": "application/json" } }
+          )
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    )
+
+    const view = render(
+      <DeployChatStream
+        initialUserName="Alex"
+        lang="id"
+        onReadyToLaunch={() => {}}
+      />
+    )
+
+    const input = view.getByRole("textbox")
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "https://github.com/my-enterprise/private-core" },
+      })
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
+    })
+
+    await waitFor(() => {
+      expect(view.getByTestId("auth-recovery-card")).toBeTruthy()
+      expect(
+        view.getByText(/AKSES REPOSITORY DIBUTUHKAN \(PRIVATE REPOSITORY\)/i)
+      ).toBeTruthy()
+    })
+  })
+
+  it("renders MonorepoDisambiguationCard and generates blueprint on project selection", async () => {
+    mockFetch.mockImplementation(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/deploy/ai-sessions/inspect")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              data: {
+                isMonorepo: true,
+                monorepoProjects: [
+                  {
+                    path: "apps/web",
+                    name: "apps/web",
+                    framework: "Next.js 15.4",
+                    description: "Frontend",
+                  },
+                  {
+                    path: "services/api",
+                    name: "services/api",
+                    framework: "Go Gin",
+                    description: "REST Backend",
+                  },
+                ],
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    )
+
+    const view = render(
+      <DeployChatStream
+        initialUserName="Alex"
+        lang="id"
+        onReadyToLaunch={() => {}}
+      />
+    )
+
+    const input = view.getByRole("textbox")
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "https://github.com/acme-corp/turborepo-monorepo" },
+      })
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
+    })
+
+    await waitFor(() => {
+      expect(view.getByTestId("monorepo-disambiguation-card")).toBeTruthy()
+    })
+
+    // Click quick-pick chip for apps/web
+    const chip = view.getByTestId("monorepo-chip-0")
+    await act(async () => {
+      fireEvent.click(chip)
+    })
+
+    await waitFor(() => {
+      expect(view.getByTestId("inline-blueprint-card")).toBeTruthy()
+      expect(view.getByText(/Next\.js 15\.4 · Node\.js 20/i)).toBeTruthy()
+    })
+  })
+
+  it("renders PolicyBlockedCard when repository violates platform security rules", async () => {
+    mockFetch.mockImplementation(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/deploy/ai-sessions/inspect")) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              data: {
+                status: "blocked",
+                session: {
+                  status: "BLOCKED",
+                  blockedReason:
+                    "Matched Rule ID: RULE-BLOCK-WP-LEGACY. Ditemukan file wp-config.php dan core lama yang rentan CVE.",
+                },
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    )
+
+    const view = render(
+      <DeployChatStream
+        initialUserName="Alex"
+        lang="id"
+        onReadyToLaunch={() => {}}
+      />
+    )
+
+    const input = view.getByRole("textbox")
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "https://github.com/legacy-org/old-wordpress-app" },
+      })
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
+    })
+
+    await waitFor(() => {
+      expect(view.getByTestId("policy-blocked-card")).toBeTruthy()
+      expect(
+        view.getByText(/DEPLOYMENT DIBLOKIR OLEH KEBIJAKAN PLATFORM/i)
+      ).toBeTruthy()
+      expect(view.getByTestId("policy-marketplace-btn")).toBeTruthy()
+    })
+  })
+
+  it("renders LowConfidenceFallbackCard and updates blueprint upon applying overrides", async () => {
+    mockFetch.mockImplementation(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/deploy/ai-sessions/inspect")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              data: {
+                detection: {
+                  confidence: 42,
+                  framework: "Custom App",
+                },
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    )
+
+    const view = render(
+      <DeployChatStream
+        initialUserName="Alex"
+        lang="id"
+        onReadyToLaunch={() => {}}
+      />
+    )
+
+    const input = view.getByRole("textbox")
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "https://github.com/my-lab/custom-script" },
+      })
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
+    })
+
+    await waitFor(() => {
+      expect(view.getByTestId("low-confidence-fallback-card")).toBeTruthy()
+    })
+
+    // Apply custom start command and port
+    const portInput = view.getByTestId("fallback-port-input")
+    const saveBtn = view.getByTestId("fallback-save-btn")
+
+    await act(async () => {
+      fireEvent.change(portInput, { target: { value: "8080" } })
+      fireEvent.click(saveBtn)
+    })
+
+    await waitFor(() => {
+      expect(view.getByTestId("inline-blueprint-card")).toBeTruthy()
+      expect(view.getByText("8080 (HTTP)")).toBeTruthy()
+    })
+  })
+
+  it("handles natural language prompt commands for start command and port", async () => {
+    const view = render(
+      <DeployChatStream
+        initialUserName="Alex"
+        lang="id"
+        onReadyToLaunch={() => {}}
+      />
+    )
+
+    const input = view.getByRole("textbox")
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { value: "Jalankan dengan node server.js di port 8080" },
+      })
+      fireEvent.keyDown(input, { key: "Enter", shiftKey: false })
+    })
+
+    await waitFor(() => {
+      expect(view.getByTestId("inline-blueprint-card")).toBeTruthy()
+      expect(view.getByText("8080 (HTTP)")).toBeTruthy()
+    })
+  })
 })

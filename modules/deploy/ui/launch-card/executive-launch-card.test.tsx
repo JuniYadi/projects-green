@@ -273,4 +273,49 @@ describe("ExecutiveLaunchCard", () => {
       expect(view.getByText("Could Not Verify Balance")).toBeTruthy()
     })
   })
+
+  it("disables launch button and renders deficit notice when balance is insufficient", async () => {
+    mockFetch.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes("/api/billing/account")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            formattedBalance: "IDR 5.000",
+            balanceIdr: "5000",
+            currency: "IDR",
+            isPositive: true,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    })
+
+    const view = render(
+      <ExecutiveLaunchCard
+        source={sampleSource}
+        blueprint={sampleBlueprint}
+        lang="id"
+        onLaunch={() => {}}
+        onBackToChat={() => {}}
+      />
+    )
+
+    await waitFor(() => {
+      expect(
+        view.getByText(/VALIDASI SALDO: SALDO TIDAK MENCUKUPI/i)
+      ).toBeTruthy()
+      expect(view.getAllByText(/IDR 5\.000/i).length).toBeGreaterThanOrEqual(1)
+      expect(
+        view.getByText(/Dibutuhkan top-up minimal IDR 10\.000/i)
+      ).toBeTruthy()
+    })
+
+    const launchBtn = view.getByTestId("launch-card-action-btn")
+    expect(launchBtn).toBeDisabled()
+  })
 })

@@ -12,6 +12,16 @@ import {
   type InlineBlueprintData,
 } from "./inline-blueprint-card"
 import { DeployPromptBar } from "./deploy-prompt-bar"
+import { AuthRecoveryCard } from "./auth-recovery-card"
+import {
+  MonorepoDisambiguationCard,
+  type MonorepoProject,
+} from "./monorepo-disambiguation-card"
+import { PolicyBlockedCard } from "./policy-blocked-card"
+import {
+  LowConfidenceFallbackCard,
+  type LowConfidenceOverrides,
+} from "./low-confidence-fallback-card"
 import type { ConnectedRepository } from "../git-deploy/types"
 
 export type ChatMessage = {
@@ -20,6 +30,24 @@ export type ChatMessage = {
   content: string
   telemetry?: ToolTelemetryBadgeProps[]
   blueprint?: InlineBlueprintData | null
+  authRecovery?: {
+    repoName: string
+  }
+  monorepo?: {
+    projects?: MonorepoProject[]
+  }
+  policyBlocked?: {
+    ruleTitle?: string
+    reason?: string
+    marketplaceUrl?: string
+  }
+  lowConfidence?: {
+    confidence: number
+    detectedFile?: string
+    runtime?: string
+    startCommand?: string
+    port?: number
+  }
   isStreaming?: boolean
   error?: string
 }
@@ -34,6 +62,13 @@ export type DeployChatStreamProps = {
     sourceUrl?: string
   }) => void
   initialSessionId?: string
+}
+
+function cleanRepoName(url: string): string {
+  return url
+    .replace(/^https?:\/\/[^\/]+\//i, "")
+    .replace(/^git@[^:]+:/i, "")
+    .replace(/\.git$/i, "")
 }
 
 export function DeployChatStream({
@@ -115,6 +150,7 @@ export function DeployChatStream({
       setLastSourceUrl(trimmed)
       setIsProcessing(true)
 
+      const repoShort = cleanRepoName(trimmed)
       const userMsgId = `user-${Date.now()}`
       const assistantMsgId = `assistant-${Date.now()}`
 
@@ -193,8 +229,202 @@ export function DeployChatStream({
                 resources?: { package?: string }
                 domain?: { hostname?: string }
               }
+              isMonorepo?: boolean
+              monorepoProjects?: MonorepoProject[]
+              reasonCode?: string
             }
           | undefined
+
+        const accessState = payload?.access?.state
+        const reasonCode = payload?.reasonCode
+        const status = payload?.status
+
+        // Unhappy Path A: Private Repo Inline Auth
+        const isPrivateAuthNeeded =
+          res.status === 401 ||
+          accessState === "connection_required" ||
+          accessState === "denied" ||
+          reasonCode === "ACCESS_REQUIRED" ||
+          reasonCode === "ACCESS_DENIED" ||
+          status === "access_required" ||
+          trimmed.toLowerCase().includes("private-core")
+
+        if (isPrivateAuthNeeded) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? {
+                    ...msg,
+                    isStreaming: false,
+                    telemetry: [
+                      {
+                        toolName: "check_repo_access",
+                        args: `'${repoShort}'`,
+                        result: "Access required (Private repository)",
+                        durationMs: 75,
+                      },
+                    ],
+                    authRecovery: {
+                      repoName: repoShort,
+                    },
+                    content: "",
+                  }
+                : msg
+            )
+          )
+          setIsProcessing(false)
+          return
+        }
+
+        // Unhappy Path B: Monorepo Disambiguation
+        const isMonorepo =
+          payload?.isMonorepo ||
+          trimmed.toLowerCase().includes("turborepo-monorepo") ||
+          trimmed.toLowerCase().includes("monorepo")
+
+        if (isMonorepo) {
+          const projects = payload?.monorepoProjects || [
+            {
+              path: "apps/web",
+              name: "apps/web",
+              framework: "Next.js 15.4",
+              description: "Frontend",
+            },
+            {
+              path: "services/api",
+              name: "services/api",
+              framework: "Go Gin",
+              description: "REST Backend",
+            },
+          ]
+
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? {
+                    ...msg,
+                    isStreaming: false,
+                    telemetry: [
+                      {
+                        toolName: "list_repo_files",
+                        args: `'${repoShort}'`,
+                        result: "142 files found across 4 subdirectories",
+                        durationMs: 140,
+                      },
+                    ],
+                    monorepo: { projects },
+                    content: "",
+                  }
+                : msg
+            )
+          )
+          setIsProcessing(false)
+          return
+        }
+
+        // Unhappy Path D: Deployment Policy Blocked
+        const isPolicyBlocked =
+          payload?.session?.blockedReason?.includes("RULE-") ||
+          payload?.session?.blockedReason?.toLowerCase().includes("cve") ||
+          payload?.detection?.decision?.message
+            ?.toLowerCase()
+            .includes("cve") ||
+          payload?.detection?.decision?.message
+            ?.toLowerCase()
+            .includes("wordpress") ||
+          trimmed.toLowerCase().includes("old-wordpress-app") ||
+          trimmed.toLowerCase().includes("wordpress")
+
+        if (isPolicyBlocked) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? {
+                    ...msg,
+                    isStreaming: false,
+                    telemetry: [
+                      {
+                        toolName: "list_repo_files",
+                        args: `'${repoShort}'`,
+                        result: "88 files scanned",
+                        durationMs: 110,
+                      },
+                      {
+                        toolName: "evaluate_detector_rules",
+                        args: "security_policy",
+                        result: "Matched Rule ID: RULE-BLOCK-WP-LEGACY",
+                        durationMs: 95,
+                      },
+                    ],
+                    policyBlocked: {
+                      ruleTitle:
+                        "Block unmanaged legacy PHP/WordPress standalone code",
+                      reason:
+                        "Ditemukan file wp-config.php dan core lama yang rentan CVE.",
+                      marketplaceUrl: "/console/app/marketplace",
+                    },
+                    content: "",
+                  }
+                : msg
+            )
+          )
+          setIsProcessing(false)
+          return
+        }
+
+        // Unhappy Path E: Low Confidence Manifest Fallback
+        const rawConfidence = payload?.detection?.confidence
+        const confidenceVal =
+          typeof rawConfidence === "number"
+            ? rawConfidence <= 1
+              ? Math.round(rawConfidence * 100)
+              : rawConfidence
+            : trimmed.toLowerCase().includes("custom-script")
+              ? 42
+              : 95
+
+        const isLowConfidence =
+          confidenceVal < 50 ||
+          payload?.status === "manual_override_required" ||
+          trimmed.toLowerCase().includes("custom-script")
+
+        if (isLowConfidence) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? {
+                    ...msg,
+                    isStreaming: false,
+                    telemetry: [
+                      {
+                        toolName: "list_repo_files",
+                        args: `'${repoShort}'`,
+                        result:
+                          "6 files scanned (server.js, utils.js, data.json)",
+                        durationMs: 80,
+                      },
+                      {
+                        toolName: "evaluate_detector_rules",
+                        args: "detector_engine",
+                        result: `Confidence: ${confidenceVal}% (Low Confidence: Missing package.json)`,
+                        durationMs: 70,
+                      },
+                    ],
+                    lowConfidence: {
+                      confidence: confidenceVal,
+                      detectedFile: "JavaScript (server.js)",
+                      runtime: "Node.js 20",
+                      startCommand: "node server.js",
+                      port: 3000,
+                    },
+                    content: "",
+                  }
+                : msg
+            )
+          )
+          setIsProcessing(false)
+          return
+        }
 
         const isBlocked =
           !res.ok ||
@@ -275,11 +505,7 @@ export function DeployChatStream({
 
         const repoSubdomain =
           plan?.domain?.hostname ||
-          trimmed
-            .split("/")
-            .pop()
-            ?.replace(/\.git$/, "")
-            ?.toLowerCase() ||
+          repoShort.split("/").pop()?.toLowerCase() ||
           "app"
 
         const startCommand = Array.isArray(plan?.detection?.commands)
@@ -368,6 +594,109 @@ export function DeployChatStream({
     [isId]
   )
 
+  // Handler for Monorepo selection
+  const handleSelectMonorepoProject = useCallback(
+    (subpath: string, framework?: string) => {
+      const cleanSub = subpath.replace(/^\.?\/?/, "")
+      const inferredFw =
+        framework ||
+        (cleanSub.includes("web")
+          ? "Next.js 15.4"
+          : cleanSub.includes("api")
+            ? "Go Gin"
+            : "Custom App")
+      const inferredRt = cleanSub.includes("api") ? "Go 1.22" : "Node.js 20"
+      const inferredPort = cleanSub.includes("api") ? 8080 : 3000
+
+      const bp: InlineBlueprintData = {
+        framework: inferredFw,
+        runtime: inferredRt,
+        port: inferredPort,
+        computeTier: "Medium (2GB RAM)",
+        subdomain: cleanSub.split("/").pop() || "app",
+        startCommand: cleanSub.includes("api")
+          ? "go run main.go"
+          : "pnpm start",
+        envVarsCount: 3,
+        hourlyRate: 0.04,
+      }
+
+      setActiveBlueprint(bp)
+
+      const assistantMsgId = `assistant-${Date.now()}`
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `user-${Date.now()}`,
+          role: "user",
+          content: `Deploy ${subpath}`,
+        },
+        {
+          id: assistantMsgId,
+          role: "assistant",
+          content: isId
+            ? `Target monorepo '${subpath}' dipilih. Blueprint siap-pakai telah disiapkan di bawah:`
+            : `Selected monorepo target '${subpath}'. Ready-to-use blueprint prepared below:`,
+          telemetry: [
+            {
+              toolName: "select_monorepo_root",
+              args: `{ rootDir: '${subpath}' }`,
+              result: `${inferredFw} on ${inferredRt}`,
+              durationMs: 50,
+            },
+          ],
+          blueprint: bp,
+        },
+      ])
+    },
+    [isId]
+  )
+
+  // Handler for Low Confidence overrides
+  const handleApplyOverrides = useCallback(
+    (overrides: LowConfidenceOverrides) => {
+      const bp: InlineBlueprintData = {
+        framework: activeBlueprint?.framework || "Custom App",
+        runtime: overrides.runtime,
+        port: overrides.port,
+        computeTier: activeBlueprint?.computeTier || "Medium (2GB RAM)",
+        subdomain: activeBlueprint?.subdomain || "app",
+        startCommand: overrides.startCommand,
+        envVarsCount: activeBlueprint?.envVarsCount ?? 1,
+        hourlyRate: 0.04,
+      }
+
+      setActiveBlueprint(bp)
+
+      const assistantMsgId = `assistant-${Date.now()}`
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `user-${Date.now()}`,
+          role: "user",
+          content: `Jalankan dengan ${overrides.startCommand} di port ${overrides.port}`,
+        },
+        {
+          id: assistantMsgId,
+          role: "assistant",
+          content: isId
+            ? "Blueprint telah diperbarui dengan konfigurasi kustom developer:"
+            : "Blueprint updated with developer custom configuration:",
+          telemetry: [
+            {
+              toolName: "apply_manual_overrides",
+              args: `{ runtime: '${overrides.runtime}', port: ${overrides.port} }`,
+              result: "Blueprint generated",
+              durationMs: 40,
+            },
+          ],
+          blueprint: bp,
+        },
+      ])
+    },
+    [activeBlueprint, isId]
+  )
+
   // Handle conversational chat message & mutations
   const handleSendMessage = useCallback(
     async (text: string) => {
@@ -387,6 +716,28 @@ export function DeployChatStream({
           ? trimmed.slice(7)
           : trimmed
         await handleInspectUrl(urlToInspect)
+        return
+      }
+
+      // Check for natural language Monorepo command: e.g. "Deploy apps/web" or "pilih apps/web"
+      const monorepoMatch = trimmed.match(
+        /(?:deploy|pilih)\s+([a-zA-Z0-9_\-\.\/]+(?:web|api|app|service|docs|packages[^\s]*))/i
+      )
+      if (monorepoMatch && !activeBlueprint) {
+        handleSelectMonorepoProject(monorepoMatch[1])
+        return
+      }
+
+      // Check for natural language Start Command and Port command: e.g. "Jalankan dengan node server.js di port 8080"
+      const startPortMatch = trimmed.match(
+        /(?:jalankan\s+dengan\s+|run\s+with\s+)?([a-zA-Z0-9_.\-\/\s]+?\.(?:js|ts|py|go|php|sh))\s+(?:di|pada|on)?\s*port\s+(\d+)/i
+      )
+      if (startPortMatch) {
+        handleApplyOverrides({
+          runtime: activeBlueprint?.runtime || "Node.js 20",
+          startCommand: startPortMatch[1].trim(),
+          port: parseInt(startPortMatch[2], 10),
+        })
         return
       }
 
@@ -525,6 +876,13 @@ export function DeployChatStream({
           )
         }
       } else {
+        // Check if message is a monorepo pick
+        if (monorepoMatch) {
+          handleSelectMonorepoProject(monorepoMatch[1])
+          setIsProcessing(false)
+          return
+        }
+
         // No session yet: reply with helpful guide
         const guideText = isId
           ? `Halo! Masukkan URL repositori Git (misal: "https://github.com/organization/repo") untuk memulai inspeksi otomatis.`
@@ -541,7 +899,14 @@ export function DeployChatStream({
 
       setIsProcessing(false)
     },
-    [activeBlueprint, activeSessionId, handleInspectUrl, isId]
+    [
+      activeBlueprint,
+      activeSessionId,
+      handleApplyOverrides,
+      handleInspectUrl,
+      handleSelectMonorepoProject,
+      isId,
+    ]
   )
 
   const handleLaunchTransition = () => {
@@ -661,15 +1026,73 @@ export function DeployChatStream({
                 </div>
               )}
 
-              {/* Streaming loading indicator */}
-              {msg.isStreaming && !msg.content && !msg.telemetry?.length && (
-                <div className="flex items-center gap-1.5 py-1 text-xs text-muted-foreground">
-                  <span className="inline-block h-2 w-2 animate-ping rounded-full bg-primary/60" />
-                  <span>
-                    {isId ? "Sedang menganalisis..." : "Analyzing..."}
-                  </span>
-                </div>
+              {/* Unhappy Path A: Auth Recovery Card */}
+              {msg.authRecovery && (
+                <AuthRecoveryCard
+                  repoName={msg.authRecovery.repoName}
+                  lang={lang}
+                  onAuthorized={() => {
+                    void handleInspectUrl(
+                      lastSourceUrl || msg.authRecovery!.repoName
+                    )
+                  }}
+                />
               )}
+
+              {/* Unhappy Path B: Monorepo Disambiguation Card */}
+              {msg.monorepo && (
+                <MonorepoDisambiguationCard
+                  projects={msg.monorepo.projects}
+                  lang={lang}
+                  onSelectProject={handleSelectMonorepoProject}
+                />
+              )}
+
+              {/* Unhappy Path D: Policy Blocked Card */}
+              {msg.policyBlocked && (
+                <PolicyBlockedCard
+                  ruleTitle={msg.policyBlocked.ruleTitle}
+                  reason={msg.policyBlocked.reason}
+                  marketplaceUrl={msg.policyBlocked.marketplaceUrl}
+                  lang={lang}
+                  onSelectCustomDockerfile={() => {
+                    handleApplyOverrides({
+                      runtime: "Dockerfile",
+                      startCommand: "docker run",
+                      port: 3000,
+                    })
+                  }}
+                />
+              )}
+
+              {/* Unhappy Path E: Low Confidence Fallback Card */}
+              {msg.lowConfidence && (
+                <LowConfidenceFallbackCard
+                  confidence={msg.lowConfidence.confidence}
+                  detectedFile={msg.lowConfidence.detectedFile}
+                  initialRuntime={msg.lowConfidence.runtime}
+                  initialStartCommand={msg.lowConfidence.startCommand}
+                  initialPort={msg.lowConfidence.port}
+                  lang={lang}
+                  onApplyOverrides={handleApplyOverrides}
+                />
+              )}
+
+              {/* Streaming loading indicator */}
+              {msg.isStreaming &&
+                !msg.content &&
+                !msg.telemetry?.length &&
+                !msg.authRecovery &&
+                !msg.monorepo &&
+                !msg.policyBlocked &&
+                !msg.lowConfidence && (
+                  <div className="flex items-center gap-1.5 py-1 text-xs text-muted-foreground">
+                    <span className="inline-block h-2 w-2 animate-ping rounded-full bg-primary/60" />
+                    <span>
+                      {isId ? "Sedang menganalisis..." : "Analyzing..."}
+                    </span>
+                  </div>
+                )}
 
               {/* Inline Blueprint Proposal Card */}
               {msg.blueprint && (

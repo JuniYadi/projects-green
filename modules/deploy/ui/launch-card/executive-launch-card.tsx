@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import type { InlineBlueprintData } from "../chat/inline-blueprint-card"
 import type { GitSourceConfig } from "../git-deploy/types"
 import { ZeroConfigNotice } from "./zero-config-notice"
+import { BalanceGuard } from "./balance-guard"
 
 export type ExecutiveLaunchCardProps = {
   source: GitSourceConfig
@@ -87,6 +88,7 @@ export function ExecutiveLaunchCard({
   const [account, setAccount] = useState<BillingAccount | null>(null)
   const [isLoadingAccount, setIsLoadingAccount] = useState(!balanceFormatted)
   const [balanceError, setBalanceError] = useState(false)
+  const [isBalanceSufficient, setIsBalanceSufficient] = useState(true)
 
   useEffect(() => {
     if (balanceFormatted) {
@@ -131,11 +133,14 @@ export function ExecutiveLaunchCard({
     blueprint.hourlyRate
   )
 
+  const effectiveCurrency: "USD" | "IDR" =
+    account?.currency === "IDR" || currency === "IDR" ? "IDR" : "USD"
+
   const balanceText = useMemo(() => {
     if (balanceFormatted) return balanceFormatted
     if (account?.formattedBalance) return account.formattedBalance
-    return currency === "USD" ? "$50.00" : "IDR 14.493.579,66"
-  }, [account?.formattedBalance, balanceFormatted, currency])
+    return effectiveCurrency === "USD" ? "$50.00" : "IDR 14.493.579,66"
+  }, [account?.formattedBalance, balanceFormatted, effectiveCurrency])
 
   return (
     <div
@@ -252,13 +257,30 @@ export function ExecutiveLaunchCard({
               ) : (
                 <span>
                   {balanceText}{" "}
-                  <span className="text-muted-foreground">
-                    (Verified ✓ Cukup untuk peluncuran)
-                  </span>
+                  {isBalanceSufficient ? (
+                    <span className="text-muted-foreground">
+                      (Verified ✓ Cukup untuk peluncuran)
+                    </span>
+                  ) : null}
                 </span>
               )}
             </div>
           </div>
+
+          {/* Balance Guard Alert if Insufficient */}
+          {!balanceError && !balanceLoading && (
+            <div className="sm:col-span-2">
+              <BalanceGuard
+                hourlyRate={blueprint.hourlyRate ?? 0.04}
+                currency={effectiveCurrency}
+                balanceFormatted={balanceFormatted}
+                account={account}
+                lang={lang}
+                onSufficientChange={setIsBalanceSufficient}
+                onBackToChat={onBackToChat}
+              />
+            </div>
+          )}
 
           {/* Environment (Zero-Config Notice) */}
           <div className="flex flex-col gap-1 sm:col-span-2">
@@ -280,7 +302,7 @@ export function ExecutiveLaunchCard({
             type="button"
             data-testid="launch-card-action-btn"
             onClick={() => void onLaunch()}
-            disabled={isLaunching || balanceError}
+            disabled={isLaunching || balanceError || !isBalanceSufficient}
             className={cn(
               "h-11 rounded-xl px-6 text-sm font-bold shadow-xs transition-all",
               "bg-primary text-primary-foreground hover:bg-primary/90"
