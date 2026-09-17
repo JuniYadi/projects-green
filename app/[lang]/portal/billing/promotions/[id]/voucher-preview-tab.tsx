@@ -1,5 +1,6 @@
 "use client"
 
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -10,6 +11,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { WarningCircle } from "@/components/ui/phosphor-icons"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   voucherKindLabel,
   voucherDiscountTypeLabel,
@@ -24,6 +27,9 @@ type RejectionReason = {
 }
 
 export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const rejections = computeRejectionPreviews(voucher)
 
   const applies = rejections.filter((r) => r.severity === "error")
@@ -33,22 +39,27 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Voucher Summary</CardTitle>
+          <CardTitle>
+            {messages.pBillingPromotionsIdVoucherPreviewTab.voucherSummaryTitle}
+          </CardTitle>
           <CardDescription>
-            How this voucher will behave at checkout.
+            {
+              messages.pBillingPromotionsIdVoucherPreviewTab
+                .voucherSummaryDescription
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Type
+                {messages.pBillingPromotionsIdVoucherPreviewTab.typeLabel}
               </dt>
               <dd className="text-sm">{voucherKindLabel(voucher.kind)}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Status
+                {messages.pBillingPromotionsIdVoucherPreviewTab.statusLabel}
               </dt>
               <dd>
                 <Badge variant="secondary">{voucher.status}</Badge>
@@ -56,14 +67,14 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Code
+                {messages.pBillingPromotionsIdVoucherPreviewTab.codeLabel}
               </dt>
               <dd className="font-mono text-sm">{voucher.code}</dd>
             </div>
             {voucher.kind === "BALANCE_CREDIT" && (
               <div>
                 <dt className="text-xs font-medium text-muted-foreground">
-                  Currency
+                  {messages.pBillingPromotionsIdVoucherPreviewTab.currencyLabel}
                 </dt>
                 <dd className="text-sm">{voucher.currency}</dd>
               </div>
@@ -73,7 +84,10 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
               <>
                 <div>
                   <dt className="text-xs font-medium text-muted-foreground">
-                    Credit Amount
+                    {
+                      messages.pBillingPromotionsIdVoucherPreviewTab
+                        .creditAmountLabel
+                    }
                   </dt>
                   <dd className="text-sm font-medium">
                     {formatBillingMoney(voucher.amount, voucher.currency)}
@@ -86,7 +100,10 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
               <>
                 <div>
                   <dt className="text-xs font-medium text-muted-foreground">
-                    Discount Type
+                    {
+                      messages.pBillingPromotionsIdVoucherPreviewTab
+                        .discountTypeLabel
+                    }
                   </dt>
                   <dd className="text-sm">
                     {voucher.discountType
@@ -96,7 +113,10 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
                 </div>
                 <div>
                   <dt className="text-xs font-medium text-muted-foreground">
-                    Discount Value
+                    {
+                      messages.pBillingPromotionsIdVoucherPreviewTab
+                        .discountValueLabel
+                    }
                   </dt>
                   <dd className="text-sm">
                     {voucher.discountValue
@@ -106,7 +126,10 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
                 </div>
                 <div>
                   <dt className="text-xs font-medium text-muted-foreground">
-                    Discount Currency
+                    {
+                      messages.pBillingPromotionsIdVoucherPreviewTab
+                        .discountCurrencyLabel
+                    }
                   </dt>
                   <dd className="text-sm">
                     {voucher.discountCurrency ?? "Same as checkout currency"}
@@ -114,7 +137,10 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
                 </div>
                 <div>
                   <dt className="text-xs font-medium text-muted-foreground">
-                    Currency Policy
+                    {
+                      messages.pBillingPromotionsIdVoucherPreviewTab
+                        .currencyPolicyLabel
+                    }
                   </dt>
                   <dd className="text-sm">
                     {voucherCurrencyPolicyLabel(voucher.currencyPolicy)}
@@ -125,7 +151,7 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
 
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Claims
+                {messages.pBillingPromotionsIdVoucherPreviewTab.claimsLabel}
               </dt>
               <dd className="text-sm">
                 {voucher.claimedCount} / {voucher.maxClaims}
@@ -133,7 +159,7 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Expires At
+                {messages.pBillingPromotionsIdVoucherPreviewTab.expiresAtLabel}
               </dt>
               <dd className="text-sm">
                 {voucher.expiresAt
@@ -149,7 +175,10 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                First Checkout Only
+                {
+                  messages.pBillingPromotionsIdVoucherPreviewTab
+                    .firstCheckoutOnlyLabel
+                }
               </dt>
               <dd className="text-sm">
                 {voucher.firstCheckoutOnly ? "Yes" : "No"}
@@ -157,7 +186,7 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
-                Stackable
+                {messages.pBillingPromotionsIdVoucherPreviewTab.stackableLabel}
               </dt>
               <dd className="text-sm">{voucher.stackable ? "Yes" : "No"}</dd>
             </div>
@@ -168,16 +197,26 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
       {/* Rejection / eligibility previews */}
       <Card>
         <CardHeader>
-          <CardTitle>Eligibility Preview</CardTitle>
+          <CardTitle>
+            {
+              messages.pBillingPromotionsIdVoucherPreviewTab
+                .eligibilityPreviewTitle
+            }
+          </CardTitle>
           <CardDescription>
-            Potential rejection reasons a customer may encounter when redeeming
-            this voucher.
+            {
+              messages.pBillingPromotionsIdVoucherPreviewTab
+                .eligibilityPreviewDescription
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
           {rejections.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No eligibility issues detected.
+              {
+                messages.pBillingPromotionsIdVoucherPreviewTab
+                  .noEligibilityIssuesDetected
+              }
             </p>
           ) : (
             <div className="space-y-3">
@@ -187,7 +226,10 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
                     <WarningCircle className="mt-0.5 h-4 w-4 text-destructive" />
                     <div>
                       <p className="font-medium text-destructive">
-                        Redemption will be rejected
+                        {
+                          messages.pBillingPromotionsIdVoucherPreviewTab
+                            .redemptionRejectedTitle
+                        }
                       </p>
                       <ul className="mt-1 list-inside list-disc text-xs text-destructive">
                         {applies.map((r) => (
@@ -205,7 +247,10 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
                     <WarningCircle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-400" />
                     <div>
                       <p className="font-medium text-amber-800 dark:text-amber-200">
-                        Warnings
+                        {
+                          messages.pBillingPromotionsIdVoucherPreviewTab
+                            .warningsLabel
+                        }
                       </p>
                       <ul className="mt-1 list-inside list-disc text-xs text-amber-800 dark:text-amber-300">
                         {warnings.map((r) => (
