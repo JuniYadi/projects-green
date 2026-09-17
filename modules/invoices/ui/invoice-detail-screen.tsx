@@ -38,7 +38,11 @@ import type {
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 import { InvoiceStatusPill } from "@/modules/invoices/ui/invoice-status-pill"
 import { InvoiceDetailSkeleton } from "@/modules/invoices/ui/invoice-detail-skeleton"
-import { InvoicePaymentSection } from "@/modules/invoices/ui/invoice-payment-section"
+import {
+  PaymentConfirmationList,
+  PaymentMethodGatewayCard,
+  PaymentTimeline,
+} from "@/modules/invoices/ui/invoice-payment-section"
 import { MarkPaidDialog } from "@/modules/invoices/ui/mark-paid-dialog"
 
 type InvoiceDetailScreenProps = {
@@ -221,288 +225,333 @@ export function InvoiceDetailScreen({
   const canPay = invoice.status === "open"
 
   return (
-    <section className="grid gap-6">
+    <section className="flex w-full max-w-7xl flex-col gap-6">
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">{messages.actionsHeading}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <InvoiceDownloadPdfAction
-            invoiceId={invoice.id}
-            invoiceNumber={invoice.invoiceNumber}
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setIsPaymentDrawerOpen(true)}
-            disabled={!canPay}
-          >
-            {messages.payInvoice}
-          </Button>
-          {state.canMarkPaid ? (
+        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                {invoice.invoiceNumber}
+              </h1>
+              <InvoiceStatusPill status={invoice.status} />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              <span className="font-mono">{invoice.id}</span>
+              <span className="mx-2">•</span>
+              <span>
+                {messages.issuedDateLabel}:{" "}
+                {formatInvoiceDate(invoice.issuedAt, locale)}
+              </span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              {messages.actionsHeading}
+            </span>
+            <InvoiceDownloadPdfAction
+              invoiceId={invoice.id}
+              invoiceNumber={invoice.invoiceNumber}
+            />
             <Button
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setIsMarkPaidOpen(true)}
+              onClick={() => setIsPaymentDrawerOpen(true)}
+              disabled={!canPay}
             >
-              {messages.markAsPaid}
+              {messages.payInvoice}
             </Button>
-          ) : null}
-          {state.canMarkCanceled ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              onClick={() => {
-                setCancelErrorMessage(null)
-                setIsCancelSheetOpen(true)
-              }}
-            >
-              {messages.markInvoiceCanceled}
-            </Button>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            {messages.overviewHeading}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 text-sm md:grid-cols-2">
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {messages.invoiceNumberLabel}
-            </p>
-            <p className="font-medium">{invoice.invoiceNumber}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {messages.invoiceIdLabel}
-            </p>
-            <p className="font-medium">{invoice.id}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {messages.statusLabel}
-            </p>
-            <div className="pt-1">
-              <InvoiceStatusPill status={invoice.status} />
-            </div>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {messages.servicePeriodLabel}
-            </p>
-            <p className="font-medium">
-              {formatInvoiceDate(invoice.periodStart, locale)} -{" "}
-              {formatInvoiceDate(invoice.periodEnd, locale)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {messages.serviceEndsLabel}
-            </p>
-            <p className="font-medium">
-              {formatInvoiceDate(invoice.periodEnd, locale)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {messages.nextRenewalDateLabel}
-            </p>
-            <p className="font-medium">
-              {formatInvoiceDate(getNextRenewalDate(invoice.periodEnd), locale)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {messages.issuedDateLabel}
-            </p>
-            <p className="font-medium">
-              {formatInvoiceDate(invoice.issuedAt, locale)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {messages.dueDateLabel}
-            </p>
-            <p className="font-medium">
-              {formatInvoiceDate(invoice.dueAt, locale)}
-            </p>
+            {state.canMarkPaid ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsMarkPaidOpen(true)}
+              >
+                {messages.markAsPaid}
+              </Button>
+            ) : null}
+            {state.canMarkCanceled ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  setCancelErrorMessage(null)
+                  setIsCancelSheetOpen(true)
+                }}
+              >
+                {messages.markInvoiceCanceled}
+              </Button>
+            ) : null}
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              {messages.billedToHeading}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1.5 text-sm">
-            <p className="font-semibold text-foreground">
-              {state.organization?.billingFullName ||
-                state.organization?.name ||
-                "—"}
-            </p>
-            <p className="text-muted-foreground">
-              {state.organization?.billingAddress || "—"}
-            </p>
-            <p className="text-muted-foreground">
-              {[
-                state.organization?.billingCity,
-                state.organization?.billingState,
-              ]
-                .filter(Boolean)
-                .join(", ") || "—"}
-            </p>
-            <p className="text-muted-foreground">
-              {[
-                state.organization?.billingCountry,
-                state.organization?.billingPostCode,
-              ]
-                .filter(Boolean)
-                .join(" ") || "—"}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <div className="flex flex-col gap-6 lg:col-span-8">
+          <Card>
+            <CardContent className="grid gap-6 divide-y divide-border p-5 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+              <div className="space-y-1 text-sm">
+                <p className="pb-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  {messages.billedToHeading}
+                </p>
+                <p className="font-semibold text-foreground">
+                  {state.organization?.billingFullName ||
+                    state.organization?.name ||
+                    "—"}
+                </p>
+                <p className="text-muted-foreground">
+                  {state.organization?.billingAddress || "—"}
+                </p>
+                <p className="text-muted-foreground">
+                  {[
+                    state.organization?.billingCity,
+                    state.organization?.billingState,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") || "—"}
+                </p>
+                <p className="text-muted-foreground">
+                  {[
+                    state.organization?.billingCountry,
+                    state.organization?.billingPostCode,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || "—"}
+                </p>
+              </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              {messages.paidToHeading}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1.5 text-sm">
-            <p className="font-semibold text-foreground">
-              {messages.companyName}
-            </p>
-            <p className="text-muted-foreground">
-              {messages.companyAddressLine1}
-            </p>
-            <p className="text-muted-foreground">
-              {messages.companyAddressLine2}
-            </p>
-            <p className="text-muted-foreground">{messages.companyEmailLine}</p>
-            <p className="text-muted-foreground">
-              {messages.companyWhatsappLine}
-            </p>
-          </CardContent>
-        </Card>
+              <div className="space-y-1 pt-4 text-sm sm:pt-0 sm:pl-6">
+                <p className="pb-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  {messages.paidToHeading}
+                </p>
+                <p className="font-semibold text-foreground">
+                  {messages.companyName}
+                </p>
+                <p className="text-muted-foreground">
+                  {messages.companyAddressLine1}
+                </p>
+                <p className="text-muted-foreground">
+                  {messages.companyAddressLine2}
+                </p>
+                <p className="text-muted-foreground">
+                  {messages.companyEmailLine}
+                </p>
+                <p className="text-muted-foreground">
+                  {messages.companyWhatsappLine}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                {messages.lineItemsHeading}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="pl-6">
+                        {messages.descriptionColumn}
+                      </TableHead>
+                      <TableHead className="text-right">
+                        {messages.qtyColumn}
+                      </TableHead>
+                      <TableHead className="text-right">
+                        {messages.unitPriceColumn}
+                      </TableHead>
+                      <TableHead className="pr-6 text-right">
+                        {messages.amountColumn}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoice.lineItems.map((lineItem) => (
+                      <TableRow key={lineItem.id}>
+                        <TableCell className="pl-6 font-medium">
+                          {lineItem.description}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {lineItem.quantity}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatInvoiceCurrency(
+                            lineItem.unitPrice,
+                            lineItem.currency,
+                            locale
+                          )}
+                        </TableCell>
+                        <TableCell className="pr-6 text-right">
+                          {formatInvoiceCurrency(
+                            lineItem.amount,
+                            lineItem.currency,
+                            locale
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex flex-col items-end border-t bg-muted/15 px-6 py-4">
+                <div className="w-full max-w-xs space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-muted-foreground">
+                      {messages.subtotalLabel}
+                    </span>
+                    <span className="font-medium">
+                      {formatInvoiceCurrency(
+                        invoice.subtotalAmount,
+                        invoice.currency,
+                        locale
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-muted-foreground">
+                      {messages.taxLabel}
+                    </span>
+                    <span className="font-medium">
+                      {formatInvoiceCurrency(
+                        invoice.taxAmount,
+                        invoice.currency,
+                        locale
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-muted-foreground">
+                      {messages.discountLabel}
+                    </span>
+                    <span className="font-medium">
+                      {formatInvoiceCurrency(
+                        invoice.discountAmount,
+                        invoice.currency,
+                        locale
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 border-t border-border pt-2 font-semibold">
+                    <span className="text-base">{messages.totalLabel}</span>
+                    <span className="text-base font-bold text-foreground">
+                      {formatInvoiceCurrency(
+                        invoice.totalAmount,
+                        invoice.currency,
+                        locale
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {state.payment?.confirmations &&
+          state.payment.confirmations.length > 0 ? (
+            <PaymentConfirmationList
+              confirmations={state.payment.confirmations}
+              canManage={state.canManageConfirmations}
+              onActionComplete={() => void loadDetail()}
+            />
+          ) : null}
+        </div>
+
+        <div className="flex flex-col gap-6 lg:col-span-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                {messages.overviewHeading}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="divide-y text-sm">
+              <div className="flex items-center justify-between py-2.5 first:pt-0">
+                <span className="text-xs text-muted-foreground">
+                  {messages.statusLabel}
+                </span>
+                <InvoiceStatusPill status={invoice.status} />
+              </div>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  {messages.invoiceNumberLabel}
+                </span>
+                <span className="font-mono text-xs font-medium">
+                  {invoice.invoiceNumber}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  {messages.invoiceIdLabel}
+                </span>
+                <span
+                  className="max-w-[140px] truncate font-mono text-xs"
+                  title={invoice.id}
+                >
+                  {invoice.id}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  {messages.issuedDateLabel}
+                </span>
+                <span className="font-medium">
+                  {formatInvoiceDate(invoice.issuedAt, locale)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  {messages.dueDateLabel}
+                </span>
+                <span className="font-medium">
+                  {formatInvoiceDate(invoice.dueAt, locale)}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  {messages.servicePeriodLabel}
+                </span>
+                <span className="text-xs font-medium">
+                  {formatInvoiceDate(invoice.periodStart, locale)} -{" "}
+                  {formatInvoiceDate(invoice.periodEnd, locale)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  {messages.serviceEndsLabel}
+                </span>
+                <span className="font-medium">
+                  {formatInvoiceDate(invoice.periodEnd, locale)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2.5 last:pb-0">
+                <span className="text-xs text-muted-foreground">
+                  {messages.nextRenewalDateLabel}
+                </span>
+                <span className="font-medium">
+                  {formatInvoiceDate(
+                    getNextRenewalDate(invoice.periodEnd),
+                    locale
+                  )}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {state.payment ? (
+            <PaymentMethodGatewayCard payment={state.payment} />
+          ) : null}
+
+          {state.payment?.timeline && state.payment.timeline.length > 0 ? (
+            <PaymentTimeline timeline={state.payment.timeline} />
+          ) : null}
+        </div>
       </div>
-
-      {state.payment ? (
-        <InvoicePaymentSection
-          payment={state.payment}
-          canManageConfirmations={state.canManageConfirmations}
-          onActionComplete={() => void loadDetail()}
-        />
-      ) : null}
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            {messages.lineItemsHeading}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{messages.descriptionColumn}</TableHead>
-                <TableHead className="text-right">
-                  {messages.qtyColumn}
-                </TableHead>
-                <TableHead className="text-right">
-                  {messages.unitPriceColumn}
-                </TableHead>
-                <TableHead className="text-right">
-                  {messages.amountColumn}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoice.lineItems.map((lineItem) => (
-                <TableRow key={lineItem.id}>
-                  <TableCell className="font-medium">
-                    {lineItem.description}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {lineItem.quantity}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatInvoiceCurrency(
-                      lineItem.unitPrice,
-                      lineItem.currency,
-                      locale
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatInvoiceCurrency(
-                      lineItem.amount,
-                      lineItem.currency,
-                      locale
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">{messages.totalsHeading}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-2 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-muted-foreground">{messages.subtotalLabel}</p>
-            <p className="font-medium">
-              {formatInvoiceCurrency(
-                invoice.subtotalAmount,
-                invoice.currency,
-                locale
-              )}
-            </p>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-muted-foreground">{messages.taxLabel}</p>
-            <p className="font-medium">
-              {formatInvoiceCurrency(
-                invoice.taxAmount,
-                invoice.currency,
-                locale
-              )}
-            </p>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-muted-foreground">{messages.discountLabel}</p>
-            <p className="font-medium">
-              {formatInvoiceCurrency(
-                invoice.discountAmount,
-                invoice.currency,
-                locale
-              )}
-            </p>
-          </div>
-          <div className="flex items-center justify-between gap-2 border-t pt-2">
-            <p className="font-semibold">{messages.totalLabel}</p>
-            <p className="font-semibold">
-              {formatInvoiceCurrency(
-                invoice.totalAmount,
-                invoice.currency,
-                locale
-              )}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
       <Sheet open={isPaymentDrawerOpen} onOpenChange={setIsPaymentDrawerOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md">

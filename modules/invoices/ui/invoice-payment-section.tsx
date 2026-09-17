@@ -319,7 +319,7 @@ type PaymentTimelineProps = {
   timeline: PaymentTimelineEvent[]
 }
 
-function PaymentTimeline({ timeline }: PaymentTimelineProps) {
+export function PaymentTimeline({ timeline }: PaymentTimelineProps) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
