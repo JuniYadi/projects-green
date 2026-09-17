@@ -60,7 +60,9 @@ describe("WhatsApp official product page", () => {
   })
 
   it("renders active package resources and catalog pricing", async () => {
-    const view = render(await WhatsAppOfficialPage())
+    const view = render(
+      await WhatsAppOfficialPage({ params: Promise.resolve({ lang: "en" }) })
+    )
 
     expect(
       view.getByRole("heading", {
