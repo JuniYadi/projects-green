@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 import {
   Card,
@@ -38,6 +38,8 @@ import {
 import type { CatalogProduct } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 import { toast } from "sonner"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const PRODUCT_LABELS: Record<string, string> = {
   APP_HOSTING: "App Hosting",
@@ -56,6 +58,9 @@ const STATUS_COLORS: Record<string, string> = {
 export default function PortalBillingCatalogPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [products, setProducts] = useState<CatalogProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -158,29 +163,37 @@ export default function PortalBillingCatalogPage() {
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Product Catalog</h1>
+          <h1 className="text-2xl font-bold">
+            {messages.pPortalBillingCatalogPageClient.productCatalogTitle}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Manage service packages, plans, and add-ons available for
-            subscription.
+            {messages.pPortalBillingCatalogPageClient.catalogDescription}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative max-w-sm flex-1">
             <Input
-              placeholder="Search products..."
+              placeholder={
+                messages.pPortalBillingCatalogPageClient
+                  .searchProductsPlaceholder
+              }
               value={search}
               onChange={handleSearch}
               className="pl-9"
-              aria-label="Search products"
+              aria-label={
+                messages.pPortalBillingCatalogPageClient.searchProductsAriaLabel
+              }
             />
             <MagnifyingGlassIcon className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
           <Link href="/portal/billing/catalog/app_hosting/products">
-            <Button size="sm">Manage Products</Button>
+            <Button size="sm">
+              {messages.pPortalBillingCatalogPageClient.manageProductsButton}
+            </Button>
           </Link>
           <Link href="/portal/billing/catalog/addons">
             <Button variant="outline" size="sm">
-              Add-ons
+              {messages.pPortalBillingCatalogPageClient.addOnsButton}
             </Button>
           </Link>
         </div>
@@ -211,7 +224,7 @@ export default function PortalBillingCatalogPage() {
             <PackageIcon className="h-12 w-12 text-muted-foreground/50" />
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                No products match your search.
+                {messages.pPortalBillingCatalogPageClient.noProductsMatch}
               </p>
             </div>
           </CardContent>
@@ -256,7 +269,8 @@ export default function PortalBillingCatalogPage() {
                     <CardContent>
                       <div className="space-y-2 text-sm">
                         <p className="text-muted-foreground">
-                          {product.plans.length} plan
+                          {product.plans.length}{" "}
+                          {messages.pPortalBillingCatalogPageClient.planLabel}
                           {product.plans.length !== 1 ? "s" : ""}
                         </p>
                         {product.plans.length > 0 && (
@@ -291,7 +305,11 @@ export default function PortalBillingCatalogPage() {
                             })}
                             {product.plans.length > 2 && (
                               <p className="text-xs text-muted-foreground">
-                                +{product.plans.length - 2} more plan
+                                +{product.plans.length - 2}{" "}
+                                {
+                                  messages.pPortalBillingCatalogPageClient
+                                    .morePlanLabel
+                                }
                                 {product.plans.length - 2 !== 1 ? "s" : ""}
                               </p>
                             )}
@@ -316,31 +334,49 @@ export default function PortalBillingCatalogPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Package Metadata</DialogTitle>
+            <DialogTitle>
+              {
+                messages.pPortalBillingCatalogPageClient
+                  .editPackageMetadataTitle
+              }
+            </DialogTitle>
             <DialogDescription>
-              Update display name, description, and catalog availability for{" "}
+              {
+                messages.pPortalBillingCatalogPageClient
+                  .updatePackageDescriptionPrefix
+              }{" "}
               <strong>{editingProduct?.code}</strong>.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="pkg-name">Package Name *</Label>
+              <Label htmlFor="pkg-name">
+                {messages.pPortalBillingCatalogPageClient.packageNameLabel}
+              </Label>
               <Input
                 id="pkg-name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="e.g. App Hosting, WhatsApp"
+                placeholder={
+                  messages.pPortalBillingCatalogPageClient
+                    .packageNamePlaceholder
+                }
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="pkg-desc">Description</Label>
+              <Label htmlFor="pkg-desc">
+                {messages.pPortalBillingCatalogPageClient.descriptionLabel}
+              </Label>
               <Textarea
                 id="pkg-desc"
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Describe this service package"
+                placeholder={
+                  messages.pPortalBillingCatalogPageClient
+                    .packageDescriptionPlaceholder
+                }
                 rows={3}
               />
             </div>
@@ -348,10 +384,16 @@ export default function PortalBillingCatalogPage() {
             <div className="flex items-center justify-between border-t pt-4">
               <div>
                 <Label htmlFor="pkg-active" className="text-sm font-medium">
-                  Active in Catalog
+                  {
+                    messages.pPortalBillingCatalogPageClient
+                      .activeInCatalogLabel
+                  }
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Controls whether this service package is visible to tenants.
+                  {
+                    messages.pPortalBillingCatalogPageClient
+                      .activeInCatalogDescription
+                  }
                 </p>
               </div>
               <Switch
@@ -368,7 +410,7 @@ export default function PortalBillingCatalogPage() {
               onClick={() => setEditingProduct(null)}
               disabled={savingPackage}
             >
-              Cancel
+              {messages.pPortalBillingCatalogPageClient.cancelButton}
             </Button>
             <Button onClick={handleSavePackage} disabled={savingPackage}>
               {savingPackage ? "Saving..." : "Save Changes"}
