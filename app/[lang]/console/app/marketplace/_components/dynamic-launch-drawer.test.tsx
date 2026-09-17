@@ -170,9 +170,9 @@ describe("DynamicLaunchDrawer", () => {
       "#app-name-input"
     ) as HTMLInputElement
     expect(appNameInput).toBeDefined()
-    expect(appNameInput.value).toMatch(/^n8n-[a-z]+-[a-z]+$/)
+    expect(appNameInput.value).toMatch(/^n8n-[a-z]+-[a-z]+-[a-z0-9]+$/)
     expect(
-      view.getByText(/https:\/\/n8n-[a-z]+-[a-z]+\.pfnapp\.com/)
+      view.getByText(/https:\/\/n8n-[a-z]+-[a-z]+-[a-z0-9]+\.pfnapp\.com/)
     ).toBeDefined()
   })
 

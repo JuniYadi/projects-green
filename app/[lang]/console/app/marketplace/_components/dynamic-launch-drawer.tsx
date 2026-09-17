@@ -113,7 +113,8 @@ export function generateSuggestedAppName(templateSlug: string): string {
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
   const base = cleanSlug || "app"
   const formattedBase = /^[0-9]/.test(base) ? `app-${base}` : base
-  return `${formattedBase}-${adj}-${noun}`
+  const suffix = Math.random().toString(36).substring(2, 6)
+  return `${formattedBase}-${adj}-${noun}-${suffix}`
 }
 
 export function DynamicLaunchDrawer({

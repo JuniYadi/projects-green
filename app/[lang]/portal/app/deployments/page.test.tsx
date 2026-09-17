@@ -44,6 +44,8 @@ const mockGetDeployments = mock(async () => ({
         stackSlug: "store-api",
         stackName: "Store API",
         organizationId: "org_test",
+        organizationName: "Test Org",
+        framework: "Next.js",
         status: "RUNNING",
         triggerType: "GIT_PUSH",
         commitSha: "1234567",
@@ -103,6 +105,7 @@ describe("AdminDeploymentsPage", () => {
 
     await waitFor(() => {
       expect(getByText("Store API")).toBeInTheDocument()
+      expect(getByText("Test Org")).toBeInTheDocument()
       expect(getByText("dep_abc")).toBeInTheDocument()
       expect(getAllByText("Running").length).toBeGreaterThanOrEqual(1)
     })
