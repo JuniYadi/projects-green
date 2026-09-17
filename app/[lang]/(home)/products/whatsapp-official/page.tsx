@@ -15,6 +15,9 @@ import type {
   CatalogPlanDTO,
 } from "@/modules/billing/catalog/catalog.dto"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 
 const CATALOG_CURRENCY = "IDR"
 
@@ -80,9 +83,11 @@ const periodLabel = (offer: CatalogOfferDTO) => {
 function PlanCard({
   plan,
   currency,
+  messages,
 }: {
   plan: CatalogPlanDTO
   currency: string
+  messages: AppMessages
 }) {
   const resources = getPlanResources(plan)
 
@@ -91,7 +96,7 @@ function PlanCard({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-emerald-300/70 uppercase">
-            WhatsApp plan
+            {messages.pProductsWhatsappOfficial.whatsappPlan}
           </p>
           <h3 className="mt-2 text-2xl font-bold text-white">{plan.name}</h3>
         </div>
@@ -115,14 +120,14 @@ function PlanCard({
           ))
         ) : (
           <p className="text-sm text-white/55">
-            Flexible configuration for your business requirements.
+            {messages.pProductsWhatsappOfficial.flexibleConfiguration}
           </p>
         )}
       </div>
 
       <div className="mt-5 space-y-3">
         <p className="text-xs font-semibold tracking-[0.18em] text-white/40 uppercase">
-          Available billing terms
+          {messages.pProductsWhatsappOfficial.availableBillingTerms}
         </p>
         {plan.offers.map((offer) => (
           <div
@@ -150,14 +155,22 @@ function PlanCard({
         href="/login/start?intent=signup"
         className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-400"
       >
-        Start with this plan
+        {messages.pProductsWhatsappOfficial.startWithThisPlan}
         <ArrowRight className="h-4 w-4" />
       </Link>
     </article>
   )
 }
 
-export default async function WhatsAppOfficialPage() {
+export default async function WhatsAppOfficialPage({
+  params,
+}: Readonly<{
+  params: Promise<{ lang: string }>
+}>) {
+  const { lang } = await params
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
+
   const catalog = await new CatalogService().getProduct(
     CATALOG_CURRENCY,
     "WHATSAPP"
@@ -184,13 +197,13 @@ export default async function WhatsAppOfficialPage() {
               href="/"
               className="hidden px-3 py-2 text-sm text-white/60 transition-colors hover:text-white sm:block"
             >
-              Back to home
+              {messages.pProductsWhatsappOfficial.backToHome}
             </Link>
             <Link
               href="/login/start?intent=signup"
               className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-400"
             >
-              Get started
+              {messages.pProductsWhatsappOfficial.getStarted}
             </Link>
           </div>
         </nav>
@@ -202,10 +215,10 @@ export default async function WhatsAppOfficialPage() {
           <div className="max-w-3xl">
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold tracking-[0.16em] text-emerald-300 uppercase">
               <WhatsappLogo className="h-4 w-4" weight="fill" />
-              Official API
+              {messages.pProductsWhatsappOfficial.officialApi}
             </div>
             <h1 className="text-4xl leading-tight font-bold tracking-tight text-white sm:text-6xl">
-              WhatsApp for businesses that need to stay connected.
+              {messages.pProductsWhatsappOfficial.heroHeadline}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/55">
               {product.description ??
@@ -216,14 +229,14 @@ export default async function WhatsAppOfficialPage() {
                 href="/login/start?intent=signup"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-400"
               >
-                Create your account
+                {messages.pProductsWhatsappOfficial.createYourAccount}
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="#plans"
                 className="inline-flex items-center justify-center rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/5"
               >
-                Compare plans
+                {messages.pProductsWhatsappOfficial.comparePlans}
               </Link>
             </div>
           </div>
@@ -232,28 +245,31 @@ export default async function WhatsAppOfficialPage() {
             <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
               <DeviceMobile className="h-5 w-5 text-emerald-300" />
               <p className="mt-4 text-sm font-semibold text-white">
-                Managed devices
+                {messages.pProductsWhatsappOfficial.managedDevices}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-white/45">
-                Connect the devices your team needs.
+                {messages.pProductsWhatsappOfficial.connectDevices}
               </p>
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
               <ShieldCheck className="h-5 w-5 text-emerald-300" />
               <p className="mt-4 text-sm font-semibold text-white">
-                Official API
+                {messages.pProductsWhatsappOfficial.officialApi}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-white/45">
-                Built for reliable business communication.
+                {
+                  messages.pProductsWhatsappOfficial
+                    .builtForReliableCommunication
+                }
               </p>
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
               <CheckCircle className="h-5 w-5 text-emerald-300" />
               <p className="mt-4 text-sm font-semibold text-white">
-                Clear pricing
+                {messages.pProductsWhatsappOfficial.clearPricing}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-white/45">
-                Choose the package that fits your volume.
+                {messages.pProductsWhatsappOfficial.choosePackageVolume}
               </p>
             </div>
           </div>
@@ -264,25 +280,31 @@ export default async function WhatsAppOfficialPage() {
         <div className="mb-12 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-xs font-semibold tracking-[0.18em] text-emerald-300/70 uppercase">
-              Product catalog
+              {messages.pProductsWhatsappOfficial.productCatalog}
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Find the right WhatsApp plan
+              {messages.pProductsWhatsappOfficial.findRightPlan}
             </h2>
             <p className="mt-3 max-w-2xl text-white/50">
-              Compare the active packages and billing terms from the PFNApp
-              catalog.
+              {messages.pProductsWhatsappOfficial.comparePackagesCatalog}
             </p>
           </div>
           <p className="text-sm text-white/40">
-            {product.plans.length} package
-            {product.plans.length === 1 ? "" : "s"} · prices in {currency}
+            {product.plans.length}{" "}
+            {messages.pProductsWhatsappOfficial.packageUnit}
+            {product.plans.length === 1 ? "" : "s"}{" "}
+            {messages.pProductsWhatsappOfficial.pricesInSeparator} {currency}
           </p>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {product.plans.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} currency={currency} />
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              currency={currency}
+              messages={messages}
+            />
           ))}
         </div>
       </section>
@@ -291,18 +313,17 @@ export default async function WhatsAppOfficialPage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-16 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-2xl font-bold text-white">
-              Ready to bring your business to WhatsApp?
+              {messages.pProductsWhatsappOfficial.readyToBringBusiness}
             </p>
             <p className="mt-2 text-sm text-white/50">
-              Create an account and choose your WhatsApp package when you are
-              ready.
+              {messages.pProductsWhatsappOfficial.createAccountChoosePackage}
             </p>
           </div>
           <Link
             href="/login/start?intent=signup"
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-emerald-950 transition-colors hover:bg-emerald-400"
           >
-            Get started free
+            {messages.pProductsWhatsappOfficial.getStartedFree}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
