@@ -130,7 +130,9 @@ export function LogTopErrorsCard({
                     >
                       {t.incidentsBadge.replace(
                         "{count}",
-                        err.count.toLocaleString("id-ID")
+                        err.count.toLocaleString(
+                          locale === "en" ? "en-US" : "id-ID"
+                        )
                       )}
                     </Badge>
                     {onFilterLogText && (
