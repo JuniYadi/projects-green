@@ -1,9 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { z } from "zod"
 
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -163,6 +166,10 @@ export function AppHostingPlanConfigComponent({
   disabled?: boolean
   errors?: Record<string, string>
 }>) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [clusters, setClusters] = useState<ClusterItem[]>([])
   const [loadingClusters, setLoadingClusters] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -226,10 +233,17 @@ export function AppHostingPlanConfigComponent({
   return (
     <section className="space-y-4 rounded-md border p-4">
       <div>
-        <h3 className="font-medium">App Hosting provisioning</h3>
+        <h3 className="font-medium">
+          {
+            messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+              .title
+          }
+        </h3>
         <p className="text-sm text-muted-foreground">
-          Set target clusters, compute specs, and template dependencies for this
-          plan.
+          {
+            messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+              .description
+          }
         </p>
       </div>
 
@@ -238,11 +252,16 @@ export function AppHostingPlanConfigComponent({
         <div className="flex items-center justify-between">
           <div>
             <Label className="text-sm font-medium">
-              Allowed Target Clusters
+              {
+                messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                  .clustersLabel
+              }
             </Label>
             <p className="text-xs text-muted-foreground">
-              Select Kubernetes clusters where this plan can be deployed. Leave
-              empty to allow all active clusters.
+              {
+                messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                  .clustersDescription
+              }
             </p>
           </div>
           {clusters.length > 0 && (
@@ -256,7 +275,10 @@ export function AppHostingPlanConfigComponent({
 
         {loadingClusters ? (
           <div className="rounded-md border p-3 text-xs text-muted-foreground">
-            Loading active clusters...
+            {
+              messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                .loadingClusters
+            }
           </div>
         ) : loadError ? (
           <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
@@ -264,8 +286,10 @@ export function AppHostingPlanConfigComponent({
           </div>
         ) : clusters.length === 0 ? (
           <div className="rounded-md border p-3 text-xs text-muted-foreground">
-            No active clusters found. Configure clusters under App Hosting
-            inventory.
+            {
+              messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                .noClustersFound
+            }
           </div>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
@@ -296,13 +320,27 @@ export function AppHostingPlanConfigComponent({
                           variant="secondary"
                           className="h-4 px-1 text-[10px]"
                         >
-                          Default
+                          {
+                            messages
+                              .pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                              .defaultBadge
+                          }
                         </Badge>
                       )}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Code: <span className="font-mono">{cluster.code}</span> ·
-                      Region: {cluster.region || "Global"}
+                      {
+                        messages
+                          .pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                          .codeLabel
+                      }{" "}
+                      <span className="font-mono">{cluster.code}</span>{" "}
+                      {
+                        messages
+                          .pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                          .regionLabel
+                      }{" "}
+                      {cluster.region || "Global"}
                     </p>
                   </div>
                 </label>
@@ -319,7 +357,10 @@ export function AppHostingPlanConfigComponent({
       <div className="grid gap-4 sm:grid-cols-3">
         <NumberField
           id="app-hosting-cpu"
-          label="CPU (mCPU)"
+          label={
+            messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+              .cpuLabel
+          }
           value={value.cpu}
           min={1}
           onChange={(cpu) => onChange({ ...value, cpu })}
@@ -328,7 +369,10 @@ export function AppHostingPlanConfigComponent({
         />
         <NumberField
           id="app-hosting-memory"
-          label="Memory (MB)"
+          label={
+            messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+              .memoryLabel
+          }
           value={value.memory}
           min={128}
           onChange={(memory) => onChange({ ...value, memory })}
@@ -337,7 +381,10 @@ export function AppHostingPlanConfigComponent({
         />
         <NumberField
           id="app-hosting-storage"
-          label="Storage (GB)"
+          label={
+            messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+              .storageLabel
+          }
           value={value.storage}
           min={1}
           onChange={(storage) => onChange({ ...value, storage })}
@@ -347,7 +394,10 @@ export function AppHostingPlanConfigComponent({
       </div>
       <NumberField
         id="app-hosting-max-domains"
-        label="Max custom domains"
+        label={
+          messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+            .maxDomainsLabel
+        }
         value={value.maxCustomDomains}
         min={0}
         onChange={(maxCustomDomains) =>
@@ -358,9 +408,17 @@ export function AppHostingPlanConfigComponent({
       />
       <div className="flex items-center justify-between gap-4 border-t pt-3">
         <div>
-          <Label htmlFor="app-hosting-wildcard">Wildcard domains</Label>
+          <Label htmlFor="app-hosting-wildcard">
+            {
+              messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                .wildcardLabel
+            }
+          </Label>
           <p className="text-xs text-muted-foreground">
-            Allow wildcard domains for this plan.
+            {
+              messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                .wildcardDescription
+            }
           </p>
         </div>
         <Switch
@@ -372,9 +430,17 @@ export function AppHostingPlanConfigComponent({
       </div>
       <div className="space-y-3 border-t pt-3">
         <div>
-          <Label>Required database dependencies</Label>
+          <Label>
+            {
+              messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                .dependenciesLabel
+            }
+          </Label>
           <p className="text-xs text-muted-foreground">
-            Select database dependencies required by this template.
+            {
+              messages.pBillingProvisioningAdaptersAppHostingProvisionAdapter
+                .dependenciesDescription
+            }
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
