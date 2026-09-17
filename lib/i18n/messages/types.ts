@@ -329,6 +329,9 @@ export type AppMessages = {
         vpaExplainAuto: string
         vpaExplainInitial: string
         vpaExplainOff: string
+        comingSoonBadge: string
+        comingSoonTitle: string
+        comingSoonDesc: string
       }
       templateEditor: {
         official: string
@@ -609,6 +612,9 @@ export type AppMessages = {
         emptyState: string
         howItWorksTitle: string
         howItWorksDesc: string
+        comingSoonBadge: string
+        comingSoonTitle: string
+        comingSoonDesc: string
       }
       gitDeploy: {
         review: {

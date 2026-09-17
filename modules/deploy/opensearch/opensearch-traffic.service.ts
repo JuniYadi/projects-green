@@ -34,6 +34,7 @@ import type {
   TrafficIpDetailDTO,
   TrafficIpItemDTO,
   TrafficIpListResponseDTO,
+  TrafficIpRecentLog,
   TrafficPathCount,
   TrafficRequestQuality,
   TrafficSignal,
@@ -358,16 +359,52 @@ function buildStackFilterClause(
   const validDomains = Array.isArray(domainList)
     ? domainList.filter(Boolean)
     : []
+
+  const shouldClauses: Record<string, unknown>[] = []
+
   if (validDomains.length > 0) {
-    return {
+    shouldClauses.push({
       terms: {
         "haproxy_host.keyword": validDomains,
       },
+    })
+    for (const d of validDomains) {
+      if (!d.includes(".")) {
+        shouldClauses.push({
+          wildcard: {
+            "haproxy_host.keyword": `${d}.*`,
+          },
+        })
+      }
     }
   }
+
+  if (stackSlug) {
+    shouldClauses.push({
+      prefix: {
+        "haproxy_backend.keyword": `app-${stackSlug}_svc_`,
+      },
+    })
+    if (stackSlug.startsWith("app-")) {
+      shouldClauses.push({
+        prefix: {
+          "haproxy_backend.keyword": `${stackSlug}_svc_`,
+        },
+      })
+    }
+  }
+
+  if (shouldClauses.length === 0) {
+    return { match_all: {} }
+  }
+  if (shouldClauses.length === 1) {
+    return shouldClauses[0]
+  }
+
   return {
-    prefix: {
-      "haproxy_backend.keyword": `app-${stackSlug}_svc_`,
+    bool: {
+      should: shouldClauses,
+      minimum_should_match: 1,
     },
   }
 }
@@ -1530,26 +1567,33 @@ export function computeTimeRangeForPeriod(params: {
     return { startTime, endTime }
   } else {
     // daily
-    let targetDate = new Date()
     if (params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date)) {
-      targetDate = new Date(params.date)
+      const [y, m, d] = params.date.split("-").map(Number)
+      const startTime = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0))
+      const endTime = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999))
+      return { startTime, endTime }
     }
+
+    // Default daily period when date not specified:
+    // Cover from yesterday 00:00:00 UTC through end of today 23:59:59 UTC
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const startTime = new Date(
       Date.UTC(
-        targetDate.getUTCFullYear(),
-        targetDate.getUTCMonth(),
-        targetDate.getUTCDate(),
+        yesterday.getUTCFullYear(),
+        yesterday.getUTCMonth(),
+        yesterday.getUTCDate(),
         0,
         0,
         0,
         0
       )
     )
+    const today = new Date()
     const endTime = new Date(
       Date.UTC(
-        targetDate.getUTCFullYear(),
-        targetDate.getUTCMonth(),
-        targetDate.getUTCDate(),
+        today.getUTCFullYear(),
+        today.getUTCMonth(),
+        today.getUTCDate(),
         23,
         59,
         59,
@@ -1973,11 +2017,20 @@ export async function getAppTrafficIpDetail(
       },
     },
     buildStackFilterClause(domainList, stackSlug),
-    { term: { "client_ip.keyword": normalizedIp } },
+    {
+      bool: {
+        should: [
+          { term: { "client_ip.keyword": normalizedIp } },
+          { term: { client_ip: normalizedIp } },
+        ],
+        minimum_should_match: 1,
+      },
+    },
   ]
 
   const queryPayload: Record<string, unknown> = {
-    size: 0,
+    size: 25,
+    sort: [{ "@timestamp": { order: "desc" } }],
     query: {
       bool: {
         filter: filterClauses,
@@ -2042,10 +2095,16 @@ export async function getAppTrafficIpDetail(
 
     const rawRes = response as unknown as {
       body?: {
-        hits?: { total?: number | { value: number } }
+        hits?: {
+          total?: number | { value: number }
+          hits?: Array<{ _id: string; _source?: Record<string, unknown> }>
+        }
         aggregations?: Record<string, unknown>
       }
-      hits?: { total?: number | { value: number } }
+      hits?: {
+        total?: number | { value: number }
+        hits?: Array<{ _id: string; _source?: Record<string, unknown> }>
+      }
       aggregations?: Record<string, unknown>
     }
 
@@ -2058,6 +2117,22 @@ export async function getAppTrafficIpDetail(
             "value" in rawTotal
           ? rawTotal.value
           : 0
+
+    const rawHitList =
+      ((rawRes.body?.hits?.hits ?? rawRes.hits?.hits ?? []) as Array<{
+        _id: string
+        _source?: Record<string, unknown>
+      }>) ?? []
+    const recentLogs: TrafficIpRecentLog[] = rawHitList.map((h) => ({
+      id: String(h._id),
+      timestamp: String(h._source?.["@timestamp"] ?? new Date().toISOString()),
+      method: String(h._source?.http_method ?? "GET"),
+      path: String(h._source?.http_path ?? "/"),
+      statusCode: Number(h._source?.http_status ?? 200),
+      latencyMs: Number(h._source?.response_time_ms ?? 0),
+      bytes: Number(h._source?.bytes_read ?? 0),
+      userAgent: String(h._source?.user_agent ?? "-"),
+    }))
 
     const aggs = (rawRes.body?.aggregations ?? rawRes.aggregations ?? {}) as {
       status_class?: { buckets: Array<{ key: string; doc_count: number }> }
@@ -2261,6 +2336,7 @@ export async function getAppTrafficIpDetail(
         isBurst,
       },
       staticAssetShare,
+      recentLogs,
       blockInfo,
     }
   } catch (err) {
@@ -2299,6 +2375,7 @@ export async function getAppTrafficIpDetail(
       lastSeen: new Date().toISOString(),
       velocity: { maxRpm: 0, isBurst: false },
       staticAssetShare: 0,
+      recentLogs: [],
       blockInfo: null,
     }
   }

@@ -408,29 +408,70 @@ export default function AdminDeploymentsPage() {
                     key={deployment.id}
                     data-testid={`deployment-row-${deployment.id}`}
                   >
-                    <TableCell className="font-mono text-xs">
-                      <span title={deployment.organizationId}>
-                        {deployment.organizationId.length > 16
-                          ? `${deployment.organizationId.slice(0, 14)}…`
-                          : deployment.organizationId}
-                      </span>
+                    <TableCell className="text-xs">
+                      {deployment.organizationName ? (
+                        <div>
+                          <div
+                            className="max-w-[160px] truncate font-medium text-foreground"
+                            title={deployment.organizationName}
+                          >
+                            {deployment.organizationName}
+                          </div>
+                          <div
+                            className="max-w-[140px] truncate font-mono text-[10px] text-muted-foreground"
+                            title={deployment.organizationId}
+                          >
+                            {deployment.organizationId.length > 16
+                              ? `${deployment.organizationId.slice(0, 14)}…`
+                              : deployment.organizationId}
+                          </div>
+                        </div>
+                      ) : (
+                        <span
+                          className="font-mono text-muted-foreground"
+                          title={deployment.organizationId}
+                        >
+                          {deployment.organizationId.length > 16
+                            ? `${deployment.organizationId.slice(0, 14)}…`
+                            : deployment.organizationId}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm font-medium">
-                        {deployment.stackName}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground">
+                          {deployment.stackName}
+                        </span>
+                        {deployment.triggerType && (
+                          <Badge
+                            variant="outline"
+                            className="border-border bg-muted/30 px-1.5 py-0 font-mono text-[10px] text-muted-foreground"
+                          >
+                            {deployment.triggerType}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="font-mono text-xs text-muted-foreground">
-                        {deployment.stackSlug}
+                      <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                        {deployment.stackName !== deployment.stackSlug && (
+                          <span className="font-mono text-[11px]">
+                            {deployment.stackSlug}
+                          </span>
+                        )}
+                        {deployment.framework && (
+                          <span className="rounded bg-muted/40 px-1 text-[10px]">
+                            {deployment.framework}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          title={deployment.id}
+                          aria-label={`${messages.deploymentId}: ${deployment.id}`}
+                          onClick={() => setSelectedDeployment(deployment)}
+                          className="font-mono text-[11px] text-primary hover:underline"
+                        >
+                          {shortId}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        title={deployment.id}
-                        aria-label={`${messages.deploymentId}: ${deployment.id}`}
-                        onClick={() => setSelectedDeployment(deployment)}
-                        className="font-mono text-xs text-primary hover:underline"
-                      >
-                        {shortId}
-                      </button>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -444,10 +485,11 @@ export default function AdminDeploymentsPage() {
                       {deployment.status === "FAILED" &&
                         deployment.failureReason && (
                           <div
-                            className="max-w-[180px] truncate text-xs text-rose-500"
+                            className="max-w-[200px] truncate text-xs text-rose-500"
                             title={deployment.failureReason}
                           >
-                            {deployment.failureReason}
+                            {deployment.sanitizedFailureReason ||
+                              deployment.failureReason}
                           </div>
                         )}
                     </TableCell>

@@ -60,6 +60,17 @@ export interface TrafficIpListResponseDTO {
   coveragePercentage: number
 }
 
+export interface TrafficIpRecentLog {
+  id: string
+  timestamp: string
+  method: string
+  path: string
+  statusCode: number
+  latencyMs: number
+  bytes?: number
+  userAgent?: string
+}
+
 export interface TrafficIpDetailDTO {
   ip: string
   countryCode: string
@@ -99,6 +110,7 @@ export interface TrafficIpDetailDTO {
     isBurst: boolean
   }
   staticAssetShare: number
+  recentLogs?: TrafficIpRecentLog[]
   blockInfo?: {
     id: string
     isBlocked: boolean

@@ -802,6 +802,10 @@ export const enMessages: AppMessages = {
         howItWorksTitle: "How File Mounts Work",
         howItWorksDesc:
           "Uploaded configuration files and certificates are stored encrypted and automatically mounted into your application container filesystem at startup.",
+        comingSoonBadge: "Coming Soon",
+        comingSoonTitle: "Storage Mounts is Coming Soon",
+        comingSoonDesc:
+          "Persistent volumes (PVC) and custom file mounts are currently under development. This feature will be available in an upcoming update.",
       },
       gitDeploy: {
         review: {
@@ -1201,6 +1205,10 @@ export const enMessages: AppMessages = {
           "Automatically updates pod sizes (recreates pods if required).",
         vpaExplainInitial: "Assigns optimal settings only on startup.",
         vpaExplainOff: "Recommendation engine runs in passive mode.",
+        comingSoonBadge: "Coming Soon",
+        comingSoonTitle: "Scaling & Resources is Coming Soon",
+        comingSoonDesc:
+          "Resource limits, replica scaling, and automated policies (HPA/VPA) are currently in development. This feature will be available in an upcoming update.",
       },
       clusterTelemetryCards: {
         fallbackBanner:

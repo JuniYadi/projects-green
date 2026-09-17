@@ -127,7 +127,7 @@ describe("TabLogs Component", () => {
       )
 
       const emptyMsg = await view.findByText(
-        "Belum ada output log di OpenSearch untuk service ini."
+        /No log output in OpenSearch|Belum ada output log/i
       )
       expect(emptyMsg).toBeTruthy()
     } finally {

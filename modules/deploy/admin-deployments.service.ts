@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { getCachedOrganizations } from "@/lib/workos-directory"
 import { StackStatus, type Prisma } from "@prisma/client"
 
 export type AdminDeploymentDTO = {
@@ -6,7 +7,9 @@ export type AdminDeploymentDTO = {
   stackId: string
   stackSlug: string
   stackName: string
+  framework?: string | null
   organizationId: string
+  organizationName?: string | null
   status: string
   triggerType: string
   commitSha: string | null
@@ -17,9 +20,55 @@ export type AdminDeploymentDTO = {
   completedAt: string | null
   durationMs: number | null
   failureReason: string | null
+  sanitizedFailureReason?: string | null
   createdAt: string
   updatedAt: string
   eventsCount: number
+}
+
+export function sanitizeDeploymentFailureReason(
+  reason: string | null
+): string | null {
+  if (!reason) return null
+  const trimmed = reason.trim()
+  if (!trimmed) return null
+
+  // Check for Prisma transaction timeout
+  if (
+    trimmed.includes(
+      "Transaction API error: A query cannot be executed on an expired transaction"
+    )
+  ) {
+    return "Database transaction timed out (5000ms)"
+  }
+
+  // Check for general Prisma / code path error (strip /home/...)
+  if (
+    trimmed.includes("Invalid `tx.") ||
+    trimmed.includes("Invalid `prisma.") ||
+    trimmed.includes("/home/")
+  ) {
+    const errorMatch = trimmed.match(/([A-Z][a-zA-Z\s]+error:[^.]+)/i)
+    if (errorMatch) {
+      return errorMatch[1].trim()
+    }
+    return "Internal service error during deployment update"
+  }
+
+  // Check for GitHub API JSON response
+  if (trimmed.includes("Failed to update ref:") && trimmed.includes("{")) {
+    try {
+      const jsonPart = trimmed.slice(trimmed.indexOf("{"))
+      const parsed = JSON.parse(jsonPart)
+      if (parsed.message) {
+        return `Git ref update rejected: ${parsed.message}`
+      }
+    } catch {
+      return "Git ref update rejected"
+    }
+  }
+
+  return trimmed
 }
 
 export type AdminDeploymentsListQuery = {
@@ -98,6 +147,9 @@ export async function listAdminDeployments(
     }),
   ])
 
+  const orgIds = deployments.map((d) => d.organizationId).filter(Boolean)
+  const orgMap = await getCachedOrganizations(orgIds)
+
   const data: AdminDeploymentDTO[] = deployments.map((d) => {
     const started = d.startedAt
       ? new Date(d.startedAt).getTime()
@@ -110,7 +162,9 @@ export async function listAdminDeployments(
       stackId: d.stackId,
       stackSlug: d.stack.slug,
       stackName: d.stack.name,
+      framework: d.stack.framework ?? null,
       organizationId: d.organizationId,
+      organizationName: orgMap.get(d.organizationId)?.name ?? null,
       status: d.status,
       triggerType: d.triggerType,
       commitSha: d.commitSha,
@@ -121,6 +175,7 @@ export async function listAdminDeployments(
       completedAt: d.completedAt ? d.completedAt.toISOString() : null,
       durationMs,
       failureReason: d.failureReason,
+      sanitizedFailureReason: sanitizeDeploymentFailureReason(d.failureReason),
       createdAt: d.createdAt.toISOString(),
       updatedAt: d.updatedAt.toISOString(),
       eventsCount: d._count.events,

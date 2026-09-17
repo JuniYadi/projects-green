@@ -170,4 +170,17 @@ describe("TabScaling", () => {
 
     expect(onSave).toHaveBeenCalledWith(3, 1, 512)
   })
+
+  it("renders disabled coming soon overlay when isComingSoon is true", () => {
+    const setReplicas = mock(() => {})
+    const { getByText, container } = render(
+      <TabScaling replicas={2} setReplicas={setReplicas} isComingSoon />
+    )
+
+    expect(getByText("Coming Soon")).toBeDefined()
+    expect(getByText("Scaling & Resources is Coming Soon")).toBeDefined()
+    const content = container.querySelector("[aria-hidden='true']")
+    expect(content).toBeDefined()
+    expect(content?.className).toContain("pointer-events-none")
+  })
 })

@@ -426,10 +426,19 @@ export default function SettingsPage() {
           />
         )
       case "scaling":
-        return <TabScaling replicas={replicas} setReplicas={setReplicas} />
+        return (
+          <TabScaling
+            isComingSoon
+            locale={locale}
+            replicas={replicas}
+            setReplicas={setReplicas}
+          />
+        )
       case "mounts":
         return (
           <TabMounts
+            isComingSoon
+            locale={locale}
             selectedEnv={selectedEnv}
             mounts={mounts}
             setMounts={setMounts}

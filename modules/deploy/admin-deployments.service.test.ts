@@ -1,5 +1,4 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
-import { listAdminDeployments } from "./admin-deployments.service"
 
 const mockPrisma = {
   applicationDeployment: {
@@ -33,9 +32,24 @@ const mockPrisma = {
   },
 }
 
+const mockGetCachedOrganizations = mock(async (ids: string[]) => {
+  const map = new Map<string, { id: string; name: string; slug: string }>()
+  for (const id of ids) {
+    map.set(id, { id, name: "Acme Corp", slug: id })
+  }
+  return map
+})
+
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
+
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganizations: mockGetCachedOrganizations,
+}))
+
+const { listAdminDeployments, sanitizeDeploymentFailureReason } =
+  await import("./admin-deployments.service")
 
 describe("listAdminDeployments", () => {
   beforeEach(() => {
@@ -47,6 +61,8 @@ describe("listAdminDeployments", () => {
     const result = await listAdminDeployments({ organizationId: "org_acme" })
     expect(result.data).toHaveLength(1)
     expect(result.data[0].organizationId).toBe("org_acme")
+    expect(result.data[0].organizationName).toBe("Acme Corp")
+    expect(result.data[0].framework).toBe("Next.js")
     expect(result.data[0].durationMs).toBe(90000)
 
     expect(mockPrisma.applicationDeployment.findMany).toHaveBeenCalledWith(
@@ -120,5 +136,25 @@ describe("listAdminDeployments", () => {
         where: {},
       })
     )
+  })
+
+  it("sanitizes raw Prisma timeouts and GitHub API JSON failures cleanly", () => {
+    expect(
+      sanitizeDeploymentFailureReason(
+        "Invalid `tx.applicationDeployment.update()` invocation in /home/juniyadi/projects-green/file.ts:461:34 Transaction API error: A query cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms..."
+      )
+    ).toBe("Database transaction timed out (5000ms)")
+
+    expect(
+      sanitizeDeploymentFailureReason(
+        'Failed to update ref: {"message":"Update is not a fast forward","status":"422"}'
+      )
+    ).toBe("Git ref update rejected: Update is not a fast forward")
+
+    expect(
+      sanitizeDeploymentFailureReason("Deployment timed out after 15 minutes.")
+    ).toBe("Deployment timed out after 15 minutes.")
+
+    expect(sanitizeDeploymentFailureReason(null)).toBeNull()
   })
 })

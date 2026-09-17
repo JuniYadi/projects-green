@@ -236,15 +236,21 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
           {/* Mode-specific Workspace View */}
           {workspaceMode === "chart" ? (
             <div className="space-y-6">
-              {/* 2. Visual Hourly / Date / Monthly Chart */}
-              <TrafficHourlyChart
-                trend={data.trend}
-                granularity={data.granularity}
-                periodLabel={data.periodLabel}
-              />
-
-              {/* 2b. Request Quality Breakdown */}
-              <TrafficRequestQualityCard requestQuality={data.requestQuality} />
+              {/* 2. Visual Hourly Chart & Request Quality (1 Row) */}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                  <TrafficHourlyChart
+                    trend={data.trend}
+                    granularity={data.granularity}
+                    periodLabel={data.periodLabel}
+                  />
+                </div>
+                <div className="lg:col-span-1">
+                  <TrafficRequestQualityCard
+                    requestQuality={data.requestQuality}
+                  />
+                </div>
+              </div>
 
               {/* 3. Top Pages & Broken Links Card */}
               <TrafficTopPagesCard
@@ -282,7 +288,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
               <TrafficIpInvestigationTable
                 appSlug={appSlug}
                 granularity={granularity}
-                date={targetDate}
+                date={targetDate || data?.date}
                 month={targetMonth}
                 year={targetYear}
                 onReviewIp={handleReviewIp}
@@ -297,7 +303,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
             open={isReviewDrawerOpen}
             onOpenChange={setIsReviewDrawerOpen}
             granularity={granularity}
-            date={targetDate}
+            date={targetDate || data?.date}
             month={targetMonth}
             year={targetYear}
           />
