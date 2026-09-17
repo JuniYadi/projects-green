@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   listMobileDevices,
@@ -237,12 +238,14 @@ function NextActions({
   devicesUrl,
   packagesUrl,
   locale,
+  messages,
 }: {
   overview: VpnOverview
   subscriptionsUrl: string
   devicesUrl: string
   packagesUrl: string
   locale: string
+  messages: ReturnType<typeof getMessages>
 }) {
   const actions: DashboardAction[] = []
 
@@ -356,7 +359,9 @@ function NextActions({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Next Best Actions</CardTitle>
+        <CardTitle>
+          {messages.pConsoleVpnDashboardPageClient.nextBestActions}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {actions.slice(0, 4).map((action) => (
@@ -384,6 +389,7 @@ export default function ConsoleVpnDashboardPage() {
   const [state, setState] = useState<PageState>({ phase: "loading" })
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const subscriptionsUrl = localizePathname({
     pathname: "/console/vpn/subscriptions",
     locale,
@@ -450,7 +456,9 @@ export default function ConsoleVpnDashboardPage() {
     <>
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">VPN Dashboard</h1>
+          <h1 className="text-2xl font-semibold">
+            {messages.pConsoleVpnDashboardPageClient.dashboardTitle}
+          </h1>
           <p className="text-sm text-muted-foreground">
             {locale === "id"
               ? "Pantau status layanan VPN, perangkat, jangkauan server, dan pemesanan paket."
@@ -465,7 +473,7 @@ export default function ConsoleVpnDashboardPage() {
             </Link>
           </Button>
           <Button variant="outline" size="sm" onClick={load}>
-            Refresh
+            {messages.pConsoleVpnDashboardPageClient.refresh}
           </Button>
         </div>
       </header>
@@ -473,25 +481,25 @@ export default function ConsoleVpnDashboardPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={<ShieldCheckIcon className="h-5 w-5" />}
-          label="Active Plans"
+          label={messages.pConsoleVpnDashboardPageClient.activePlansLabel}
           value={String(overview.activeSubscriptions)}
           description={`${overview.cancellingSubscriptions} cancelling`}
         />
         <MetricCard
           icon={<GaugeIcon className="h-5 w-5" />}
-          label="Ready Accounts"
+          label={messages.pConsoleVpnDashboardPageClient.readyAccountsLabel}
           value={`${overview.activeAccounts} / ${overview.totalAccounts}`}
           description={`${overview.pendingAccounts} provisioning`}
         />
         <MetricCard
           icon={<DeviceMobileIcon className="h-5 w-5" />}
-          label="Paired Devices"
+          label={messages.pConsoleVpnDashboardPageClient.pairedDevicesLabel}
           value={String(overview.activeDevices)}
           description={`${overview.revokedDevices} revoked`}
         />
         <MetricCard
           icon={<CalendarIcon className="h-5 w-5" />}
-          label="Next Renewal"
+          label={messages.pConsoleVpnDashboardPageClient.nextRenewalLabel}
           value={
             overview.nextRenewal ? formatDate(overview.nextRenewal.date) : "-"
           }
@@ -502,29 +510,33 @@ export default function ConsoleVpnDashboardPage() {
       <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader>
-            <CardTitle>Service Readiness</CardTitle>
+            <CardTitle>
+              {messages.pConsoleVpnDashboardPageClient.serviceReadinessTitle}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-3">
               <ReadinessRow
-                label="Active"
+                label={messages.pConsoleVpnDashboardPageClient.activeLabel}
                 value={overview.activeAccounts}
                 total={overview.totalAccounts}
               />
               <ReadinessRow
-                label="Provisioning"
+                label={
+                  messages.pConsoleVpnDashboardPageClient.provisioningLabel
+                }
                 value={overview.pendingAccounts}
                 total={overview.totalAccounts}
                 tone="warning"
               />
               <ReadinessRow
-                label="Failed"
+                label={messages.pConsoleVpnDashboardPageClient.failedLabel}
                 value={overview.failedAccounts}
                 total={overview.totalAccounts}
                 tone="danger"
               />
               <ReadinessRow
-                label="Revoked"
+                label={messages.pConsoleVpnDashboardPageClient.revokedLabel}
                 value={overview.revokedAccounts}
                 total={overview.totalAccounts}
                 tone="muted"
@@ -540,7 +552,7 @@ export default function ConsoleVpnDashboardPage() {
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Buy a VPN package to enable protocols.
+                  {messages.pConsoleVpnDashboardPageClient.buyVpnPackageHint}
                 </p>
               )}
             </div>
@@ -553,20 +565,28 @@ export default function ConsoleVpnDashboardPage() {
           devicesUrl={devicesUrl}
           packagesUrl={orderUrl}
           locale={locale}
+          messages={messages}
         />
       </section>
 
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-lg font-medium">Region Coverage</h2>
+            <h2 className="text-lg font-medium">
+              {messages.pConsoleVpnDashboardPageClient.regionCoverageTitle}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Coverage grouped by location and available protocol.
+              {
+                messages.pConsoleVpnDashboardPageClient
+                  .regionCoverageDescription
+              }
             </p>
           </div>
           {hasSubscriptions && (
             <Button asChild variant="outline" size="sm">
-              <Link href={subscriptionsUrl}>View Details</Link>
+              <Link href={subscriptionsUrl}>
+                {messages.pConsoleVpnDashboardPageClient.viewDetailsLink}
+              </Link>
             </Button>
           )}
         </div>
@@ -581,15 +601,28 @@ export default function ConsoleVpnDashboardPage() {
                       <MapPinIcon className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{region.name}</span>
                       {region.failed > 0 ? (
-                        <Badge variant="destructive">Needs attention</Badge>
+                        <Badge variant="destructive">
+                          {
+                            messages.pConsoleVpnDashboardPageClient
+                              .needsAttentionBadge
+                          }
+                        </Badge>
                       ) : region.pending > 0 ? (
-                        <Badge variant="secondary">Provisioning</Badge>
+                        <Badge variant="secondary">
+                          {
+                            messages.pConsoleVpnDashboardPageClient
+                              .provisioningLabel
+                          }
+                        </Badge>
                       ) : (
-                        <Badge variant="default">Ready</Badge>
+                        <Badge variant="default">
+                          {messages.pConsoleVpnDashboardPageClient.readyBadge}
+                        </Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {region.active} ready
+                      {region.active}{" "}
+                      {messages.pConsoleVpnDashboardPageClient.readyCount}
                       {region.pending > 0 && ` / ${region.pending} setup`}
                       {region.failed > 0 && ` / ${region.failed} failed`}
                     </p>
@@ -608,8 +641,7 @@ export default function ConsoleVpnDashboardPage() {
         ) : (
           <div className="rounded-lg border border-dashed p-8 text-center">
             <p className="text-sm text-muted-foreground">
-              No VPN coverage yet. Choose a package to provision your first VPN
-              locations.
+              {messages.pConsoleVpnDashboardPageClient.noVpnCoverageMessage}
             </p>
           </div>
         )}
