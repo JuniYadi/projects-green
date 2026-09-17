@@ -23,6 +23,8 @@ import type {
   RequiredDependency,
   RuntimeId,
 } from "../framework-detection.types"
+import { DetectorRuleEvaluator } from "./detector-rule-evaluator.service"
+export type { PolicyRuleEvaluationResult } from "./detector-rule-evaluator.service"
 
 const DEFAULT_PORT_MAP: Record<string, number> = {
   nextjs: 3000,
@@ -106,6 +108,7 @@ export type UniversalInspectionDependencies = {
   generateText?: typeof generateText
   getAiConfig?: typeof getAiProviderConfig
   model?: string
+  evaluator?: DetectorRuleEvaluator
 }
 
 export type UniversalInspectionInput = {
@@ -113,6 +116,7 @@ export type UniversalInspectionInput = {
   ref?: string
   subpath?: string
   actor?: AiDeploymentSessionActor
+  sessionId?: string
   dependencies?: UniversalInspectionDependencies
 }
 
@@ -132,6 +136,7 @@ Your task is to inspect the repository manifests (e.g. package.json, composer.js
 7. A confidence score between 0.0 and 1.0 reflecting how certain you are based on actual manifest evidence.
 
 Use list_repo_files to inspect the file structure, and read_repo_file to read key manifest contents.
+Use evaluate_detector_rules to evaluate platform security and deployment governance rules.
 Do not guess: read the manifest files before concluding your decision.`
 
 function parseEnvExample(content: string): Record<string, string> {
@@ -632,6 +637,17 @@ export async function inspectRepoWithAi(
       },
     }
 
+    if (input.sessionId && prismaClient?.aiDeploymentSession) {
+      try {
+        await prismaClient.aiDeploymentSession.update({
+          where: { id: input.sessionId },
+          data: { status: "BLOCKED" },
+        })
+      } catch {
+        // Non-fatal session update failure
+      }
+    }
+
     if (prismaClient?.detectorInspectionLog) {
       try {
         const log = await prismaClient.detectorInspectionLog.create({
@@ -685,6 +701,17 @@ export async function inspectRepoWithAi(
       },
     }
 
+    if (input.sessionId && prismaClient?.aiDeploymentSession) {
+      try {
+        await prismaClient.aiDeploymentSession.update({
+          where: { id: input.sessionId },
+          data: { status: "BLOCKED" },
+        })
+      } catch {
+        // Non-fatal session update failure
+      }
+    }
+
     if (prismaClient?.detectorInspectionLog) {
       try {
         const log = await prismaClient.detectorInspectionLog.create({
@@ -713,13 +740,156 @@ export async function inspectRepoWithAi(
     }
   }
 
-  // 3. Setup AI Tools and Trace
+  // 3. Setup Policy Evaluator, AI Tools, and Trace
   const toolTraces: AiDetectionToolTrace[] = []
   const onStep = (traceItem: AiDetectionToolTrace) => {
     toolTraces.push(traceItem)
   }
 
-  const tools = createRepoInspectorTools({
+  const evaluator = deps.evaluator ?? new DetectorRuleEvaluator()
+
+  let treeFiles: string[] = []
+  try {
+    const tree = await adapter.listTree(
+      input.repoUrl,
+      input.ref,
+      input.subpath,
+      input.actor
+    )
+    treeFiles = tree.files
+  } catch {
+    treeFiles = []
+  }
+
+  const initialPolicy = await evaluator.evaluateRepositoryPolicy({
+    files: treeFiles,
+    db: prismaClient,
+  })
+
+  const modelName =
+    deps.model ?? (process.env.AI_DETECTOR_MODEL?.trim() || "gpt-4.1-mini")
+  let aiBaseUrlHost = "unknown"
+
+  if (initialPolicy.isBlocked) {
+    const explanation =
+      initialPolicy.reason ||
+      `Deployment blocked by rule: ${initialPolicy.ruleCode}`
+
+    const isWp =
+      initialPolicy.ruleCode === "RULE-BLOCK-WP-LEGACY" ||
+      treeFiles.some((f) => f.includes("wp-"))
+
+    const primaryFramework: DetectedFramework | null = isWp
+      ? {
+          id: "wordpress",
+          name: "WordPress",
+          ecosystem: "php",
+          confidence: 0,
+          reasons: [explanation],
+        }
+      : null
+
+    const decision: DetectionDecision = {
+      status: "blocked",
+      message: explanation,
+      isLaunchable: false,
+    }
+
+    const evidence: DetectionEvidence[] = [
+      {
+        type: "file",
+        value: "blocked",
+        detail: `Blocked by rule "${initialPolicy.ruleCode}": ${explanation}`,
+      },
+    ]
+
+    const result: DetectionResult = {
+      primaryFramework,
+      requiredDependencies: [],
+      alternatives: [],
+      confidence: 0,
+      decision,
+      evidence,
+      warnings: [explanation],
+      source: {
+        repoUrl: input.repoUrl,
+        ref: input.ref,
+        subdir: input.subpath,
+      },
+      blockedByRuleId: initialPolicy.ruleCode ?? null,
+      policyEvaluation: initialPolicy,
+      recommendations: initialPolicy.suggestedAlternatives ?? [],
+    }
+
+    if (input.sessionId && prismaClient?.aiDeploymentSession) {
+      try {
+        await prismaClient.aiDeploymentSession.update({
+          where: { id: input.sessionId },
+          data: { status: "BLOCKED" },
+        })
+      } catch {
+        // Non-fatal
+      }
+    }
+
+    toolTraces.push({
+      name: "list_repo_files",
+      inputSummary: { requestedPath: input.subpath },
+      outcome: "completed",
+      status: "completed",
+      durationMs: 1,
+      listedFileCount: treeFiles.length,
+    })
+    toolTraces.push({
+      name: "evaluate_detector_rules",
+      inputSummary: { fileCount: treeFiles.length },
+      outcome: "completed",
+      status: "completed",
+      durationMs: 1,
+      matchedRuleId: initialPolicy.ruleCode,
+    })
+
+    const aiTrace: AiDetectionTrace = {
+      version: 1,
+      terminalStage: "completed",
+      elapsedMs: Date.now() - startTime,
+      model: modelName,
+      baseUrlHost: "platform-policy",
+      tools: toolTraces,
+    }
+
+    if (prismaClient?.detectorInspectionLog) {
+      try {
+        const log = await prismaClient.detectorInspectionLog.create({
+          data: {
+            repoUrl: input.repoUrl,
+            ref: input.ref ?? null,
+            detectedFramework: result.primaryFramework?.id ?? null,
+            confidence: 0,
+            enforcedRuntimes: null as never,
+            aiTrace: aiTrace as never,
+            reasoning: result.primaryFramework?.reasons ?? [],
+            warnings: result.warnings,
+            durationMs: Date.now() - startTime,
+            status: "blocked",
+            blockedByRuleId: initialPolicy.ruleCode ?? null,
+            errorMessage: explanation,
+          },
+        })
+        result.inspectionLogId = log.id
+      } catch {
+        // Non-fatal
+      }
+    }
+
+    return {
+      ...result,
+      result,
+      aiTrace,
+    }
+  }
+
+  const repoInspectorTools = createRepoInspectorTools({
     adapter,
     repoUrl: input.repoUrl,
     ref: input.ref,
@@ -728,9 +898,14 @@ export async function inspectRepoWithAi(
     onStep,
   })
 
-  const modelName =
-    deps.model ?? (process.env.AI_DETECTOR_MODEL?.trim() || "gpt-4.1-mini")
-  let aiBaseUrlHost = "unknown"
+  const policyTool = evaluator.createPolicyEvaluationTool(prismaClient, {
+    onStep,
+  })
+
+  const tools = {
+    ...repoInspectorTools,
+    evaluate_detector_rules: policyTool,
+  }
   let aiFailed = false
   let aiDecision: AiInspectionDecision | null = null
   let aiErrorMessage: string | null = null
@@ -946,7 +1121,47 @@ export async function inspectRepoWithAi(
     }
   }
 
-  // 5. Build AI trace
+  // 5. Evaluate Framework Policy if primaryFramework is detected
+  if (result.primaryFramework?.id) {
+    const frameworkPolicy = await evaluator.evaluateRepositoryPolicy({
+      files: treeFiles,
+      detectedFramework: result.primaryFramework.id,
+      db: prismaClient,
+    })
+    if (frameworkPolicy.isBlocked) {
+      const explanation =
+        frameworkPolicy.reason ||
+        `Deployment blocked by rule: ${frameworkPolicy.ruleCode}`
+      result.decision = {
+        status: "blocked",
+        message: explanation,
+        isLaunchable: false,
+      }
+      result.confidence = 0
+      result.blockedByRuleId = frameworkPolicy.ruleCode ?? null
+      result.policyEvaluation = frameworkPolicy
+      result.recommendations = frameworkPolicy.suggestedAlternatives ?? []
+      result.warnings.push(explanation)
+      result.evidence.push({
+        type: "file",
+        value: "blocked",
+        detail: `Blocked by rule "${frameworkPolicy.ruleCode}": ${explanation}`,
+      })
+
+      if (input.sessionId && prismaClient?.aiDeploymentSession) {
+        try {
+          await prismaClient.aiDeploymentSession.update({
+            where: { id: input.sessionId },
+            data: { status: "BLOCKED" },
+          })
+        } catch {
+          // Non-fatal session update failure
+        }
+      }
+    }
+  }
+
+  // 6. Build AI trace
   const aiTrace: AiDetectionTrace = {
     version: 1,
     terminalStage: aiFailed ? "provider" : "completed",
@@ -956,7 +1171,7 @@ export async function inspectRepoWithAi(
     tools: toolTraces,
   }
 
-  // 6. Record audit log in Prisma DetectorInspectionLog
+  // 7. Record audit log in Prisma DetectorInspectionLog
   if (prismaClient?.detectorInspectionLog) {
     try {
       const log = await prismaClient.detectorInspectionLog.create({
@@ -971,6 +1186,7 @@ export async function inspectRepoWithAi(
           warnings: result.warnings,
           durationMs: Date.now() - startTime,
           status: result.decision.status,
+          blockedByRuleId: result.blockedByRuleId ?? null,
           errorMessage:
             result.decision.status !== "success"
               ? result.decision.message

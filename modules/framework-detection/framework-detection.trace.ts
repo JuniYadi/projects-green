@@ -15,9 +15,11 @@ export type AiDetectionTraceTerminalStage =
   "provider" | "tool" | "output" | "completed"
 
 export type AiDetectionToolTrace = {
-  name: "list_repo_files" | "read_repo_file"
+  name: "list_repo_files" | "read_repo_file" | "evaluate_detector_rules"
   inputSummary: {
     requestedPath?: string
+    fileCount?: number
+    framework?: string
   }
   outcome: "completed" | "failed"
   status?: "completed" | "failed"
@@ -26,6 +28,7 @@ export type AiDetectionToolTrace = {
   fileSizeBytes?: number
   size?: number
   path?: string
+  matchedRuleId?: string
   errorCategory?: "tool_failure"
 }
 

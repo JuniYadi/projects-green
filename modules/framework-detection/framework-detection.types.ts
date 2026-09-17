@@ -1,3 +1,5 @@
+import type { PolicyRuleEvaluationResult } from "./services/detector-rule-evaluator.service"
+
 export type DetectionFailureCode =
   | "DETECTION_CONFIG_ERROR"
   | "DETECTION_SCHEMA_ERROR"
@@ -62,6 +64,14 @@ export type DetectionResult = {
   defaultPort?: number | null
   enforcedRuntimes?: Array<{ runtimeId: string; version: string }>
   envDefaults?: Record<string, string>
+  blockedByRuleId?: string | null
+  policyEvaluation?: PolicyRuleEvaluationResult | null
+  recommendations?: Array<{
+    type: "marketplace" | "dockerfile" | "version_upgrade"
+    title: string
+    description: string
+    target?: string
+  }>
 }
 
 export type FrameworkDetectionInput = {

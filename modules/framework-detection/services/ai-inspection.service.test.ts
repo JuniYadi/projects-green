@@ -65,10 +65,17 @@ describe("ai-inspection.service & repo-inspector.tools", () => {
         createdAt: new Date(),
       })
     )
+    const updateSession = mock(async () => ({}))
 
     return {
       detectorInspectionLog: {
         create: createLog,
+      },
+      aiDeploymentSession: {
+        update: updateSession,
+      },
+      detectorRule: {
+        findMany: mock(async () => []),
       },
     } as unknown as PrismaClient
   }
@@ -557,6 +564,163 @@ describe("ai-inspection.service & repo-inspector.tools", () => {
       expect(result.decision.status).toBe("unsupported")
       expect(result.decision.isLaunchable).toBe(false)
       expect(result.confidence).toBe(0)
+    })
+
+    it("blocks legacy WordPress repository, updates session status to BLOCKED, and returns structured policy explanation", async () => {
+      const wpAdapter = createMockAdapter({
+        listTree: mock(async () => ({
+          files: [
+            "wp-config.php",
+            "wp-content/themes/theme/style.css",
+            "index.php",
+          ],
+          truncated: false,
+        })),
+        readFile: mock(async () => ({
+          content: "<?php define('DB_NAME', 'wordpress');",
+          size: 40,
+        })),
+      })
+      const mockPrisma = createMockPrisma()
+
+      const result = await inspectRepoWithAi({
+        repoUrl: "https://github.com/org/legacy-wp",
+        sessionId: "session_wp_block_1",
+        dependencies: {
+          adapter: wpAdapter,
+          db: mockPrisma,
+        },
+      })
+
+      expect(result.decision.status).toBe("blocked")
+      expect(result.decision.isLaunchable).toBe(false)
+      expect(result.blockedByRuleId).toBe("RULE-BLOCK-WP-LEGACY")
+      expect(result.policyEvaluation?.isBlocked).toBe(true)
+      expect(result.policyEvaluation?.ruleCode).toBe("RULE-BLOCK-WP-LEGACY")
+      expect(result.policyEvaluation?.cveReferences?.length).toBeGreaterThan(0)
+      expect(result.recommendations?.length).toBeGreaterThan(0)
+      expect(
+        result.recommendations?.some((r) => r.type === "marketplace")
+      ).toBe(true)
+
+      // Verify session was transitioned to BLOCKED in database
+      const updateSessionMock = (
+        mockPrisma as unknown as {
+          aiDeploymentSession: {
+            update: { mock: { calls: Array<Array<Record<string, unknown>>> } }
+          }
+        }
+      ).aiDeploymentSession.update.mock
+      expect(updateSessionMock.calls.length).toBe(1)
+      expect(updateSessionMock.calls[0]?.[0]).toEqual({
+        where: { id: "session_wp_block_1" },
+        data: { status: "BLOCKED" },
+      })
+
+      // Verify inspection log recorded blockedByRuleId and status
+      const logCalls = (
+        mockPrisma as unknown as {
+          detectorInspectionLog: { create: MockPrismaLogCalls }
+        }
+      ).detectorInspectionLog.create.mock.calls
+      expect(logCalls.length).toBe(1)
+      expect(logCalls[0]?.[0]?.data.status).toBe("blocked")
+      expect(logCalls[0]?.[0]?.data.blockedByRuleId).toBe(
+        "RULE-BLOCK-WP-LEGACY"
+      )
+      expect(logCalls[0]?.[0]?.data.errorMessage).toContain("wp-config.php")
+    })
+
+    it("evaluates policy rules when primary framework is detected as blocked", async () => {
+      const customAdapter = createMockAdapter({
+        listTree: mock(async () => ({
+          files: ["server.js"],
+          truncated: false,
+        })),
+        readFile: mock(async () => ({
+          content: "console.log('hi')",
+          size: 20,
+        })),
+      })
+      const mockPrisma = createMockPrisma()
+      // Custom rule blocking custom-framework
+      ;(
+        mockPrisma as unknown as {
+          detectorRule: { findMany: (args: unknown) => Promise<unknown[]> }
+        }
+      ).detectorRule.findMany = async () => [
+        {
+          id: "rule-block-custom",
+          name: "RULE-BLOCK-CUSTOM",
+          description: "Block custom framework",
+          patternJson: { framework: "custom-framework" },
+          implicationsJson: {
+            ruleCode: "RULE-BLOCK-CUSTOM",
+            status: "blocked",
+            impact: "BLOCK",
+            action: "BLOCK",
+            title: "Custom Framework Blocked",
+            reason:
+              "Custom framework is not supported due to security concerns",
+            cveReferences: ["CVE-2025-0001"],
+            suggestedAlternatives: [
+              {
+                type: "dockerfile",
+                title: "Use Dockerfile",
+                description: "Wrap in Dockerfile",
+                target: "Dockerfile",
+              },
+            ],
+          },
+          isActive: true,
+          priority: 100,
+        },
+      ]
+
+      const result = await inspectRepoWithAi({
+        repoUrl: "https://github.com/org/custom-app",
+        sessionId: "session_custom_block_2",
+        dependencies: {
+          adapter: customAdapter,
+          db: mockPrisma,
+          generateText: mock(async () => {
+            return {
+              output: {
+                primaryFrameworkId: "custom-framework",
+                frameworkName: "Custom Framework",
+                ecosystem: "node",
+                confidence: 0.9,
+                requiredRuntimeIds: ["node"],
+                reasoning: ["Detected custom framework"],
+                warnings: [],
+              },
+            }
+          }) as unknown as MockGenerateText,
+          getAiConfig: () => ({
+            apiKey: "mock-key",
+            baseURL: "https://mock.openrouter.ai/api/v1",
+          }),
+        },
+      })
+
+      expect(result.decision.status).toBe("blocked")
+      expect(result.decision.isLaunchable).toBe(false)
+      expect(result.blockedByRuleId).toBe("RULE-BLOCK-CUSTOM")
+      expect(result.policyEvaluation?.cveReferences).toEqual(["CVE-2025-0001"])
+      expect(result.recommendations?.[0]?.type).toBe("dockerfile")
+
+      const updateSessionMock = (
+        mockPrisma as unknown as {
+          aiDeploymentSession: {
+            update: { mock: { calls: Array<Array<Record<string, unknown>>> } }
+          }
+        }
+      ).aiDeploymentSession.update.mock
+      expect(updateSessionMock.calls.length).toBe(1)
+      expect(updateSessionMock.calls[0]?.[0]).toEqual({
+        where: { id: "session_custom_block_2" },
+        data: { status: "BLOCKED" },
+      })
     })
   })
 })
