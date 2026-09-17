@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
 import { TrafficIpReviewDrawer } from "./traffic-ip-review-drawer"
 import { TrafficIpInvestigationTable } from "./traffic-ip-investigation-table"
+import { TabTraffic } from "./tab-traffic"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,17 @@ describe("Traffic Investigation Components", () => {
       expect(view.getByText("Semua Sinyal")).toBeTruthy()
       expect(view.getByText("Manusia")).toBeTruthy()
       expect(view.getByText("Bot / Scanner")).toBeTruthy()
+    })
+  })
+
+  describe("TabTraffic Workspace Modes", () => {
+    it("renders Chart and Table mode toggles and switches modes", () => {
+      const view = renderWithQuery(<TabTraffic appSlug="my-app" />)
+      expect(view.getByText("Chart")).toBeTruthy()
+      expect(view.getByText("Investigasi IP")).toBeTruthy()
+      expect(view.getByText("Harian")).toBeTruthy()
+      expect(view.getByText("Bulanan")).toBeTruthy()
+      expect(view.getByText("Tahunan")).toBeTruthy()
     })
   })
 })
