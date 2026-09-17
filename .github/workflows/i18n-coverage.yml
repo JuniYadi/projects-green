@@ -42,7 +42,7 @@ jobs:
 
       - name: Run i18n Scanner
         run: |
-          bun run scripts/scan-i18n.ts --output=i18n-report.json --markdown-output=i18n-report.md --annotations --fail-below=70
+          bun run scripts/scan-i18n.ts --output=i18n-report.json --markdown-output=i18n-report.md --annotations --fail-below=80
 
       - name: Add Job Summary
         if: always()
