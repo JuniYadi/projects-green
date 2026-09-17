@@ -15,6 +15,7 @@ import {
   hasScopedSuperAdminClaim,
   resolveTenantRoleFromClaims,
 } from "@/modules/tenants/tenant-policy"
+import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
 
 const environments = ["dev", "staging", "prod"] as const
 type EnvironmentId = (typeof environments)[number]
@@ -355,7 +356,40 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
           message: `Invalid environment variable key: ${invalidKey.key}`,
         }
       }
-      const existing = parseArray(stack.envVarsJson) as StoredEnvVar[]
+      const secretsToWrite: Record<string, string> = {}
+      for (const variable of body.variables) {
+        if (typeof variable.value === "string" && variable.value.length > 0) {
+          secretsToWrite[variable.key] = variable.value
+        }
+      }
+
+      let currentEnvVarsJson = stack.envVarsJson
+      if (Object.keys(secretsToWrite).length > 0) {
+        try {
+          const vaultService = new VaultSecretsService()
+          await vaultService.writeSecrets({
+            organizationId: auth.organizationId,
+            stackId: stack.id,
+            environment: body.environmentId,
+            secrets: secretsToWrite,
+          })
+          const reloaded = await prisma.applicationStack.findUnique({
+            where: { id: stack.id },
+            select: { envVarsJson: true },
+          })
+          currentEnvVarsJson = reloaded?.envVarsJson ?? currentEnvVarsJson
+        } catch (vaultErr) {
+          console.error("[app-settings] Vault write error:", vaultErr)
+          set.status = 500
+          return {
+            ok: false,
+            error: "VAULT_WRITE_FAILED",
+            message: "Failed to store secret in Vault. Please try again.",
+          }
+        }
+      }
+
+      const existing = parseArray(currentEnvVarsJson) as StoredEnvVar[]
       const oldByKey = new Map(existing.map((row) => [row.key, row]))
       const variables = body.variables.map((incoming) => {
         const prior = oldByKey.get(incoming.key)
@@ -367,16 +401,11 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
           incoming.isStoredSecret === true ||
           isSecret(prior ?? { key: incoming.key })
         const row: StoredEnvVar = {
+          ...(prior ? { ...prior } : {}),
           ...incoming,
           type: incoming.type ?? prior?.type ?? (secret ? "secret" : "plain"),
+          value: "",
         }
-        if (
-          secret &&
-          (!incoming.value || incoming.value.length === 0) &&
-          prior &&
-          "value" in prior
-        )
-          row.value = prior.value
         if (secret) {
           row.masked = true
           row.isStoredSecret = true

@@ -48,6 +48,8 @@ import type {
 import { getMessages } from "@/lib/i18n/messages"
 import type { AppLocale } from "@/lib/i18n/config"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { createClientSessionCrypto } from "@/modules/secrets/ui/client-crypto"
+import type { EnvelopeEncryptedPayload } from "@/lib/vault/vault-envelope"
 
 type EnvVarsEditorProps = {
   envVars: EnvVar[]
@@ -133,7 +135,9 @@ const normalizeType = (type: EnvVarType | undefined): EditableEnvVarType => {
 
 const getTypeLabel = (
   type: EnvVarType | undefined,
-  messages?: ReturnType<typeof getMessages>["console"]["deploy"]["envVarsEditor"]
+  messages?: ReturnType<
+    typeof getMessages
+  >["console"]["deploy"]["envVarsEditor"]
 ) => {
   switch (normalizeType(type)) {
     case "secret_ref":
@@ -322,22 +326,51 @@ const revealVaultSecret = async (input: {
   environmentId: string
   key: string
 }) => {
+  let clientCrypto: Awaited<
+    ReturnType<typeof createClientSessionCrypto>
+  > | null = null
+  try {
+    clientCrypto = await createClientSessionCrypto()
+  } catch (cryptoErr) {
+    console.warn(
+      "[env-vars-editor] Web Crypto unavailable, falling back:",
+      cryptoErr
+    )
+  }
+
   const response = await fetch(`/api/stacks/${input.stackId}/secrets/reveal`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       environment: input.environmentId,
       key: input.key,
+      ...(clientCrypto ? { clientPublicKey: clientCrypto.publicKeyJwk } : {}),
     }),
   })
   const payload = (await readResponse(response)) as
-    (VaultWriteResponse & { data?: { value?: string } }) | null
+    | (VaultWriteResponse & {
+        data?: {
+          value?: string
+          envelope?: EnvelopeEncryptedPayload
+        }
+      })
+    | null
 
-  if (!response.ok || !payload?.ok || typeof payload.data?.value !== "string") {
+  if (!response.ok || !payload?.ok) {
     throw new Error(payload?.message ?? "Unable to reveal this Vault secret.")
   }
 
-  return payload.data.value
+  if (payload.data?.envelope && clientCrypto) {
+    return await clientCrypto.decrypt(payload.data.envelope)
+  }
+
+  // Explicit backward-compatibility fallback: only used if Web Crypto API is
+  // unavailable in the client runtime or the server operates in legacy mode.
+  if (typeof payload.data?.value === "string") {
+    return payload.data.value
+  }
+
+  throw new Error("Secret data was not returned.")
 }
 
 const createRowFromVaultReference = (
@@ -1007,7 +1040,7 @@ export function EnvVarsEditor({
         error instanceof Error &&
         (error.message.toLowerCase().includes("not found") ||
           error.message.toLowerCase().includes("unable to reveal"))
-          ? `Secret "${row.key}" is stored securely and cannot be revealed. Click Edit to enter a new value.`
+          ? `Secret "${row.key}" was not found in Vault. Click Edit to set a new value.`
           : error instanceof Error
             ? error.message
             : "Unable to reveal this secret."
@@ -1091,7 +1124,9 @@ export function EnvVarsEditor({
 
       {activePresets.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">{messages.quickStart}</span>
+          <span className="text-xs text-muted-foreground">
+            {messages.quickStart}
+          </span>
           {activePresets.map((preset) => (
             <button
               key={preset}
@@ -1286,7 +1321,10 @@ export function EnvVarsEditor({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {messages.keyFormatHelper.replace("{environmentId}", environmentId ?? "")}
+        {messages.keyFormatHelper.replace(
+          "{environmentId}",
+          environmentId ?? ""
+        )}
       </p>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -1310,7 +1348,9 @@ export function EnvVarsEditor({
             {mode === "import" ? (
               <>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium">{messages.importPayloadLabel}</span>
+                  <span className="text-xs font-medium">
+                    {messages.importPayloadLabel}
+                  </span>
                   <Textarea
                     aria-label={messages.importPayloadLabel}
                     className="min-h-48 font-mono text-xs"
@@ -1333,7 +1373,9 @@ export function EnvVarsEditor({
 
                 <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium">{messages.importPreview}</p>
+                    <p className="text-xs font-medium">
+                      {messages.importPreview}
+                    </p>
                     <Badge variant="secondary">
                       {parsedImport.entries.length}{" "}
                       {parsedImport.entries.length === 1
@@ -1384,7 +1426,9 @@ export function EnvVarsEditor({
             ) : (
               <>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium">{messages.keyLabel}</span>
+                  <span className="text-xs font-medium">
+                    {messages.keyLabel}
+                  </span>
                   <Input
                     aria-label={messages.keyAriaLabel}
                     value={formState.key}
@@ -1405,7 +1449,9 @@ export function EnvVarsEditor({
                 </label>
 
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium">{messages.typeLabel}</span>
+                  <span className="text-xs font-medium">
+                    {messages.typeLabel}
+                  </span>
                   <select
                     aria-label={messages.typeAriaLabel}
                     className="h-8 w-full rounded-2xl border border-transparent bg-input/50 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
@@ -1423,7 +1469,9 @@ export function EnvVarsEditor({
                     <option value="plain">{messages.typePlain}</option>
                     <option value="secret_ref">{messages.typeSecret}</option>
                     {sharedSecretOptions.length > 0 ? (
-                      <option value="secret_shared_ref">{messages.typeSharedSecret}</option>
+                      <option value="secret_shared_ref">
+                        {messages.typeSharedSecret}
+                      </option>
                     ) : null}
                   </select>
                 </label>
@@ -1445,7 +1493,9 @@ export function EnvVarsEditor({
                           }))
                         }
                       >
-                        <option value="">{messages.chooseManagedService}</option>
+                        <option value="">
+                          {messages.chooseManagedService}
+                        </option>
                         {sharedSecretOptions.map((option) => (
                           <option key={option.id} value={option.id}>
                             {option.label} ({option.serviceType})
@@ -1467,7 +1517,9 @@ export function EnvVarsEditor({
                   </div>
                 ) : (
                   <label className="flex flex-col gap-1.5">
-                    <span className="text-xs font-medium">{messages.valueLabel}</span>
+                    <span className="text-xs font-medium">
+                      {messages.valueLabel}
+                    </span>
                     <div className="flex items-center gap-2">
                       <Input
                         aria-label={messages.valueAriaLabel}
@@ -1496,7 +1548,9 @@ export function EnvVarsEditor({
                           variant="outline"
                           size="icon-sm"
                           aria-label={
-                            formState.valueVisible ? messages.hideValue : messages.showValue
+                            formState.valueVisible
+                              ? messages.hideValue
+                              : messages.showValue
                           }
                           onClick={() =>
                             setFormState((current) => ({
@@ -1510,13 +1564,18 @@ export function EnvVarsEditor({
                       ) : null}
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {messages.maxCharacters.replace("{max}", String(ENV_VAR_MAX_VALUE_SIZE))}
+                      {messages.maxCharacters.replace(
+                        "{max}",
+                        String(ENV_VAR_MAX_VALUE_SIZE)
+                      )}
                     </span>
                   </label>
                 )}
 
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium">{messages.scopeLabel}</span>
+                  <span className="text-xs font-medium">
+                    {messages.scopeLabel}
+                  </span>
                   <select
                     aria-label={messages.scopeAriaLabel}
                     className="h-8 w-full rounded-2xl border border-transparent bg-input/50 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"

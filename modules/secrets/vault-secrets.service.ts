@@ -346,17 +346,37 @@ export class VaultSecretsService {
       stackId: stack.id,
       environment,
     })
-    const reference = referencesForEnvironment(
-      toStoredItems(stack.envVarsJson),
+    const storedItems = toStoredItems(stack.envVarsJson)
+    // Defensive lookup: first try exact environment match, then fall back to any
+    // matching secret_ref key. This handles stacks migrated from legacy environment
+    // mappings (e.g. dev -> prod transition) while maintaining full tenant isolation.
+    let reference = referencesForEnvironment(
+      storedItems,
       environment,
       vaultPath
     ).find((item) => item.key === key)
 
     if (!reference) {
+      reference = storedItems.find(
+        (item) => item.type === "secret_ref" && item.key === key
+      ) as VaultSecretReference | undefined
+    }
+
+    if (!reference) {
       throw new VaultSecretNotFoundError(`Secret ${key} was not found`)
     }
 
-    const secrets = await this.client.readKV(vaultPath)
+    const effectiveVaultPath = reference.vaultPath || vaultPath
+    let secrets: Record<string, string> = {}
+    try {
+      secrets = await this.client.readKV(effectiveVaultPath)
+    } catch (readError) {
+      if (effectiveVaultPath !== vaultPath) {
+        secrets = await this.client.readKV(vaultPath)
+      } else {
+        throw readError
+      }
+    }
     const value = secrets[key]
     if (value === undefined) {
       throw new VaultSecretNotFoundError(`Secret ${key} was not found`)

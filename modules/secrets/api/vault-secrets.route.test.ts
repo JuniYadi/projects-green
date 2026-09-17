@@ -1,5 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 
+mock.module("server-only", () => ({}))
 mock.module("@/lib/prisma", () => ({ prisma: {} }))
 
 const { createVaultSecretsRoutes } = await import("./index")
@@ -145,5 +146,41 @@ describe("vaultSecretsRoutes", () => {
       key: "API_KEY",
       workosUserId: "user-1",
     })
+
+    // Envelope reveal test with client ephemeral public key
+    const subtle = crypto.subtle
+    const keypair = (await subtle.generateKey(
+      { name: "ECDH", namedCurve: "P-256" },
+      true,
+      ["deriveBits"]
+    )) as CryptoKeyPair
+    const clientPublicKey = await subtle.exportKey("jwk", keypair.publicKey)
+
+    const envelopeResponse = await app.handle(
+      request("/stacks/stack-1/secrets/reveal", {
+        method: "POST",
+        body: { environment: "prod", key: "API_KEY", clientPublicKey },
+      })
+    )
+    expect(envelopeResponse.status).toBe(200)
+    const envelopeJson = (await envelopeResponse.json()) as {
+      ok: boolean
+      data: { envelope?: { encrypted: boolean; ciphertext: string } }
+    }
+    expect(envelopeJson.ok).toBe(true)
+    expect(envelopeJson.data.envelope?.encrypted).toBe(true)
+    expect(typeof envelopeJson.data.envelope?.ciphertext).toBe("string")
+
+    const invalidEnvelopeResponse = await app.handle(
+      request("/stacks/stack-1/secrets/reveal", {
+        method: "POST",
+        body: {
+          environment: "prod",
+          key: "API_KEY",
+          clientPublicKey: { kty: "RSA" },
+        },
+      })
+    )
+    expect(invalidEnvelopeResponse.status).toBe(422)
   })
 })

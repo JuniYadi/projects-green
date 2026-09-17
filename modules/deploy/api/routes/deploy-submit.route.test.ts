@@ -35,6 +35,15 @@ mock.module("@/modules/deploy/app-managed-stock.service", () => ({
   claimManagedStock,
   releaseManagedStock,
 }))
+mock.module("@/lib/vault/vault-client", () => ({
+  VaultClient: class {
+    writeKV = mock(async () => ({ version: 1 }))
+    readKV = mock(async () => ({}))
+    deleteKV = mock(async () => {})
+    getKVMetadata = mock(async () => ({ currentVersion: 1 }))
+  },
+  VaultSecretNotFoundError: class extends Error {},
+}))
 // Leaf-only mock: every other sibling service (createOrUpdateStack,
 // triggerDeploy, AppHostingBillingService, BillingTransactionService) runs for
 // real against this prisma mock. Mocking those services directly would pollute
@@ -373,16 +382,14 @@ describe("deploySubmitRoutes /submit", () => {
     expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          envVarsJson: [
-            { key: "DATA_DIR", value: "/app/data" },
-            {
+          envVarsJson: expect.arrayContaining([
+            expect.objectContaining({
               key: "JWT_SECRET",
-              value: "secret123",
               type: "secret",
               masked: true,
               isStoredSecret: true,
-            },
-          ],
+            }),
+          ]),
         }),
       })
     )
