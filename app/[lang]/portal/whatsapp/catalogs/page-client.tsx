@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { useParams, useRouter } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 
@@ -51,6 +52,7 @@ export default function CatalogsPage() {
   const params = useParams<{ lang?: string }>()
   const router = useRouter()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [catalogs, setCatalogs] = React.useState<Catalog[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [createOpen, setCreateOpen] = React.useState(false)
@@ -120,23 +122,28 @@ export default function CatalogsPage() {
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Catalogs</h1>
+          <h1 className="text-2xl font-bold">
+            {messages.pPortalWhatsappCatalogsPageClient.catalogsTitle}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Manage your Facebook Catalogs and sync products from Commerce
-            Manager.
+            {messages.pPortalWhatsappCatalogsPageClient.catalogsDescription}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="mr-2 size-4" />
-          Add Catalog
+          {messages.pPortalWhatsappCatalogsPageClient.addCatalogButton}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>All Catalogs</CardTitle>
+          <CardTitle>
+            {messages.pPortalWhatsappCatalogsPageClient.allCatalogsTitle}
+          </CardTitle>
           <CardDescription>
-            {catalogs.length} catalog{catalogs.length !== 1 ? "s" : ""}
+            {catalogs.length}{" "}
+            {messages.pPortalWhatsappCatalogsPageClient.catalogUnit}
+            {catalogs.length !== 1 ? "s" : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -149,7 +156,9 @@ export default function CatalogsPage() {
           ) : catalogs.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <ShoppingBagOpen className="size-12 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">No catalogs yet.</p>
+              <p className="text-sm text-muted-foreground">
+                {messages.pPortalWhatsappCatalogsPageClient.noCatalogsYet}
+              </p>
             </div>
           ) : (
             <div className="divide-y">
@@ -164,8 +173,9 @@ export default function CatalogsPage() {
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate font-medium">{cat.name}</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      Meta ID: {cat.metaCatalogId} &middot;{" "}
-                      {cat.productCount ?? 0} products
+                      {messages.pPortalWhatsappCatalogsPageClient.metaIdLabel}{" "}
+                      {cat.metaCatalogId} &middot; {cat.productCount ?? 0}{" "}
+                      {messages.pPortalWhatsappCatalogsPageClient.productsUnit}
                     </span>
                   </div>
                   <div
@@ -173,7 +183,8 @@ export default function CatalogsPage() {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Badge variant="secondary" className="text-xs">
-                      {cat.productCount ?? 0} products
+                      {cat.productCount ?? 0}{" "}
+                      {messages.pPortalWhatsappCatalogsPageClient.productsUnit}
                     </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -189,14 +200,20 @@ export default function CatalogsPage() {
                             )
                           }
                         >
-                          View Products
+                          {
+                            messages.pPortalWhatsappCatalogsPageClient
+                              .viewProductsButton
+                          }
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => handleDelete(cat.id)}
                         >
                           <Trash className="mr-2 size-4" />
-                          Delete
+                          {
+                            messages.pPortalWhatsappCatalogsPageClient
+                              .deleteButton
+                          }
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -211,25 +228,37 @@ export default function CatalogsPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Catalog</DialogTitle>
+            <DialogTitle>
+              {messages.pPortalWhatsappCatalogsPageClient.addCatalogButton}
+            </DialogTitle>
             <DialogDescription>
-              Link a Facebook Commerce Manager catalog to your WhatsApp account.
+              {
+                messages.pPortalWhatsappCatalogsPageClient
+                  .addCatalogDialogDescription
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Catalog Name</Label>
+              <Label htmlFor="name">
+                {messages.pPortalWhatsappCatalogsPageClient.catalogNameLabel}
+              </Label>
               <Input
                 id="name"
                 value={createForm.name}
                 onChange={(e) =>
                   setCreateForm((f) => ({ ...f, name: e.target.value }))
                 }
-                placeholder="My Store Catalog"
+                placeholder={
+                  messages.pPortalWhatsappCatalogsPageClient
+                    .catalogNamePlaceholder
+                }
               />
             </div>
             <div>
-              <Label htmlFor="metaCatalogId">Meta Catalog ID</Label>
+              <Label htmlFor="metaCatalogId">
+                {messages.pPortalWhatsappCatalogsPageClient.metaCatalogIdLabel}
+              </Label>
               <Input
                 id="metaCatalogId"
                 value={createForm.metaCatalogId}
@@ -243,20 +272,24 @@ export default function CatalogsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="deviceId">Device ID (optional)</Label>
+              <Label htmlFor="deviceId">
+                {messages.pPortalWhatsappCatalogsPageClient.deviceIdLabel}
+              </Label>
               <Input
                 id="deviceId"
                 value={createForm.deviceId}
                 onChange={(e) =>
                   setCreateForm((f) => ({ ...f, deviceId: e.target.value }))
                 }
-                placeholder="Leave empty to use default device"
+                placeholder={
+                  messages.pPortalWhatsappCatalogsPageClient.deviceIdPlaceholder
+                }
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
+              {messages.pPortalWhatsappCatalogsPageClient.cancelButton}
             </Button>
             <Button onClick={handleCreate} disabled={isSubmitting}>
               {isSubmitting ? "Creating..." : "Create Catalog"}
