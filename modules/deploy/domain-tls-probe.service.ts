@@ -53,7 +53,7 @@ export async function probeDomainCertificate(
         },
         () => {
           const cert = socket.getPeerCertificate()
-          socket.end()
+          socket.destroy()
 
           const authError = socket.authorizationError
             ? typeof socket.authorizationError === "string"
