@@ -1707,26 +1707,27 @@ export async function getAppTrafficIps(
     const ipBuckets = aggs.top_ips?.buckets ?? []
     const otherRequestCount = aggs.top_ips?.sum_other_doc_count ?? 0
 
-    // Check active blocks in DB if table exists
+    // Check active blocks in DB
     const activeBlockMap = new Map<string, { id: string; status: string }>()
     try {
-      const dbAny = prisma as unknown as {
-        appHostingIpBlock?: {
-          findMany: (
-            args: unknown
-          ) => Promise<Array<{ id: string; ipAddress: string; status: string }>>
-        }
-      }
-      if (typeof dbAny.appHostingIpBlock?.findMany === "function") {
-        const blocks = await dbAny.appHostingIpBlock.findMany({
+      if (prisma.appHostingIpBlock) {
+        const blocks = await prisma.appHostingIpBlock.findMany({
           where: { stackId, status: { in: ["active", "pending"] } },
+          select: { id: true, ipAddress: true, status: true },
         })
         for (const b of blocks) {
           activeBlockMap.set(b.ipAddress, { id: b.id, status: b.status })
         }
       }
-    } catch {
-      // Model might not exist yet
+    } catch (err) {
+      logger.warn(
+        {
+          event: "ACTIVE_BLOCKS_LOOKUP_FAILED",
+          stackId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        "Failed to lookup active IP blocks from database"
+      )
     }
 
     // Process and enrich each IP bucket
@@ -2184,23 +2185,8 @@ export async function getAppTrafficIpDetail(
     // Check block info
     let blockInfo: TrafficIpDetailDTO["blockInfo"] = null
     try {
-      const dbAny = prisma as unknown as {
-        appHostingIpBlock?: {
-          findFirst: (args: unknown) => Promise<{
-            id: string
-            status: string
-            reason: string
-            durationMinutes: number | null
-            errorMessage: string | null
-            enforcedAt: Date | null
-            expiresAt: Date | null
-            createdBy: string
-            createdAt: Date
-          } | null>
-        }
-      }
-      if (typeof dbAny.appHostingIpBlock?.findFirst === "function") {
-        const b = await dbAny.appHostingIpBlock.findFirst({
+      if (prisma.appHostingIpBlock) {
+        const b = await prisma.appHostingIpBlock.findFirst({
           where: {
             stackId,
             ipAddress: normalizedIp,
@@ -2224,8 +2210,16 @@ export async function getAppTrafficIpDetail(
           }
         }
       }
-    } catch {
-      // Model might not exist yet
+    } catch (err) {
+      logger.warn(
+        {
+          event: "IP_BLOCK_DETAIL_LOOKUP_FAILED",
+          stackId,
+          ip: normalizedIp,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        "Failed to lookup IP block detail from database"
+      )
     }
 
     const firstSeen =

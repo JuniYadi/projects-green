@@ -36,6 +36,8 @@ import type {
 } from "../../opensearch/opensearch-traffic.types"
 import { getSignalBadge } from "./traffic-ip-review-drawer"
 
+const t = (text: string): string => text
+
 export interface TrafficIpInvestigationTableProps {
   appSlug: string
   granularity?: "daily" | "monthly" | "yearly"
@@ -118,7 +120,7 @@ export function TrafficIpInvestigationTable({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <span>Investigasi Trafik Klien IP (Top 100)</span>
+              <span>{t("Investigasi Trafik Klien IP (Top 100)")}</span>
               {data ? (
                 <Badge variant="outline" className="font-mono text-[11px]">
                   {data.total} IP
@@ -126,8 +128,9 @@ export function TrafficIpInvestigationTable({
               ) : null}
             </CardTitle>
             <CardDescription className="mt-0.5 text-xs text-muted-foreground">
-              Analisis forensik pengunjung, sinyal otomasi, dan investigasi
-              mendalam sebelum blokir
+              {t(
+                "Analisis forensik pengunjung, sinyal otomasi, dan investigasi mendalam sebelum blokir"
+              )}
             </CardDescription>
           </div>
 
@@ -137,12 +140,13 @@ export function TrafficIpInvestigationTable({
               <div className="flex items-center gap-1.5 rounded-md border border-border bg-muted/20 px-2.5 py-1 text-[11px] text-muted-foreground">
                 <Info size={13} className="shrink-0 text-primary" />
                 <span>
-                  Cakupan:{" "}
+                  {t("Cakupan:")}{" "}
                   <strong className="text-foreground">
                     {data.coveragePercentage}%
                   </strong>{" "}
-                  trafik ({data.otherRequestCount.toLocaleString("id-ID")} req
-                  di luar sampel)
+                  {t("trafik")} (
+                  {data.otherRequestCount.toLocaleString("id-ID")}{" "}
+                  {t("req di luar sampel")})
                 </span>
               </div>
             ) : null}
@@ -153,7 +157,7 @@ export function TrafficIpInvestigationTable({
               disabled={isFetching}
               onClick={() => refetch()}
               className="h-8 px-2.5"
-              title="Refresh Data IP"
+              title={t("Refresh Data IP")}
             >
               <ArrowClockwise
                 size={14}
@@ -173,7 +177,7 @@ export function TrafficIpInvestigationTable({
             />
             <Input
               type="text"
-              placeholder="Cari alamat IP..."
+              placeholder={t("Cari alamat IP...")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)
@@ -197,7 +201,7 @@ export function TrafficIpInvestigationTable({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Semua Sinyal
+              {t("Semua Sinyal")}
             </button>
             <button
               type="button"
@@ -211,7 +215,7 @@ export function TrafficIpInvestigationTable({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Manusia
+              {t("Manusia")}
             </button>
             <button
               type="button"
@@ -225,7 +229,7 @@ export function TrafficIpInvestigationTable({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Bot / Scanner
+              {t("Bot / Scanner")}
             </button>
             <button
               type="button"
@@ -239,7 +243,7 @@ export function TrafficIpInvestigationTable({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Tercampur
+              {t("Tercampur")}
             </button>
           </div>
 
@@ -278,12 +282,20 @@ export function TrafficIpInvestigationTable({
             }}
             className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
           >
-            <option value="requests-desc">Urutkan: Request Terbanyak</option>
-            <option value="requests-asc">Urutkan: Request Tersedikit</option>
-            <option value="4xx-desc">Urutkan: Error 4xx Terbanyak</option>
-            <option value="5xx-desc">Urutkan: Error 5xx Terbanyak</option>
-            <option value="success-asc">Urutkan: Sukses Terendah</option>
-            <option value="lastSeen-desc">Urutkan: Waktu Terbaru</option>
+            <option value="requests-desc">
+              {t("Urutkan: Request Terbanyak")}
+            </option>
+            <option value="requests-asc">
+              {t("Urutkan: Request Tersedikit")}
+            </option>
+            <option value="4xx-desc">
+              {t("Urutkan: Error 4xx Terbanyak")}
+            </option>
+            <option value="5xx-desc">
+              {t("Urutkan: Error 5xx Terbanyak")}
+            </option>
+            <option value="success-asc">{t("Urutkan: Sukses Terendah")}</option>
+            <option value="lastSeen-desc">{t("Urutkan: Waktu Terbaru")}</option>
           </select>
 
           {/* Limit selector */}
@@ -295,10 +307,10 @@ export function TrafficIpInvestigationTable({
             }}
             className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
           >
-            <option value="10">10 per halaman</option>
-            <option value="25">25 per halaman</option>
-            <option value="50">50 per halaman</option>
-            <option value="100">100 per halaman</option>
+            <option value="10">{t("10 per halaman")}</option>
+            <option value="25">{t("25 per halaman")}</option>
+            <option value="50">{t("50 per halaman")}</option>
+            <option value="100">{t("100 per halaman")}</option>
           </select>
         </div>
       </CardHeader>
@@ -307,38 +319,56 @@ export function TrafficIpInvestigationTable({
         {isLoading ? (
           <div className="flex h-48 flex-col items-center justify-center text-xs text-muted-foreground">
             <ArrowClockwise size={20} className="animate-spin text-primary" />
-            <p className="mt-2 font-medium">Memuat data IP investigasi...</p>
+            <p className="mt-2 font-medium">
+              {t("Memuat data IP investigasi...")}
+            </p>
           </div>
         ) : isError ? (
           <div className="m-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-xs text-destructive">
-            <p className="font-semibold">Gagal memuat data investigasi IP</p>
+            <p className="font-semibold">
+              {t("Gagal memuat data investigasi IP")}
+            </p>
             <p className="mt-1">
               {error instanceof Error
                 ? error.message
-                : "Terjadi kesalahan sistem"}
+                : t("Terjadi kesalahan sistem")}
             </p>
           </div>
         ) : !data || data.items.length === 0 ? (
           <div className="flex h-44 flex-col items-center justify-center text-xs text-muted-foreground">
-            <p>Tidak ada alamat IP yang sesuai dengan filter pencarian</p>
+            <p>
+              {t("Tidak ada alamat IP yang sesuai dengan filter pencarian")}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-muted/10">
                 <TableRow className="border-b border-border text-xs">
-                  <TableHead className="w-[180px]">IP & Geolokasi</TableHead>
-                  <TableHead className="w-[140px]">Sinyal Trafik</TableHead>
+                  <TableHead className="w-[180px]">
+                    {t("IP & Geolokasi")}
+                  </TableHead>
+                  <TableHead className="w-[140px]">
+                    {t("Sinyal Trafik")}
+                  </TableHead>
                   <TableHead className="w-[110px] text-right">
-                    Total Request
+                    {t("Total Request")}
                   </TableHead>
                   <TableHead className="min-w-[180px]">
-                    Komposisi Status
+                    {t("Komposisi Status")}
                   </TableHead>
-                  <TableHead className="w-[100px] text-right">Sukses</TableHead>
-                  <TableHead className="w-[140px]">Klien & Perangkat</TableHead>
-                  <TableHead className="w-[120px]">Terakhir Dilihat</TableHead>
-                  <TableHead className="w-[80px] text-center">Aksi</TableHead>
+                  <TableHead className="w-[100px] text-right">
+                    {t("Sukses")}
+                  </TableHead>
+                  <TableHead className="w-[140px]">
+                    {t("Klien & Perangkat")}
+                  </TableHead>
+                  <TableHead className="w-[120px]">
+                    {t("Terakhir Dilihat")}
+                  </TableHead>
+                  <TableHead className="w-[80px] text-center">
+                    {t("Aksi")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-border text-xs">
@@ -393,7 +423,7 @@ export function TrafficIpInvestigationTable({
                                   variant="destructive"
                                   className="px-1 py-0 text-[9px] uppercase"
                                 >
-                                  Blok
+                                  {t("Blok")}
                                 </Badge>
                               ) : null}
                             </div>
@@ -431,7 +461,9 @@ export function TrafficIpInvestigationTable({
                             {segments.map((s) => (
                               <div
                                 key={s.key}
-                                style={{ width: `${(s.count / total) * 100}%` }}
+                                style={{
+                                  width: `${(s.count / total) * 100}%`,
+                                }}
                                 className={`h-full ${s.className}`}
                                 title={`${s.key}: ${s.count}`}
                               />
@@ -480,7 +512,7 @@ export function TrafficIpInvestigationTable({
                           onClick={() => onReviewIp(item.ip)}
                         >
                           <Eye size={13} className="mr-1" />
-                          Review
+                          {t("Review")}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -495,8 +527,8 @@ export function TrafficIpInvestigationTable({
         {data && totalPages > 1 ? (
           <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">
             <div>
-              Menampilkan {Math.min((page - 1) * limit + 1, data.total)} -{" "}
-              {Math.min(page * limit, data.total)} dari {data.total} IP
+              {t("Menampilkan")} {Math.min((page - 1) * limit + 1, data.total)}{" "}
+              - {Math.min(page * limit, data.total)} {t("dari")} {data.total} IP
             </div>
 
             <div className="flex items-center gap-2">
@@ -510,7 +542,7 @@ export function TrafficIpInvestigationTable({
                 <CaretLeft size={13} />
               </Button>
               <span>
-                Halaman {page} dari {totalPages}
+                {t("Halaman")} {page} {t("dari")} {totalPages}
               </span>
               <Button
                 variant="outline"

@@ -36,6 +36,8 @@ import type {
 } from "../../opensearch/opensearch-traffic.types"
 import type { BlockDurationOption } from "../../ip-block/ip-block.service"
 
+const t = (text: string): string => text
+
 export interface TrafficIpReviewDrawerProps {
   appSlug: string
   ip: string | null
@@ -52,7 +54,7 @@ export function getSignalBadge(signal: TrafficSignal, _confidence?: number) {
   switch (signal) {
     case "likely_human":
       return {
-        label: "Kemungkinan Manusia",
+        label: t("Kemungkinan Manusia"),
         variant: "outline" as const,
         icon: <User size={13} className="text-emerald-500" />,
         className:
@@ -60,7 +62,7 @@ export function getSignalBadge(signal: TrafficSignal, _confidence?: number) {
       }
     case "likely_automated":
       return {
-        label: "Otomatis / Bot / Scanner",
+        label: t("Otomatis / Bot / Scanner"),
         variant: "outline" as const,
         icon: <Robot size={13} className="text-rose-500" />,
         className:
@@ -68,7 +70,7 @@ export function getSignalBadge(signal: TrafficSignal, _confidence?: number) {
       }
     case "mixed":
       return {
-        label: "Tercampur (Mixed / NAT)",
+        label: t("Tercampur (Mixed / NAT)"),
         variant: "outline" as const,
         icon: <ShieldWarning size={13} className="text-amber-500" />,
         className:
@@ -77,7 +79,7 @@ export function getSignalBadge(signal: TrafficSignal, _confidence?: number) {
     case "unknown":
     default:
       return {
-        label: "Tidak Diketahui",
+        label: t("Tidak Diketahui"),
         variant: "outline" as const,
         icon: <Question size={13} className="text-muted-foreground" />,
         className:
@@ -158,7 +160,7 @@ export function TrafficIpReviewDrawer({
       return res.json()
     },
     onSuccess: () => {
-      toast.success(`Alamat IP ${ip} berhasil diblokir`)
+      toast.success(t(`Alamat IP ${ip} berhasil diblokir`))
       setIsBlockFormOpen(false)
       setBlockReason("")
       refetch()
@@ -166,7 +168,7 @@ export function TrafficIpReviewDrawer({
       onBlockAction?.(ip ?? "", "block")
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Gagal memblokir IP")
+      toast.error(err.message || t("Gagal memblokir IP"))
     },
   })
 
@@ -183,13 +185,13 @@ export function TrafficIpReviewDrawer({
       return res.json()
     },
     onSuccess: () => {
-      toast.success(`Blokir terhadap IP ${ip} berhasil dicabut`)
+      toast.success(t(`Blokir terhadap IP ${ip} berhasil dicabut`))
       refetch()
       queryClient.invalidateQueries({ queryKey: ["traffic-ips-investigation"] })
       onBlockAction?.(ip ?? "", "unblock")
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Gagal mencabut blokir IP")
+      toast.error(err.message || t("Gagal mencabut blokir IP"))
     },
   })
 
@@ -218,11 +220,11 @@ export function TrafficIpReviewDrawer({
               />
               <div>
                 <SheetTitle className="font-mono text-base font-semibold tracking-tight text-foreground">
-                  {ip || "Alamat IP"}
+                  {ip || t("Alamat IP")}
                 </SheetTitle>
                 <SheetDescription className="text-xs text-muted-foreground">
                   {[data?.city, data?.countryName].filter(Boolean).join(", ") ||
-                    "Sedang memuat data geolokasi..."}
+                    t("Sedang memuat data geolokasi...")}
                 </SheetDescription>
               </div>
             </div>
@@ -233,7 +235,7 @@ export function TrafficIpReviewDrawer({
               disabled={isFetching}
               onClick={() => refetch()}
               className="h-8 px-2"
-              title="Refresh Bukti IP"
+              title={t("Refresh Bukti IP")}
             >
               <ArrowClockwise
                 size={14}
@@ -247,16 +249,16 @@ export function TrafficIpReviewDrawer({
           <div className="flex flex-1 flex-col items-center justify-center p-8 text-xs text-muted-foreground">
             <ArrowClockwise size={24} className="animate-spin text-primary" />
             <p className="mt-2 font-medium">
-              Mengumpulkan bukti jejak trafik IP dari OpenSearch...
+              {t("Mengumpulkan bukti jejak trafik IP dari OpenSearch...")}
             </p>
           </div>
         ) : isError ? (
           <div className="m-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-xs text-destructive">
-            <p className="font-semibold">Gagal memuat jejak bukti IP</p>
+            <p className="font-semibold">{t("Gagal memuat jejak bukti IP")}</p>
             <p className="mt-1">
               {error instanceof Error
                 ? error.message
-                : "Terjadi kesalahan sistem"}
+                : t("Terjadi kesalahan sistem")}
             </p>
           </div>
         ) : data ? (
@@ -273,7 +275,7 @@ export function TrafficIpReviewDrawer({
                     <span>{signalMeta?.label}</span>
                   </Badge>
                   <span className="text-[11px] text-muted-foreground">
-                    Keyakinan: {data.signal.confidence}%
+                    {t("Keyakinan:")} {data.signal.confidence}%
                   </span>
                 </div>
 
@@ -284,7 +286,7 @@ export function TrafficIpReviewDrawer({
                   >
                     <Prohibit size={12} />
                     <span>
-                      DIBLOKIR ({data.blockInfo.status.toUpperCase()})
+                      {t("DIBLOKIR")} ({data.blockInfo.status.toUpperCase()})
                     </span>
                   </Badge>
                 ) : null}
@@ -294,7 +296,7 @@ export function TrafficIpReviewDrawer({
               <div className="space-y-1.5 rounded-md bg-muted/20 p-3 text-xs text-foreground">
                 <div className="flex items-center gap-1.5 font-medium text-muted-foreground">
                   <WarningCircle size={14} />
-                  <span>Alasan & Bukti Klasifikasi:</span>
+                  <span>{t("Alasan & Bukti Klasifikasi:")}</span>
                 </div>
                 <ul className="list-inside list-disc space-y-1 pl-1 text-[11px] text-muted-foreground">
                   {data.signal.reasons.map((reason, idx) => (
@@ -310,7 +312,7 @@ export function TrafficIpReviewDrawer({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="text-[11px] text-muted-foreground">
-                  Total Request
+                  {t("Total Request")}
                 </div>
                 <div className="mt-1 text-sm font-semibold text-foreground">
                   {data.totalRequests.toLocaleString("id-ID")}
@@ -319,7 +321,7 @@ export function TrafficIpReviewDrawer({
 
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="text-[11px] text-muted-foreground">
-                  Success Rate
+                  {t("Success Rate")}
                 </div>
                 <div className="mt-1 text-sm font-semibold text-foreground">
                   {data.successRate}%
@@ -328,7 +330,7 @@ export function TrafficIpReviewDrawer({
 
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="text-[11px] text-muted-foreground">
-                  Kecepatan (Burst)
+                  {t("Kecepatan (Burst)")}
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
                   <span>{data.velocity.maxRpm} RPM</span>
@@ -337,7 +339,7 @@ export function TrafficIpReviewDrawer({
                       variant="outline"
                       className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400"
                     >
-                      Burst
+                      {t("Burst")}
                     </Badge>
                   ) : null}
                 </div>
@@ -345,7 +347,7 @@ export function TrafficIpReviewDrawer({
 
               <div className="rounded-lg border border-border bg-card p-3">
                 <div className="text-[11px] text-muted-foreground">
-                  Aset Statis
+                  {t("Aset Statis")}
                 </div>
                 <div className="mt-1 text-sm font-semibold text-foreground">
                   {data.staticAssetShare}%
@@ -357,10 +359,10 @@ export function TrafficIpReviewDrawer({
             <div className="space-y-2 rounded-lg border border-border bg-card p-4">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-foreground">
-                  Distribusi Status HTTP
+                  {t("Distribusi Status HTTP")}
                 </span>
                 <span className="text-muted-foreground">
-                  {data.successRate}% Berhasil (2xx)
+                  {data.successRate}% {t("Berhasil (2xx)")}
                 </span>
               </div>
 
@@ -415,14 +417,14 @@ export function TrafficIpReviewDrawer({
             <div className="flex items-center justify-between rounded-lg border border-border bg-muted/10 px-4 py-2.5 text-xs">
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Clock size={14} />
-                <span>Pertama dilihat:</span>
+                <span>{t("Pertama dilihat:")}</span>
                 <span className="font-mono font-medium text-foreground">
                   {new Date(data.firstSeen).toLocaleString("id-ID")}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Clock size={14} />
-                <span>Terakhir dilihat:</span>
+                <span>{t("Terakhir dilihat:")}</span>
                 <span className="font-mono font-medium text-foreground">
                   {new Date(data.lastSeen).toLocaleString("id-ID")}
                 </span>
@@ -440,15 +442,15 @@ export function TrafficIpReviewDrawer({
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="paths" className="text-xs">
                   <FileCode size={14} className="mr-1.5" />
-                  Path Dikunjungi
+                  {t("Path Dikunjungi")}
                 </TabsTrigger>
                 <TabsTrigger value="clients" className="text-xs">
                   <Browser size={14} className="mr-1.5" />
-                  Klien / User-Agent
+                  {t("Klien / User-Agent")}
                 </TabsTrigger>
                 <TabsTrigger value="timeline" className="text-xs">
                   <Clock size={14} className="mr-1.5" />
-                  Aktivitas Waktu
+                  {t("Aktivitas Waktu")}
                 </TabsTrigger>
               </TabsList>
 
@@ -459,7 +461,9 @@ export function TrafficIpReviewDrawer({
                   <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
                       <WarningCircle size={14} />
-                      <span>Path Status 4xx (Error / Scanner Target):</span>
+                      <span>
+                        {t("Path Status 4xx (Error / Scanner Target):")}
+                      </span>
                     </div>
                     <div className="divide-y divide-border rounded-md border border-border bg-card">
                       {data.pathsByStatus.status4xx.map((p, idx) => (
@@ -483,11 +487,11 @@ export function TrafficIpReviewDrawer({
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     <CheckCircle size={14} />
-                    <span>Path Status 2xx (Berhasil):</span>
+                    <span>{t("Path Status 2xx (Berhasil):")}</span>
                   </div>
                   {data.pathsByStatus.status2xx.length === 0 ? (
                     <div className="rounded-md border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
-                      Tidak ada rekaman permintaan 2xx
+                      {t("Tidak ada rekaman permintaan 2xx")}
                     </div>
                   ) : (
                     <div className="divide-y divide-border rounded-md border border-border bg-card">
@@ -513,7 +517,7 @@ export function TrafficIpReviewDrawer({
                   <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
                       <WarningCircle size={14} />
-                      <span>Path Status 5xx (Gangguan Server):</span>
+                      <span>{t("Path Status 5xx (Gangguan Server):")}</span>
                     </div>
                     <div className="divide-y divide-border rounded-md border border-border bg-card">
                       {data.pathsByStatus.status5xx.map((p, idx) => (
@@ -538,7 +542,7 @@ export function TrafficIpReviewDrawer({
               <TabsContent value="clients" className="space-y-3 pt-1">
                 {data.userAgents.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-                    Tidak ada User-Agent tercatat
+                    {t("Tidak ada User-Agent tercatat")}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -574,31 +578,34 @@ export function TrafficIpReviewDrawer({
               <TabsContent value="timeline" className="space-y-3 pt-1">
                 {data.timeline.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-                    Tidak ada log timeline
+                    {t("Tidak ada log timeline")}
                   </div>
                 ) : (
                   <div className="max-h-60 divide-y divide-border overflow-y-auto rounded-md border border-border bg-card">
-                    {data.timeline.map((t, idx) => (
+                    {data.timeline.map((timelineItem, idx) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between px-3 py-1.5 text-xs"
                       >
                         <span className="font-mono text-muted-foreground">
-                          {new Date(t.timestamp).toLocaleTimeString("id-ID", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {new Date(timelineItem.timestamp).toLocaleTimeString(
+                            "id-ID",
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground">
-                            {t.requests} req
+                            {timelineItem.requests} req
                           </span>
-                          {t.errors > 0 ? (
+                          {timelineItem.errors > 0 ? (
                             <Badge
                               variant="destructive"
                               className="px-1.5 py-0 text-[10px]"
                             >
-                              {t.errors} err
+                              {timelineItem.errors} err
                             </Badge>
                           ) : null}
                         </div>
@@ -615,11 +622,12 @@ export function TrafficIpReviewDrawer({
                 <div>
                   <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <LockKey size={14} />
-                    <span>Tindakan Akses & Keamanan</span>
+                    <span>{t("Tindakan Akses & Keamanan")}</span>
                   </h4>
                   <p className="text-[11px] text-muted-foreground">
-                    Blokir atau batasi lalu lintas dari IP ini di level ingress
-                    gateway aplikasi
+                    {t(
+                      "Blokir atau batasi lalu lintas dari IP ini di level ingress gateway aplikasi"
+                    )}
                   </p>
                 </div>
 
@@ -632,8 +640,8 @@ export function TrafficIpReviewDrawer({
                     onClick={() => unblockMutation.mutate(data.ip)}
                   >
                     {unblockMutation.isPending
-                      ? "Membuka..."
-                      : "Buka Blokir (Unblock)"}
+                      ? t("Membuka...")
+                      : t("Buka Blokir (Unblock)")}
                   </Button>
                 ) : !isBlockFormOpen ? (
                   <Button
@@ -643,7 +651,7 @@ export function TrafficIpReviewDrawer({
                     onClick={() => setIsBlockFormOpen(true)}
                   >
                     <Prohibit size={14} className="mr-1.5" />
-                    Blokir Akses IP
+                    {t("Blokir Akses IP")}
                   </Button>
                 ) : null}
               </div>
@@ -652,22 +660,22 @@ export function TrafficIpReviewDrawer({
               {isBlockFormOpen && !data.blockInfo?.isBlocked ? (
                 <div className="space-y-3 rounded-md border border-border bg-muted/10 p-3">
                   <div className="text-xs font-medium text-foreground">
-                    Formulir Pemblokiran IP:{" "}
+                    {t("Formulir Pemblokiran IP:")}{" "}
                     <span className="font-mono">{data.ip}</span>
                   </div>
 
                   {/* Duration Selection */}
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-medium text-muted-foreground">
-                      Durasi Blokir:
+                      {t("Durasi Blokir:")}
                     </label>
                     <div className="grid grid-cols-4 gap-1.5">
                       {(
                         [
-                          { value: "1h", label: "1 Jam" },
-                          { value: "24h", label: "24 Jam" },
-                          { value: "7d", label: "7 Hari" },
-                          { value: "permanent", label: "Permanen" },
+                          { value: "1h", label: t("1 Jam") },
+                          { value: "24h", label: t("24 Jam") },
+                          { value: "7d", label: t("7 Hari") },
+                          { value: "permanent", label: t("Permanen") },
                         ] as const
                       ).map((d) => (
                         <Button
@@ -689,7 +697,7 @@ export function TrafficIpReviewDrawer({
                   {/* Preset Reasons */}
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-medium text-muted-foreground">
-                      Pilih Alasan Cepat:
+                      {t("Pilih Alasan Cepat:")}
                     </label>
                     <div className="flex flex-wrap gap-1.5">
                       {[
@@ -713,11 +721,11 @@ export function TrafficIpReviewDrawer({
                   {/* Reason Text Input */}
                   <div className="space-y-1">
                     <label className="text-[11px] font-medium text-muted-foreground">
-                      Alasan Pemblokiran (Wajib):
+                      {t("Alasan Pemblokiran (Wajib):")}
                     </label>
                     <Input
                       type="text"
-                      placeholder="Masukkan alasan pemblokiran..."
+                      placeholder={t("Masukkan alasan pemblokiran...")}
                       value={blockReason}
                       onChange={(e) => setBlockReason(e.target.value)}
                       className="h-8 text-xs"
@@ -726,8 +734,9 @@ export function TrafficIpReviewDrawer({
 
                   {/* Scope Confirmation Notice */}
                   <div className="rounded bg-muted/30 p-2 text-[10px] text-muted-foreground">
-                    <strong>Cakupan:</strong> Pemblokiran hanya diterapkan pada
-                    aplikasi saat ini ({appSlug}) di level cluster HAProxy edge.
+                    <strong>{t("Cakupan:")}</strong>{" "}
+                    {t("Pemblokiran hanya diterapkan pada aplikasi saat ini")} (
+                    {appSlug}) {t("di level cluster HAProxy edge.")}
                   </div>
 
                   {/* Form Action Buttons */}
@@ -742,7 +751,7 @@ export function TrafficIpReviewDrawer({
                       }}
                       disabled={blockMutation.isPending}
                     >
-                      Batal
+                      {t("Batal")}
                     </Button>
                     <Button
                       variant="destructive"
@@ -758,8 +767,8 @@ export function TrafficIpReviewDrawer({
                       }
                     >
                       {blockMutation.isPending
-                        ? "Memproses..."
-                        : "Konfirmasi Blokir IP"}
+                        ? t("Memproses...")
+                        : t("Konfirmasi Blokir IP")}
                     </Button>
                   </div>
                 </div>
@@ -770,7 +779,7 @@ export function TrafficIpReviewDrawer({
                 <div className="space-y-1.5 rounded-md border border-border bg-muted/20 p-3 text-[11px]">
                   <div className="flex items-center justify-between">
                     <div className="font-medium text-foreground">
-                      Alasan: {data.blockInfo.reason}
+                      {t("Alasan:")} {data.blockInfo.reason}
                     </div>
                     <Badge
                       variant={
@@ -788,24 +797,24 @@ export function TrafficIpReviewDrawer({
 
                   {data.blockInfo.errorMessage ? (
                     <div className="rounded bg-destructive/10 p-2 text-destructive">
-                      Peringatan Penegakan: {data.blockInfo.errorMessage}
+                      {t("Peringatan Penegakan:")} {data.blockInfo.errorMessage}
                     </div>
                   ) : null}
 
                   <div className="text-muted-foreground">
-                    Dibuat oleh: {data.blockInfo.createdBy} •{" "}
+                    {t("Dibuat oleh:")} {data.blockInfo.createdBy} •{" "}
                     {new Date(data.blockInfo.createdAt).toLocaleString("id-ID")}
                   </div>
                   {data.blockInfo.expiresAt ? (
                     <div className="text-muted-foreground">
-                      Kedaluwarsa:{" "}
+                      {t("Kedaluwarsa:")}{" "}
                       {new Date(data.blockInfo.expiresAt).toLocaleString(
                         "id-ID"
                       )}
                     </div>
                   ) : (
                     <div className="text-muted-foreground">
-                      Durasi: Permanen
+                      {t("Durasi: Permanen")}
                     </div>
                   )}
                 </div>

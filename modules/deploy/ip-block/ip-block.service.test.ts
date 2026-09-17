@@ -188,6 +188,39 @@ describe("ip-block.service", () => {
         })
       ).rejects.toThrow("A valid reason is required")
     })
+
+    it("rejects reasons exceeding 500 characters", async () => {
+      await expect(
+        blockIpAddress({
+          stackId: "st_123",
+          organizationId: "org_1",
+          ipAddress: "198.51.100.1",
+          reason: "a".repeat(501),
+          duration: "24h",
+          actorId: "user_1",
+          adapter,
+        })
+      ).rejects.toThrow("Reason must not exceed 500 characters.")
+    })
+
+    it("prevents duplicate active or pending blocks for the same IP", async () => {
+      mockPrisma.appHostingIpBlock.findFirst.mockResolvedValueOnce({
+        id: "blk_existing",
+        status: "active",
+      })
+
+      await expect(
+        blockIpAddress({
+          stackId: "st_123",
+          organizationId: "org_1",
+          ipAddress: "198.51.100.1",
+          reason: "Duplicate block test",
+          duration: "24h",
+          actorId: "user_1",
+          adapter,
+        })
+      ).rejects.toThrow("already has an active block")
+    })
   })
 
   describe("unblockIpAddress", () => {

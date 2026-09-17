@@ -104,8 +104,26 @@ export async function blockIpAddress(
   }
   const normalizedIp = normalizeIpAddress(ipAddress)
 
-  if (!reason || reason.trim().length === 0) {
+  const trimmedReason = reason?.trim() ?? ""
+  if (!trimmedReason) {
     throw new Error("A valid reason is required to block an IP address.")
+  }
+  if (trimmedReason.length > 500) {
+    throw new Error("Reason must not exceed 500 characters.")
+  }
+
+  // Prevent duplicate active blocks for the same IP on the same stack
+  const existingBlock = await prisma.appHostingIpBlock.findFirst({
+    where: {
+      stackId,
+      ipAddress: normalizedIp,
+      status: { in: ["active", "pending"] },
+    },
+  })
+  if (existingBlock) {
+    throw new Error(
+      `IP ${normalizedIp} already has an ${existingBlock.status} block. Unblock it first before creating a new one.`
+    )
   }
 
   const durationMinutes = parseDurationToMinutes(duration)
@@ -120,7 +138,7 @@ export async function blockIpAddress(
       stackId,
       organizationId,
       ipAddress: normalizedIp,
-      reason: reason.trim(),
+      reason: trimmedReason,
       durationMinutes,
       status: "pending",
       expiresAt,
@@ -261,16 +279,28 @@ export async function listAppIpBlocks(
       block.expiresAt &&
       new Date(block.expiresAt) < now
     ) {
-      await prisma.appHostingIpBlock.update({
-        where: { id: block.id },
-        data: { status: "expired" },
-      })
-      await adapter.removeBlock({
-        stackId,
-        organizationId,
-        ipAddress: block.ipAddress,
-      })
-      result.push(toIpBlockDTO({ ...block, status: "expired" }))
+      try {
+        await prisma.appHostingIpBlock.update({
+          where: { id: block.id },
+          data: { status: "expired" },
+        })
+        await adapter.removeBlock({
+          stackId,
+          organizationId,
+          ipAddress: block.ipAddress,
+        })
+        result.push(toIpBlockDTO({ ...block, status: "expired" }))
+      } catch (err) {
+        logger.warn(
+          {
+            event: "EXPIRED_BLOCK_RECONCILE_FAILED",
+            blockId: block.id,
+            error: err instanceof Error ? err.message : String(err),
+          },
+          "Failed to reconcile expired block"
+        )
+        result.push(toIpBlockDTO(block))
+      }
     } else {
       result.push(toIpBlockDTO(block))
     }
