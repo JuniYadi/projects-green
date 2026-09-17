@@ -42,16 +42,143 @@ type ReinstallTemplateDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
+  locale?: string
 }
 
 type WizardStep = "SELECT" | "PREFLIGHT" | "CONFIRM"
+
+const DICT = {
+  en: {
+    dialogTitle: "Reinstall or Change Template:",
+    dialogDescription:
+      "Choose a new marketplace template for this stack. Your domain, slug, and existing storage will be safely preserved.",
+    searchPlaceholder: "Search templates (e.g. WordPress, n8n, Hermes)...",
+    loadingTemplates: "Loading templates…",
+    noTemplatesPrefix: "No templates found matching",
+    select: "Select",
+    cancel: "Cancel",
+    preflightTitle: "Preflight Compatibility & Diff",
+    preflightDescription:
+      "Review runtime differences and configure database or storage options.",
+    analyzingCompatibility: "Analyzing template compatibility…",
+    compatibilityError: "Compatibility Error",
+    chooseDifferentTemplate: "Choose Different Template",
+    currentTemplate: "Current Template",
+    targetTemplate: "Target Template",
+    runtimeChanges: "Runtime Architecture Changes",
+    workloadController: "Workload Controller:",
+    defaultPort: "Default Port:",
+    storagePolicy: "Storage Policy:",
+    storageMountCompatible: "Storage mount is compatible and will be reused.",
+    storageNotRequired: "No persistent storage required.",
+    dbRequirement: "Database Requirement:",
+    useManagedStock: "Use Managed Stock Pool",
+    available: "Available",
+    outOfStock: "Out of Stock",
+    managedStockDescription:
+      "Automatic provisioning via Vault/ESO. Zero plaintext password exposure.",
+    byodTitle: "Bring Your Own Database (BYOD - External)",
+    byodDescriptionPrefix: "Connect your own external",
+    byodDescriptionSuffix: "database.",
+    host: "Host",
+    port: "Port",
+    dbName: "Database Name",
+    dbNamePlaceholder: "my_app_db",
+    user: "User",
+    dbUserPlaceholder: "db_user",
+    password: "Password",
+    requiredEnvs: "Required Environment Variables",
+    back: "Back",
+    nextSafety: "Next: Safety Review",
+    confirmTitle: "Confirm Template Reinstall",
+    confirmDescription:
+      "Please review safety guarantees before triggering the GitOps deployment.",
+    safetyChecksTitle: "Safety Checks & Rollback Guarantee",
+    safetySnapshot:
+      "A complete configuration snapshot is taken prior to changes.",
+    safetyRollback:
+      "Rollback is available directly from the deployment history if ArgoCD health checks fail.",
+    safetyStoragePrefix: "Existing storage volume (",
+    safetyStorageSuffix: ") is safely archived and detached. Zero data loss.",
+    safetyDomainPrefix: "Domain name (",
+    safetyDomainSuffix: ".pfnapp.dev) remains unchanged.",
+    typeSlugPrompt: "Type the application slug",
+    toConfirm: "to confirm:",
+    deploying: "Deploying Target Template…",
+    confirmAndDeploy: "Confirm & Deploy New Template",
+  },
+  id: {
+    dialogTitle: "Instal Ulang atau Ganti Template:",
+    dialogDescription:
+      "Pilih template marketplace baru untuk stack ini. Domain, slug, dan penyimpanan lama akan tetap aman.",
+    searchPlaceholder: "Cari template (mis. WordPress, n8n, Hermes)...",
+    loadingTemplates: "Memuat template…",
+    noTemplatesPrefix: "Tidak ada template yang cocok dengan",
+    select: "Pilih",
+    cancel: "Batal",
+    preflightTitle: "Kompatibilitas & Diff Pra-Penerapan",
+    preflightDescription:
+      "Periksa perbedaan runtime dan konfigurasikan opsi basis data atau penyimpanan.",
+    analyzingCompatibility: "Menganalisis kompatibilitas template…",
+    compatibilityError: "Kendala Kompatibilitas",
+    chooseDifferentTemplate: "Pilih Template Lain",
+    currentTemplate: "Template Saat Ini",
+    targetTemplate: "Template Tujuan",
+    runtimeChanges: "Perubahan Arsitektur Runtime",
+    workloadController: "Pengendali Workload:",
+    defaultPort: "Port Standar:",
+    storagePolicy: "Kebijakan Penyimpanan:",
+    storageMountCompatible:
+      "Mount penyimpanan kompatibel dan akan digunakan kembali.",
+    storageNotRequired: "Tidak memerlukan penyimpanan persisten.",
+    dbRequirement: "Kebutuhan Basis Data:",
+    useManagedStock: "Gunakan Pool Stok Terkelola",
+    available: "Tersedia",
+    outOfStock: "Stok Habis",
+    managedStockDescription:
+      "Penyediaan otomatis melalui Vault/ESO. Tanpa paparan kata sandi teks biasa.",
+    byodTitle: "Gunakan Basis Data Sendiri (BYOD - Eksternal)",
+    byodDescriptionPrefix: "Sambungkan basis data eksternal",
+    byodDescriptionSuffix: "milik Anda sendiri.",
+    host: "Host",
+    port: "Port",
+    dbName: "Nama Basis Data",
+    dbNamePlaceholder: "my_app_db",
+    user: "Pengguna",
+    dbUserPlaceholder: "db_user",
+    password: "Kata Sandi",
+    requiredEnvs: "Variabel Lingkungan yang Dibutuhkan",
+    back: "Kembali",
+    nextSafety: "Lanjut: Tinjauan Keamanan",
+    confirmTitle: "Konfirmasi Instal Ulang Template",
+    confirmDescription:
+      "Harap tinjau jaminan keamanan sebelum memicu deployment GitOps.",
+    safetyChecksTitle: "Pemeriksaan Keamanan & Jaminan Rollback",
+    safetySnapshot:
+      "Snapshot konfigurasi lengkap dibuat otomatis sebelum perubahan diterapkan.",
+    safetyRollback:
+      "Rollback tersedia langsung dari riwayat deployment jika pemeriksaan kesehatan ArgoCD gagal.",
+    safetyStoragePrefix: "Volume penyimpanan lama (",
+    safetyStorageSuffix:
+      ") diarsipkan dan dilepas dengan aman. Tanpa kehilangan data.",
+    safetyDomainPrefix: "Nama domain (",
+    safetyDomainSuffix: ".pfnapp.dev) tetap tidak berubah.",
+    typeSlugPrompt: "Ketik slug aplikasi",
+    toConfirm: "untuk konfirmasi:",
+    deploying: "Menerapkan Template Tujuan…",
+    confirmAndDeploy: "Konfirmasi & Pasang Template Baru",
+  },
+}
 
 export function ReinstallTemplateDialog({
   stack,
   open,
   onOpenChange,
   onSuccess,
+  locale = "en",
 }: ReinstallTemplateDialogProps) {
+  const isId = locale.startsWith("id")
+  const t = DICT[isId ? "id" : "en"]
   const [step, setStep] = useState<WizardStep>("SELECT")
   const [templates, setTemplates] = useState<TemplateOption[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(false)
@@ -235,17 +362,18 @@ export function ReinstallTemplateDialog({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base font-bold">
                 <ArrowsClockwise size={18} className="text-primary" />
-                <span>Reinstall or Change Template: {stack.name}</span>
+                <span>
+                  {t.dialogTitle} {stack.name}
+                </span>
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Choose a new marketplace template for this stack. Your domain,
-                slug, and existing storage will be safely preserved.
+                {t.dialogDescription}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-2">
               <Input
-                placeholder="Search templates (e.g. WordPress, n8n, Hermes)..."
+                placeholder={t.searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-9 text-xs"
@@ -258,11 +386,11 @@ export function ReinstallTemplateDialog({
                       size={16}
                       className="mr-2 animate-spin text-muted-foreground"
                     />
-                    Loading templates…
+                    {t.loadingTemplates}
                   </div>
                 ) : filteredTemplates.length === 0 ? (
                   <div className="py-8 text-center text-xs text-muted-foreground">
-                    No templates found matching &quot;{searchQuery}&quot;.
+                    {`${t.noTemplatesPrefix} "${searchQuery}".`}
                   </div>
                 ) : (
                   filteredTemplates.map((item) => (
@@ -298,7 +426,7 @@ export function ReinstallTemplateDialog({
                         variant="outline"
                         className="h-7 text-[11px] group-hover:border-primary group-hover:text-primary"
                       >
-                        Select <ArrowRight size={12} className="ml-1" />
+                        {t.select} <ArrowRight size={12} className="ml-1" />
                       </Button>
                     </div>
                   ))
@@ -313,7 +441,7 @@ export function ReinstallTemplateDialog({
                 onClick={() => handleOpenChange(false)}
                 className="text-xs"
               >
-                Cancel
+                {t.cancel}
               </Button>
             </DialogFooter>
           </>
@@ -325,11 +453,10 @@ export function ReinstallTemplateDialog({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base font-bold">
                 <HardDrives size={18} className="text-primary" />
-                <span>Preflight Compatibility & Diff</span>
+                <span>{t.preflightTitle}</span>
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Review runtime differences and configure database or storage
-                options.
+                {t.preflightDescription}
               </DialogDescription>
             </DialogHeader>
 
@@ -339,11 +466,11 @@ export function ReinstallTemplateDialog({
                   size={18}
                   className="mr-2 animate-spin text-muted-foreground"
                 />
-                Analyzing template compatibility…
+                {t.analyzingCompatibility}
               </div>
             ) : preflightError ? (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs text-destructive">
-                <p className="font-semibold">Compatibility Error</p>
+                <p className="font-semibold">{t.compatibilityError}</p>
                 <p className="mt-1">{preflightError}</p>
                 <Button
                   variant="outline"
@@ -351,7 +478,7 @@ export function ReinstallTemplateDialog({
                   onClick={() => setStep("SELECT")}
                   className="mt-3 text-xs"
                 >
-                  Choose Different Template
+                  {t.chooseDifferentTemplate}
                 </Button>
               </div>
             ) : preflight ? (
@@ -360,7 +487,7 @@ export function ReinstallTemplateDialog({
                 <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 p-3">
                   <div>
                     <span className="text-[11px] text-muted-foreground">
-                      Current Template
+                      {t.currentTemplate}
                     </span>
                     <p className="font-bold text-foreground">
                       {preflight.currentTemplate.name}
@@ -369,7 +496,7 @@ export function ReinstallTemplateDialog({
                   <ArrowRight size={16} className="text-muted-foreground" />
                   <div className="text-right">
                     <span className="text-[11px] text-muted-foreground">
-                      Target Template
+                      {t.targetTemplate}
                     </span>
                     <p className="font-bold text-foreground">
                       {preflight.targetTemplate.name}
@@ -380,12 +507,12 @@ export function ReinstallTemplateDialog({
                 {/* Diff specifications */}
                 <div className="space-y-2 rounded-lg border border-border bg-background p-3">
                   <span className="text-xs font-semibold text-foreground">
-                    Runtime Architecture Changes
+                    {t.runtimeChanges}
                   </span>
                   <div className="space-y-1.5 pt-1 text-[11px]">
                     <div className="flex justify-between border-b border-border/40 pb-1">
                       <span className="text-muted-foreground">
-                        Workload Controller:
+                        {t.workloadController}
                       </span>
                       <span className="font-mono text-foreground">
                         {preflight.diff.workloadKind.current} ➔{" "}
@@ -394,7 +521,7 @@ export function ReinstallTemplateDialog({
                     </div>
                     <div className="flex justify-between border-b border-border/40 pb-1">
                       <span className="text-muted-foreground">
-                        Default Port:
+                        {t.defaultPort}
                       </span>
                       <span className="font-mono text-foreground">
                         {preflight.diff.port.current} ➔{" "}
@@ -403,13 +530,13 @@ export function ReinstallTemplateDialog({
                     </div>
                     <div className="flex flex-col gap-1 pt-0.5">
                       <span className="text-muted-foreground">
-                        Storage Policy:
+                        {t.storagePolicy}
                       </span>
                       <p className="leading-relaxed text-foreground">
                         {preflight.diff.storage.warning ??
                           (preflight.diff.storage.policy === "REUSE_COMPATIBLE"
-                            ? "Storage mount is compatible and will be reused."
-                            : "No persistent storage required.")}
+                            ? t.storageMountCompatible
+                            : t.storageNotRequired)}
                       </p>
                     </div>
                   </div>
@@ -421,7 +548,7 @@ export function ReinstallTemplateDialog({
                     <div className="flex items-center gap-1.5">
                       <Database size={15} className="text-primary" />
                       <span className="text-xs font-semibold text-foreground">
-                        Database Requirement:{" "}
+                        {t.dbRequirement}{" "}
                         {preflight.dependencies.requiredServiceType}
                       </span>
                     </div>
@@ -453,25 +580,24 @@ export function ReinstallTemplateDialog({
                         <div className="space-y-0.5 text-xs">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-foreground">
-                              Use Managed Stock Pool
+                              {t.useManagedStock}
                             </span>
                             {preflight.dependencies.managedStockAvailable ? (
                               <Badge variant="success" className="text-[10px]">
                                 {preflight.dependencies.availableStockCount}{" "}
-                                Available
+                                {t.available}
                               </Badge>
                             ) : (
                               <Badge
                                 variant="destructive"
                                 className="text-[10px]"
                               >
-                                Out of Stock
+                                {t.outOfStock}
                               </Badge>
                             )}
                           </div>
                           <p className="text-[11px] text-muted-foreground">
-                            Automatic provisioning via Vault/ESO. Zero plaintext
-                            password exposure.
+                            {t.managedStockDescription}
                           </p>
                         </div>
                       </label>
@@ -494,12 +620,12 @@ export function ReinstallTemplateDialog({
                         />
                         <div className="space-y-0.5 text-xs">
                           <span className="font-medium text-foreground">
-                            Bring Your Own Database (BYOD - External)
+                            {t.byodTitle}
                           </span>
                           <p className="text-[11px] text-muted-foreground">
-                            Connect your own external{" "}
+                            {t.byodDescriptionPrefix}{" "}
                             {preflight.dependencies.requiredServiceType}{" "}
-                            database.
+                            {t.byodDescriptionSuffix}
                           </p>
                         </div>
                       </label>
@@ -508,7 +634,7 @@ export function ReinstallTemplateDialog({
                       {dependencyMode === "BYOD" && (
                         <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/10 p-2.5 pt-2">
                           <div className="space-y-1">
-                            <Label className="text-[11px]">Host</Label>
+                            <Label className="text-[11px]">{t.host}</Label>
                             <Input
                               value={byodHost}
                               onChange={(e) => setByodHost(e.target.value)}
@@ -517,7 +643,7 @@ export function ReinstallTemplateDialog({
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[11px]">Port</Label>
+                            <Label className="text-[11px]">{t.port}</Label>
                             <Input
                               type="number"
                               value={byodPort}
@@ -528,25 +654,25 @@ export function ReinstallTemplateDialog({
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[11px]">Database Name</Label>
+                            <Label className="text-[11px]">{t.dbName}</Label>
                             <Input
                               value={byodDatabase}
                               onChange={(e) => setByodDatabase(e.target.value)}
-                              placeholder="my_app_db"
+                              placeholder={t.dbNamePlaceholder}
                               className="h-8 font-mono text-xs"
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[11px]">User</Label>
+                            <Label className="text-[11px]">{t.user}</Label>
                             <Input
                               value={byodUser}
                               onChange={(e) => setByodUser(e.target.value)}
-                              placeholder="db_user"
+                              placeholder={t.dbUserPlaceholder}
                               className="h-8 font-mono text-xs"
                             />
                           </div>
                           <div className="col-span-2 space-y-1">
-                            <Label className="text-[11px]">Password</Label>
+                            <Label className="text-[11px]">{t.password}</Label>
                             <Input
                               type="password"
                               value={byodPassword}
@@ -565,7 +691,7 @@ export function ReinstallTemplateDialog({
                 {preflight.envDiff.requiredEnvs.length > 0 && (
                   <div className="space-y-2 rounded-lg border border-border bg-background p-3">
                     <span className="text-xs font-semibold text-foreground">
-                      Required Environment Variables
+                      {t.requiredEnvs}
                     </span>
                     <div className="space-y-2 pt-1">
                       {preflight.envDiff.requiredEnvs.map((env) => (
@@ -607,7 +733,7 @@ export function ReinstallTemplateDialog({
                 onClick={() => setStep("SELECT")}
                 className="text-xs"
               >
-                Back
+                {t.back}
               </Button>
               <Button
                 size="sm"
@@ -615,7 +741,7 @@ export function ReinstallTemplateDialog({
                 onClick={() => setStep("CONFIRM")}
                 className="text-xs"
               >
-                Next: Safety Review <ArrowRight size={14} className="ml-1" />
+                {t.nextSafety} <ArrowRight size={14} className="ml-1" />
               </Button>
             </DialogFooter>
           </>
@@ -627,11 +753,10 @@ export function ReinstallTemplateDialog({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">
                 <ShieldCheck size={20} className="text-primary" />
-                <span>Confirm Template Reinstall</span>
+                <span>{t.confirmTitle}</span>
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Please review safety guarantees before triggering the GitOps
-                deployment.
+                {t.confirmDescription}
               </DialogDescription>
             </DialogHeader>
 
@@ -639,34 +764,31 @@ export function ReinstallTemplateDialog({
               <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-emerald-700 dark:text-emerald-300">
                 <div className="flex items-center gap-1.5 font-semibold">
                   <CheckCircle size={16} />
-                  <span>Safety Checks & Rollback Guarantee</span>
+                  <span>{t.safetyChecksTitle}</span>
                 </div>
                 <ul className="list-disc space-y-1 pl-5 text-[11px] leading-relaxed">
+                  <li>{t.safetySnapshot}</li>
+                  <li>{t.safetyRollback}</li>
                   <li>
-                    A complete configuration snapshot is taken prior to changes.
+                    {t.safetyStoragePrefix}
+                    {preflight.currentTemplate.storagePath ?? "/data"}
+                    {t.safetyStorageSuffix}
                   </li>
                   <li>
-                    Rollback is available directly from the deployment history
-                    if ArgoCD health checks fail.
-                  </li>
-                  <li>
-                    Existing storage volume (
-                    {preflight.currentTemplate.storagePath ?? "/data"}) is
-                    safely archived and detached. Zero data loss.
-                  </li>
-                  <li>
-                    Domain name ({stack.slug}.pfnapp.dev) remains unchanged.
+                    {t.safetyDomainPrefix}
+                    {stack.slug}
+                    {t.safetyDomainSuffix}
                   </li>
                 </ul>
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-foreground">
-                  Type the application slug{" "}
+                  {t.typeSlugPrompt}{" "}
                   <strong className="font-mono text-primary">
                     {stack.slug}
                   </strong>{" "}
-                  to confirm:
+                  {t.toConfirm}
                 </Label>
                 <Input
                   value={confirmSlugInput}
@@ -685,7 +807,7 @@ export function ReinstallTemplateDialog({
                 disabled={submitting}
                 className="text-xs"
               >
-                Back
+                {t.back}
               </Button>
               <Button
                 size="sm"
@@ -699,10 +821,10 @@ export function ReinstallTemplateDialog({
                       size={14}
                       className="mr-1.5 animate-spin"
                     />
-                    Deploying Target Template…
+                    {t.deploying}
                   </>
                 ) : (
-                  "Confirm & Deploy New Template"
+                  t.confirmAndDeploy
                 )}
               </Button>
             </DialogFooter>

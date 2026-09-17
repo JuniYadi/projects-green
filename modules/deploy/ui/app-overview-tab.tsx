@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -289,6 +290,7 @@ function CopyableRow({
 }
 
 export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
+  const router = useRouter()
   const [reinstallOpen, setReinstallOpen] = useState(false)
   const t = COPY[locale.startsWith("id") ? "id" : "en"]
   const targetDomain = stack.customDomain || stack.subdomain
@@ -599,7 +601,11 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                     size="sm"
                     onClick={() => setReinstallOpen(true)}
                     className="h-6 gap-1 px-1.5 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
-                    title="Ganti Template / Reinstall"
+                    title={
+                      locale.startsWith("id")
+                        ? "Ganti Template / Reinstall"
+                        : "Change Template / Reinstall"
+                    }
                   >
                     <ArrowsClockwise size={12} />
                     <span>
@@ -672,6 +678,10 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
         stack={stack}
         open={reinstallOpen}
         onOpenChange={setReinstallOpen}
+        onSuccess={() => {
+          router.refresh()
+        }}
+        locale={locale}
       />
     </div>
   )

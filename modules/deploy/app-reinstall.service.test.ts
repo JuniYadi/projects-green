@@ -4,6 +4,7 @@ const mockPrisma = {
   applicationStack: {
     findUnique: mock(),
     update: mock(),
+    updateMany: mock(),
   },
   appTemplate: {
     findFirst: mock(),
@@ -68,6 +69,8 @@ describe("app-reinstall.service", () => {
   beforeEach(() => {
     mockPrisma.applicationStack.findUnique.mockReset()
     mockPrisma.applicationStack.update.mockReset()
+    mockPrisma.applicationStack.updateMany.mockReset()
+    mockPrisma.applicationStack.updateMany.mockResolvedValue({ count: 1 })
     mockPrisma.appTemplate.findFirst.mockReset()
     mockPrisma.appManagedStock.count.mockReset()
     mockPrisma.applicationDeployment.create.mockReset()
@@ -77,7 +80,6 @@ describe("app-reinstall.service", () => {
     mockSyncStackConfiguration.mockClear()
     mockWriteSecrets.mockClear()
   })
-
   describe("computeReinstallPreflight", () => {
     it("throws 404 when stack is not found", async () => {
       mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null)
@@ -310,6 +312,158 @@ describe("app-reinstall.service", () => {
       expect(mockClaimManagedStock).toHaveBeenCalledTimes(1)
       expect(mockSyncStackConfiguration).toHaveBeenCalledTimes(1)
     })
+
+    it("aborts and throws 409 when concurrent deployment is detected in transaction (TOCTOU)", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        name: "My App",
+        slug: "my-app",
+        organizationId: "org-1",
+        status: "RUNNING",
+        metadataJson: {},
+        envVarsJson: [],
+      })
+
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+        id: "tmpl-wp",
+        slug: "wordpress",
+        name: "WordPress",
+        visibility: "PUBLIC",
+        isOfficial: true,
+        blueprintJson: {
+          version: "1.0.0",
+          runtime: { image: "wordpress:6.5", defaultPort: 80 },
+          dependencies: [{ serviceType: "MYSQL", envPrefix: "DB" }],
+        },
+      })
+
+      // Concurrent deployment wins race -> 0 rows updated
+      mockPrisma.applicationStack.updateMany.mockResolvedValueOnce({ count: 0 })
+
+      await expect(
+        executeReinstall({
+          organizationId: "org-1",
+          slug: "my-app",
+          input: {
+            targetTemplateId: "tmpl-wp",
+            dependencyMode: "MANAGED",
+          },
+        })
+      ).rejects.toThrow("A deployment is already in progress")
+
+      // Verify managed stock was cleaned up and released
+      expect(mockReleaseManagedStock).toHaveBeenCalledWith("stack-1")
+    })
+
+    it("writes BYOD database credentials to Vault when dependencyMode is BYOD", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        name: "My App",
+        slug: "my-app",
+        organizationId: "org-1",
+        status: "RUNNING",
+        metadataJson: {},
+        envVarsJson: [],
+      })
+
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+        id: "tmpl-wp",
+        slug: "wordpress",
+        name: "WordPress",
+        visibility: "PUBLIC",
+        isOfficial: true,
+        blueprintJson: {
+          version: "1.0.0",
+          runtime: { image: "wordpress:6.5", defaultPort: 80 },
+          dependencies: [{ serviceType: "MYSQL", envPrefix: "WP_DB" }],
+        },
+      })
+
+      mockPrisma.applicationDeployment.create.mockResolvedValueOnce({
+        id: "dep-byod-1",
+      })
+
+      const result = await executeReinstall({
+        organizationId: "org-1",
+        slug: "my-app",
+        input: {
+          targetTemplateId: "tmpl-wp",
+          dependencyMode: "BYOD",
+          byodCredentials: {
+            host: "db.external.com",
+            port: 3306,
+            database: "custom_db",
+            user: "ext_user",
+            password: "ext_password",
+          },
+        },
+      })
+
+      expect(result.ok).toBe(true)
+      expect(mockClaimManagedStock).not.toHaveBeenCalled()
+      expect(mockWriteSecrets).toHaveBeenCalledWith({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "prod",
+        secrets: {
+          WP_DB_HOST: "db.external.com",
+          WP_DB_PORT: "3306",
+          WP_DB_DATABASE: "custom_db",
+          WP_DB_USER: "ext_user",
+          WP_DB_PASSWORD: "ext_password",
+        },
+      })
+    })
+
+    it("records failure on deployment and throws 500 when GitOps sync fails", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        name: "My App",
+        slug: "my-app",
+        organizationId: "org-1",
+        status: "RUNNING",
+        metadataJson: {},
+        envVarsJson: [],
+      })
+
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+        id: "tmpl-wp",
+        slug: "wordpress",
+        name: "WordPress",
+        visibility: "PUBLIC",
+        isOfficial: true,
+        blueprintJson: {
+          version: "1.0.0",
+          runtime: { image: "wordpress:6.5", defaultPort: 80 },
+        },
+      })
+
+      mockPrisma.applicationDeployment.create.mockResolvedValueOnce({
+        id: "dep-gitops-fail-1",
+      })
+      mockSyncStackConfiguration.mockRejectedValueOnce(
+        new Error("GitOps repository connection failed")
+      )
+
+      await expect(
+        executeReinstall({
+          organizationId: "org-1",
+          slug: "my-app",
+          input: {
+            targetTemplateId: "tmpl-wp",
+          },
+        })
+      ).rejects.toThrow("GitOps repository connection failed")
+
+      expect(mockPrisma.applicationDeployment.update).toHaveBeenCalledWith({
+        where: { id: "dep-gitops-fail-1" },
+        data: {
+          status: "FAILED",
+          failureReason: "GitOps repository connection failed",
+          completedAt: expect.any(Date),
+        },
+      })
+    })
   })
 
   describe("executeRollback", () => {
@@ -366,6 +520,54 @@ describe("app-reinstall.service", () => {
       expect(result.deploymentId).toBe("dep-rollback-1")
       expect(result.restoredTemplateId).toBe("tmpl-hermes")
       expect(mockSyncStackConfiguration).toHaveBeenCalledTimes(1)
+    })
+
+    it("rejects rollback if specified snapshotId does not match active snapshot", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "my-app",
+        organizationId: "org-1",
+        status: "FAILED",
+        metadataJson: {
+          rollbackSnapshot: { id: "snap_actual_123" },
+        },
+      })
+
+      await expect(
+        executeRollback({
+          organizationId: "org-1",
+          slug: "my-app",
+          snapshotId: "snap_mismatched_999",
+        })
+      ).rejects.toThrow("does not match active rollback snapshot")
+    })
+
+    it("aborts rollback and throws 409 when concurrent deployment is detected during rollback", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "my-app",
+        organizationId: "org-1",
+        status: "FAILED",
+        metadataJson: {
+          rollbackSnapshot: {
+            id: "snap_123",
+            templateId: "tmpl-1",
+            metadata: {},
+            envVars: [],
+          },
+        },
+      })
+
+      mockPrisma.applicationStack.updateMany.mockResolvedValueOnce({ count: 0 })
+
+      await expect(
+        executeRollback({
+          organizationId: "org-1",
+          slug: "my-app",
+        })
+      ).rejects.toThrow(
+        "Cannot rollback while a deployment is already in progress."
+      )
     })
   })
 })

@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2"
-import { Prisma } from "@prisma/client"
+import { type ApplicationDeployment, Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
 import {
@@ -166,6 +166,7 @@ export async function computeReinstallPreflight(params: {
   }
 
   // Dependency analysis
+  // pontail: currently analyzing single primary database dependency targetBlueprint.dependencies?.[0]. If composite multi-database templates are introduced, extend preflight and reinstall input to support multiple dependency mappings.
   const targetDep = targetBlueprint.dependencies?.[0] as
     AppTemplateBlueprintDependency | undefined
   let availableStockCount = 0
@@ -333,6 +334,7 @@ export async function executeReinstall(params: {
 
   const targetBlueprint =
     targetTemplate.blueprintJson as unknown as AppTemplateBlueprint
+  // pontail: currently analyzing single primary database dependency targetBlueprint.dependencies?.[0]. If composite multi-database templates are introduced, extend preflight and reinstall input to support multiple dependency mappings.
   const targetDep = targetBlueprint.dependencies?.[0] as
     AppTemplateBlueprintDependency | undefined
 
@@ -504,36 +506,55 @@ export async function executeReinstall(params: {
   }
 
   // 6. Execute atomic stack update and deployment creation
-  const { deployment } = await prisma.$transaction(async (tx) => {
-    await tx.applicationStack.update({
-      where: { id: stack.id },
-      data: {
-        templateId: targetTemplate.id,
-        sourceType: "TEMPLATE",
-        status: "DEPLOYING",
-        metadataJson: updatedMetadata as Prisma.InputJsonValue,
-        envVarsJson: newEnvs as Prisma.InputJsonValue,
-        lastDeployedAt: new Date(),
-        lastDeployStatus: "DEPLOYING",
-      },
+  let deployment: ApplicationDeployment
+  try {
+    const txResult = await prisma.$transaction(async (tx) => {
+      const updated = await tx.applicationStack.updateMany({
+        where: {
+          id: stack.id,
+          status: { notIn: [...IN_PROGRESS_STATUSES] },
+        },
+        data: {
+          templateId: targetTemplate.id,
+          sourceType: "TEMPLATE",
+          status: "DEPLOYING",
+          metadataJson: updatedMetadata as Prisma.InputJsonValue,
+          envVarsJson: newEnvs as Prisma.InputJsonValue,
+          lastDeployedAt: new Date(),
+          lastDeployStatus: "DEPLOYING",
+        },
+      })
+
+      if (updated.count === 0) {
+        throw new AppReinstallError(
+          "A deployment is already in progress for this application.",
+          "DEPLOYMENT_IN_PROGRESS",
+          409
+        )
+      }
+
+      const newDep = await tx.applicationDeployment.create({
+        data: {
+          stackId: stack.id,
+          organizationId: stack.organizationId,
+          status: "DEPLOYING",
+          triggerType: "TEMPLATE",
+          commitMessage: `Reinstall template: ${stack.name} -> ${targetTemplate.name}`,
+          commitAuthor: params.authorUserId ?? "system",
+          branchName: stack.branchName ?? "main",
+          startedAt: new Date(),
+        },
+      })
+
+      return { deployment: newDep }
     })
-
-    const newDep = await tx.applicationDeployment.create({
-      data: {
-        stackId: stack.id,
-        organizationId: stack.organizationId,
-        status: "DEPLOYING",
-        triggerType: "TEMPLATE",
-        commitMessage: `Reinstall template: ${stack.name} -> ${targetTemplate.name}`,
-        commitAuthor: params.authorUserId ?? "system",
-        branchName: stack.branchName ?? "main",
-        startedAt: new Date(),
-      },
-    })
-
-    return { deployment: newDep }
-  })
-
+    deployment = txResult.deployment
+  } catch (txErr) {
+    if (allocatedStockId) {
+      await releaseManagedStock(stack.id).catch(() => {})
+    }
+    throw txErr
+  }
   // 7. Push GitOps Manifests & Trigger ArgoCD
   let commitSha: string | null = null
   try {
@@ -577,6 +598,7 @@ export async function executeRollback(params: {
   organizationId: string
   slug: string
   authorUserId?: string
+  snapshotId?: string
 }): Promise<RollbackResultDTO> {
   const stack = await prisma.applicationStack.findUnique({
     where: {
@@ -617,6 +639,14 @@ export async function executeRollback(params: {
     )
   }
 
+  if (params.snapshotId && snapshot.id !== params.snapshotId) {
+    throw new AppReinstallError(
+      `Specified snapshot ${params.snapshotId} does not match active rollback snapshot ${snapshot.id}`,
+      "ROLLBACK_SNAPSHOT_MISMATCH",
+      400
+    )
+  }
+
   const restoredMetadata: Record<string, unknown> = {
     ...snapshot.metadata,
     rollbackSnapshot: null,
@@ -625,8 +655,11 @@ export async function executeRollback(params: {
   }
 
   const { deployment } = await prisma.$transaction(async (tx) => {
-    await tx.applicationStack.update({
-      where: { id: stack.id },
+    const updated = await tx.applicationStack.updateMany({
+      where: {
+        id: stack.id,
+        status: { notIn: [...IN_PROGRESS_STATUSES] },
+      },
       data: {
         templateId: snapshot.templateId,
         status: "DEPLOYING",
@@ -637,6 +670,13 @@ export async function executeRollback(params: {
       },
     })
 
+    if (updated.count === 0) {
+      throw new AppReinstallError(
+        "Cannot rollback while a deployment is already in progress.",
+        "DEPLOYMENT_IN_PROGRESS",
+        409
+      )
+    }
     const newDep = await tx.applicationDeployment.create({
       data: {
         stackId: stack.id,

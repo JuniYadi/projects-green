@@ -810,7 +810,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
   )
   .post(
     "/:slug/rollback",
-    async ({ params, set }) => {
+    async ({ params, body, set }) => {
       const auth = await withAuth({ ensureSignedIn: true })
       if (!auth.user) {
         set.status = 401
@@ -831,6 +831,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           organizationId: auth.organizationId,
           slug: params.slug,
           authorUserId: auth.user.id,
+          snapshotId: body?.snapshotId,
         })
         return { ok: true, data: result }
       } catch (err) {
@@ -855,6 +856,11 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
       params: t.Object({
         slug: t.String(),
       }),
+      body: t.Optional(
+        t.Object({
+          snapshotId: t.Optional(t.String()),
+        })
+      ),
     }
   )
   .get(

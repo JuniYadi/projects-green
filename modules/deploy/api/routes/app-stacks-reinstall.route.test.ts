@@ -161,6 +161,27 @@ describe("app-stacks reinstall & rollback routes", () => {
         organizationId: "org-1",
         slug: "my-app",
         authorUserId: "user-123",
+        snapshotId: undefined,
+      })
+    })
+
+    it("forwards snapshotId when provided in request body", async () => {
+      const response = await appStacksRoutes.handle(
+        new Request("http://localhost/deploy/apps/my-app/rollback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ snapshotId: "snap-custom-123" }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const json = await response.json()
+      expect(json.ok).toBe(true)
+      expect(mockExecuteRollback).toHaveBeenCalledWith({
+        organizationId: "org-1",
+        slug: "my-app",
+        authorUserId: "user-123",
+        snapshotId: "snap-custom-123",
       })
     })
   })
