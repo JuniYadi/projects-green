@@ -1122,7 +1122,23 @@ describe("opensearch-traffic.service", () => {
       const mockClient = {
         search: mock(async () => ({
           body: {
-            hits: { total: { value: 30 } },
+            hits: {
+              total: { value: 30 },
+              hits: [
+                {
+                  _id: "log_1",
+                  _source: {
+                    "@timestamp": "2026-09-16T08:15:00.000Z",
+                    http_method: "GET",
+                    http_path: "/.env",
+                    http_status: 404,
+                    response_time_ms: 15,
+                    bytes_read: 230,
+                    user_agent: "curl/7.81.0",
+                  },
+                },
+              ],
+            },
             aggregations: {
               status_class: {
                 buckets: [
@@ -1179,6 +1195,10 @@ describe("opensearch-traffic.service", () => {
       expect(detail.userAgents[0].browser).toBe("CLI/HTTP Client")
       expect(detail.staticAssetShare).toBeCloseTo(16.7, 1)
       expect(detail.timeline.length).toBe(1)
+      expect(detail.recentLogs).toBeDefined()
+      expect(detail.recentLogs?.length).toBe(1)
+      expect(detail.recentLogs?.[0].path).toBe("/.env")
+      expect(detail.recentLogs?.[0].statusCode).toBe(404)
     })
 
     it("getAppTrafficIpDetail rejects invalid IP addresses", async () => {
