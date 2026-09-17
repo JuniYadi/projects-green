@@ -5352,6 +5352,13 @@ export type AppMessages = {
         noProcessData: string
         openvpnUsersTitle: string
         openvpnUsersDesc: string
+        wireguardSessionsTitle: string
+        wireguardSessionsDesc: string
+        wireguardStatus: string
+        wireguardHandshake: string
+        wireguardRx: string
+        wireguardTx: string
+        noWireguardSessions: string
         thUsername: string
         thStatus: string
         thConnection: string
@@ -6058,6 +6065,11 @@ export type AppMessages = {
   }
   pPortalVpnWireguardPageClient: {
     pageTitle: string
+    pageDescription: string
+    refresh: string
+    refreshing: string
+    loadError: string
+    noSessions: string
     addPeerButton: string
     peerCreatedPrefix: string
     peerCreatedSuffix: string

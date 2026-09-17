@@ -772,6 +772,49 @@ describe("createAdminVpnServersRoutes", () => {
     })
   })
 
+  describe("GET /admin/vpn/wireguard-sessions", () => {
+    it("returns active WireGuard sessions from all active servers", async () => {
+      vpnServerFindManyQueue = [
+        makeServer({
+          hasOpenVpn: false,
+          hasWireGuard: true,
+          hostname: "wireguard.example.net",
+          sshKey: { privateKey: "enc-key" },
+        }),
+      ]
+      sshResponses = [
+        {
+          stdout:
+            "USERNAME | IP | STATUS | HANDSHAKE | RX | TX\n" +
+            "user-1 | 10.0.0.2 | Online | 4s ago | 2M | 3M\n" +
+            "Active: 1 total, 1 connected",
+          stderr: "",
+          exitCode: 0,
+        },
+      ]
+
+      const res = await createApp().handle(
+        new Request("http://localhost/admin/vpn/wireguard-sessions")
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.data).toEqual([
+        {
+          serverId: "srv-1",
+          serverName: "ID-01",
+          protocol: "WIREGUARD",
+          username: "user-1",
+          ip: "10.0.0.2",
+          status: "Online",
+          handshake: "4s ago",
+          rx: "2M",
+          tx: "3M",
+        },
+      ])
+    })
+  })
+
   // ── POST /admin/vpn/servers/:id/sync-protocols ───────────────────────────
 
   describe("POST /admin/vpn/servers/:id/sync-protocols", () => {

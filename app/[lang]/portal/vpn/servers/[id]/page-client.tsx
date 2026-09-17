@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { useQuery } from "@tanstack/react-query"
 import {
   ArrowLeft,
   ArrowClockwise,
@@ -28,11 +29,13 @@ import {
   getVpnServer,
   getVpnServerMetrics,
   listOpenVpnUsers,
+  listWireGuardSessionsByServer,
   listVpnRegions,
   listVpnSshKeys,
   syncVpnServerProtocols,
   testVpnServer,
   type OpenVpnUserItem,
+  type WireGuardSessionItem,
   type VpnRegionItem,
   type VpnServerItem,
   type VpnServerMetrics,
@@ -160,6 +163,11 @@ export default function VpnServerDetailPage() {
   const [regions, setRegions] = useState<VpnRegionItem[]>([])
   const [sshKeys, setSshKeys] = useState<VpnSshKeyItem[]>([])
   const [formOpen, setFormOpen] = useState(false)
+  const wireGuardQuery = useQuery<WireGuardSessionItem[]>({
+    queryKey: ["portal", "vpn", "wireguard-sessions", serverId],
+    queryFn: async () => (await listWireGuardSessionsByServer(serverId)).data,
+    enabled: Boolean(server?.protocols.wireGuard.enabled),
+  })
 
   const loadServer = useCallback(async () => {
     setLoading(true)
@@ -376,7 +384,9 @@ export default function VpnServerDetailPage() {
 
           <div className="rounded-lg border p-5">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold">{messages.protocolConfigTitle}</h2>
+              <h2 className="text-lg font-semibold">
+                {messages.protocolConfigTitle}
+              </h2>
               <p className="text-sm text-muted-foreground">
                 {messages.protocolConfigDesc}
               </p>
@@ -448,7 +458,9 @@ export default function VpnServerDetailPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">{messages.liveMetricsTitle}</h2>
+            <h2 className="text-lg font-semibold">
+              {messages.liveMetricsTitle}
+            </h2>
             <p className="text-sm text-muted-foreground">
               {messages.liveMetricsDesc}
             </p>
@@ -501,24 +513,39 @@ export default function VpnServerDetailPage() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-lg border p-4">
-                <h3 className="mb-3 text-sm font-semibold">{messages.dailyTraffic}</h3>
+                <h3 className="mb-3 text-sm font-semibold">
+                  {messages.dailyTraffic}
+                </h3>
                 <TrafficList rows={metrics.traffic.daily} messages={messages} />
               </div>
               <div className="rounded-lg border p-4">
-                <h3 className="mb-3 text-sm font-semibold">{messages.monthlyTraffic}</h3>
-                <TrafficList rows={metrics.traffic.monthly} messages={messages} />
+                <h3 className="mb-3 text-sm font-semibold">
+                  {messages.monthlyTraffic}
+                </h3>
+                <TrafficList
+                  rows={metrics.traffic.monthly}
+                  messages={messages}
+                />
               </div>
               <div className="rounded-lg border p-4">
                 <h3 className="mb-3 text-sm font-semibold">
                   {messages.topCpuProcesses}
                 </h3>
-                <ProcessList rows={metrics.processes.cpu} metric="cpu" messages={messages} />
+                <ProcessList
+                  rows={metrics.processes.cpu}
+                  metric="cpu"
+                  messages={messages}
+                />
               </div>
               <div className="rounded-lg border p-4">
                 <h3 className="mb-3 text-sm font-semibold">
                   {messages.topMemoryProcesses}
                 </h3>
-                <ProcessList rows={metrics.processes.memory} metric="memory" messages={messages} />
+                <ProcessList
+                  rows={metrics.processes.memory}
+                  metric="memory"
+                  messages={messages}
+                />
               </div>
             </div>
           </div>
@@ -529,10 +556,105 @@ export default function VpnServerDetailPage() {
         )}
       </section>
 
+      {server?.protocols.wireGuard.enabled && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">
+                {messages.wireguardSessionsTitle}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {messages.wireguardSessionsDesc}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => wireGuardQuery.refetch()}
+              disabled={wireGuardQuery.isFetching}
+            >
+              <ArrowClockwise className="mr-2 h-4 w-4" />
+              {wireGuardQuery.isFetching ? "..." : messages.refresh}
+            </Button>
+          </div>
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{messages.thUsername}</TableHead>
+                  <TableHead>{messages.thVpnIp}</TableHead>
+                  <TableHead>{messages.wireguardStatus}</TableHead>
+                  <TableHead>{messages.wireguardHandshake}</TableHead>
+                  <TableHead>{messages.wireguardRx}</TableHead>
+                  <TableHead>{messages.wireguardTx}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {wireGuardQuery.isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <Skeleton className="h-8 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ) : wireGuardQuery.isError ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-sm text-red-600">
+                      {messages.metricsUnavailable}
+                    </TableCell>
+                  </TableRow>
+                ) : wireGuardQuery.data?.length ? (
+                  wireGuardQuery.data.map((session) => (
+                    <TableRow key={`${session.serverId}:${session.username}`}>
+                      <TableCell className="font-mono text-sm">
+                        {session.username}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {session.ip}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            session.status === "Online"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {session.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {session.handshake}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {session.rx}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {session.tx}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      {messages.noWireguardSessions}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+      )}
+
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">{messages.openvpnUsersTitle}</h2>
+            <h2 className="text-lg font-semibold">
+              {messages.openvpnUsersTitle}
+            </h2>
             <p className="text-sm text-muted-foreground">
               {messages.openvpnUsersDesc}
             </p>

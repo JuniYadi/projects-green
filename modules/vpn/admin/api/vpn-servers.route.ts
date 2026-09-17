@@ -9,7 +9,7 @@ import {
   createVpnServerSchema,
   updateVpnServerSchema,
 } from "../vpn-server.schema"
-import { toVpnServerDTO } from "../vpn-server.dto"
+import { toVpnServerDTO, type WireGuardSessionDTO } from "../vpn-server.dto"
 import {
   VpnServerConflictError,
   VpnServerNotFoundError,
@@ -47,6 +47,67 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
   const lastTestAt = new Map<string, number>()
 
   return new Elysia()
+    .get("/admin/vpn/wireguard-sessions", async ({ set }) => {
+      const actor = await guard(set)
+      if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+      const servers = await prisma.vpnServer.findMany({
+        where: { isActive: true },
+        include: { sshKey: { select: { privateKey: true } } },
+        orderBy: { name: "asc" },
+      })
+      const executor = new VpnServerSshExecutor()
+      const openVpn = new OpenVpnSshAdapter()
+      const serverSessions = await Promise.all(
+        servers.map(async (server) => {
+          const target = toSshTarget(server)
+          const sessions: WireGuardSessionDTO[] = []
+
+          if (server.hasWireGuard) {
+            const result = await execWireGuardList(executor, target)
+            if (result.exitCode === 0) {
+              sessions.push(
+                ...parseWireGuardList(result.stdout)
+                  .filter((item) => item.status === "Online")
+                  .map((item) => ({
+                    ...item,
+                    protocol: "WIREGUARD" as const,
+                    serverId: server.id,
+                    serverName: server.name,
+                  }))
+              )
+            }
+          }
+
+          if (server.hasOpenVpn) {
+            try {
+              const users = await openVpn.listClients(target)
+              sessions.push(
+                ...users
+                  .filter((user) => user.connected)
+                  .map((user) => ({
+                    protocol: "OPENVPN" as const,
+                    serverId: server.id,
+                    serverName: server.name,
+                    username: user.clientName,
+                    ip: user.virtualAddress ?? user.ipAllocation ?? "-",
+                    status: "Online" as const,
+                    handshake: user.connectedSince ?? "-",
+                    rx: formatSessionBytes(user.bytesReceived),
+                    tx: formatSessionBytes(user.bytesSent),
+                  }))
+              )
+            } catch {
+              // A failing protocol must not hide sessions from other servers.
+            }
+          }
+
+          return sessions
+        })
+      )
+
+      return { ok: true, data: serverSessions.flat() }
+    })
     .get("/admin/vpn/servers", async ({ query, set }) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
@@ -217,6 +278,45 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
       const users = await new OpenVpnSshAdapter().listClients(target)
       return { ok: true, data: users }
     })
+    .get(
+      "/admin/vpn/servers/:id/wireguard-sessions",
+      async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+        const server = await prisma.vpnServer.findUnique({
+          where: { id: params.id },
+          include: { sshKey: { select: { privateKey: true } } },
+        })
+        if (!server) return toServerError(set, new VpnServerNotFoundError())
+        if (!server.hasWireGuard) return { ok: true, data: [] }
+
+        const result = await execWireGuardList(
+          new VpnServerSshExecutor(),
+          toSshTarget(server)
+        )
+        if (result.exitCode !== 0) {
+          set.status = 503
+          return {
+            ok: false,
+            error: "SSH_COMMAND_FAILED",
+            message: result.stderr,
+          }
+        }
+
+        return {
+          ok: true,
+          data: parseWireGuardList(result.stdout)
+            .filter((session) => session.status === "Online")
+            .map((session) => ({
+              ...session,
+              protocol: "WIREGUARD" as const,
+              serverId: server.id,
+              serverName: server.name,
+            })),
+        }
+      }
+    )
     .post("/admin/vpn/servers/:id/sync-protocols", async ({ params, set }) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
@@ -284,6 +384,65 @@ type ServerWithPrivateKey = {
 }
 
 type RouteSet = { status?: number | string }
+
+function formatSessionBytes(bytes: number | null): string {
+  if (bytes === null || bytes <= 0) return "0 B"
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${bytes} B`
+}
+
+function parseWireGuardList(stdout: string) {
+  const sessions: Omit<
+    WireGuardSessionDTO,
+    "serverId" | "serverName" | "protocol"
+  >[] = []
+  let tableStarted = false
+
+  for (const rawLine of stdout.split("\n")) {
+    const line = rawLine.trim()
+    if (!line) continue
+    if (/^USERNAME\s+\|/i.test(line)) {
+      tableStarted = true
+      continue
+    }
+    if (/^-+$/.test(line)) continue
+    if (/^Active:/i.test(line)) break
+    if (!tableStarted) continue
+
+    const columns = line.split("|").map((value) => value.trim())
+    if (columns.length < 6 || !columns[0] || !columns[1]) continue
+
+    const rawStatus = columns[2]?.toLowerCase()
+    const status =
+      rawStatus === "online"
+        ? "Online"
+        : rawStatus === "stale"
+          ? "Stale"
+          : "Offline"
+    sessions.push({
+      username: columns[0],
+      ip: columns[1],
+      status,
+      handshake: columns[3] ?? "-",
+      rx: columns[4] ?? "0B",
+      tx: columns[5] ?? "0B",
+    })
+  }
+
+  return sessions
+}
+
+async function execWireGuardList(
+  executor: VpnServerSshExecutor,
+  target: SshTarget
+) {
+  const preferred = await executor.exec(target, ["bash", "/root/we-list.sh"])
+  if (preferred.exitCode === 0) return preferred
+
+  return executor.exec(target, ["bash", "/root/wg-list.sh"])
+}
 
 function toSshTarget(server: ServerWithPrivateKey): SshTarget {
   return {
