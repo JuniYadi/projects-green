@@ -14,6 +14,8 @@ import {
   Search,
 } from "lucide-react"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,9 +54,11 @@ export interface WorkspaceTemplate {
 }
 
 export default function MyTemplatesPage() {
-  const params = useParams()
+  const params = useParams<{ lang?: string }>()
   const router = useRouter()
   const lang = (params?.lang as string) || "en"
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
 
   const [templates, setTemplates] = useState<WorkspaceTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -221,17 +225,24 @@ export default function MyTemplatesPage() {
               onClick={() => router.push(`/${lang}/console/app/marketplace`)}
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
-              Marketplace
+              {
+                messages.pConsoleMarketplaceMyTemplatesPageClient
+                  .breadcrumbMarketplace
+              }
             </Button>
             <span>/</span>
-            <span>Workspace Templates</span>
+            <span>
+              {
+                messages.pConsoleMarketplaceMyTemplatesPageClient
+                  .breadcrumbWorkspaceTemplates
+              }
+            </span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
-            My Workspace Templates
+            {messages.pConsoleMarketplaceMyTemplatesPageClient.pageTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Manage your organization&apos;s custom application templates, review
-            visibility status, and publish to the public marketplace.
+            {messages.pConsoleMarketplaceMyTemplatesPageClient.pageDescription}
           </p>
         </div>
 
@@ -242,7 +253,10 @@ export default function MyTemplatesPage() {
           }
         >
           <Plus className="mr-2 h-4 w-4" />
-          Create Template
+          {
+            messages.pConsoleMarketplaceMyTemplatesPageClient
+              .createTemplateButton
+          }
         </Button>
       </div>
 
@@ -250,17 +264,27 @@ export default function MyTemplatesPage() {
       <Card className="border-border bg-card">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="text-lg">Custom Templates</CardTitle>
+            <CardTitle className="text-lg">
+              {
+                messages.pConsoleMarketplaceMyTemplatesPageClient
+                  .customTemplatesTitle
+              }
+            </CardTitle>
             <CardDescription>
-              Templates exclusively available to your organization or submitted
-              for marketplace verification.
+              {
+                messages.pConsoleMarketplaceMyTemplatesPageClient
+                  .customTemplatesDescription
+              }
             </CardDescription>
           </div>
 
           <div className="relative w-full max-w-xs">
             <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search custom templates..."
+              placeholder={
+                messages.pConsoleMarketplaceMyTemplatesPageClient
+                  .searchPlaceholder
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8"
@@ -278,7 +302,12 @@ export default function MyTemplatesPage() {
           ) : filteredTemplates.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
               <Boxes className="mb-3 h-10 w-10 text-muted-foreground/50" />
-              <h3 className="text-base font-semibold">No Templates Found</h3>
+              <h3 className="text-base font-semibold">
+                {
+                  messages.pConsoleMarketplaceMyTemplatesPageClient
+                    .emptyStateTitle
+                }
+              </h3>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
                 {searchQuery
                   ? "No templates match your search criteria. Try a different search term."
@@ -293,7 +322,10 @@ export default function MyTemplatesPage() {
                   }
                 >
                   <Plus className="mr-1 h-4 w-4" />
-                  Create First Template
+                  {
+                    messages.pConsoleMarketplaceMyTemplatesPageClient
+                      .createFirstTemplateButton
+                  }
                 </Button>
               )}
             </div>
@@ -302,11 +334,36 @@ export default function MyTemplatesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Template</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Installs</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>
+                      {
+                        messages.pConsoleMarketplaceMyTemplatesPageClient
+                          .tableHeaderTemplate
+                      }
+                    </TableHead>
+                    <TableHead>
+                      {
+                        messages.pConsoleMarketplaceMyTemplatesPageClient
+                          .tableHeaderCategory
+                      }
+                    </TableHead>
+                    <TableHead>
+                      {
+                        messages.pConsoleMarketplaceMyTemplatesPageClient
+                          .tableHeaderStatus
+                      }
+                    </TableHead>
+                    <TableHead className="text-center">
+                      {
+                        messages.pConsoleMarketplaceMyTemplatesPageClient
+                          .tableHeaderInstalls
+                      }
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {
+                        messages.pConsoleMarketplaceMyTemplatesPageClient
+                          .tableHeaderActions
+                      }
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -342,7 +399,11 @@ export default function MyTemplatesPage() {
                               className="h-8 text-xs"
                               onClick={() => handleSubmitForReview(tpl.id)}
                             >
-                              Submit Review
+                              {
+                                messages
+                                  .pConsoleMarketplaceMyTemplatesPageClient
+                                  .submitReviewButton
+                              }
                             </Button>
                           )}
                           <Button
@@ -356,7 +417,10 @@ export default function MyTemplatesPage() {
                             }
                           >
                             <Rocket className="mr-1 h-3.5 w-3.5" />
-                            Deploy
+                            {
+                              messages.pConsoleMarketplaceMyTemplatesPageClient
+                                .deployButton
+                            }
                           </Button>
                         </div>
                       </TableCell>
