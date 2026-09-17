@@ -1,5 +1,8 @@
 "use client"
 
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useState } from "react"
 import { eden } from "@/lib/eden"
 
@@ -41,6 +44,11 @@ export function AdjustmentForm({
   tenantId,
   onSuccess,
 }: AdjustmentFormProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pBillingAdminAdjustmentForm
+
   const [type, setType] = useState<AdjustmentType>("CREDIT")
   const [amount, setAmount] = useState<number>(0)
   const [reason, setReason] = useState<string>("")
@@ -71,17 +79,17 @@ export function AdjustmentForm({
     let hasError = false
 
     if (!amount || amount < 1) {
-      setAmountError("Minimum amount is 1")
+      setAmountError(t.amountMinError)
       hasError = true
     } else if (amount > 999999999) {
-      setAmountError("Maximum amount is 999,999,999")
+      setAmountError(t.amountMaxError)
       hasError = true
     } else {
       setAmountError(null)
     }
 
     if (!reason.trim()) {
-      setReasonError("Reason is required")
+      setReasonError(t.reasonRequiredError)
       hasError = true
     } else {
       setReasonError(null)
@@ -103,18 +111,16 @@ export function AdjustmentForm({
 
       if (!data?.ok) {
         throw new Error(
-          (data as { message?: string })?.message ||
-            "Failed to create adjustment"
+          (data as { message?: string })?.message || t.failedToCreate
         )
       }
 
-      toast.success("Adjustment created successfully")
+      toast.success(t.successToast)
       reset()
       onOpenChange(false)
       onSuccess?.()
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create adjustment"
+      const message = err instanceof Error ? err.message : t.failedToCreate
       setServerError(message)
       toast.error(message)
     } finally {
@@ -126,35 +132,33 @@ export function AdjustmentForm({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Make Balance Adjustment</DialogTitle>
-          <DialogDescription>
-            Add or deduct credit from the tenant account.
-          </DialogDescription>
+          <DialogTitle>{t.title}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field>
-            <FieldLabel htmlFor="type">Type</FieldLabel>
+            <FieldLabel htmlFor="type">{t.typeLabel}</FieldLabel>
             <Select
               value={type}
               onValueChange={(value) => setType(value as AdjustmentType)}
             >
               <SelectTrigger id="type">
-                <SelectValue placeholder="Select type" />
+                <SelectValue placeholder={t.typePlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="CREDIT">
-                  <span className="text-green-600">CREDIT (+)</span>
+                  <span className="text-green-600">{t.creditOption}</span>
                 </SelectItem>
                 <SelectItem value="DEBIT">
-                  <span className="text-red-600">DEBIT (-)</span>
+                  <span className="text-red-600">{t.debitOption}</span>
                 </SelectItem>
               </SelectContent>
             </Select>
           </Field>
 
           <Field data-invalid={!!amountError}>
-            <FieldLabel htmlFor="amount">Amount (IDR)</FieldLabel>
+            <FieldLabel htmlFor="amount">{t.amountLabel}</FieldLabel>
             <Input
               id="amount"
               name="amount"
@@ -167,13 +171,13 @@ export function AdjustmentForm({
                 setAmount(Number.parseInt(e.target.value, 10) || 0)
                 setAmountError(null)
               }}
-              placeholder="Enter amount"
+              placeholder={t.amountPlaceholder}
             />
             {amountError && <FieldError errors={[{ message: amountError }]} />}
           </Field>
 
           <Field data-invalid={!!reasonError}>
-            <FieldLabel htmlFor="reason">Reason</FieldLabel>
+            <FieldLabel htmlFor="reason">{t.reasonLabel}</FieldLabel>
             <Textarea
               id="reason"
               name="reason"
@@ -182,7 +186,7 @@ export function AdjustmentForm({
                 setReason(e.target.value)
                 setReasonError(null)
               }}
-              placeholder="Enter reason for this adjustment"
+              placeholder={t.reasonPlaceholder}
               rows={3}
             />
             {reasonError && <FieldError errors={[{ message: reasonError }]} />}
@@ -201,10 +205,10 @@ export function AdjustmentForm({
               onClick={() => handleOpenChange(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Adjustment"}
+              {isSubmitting ? t.creating : t.createAdjustment}
             </Button>
           </DialogFooter>
         </form>

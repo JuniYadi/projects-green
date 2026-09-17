@@ -1,3 +1,4 @@
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -9,6 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { CountryFlag } from "@/components/ui/country-flag"
 import { GlobeHemisphereWest, Users, Eye } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { TrafficCountryCount } from "../../opensearch/opensearch-traffic.types"
 import type { IpGeoInfo } from "../../opensearch/geoip-lookup.service"
 
@@ -16,13 +19,20 @@ export interface TrafficGeoCardProps {
   topCountries: TrafficCountryCount[]
   topIps: IpGeoInfo[]
   onReviewIp?: (ip: string) => void
+  locale?: string
 }
 
 export function TrafficGeoCard({
   topCountries,
   topIps,
   onReviewIp,
+  locale: localeProp,
 }: TrafficGeoCardProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployOperateTrafficGeoCard
+  const numLocale = locale === "en" ? "en-US" : "id-ID"
   const maxCountryReqs = topCountries.length > 0 ? topCountries[0].requests : 1
 
   return (
@@ -34,10 +44,10 @@ export function TrafficGeoCard({
             <GlobeHemisphereWest size={18} className="text-muted-foreground" />
             <div>
               <CardTitle className="text-sm font-semibold text-foreground">
-                Asal Negara Pengunjung (GeoIP)
+                {t.countryOriginTitle}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Distribusi geografis berdasarkan resolusi alamat IP klien
+                {t.countryOriginDescription}
               </CardDescription>
             </div>
           </div>
@@ -45,7 +55,7 @@ export function TrafficGeoCard({
         <CardContent>
           {topCountries.length === 0 ? (
             <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-              Belum ada data geolokasi pengunjung
+              {t.emptyCountryData}
             </div>
           ) : (
             <div className="space-y-3">
@@ -81,7 +91,7 @@ export function TrafficGeoCard({
                           {c.percentage}%
                         </span>
                         <span className="text-[11px] text-muted-foreground">
-                          ({c.requests.toLocaleString("id-ID")} req)
+                          ({c.requests.toLocaleString(numLocale)} {t.reqUnit})
                         </span>
                       </div>
                     </div>
@@ -106,10 +116,10 @@ export function TrafficGeoCard({
             <Users size={18} className="text-muted-foreground" />
             <div>
               <CardTitle className="text-sm font-semibold text-foreground">
-                Top 10 Alamat IP Pengunjung
+                {t.topIpsTitle}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                IP dengan frekuensi permintaan paling aktif ke aplikasi
+                {t.topIpsDescription}
               </CardDescription>
             </div>
           </div>
@@ -117,7 +127,7 @@ export function TrafficGeoCard({
         <CardContent>
           {topIps.length === 0 ? (
             <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-              Belum ada data client IP yang tercatat
+              {t.emptyIpData}
             </div>
           ) : (
             <div className="max-h-[280px] space-y-2 overflow-y-auto">
@@ -176,10 +186,10 @@ export function TrafficGeoCard({
                       <div className="flex items-center gap-3">
                         <div className="text-right">
                           <span className="font-semibold text-foreground">
-                            {item.requestsCount.toLocaleString("id-ID")}
+                            {item.requestsCount.toLocaleString(numLocale)}
                           </span>
                           <span className="ml-1 text-[11px] text-muted-foreground">
-                            req
+                            {t.reqUnit}
                           </span>
                         </div>
                         {onReviewIp ? (
@@ -188,10 +198,10 @@ export function TrafficGeoCard({
                             size="sm"
                             className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
                             onClick={() => onReviewIp(item.ip)}
-                            title="Review Jejak IP"
+                            title={t.reviewIpTitle}
                           >
                             <Eye size={12} className="mr-1" />
-                            Review
+                            {t.reviewButton}
                           </Button>
                         ) : null}
                       </div>
@@ -203,21 +213,26 @@ export function TrafficGeoCard({
                           style={{ width: `${(seg.count / total) * 100}%` }}
                           className={`h-full ${seg.className}`}
                           role="img"
-                          aria-label={`${seg.key}: ${seg.count.toLocaleString("id-ID")} permintaan`}
-                          title={`${seg.key}: ${seg.count.toLocaleString("id-ID")}`}
+                          aria-label={t.requestsCountLabel
+                            .replace("{key}", seg.key)
+                            .replace(
+                              "{count}",
+                              seg.count.toLocaleString(numLocale)
+                            )}
+                          title={`${seg.key}: ${seg.count.toLocaleString(numLocale)}`}
                         />
                       ))}
                     </div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
-                        {item.successRatio}% sukses
+                        {item.successRatio}% {t.successSuffix}
                       </span>
                       {segments.map((seg) => (
                         <span
                           key={seg.key}
                           className="shrink-0 text-[10px] text-muted-foreground"
                         >
-                          {seg.count.toLocaleString("id-ID")} {seg.key}
+                          {seg.count.toLocaleString(numLocale)} {seg.key}
                         </span>
                       ))}
                     </div>

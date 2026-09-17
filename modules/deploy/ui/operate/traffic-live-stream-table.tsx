@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react"
+import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import {
   Card,
@@ -15,15 +16,24 @@ import {
   ArrowClockwise,
   TerminalWindow,
 } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { AppTrafficLogItemDTO } from "../../opensearch/opensearch-traffic.types"
 
 export interface TrafficLiveStreamTableProps {
   appSlug: string
+  locale?: string
 }
 
 export function TrafficLiveStreamTable({
   appSlug,
+  locale: localeProp,
 }: TrafficLiveStreamTableProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployOperateTrafficLiveStreamTable
+  const numLocale = locale === "en" ? "en-US" : "id-ID"
   const [isLive, setIsLive] = useState(true)
   const [statusFilter, setStatusFilter] = useState<
     "all" | "2xx" | "4xx" | "5xx"
@@ -41,7 +51,7 @@ export function TrafficLiveStreamTable({
     const res = await fetch(
       `/api/deploy/apps/${encodeURIComponent(appSlug)}/traffic/logs?${queryParams.toString()}`
     )
-    if (!res.ok) throw new Error("Failed to fetch live logs")
+    if (!res.ok) throw new Error(t.fetchError)
     const json = await res.json()
     return (json.data ?? []) as AppTrafficLogItemDTO[]
   }, [appSlug, statusFilter])
@@ -71,10 +81,10 @@ export function TrafficLiveStreamTable({
             <TerminalWindow size={18} className="text-muted-foreground" />
             <div>
               <CardTitle className="text-sm font-semibold text-foreground">
-                Inspeksi Permintaan Langsung (Live Feed)
+                {t.title}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Sampel 25 request terbaru per 3 detik (TanStack Query Buffer)
+                {t.description}
               </CardDescription>
             </div>
           </div>
@@ -113,12 +123,12 @@ export function TrafficLiveStreamTable({
               {isLive ? (
                 <>
                   <Pause size={14} weight="fill" className="text-amber-500" />
-                  <span>Jeda Stream</span>
+                  <span>{t.pauseStream}</span>
                 </>
               ) : (
                 <>
                   <Play size={14} weight="fill" className="text-primary" />
-                  <span>Mulai Live</span>
+                  <span>{t.resumeStream}</span>
                 </>
               )}
             </Button>
@@ -130,7 +140,7 @@ export function TrafficLiveStreamTable({
               disabled={isFetching}
               onClick={() => refetch()}
               className="px-2"
-              title="Perbarui data sekarang"
+              title={t.refreshTooltip}
             >
               <ArrowClockwise
                 size={14}
@@ -150,13 +160,10 @@ export function TrafficLiveStreamTable({
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                 </span>
-                <span>Mendengarkan lalu lintas request secara langsung...</span>
+                <span>{t.listeningLive}</span>
               </div>
             ) : (
-              <p>
-                Live stream sedang dijeda. Klik &apos;Mulai Live&apos; untuk
-                memantau request secara langsung.
-              </p>
+              <p>{t.streamPaused}</p>
             )}
           </div>
         ) : (
@@ -164,13 +171,13 @@ export function TrafficLiveStreamTable({
             <table className="w-full border-collapse text-left">
               <thead className="sticky top-0 border-b border-border bg-muted/30 text-[11px] text-muted-foreground">
                 <tr>
-                  <th className="p-2.5 font-medium">WAKTU</th>
-                  <th className="p-2.5 font-medium">STATUS</th>
-                  <th className="p-2.5 font-medium">METODE</th>
-                  <th className="p-2.5 font-medium">PATH</th>
-                  <th className="p-2.5 font-medium">DURASI</th>
-                  <th className="p-2.5 font-medium">UKURAN</th>
-                  <th className="p-2.5 font-medium">CLIENT IP</th>
+                  <th className="p-2.5 font-medium">{t.tableHeaderTime}</th>
+                  <th className="p-2.5 font-medium">{t.tableHeaderStatus}</th>
+                  <th className="p-2.5 font-medium">{t.tableHeaderMethod}</th>
+                  <th className="p-2.5 font-medium">{t.tableHeaderPath}</th>
+                  <th className="p-2.5 font-medium">{t.tableHeaderDuration}</th>
+                  <th className="p-2.5 font-medium">{t.tableHeaderSize}</th>
+                  <th className="p-2.5 font-medium">{t.tableHeaderClientIp}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -179,7 +186,7 @@ export function TrafficLiveStreamTable({
                   return (
                     <tr key={log.id} className="hover:bg-muted/10">
                       <td className="p-2.5 text-muted-foreground">
-                        {new Date(log.timestamp).toLocaleTimeString()}
+                        {new Date(log.timestamp).toLocaleTimeString(numLocale)}
                       </td>
                       <td className="p-2.5">
                         <Badge

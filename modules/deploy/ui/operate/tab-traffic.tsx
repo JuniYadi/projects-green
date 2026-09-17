@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { TrafficSummaryCards } from "./traffic-summary-cards"
 import { TrafficRequestQualityCard } from "./traffic-request-quality-card"
@@ -18,14 +19,19 @@ import {
   Table as TableIcon,
 } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { AppTrafficReportDTO } from "../../opensearch/opensearch-traffic.types"
-
 export interface TabTrafficProps {
   appSlug: string
   locale?: string
 }
 
-export function TabTraffic({ appSlug }: TabTrafficProps) {
+export function TabTraffic({ appSlug, locale: localeProp }: TabTrafficProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployOperateTabTraffic
   const [workspaceMode, setWorkspaceMode] = useState<"chart" | "table">("chart")
   const [granularity, setGranularity] = useState<
     "daily" | "monthly" | "yearly"
@@ -65,7 +71,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
         const res = await fetch(
           `/api/deploy/apps/${encodeURIComponent(appSlug)}/traffic/report?${params.toString()}`
         )
-        if (!res.ok) throw new Error("Failed to fetch traffic report")
+        if (!res.ok) throw new Error(t.fetchError)
         const json = await res.json()
         return json.data as AppTrafficReportDTO
       },
@@ -78,11 +84,9 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-base font-semibold tracking-tight text-foreground">
-            Laporan Trafik & Pengunjung
+            {t.title}
           </h2>
-          <p className="text-xs text-muted-foreground">
-            Rekap statistik kunjungan web dari database snapshot historikal
-          </p>
+          <p className="text-xs text-muted-foreground">{t.description}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -99,7 +103,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
               )}
             >
               <ChartLineUp size={14} />
-              <span>Chart</span>
+              <span>{t.chartMode}</span>
             </button>
             <button
               type="button"
@@ -112,7 +116,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
               )}
             >
               <TableIcon size={14} />
-              <span>Investigasi IP</span>
+              <span>{t.tableMode}</span>
             </button>
           </div>
 
@@ -127,7 +131,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Harian
+              {t.granularityDaily}
             </button>
             <button
               type="button"
@@ -138,7 +142,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Bulanan
+              {t.granularityMonthly}
             </button>
             <button
               type="button"
@@ -149,7 +153,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Tahunan
+              {t.granularityYearly}
             </button>
           </div>
 
@@ -177,7 +181,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
               type="number"
               min="2024"
               max="2035"
-              placeholder="Tahun (e.g. 2026)"
+              placeholder={t.yearPlaceholder}
               value={targetYear}
               onChange={(e) => setTargetYear(e.target.value)}
               className="h-8 w-24 rounded-md border border-border bg-background px-2.5 text-xs text-foreground"
@@ -190,7 +194,7 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
             disabled={isFetching}
             onClick={() => refetch()}
             className="h-8 px-2.5"
-            title="Refresh Laporan"
+            title={t.refreshReport}
           >
             <ArrowClockwise
               size={14}
@@ -203,15 +207,13 @@ export function TabTraffic({ appSlug }: TabTrafficProps) {
       {isLoading ? (
         <div className="flex h-64 flex-col items-center justify-center rounded-xl border border-border bg-muted/10 text-xs text-muted-foreground">
           <ArrowClockwise size={24} className="animate-spin text-primary" />
-          <p className="mt-2 font-medium">Memuat data laporan trafik...</p>
+          <p className="mt-2 font-medium">{t.loading}</p>
         </div>
       ) : isError ? (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-xs text-destructive">
-          <p className="font-semibold">Gagal memuat laporan trafik</p>
+          <p className="font-semibold">{t.errorTitle}</p>
           <p className="mt-1">
-            {error instanceof Error
-              ? error.message
-              : "Terjadi kesalahan sistem"}
+            {error instanceof Error ? error.message : t.systemError}
           </p>
         </div>
       ) : data ? (

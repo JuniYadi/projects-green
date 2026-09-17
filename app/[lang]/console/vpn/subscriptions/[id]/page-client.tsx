@@ -8,6 +8,8 @@ import {
   startTransition,
 } from "react"
 import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -61,7 +63,13 @@ function activeDeviceCount(devices: MobileDeviceEntry[]): number {
   return devices.filter((d) => d.status === "ACTIVE").length
 }
 
-function StatusBadge({ subscription }: { subscription: VpnSubscription }) {
+function StatusBadge({
+  subscription,
+  t,
+}: {
+  subscription: VpnSubscription
+  t: Record<string, string>
+}) {
   const status = subscription.cancelAtPeriodEnd
     ? "CANCELLING"
     : subscription.status
@@ -76,7 +84,15 @@ function StatusBadge({ subscription }: { subscription: VpnSubscription }) {
 
   return (
     <Badge variant={variant}>
-      {status === "CANCELLING" ? "Cancelling" : status}
+      {status === "CANCELLING"
+        ? t.statusCancelling
+        : status === "ACTIVE"
+          ? t.statusActive
+          : status === "SUSPENDED"
+            ? t.statusSuspended
+            : status === "EXPIRED"
+              ? t.statusExpired
+              : status}
     </Badge>
   )
 }
@@ -105,10 +121,13 @@ function InfoCard({
   )
 }
 
-async function copySubscriptionId(id: string): Promise<void> {
+async function copySubscriptionId(
+  id: string,
+  t: Record<string, string>
+): Promise<void> {
   try {
     await navigator.clipboard.writeText(id)
-    toast.success("Copied!")
+    toast.success(t.copied)
   } catch {
     try {
       const el = document.createElement("textarea")
@@ -119,9 +138,9 @@ async function copySubscriptionId(id: string): Promise<void> {
       el.select()
       document.execCommand("copy")
       document.body.removeChild(el)
-      toast.success("Copied!")
+      toast.success(t.copied)
     } catch {
-      toast.error("Failed to copy — please copy manually")
+      toast.error(t.copyFailed)
     }
   }
 }
@@ -129,11 +148,14 @@ async function copySubscriptionId(id: string): Promise<void> {
 export default function ConsoleVpnSubscriptionDetailPage() {
   const params = useParams<{ lang?: string; id: string }>()
   const subscriptionId = params.id
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pConsoleVpnSubscriptionsDetail
 
   const [state, setState] = useState<PageState>(
     subscriptionId
       ? { phase: "loading" }
-      : { phase: "error", message: "Subscription ID is missing." }
+      : { phase: "error", message: t.missingId }
   )
 
   const load = useCallback(async () => {
@@ -155,7 +177,7 @@ export default function ConsoleVpnSubscriptionDetailPage() {
       startTransition(() => {
         setState({
           phase: "error",
-          message: "Failed to load subscription details.",
+          message: t.loadFailed,
         })
       })
     }
@@ -169,13 +191,13 @@ export default function ConsoleVpnSubscriptionDetailPage() {
     async (deviceId: string) => {
       try {
         await revokeMobileDevice(deviceId)
-        toast.success("Device revoked")
+        toast.success(t.deviceRevoked)
         await load()
       } catch {
-        toast.error("Failed to revoke device")
+        toast.error(t.deviceRevokeFailed)
       }
     },
-    [load]
+    [load, t]
   )
 
   const subscriptionsUrl = useMemo(() => {
@@ -209,7 +231,7 @@ export default function ConsoleVpnSubscriptionDetailPage() {
         <Button asChild variant="outline" className="w-fit">
           <Link href={subscriptionsUrl}>
             <ArrowLeftIcon className="mr-2 h-4 w-4" />
-            Back to subscriptions
+            {t.backToSubscriptions}
           </Link>
         </Button>
       </main>
@@ -228,7 +250,7 @@ export default function ConsoleVpnSubscriptionDetailPage() {
             <h1 className="text-2xl font-semibold">
               {subscription.packageName}
             </h1>
-            <StatusBadge subscription={subscription} />
+            <StatusBadge subscription={subscription} t={t} />
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-mono" title={subscription.id}>
@@ -240,8 +262,8 @@ export default function ConsoleVpnSubscriptionDetailPage() {
               variant="ghost"
               size="sm"
               className="h-6 px-1.5"
-              onClick={() => void copySubscriptionId(subscription.id)}
-              aria-label="Copy subscription ID"
+              onClick={() => void copySubscriptionId(subscription.id, t)}
+              aria-label={t.copySubscriptionId}
             >
               <CopySimpleIcon className="h-3.5 w-3.5" />
             </Button>
@@ -250,56 +272,58 @@ export default function ConsoleVpnSubscriptionDetailPage() {
         <Button asChild variant="outline" size="sm">
           <Link href={subscriptionsUrl}>
             <ArrowLeftIcon className="mr-2 h-4 w-4" />
-            Back
+            {t.back}
           </Link>
         </Button>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <InfoCard
-          label="First buy"
+          label={t.firstBuy}
           value={formatDate(subscription.createdAt)}
           subValue={
             subscription.firstPayment
-              ? `Paid ${subscription.firstPayment.amount} ${subscription.firstPayment.currency}`
+              ? `${t.paidAmount} ${subscription.firstPayment.amount} ${subscription.firstPayment.currency}`
               : undefined
           }
         />
         <InfoCard
-          label="Renew price"
+          label={t.renewPrice}
           value={subscriptionPriceLabel(subscription)}
         />
         <InfoCard
-          label="Next payment"
+          label={t.nextPayment}
           value={formatDate(subscription.currentPeriodEnd)}
           subValue={
             subscription.cancelAtPeriodEnd
-              ? "Cancels after this date"
-              : `${activeDevices} of ${maxDevices} devices connected`
+              ? t.cancelsAfterDate
+              : `${activeDevices} ${t.ofWord} ${maxDevices} ${t.devicesConnected}`
           }
         />
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-heading text-lg font-semibold">Server accounts</h2>
+        <h2 className="font-heading text-lg font-semibold">
+          {t.serverAccounts}
+        </h2>
         <VpnServerAccountsDetail subscription={subscription} />
       </section>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-heading text-lg font-semibold">
-            Connected devices
+            {t.connectedDevices}
           </h2>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <DeviceMobileIcon className="h-4 w-4" />
-            {activeDevices} of {maxDevices} active
+            {activeDevices} {t.ofWord} {maxDevices} {t.activeWord}
           </div>
         </div>
         <VpnDevicesList
           devices={devices}
           onRevoke={handleRevoke}
           revoking={null}
-          defaultStatusFilter="all"
+          defaultStatusFilter={"all"}
         />
       </section>
     </main>

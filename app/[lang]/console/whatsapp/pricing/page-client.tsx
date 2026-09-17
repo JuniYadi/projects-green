@@ -123,6 +123,7 @@ export default function WhatsAppPricingPage() {
   const messages = getMessages(locale)
   const t = messages.console.whatsapp
   const tLocked = messages.console.whatsapp.onboarding.lockedFeatures.pricing
+  const pricingMessages = messages.pConsoleWhatsappPricing
   const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("all")
 
   // Pricing rates query
@@ -384,7 +385,7 @@ export default function WhatsAppPricingPage() {
                 {/* Tier Selector Chips */}
                 <div className="flex items-center gap-1.5 rounded-lg border bg-background p-1 text-xs">
                   <span className="px-2 text-[11px] font-medium text-muted-foreground">
-                    Tier:
+                    {pricingMessages.tierPrefix}
                   </span>
                   {(
                     [
@@ -442,7 +443,8 @@ export default function WhatsAppPricingPage() {
                           </span>
                         </div>
                         <span className="text-xs font-bold text-primary">
-                          {marketingVolume.toLocaleString()} msg
+                          {marketingVolume.toLocaleString()}{" "}
+                          {pricingMessages.msgUnit}
                         </span>
                       </div>
                       <Slider
@@ -454,7 +456,9 @@ export default function WhatsAppPricingPage() {
                       />
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground/90">
                         <span>
-                          @Rp {marketingPrice.toLocaleString("id-ID")}/msg
+                          {pricingMessages.atRpPrefix}{" "}
+                          {marketingPrice.toLocaleString("id-ID")}/
+                          {pricingMessages.msgUnit}
                         </span>
                         <span className="font-medium text-foreground">
                           Rp {totalMarketingCost.toLocaleString("id-ID")}
@@ -474,7 +478,8 @@ export default function WhatsAppPricingPage() {
                           </span>
                         </div>
                         <span className="text-xs font-bold text-primary">
-                          {utilityVolume.toLocaleString()} msg
+                          {utilityVolume.toLocaleString()}{" "}
+                          {pricingMessages.msgUnit}
                         </span>
                       </div>
                       <Slider
@@ -486,7 +491,9 @@ export default function WhatsAppPricingPage() {
                       />
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground/90">
                         <span>
-                          @Rp {utilityPrice.toLocaleString("id-ID")}/msg
+                          {pricingMessages.atRpPrefix}{" "}
+                          {utilityPrice.toLocaleString("id-ID")}/
+                          {pricingMessages.msgUnit}
                         </span>
                         <span className="font-medium text-foreground">
                           Rp {totalUtilityCost.toLocaleString("id-ID")}
@@ -506,7 +513,8 @@ export default function WhatsAppPricingPage() {
                           </span>
                         </div>
                         <span className="text-xs font-bold text-primary">
-                          {authVolume.toLocaleString()} msg
+                          {authVolume.toLocaleString()}{" "}
+                          {pricingMessages.msgUnit}
                         </span>
                       </div>
                       <Slider
@@ -517,7 +525,11 @@ export default function WhatsAppPricingPage() {
                         onValueChange={(val) => setAuthVolume(val[0] ?? 0)}
                       />
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground/90">
-                        <span>@Rp {authPrice.toLocaleString("id-ID")}/msg</span>
+                        <span>
+                          {pricingMessages.atRpPrefix}{" "}
+                          {authPrice.toLocaleString("id-ID")}/
+                          {pricingMessages.msgUnit}
+                        </span>
                         <span className="font-medium text-foreground">
                           Rp {totalAuthCost.toLocaleString("id-ID")}
                         </span>
@@ -718,7 +730,7 @@ export default function WhatsAppPricingPage() {
                     weight="fill"
                   />
                   <p className="text-xs font-medium text-destructive">
-                    Pricing rates unavailable.
+                    {pricingMessages.pricingRatesUnavailable}
                   </p>
                   <Button
                     variant="outline"
@@ -835,7 +847,7 @@ export default function WhatsAppPricingPage() {
                                         : "font-semibold text-muted-foreground"
                                     }
                                   >
-                                    TIER 1{" "}
+                                    {pricingMessages.tier1}{" "}
                                     {activeTier === "TIER_1" &&
                                     !isReferenceDevice
                                       ? isIndonesian
@@ -860,7 +872,7 @@ export default function WhatsAppPricingPage() {
                                         : "font-semibold text-muted-foreground"
                                     }
                                   >
-                                    TIER 2{" "}
+                                    {pricingMessages.tier2}{" "}
                                     {activeTier === "TIER_2" &&
                                     !isReferenceDevice
                                       ? isIndonesian
@@ -887,7 +899,7 @@ export default function WhatsAppPricingPage() {
                                         : "font-semibold text-muted-foreground"
                                     }
                                   >
-                                    TIER 3{" "}
+                                    {pricingMessages.tier3}{" "}
                                     {activeTier === "TIER_3" &&
                                     !isReferenceDevice
                                       ? isIndonesian
@@ -1103,7 +1115,9 @@ export default function WhatsAppPricingPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-xs">
-                  {isIndonesian ? "Total Dikembalikan / Revert" : "Refunded / Reverted"}
+                  {isIndonesian
+                    ? "Total Dikembalikan / Revert"
+                    : "Refunded / Reverted"}
                 </CardDescription>
                 <CardTitle className="text-xl font-bold text-amber-500">
                   {ledgerSummary.totalRefundedCredits.toLocaleString("id-ID")}{" "}
@@ -1313,7 +1327,9 @@ export default function WhatsAppPricingPage() {
                           {isIndonesian ? "Status" : "Status"}
                         </TableHead>
                         <TableHead className="text-right">
-                          {isIndonesian ? "Pemotongan / Biaya" : "Deduction / Cost"}
+                          {isIndonesian
+                            ? "Pemotongan / Biaya"
+                            : "Deduction / Cost"}
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1400,7 +1416,7 @@ export default function WhatsAppPricingPage() {
                                     variant="outline"
                                     className="border-amber-500/30 bg-amber-500/10 text-[9px] font-normal text-amber-600 dark:text-amber-400"
                                   >
-                                    PAYG Saldo
+                                    {pricingMessages.paygSaldoBadge}
                                   </Badge>
                                 </>
                               ) : (
@@ -1411,7 +1427,9 @@ export default function WhatsAppPricingPage() {
                                     {isIndonesian ? "kredit" : "credits"}
                                   </span>
                                   <span className="text-[9px] font-normal text-muted-foreground">
-                                    {isIndonesian ? "Kuota Paket" : "Package Quota"}
+                                    {isIndonesian
+                                      ? "Kuota Paket"
+                                      : "Package Quota"}
                                   </span>
                                 </>
                               )}

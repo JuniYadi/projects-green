@@ -36,6 +36,9 @@ import {
 } from "@/lib/vpn-client"
 import { recommendedPackageId } from "@/lib/vpn-packages"
 import { GlobeIcon } from "@phosphor-icons/react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type Props = {
   topupUrl: string
@@ -43,6 +46,7 @@ type Props = {
   maxItems?: number
   packages?: VpnPackageSummary[] | null
   variant?: "compact" | "order"
+  locale?: string
 }
 
 function formatPrice(price: string, currency: string): string {
@@ -88,7 +92,12 @@ export function VpnPackages({
   maxItems,
   packages: packagesProp,
   variant = "compact",
+  locale: propLocale,
 }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(propLocale ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pConsoleVpnPackages
   const [loadedPackages, setLoadedPackages] = useState<
     VpnPackageSummary[] | null
   >(null)
@@ -147,7 +156,7 @@ export function VpnPackages({
     } catch (err: unknown) {
       const e = err as Error & { error?: string }
       setError({
-        message: e.message || "Purchase failed. Please try again.",
+        message: e.message || t.purchaseFailed,
         topup: e.error === "INSUFFICIENT_BALANCE",
       })
     } finally {
@@ -166,11 +175,7 @@ export function VpnPackages({
   }
 
   if (packages.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No VPN packages are available right now.
-      </p>
-    )
+    return <p className="text-sm text-muted-foreground">{t.noPackages}</p>
   }
 
   const selectedOffer = selected?.offers?.find(
@@ -188,7 +193,7 @@ export function VpnPackages({
               </div>
               {variant === "order" &&
                 pkg.id === recommendedPackageId(packages) && (
-                  <Badge variant="secondary">Most coverage</Badge>
+                  <Badge variant="secondary">{t.mostCoverage}</Badge>
                 )}
             </CardHeader>
             <CardContent className="flex-1 space-y-3">
@@ -208,7 +213,7 @@ export function VpnPackages({
                   /{" "}
                   {pkg.offers?.[0]?.billingPeriod
                     .toLowerCase()
-                    .replace("_", " ") ?? "month"}
+                    .replace("_", " ") ?? t.perMonth}
                 </span>
               </p>
               {variant === "order" && pkg.description && (
@@ -218,9 +223,12 @@ export function VpnPackages({
               )}
               <div className="space-y-1 text-sm text-muted-foreground">
                 <p>
-                  {pkg.serverCount} server{pkg.serverCount === 1 ? "" : "s"} ·{" "}
-                  {pkg.protocolCount} protocol
-                  {pkg.protocolCount === 1 ? "" : "s"}
+                  {pkg.serverCount}{" "}
+                  {pkg.serverCount === 1 ? t.serverSingular : t.serverPlural} ·{" "}
+                  {pkg.protocolCount}{" "}
+                  {pkg.protocolCount === 1
+                    ? t.protocolSingular
+                    : t.protocolPlural}
                 </p>
                 <div className="flex flex-wrap gap-1 pt-1">
                   {pkg.regions.map((region) => (
@@ -238,7 +246,7 @@ export function VpnPackages({
                 onClick={() => openDetail(pkg.id)}
                 disabled={loadingDetail}
               >
-                Select
+                {t.select}
               </Button>
             </CardFooter>
           </Card>
@@ -275,18 +283,16 @@ export function VpnPackages({
                     /{" "}
                     {selectedOffer?.billingPeriod
                       .toLowerCase()
-                      .replace("_", " ") ?? "month"}
+                      .replace("_", " ") ?? t.perMonth}
                   </span>
                 </DialogTitle>
-                <DialogDescription>
-                  You&apos;ll get access to all of these in one subscription.
-                </DialogDescription>
+                <DialogDescription>{t.dialogDescription}</DialogDescription>
               </DialogHeader>
               <label
                 className="text-sm font-medium"
                 htmlFor="vpn-billing-period"
               >
-                Billing period
+                {t.billingPeriod}
               </label>
               <select
                 id="vpn-billing-period"
@@ -308,9 +314,9 @@ export function VpnPackages({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Server</TableHead>
-                    <TableHead>Region</TableHead>
-                    <TableHead>You get</TableHead>
+                    <TableHead>{t.serverHeader}</TableHead>
+                    <TableHead>{t.regionHeader}</TableHead>
+                    <TableHead>{t.youGetHeader}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -334,7 +340,7 @@ export function VpnPackages({
                       href={topupUrl}
                       className="mt-1 inline-block font-medium text-primary underline-offset-4 hover:underline"
                     >
-                      Top up balance
+                      {t.topUpBalance}
                     </a>
                   )}
                 </div>
@@ -342,8 +348,8 @@ export function VpnPackages({
 
               <Button onClick={handleBuy} disabled={purchasing}>
                 {purchasing
-                  ? "Processing…"
-                  : `Buy Now — ${formatPrice(
+                  ? t.processing
+                  : `${t.buyNow} ${formatPrice(
                       selected.convertedPrice ?? selected.price,
                       selected.convertedCurrency ?? selected.currency
                     )}`}

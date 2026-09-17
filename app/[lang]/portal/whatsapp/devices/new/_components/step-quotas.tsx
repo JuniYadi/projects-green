@@ -1,3 +1,4 @@
+import { useParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -7,6 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { WizardData } from "./device-create-wizard"
 
 type Props = {
@@ -14,14 +17,18 @@ type Props = {
   updateData: (patch: Partial<WizardData>) => void
   errors: Record<string, string>
 }
-
 export function StepQuotas({ data, updateData, errors }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pWhatsappDevicesNewStepQuotas
+
   return (
     <div className="grid gap-4">
-      <h2 className="text-lg font-semibold">Quotas & Limits</h2>
+      <h2 className="text-lg font-semibold">{t.heading}</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="quota-base">Quota Base</Label>
+          <Label htmlFor="quota-base">{t.quotaBaseLabel}</Label>
           <Input
             id="quota-base"
             type="number"
@@ -36,7 +43,7 @@ export function StepQuotas({ data, updateData, errors }: Props) {
           )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="quota-out">Quota Base Out</Label>
+          <Label htmlFor="quota-out">{t.quotaBaseOutLabel}</Label>
           <Input
             id="quota-out"
             type="number"
@@ -51,7 +58,7 @@ export function StepQuotas({ data, updateData, errors }: Props) {
           )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="daily-limit">Daily Message Limit</Label>
+          <Label htmlFor="daily-limit">{t.dailyLimitLabel}</Label>
           <Input
             id="daily-limit"
             type="number"
@@ -68,7 +75,7 @@ export function StepQuotas({ data, updateData, errors }: Props) {
           )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="balance">Balance (Admin)</Label>
+          <Label htmlFor="balance">{t.balanceLabel}</Label>
           <Input
             id="balance"
             type="number"
@@ -83,19 +90,19 @@ export function StepQuotas({ data, updateData, errors }: Props) {
           )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="rates">Rate Tier (Fee Margin)</Label>
+          <Label htmlFor="rates">{t.rateTierLabel}</Label>
           <Select
             value={data.rates || "BASE"}
             onValueChange={(value) => updateData({ rates: value })}
           >
             <SelectTrigger id="rates">
-              <SelectValue placeholder="Select rate tier" />
+              <SelectValue placeholder={t.selectRateTierPlaceholder} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="BASE">BASE (20% Fee Margin)</SelectItem>
-              <SelectItem value="TIER_1">TIER_1 (15% Fee Margin)</SelectItem>
-              <SelectItem value="TIER_2">TIER_2 (10% Fee Margin)</SelectItem>
-              <SelectItem value="TIER_3">TIER_3 (5% Fee Margin)</SelectItem>
+              <SelectItem value="BASE">{t.rateTierBase}</SelectItem>
+              <SelectItem value="TIER_1">{t.rateTier1}</SelectItem>
+              <SelectItem value="TIER_2">{t.rateTier2}</SelectItem>
+              <SelectItem value="TIER_3">{t.rateTier3}</SelectItem>
             </SelectContent>
           </Select>
           {errors.rates && (

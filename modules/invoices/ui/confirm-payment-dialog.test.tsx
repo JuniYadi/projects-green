@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 
 import { ConfirmPaymentDialog } from "@/modules/invoices/ui/confirm-payment-dialog"
 import type { PaymentConfirmationDTO } from "@/modules/invoices/invoices.types"
@@ -36,6 +36,7 @@ describe("ConfirmPaymentDialog", () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch
+    cleanup()
   })
 
   it("renders confirmation details when open", () => {

@@ -1,102 +1,127 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import { Check, X } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
-const plans = [
-  {
-    id: "hobby",
-    name: "Hobby",
-    badge: null,
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    description: "Perfect for side projects and personal experiments.",
-    cta: "Start free",
-    ctaHref: "/login/start?intent=signup",
-    ctaStyle: "border",
-    highlight: false,
-    features: [
-      { label: "3 projects", included: true },
-      { label: "100 GB bandwidth/mo", included: true },
-      { label: "1 GB storage", included: true },
-      { label: "10,000 emails/mo", included: true },
-      { label: "Community support", included: true },
-      { label: "Custom domains", included: false },
-      { label: "Team members", included: false },
-      { label: "SLA", included: false },
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    badge: "Most popular",
-    monthlyPrice: 29,
-    yearlyPrice: 23,
-    description: "For startups and growing teams building real products.",
-    cta: "Start 14-day trial",
-    ctaHref: "/login/start?intent=signup",
-    ctaStyle: "primary",
-    highlight: true,
-    features: [
-      { label: "Unlimited projects", included: true },
-      { label: "1 TB bandwidth/mo", included: true },
-      { label: "100 GB storage", included: true },
-      { label: "100,000 emails/mo", included: true },
-      { label: "Priority support", included: true },
-      { label: "Custom domains", included: true },
-      { label: "5 team members", included: true },
-      { label: "99.9% SLA", included: false },
-    ],
-  },
-  {
-    id: "team",
-    name: "Team",
-    badge: null,
-    monthlyPrice: 99,
-    yearlyPrice: 79,
-    description: "Advanced features and dedicated support for scaling teams.",
-    cta: "Start 14-day trial",
-    ctaHref: "/login/start?intent=signup",
-    ctaStyle: "border",
-    highlight: false,
-    features: [
-      { label: "Unlimited projects", included: true },
-      { label: "5 TB bandwidth/mo", included: true },
-      { label: "1 TB storage", included: true },
-      { label: "1M emails/mo", included: true },
-      { label: "Priority support", included: true },
-      { label: "Custom domains", included: true },
-      { label: "25 team members", included: true },
-      { label: "99.9% SLA", included: true },
-    ],
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    badge: null,
-    monthlyPrice: null,
-    yearlyPrice: null,
-    description: "Custom infrastructure, SLAs, and enterprise security.",
-    cta: "Contact sales",
-    ctaHref: "/contact",
-    ctaStyle: "border",
-    highlight: false,
-    features: [
-      { label: "Unlimited projects", included: true },
-      { label: "Unlimited bandwidth", included: true },
-      { label: "Unlimited storage", included: true },
-      { label: "Unlimited emails", included: true },
-      { label: "Dedicated support", included: true },
-      { label: "Custom domains", included: true },
-      { label: "Unlimited members", included: true },
-      { label: "99.99% SLA", included: true },
-    ],
-  },
-]
+type PlanFeature = {
+  label: string
+  included: boolean
+}
 
+type PricingPlan = {
+  id: string
+  name: string
+  badge: string | null
+  monthlyPrice: number | null
+  yearlyPrice: number | null
+  description: string
+  cta: string
+  ctaHref: string
+  ctaStyle: "border" | "primary"
+  highlight: boolean
+  features: PlanFeature[]
+}
 export function PricingSection() {
-  const [yearly, setYearly] = useState(true)
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pHomePricing
 
+  const plans: PricingPlan[] = [
+    {
+      id: "hobby",
+      name: t.planHobbyName,
+      badge: null,
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      description: t.planHobbyDescription,
+      cta: t.planHobbyCta,
+      ctaHref: "/login/start?intent=signup",
+      ctaStyle: "border",
+      highlight: false,
+      features: [
+        { label: t.feature3Projects, included: true },
+        { label: t.feature100GbBandwidth, included: true },
+        { label: t.feature1GbStorage, included: true },
+        { label: t.feature10kEmails, included: true },
+        { label: t.featureCommunitySupport, included: true },
+        { label: t.featureCustomDomains, included: false },
+        { label: t.featureTeamMembers, included: false },
+        { label: t.featureSla, included: false },
+      ],
+    },
+    {
+      id: "pro",
+      name: t.planProName,
+      badge: t.planProBadge,
+      monthlyPrice: 29,
+      yearlyPrice: 23,
+      description: t.planProDescription,
+      cta: t.planProCta,
+      ctaHref: "/login/start?intent=signup",
+      ctaStyle: "primary",
+      highlight: true,
+      features: [
+        { label: t.featureUnlimitedProjects, included: true },
+        { label: t.feature1TbBandwidth, included: true },
+        { label: t.feature100GbStorage, included: true },
+        { label: t.feature100kEmails, included: true },
+        { label: t.featurePrioritySupport, included: true },
+        { label: t.featureCustomDomains, included: true },
+        { label: t.feature5TeamMembers, included: true },
+        { label: t.feature999Sla, included: false },
+      ],
+    },
+    {
+      id: "team",
+      name: t.planTeamName,
+      badge: null,
+      monthlyPrice: 99,
+      yearlyPrice: 79,
+      description: t.planTeamDescription,
+      cta: t.planTeamCta,
+      ctaHref: "/login/start?intent=signup",
+      ctaStyle: "border",
+      highlight: false,
+      features: [
+        { label: t.featureUnlimitedProjects, included: true },
+        { label: t.feature5TbBandwidth, included: true },
+        { label: t.feature1TbStorage, included: true },
+        { label: t.feature1mEmails, included: true },
+        { label: t.featurePrioritySupport, included: true },
+        { label: t.featureCustomDomains, included: true },
+        { label: t.feature25TeamMembers, included: true },
+        { label: t.feature999Sla, included: true },
+      ],
+    },
+    {
+      id: "enterprise",
+      name: t.planEnterpriseName,
+      badge: null,
+      monthlyPrice: null,
+      yearlyPrice: null,
+      description: t.planEnterpriseDescription,
+      cta: t.planEnterpriseCta,
+      ctaHref: "/contact",
+      ctaStyle: "border",
+      highlight: false,
+      features: [
+        { label: t.featureUnlimitedProjects, included: true },
+        { label: t.featureUnlimitedBandwidth, included: true },
+        { label: t.featureUnlimitedStorage, included: true },
+        { label: t.featureUnlimitedEmails, included: true },
+        { label: t.featureDedicatedSupport, included: true },
+        { label: t.featureCustomDomains, included: true },
+        { label: t.featureUnlimitedMembers, included: true },
+        { label: t.feature9999Sla, included: true },
+      ],
+    },
+  ]
+
+  const [yearly, setYearly] = useState(true)
   return (
     <section id="pricing" className="relative bg-background py-28">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_50%,color-mix(in_oklch,var(--chart-3)_7%,transparent),transparent)]" />
@@ -106,17 +131,17 @@ export function PricingSection() {
         <div className="mb-14 text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-4 py-1.5">
             <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-              Pricing
+              {t.badgePricing}
             </span>
           </div>
           <h2 className="mb-5 text-4xl font-bold tracking-tight text-foreground lg:text-5xl">
-            Simple,{" "}
+            {t.headingStart}{" "}
             <span className="bg-gradient-to-r from-chart-3 to-chart-2 bg-clip-text text-transparent">
-              transparent pricing
+              {t.headingHighlight}
             </span>
           </h2>
           <p className="mx-auto mb-8 max-w-xl text-lg text-muted-foreground">
-            Start for free. Scale as you grow. No hidden fees, no surprises.
+            {t.subheading}
           </p>
 
           {/* Toggle */}
@@ -130,7 +155,7 @@ export function PricingSection() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Monthly
+              {t.toggleMonthly}
             </button>
             <button
               id="pricing-toggle-yearly"
@@ -141,7 +166,7 @@ export function PricingSection() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Yearly
+              {t.toggleYearly}
               <span className="rounded-full bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
                 -20%
               </span>
@@ -183,19 +208,22 @@ export function PricingSection() {
                       ${yearly ? plan.yearlyPrice : plan.monthlyPrice}
                     </span>
                     <span className="mb-1 text-sm text-muted-foreground">
-                      /mo
+                      {t.perMonth}
                     </span>
                   </div>
                 ) : (
                   <div className="text-3xl font-bold text-foreground">
-                    Custom
+                    {t.priceCustom}
                   </div>
                 )}
                 {yearly &&
                   plan.monthlyPrice !== null &&
                   plan.monthlyPrice > 0 && (
                     <div className="mt-1 text-xs text-primary">
-                      Save ${(plan.monthlyPrice - plan.yearlyPrice!) * 12}/year
+                      {t.saveYearly.replace(
+                        "{amount}",
+                        String((plan.monthlyPrice - plan.yearlyPrice!) * 12)
+                      )}
                     </div>
                   )}
               </div>
@@ -246,8 +274,7 @@ export function PricingSection() {
         </div>
 
         <p className="mt-10 text-center text-xs text-muted-foreground/50">
-          All prices in USD. Cancel anytime. No credit card required for free
-          plan.
+          {t.disclaimer}
         </p>
       </div>
     </section>

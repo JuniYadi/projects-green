@@ -10,42 +10,15 @@ import {
 } from "@phosphor-icons/react"
 
 import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
-const footerLinks = {
-  Product: [
-    { label: "App Hosting", href: "#hosting" },
-    { label: "Communication", href: "#communication" },
-    { label: "Storage S3", href: "#storage" },
-    { label: "AI Services", href: "#ai" },
-    { label: "Security", href: "#security" },
-    { label: "Analytics", href: "#analytics" },
-  ],
-  Developers: [
-    { label: "Documentation", href: "#docs" },
-    { label: "API Reference", href: "#api" },
-    { label: "CLI", href: "#cli" },
-    { label: "SDKs", href: "#sdks" },
-    { label: "Status page", href: "#status" },
-    { label: "Changelog", href: "#changelog" },
-  ],
-  Company: [
-    { label: "About", href: "#about" },
-    { label: "Blog", href: "#blog" },
-    { label: "Careers", href: "#careers" },
-    { label: "Press", href: "#press" },
-    { label: "Contact", href: "#contact" },
-  ],
-  Legal: [
-    { label: "Terms of Service", href: "/terms", isRoute: true },
-    { label: "Privacy Policy", href: "/privacy", isRoute: true },
-    { label: "Acceptable Use Policy", href: "/acceptable-use", isRoute: true },
-    { label: "Cookie Policy", href: "#cookies" },
-    { label: "DPA", href: "#dpa" },
-  ],
-}
-
 export function CTASection() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pHomeFooter
+
   return (
     <section className="relative overflow-hidden bg-background py-28">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_50%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent)]" />
@@ -55,20 +28,19 @@ export function CTASection() {
         <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5">
           <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
           <span className="text-sm font-medium text-primary">
-            Join 10,000+ developers
+            {t.ctaJoinDevelopers}
           </span>
         </div>
 
         <h2 className="mb-6 text-5xl leading-[1.1] font-bold tracking-tight text-foreground lg:text-6xl">
-          Your idea deserves{" "}
+          {t.ctaHeading}{" "}
           <span className="bg-gradient-to-r from-chart-4 via-chart-3 to-chart-2 bg-clip-text text-transparent">
-            to be live
+            {t.ctaHeadingHighlight}
           </span>
         </h2>
 
         <p className="mx-auto mb-12 max-w-2xl text-xl leading-relaxed text-muted-foreground">
-          Deploy your first project for free in under 2 minutes. No credit card.
-          No complex setup. Just ship.
+          {t.ctaDescription}
         </p>
 
         <div className="flex flex-col justify-center gap-4 sm:flex-row">
@@ -77,7 +49,7 @@ export function CTASection() {
             id="cta-final-signup"
             className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-2xl shadow-primary/30 transition-all hover:scale-105 hover:bg-primary/90 hover:shadow-primary/50"
           >
-            Start building for free
+            {t.ctaStartBuilding}
             <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Link>
           <Link
@@ -85,13 +57,12 @@ export function CTASection() {
             id="cta-final-sales"
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-8 py-4 text-base font-semibold text-foreground transition-all hover:bg-accent"
           >
-            Talk to sales
+            {t.ctaTalkToSales}
           </Link>
         </div>
 
         <p className="mt-6 text-xs text-muted-foreground/50">
-          Free plan includes 3 projects · No credit card required · Cancel
-          anytime
+          {t.ctaGuarantees}
         </p>
       </div>
     </section>
@@ -101,7 +72,48 @@ export function CTASection() {
 export function Footer() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pHomeFooter
 
+  const links: Record<
+    string,
+    { label: string; href: string; isRoute?: boolean }[]
+  > = {
+    [t.categoryProduct]: [
+      { label: t.linkAppHosting, href: "#hosting" },
+      { label: t.linkCommunication, href: "#communication" },
+      { label: t.linkStorageS3, href: "#storage" },
+      { label: t.linkAiServices, href: "#ai" },
+      { label: t.linkSecurity, href: "#security" },
+      { label: t.linkAnalytics, href: "#analytics" },
+    ],
+    [t.categoryDevelopers]: [
+      { label: t.linkDocumentation, href: "#docs" },
+      { label: t.linkApiReference, href: "#api" },
+      { label: t.linkCli, href: "#cli" },
+      { label: t.linkSdks, href: "#sdks" },
+      { label: t.linkStatusPage, href: "#status" },
+      { label: t.linkChangelog, href: "#changelog" },
+    ],
+    [t.categoryCompany]: [
+      { label: t.linkAbout, href: "#about" },
+      { label: t.linkBlog, href: "#blog" },
+      { label: t.linkCareers, href: "#careers" },
+      { label: t.linkPress, href: "#press" },
+      { label: t.linkContact, href: "#contact" },
+    ],
+    [t.categoryLegal]: [
+      { label: t.linkTermsOfService, href: "/terms", isRoute: true },
+      { label: t.linkPrivacyPolicy, href: "/privacy", isRoute: true },
+      {
+        label: t.linkAcceptableUsePolicy,
+        href: "/acceptable-use",
+        isRoute: true,
+      },
+      { label: t.linkCookiePolicy, href: "#cookies" },
+      { label: t.linkDpa, href: "#dpa" },
+    ],
+  }
   return (
     <footer className="border-t border-border bg-card">
       <div className="mx-auto max-w-7xl px-6 py-16">
@@ -120,8 +132,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="mb-5 max-w-[220px] text-sm leading-relaxed text-muted-foreground">
-              The full-stack cloud platform for modern developers. Ship faster,
-              scale smarter.
+              {t.brandDescription}
             </p>
             <div className="flex items-center gap-3">
               <a
@@ -146,13 +157,13 @@ export function Footer() {
           </div>
 
           {/* Links */}
-          {Object.entries(footerLinks).map(([category, links]) => (
+          {Object.entries(links).map(([category, items]) => (
             <div key={category}>
               <h4 className="mb-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                 {category}
               </h4>
               <ul className="space-y-2.5">
-                {links.map((link) => {
+                {items.map((link) => {
                   const href =
                     "isRoute" in link && link.isRoute
                       ? `/${locale}${link.href}`
@@ -175,13 +186,11 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
-          <p className="text-xs text-muted-foreground/50">
-            © 2026 PFNApp. All rights reserved.
-          </p>
+          <p className="text-xs text-muted-foreground/50">{t.copyright}</p>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
             <span className="text-xs text-muted-foreground/50">
-              All systems operational
+              {t.allSystemsOperational}
             </span>
           </div>
         </div>

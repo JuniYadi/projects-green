@@ -45,7 +45,10 @@ export function ConfirmPaymentDialog({
   const handleAction = async () => {
     if (!action) return
 
-    const fallbackError = action === "reject" ? t.rejectFailed : t.approveFailed
+    const fallbackFailed =
+      action === "reject" ? t.rejectFailed : t.approveFailed
+    const fallbackUnable =
+      action === "reject" ? t.unableToReject : t.unableToApprove
 
     setLoading(true)
     setError(null)
@@ -71,7 +74,7 @@ export function ConfirmPaymentDialog({
       } | null
 
       if (!response.ok || !payload?.ok) {
-        setError(payload?.message ?? fallbackError)
+        setError(payload?.message ?? fallbackFailed)
         setLoading(false)
         return
       }
@@ -79,7 +82,7 @@ export function ConfirmPaymentDialog({
       onOpenChange(false)
       onActionComplete()
     } catch (err) {
-      setError(err instanceof Error ? err.message : fallbackError)
+      setError(err instanceof Error ? err.message : fallbackUnable)
     } finally {
       setLoading(false)
     }

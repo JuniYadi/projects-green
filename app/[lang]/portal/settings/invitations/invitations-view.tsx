@@ -1,5 +1,6 @@
 "use client"
 
+import { useParams } from "next/navigation"
 import {
   useCallback,
   useEffect,
@@ -8,6 +9,8 @@ import {
   type FormEvent,
 } from "react"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +46,11 @@ type InvitationsViewProps = {
 }
 
 export function InvitationsView({ organizationId }: InvitationsViewProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalSettingsInvitationsView
+
   const [invitations, setInvitations] = useState<TenantInvitationSummary[]>([])
   const [authorization, setAuthorization] =
     useState<TenantAuthorizationResponse | null>(null)
@@ -51,7 +59,6 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("member")
   const [isSubmitting, setIsSubmitting] = useState(false)
-
   const loadData = useCallback(async () => {
     try {
       const [authRes, invRes] = await Promise.all([
@@ -68,12 +75,11 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
         )
       } else {
         setError(
-          (invRes as { message?: string })?.message ||
-            "Failed to load invitations"
+          (invRes as { message?: string })?.message || t.errorFailedToLoad
         )
       }
     } catch {
-      setError("An unexpected error occurred")
+      setError(t.errorUnexpected)
     } finally {
       setIsLoading(false)
     }
@@ -103,12 +109,10 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
         setEmail("")
         void loadData()
       } else {
-        setError(
-          (res as { message?: string })?.message || "Failed to send invitation"
-        )
+        setError((res as { message?: string })?.message || t.errorFailedToSend)
       }
     } catch {
-      setError("An unexpected error occurred")
+      setError(t.errorUnexpected)
     } finally {
       setIsSubmitting(false)
     }
@@ -127,10 +131,10 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
         if (res?.ok) {
           void loadData()
         } else {
-          setError(res?.message || "Action failed")
+          setError(res?.message || t.errorActionFailed)
         }
       } catch {
-        setError("An unexpected error occurred")
+        setError(t.errorUnexpected)
       }
     },
     [loadData]
@@ -140,7 +144,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
       {
         accessorKey: "email",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Email" />
+          <DataTableColumnHeader column={column} title={t.columnEmail} />
         ),
         cell: ({ row }) => (
           <span className="font-medium">{row.original.email}</span>
@@ -149,7 +153,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
       {
         accessorKey: "roleSlug",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Role" />
+          <DataTableColumnHeader column={column} title={t.columnRole} />
         ),
         cell: ({ row }) => {
           const raw = row.original.roleSlug || "member"
@@ -160,7 +164,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
       {
         accessorKey: "expiresAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Expires" />
+          <DataTableColumnHeader column={column} title={t.columnExpires} />
         ),
         cell: ({ row }) => (
           <span>{new Date(row.original.expiresAt).toLocaleDateString()}</span>
@@ -186,14 +190,12 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
                   )
                 }
               >
-                Resend
+                {t.actionResend}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => {
-                  if (
-                    confirm("Are you sure you want to revoke this invitation?")
-                  ) {
+                  if (confirm(t.confirmRevoke)) {
                     handleAction(
                       eden.api.tenants[organizationId].invitations[
                         row.original.id
@@ -202,7 +204,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
                   }
                 }}
               >
-                Revoke
+                {t.actionRevoke}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -240,7 +242,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-medium">
-              Invite New Member
+              {t.cardTitleInvite}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -260,19 +262,19 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
               <div className="w-full sm:w-[150px]">
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder={t.selectRolePlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="member">{t.roleMember}</SelectItem>
                     {allowedActions.has("invite_admin") && (
-                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="admin">{t.roleAdmin}</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
               </div>
               <Button type="submit" disabled={isSubmitting}>
                 <PaperPlaneTiltIcon className="mr-2 h-4 w-4" />
-                {isSubmitting ? "Sending..." : "Send Invitation"}
+                {isSubmitting ? t.sendingButton : t.sendButton}
               </Button>
             </form>
           </CardContent>
@@ -282,7 +284,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
         tableId="portal-settings-invitations"
         columns={columns}
         data={invitations}
-        searchPlaceholder="Search invitations..."
+        searchPlaceholder={t.searchPlaceholder}
         searchableColumns={["email"]}
         defaultColumnVisibility={{ actions: false }}
       />

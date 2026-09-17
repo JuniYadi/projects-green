@@ -2,7 +2,9 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,11 +21,6 @@ import {
   SquaresFour,
 } from "@/components/ui/phosphor-icons"
 import { useAdminAddonsQuery } from "@/hooks/use-billing-data"
-const BILLING_MODE_LABELS: Record<string, string> = {
-  RECURRING: "Recurring",
-  ONE_TIME: "One-time",
-  USAGE: "Usage",
-}
 
 function LoadingSkeleton() {
   return (
@@ -39,6 +36,17 @@ function LoadingSkeleton() {
 }
 
 export default function PortalBillingAddonsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingCatalogAddonsPageClient
+
+  const billingModeLabels: Record<string, string> = {
+    RECURRING: t.billingModeRecurring,
+    ONE_TIME: t.billingModeOneTime,
+    USAGE: t.billingModeUsage,
+  }
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const [search, setSearch] = useState(searchParams.get("q") ?? "")
@@ -63,14 +71,14 @@ export default function PortalBillingAddonsPage() {
   const addonColumns: ColumnDef<(typeof addons)[number]>[] = [
     {
       accessorKey: "code",
-      header: "Code",
+      header: t.codeColumn,
       cell: ({ row }) => (
         <span className="font-mono text-xs">{row.original.code}</span>
       ),
     },
     {
       accessorKey: "name",
-      header: "Name",
+      header: t.nameColumn,
       cell: ({ row }) => (
         <div>
           <div className="font-medium">{row.original.name}</div>
@@ -84,30 +92,32 @@ export default function PortalBillingAddonsPage() {
     },
     {
       accessorKey: "billingMode",
-      header: "Billing mode",
+      header: t.billingModeColumn,
       cell: ({ row }) =>
-        BILLING_MODE_LABELS[row.original.billingMode] ??
-        row.original.billingMode,
+        billingModeLabels[row.original.billingMode] ?? row.original.billingMode,
     },
     {
       id: "prices",
-      header: "Prices",
+      header: t.pricesColumn,
       accessorFn: (row) => row.prices.length,
       cell: ({ row }) =>
-        `${row.original.prices.length} price${row.original.prices.length === 1 ? "" : "s"}`,
+        (row.original.prices.length === 1
+          ? t.priceSingular
+          : t.pricePlural
+        ).replace("{count}", String(row.original.prices.length)),
     },
     {
       accessorKey: "isActive",
-      header: "Status",
+      header: t.statusColumn,
       cell: ({ row }) => (
         <Badge variant={row.original.isActive ? "default" : "secondary"}>
-          {row.original.isActive ? "Active" : "Inactive"}
+          {row.original.isActive ? t.activeStatus : t.inactiveStatus}
         </Badge>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t.actionsColumn,
       cell: ({ row }) => (
         <Link
           href={`/portal/billing/catalog/addons/${row.original.code.toLowerCase()}`}
@@ -130,27 +140,25 @@ export default function PortalBillingAddonsPage() {
                 <ArrowLeftIcon className="h-4 w-4" />
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold">Add-ons</h1>
+            <h1 className="text-2xl font-bold">{t.title}</h1>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Reusable add-ons that can be attached to plans and priced per term.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t.description}</p>
         </div>
         <Link href="/portal/billing/catalog/addons/new">
           <Button>
             <PlusIcon className="mr-2 h-4 w-4" />
-            New Add-on
+            {t.newAddon}
           </Button>
         </Link>
       </header>
 
       <div className="relative max-w-sm">
         <Input
-          placeholder="Search add-ons..."
+          placeholder={t.searchPlaceholder}
           value={search}
           onChange={handleSearch}
           className="pl-9"
-          aria-label="Search add-ons"
+          aria-label={t.searchAriaLabel}
         />
         <MagnifyingGlassIcon className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       </div>
@@ -158,7 +166,7 @@ export default function PortalBillingAddonsPage() {
       {error ? (
         <Card>
           <CardContent className="py-8 text-center text-destructive">
-            {error instanceof Error ? error.message : "Unable to load add-ons."}
+            {error instanceof Error ? error.message : t.unableToLoad}
           </CardContent>
         </Card>
       ) : loading ? (
@@ -168,22 +176,20 @@ export default function PortalBillingAddonsPage() {
           <CardContent className="flex flex-col items-center gap-4 py-12">
             <SquaresFour className="h-12 w-12 text-muted-foreground/50" />
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                No add-ons match your search.
-              </p>
+              <p className="text-sm text-muted-foreground">{t.noAddonsMatch}</p>
             </div>
           </CardContent>
         </Card>
       ) : (
         <Card>
-          <CardTitle className="sr-only">Add-ons list</CardTitle>
+          <CardTitle className="sr-only">{t.addonsListSrOnly}</CardTitle>
           <DataTable
             tableId="portal-billing-addons"
             columns={addonColumns}
             data={addons}
             searchableColumns={["code", "name", "billingMode"]}
-            searchPlaceholder="Search add-ons table..."
-            emptyMessage="No add-ons match your search."
+            searchPlaceholder={t.searchTablePlaceholder}
+            emptyMessage={t.noAddonsMatch}
           />
         </Card>
       )}

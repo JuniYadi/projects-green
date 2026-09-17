@@ -1,3 +1,4 @@
+import { useParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -10,7 +11,8 @@ import {
   User,
 } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
-
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 export interface TrafficSummaryCardsProps {
   totalRequests: number
   successRate: number
@@ -21,6 +23,7 @@ export interface TrafficSummaryCardsProps {
   visitorEstimateMethod?: string
   automatedRequests?: number
   humanRequests?: number
+  locale?: string
 }
 
 export function TrafficSummaryCards({
@@ -33,7 +36,13 @@ export function TrafficSummaryCards({
   visitorEstimateMethod = "ip_cardinality_v1",
   automatedRequests,
   humanRequests,
+  locale: localeProp,
 }: TrafficSummaryCardsProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployOperateTrafficSummaryCards
+  const numLocale = locale === "en" ? "en-US" : "id-ID"
   const isHealthy = successRate >= 98
   const isFast = avgLatencyMs > 0 && avgLatencyMs < 200
 
@@ -59,13 +68,13 @@ export function TrafficSummaryCards({
           <CardContent className="flex items-center justify-between p-5">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">
-                Total Permintaan
+                {t.totalRequests}
               </p>
               <p className="text-2xl font-bold tracking-tight text-foreground">
-                {totalRequests.toLocaleString("id-ID")}
+                {totalRequests.toLocaleString(numLocale)}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                {totalBytesFormatted} • {avgLatencyMs}ms rata-rata
+                {totalBytesFormatted} • {avgLatencyMs}ms {t.averageSuffix}
               </p>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/20 text-muted-foreground">
@@ -80,21 +89,24 @@ export function TrafficSummaryCards({
             <div className="space-y-1">
               <div className="flex items-center gap-1.5">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Estimasi Pengunjung
+                  {t.estimatedVisitors}
                 </p>
                 <Badge
                   variant="outline"
                   className="px-1 py-0 text-[9px] text-muted-foreground"
-                  title={`Dihitung via ${visitorEstimateMethod}. Bukan bukti absolut manusia.`}
+                  title={t.estimateDisclaimer.replace(
+                    "{method}",
+                    visitorEstimateMethod
+                  )}
                 >
-                  Estimasi
+                  {t.estimateBadge}
                 </Badge>
               </div>
               <p className="text-2xl font-bold tracking-tight text-foreground">
-                {visitorEstimate.toLocaleString("id-ID")}
+                {visitorEstimate.toLocaleString(numLocale)}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Kardinalitas IP unik ({periodLabel})
+                {t.uniqueIpCardinality.replace("{period}", periodLabel)}
               </p>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/20 text-muted-foreground">
@@ -108,7 +120,7 @@ export function TrafficSummaryCards({
           <CardContent className="flex items-center justify-between p-5">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">
-                Trafik Manusia (Wajar)
+                {t.humanTraffic}
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-bold tracking-tight text-foreground">
@@ -118,11 +130,11 @@ export function TrafficSummaryCards({
                   variant="outline"
                   className="border-emerald-500/20 bg-emerald-500/10 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
                 >
-                  {humanRequests.toLocaleString("id-ID")} req
+                  {humanRequests.toLocaleString(numLocale)} {t.reqUnit}
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Pola navigasi browser normal
+                {t.normalBrowserPattern}
               </p>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-500">
@@ -136,7 +148,7 @@ export function TrafficSummaryCards({
           <CardContent className="flex items-center justify-between p-5">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">
-                Trafik Otomasi & Bot
+                {t.automatedTraffic}
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-bold tracking-tight text-foreground">
@@ -151,11 +163,11 @@ export function TrafficSummaryCards({
                       : "border-border bg-muted/20 text-muted-foreground"
                   )}
                 >
-                  {automatedRequests.toLocaleString("id-ID")} req
+                  {automatedRequests.toLocaleString(numLocale)} {t.reqUnit}
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                CLI, crawler, probe scanner
+                {t.automatedTrafficDesc}
               </p>
             </div>
             <div
@@ -181,10 +193,10 @@ export function TrafficSummaryCards({
         <CardContent className="flex items-center justify-between p-5">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Total Kunjungan
+              {t.totalVisits}
             </p>
             <p className="text-2xl font-bold tracking-tight text-foreground">
-              {totalRequests.toLocaleString("id-ID")}
+              {totalRequests.toLocaleString(numLocale)}
             </p>
             <p className="text-[11px] text-muted-foreground">{periodLabel}</p>
           </div>
@@ -199,7 +211,7 @@ export function TrafficSummaryCards({
         <CardContent className="flex items-center justify-between p-5">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Tingkat Keberhasilan
+              {t.successRate}
             </p>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold tracking-tight text-foreground">
@@ -217,20 +229,25 @@ export function TrafficSummaryCards({
                 {isHealthy ? (
                   <>
                     <CheckCircle size={12} weight="fill" />
-                    <span>Lancar</span>
+                    <span>{t.statusSmooth}</span>
                   </>
                 ) : (
                   <>
                     <WarningCircle size={12} weight="fill" />
-                    <span>Perhatian</span>
+                    <span>{t.statusAttention}</span>
                   </>
                 )}
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground">
               {totalRequests > 0
-                ? `${Math.round(((100 - successRate) * totalRequests) / 100)} respon error`
-                : "Semua respon aman"}
+                ? t.errorResponses.replace(
+                    "{count}",
+                    String(
+                      Math.round(((100 - successRate) * totalRequests) / 100)
+                    )
+                  )
+                : t.allResponsesSafe}
             </p>
           </div>
           <div
@@ -251,7 +268,7 @@ export function TrafficSummaryCards({
         <CardContent className="flex items-center justify-between p-5">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Kecepatan Respon
+              {t.responseSpeed}
             </p>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold tracking-tight text-foreground">
@@ -269,11 +286,11 @@ export function TrafficSummaryCards({
                 )}
               >
                 <Lightning size={12} weight="fill" />
-                <span>{isFast ? "Cepat" : "Normal"}</span>
+                <span>{isFast ? t.fastSpeed : t.normalSpeed}</span>
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Rata-rata {avgLatencyMs} ms
+              {t.averageMs.replace("{ms}", String(avgLatencyMs))}
             </p>
           </div>
           <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/20 text-muted-foreground">
@@ -287,13 +304,13 @@ export function TrafficSummaryCards({
         <CardContent className="flex items-center justify-between p-5">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Transfer Data
+              {t.dataTransfer}
             </p>
             <p className="text-2xl font-bold tracking-tight text-foreground">
               {totalBytesFormatted}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              Total bandwidth keluar
+              {t.outboundBandwidth}
             </p>
           </div>
           <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/20 text-muted-foreground">

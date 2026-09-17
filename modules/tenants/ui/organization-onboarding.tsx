@@ -4,8 +4,10 @@ import type { FormEvent } from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@workos-inc/authkit-nextjs/components"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,6 +42,10 @@ export function OrganizationOnboarding({
   showWarning,
 }: OrganizationOnboardingProps) {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pTenantsOrganizationOnboarding
   const { switchToOrganization } = useAuth({ ensureSignedIn: true })
   const [organizationName, setOrganizationName] = useState(() =>
     getOrgNameSuggestion(userEmail)
@@ -90,7 +96,7 @@ export function OrganizationOnboarding({
       ? queryError.message.includes("fetch") ||
         queryError.message.includes("Network") ||
         queryError.message.includes("Failed")
-        ? "Network error while loading organization data."
+        ? t.networkErrorLoading
         : queryError.message
       : null)
   const setError = setActionError
@@ -100,8 +106,7 @@ export function OrganizationOnboarding({
         return
       }
       event.preventDefault()
-      event.returnValue =
-        "Organization setup is required. Are you sure you want to leave?"
+      event.returnValue = t.setupRequiredBeforeUnload
       return event.returnValue
     }
 
@@ -124,7 +129,7 @@ export function OrganizationOnboarding({
       router.replace(destinationPath)
       router.refresh()
     } catch {
-      setError("Unable to switch organization. Please try again.")
+      setError(t.errorUnableToSwitch)
       setSwitchingOrgId(null)
     }
   }
@@ -135,7 +140,7 @@ export function OrganizationOnboarding({
     const candidateName = organizationName.trim()
 
     if (!candidateName) {
-      setError("Organization name is required.")
+      setError(t.errorNameRequired)
       return
     }
 
@@ -151,15 +156,13 @@ export function OrganizationOnboarding({
         body: JSON.stringify({ name: candidateName, currency }),
       })
       const payload = (await response.json().catch(() => null)) as
-        | TenantBootstrapCreateResponse
-        | TenantApiError
-        | null
+        TenantBootstrapCreateResponse | TenantApiError | null
 
       if (!response.ok || !payload || isTenantApiError(payload)) {
         setError(
           payload && isTenantApiError(payload)
             ? payload.message
-            : "Unable to create organization right now."
+            : t.errorUnableToCreate
         )
         return
       }
@@ -167,7 +170,7 @@ export function OrganizationOnboarding({
       setOrganizationName("")
       await handleSwitchOrganization(payload.organizationId)
     } catch {
-      setError("Network error while creating organization.")
+      setError(t.errorNetworkCreate)
     } finally {
       setIsCreating(false)
     }
@@ -180,17 +183,15 @@ export function OrganizationOnboarding({
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Set up your organization</h1>
+        <h1 className="text-2xl font-semibold">{t.heading}</h1>
         <p className="text-sm text-muted-foreground">
-          {hasInvitations
-            ? "Create your first organization or join one where you already have an active membership."
-            : "Create your first organization to get started."}
+          {hasInvitations ? t.subheadingWithInvitations : t.subheadingDefault}
         </p>
       </header>
 
       {showWarning ? (
         <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
-          Organization setup is required to access the console.
+          {t.warningSetupRequired}
         </div>
       ) : null}
 
@@ -201,14 +202,12 @@ export function OrganizationOnboarding({
       ) : null}
 
       <section className="space-y-3 rounded-lg border border-border p-4 md:p-6">
-        <h2 className="text-lg font-semibold">Create organization</h2>
+        <h2 className="text-lg font-semibold">{t.createSectionHeading}</h2>
         <p className="text-sm text-muted-foreground">
-          This creates a new organization and assigns you the owner role.
+          {t.createSectionDescription}
         </p>
         <p className="text-xs text-muted-foreground">
-          Billing currency is set once at creation and locked after the first
-          financial activity. IDR supports automatic payment methods (Virtual
-          Account, QRIS); USD is manual transfer only.
+          {t.createCurrencyNotice}
         </p>
         <form
           className="flex flex-col gap-3 sm:flex-row"
@@ -218,7 +217,7 @@ export function OrganizationOnboarding({
         >
           <Input
             value={organizationName}
-            placeholder="Organization name"
+            placeholder={t.organizationNamePlaceholder}
             onChange={(event) => setOrganizationName(event.target.value)}
             disabled={isCreating || Boolean(switchingOrgId)}
           />
@@ -228,7 +227,7 @@ export function OrganizationOnboarding({
               setCurrency(event.target.value === "USD" ? "USD" : "IDR")
             }
             disabled={isCreating || Boolean(switchingOrgId)}
-            aria-label="Billing currency"
+            aria-label={t.billingCurrencyLabel}
             className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="IDR">IDR</option>
@@ -238,7 +237,7 @@ export function OrganizationOnboarding({
             type="submit"
             disabled={isCreating || Boolean(switchingOrgId)}
           >
-            {isCreating ? "Creating..." : "Create organization"}
+            {isCreating ? t.creatingButton : t.createButton}
           </Button>
         </form>
       </section>
@@ -246,9 +245,9 @@ export function OrganizationOnboarding({
       {!isLoading &&
       (activeMemberships.length > 0 || pendingMemberships.length > 0) ? (
         <section className="space-y-3 rounded-lg border border-border p-4 md:p-6">
-          <h2 className="text-lg font-semibold">Join existing organization</h2>
+          <h2 className="text-lg font-semibold">{t.joinSectionHeading}</h2>
           <p className="text-sm text-muted-foreground">
-            Select from your active organization memberships.
+            {t.joinSectionDescription}
           </p>
 
           {activeMemberships.length > 0 ? (
@@ -266,7 +265,7 @@ export function OrganizationOnboarding({
                         {membership.organizationName}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Role: {membership.roleSlug ?? "member"}
+                        {t.rolePrefix}: {membership.roleSlug ?? "member"}
                       </p>
                     </div>
                     <Button
@@ -277,7 +276,7 @@ export function OrganizationOnboarding({
                         void handleSwitchOrganization(membership.organizationId)
                       }}
                     >
-                      {isSwitching ? "Switching..." : "Join"}
+                      {isSwitching ? t.switchingButton : t.joinButton}
                     </Button>
                   </div>
                 )
@@ -287,8 +286,7 @@ export function OrganizationOnboarding({
 
           {activeMemberships.length === 0 && pendingMemberships.length > 0 ? (
             <p className="text-sm text-muted-foreground">
-              You have pending invitations. Accept an invitation first, then
-              come back here to join.
+              {t.pendingInvitationsNotice}
             </p>
           ) : null}
         </section>

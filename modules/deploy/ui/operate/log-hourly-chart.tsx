@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -6,6 +7,8 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export interface LogHourlyTrendItemDTO {
   label: string
@@ -18,13 +21,20 @@ export interface LogHourlyChartProps {
   trend: LogHourlyTrendItemDTO[]
   granularity: "daily" | "monthly" | "yearly"
   periodLabel: string
+  locale?: string
 }
 
 export function LogHourlyChart({
   trend,
   granularity,
   periodLabel,
+  locale: localeProp,
 }: LogHourlyChartProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployOperateLogHourlyChart
+  const numLocale = locale === "en" ? "en-US" : "id-ID"
   const maxLogs = useMemo(() => {
     let max = 1
     for (const item of trend) {
@@ -36,18 +46,17 @@ export function LogHourlyChart({
 
   const axisSubtitle =
     granularity === "daily"
-      ? "Distribusi per jam (00:00 - 23:00 UTC)"
+      ? t.axisSubtitleDaily
       : granularity === "monthly"
-        ? "Distribusi per tanggal (1 - 31)"
-        : "Distribusi per bulan (Jan - Des)"
-
+        ? t.axisSubtitleMonthly
+        : t.axisSubtitleYearly
   return (
     <Card className="border-border bg-card">
       <CardHeader className="pb-3">
         <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
           <div>
             <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
-              Grafik Tren Insiden Log
+              {t.title}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
               {axisSubtitle} — {periodLabel}
@@ -56,15 +65,15 @@ export function LogHourlyChart({
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
-              <span>Info</span>
+              <span>{t.legendInfo}</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" />
-              <span>Warn</span>
+              <span>{t.legendWarn}</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-sm bg-destructive" />
-              <span>Error</span>
+              <span>{t.legendError}</span>
             </span>
           </div>
         </div>
@@ -73,7 +82,7 @@ export function LogHourlyChart({
         {trend.length === 0 ||
         trend.every((t) => t.info === 0 && t.warn === 0 && t.error === 0) ? (
           <div className="flex h-44 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/5 text-xs text-muted-foreground">
-            <p>Belum ada rekaman log container pada periode ini.</p>
+            <p>{t.emptyState}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -99,8 +108,8 @@ export function LogHourlyChart({
                     <div className="pointer-events-none absolute -top-12 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center rounded-md border border-border bg-popover px-2 py-1 text-[11px] whitespace-nowrap text-popover-foreground shadow-sm group-hover:flex">
                       <span className="font-semibold">{item.label}</span>
                       <span>
-                        {total.toLocaleString("id-ID")} logs
-                        {item.error > 0 ? ` (${item.error} err)` : ""}
+                        {total.toLocaleString(numLocale)} {t.logsUnit}
+                        {item.error > 0 ? ` (${item.error} ${t.errUnit})` : ""}
                       </span>
                     </div>
 
@@ -141,11 +150,16 @@ export function LogHourlyChart({
                 </>
               ) : trend.length <= 31 ? (
                 <>
-                  <span>Tgl 01</span>
-                  <span>Tgl 08</span>
-                  <span>Tgl 15</span>
-                  <span>Tgl 22</span>
-                  <span>Tgl {trend.length}</span>
+                  <span>{t.dayAxisLabel.replace("{day}", "01")}</span>
+                  <span>{t.dayAxisLabel.replace("{day}", "08")}</span>
+                  <span>{t.dayAxisLabel.replace("{day}", "15")}</span>
+                  <span>{t.dayAxisLabel.replace("{day}", "22")}</span>
+                  <span>
+                    {t.dayAxisLabel.replace(
+                      "{day}",
+                      String(trend.length).padStart(2, "0")
+                    )}
+                  </span>
                 </>
               ) : (
                 trend.map((t, idx) => (

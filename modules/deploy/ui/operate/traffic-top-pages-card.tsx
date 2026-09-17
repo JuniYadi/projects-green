@@ -1,3 +1,4 @@
+import { useParams } from "next/navigation"
 import {
   Card,
   CardContent,
@@ -7,6 +8,8 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Compass, WarningCircle, CheckCircle } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type {
   TrafficErrorPath,
   TrafficPathCount,
@@ -15,12 +18,19 @@ import type {
 export interface TrafficTopPagesCardProps {
   topPages: TrafficPathCount[]
   troubledPages: TrafficErrorPath[]
+  locale?: string
 }
 
 export function TrafficTopPagesCard({
   topPages,
   troubledPages,
+  locale: localeProp,
 }: TrafficTopPagesCardProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pDeployOperateTrafficTopPagesCard
+  const numLocale = locale === "en" ? "en-US" : "id-ID"
   const maxViews = topPages.length > 0 ? topPages[0].views : 1
 
   return (
@@ -32,10 +42,10 @@ export function TrafficTopPagesCard({
             <Compass size={18} className="text-muted-foreground" />
             <div>
               <CardTitle className="text-sm font-semibold text-foreground">
-                Halaman Paling Sering Dikunjungi
+                {t.topPagesTitle}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                5 tautan dengan volume kunjungan tertinggi
+                {t.topPagesDescription}
               </CardDescription>
             </div>
           </div>
@@ -43,7 +53,7 @@ export function TrafficTopPagesCard({
         <CardContent>
           {topPages.length === 0 ? (
             <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-              Belum ada data kunjungan halaman
+              {t.emptyTopPages}
             </div>
           ) : (
             <div className="space-y-3">
@@ -59,7 +69,7 @@ export function TrafficTopPagesCard({
                         {page.path}
                       </span>
                       <span className="font-semibold text-muted-foreground">
-                        {page.views.toLocaleString("id-ID")} views
+                        {page.views.toLocaleString(numLocale)} {t.viewsUnit}
                       </span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/20">
@@ -83,10 +93,10 @@ export function TrafficTopPagesCard({
             <WarningCircle size={18} className="text-muted-foreground" />
             <div>
               <CardTitle className="text-sm font-semibold text-foreground">
-                Tautan Rusak & Error Terdeteksi
+                {t.troubledPagesTitle}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Halaman yang gagal dimuat oleh pengunjung (HTTP 4xx / 5xx)
+                {t.troubledPagesDescription}
               </CardDescription>
             </div>
           </div>
@@ -96,10 +106,9 @@ export function TrafficTopPagesCard({
             <div className="flex h-36 flex-col items-center justify-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-center text-xs text-emerald-500">
               <CheckCircle size={24} weight="duotone" />
               <div>
-                <p className="font-semibold">Semua Tautan Bersih!</p>
+                <p className="font-semibold">{t.allLinksCleanTitle}</p>
                 <p className="text-muted-foreground">
-                  Tidak ada error 404 atau kendala server yang dilaporkan
-                  pengunjung.
+                  {t.allLinksCleanDescription}
                 </p>
               </div>
             </div>
@@ -122,7 +131,10 @@ export function TrafficTopPagesCard({
                     </span>
                   </div>
                   <span className="font-medium text-destructive">
-                    {err.errors.toLocaleString("id-ID")} kali gagal
+                    {t.failedCount.replace(
+                      "{count}",
+                      err.errors.toLocaleString(numLocale)
+                    )}
                   </span>
                 </div>
               ))}

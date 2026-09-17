@@ -106,7 +106,9 @@ export default function WhatsappWorkflowCanvasPage() {
   const lang = (params?.lang as string) || "en"
   const workflowId = params?.id as string
   const locale = resolveLocaleOrDefault(lang)
-  const t = getMessages(locale).console.whatsappWorkflows
+  const messages = getMessages(locale)
+  const t = messages.console.whatsappWorkflows
+  const canvasMessages = messages.pConsoleWhatsappWorkflowsCanvas
 
   const initialNodesSample = useMemo<WorkflowNode[]>(
     () => [
@@ -430,9 +432,8 @@ export default function WhatsappWorkflowCanvasPage() {
                     ...n,
                     config: {
                       ...n.config,
-                      agentProfileId: (
-                        rawDraft as { agentProfileId?: string }
-                      ).agentProfileId,
+                      agentProfileId: (rawDraft as { agentProfileId?: string })
+                        .agentProfileId,
                       agentProfileName: (
                         rawDraft as { agentProfileName?: string }
                       ).agentProfileName,
@@ -1151,10 +1152,12 @@ export default function WhatsappWorkflowCanvasPage() {
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5 border-border/70 px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                aria-label="More options"
+                aria-label={canvasMessages.moreOptions}
               >
                 <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden sm:inline">Settings</span>
+                <span className="hidden sm:inline">
+                  {canvasMessages.settings}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 p-1.5">
@@ -1168,9 +1171,9 @@ export default function WhatsappWorkflowCanvasPage() {
                   weight={showCopilot ? "fill" : "regular"}
                 />
                 <div className="flex flex-col">
-                  <span>AI Assistant / Copilot</span>
+                  <span>{canvasMessages.aiAssistantCopilot}</span>
                   <span className="text-[10px] font-normal text-muted-foreground">
-                    Generate or improve steps
+                    {canvasMessages.generateOrImproveSteps}
                   </span>
                 </div>
               </DropdownMenuItem>
@@ -1195,12 +1198,12 @@ export default function WhatsappWorkflowCanvasPage() {
               >
                 <Lightning className="h-4 w-4 text-amber-500" weight="fill" />
                 <div className="flex flex-col truncate">
-                  <span>Trigger Settings</span>
+                  <span>{canvasMessages.triggerSettings}</span>
                   <span className="truncate text-[10px] font-normal text-muted-foreground">
                     {workflowMeta.trigger.type === "whatsapp_inbound" ||
                     workflowMeta.isDefault
                       ? t.canvas.triggerSettings.allInbound
-                      : `${workflowMeta.trigger.keywords?.length || 0} keywords active`}
+                      : `${workflowMeta.trigger.keywords?.length || 0} ${canvasMessages.keywordsActive}`}
                   </span>
                 </div>
               </DropdownMenuItem>
@@ -1210,7 +1213,7 @@ export default function WhatsappWorkflowCanvasPage() {
               {/* Device Selector in Menu */}
               <div className="px-2 py-1.5">
                 <Label className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  WhatsApp Device
+                  {canvasMessages.whatsappDevice}
                 </Label>
                 <div className="mt-1.5">
                   <Select
@@ -1328,7 +1331,7 @@ export default function WhatsappWorkflowCanvasPage() {
               size="icon"
               onClick={() => setShowCopilot(false)}
               className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
-              title="Close"
+              title={canvasMessages.close}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -1349,10 +1352,10 @@ export default function WhatsappWorkflowCanvasPage() {
                   ? "bg-primary text-primary-foreground"
                   : "bg-primary/10 text-primary hover:bg-primary/20"
               }`}
-              title="Generate with AI Copilot"
+              title={canvasMessages.generateWithAiCopilot}
             >
               <Sparkle className="h-3 w-3" weight="fill" />
-              <span>AI Assist</span>
+              <span>{canvasMessages.aiAssist}</span>
             </button>
           </div>
           <Button
@@ -1876,10 +1879,10 @@ export default function WhatsappWorkflowCanvasPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="GET">
-                            GET (Fetch Live Data)
+                            {canvasMessages.getFetchLiveData}
                           </SelectItem>
                           <SelectItem value="POST">
-                            POST (Send & Process Context)
+                            {canvasMessages.postSendProcessContext}
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -2143,7 +2146,7 @@ export default function WhatsappWorkflowCanvasPage() {
               onClick={() => setIsTriggerDialogOpen(false)}
               className="h-8 text-xs"
             >
-              Cancel
+              {canvasMessages.cancel}
             </Button>
             <Button
               type="button"

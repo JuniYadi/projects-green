@@ -494,7 +494,7 @@ export function TemplateDetailView({
                     {messages.pWhatsappTemplatesTemplateDetail.reclassifiedBody
                       .replace("{rate}", template.category)
                       .split(/(\{requested\}|\{category\})/)
-                      .map((part, index) =>
+                      .map((part: string, index: number) =>
                         part === "{requested}" ? (
                           <strong key={index}>
                             {template.requestedCategory}
