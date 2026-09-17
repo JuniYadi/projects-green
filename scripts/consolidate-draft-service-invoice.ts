@@ -51,7 +51,7 @@ async function main() {
     }
   }
 
-  // Check if any lines have "WhatsApp overage quota credit" without category
+  // Check if any lines have WhatsApp overage without category
   // If so, look up the WhatsApp ledgers to determine the actual category
   const orgId = invoice.billingAccount?.organizationId
   let resolvedWaCategory: string | null = null
@@ -64,6 +64,7 @@ async function main() {
           lte: invoice.periodEnd,
         },
       },
+      orderBy: { createdAt: "desc" },
       select: { category: true },
     })
     resolvedWaCategory = recentLedger?.category ?? "UTILITY"
@@ -86,9 +87,20 @@ async function main() {
 
   for (const line of invoice.lines) {
     let description = line.description
-    // If description is generic WhatsApp overage without category, enrich with resolved category
-    if (description === "WhatsApp overage quota credit" && resolvedWaCategory) {
-      description = `WhatsApp overage quota credit (${resolvedWaCategory})`
+    // Extract category if embedded in old description, otherwise use resolved category
+    let lineCategory = resolvedWaCategory
+    if (/utility/i.test(description)) lineCategory = "UTILITY"
+    else if (/marketing/i.test(description)) lineCategory = "MARKETING"
+    else if (/auth/i.test(description)) lineCategory = "AUTHENTICATION"
+    else if (/service/i.test(description)) lineCategory = "SERVICE"
+
+    // If description is generic WhatsApp overage without category or older ad-hoc repair format, normalize
+    if (
+      (description === "WhatsApp overage quota credit" ||
+        /^WhatsApp overage charge/i.test(description)) &&
+      lineCategory
+    ) {
+      description = `WhatsApp overage quota credit (${lineCategory})`
     }
 
     const key = `${line.lineType}|${line.unitPrice.toString()}|${line.currency}|${description}`

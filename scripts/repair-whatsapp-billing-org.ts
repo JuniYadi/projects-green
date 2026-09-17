@@ -25,7 +25,11 @@
  *   --set-overdraft=<number>         Directly set the negative overdraft quotaBaseOut (e.g. -313)
  */
 
-import { Prisma, WhatsappBillingCategory, WhatsappBillingStatus } from "@prisma/client"
+import {
+  Prisma,
+  WhatsappBillingCategory,
+  WhatsappBillingStatus,
+} from "@prisma/client"
 import { prisma } from "../lib/prisma"
 import { BillingTransactionService } from "../modules/billing/billing-transaction.service"
 
@@ -33,16 +37,24 @@ import { BillingTransactionService } from "../modules/billing/billing-transactio
 const args = process.argv.slice(2)
 const isApply = args.includes("--apply")
 const isDryRun = !isApply
-const orgIdArg = args.find((a) => a.startsWith("--orgId="))?.split("=")[1] ?? "org_01M0RXAEFHFYE98466H0J85P18"
+const orgIdArg =
+  args.find((a) => a.startsWith("--orgId="))?.split("=")[1] ??
+  "org_01M0RXAEFHFYE98466H0J85P18"
 const deviceIdArg = args.find((a) => a.startsWith("--deviceId="))?.split("=")[1]
 const phoneArg = args.find((a) => a.startsWith("--phone="))?.split("=")[1]
-const monthArg = args.find((a) => a.startsWith("--month="))?.split("=")[1] ?? "2026-09"
+const monthArg =
+  args.find((a) => a.startsWith("--month="))?.split("=")[1] ?? "2026-09"
 const isAllTime = args.includes("--all-time")
-const allowanceOverrideArg = args.find((a) => a.startsWith("--allowance="))?.split("=")[1]
-const setOverdraftArg = args.find((a) => a.startsWith("--set-overdraft="))?.split("=")[1]
+const allowanceOverrideArg = args
+  .find((a) => a.startsWith("--allowance="))
+  ?.split("=")[1]
+const setOverdraftArg = args
+  .find((a) => a.startsWith("--set-overdraft="))
+  ?.split("=")[1]
 const shouldDebitBalance = !args.includes("--no-debit-balance")
 const shouldConfirmPending = !args.includes("--no-confirm-pending")
-const includePreTopupOverage = args.includes("--include-pre-topup-overage") || args.includes("--all-overage")
+const includePreTopupOverage =
+  args.includes("--include-pre-topup-overage") || args.includes("--all-overage")
 
 interface _RepairSummary {
   orgId: string
@@ -76,22 +88,36 @@ interface _RepairSummary {
 }
 
 async function main() {
-  console.log("================================================================================")
-  console.log(` WhatsApp Billing & Ledger Repair Script [${isApply ? "EXECUTE / APPLY" : "DRY RUN"}]`)
-  console.log("================================================================================")
+  console.log(
+    "================================================================================"
+  )
+  console.log(
+    ` WhatsApp Billing & Ledger Repair Script [${isApply ? "EXECUTE / APPLY" : "DRY RUN"}]`
+  )
+  console.log(
+    "================================================================================"
+  )
   console.log(`Target Org ID : ${orgIdArg}`)
   console.log(`Target Period : ${monthArg}`)
-  console.log(`Mode          : ${isApply ? "⚠️  APPLY (Modifications will be written)" : "🛡️  DRY-RUN (No changes will be saved)"}`)
-  console.log("--------------------------------------------------------------------------------\n")
+  console.log(
+    `Mode          : ${isApply ? "⚠️  APPLY (Modifications will be written)" : "🛡️  DRY-RUN (No changes will be saved)"}`
+  )
+  console.log(
+    "--------------------------------------------------------------------------------\n"
+  )
 
   const [yearStr, monthStr] = monthArg.split("-")
   const year = Number(yearStr)
   const month = Number(monthStr)
   const startDate = new Date(Date.UTC(year, month - 1, 1))
-  const endDate = new Date(Date.UTC(month === 12 ? year + 1 : year, month === 12 ? 0 : month, 1))
+  const endDate = new Date(
+    Date.UTC(month === 12 ? year + 1 : year, month === 12 ? 0 : month, 1)
+  )
 
   // 1. Fetch Organization Device
-  const deviceWhere: Prisma.WhatsappDeviceWhereInput = { organizationId: orgIdArg }
+  const deviceWhere: Prisma.WhatsappDeviceWhereInput = {
+    organizationId: orgIdArg,
+  }
   if (deviceIdArg) deviceWhere.id = deviceIdArg
   if (phoneArg) deviceWhere.phoneNumber = { contains: phoneArg }
 
@@ -115,11 +141,18 @@ async function main() {
   }
 
   const profile = device.whatsappProfile as Record<string, unknown> | null
-  const deviceName = (profile?.verified_name as string) || (profile?.name as string) || device.phoneNumber
-  console.log(`📱 Device Found: ${deviceName} (${device.phoneNumber}) [ID: ${device.id}]`)
+  const deviceName =
+    (profile?.verified_name as string) ||
+    (profile?.name as string) ||
+    device.phoneNumber
+  console.log(
+    `📱 Device Found: ${deviceName} (${device.phoneNumber}) [ID: ${device.id}]`
+  )
   console.log(`   - Quota Base     : ${device.quotaBase}`)
   console.log(`   - Current Left   : ${device.quotaBaseOut}`)
-  console.log(`   - Addon Quota    : ${device.addonQuota} / ${device.addonQuotaTotal}\n`)
+  console.log(
+    `   - Addon Quota    : ${device.addonQuota} / ${device.addonQuotaTotal}\n`
+  )
 
   // 2. Fetch Billing Account
   const billingAccount = await prisma.billingAccount.findUnique({
@@ -134,7 +167,9 @@ async function main() {
   const currentBalanceNum = Number(billingAccount.balance)
   console.log(`💳 Billing Account: ${billingAccount.id}`)
   console.log(`   - Currency       : ${billingAccount.currency}`)
-  console.log(`   - Current Balance: ${billingAccount.currency} ${currentBalanceNum.toLocaleString("id-ID")}\n`)
+  console.log(
+    `   - Current Balance: ${billingAccount.currency} ${currentBalanceNum.toLocaleString("id-ID")}\n`
+  )
 
   // 3. Inspect Ledgers in Period
   const totalOrgLedgersCount = await prisma.whatsappBillingLedger.count({
@@ -156,7 +191,9 @@ async function main() {
     orderBy: { createdAt: "asc" },
   })
 
-  console.log(`📊 Period [${isAllTime ? "ALL-TIME" : monthArg}] Ledgers Analysis:`)
+  console.log(
+    `📊 Period [${isAllTime ? "ALL-TIME" : monthArg}] Ledgers Analysis:`
+  )
   console.log(`   - Total Org Ledgers (All Time) : ${totalOrgLedgersCount}`)
   console.log(`   - Filtered Period Ledgers      : ${periodLedgers.length}`)
 
@@ -172,14 +209,23 @@ async function main() {
 
   const topupDate = latestTopup?.createdAt ?? new Date(0)
   if (latestTopup) {
-    console.log(`   - Latest Topup Found           : ${billingAccount.currency} ${Number(latestTopup.amount).toLocaleString("id-ID")} on ${latestTopup.createdAt.toISOString()}`)
+    console.log(
+      `   - Latest Topup Found           : ${billingAccount.currency} ${Number(latestTopup.amount).toLocaleString("id-ID")} on ${latestTopup.createdAt.toISOString()}`
+    )
   } else {
-    console.log(`   - Topup Found                  : None (all overages considered pre-topup)`)
+    console.log(
+      `   - Topup Found                  : None (all overages considered pre-topup)`
+    )
   }
 
-  const quotaBaseNum = allowanceOverrideArg !== undefined ? Number(allowanceOverrideArg) : Number(device.quotaBase)
+  const quotaBaseNum =
+    allowanceOverrideArg !== undefined
+      ? Number(allowanceOverrideArg)
+      : Number(device.quotaBase)
   if (allowanceOverrideArg !== undefined) {
-    console.log(`   - Quota Allowance Override     : ${quotaBaseNum} credits (via --allowance=${allowanceOverrideArg})`)
+    console.log(
+      `   - Quota Allowance Override     : ${quotaBaseNum} credits (via --allowance=${allowanceOverrideArg})`
+    )
   }
 
   let cumulativeCredits = 0
@@ -222,21 +268,43 @@ async function main() {
     ? [...unbilledPreTopupLedgers, ...unbilledPostTopupLedgers]
     : unbilledPostTopupLedgers
 
-  console.log(`   - Total Credits Consumed       : ${cumulativeCredits} (Allowance: ${quotaBaseNum})`)
+  console.log(
+    `   - Total Credits Consumed       : ${cumulativeCredits} (Allowance: ${quotaBaseNum})`
+  )
   console.log(`   - Total Overage Credits        : ${totalOverageCredits}`)
-  console.log(`     ├─ Pre-Topup Overage         : ${overagePreTopupCredits} credits (Unbilled: ${unbilledPreTopupLedgers.length} ledgers)`)
-  console.log(`     └─ Post-Topup Overage        : ${overagePostTopupCredits} credits (Unbilled: ${unbilledPostTopupLedgers.length} ledgers)`)
+  console.log(
+    `     ├─ Pre-Topup Overage         : ${overagePreTopupCredits} credits (Unbilled: ${unbilledPreTopupLedgers.length} ledgers)`
+  )
+  console.log(
+    `     └─ Post-Topup Overage        : ${overagePostTopupCredits} credits (Unbilled: ${unbilledPostTopupLedgers.length} ledgers)`
+  )
   console.log(`   - Database Ledger Status in DB :`)
-  console.log(`     ├─ Already pricingBillable=true  : ${alreadyBillableCount} ledgers (PAYG Saldo in DB)`)
-  console.log(`     └─ Unset pricingBillable (null)  : ${unbilledBillableNullCount} ledgers (Allowance Quota in DB)`)
-  console.log(`   - Target Ledgers to Convert    : ${targetUnbilledLedgers.length} ledgers ${includePreTopupOverage ? "(including pre-topup)" : "(post-topup only)"}`)
+  console.log(
+    `     ├─ Already pricingBillable=true  : ${alreadyBillableCount} ledgers (PAYG Saldo in DB)`
+  )
+  console.log(
+    `     └─ Unset pricingBillable (null)  : ${unbilledBillableNullCount} ledgers (Allowance Quota in DB)`
+  )
+  console.log(
+    `   - Target Ledgers to Convert    : ${targetUnbilledLedgers.length} ledgers ${includePreTopupOverage ? "(including pre-topup)" : "(post-topup only)"}`
+  )
 
   if (periodLedgers.length === 0 && totalOrgLedgersCount > 0) {
-    console.log(`\n💡 Tip: No ledgers found in period '${monthArg}'. Try running with --all-time or checking the correct --month=YYYY-MM.`)
+    console.log(
+      `\n💡 Tip: No ledgers found in period '${monthArg}'. Try running with --all-time or checking the correct --month=YYYY-MM.`
+    )
   } else if (totalOverageCredits === 0 && cumulativeCredits > 0) {
-    console.log(`\n💡 Tip: Consumed credits (${cumulativeCredits}) <= Allowance (${quotaBaseNum}). If this org should have 0 package quota (pure PAYG), pass --allowance=0.`)
-  } else if (unbilledPostTopupLedgers.length === 0 && unbilledPreTopupLedgers.length > 0 && !includePreTopupOverage) {
-    console.log(`\n💡 Tip: All ${unbilledPreTopupLedgers.length} overage ledgers occurred BEFORE the top-up date. To convert them to PAYG Saldo, pass --include-pre-topup-overage.`)
+    console.log(
+      `\n💡 Tip: Consumed credits (${cumulativeCredits}) <= Allowance (${quotaBaseNum}). If this org should have 0 package quota (pure PAYG), pass --allowance=0.`
+    )
+  } else if (
+    unbilledPostTopupLedgers.length === 0 &&
+    unbilledPreTopupLedgers.length > 0 &&
+    !includePreTopupOverage
+  ) {
+    console.log(
+      `\n💡 Tip: All ${unbilledPreTopupLedgers.length} overage ledgers occurred BEFORE the top-up date. To convert them to PAYG Saldo, pass --include-pre-topup-overage.`
+    )
   }
 
   // 4. Inspect Stuck Pending Ledgers (CHARGED_PENDING_VERIFY)
@@ -248,7 +316,9 @@ async function main() {
     },
     orderBy: { createdAt: "asc" },
   })
-  console.log(`\n⏳ Stuck Pending Ledgers (CHARGED_PENDING_VERIFY): ${stuckPendingLedgers.length} records`)
+  console.log(
+    `\n⏳ Stuck Pending Ledgers (CHARGED_PENDING_VERIFY): ${stuckPendingLedgers.length} records`
+  )
 
   // 5. Calculate Pricing for Unbilled Overage
   // Fetch Base Price for UTILITY (or respective categories)
@@ -280,34 +350,57 @@ async function main() {
     targetQuotaBaseOut = Number(setOverdraftArg)
     targetQuotaReason = `Explicitly set via --set-overdraft=${setOverdraftArg}`
   } else {
-    targetQuotaBaseOut = cumulativeCredits >= quotaBaseNum ? 0 : quotaBaseNum - cumulativeCredits
+    targetQuotaBaseOut =
+      cumulativeCredits >= quotaBaseNum ? 0 : quotaBaseNum - cumulativeCredits
     targetQuotaReason = `Allowance ${quotaBaseNum} exhausted (0 left). Overages handled via PAYG Saldo.`
   }
 
-  console.log("\n--------------------------------------------------------------------------------")
+  console.log(
+    "\n--------------------------------------------------------------------------------"
+  )
   console.log("📋 Proposed Corrections:")
-  console.log("--------------------------------------------------------------------------------")
+  console.log(
+    "--------------------------------------------------------------------------------"
+  )
   console.log(`1. Device Quota Base Out:`)
   console.log(`   Current: ${device.quotaBaseOut}`)
   console.log(`   Target : ${targetQuotaBaseOut} (${targetQuotaReason})`)
 
   console.log(`\n2. Stuck Pending Ledgers:`)
-  console.log(`   Update ${stuckPendingLedgers.length} records from CHARGED_PENDING_VERIFY -> CONFIRMED`)
+  console.log(
+    `   Update ${stuckPendingLedgers.length} records from CHARGED_PENDING_VERIFY -> CONFIRMED`
+  )
 
   console.log(`\n3. Unbilled Overage Ledgers to Convert to PAYG:`)
-  console.log(`   Update ${targetUnbilledLedgers.length} ledgers -> pricingBillable = true`)
+  console.log(
+    `   Update ${targetUnbilledLedgers.length} ledgers -> pricingBillable = true`
+  )
 
   console.log(`\n4. Balance Deduction:`)
-  console.log(`   Target unbilled messages     : ${targetUnbilledLedgers.length}`)
-  console.log(`   Total deduction amount       : ${billingAccount.currency} ${totalDeductionAmount.toLocaleString("id-ID")}`)
-  console.log(`   Current Balance              : ${billingAccount.currency} ${currentBalanceNum.toLocaleString("id-ID")}`)
-  console.log(`   Target Balance After Debit   : ${billingAccount.currency} ${targetBalanceNum.toLocaleString("id-ID")}`)
-  console.log("--------------------------------------------------------------------------------\n")
+  console.log(
+    `   Target unbilled messages     : ${targetUnbilledLedgers.length}`
+  )
+  console.log(
+    `   Total deduction amount       : ${billingAccount.currency} ${totalDeductionAmount.toLocaleString("id-ID")}`
+  )
+  console.log(
+    `   Current Balance              : ${billingAccount.currency} ${currentBalanceNum.toLocaleString("id-ID")}`
+  )
+  console.log(
+    `   Target Balance After Debit   : ${billingAccount.currency} ${targetBalanceNum.toLocaleString("id-ID")}`
+  )
+  console.log(
+    "--------------------------------------------------------------------------------\n"
+  )
 
   if (isDryRun) {
-    console.log("🔒 DRY-RUN COMPLETED: No changes were applied to the database.")
+    console.log(
+      "🔒 DRY-RUN COMPLETED: No changes were applied to the database."
+    )
     console.log("👉 To apply these fixes, run:")
-    console.log(`   bun --env-file=.env scripts/repair-whatsapp-billing-org.ts --apply\n`)
+    console.log(
+      `   bun --env-file=.env scripts/repair-whatsapp-billing-org.ts --apply\n`
+    )
     return
   }
 
@@ -321,7 +414,9 @@ async function main() {
         where: { id: device.id },
         data: { quotaBaseOut: new Prisma.Decimal(targetQuotaBaseOut) },
       })
-      console.log(`   ✅ Device ${device.id} quotaBaseOut updated to ${targetQuotaBaseOut}`)
+      console.log(
+        `   ✅ Device ${device.id} quotaBaseOut updated to ${targetQuotaBaseOut}`
+      )
     }
 
     // B. Fix Stuck Pending Ledgers
@@ -339,7 +434,9 @@ async function main() {
 
     // C. Mark Unbilled Overage Ledgers as pricingBillable
     const targetLedgersToMark = includePreTopupOverage
-      ? periodLedgers.filter((l) => !l.isReverted && !l.pricingBillable && Number(l.quotaValue) > 0)
+      ? periodLedgers.filter(
+          (l) => !l.isReverted && !l.pricingBillable && Number(l.quotaValue) > 0
+        )
       : unbilledPostTopupLedgers
 
     if (targetLedgersToMark.length > 0) {
@@ -363,12 +460,16 @@ async function main() {
         })
         markedCount += res.count
       }
-      console.log(`   ✅ Marked ${markedCount} ledgers as pricingBillable = true`)
+      console.log(
+        `   ✅ Marked ${markedCount} ledgers as pricingBillable = true`
+      )
     }
 
     // D. Debit Organization Balance if requested and deduction > 0
     if (shouldDebitBalance && totalDeductionAmount > 0) {
-      const billingTxService = new BillingTransactionService(tx as unknown as typeof prisma)
+      const billingTxService = new BillingTransactionService(
+        tx as unknown as typeof prisma
+      )
       const idempotencyKey = `manual-repair-overage:${orgIdArg}:${monthArg}:${targetUnbilledLedgers.length}-msgs`
 
       const mutationResult = await billingTxService.debitServiceBalance(
@@ -385,11 +486,11 @@ async function main() {
             period: monthArg,
           },
           line: {
-            description: `WhatsApp overage charge (${monthArg}: ${targetUnbilledLedgers.length} messages)`,
+            description: "WhatsApp overage quota credit (UTILITY)",
             quantity: new Prisma.Decimal(targetUnbilledLedgers.length),
             unitPrice: new Prisma.Decimal(defaultUtilityPrice),
             lineType: "USAGE",
-            category: "whatsapp",
+            category: "whatsapp-utility",
           },
         },
         tx as unknown as typeof prisma
@@ -397,8 +498,12 @@ async function main() {
 
       console.log(`   ✅ Balance debited successfully:`)
       console.log(`      - Adjustment ID : ${mutationResult.adjustmentId}`)
-      console.log(`      - Balance Before: ${mutationResult.currency} ${Number(mutationResult.balanceBefore).toLocaleString("id-ID")}`)
-      console.log(`      - Balance After : ${mutationResult.currency} ${Number(mutationResult.balanceAfter).toLocaleString("id-ID")}`)
+      console.log(
+        `      - Balance Before: ${mutationResult.currency} ${Number(mutationResult.balanceBefore).toLocaleString("id-ID")}`
+      )
+      console.log(
+        `      - Balance After : ${mutationResult.currency} ${Number(mutationResult.balanceAfter).toLocaleString("id-ID")}`
+      )
     }
   })
 
