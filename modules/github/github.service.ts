@@ -505,7 +505,7 @@ const dedupeRepositories = (repositories: GithubRepositoryListItem[]) => {
   return Array.from(deduped.values())
 }
 
-const createInstallationToken = async (
+export const createInstallationToken = async (
   installationId: bigint | number,
   forceRefresh = false
 ) => {
