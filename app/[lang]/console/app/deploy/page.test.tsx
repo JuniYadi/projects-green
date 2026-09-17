@@ -5,6 +5,7 @@ import {
   fireEvent,
   render,
   waitFor,
+  within,
 } from "@testing-library/react"
 import DeployPageClient from "./page-client"
 
@@ -184,18 +185,24 @@ describe("DeployPage Client", () => {
       fireEvent.click(continueBtn)
     })
 
-    // Screen 2: AI Deployment Summary
+    // Screen 2: Executive Launch Card
     await waitFor(() => {
-      expect(view.getByText("Deployment Summary")).toBeTruthy()
+      const launchCard = view.getByTestId("executive-launch-card")
+      expect(launchCard).toBeTruthy()
       expect(
-        view.getByText("Review and adjust your configuration before launching.")
+        within(launchCard).getByText("EXECUTIVE DEPLOYMENT LAUNCH CARD")
       ).toBeTruthy()
-      expect(view.getByText("Next.js 14.2.3")).toBeTruthy()
-      expect(view.getByText("Node.js 20")).toBeTruthy()
+      expect(
+        within(launchCard).getByText("AI AGENT VERIFICATION SUMMARY")
+      ).toBeTruthy()
+      expect(
+        within(launchCard).getByText("Next.js 14.2.3 (Node.js 20)")
+      ).toBeTruthy()
+      expect(within(launchCard).getByText("3000 (HTTP)")).toBeTruthy()
     })
   })
 
-  it("allows environment variable management and compute sizing selection on Screen 2", async () => {
+  it("displays zero-config notice and returns to chat with conversation intact via escape hatch", async () => {
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
     // Step 1: inspect in chat
@@ -219,43 +226,38 @@ describe("DeployPage Client", () => {
       )
     })
 
-    // Screen 2: verify balance and add env variable
+    // Screen 2: verify zero-config notice and tenant balance
     await waitFor(() => {
-      expect(view.getByText("Balance Verified")).toBeTruthy()
-      expect(view.getByText("$50.00 available")).toBeTruthy()
+      expect(view.getByTestId("zero-config-badge")).toBeTruthy()
+      expect(view.getByText("Zero-Config Ready")).toBeTruthy()
+      expect(
+        view.getByText(/variables auto-configured from \.env\.example/i)
+      ).toBeTruthy()
+      expect(
+        view.getByText(
+          /\(Production secrets can be configured anytime in App Settings\)/i
+        )
+      ).toBeTruthy()
+      expect(
+        view.getByText(/\(Verified ✓ Cukup untuk peluncuran\)/i)
+      ).toBeTruthy()
     })
 
-    // Verify auto-prefilled environment variables exist
-    expect(view.getByText("NODE_ENV")).toBeTruthy()
-    expect(view.getByText("3 variables configured")).toBeTruthy()
-
-    // Add env var
-    const keyInput = view.getByPlaceholderText("VARIABLE_NAME")
-    const valInputs = view.getAllByPlaceholderText("Value")
-    const valInput = valInputs[valInputs.length - 1]
-    const addBtn = view.getByRole("button", { name: /add variable/i })
-
+    // Test escape hatch
+    const escapeBtn = view.getByRole("button", {
+      name: /Kembali ke Tanya Chat/i,
+    })
     await act(async () => {
-      fireEvent.change(keyInput, { target: { value: "DATABASE_URL" } })
-      fireEvent.change(valInput, {
-        target: { value: "postgres://user:pass@host/db" },
-      })
-      fireEvent.click(addBtn)
+      fireEvent.click(escapeBtn)
     })
 
-    expect(view.getByText("DATABASE_URL")).toBeTruthy()
-    expect(view.getByText("4 variables configured")).toBeTruthy()
-
-    // Test start over
-    const startOverBtn = view.getByRole("button", { name: /start over/i })
-    await act(async () => {
-      fireEvent.click(startOverBtn)
+    // Should return to Screen 1 (Chat Stream) with conversation preserved
+    await waitFor(() => {
+      expect(
+        view.getByText("Hi Alex, what do you want to deploy today?")
+      ).toBeTruthy()
+      expect(view.getByTestId("inline-blueprint-card")).toBeTruthy()
     })
-
-    // Should return to Screen 1 (Chat Stream)
-    expect(
-      view.getByText("Hi Alex, what do you want to deploy today?")
-    ).toBeTruthy()
   })
 
   it("triggers deployment from Screen 2 and advances to Flight Deck", async () => {
@@ -282,11 +284,11 @@ describe("DeployPage Client", () => {
     })
 
     await waitFor(() => {
-      expect(view.getByText("Deployment Summary")).toBeTruthy()
+      expect(view.getByTestId("executive-launch-card")).toBeTruthy()
     })
 
     const deployBtn = view.getByRole("button", {
-      name: /deploy application now/i,
+      name: /LAUNCH APPLICATION NOW/i,
     })
 
     await act(async () => {
@@ -299,7 +301,7 @@ describe("DeployPage Client", () => {
     })
   })
 
-  it("sanitizes the subdomain and prevents deployment when it is empty", async () => {
+  it("supports zero-config launch without requiring manual secret entry upfront", async () => {
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
     const input = view.getByRole("textbox")
@@ -323,23 +325,18 @@ describe("DeployPage Client", () => {
     })
 
     await waitFor(() => {
-      expect(view.getByText("Deployment Summary")).toBeTruthy()
+      expect(view.getByTestId("executive-launch-card")).toBeTruthy()
     })
 
-    const subdomain = view.getByPlaceholderText("my-app")
     const deployButton = view.getByRole("button", {
-      name: /deploy application now/i,
+      name: /LAUNCH APPLICATION NOW/i,
     })
 
-    await act(async () => {
-      fireEvent.change(subdomain, { target: { value: "My App!🚀" } })
-    })
-    expect(subdomain).toHaveValue("myapp")
-
-    await act(async () => {
-      fireEvent.change(subdomain, { target: { value: "" } })
-    })
-    expect(deployButton).toBeDisabled()
+    // Launch button is enabled and ready without entering secrets
+    expect(deployButton).not.toBeDisabled()
+    expect(
+      view.getByText("3 variables auto-configured from .env.example")
+    ).toBeTruthy()
   })
 
   it("renders Indonesian localized greeting and labels when lang is id", async () => {
@@ -389,14 +386,15 @@ describe("DeployPage Client", () => {
 
     await waitFor(() => {
       expect(view.getByText(/Public Repository Verified/i)).toBeTruthy()
+      expect(view.getByTestId("inline-blueprint-card")).toBeTruthy()
+    })
+
+    const continueBtn = view.getByRole("button", {
+      name: /SIAP DEPLOY -> LANJUT KE LAUNCH CARD/i,
     })
 
     await act(async () => {
-      fireEvent.click(
-        view.getByRole("button", {
-          name: /SIAP DEPLOY -> LANJUT KE LAUNCH CARD/i,
-        })
-      )
+      fireEvent.click(continueBtn)
     })
 
     await waitFor(() => {
@@ -540,39 +538,36 @@ describe("DeployPage Client", () => {
       )
     })
 
-    // Screen 2: AI Copilot and Laravel stack assertions
+    // Screen 2: Executive Launch Card for Laravel stack
     await waitFor(() => {
-      expect(view.getByText("AI Deployment Copilot")).toBeTruthy()
-      expect(view.getByText(/Blueprint Ready/i)).toBeTruthy()
+      const launchCard = view.getByTestId("executive-launch-card")
+      expect(launchCard).toBeTruthy()
       expect(
-        view.getByText(/I've analyzed 'laravel\/laravel' on branch 'main'/i)
+        within(launchCard).getByText("EXECUTIVE DEPLOYMENT LAUNCH CARD")
       ).toBeTruthy()
-      expect(view.getByText("Laravel 11.x")).toBeTruthy()
-      expect(view.getByText("PHP 8.2")).toBeTruthy()
-      expect(view.getByText("Composer")).toBeTruthy()
       expect(
-        view.getByDisplayValue(
-          "composer install --no-dev --optimize-autoloader"
+        within(launchCard).getByText(
+          "Verified via GitHub Adapter (github.com/laravel/laravel)"
         )
       ).toBeTruthy()
       expect(
-        view.getByDisplayValue("php artisan serve --host=0.0.0.0 --port=8000")
+        within(launchCard).getByText("Laravel 11.x (PHP 8.2)")
       ).toBeTruthy()
-      expect(view.getByDisplayValue("8000")).toBeTruthy()
+      expect(within(launchCard).getByText("8000 (HTTP)")).toBeTruthy()
+      expect(
+        within(launchCard).getByText(
+          "12 variables auto-configured from .env.example"
+        )
+      ).toBeTruthy()
+      expect(
+        within(launchCard).getByText(
+          "Medium Tier (1 vCPU · 2GB RAM · $0.04/hour)"
+        )
+      ).toBeTruthy()
     })
-
-    // Pre-fill environment variables button
-    const prefillBtn = view.getByRole("button", { name: /pre-fill keys/i })
-    await act(async () => {
-      fireEvent.click(prefillBtn)
-    })
-
-    expect(view.getByText("APP_NAME")).toBeTruthy()
-    expect(view.getByText("APP_KEY")).toBeTruthy()
-    expect(view.getByText("DB_CONNECTION")).toBeTruthy()
   })
 
-  it("correctly resolves Vite React with tailored VITE_APP_URL and preview start command", async () => {
+  it("correctly resolves Vite React with tailored Executive Launch Card", async () => {
     const mockViteInspectResponse = {
       ok: true,
       data: {
@@ -680,9 +675,21 @@ describe("DeployPage Client", () => {
     })
 
     await waitFor(() => {
-      expect(view.getByText("VITE_APP_URL")).toBeTruthy()
-      expect(view.queryByText("NEXT_PUBLIC_APP_URL")).toBeNull()
-      expect(view.getByDisplayValue("pnpm run preview")).toBeTruthy()
+      const launchCard = view.getByTestId("executive-launch-card")
+      expect(launchCard).toBeTruthy()
+      expect(
+        within(launchCard).getByText("EXECUTIVE DEPLOYMENT LAUNCH CARD")
+      ).toBeTruthy()
+      expect(
+        within(launchCard).getByText(
+          "Verified via GitHub Adapter (github.com/pfnapp/example-vite-react)"
+        )
+      ).toBeTruthy()
+      expect(
+        within(launchCard).getByText("React 19.1 (Node.js 20)")
+      ).toBeTruthy()
+      expect(within(launchCard).getByText("3000 (HTTP)")).toBeTruthy()
+      expect(within(launchCard).getByTestId("zero-config-badge")).toBeTruthy()
     })
   })
 
