@@ -5235,6 +5235,7 @@ export const enMessages: AppMessages = {
           cnameRecordHeading: "CNAME record for {hostname}:",
           apexRecordHeading: "A / AAAA records (Apex Domain @):",
           sslStatusActive: "SSL Active",
+          sslStatusIssuing: "Issuing (Let's Encrypt)...",
           sslStatusAuto: "Automatic (Let's Encrypt)",
           dnsStatusVerified: "Verified",
         },

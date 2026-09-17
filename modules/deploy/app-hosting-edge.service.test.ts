@@ -19,6 +19,18 @@ const verifyDnsTarget = mock(async (): Promise<DnsVerificationResult> => ({
   positiveSources: ["google", "cloudflare"],
 }))
 mock.module("./dns-verification.service", () => ({ verifyDnsTarget }))
+
+const probeDomainCertificate = mock(async () => ({
+  ok: true,
+  authorized: true,
+  authorizationError: null,
+  issuer: "Let's Encrypt",
+  subject: "secure.example.com",
+  validFrom: new Date("2026-09-15T00:00:00.000Z"),
+  validTo: new Date("2026-12-14T00:00:00.000Z"),
+  fingerprint256: "probe-fingerprint",
+}))
+mock.module("./domain-tls-probe.service", () => ({ probeDomainCertificate }))
 class FakeX509Certificate {
   validTo = "2099-01-01T00:00:00.000Z"
   fingerprint256 = "fingerprint"
@@ -132,15 +144,24 @@ const mockPrisma = {
       createdAt: new Date(),
       updatedAt: new Date(),
     })),
-    upsert: mock(async ({ create }: { create: Record<string, unknown> }) => ({
-      id: "cert-1",
-      ...create,
-      expiresAt: null,
-      fingerprint: null,
-      validationError: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })),
+    upsert: mock(
+      async ({
+        create,
+        update,
+      }: {
+        create: Record<string, unknown>
+        update: Record<string, unknown>
+      }) => ({
+        id: "cert-1",
+        expiresAt: null,
+        fingerprint: null,
+        validationError: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...create,
+        ...update,
+      })
+    ),
   },
   applicationDomainAllowlistEntry: {
     create: mock(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -207,6 +228,17 @@ describe("app hosting edge service", () => {
     mockPrisma.applicationDomain.delete.mockClear()
     mockPrisma.applicationDomainCertificate.create.mockClear()
     mockPrisma.applicationDomainCertificate.upsert.mockClear()
+    probeDomainCertificate.mockClear()
+    probeDomainCertificate.mockResolvedValue({
+      ok: true,
+      authorized: true,
+      authorizationError: null,
+      issuer: "Let's Encrypt",
+      subject: "secure.example.com",
+      validFrom: new Date("2026-09-15T00:00:00.000Z"),
+      validTo: new Date("2026-12-14T00:00:00.000Z"),
+      fingerprint256: "probe-fingerprint",
+    })
     mockPrisma.applicationDomainAllowlistEntry.create.mockClear()
     mockPrisma.applicationDomainAllowlistEntry.findFirst.mockReset()
     mockPrisma.applicationDomainAllowlistEntry.findFirst.mockResolvedValue(null)
@@ -1033,5 +1065,26 @@ describe("app hosting edge service", () => {
         cidr: "203.0.113.0/24",
       })
     ).resolves.toBeDefined()
+  })
+
+  it("updates certificate to ACTIVE when DNS is verified and TLS probe succeeds", async () => {
+    seedDomain({ isPrimary: true })
+    const result = await verifyDomain({
+      organizationId: "org-1",
+      slug: "demo",
+      domainId: "domain-1",
+    })
+    expect(result.dnsStatus).toBe("VERIFIED")
+    expect(mockPrisma.applicationDomainCertificate.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { domainId: "domain-1" },
+        create: expect.objectContaining({ status: "ACTIVE" }),
+        update: expect.objectContaining({ status: "ACTIVE" }),
+      })
+    )
+    expect(result.certificate?.status).toBe("ACTIVE")
+    expect(result.certificate?.expiresAt).toEqual(
+      new Date("2026-12-14T00:00:00.000Z")
+    )
   })
 })
