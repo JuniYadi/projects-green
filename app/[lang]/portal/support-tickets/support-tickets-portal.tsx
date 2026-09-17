@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TicketTableSkeleton } from "@/modules/support-tickets/ui/ticket-table-skeleton"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
 import {
@@ -41,13 +42,19 @@ const getSupportTicketColumns = (
   options?: { hideOrganization?: boolean }
 ): ColumnDef<SupportTicket>[] => {
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
   const hideOrganization = options?.hideOrganization ?? false
 
   return [
     {
       accessorKey: "ticketNumber",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Ticket ID" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalSupportTicketsSupportTicketsPortal.columnTicketId
+          }
+        />
       ),
       cell: ({ row }) => {
         const ticketPath = localizePathname({
@@ -74,7 +81,13 @@ const getSupportTicketColumns = (
             }: {
               column: Column<SupportTicket, unknown>
             }) => (
-              <DataTableColumnHeader column={column} title="Organization" />
+              <DataTableColumnHeader
+                column={column}
+                title={
+                  messages.pPortalSupportTicketsSupportTicketsPortal
+                    .columnOrganization
+                }
+              />
             ),
             cell: ({ row }: { row: { original: SupportTicket } }) => (
               <span className="text-xs" title={row.original.organizationId}>
@@ -87,7 +100,12 @@ const getSupportTicketColumns = (
     {
       accessorKey: "requesterWorkosUserId",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Requester" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalSupportTicketsSupportTicketsPortal.columnRequester
+          }
+        />
       ),
       cell: ({ row }) => (
         <span className="text-xs">
@@ -99,7 +117,12 @@ const getSupportTicketColumns = (
     {
       accessorKey: "subject",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Subject" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalSupportTicketsSupportTicketsPortal.columnSubject
+          }
+        />
       ),
       cell: ({ row }) => (
         <span
@@ -113,14 +136,24 @@ const getSupportTicketColumns = (
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalSupportTicketsSupportTicketsPortal.columnStatus
+          }
+        />
       ),
       cell: ({ row }) => SUPPORT_TICKET_STATUS_LABELS[row.original.status],
     },
     {
       accessorKey: "department",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Department" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalSupportTicketsSupportTicketsPortal.columnDepartment
+          }
+        />
       ),
       cell: ({ row }) =>
         SUPPORT_TICKET_DEPARTMENT_LABELS[row.original.department],
@@ -128,14 +161,24 @@ const getSupportTicketColumns = (
     {
       accessorKey: "priority",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Priority" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalSupportTicketsSupportTicketsPortal.columnPriority
+          }
+        />
       ),
       cell: ({ row }) => SUPPORT_TICKET_PRIORITY_LABELS[row.original.priority],
     },
     {
       accessorKey: "service",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Service" />
+        <DataTableColumnHeader
+          column={column}
+          title={
+            messages.pPortalSupportTicketsSupportTicketsPortal.columnService
+          }
+        />
       ),
       cell: ({ row }) =>
         row.original.service
@@ -242,6 +285,7 @@ export function SupportTicketsPortal({
   }, [includeClosed, organizationId, page, pageSize])
 
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
   const createPath = localizePathname({
     pathname: "/portal/support-tickets/new",
     locale,
@@ -252,9 +296,19 @@ export function SupportTicketsPortal({
     <section className="grid gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 pb-3">
-          <CardTitle className="text-base">Support Queue</CardTitle>
+          <CardTitle className="text-base">
+            {
+              messages.pPortalSupportTicketsSupportTicketsPortal
+                .supportQueueTitle
+            }
+          </CardTitle>
           <Button asChild size="sm">
-            <Link href={createPath}>Create Ticket (Admin)</Link>
+            <Link href={createPath}>
+              {
+                messages.pPortalSupportTicketsSupportTicketsPortal
+                  .createTicketAdminButton
+              }
+            </Link>
           </Button>
         </CardHeader>
         <CardContent>
@@ -277,7 +331,10 @@ export function SupportTicketsPortal({
                       setPage(1)
                     }}
                   />
-                  Show closed
+                  {
+                    messages.pPortalSupportTicketsSupportTicketsPortal
+                      .showClosedLabel
+                  }
                 </label>
                 <Select
                   value={String(pageSize)}
@@ -290,9 +347,24 @@ export function SupportTicketsPortal({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="20">20 / page</SelectItem>
-                    <SelectItem value="50">50 / page</SelectItem>
-                    <SelectItem value="100">100 / page</SelectItem>
+                    <SelectItem value="20">
+                      {
+                        messages.pPortalSupportTicketsSupportTicketsPortal
+                          .pageSize20Option
+                      }
+                    </SelectItem>
+                    <SelectItem value="50">
+                      {
+                        messages.pPortalSupportTicketsSupportTicketsPortal
+                          .pageSize50Option
+                      }
+                    </SelectItem>
+                    <SelectItem value="100">
+                      {
+                        messages.pPortalSupportTicketsSupportTicketsPortal
+                          .pageSize100Option
+                      }
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -308,7 +380,10 @@ export function SupportTicketsPortal({
                   requesterWorkosUserId: false,
                   status: true,
                 }}
-                searchPlaceholder="Filter by Ticket ID, Organization, or Subject..."
+                searchPlaceholder={
+                  messages.pPortalSupportTicketsSupportTicketsPortal
+                    .searchPlaceholder
+                }
                 searchableColumns={[
                   "ticketNumber",
                   "organizationId",
@@ -317,7 +392,9 @@ export function SupportTicketsPortal({
                 facetFilters={[
                   {
                     columnId: "status",
-                    label: "Status",
+                    label:
+                      messages.pPortalSupportTicketsSupportTicketsPortal
+                        .columnStatus,
                     allLabel: "All status",
                     options: [
                       { label: "Open", value: "open" },
@@ -328,7 +405,9 @@ export function SupportTicketsPortal({
                   },
                   {
                     columnId: "department",
-                    label: "Department",
+                    label:
+                      messages.pPortalSupportTicketsSupportTicketsPortal
+                        .columnDepartment,
                     allLabel: "All departments",
                     options: SUPPORT_TICKET_DEPARTMENTS.map(
                       (departmentValue) => ({
@@ -340,7 +419,9 @@ export function SupportTicketsPortal({
                   },
                   {
                     columnId: "priority",
-                    label: "Priority",
+                    label:
+                      messages.pPortalSupportTicketsSupportTicketsPortal
+                        .columnPriority,
                     allLabel: "All priority",
                     options: [
                       { label: "Low", value: "low" },
@@ -350,7 +431,9 @@ export function SupportTicketsPortal({
                   },
                   {
                     columnId: "service",
-                    label: "Service",
+                    label:
+                      messages.pPortalSupportTicketsSupportTicketsPortal
+                        .columnService,
                     allLabel: "All service",
                     options: SUPPORT_TICKET_SERVICES.map((serviceValue) => ({
                       label: SUPPORT_TICKET_SERVICE_LABELS[serviceValue],
@@ -359,11 +442,23 @@ export function SupportTicketsPortal({
                   },
                 ]}
                 initialSorting={[{ id: "ticketNumber", desc: true }]}
-                emptyMessage="No support tickets match your filters."
+                emptyMessage={
+                  messages.pPortalSupportTicketsSupportTicketsPortal
+                    .emptyMessage
+                }
               />
               <div className="mt-4 flex items-center justify-between gap-4 text-sm">
                 <span>
-                  Page {page} of {totalPages}
+                  {
+                    messages.pPortalSupportTicketsSupportTicketsPortal
+                      .paginationPageLabel
+                  }{" "}
+                  {page}{" "}
+                  {
+                    messages.pPortalSupportTicketsSupportTicketsPortal
+                      .paginationOfLabel
+                  }{" "}
+                  {totalPages}
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -374,7 +469,10 @@ export function SupportTicketsPortal({
                       setPage((current) => Math.max(1, current - 1))
                     }
                   >
-                    Previous
+                    {
+                      messages.pPortalSupportTicketsSupportTicketsPortal
+                        .previousButton
+                    }
                   </Button>
                   <Button
                     variant="outline"
@@ -382,7 +480,10 @@ export function SupportTicketsPortal({
                     disabled={page >= totalPages}
                     onClick={() => setPage((current) => current + 1)}
                   >
-                    Next
+                    {
+                      messages.pPortalSupportTicketsSupportTicketsPortal
+                        .nextButton
+                    }
                   </Button>
                 </div>
               </div>
