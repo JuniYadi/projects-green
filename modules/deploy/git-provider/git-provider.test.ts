@@ -656,7 +656,7 @@ describe("GitProviderRegistry", () => {
     const registry = new GitProviderRegistry()
     registry.register({
       name: "github",
-      matches: (url) => url.includes("github.com"),
+      matches: (url) => /^https?:\/\/github\.com\//.test(url),
       checkAccess: async () => ({
         accessible: true,
         provider: "github",
@@ -683,5 +683,61 @@ describe("GitProviderRegistry", () => {
     expect(result.accessible).toBe(false)
     expect(result.provider).toBe("generic")
     expect(result.reason).toContain("No git provider adapter found")
+  })
+
+  it("checkGitAccess exported function delegates to global registry", async () => {
+    const result = await checkGitAccess(
+      "https://invalid-nonexistent-provider.com/a/b"
+    )
+    expect(result.accessible).toBe(false)
+    expect(result.provider).toBe("generic")
+    expect(result.reason).toContain("No git provider adapter found")
+  })
+
+  it("replaces existing adapter when registered with the same name", () => {
+    const customRegistry = new GitProviderRegistry()
+    const adapter1 = {
+      name: "custom",
+      matches: (u: string) => u.includes("custom1"),
+      checkAccess: async () => ({
+        accessible: true,
+        provider: "generic" as const,
+      }),
+      listTree: async () => ({ files: [], truncated: false }),
+      readFile: async () => ({ content: "", size: 0 }),
+    }
+    const adapter2 = {
+      name: "custom",
+      matches: (u: string) => u.includes("custom2"),
+      checkAccess: async () => ({
+        accessible: true,
+        provider: "generic" as const,
+      }),
+      listTree: async () => ({ files: [], truncated: false }),
+      readFile: async () => ({ content: "", size: 0 }),
+    }
+    customRegistry.register(adapter1)
+    expect(() => customRegistry.resolve("https://custom1.com")).not.toThrow()
+    customRegistry.register(adapter2)
+    expect(() => customRegistry.resolve("https://custom1.com")).toThrow()
+    expect(() => customRegistry.resolve("https://custom2.com")).not.toThrow()
+  })
+
+  it("handles non-Error thrown during checkAccess", async () => {
+    const customRegistry = new GitProviderRegistry([
+      {
+        name: "exploding",
+        matches: () => true,
+        checkAccess: async () => {
+          throw "Raw string error"
+        },
+        listTree: async () => ({ files: [], truncated: false }),
+        readFile: async () => ({ content: "", size: 0 }),
+      },
+    ])
+    const result = await customRegistry.checkAccess("https://exploding.com")
+    expect(result.accessible).toBe(false)
+    expect(result.reason).toBe("Unknown git provider error")
+    expect(result.provider).toBe("generic")
   })
 })

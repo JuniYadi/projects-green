@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { XCircle, Globe, LightbulbFilament } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { cn } from "@/lib/utils"
 
 export type PolicyBlockedCardProps = {
@@ -25,6 +26,8 @@ export function PolicyBlockedCard({
   className,
 }: PolicyBlockedCardProps) {
   const isId = lang === "id"
+  const messages = getMessagesForMaybeLocale(lang)
+  const agentMessages = messages.console.app.deployAgent
 
   return (
     <div
@@ -38,7 +41,7 @@ export function PolicyBlockedCard({
       <div className="flex items-center gap-2 border-b border-destructive/20 pb-3">
         <XCircle className="h-5 w-5 shrink-0 text-destructive" weight="bold" />
         <h2 className="text-xs font-bold tracking-wider text-destructive uppercase sm:text-sm">
-          (X) DEPLOYMENT DIBLOKIR OLEH KEBIJAKAN PLATFORM (POLICY BLOCKED)
+          {agentMessages.policyBlockedHeader}
         </h2>
       </div>
 
@@ -84,13 +87,12 @@ export function PolicyBlockedCard({
         </div>
         <ol className="flex list-decimal flex-col gap-1 pl-4 text-xs text-muted-foreground sm:text-sm">
           <li>
-            Gunakan 1-Click Managed WordPress di App Marketplace (
-            {marketplaceUrl}).
+            {agentMessages.policyMarketplaceRecommend.replace(
+              "{url}",
+              marketplaceUrl
+            )}
           </li>
-          <li>
-            Atau bungkus aplikasi Anda ke dalam Dockerfile yang terisolasi
-            dengan aman.
-          </li>
+          <li>{agentMessages.policyDockerRecommend}</li>
         </ol>
       </div>
 
@@ -104,7 +106,7 @@ export function PolicyBlockedCard({
             className="h-9 gap-2 bg-primary text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
           >
             <Globe className="h-4 w-4" weight="bold" />
-            <span>[ 🌐 Buka WordPress Marketplace ]</span>
+            <span>{agentMessages.openMarketplaceBtn}</span>
           </Button>
         ) : (
           <Button
@@ -113,7 +115,7 @@ export function PolicyBlockedCard({
           >
             <Link href={marketplaceUrl} data-testid="policy-marketplace-btn">
               <Globe className="h-4 w-4" weight="bold" />
-              <span>[ 🌐 Buka WordPress Marketplace ]</span>
+              <span>{agentMessages.openMarketplaceBtn}</span>
             </Link>
           </Button>
         )}
@@ -125,7 +127,7 @@ export function PolicyBlockedCard({
           onClick={onSelectCustomDockerfile}
           className="h-9 gap-2 border-border bg-background text-xs font-medium text-foreground hover:bg-muted"
         >
-          <span>[ 🐳 Gunakan Dockerfile Custom ]</span>
+          <span>{agentMessages.useCustomDockerfileBtn}</span>
         </Button>
       </div>
     </div>

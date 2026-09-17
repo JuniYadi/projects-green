@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { CheckCircle, RocketLaunch, Spinner } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { getAccount, type BillingAccount } from "@/lib/billing-client"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { cn } from "@/lib/utils"
 import type { InlineBlueprintData } from "../chat/inline-blueprint-card"
 import type { GitSourceConfig } from "../git-deploy/types"
@@ -70,6 +71,8 @@ export function ExecutiveLaunchCard({
   isLaunching = false,
 }: ExecutiveLaunchCardProps) {
   const isId = lang === "id"
+  const messages = getMessagesForMaybeLocale(lang)
+  const agentMessages = messages.console.app.deployAgent
 
   const gitProvider = useMemo(() => getGitProvider(source.url), [source.url])
   const cleanRepoUrl = useMemo(() => formatRepoUrl(source.url), [source.url])
@@ -155,7 +158,7 @@ export function ExecutiveLaunchCard({
         <div className="flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-primary" weight="bold" />
           <h2 className="text-xs font-bold tracking-wider text-foreground uppercase">
-            AI AGENT VERIFICATION SUMMARY
+            {agentMessages.aiVerificationSummary}
           </h2>
         </div>
 
@@ -163,17 +166,24 @@ export function ExecutiveLaunchCard({
           <div className="flex items-center gap-2">
             <span className="font-bold text-primary">[✓]</span>
             <span>
-              Verified via {gitProvider.name} Adapter ({cleanRepoUrl})
+              {agentMessages.verifiedViaSummary
+                .replace("{provider}", gitProvider.name)
+                .replace("{url}", cleanRepoUrl)}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-primary">[✓]</span>
-            <span>Tools executed: {toolsList}</span>
+            <span>
+              {agentMessages.toolsExecutedLabel.replace("{tools}", toolsList)}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-primary">[✓]</span>
             <span>
-              AI Confidence: {confidence}% · Production-ready configuration
+              {agentMessages.aiConfidenceSummary.replace(
+                "{confidence}",
+                String(confidence)
+              )}
             </span>
           </div>
         </div>
@@ -183,7 +193,7 @@ export function ExecutiveLaunchCard({
       <div className="flex flex-col gap-6 rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="border-b border-border/60 pb-3">
           <h1 className="text-sm font-bold tracking-wider text-foreground uppercase">
-            EXECUTIVE DEPLOYMENT LAUNCH CARD
+            {agentMessages.launchCardTitle}
           </h1>
         </div>
 
@@ -191,7 +201,7 @@ export function ExecutiveLaunchCard({
           {/* Target Stack */}
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-muted-foreground">
-              Target Stack:
+              {agentMessages.targetStackLabel}
             </span>
             <span className="text-sm font-semibold text-foreground">
               {targetStack}
@@ -201,7 +211,7 @@ export function ExecutiveLaunchCard({
           {/* Listen Port */}
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-muted-foreground">
-              Listen Port:
+              {agentMessages.listenPortLabel}
             </span>
             <span className="text-sm font-semibold text-foreground">
               {listenPort}
@@ -211,7 +221,7 @@ export function ExecutiveLaunchCard({
           {/* Branch / Dir */}
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-muted-foreground">
-              Branch / Dir:
+              {agentMessages.branchDirLabel}
             </span>
             <span className="font-mono text-sm font-medium text-foreground">
               {branchDir}
@@ -221,7 +231,7 @@ export function ExecutiveLaunchCard({
           {/* Subdomain */}
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-muted-foreground">
-              Subdomain:
+              {agentMessages.subdomainFieldLabel}
             </span>
             <span className="font-mono text-sm font-medium text-foreground">
               {subdomain}
@@ -231,7 +241,7 @@ export function ExecutiveLaunchCard({
           {/* Compute Plan */}
           <div className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs font-medium text-muted-foreground">
-              Compute Plan:
+              {agentMessages.computePlanLabel}
             </span>
             <span className="text-sm font-medium text-foreground">
               {computePlan}
@@ -241,7 +251,7 @@ export function ExecutiveLaunchCard({
           {/* Tenant Balance */}
           <div className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs font-medium text-muted-foreground">
-              Tenant Balance:
+              {agentMessages.tenantBalanceLabel}
             </span>
             <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
               {balanceLoading ? (
@@ -250,16 +260,14 @@ export function ExecutiveLaunchCard({
                 </span>
               ) : balanceError ? (
                 <span className="font-semibold text-destructive">
-                  {isId
-                    ? "Tidak dapat memverifikasi saldo"
-                    : "Could Not Verify Balance"}
+                  {agentMessages.balanceUnknown}
                 </span>
               ) : (
                 <span>
                   {balanceText}{" "}
                   {isBalanceSufficient ? (
                     <span className="text-muted-foreground">
-                      (Verified ✓ Cukup untuk peluncuran)
+                      {agentMessages.balanceVerifiedSufficient}
                     </span>
                   ) : null}
                 </span>
@@ -285,7 +293,7 @@ export function ExecutiveLaunchCard({
           {/* Environment (Zero-Config Notice) */}
           <div className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs font-medium text-muted-foreground">
-              Environment:
+              {agentMessages.environmentFieldLabel}
             </span>
             <ZeroConfigNotice
               count={blueprint.envVarsCount ?? 12}
@@ -311,16 +319,12 @@ export function ExecutiveLaunchCard({
             {isLaunching ? (
               <span className="inline-flex items-center gap-2">
                 <Spinner className="h-4 w-4 animate-spin" />
-                <span>
-                  {isId
-                    ? "Meluncurkan Aplikasi..."
-                    : "Launching Application..."}
-                </span>
+                <span>{agentMessages.launchingApp}</span>
               </span>
             ) : (
               <span className="inline-flex items-center gap-2">
                 <RocketLaunch className="h-4 w-4" weight="bold" />
-                <span>🚀 LAUNCH APPLICATION NOW</span>
+                <span>{agentMessages.launchAppNow}</span>
               </span>
             )}
           </Button>
@@ -334,7 +338,7 @@ export function ExecutiveLaunchCard({
             disabled={isLaunching}
             className="h-11 rounded-xl border-border bg-background px-5 text-sm font-medium text-foreground hover:bg-muted"
           >
-            ← Kembali ke Tanya Chat
+            {agentMessages.backToChat}
           </Button>
         </div>
       </div>

@@ -170,6 +170,214 @@ describe("DetectorRuleEvaluator", () => {
         "pfn-app-wordpress"
       )
     })
+
+    it("uses default WordPress CVE references and marketplace alternatives when omitted from implications", async () => {
+      const customRules = [
+        {
+          id: "bare_wp_rule",
+          name: "WordPress Bare Rule",
+          patternJson: { files: ["wp-config.php"] },
+          implicationsJson: { action: "BLOCK" },
+          isActive: true,
+          priority: 200,
+        },
+      ]
+      const mockDb = createMockDb(customRules)
+      const result = await detectorRuleEvaluator.evaluateRepositoryPolicy({
+        files: ["wp-config.php"],
+        db: mockDb,
+      })
+      expect(result.isBlocked).toBe(true)
+      expect(result.cveReferences).toEqual(["CVE-2024-27956", "CVE-2023-32243"])
+      expect(result.suggestedAlternatives?.[0]?.type).toBe("marketplace")
+    })
+
+    it("evaluates non-WordPress blocking rule with fallback ruleCode, reason, and Dockerfile alternatives", async () => {
+      const customRules = [
+        {
+          id: "banned_script",
+          name: "Banned Script Rule",
+          patternJson: {
+            files: ["   ", "insecure-script.sh"],
+          },
+          implicationsJson: {
+            action: "BLOCK",
+            cves: ["CVE-2025-99999"],
+          },
+          isActive: true,
+          priority: 100,
+        },
+      ]
+
+      const mockDb = createMockDb(customRules)
+      const result = await detectorRuleEvaluator.evaluateRepositoryPolicy({
+        files: ["nested/dir/insecure-script.sh"],
+        db: mockDb,
+      })
+
+      expect(result.isBlocked).toBe(true)
+      expect(result.ruleCode).toBe("RULE-BLOCK-BANNED_SCRIPT")
+      expect(result.title).toBe("Banned Script Rule")
+      expect(result.reason).toBe("Deployment blocked by platform policy")
+      expect(result.cveReferences).toEqual(["CVE-2025-99999"])
+      expect(result.suggestedAlternatives).toEqual([
+        {
+          type: "dockerfile",
+          title: "Containerized Deployment (Dockerfile)",
+          description:
+            "Package your application inside a custom isolated Dockerfile.",
+          target: "Dockerfile",
+        },
+      ])
+    })
+
+    it("matches directory pattern inside nested paths with trailing slash and without trailing slash", async () => {
+      const customRules = [
+        {
+          id: "bad_dir_rule",
+          name: "RULE-BLOCK-BAD-DIR",
+          patternJson: {
+            files: ["bad_dir/", "isolated_dir"],
+          },
+          implicationsJson: {
+            impact: "BLOCK",
+            message: "Contains prohibited directory",
+          },
+          isActive: true,
+          priority: 300,
+        },
+      ]
+
+      const mockDb = createMockDb(customRules)
+      const resultWithTrailing =
+        await detectorRuleEvaluator.evaluateRepositoryPolicy({
+          files: ["apps/api/bad_dir/index.js"],
+          db: mockDb,
+        })
+      expect(resultWithTrailing.isBlocked).toBe(true)
+      expect(resultWithTrailing.ruleCode).toBe("RULE-BLOCK-BAD-DIR")
+      expect(resultWithTrailing.reason).toBe("Contains prohibited directory")
+
+      const resultWithoutTrailing =
+        await detectorRuleEvaluator.evaluateRepositoryPolicy({
+          files: ["apps/api/isolated_dir/main.go"],
+          db: mockDb,
+        })
+      expect(resultWithoutTrailing.isBlocked).toBe(true)
+    })
+
+    it("matches frameworks through pattern.frameworkId, pattern.frameworks, and implications.framework", async () => {
+      const customRules = [
+        {
+          id: "framework_id_rule",
+          name: "RULE-BLOCK-FW-ID",
+          patternJson: { frameworkId: "banned_framework_1" },
+          implicationsJson: { action: "BLOCK" },
+          isActive: true,
+          priority: 50,
+        },
+        {
+          id: "frameworks_arr_rule",
+          name: "RULE-BLOCK-FW-ARR",
+          patternJson: {
+            frameworks: ["banned_framework_2", "banned_framework_3"],
+          },
+          implicationsJson: { action: "BLOCK" },
+          isActive: true,
+          priority: 60,
+        },
+        {
+          id: "implications_fw_rule",
+          name: "RULE-BLOCK-IMP-FW",
+          patternJson: {},
+          implicationsJson: {
+            framework: "banned_framework_4",
+            action: "BLOCK",
+          },
+          isActive: true,
+          priority: 70,
+        },
+      ]
+
+      const mockDb = createMockDb(customRules)
+      const res1 = await detectorRuleEvaluator.evaluateRepositoryPolicy({
+        files: [],
+        detectedFramework: "banned_framework_1",
+        db: mockDb,
+      })
+      expect(res1.isBlocked).toBe(true)
+      expect(res1.ruleCode).toBe("RULE-BLOCK-FW-ID")
+
+      const res2 = await detectorRuleEvaluator.evaluateRepositoryPolicy({
+        files: [],
+        detectedFramework: "banned_framework_2",
+        db: mockDb,
+      })
+      expect(res2.isBlocked).toBe(true)
+      expect(res2.ruleCode).toBe("RULE-BLOCK-FW-ARR")
+
+      const res3 = await detectorRuleEvaluator.evaluateRepositoryPolicy({
+        files: [],
+        detectedFramework: "banned_framework_4",
+        db: mockDb,
+      })
+      expect(res3.isBlocked).toBe(true)
+      expect(res3.ruleCode).toBe("RULE-BLOCK-IMP-FW")
+    })
+
+    it("skips inactive rules, non-blocking rules (WARN, HINT), and respects priority ordering", async () => {
+      const customRules = [
+        {
+          id: "inactive_rule",
+          name: "RULE-INACTIVE",
+          patternJson: { files: ["forbidden.txt"] },
+          implicationsJson: { action: "BLOCK" },
+          isActive: false,
+          priority: 999,
+        },
+        {
+          id: "warn_rule",
+          name: "RULE-WARN",
+          patternJson: { files: ["forbidden.txt"] },
+          implicationsJson: { action: "WARN", status: "warning" },
+          isActive: true,
+          priority: 900,
+        },
+        {
+          id: "hint_rule",
+          name: "RULE-HINT",
+          patternJson: { files: ["forbidden.txt"] },
+          implicationsJson: { action: "HINT", impact: "HINT" },
+          isActive: true,
+          priority: 850,
+        },
+        {
+          id: "high_priority_block",
+          name: "RULE-BLOCK-HIGH",
+          patternJson: { files: ["forbidden.txt"] },
+          implicationsJson: { action: "BLOCK" },
+          isActive: true,
+          priority: 200,
+        },
+        {
+          id: "low_priority_block",
+          name: "RULE-BLOCK-LOW",
+          patternJson: { files: ["forbidden.txt"] },
+          implicationsJson: { action: "BLOCK" },
+          isActive: true,
+          priority: 10,
+        },
+      ]
+
+      const mockDb = createMockDb(customRules)
+      const result = await detectorRuleEvaluator.evaluateRepositoryPolicy({
+        files: ["forbidden.txt"],
+        db: mockDb,
+      })
+
+      expect(result.isBlocked).toBe(true)
+      expect(result.ruleCode).toBe("RULE-BLOCK-HIGH")
+    })
   })
 
   describe("createPolicyEvaluationTool - AI SDK Tool Execution", () => {
@@ -216,6 +424,17 @@ describe("DetectorRuleEvaluator", () => {
       expect(blockedResult.ruleCode).toBe("RULE-BLOCK-WP-LEGACY")
       expect(traceSteps.length).toBe(2)
       expect(traceSteps[1]?.matchedRuleId).toBe("RULE-BLOCK-WP-LEGACY")
+
+      // Execute without options (no onStep callback) and empty inputs
+      const toolWithoutOptions = evaluator.createPolicyEvaluationTool()
+      if (!toolWithoutOptions.execute) {
+        throw new Error("toolWithoutOptions.execute must be defined")
+      }
+      const emptyResult = (await toolWithoutOptions.execute(
+        {},
+        { toolCallId: "call_empty", messages: [] }
+      )) as PolicyRuleEvaluationResult
+      expect(emptyResult.isBlocked).toBe(false)
     })
   })
 

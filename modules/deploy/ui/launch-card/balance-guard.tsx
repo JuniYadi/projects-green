@@ -5,6 +5,7 @@ import { CreditCard, Warning, XCircle, Spinner } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { getAccount, type BillingAccount } from "@/lib/billing-client"
 import { QuickTopUpDialog } from "@/components/billing/quick-top-up-dialog"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { cn } from "@/lib/utils"
 
 export type BalanceGuardProps = {
@@ -37,6 +38,8 @@ export function BalanceGuard({
   hideSubtext = false,
 }: BalanceGuardProps) {
   const isId = lang === "id"
+  const messages = getMessagesForMaybeLocale(lang)
+  const agentMessages = messages.console.app.deployAgent
   const [fetchedAccount, setFetchedAccount] = useState<BillingAccount | null>(
     null
   )
@@ -188,7 +191,7 @@ export function BalanceGuard({
       <div className="flex items-center gap-2 border-b border-amber-500/30 pb-2.5">
         <Warning className="h-5 w-5 shrink-0 text-amber-500" weight="fill" />
         <h3 className="text-xs font-bold tracking-wider text-amber-600 uppercase sm:text-sm dark:text-amber-400">
-          [!] VALIDASI SALDO: SALDO TIDAK MENCUKUPI
+          {agentMessages.balanceValidationFailed}
         </h3>
       </div>
 
@@ -230,7 +233,7 @@ export function BalanceGuard({
           className="h-9 gap-2 bg-primary text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
         >
           <CreditCard className="h-4 w-4" weight="bold" />
-          <span>[ 💳 TOP-UP SALDO CEPAT (QUICK TOP-UP) ]</span>
+          <span>{agentMessages.quickTopUpBtn}</span>
         </Button>
 
         {onBackToChat && (
@@ -241,7 +244,7 @@ export function BalanceGuard({
             onClick={onBackToChat}
             className="h-9 border-border bg-background text-xs font-medium hover:bg-muted"
           >
-            ← Kembali ke Tanya Chat
+            {agentMessages.backToChat}
           </Button>
         )}
       </div>
@@ -254,7 +257,7 @@ export function BalanceGuard({
         >
           <XCircle className="h-4 w-4 shrink-0" weight="fill" />
           <span className="font-medium">
-            (x) Tombol Launch Dinonaktifkan Sementara Hingga Saldo Mencukupi
+            {agentMessages.launchDisabledSubtext}
           </span>
         </div>
       )}

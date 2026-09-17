@@ -6,7 +6,9 @@ mock.module("@/lib/prisma", () => ({ prisma: {} }))
 const {
   AiSessionChatService,
   createBlueprintMutationTools,
+  defaultAiSessionChatService,
   extractBlueprintFromSession,
+  handleSessionChat,
   persistBlueprintToDb,
   TANYA_P_SYSTEM_PROMPT,
 } = await import("./ai-session-chat.service")
@@ -246,6 +248,24 @@ describe("AiSessionChatService", () => {
       )
     })
 
+    it("normalizes NaN port to default 3000", async () => {
+      const activeBlueprint = { port: 8080 }
+      const tools = createBlueprintMutationTools({
+        sessionId: "session-1",
+        activeBlueprint,
+        db: mockDb as unknown as PrismaClient,
+      })
+
+      const exec = tools.update_blueprint_field.execute as unknown as (
+        args: { field: "port"; value: unknown },
+        ctx?: unknown
+      ) => Promise<{ success: boolean; value: number }>
+
+      const res = await exec({ field: "port", value: "not-a-number" })
+      expect(res.value).toBe(3000)
+      expect(activeBlueprint.port).toBe(3000)
+    })
+
     it("executes add_environment_variable tool and persists to DB", async () => {
       const activeBlueprint = {
         environmentVariables: [],
@@ -327,6 +347,43 @@ describe("AiSessionChatService", () => {
           }),
         })
       )
+    })
+
+    it("handles non-existent session in persistBlueprintToDb gracefully", async () => {
+      mockDb.aiDeploymentSession.findUnique.mockResolvedValueOnce(null)
+      await expect(
+        persistBlueprintToDb(
+          mockDb as unknown as PrismaClient,
+          "non-existent",
+          { port: 3000 }
+        )
+      ).resolves.toBeUndefined()
+    })
+
+    it("updates commands array when prevCommands has only 1 element or no blueprint key in session", async () => {
+      mockDb.aiDeploymentSession.findUnique.mockResolvedValueOnce({
+        id: "session-1",
+        serverContext: null,
+        plan: {
+          detection: {
+            commands: ["npm start"],
+          },
+          resources: {},
+          domain: {},
+        },
+      })
+
+      await persistBlueprintToDb(
+        mockDb as unknown as PrismaClient,
+        "session-1",
+        {
+          startCommand: "pnpm start",
+          computeTier: "starter",
+          subdomain: "my-app",
+        }
+      )
+
+      expect(mockDb.aiDeploymentSession.update).toHaveBeenCalled()
     })
   })
 
@@ -441,9 +498,17 @@ describe("AiSessionChatService", () => {
           yield "Tanya P."
         })(),
         fullStream: (async function* () {
-          yield { type: "text-delta", text: "Halo! " }
-          yield { type: "text-delta", text: "Saya " }
-          yield { type: "text-delta", text: "Tanya P." }
+          yield { type: "text-delta", textDelta: "Halo! " }
+          yield {
+            type: "tool-call",
+            toolName: "update_blueprint_field",
+            input: { field: "port", value: 3000 },
+          }
+          yield {
+            type: "tool-result",
+            toolName: "update_blueprint_field",
+            output: { success: true },
+          }
           yield { type: "finish", finishReason: "stop" }
         })(),
         toTextStreamResponse: () => new Response("Halo! Saya Tanya P."),
@@ -471,12 +536,227 @@ describe("AiSessionChatService", () => {
       }
       expect(chunks.join("")).toBe("Halo! Saya Tanya P.")
 
+      // Consume fullStream to verify mapping
+      const events = []
+      for await (const ev of result.fullStream) {
+        events.push(ev)
+      }
+      expect(events).toHaveLength(4)
+      expect(events[0].type).toBe("text-delta")
+      expect(events[1].type).toBe("tool-call")
+      expect(events[2].type).toBe("tool-result")
+      expect(events[3].type).toBe("finish")
+
+      // Verify toTextStreamResponse
+      const res = result.toTextStreamResponse()
+      expect(res).toBeInstanceOf(Response)
+
+      // Verify Symbol.asyncIterator on a fresh call
+      const resultIter = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "Halo lagi",
+      })
+      const asyncIterChunks: string[] = []
+      for await (const chunk of resultIter) {
+        asyncIterChunks.push(chunk)
+      }
+      expect(asyncIterChunks.join("")).toBe("Halo! Saya Tanya P.")
+
       // Verify system prompt includes persona
       const rawCalls = mockStreamText.mock.calls as unknown as Array<
         [{ system?: string }]
       >
       const callArgs = rawCalls[0]?.[0]
       expect(callArgs?.system).toContain(TANYA_P_SYSTEM_PROMPT.slice(0, 30))
+    })
+
+    it("creates stream Response via fallback ReadableStream when toTextStreamResponse is omitted", async () => {
+      const mockStreamText = mock(() => ({
+        textStream: (async function* () {
+          yield "Direct stream chunk"
+        })(),
+      }))
+
+      const service = new AiSessionChatService({
+        db: mockDb as unknown as PrismaClient,
+        getAiConfig: () => ({
+          apiKey: "test-api-key",
+          baseURL: "https://api.openai.com/v1",
+        }),
+        streamText: mockStreamText as unknown as typeof import("ai").streamText,
+      })
+
+      const result = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "Halo",
+      })
+
+      const response = result.toResponse({ status: 201, statusText: "Created" })
+      expect(response.status).toBe(201)
+      const text = await response.text()
+      expect(text).toBe("Direct stream chunk")
+    })
+
+    it("handles computeTier change in Indonesian and English via fallback", async () => {
+      const service = new AiSessionChatService({
+        db: mockDb as unknown as PrismaClient,
+        getAiConfig: () => {
+          throw new Error("No API key")
+        },
+      })
+
+      const resId = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "ubah tier ke starter",
+      })
+      let textId = ""
+      for await (const c of resId.textStream) textId += c
+      expect(textId).toContain("starter")
+      expect(textId).toContain("Compute tier telah diubah")
+
+      const resEn = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "compute tier pro",
+      })
+      let textEn = ""
+      for await (const c of resEn.textStream) textEn += c
+      expect(textEn).toContain("pro")
+      expect(textEn).toContain("Compute tier has been updated")
+    })
+
+    it("handles subdomain change in Indonesian and English via fallback", async () => {
+      const service = new AiSessionChatService({
+        db: mockDb as unknown as PrismaClient,
+        getAiConfig: () => {
+          throw new Error("No API key")
+        },
+      })
+
+      const resId = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "ubah subdomain ke mysite",
+      })
+      let textId = ""
+      for await (const c of resId.textStream) textId += c
+      expect(textId).toContain("mysite")
+      expect(textId).toContain("Subdomain telah diubah")
+
+      const resEn = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "domain mysite-en",
+      })
+      let textEn = ""
+      for await (const c of resEn.textStream) textEn += c
+      expect(textEn).toContain("mysite-en")
+      expect(textEn).toContain("Subdomain has been updated")
+    })
+
+    it("handles rootDirectory change in Indonesian and English via fallback", async () => {
+      const service = new AiSessionChatService({
+        db: mockDb as unknown as PrismaClient,
+        getAiConfig: () => {
+          throw new Error("No API key")
+        },
+      })
+
+      const resId = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "ubah direktori ke apps/web",
+      })
+      let textId = ""
+      for await (const c of resId.textStream) textId += c
+      expect(textId).toContain("apps/web")
+      expect(textId).toContain("Root directory telah diatur")
+
+      const resEn = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "root dir packages/backend",
+      })
+      let textEn = ""
+      for await (const c of resEn.textStream) textEn += c
+      expect(textEn).toContain("packages/backend")
+      expect(textEn).toContain("Root directory has been set")
+    })
+
+    it("handles secret environment variable in Indonesian and English via fallback", async () => {
+      const service = new AiSessionChatService({
+        db: mockDb as unknown as PrismaClient,
+        getAiConfig: () => {
+          throw new Error("No API key")
+        },
+      })
+
+      const resId = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "tambah secret API_TOKEN=xyz987",
+      })
+      let textId = ""
+      for await (const c of resId.textStream) textId += c
+      expect(textId).toContain("API_TOKEN")
+
+      const resEn = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "add secret DB_PASS=pass123",
+      })
+      let textEn = ""
+      for await (const c of resEn.textStream) textEn += c
+      expect(textEn).toContain("DB_PASS")
+      expect(textEn).toContain("successfully added to blueprint")
+    })
+
+    it("responds with English Tanya P introduction for general query without Indonesian keywords", async () => {
+      const service = new AiSessionChatService({
+        db: mockDb as unknown as PrismaClient,
+        getAiConfig: () => {
+          throw new Error("No API key")
+        },
+      })
+
+      const result = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "What can I do next?",
+      })
+
+      let text = ""
+      for await (const c of result.textStream) text += c
+      expect(text).toContain("Hello! I am Tanya P, your deployment copilot.")
+
+      // Verify fallback fullStream iteration
+      const fullEvents = []
+      for await (const ev of result.fullStream) {
+        fullEvents.push(ev)
+      }
+      expect(fullEvents.length).toBeGreaterThan(0)
+
+      const fallbackResp = result.toTextStreamResponse({ status: 200 })
+      expect(fallbackResp.status).toBe(200)
+    })
+
+    it("handleSessionChat exported function delegates to default service", async () => {
+      // Set default service db
+      Object.assign(defaultAiSessionChatService, {
+        db: mockDb as unknown as PrismaClient,
+      })
+      mockDb.aiDeploymentSession.findFirst.mockResolvedValueOnce(
+        sampleSession()
+      )
+      const result = await handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "Halo",
+      })
+      expect(result.sessionId).toBe("session-1")
     })
   })
 })

@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react"
 import { PaperPlaneRight } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { cn } from "@/lib/utils"
 
 export const DEFAULT_PROMPT_SUGGESTIONS = [
@@ -17,16 +18,25 @@ export type DeployPromptBarProps = {
   disabled?: boolean
   placeholder?: string
   suggestions?: string[]
+  lang?: string
   className?: string
 }
 
 export function DeployPromptBar({
   onSend,
   disabled = false,
-  placeholder = 'Ketik prompt (misal: "Ganti port ke 8080", "Deploy https://github.com/...")',
+  placeholder,
   suggestions = DEFAULT_PROMPT_SUGGESTIONS,
+  lang = "en",
   className,
 }: DeployPromptBarProps) {
+  const messages = getMessagesForMaybeLocale(lang)
+  const agentMessages = messages.console.app.deployAgent
+  const effectivePlaceholder =
+    placeholder ??
+    (lang === "id"
+      ? 'Ketik prompt (misal: "Ganti port ke 8080", "Deploy https://github.com/...")'
+      : 'Type a prompt (e.g. "Change port to 8080", "Deploy https://github.com/...")')
   const [input, setInput] = useState("")
 
   const handleSubmit = (e?: FormEvent) => {
@@ -76,7 +86,7 @@ export function DeployPromptBar({
               handleSubmit()
             }
           }}
-          placeholder={placeholder}
+          placeholder={effectivePlaceholder}
           disabled={disabled}
           className="border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground/60 focus-visible:ring-0"
         />
@@ -84,11 +94,13 @@ export function DeployPromptBar({
           type="submit"
           size="sm"
           disabled={disabled || !input.trim()}
-          aria-label="Send prompt"
+          aria-label={agentMessages.sendPromptAriaLabel}
           className="shrink-0 gap-1.5 rounded-lg bg-primary px-3 text-primary-foreground shadow-xs hover:bg-primary/90"
         >
           <PaperPlaneRight className="h-4 w-4" weight="fill" />
-          <span className="hidden sm:inline">Send</span>
+          <span className="hidden sm:inline">
+            {agentMessages.sendPromptBtn}
+          </span>
         </Button>
       </div>
     </form>

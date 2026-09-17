@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { cn } from "@/lib/utils"
 
 export type LowConfidenceOverrides = {
@@ -55,6 +56,8 @@ export function LowConfidenceFallbackCard({
   className,
 }: LowConfidenceFallbackCardProps) {
   const isId = lang === "id"
+  const messages = getMessagesForMaybeLocale(lang)
+  const agentMessages = messages.console.app.deployAgent
   const [runtime, setRuntime] = useState(initialRuntime)
   const [startCommand, setStartCommand] = useState(initialStartCommand)
   const [port, setPort] = useState<string>(String(initialPort))
@@ -80,26 +83,26 @@ export function LowConfidenceFallbackCard({
       <div className="flex items-center gap-2 border-b border-border/60 pb-3">
         <Question className="h-5 w-5 shrink-0 text-amber-500" weight="bold" />
         <h2 className="text-xs font-bold tracking-wider text-foreground uppercase sm:text-sm">
-          [?] KEPASTIAN DETEKSI RENDAH (CONFIDENCE: {confidence}% · BUTUH
-          BANTUAN DEVELOPER)
+          {agentMessages.lowConfidenceHeader.replace(
+            "{confidence}",
+            String(confidence)
+          )}
         </h2>
       </div>
 
       {/* Explanatory Copy */}
       <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:text-sm">
         <p>
-          Saya mendeteksi file {detectedFile}, namun tidak ada package.json atau
-          start script.
+          {agentMessages.lowConfidenceDetected.replace("{file}", detectedFile)}
         </p>
-        <p>
-          Agar aplikasi dapat berjalan dengan benar, mohon bantu tentukan
-          perintah start di bawah:
-        </p>
+        <p>{agentMessages.lowConfidenceInstructions}</p>
       </div>
 
       {/* Pilihan Cepat Form */}
       <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-muted/20 p-4 text-xs sm:text-sm">
-        <span className="font-semibold text-foreground">Pilihan Cepat:</span>
+        <span className="font-semibold text-foreground">
+          {agentMessages.quickPicksForm}
+        </span>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {/* Runtime */}
@@ -108,7 +111,7 @@ export function LowConfidenceFallbackCard({
               htmlFor="fallback-runtime-select"
               className="font-medium text-muted-foreground"
             >
-              • Runtime :
+              {agentMessages.runtimeLabelField}
             </label>
             <Select value={runtime} onValueChange={setRuntime}>
               <SelectTrigger
@@ -140,13 +143,13 @@ export function LowConfidenceFallbackCard({
               htmlFor="fallback-start-command-input"
               className="font-medium text-muted-foreground"
             >
-              • Start Command:
+              {agentMessages.startCommandField}
             </label>
             <Input
               id="fallback-start-command-input"
               data-testid="fallback-start-command-input"
               type="text"
-              placeholder="node server.js"
+              placeholder={agentMessages.startCommandPlaceholder}
               value={startCommand}
               onChange={(e) => setStartCommand(e.target.value)}
               className="h-9 font-mono text-xs"
@@ -159,7 +162,7 @@ export function LowConfidenceFallbackCard({
               htmlFor="fallback-port-input"
               className="font-medium text-muted-foreground"
             >
-              • Listen Port :
+              {agentMessages.listenPortField}
             </label>
             <Input
               id="fallback-port-input"
@@ -183,7 +186,7 @@ export function LowConfidenceFallbackCard({
           className="h-9 gap-1.5 bg-primary text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
         >
           <Check className="h-4 w-4" weight="bold" />
-          <span>[ ✓ Simpan & Generate Blueprint ]</span>
+          <span>{agentMessages.saveGenerateBlueprint}</span>
         </Button>
 
         {onCancel && (
@@ -195,7 +198,7 @@ export function LowConfidenceFallbackCard({
             className="h-9 gap-1.5 border-border bg-background text-xs font-medium text-foreground hover:bg-muted"
           >
             <X className="h-3.5 w-3.5" />
-            <span>[ Batal / Ganti Repo ]</span>
+            <span>{agentMessages.cancelChangeRepo}</span>
           </Button>
         )}
       </div>

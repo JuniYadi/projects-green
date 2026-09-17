@@ -4,6 +4,7 @@ import { useState } from "react"
 import { FolderOpen, GitFork, ArrowRight } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { cn } from "@/lib/utils"
 
 export type MonorepoProject = {
@@ -42,6 +43,8 @@ export function MonorepoDisambiguationCard({
   className,
 }: MonorepoDisambiguationCardProps) {
   const isId = lang === "id"
+  const messages = getMessagesForMaybeLocale(lang)
+  const agentMessages = messages.console.app.deployAgent
   const [customPath, setCustomPath] = useState("")
 
   const handleApplyCustom = () => {
@@ -64,22 +67,20 @@ export function MonorepoDisambiguationCard({
       <div className="flex items-center gap-2 border-b border-border/60 pb-3">
         <GitFork className="h-5 w-5 shrink-0 text-primary" weight="bold" />
         <h2 className="text-xs font-bold tracking-wider text-foreground uppercase sm:text-sm">
-          [?] STRUKTUR MONOREPO / MULTI-APP TERDETEKSI
+          {agentMessages.monorepoDetectedHeader}
         </h2>
       </div>
 
       {/* Explanatory Copy */}
       <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:text-sm">
-        <p>
-          Saya mendeteksi repositori ini memiliki beberapa project terpisah.
-        </p>
-        <p>Aplikasi mana yang ingin Anda luncurkan hari ini?</p>
+        <p>{agentMessages.monorepoExplanation}</p>
+        <p>{agentMessages.monorepoWhichApp}</p>
       </div>
 
       {/* Pilih Target Direktori Chips */}
       <div className="flex flex-col gap-2 pt-1">
         <span className="text-xs font-semibold text-foreground">
-          Pilih Target Direktori:
+          {agentMessages.selectTargetDirectory}
         </span>
         <div className="flex flex-wrap items-center gap-2.5">
           {projectList.map((proj, idx) => {
@@ -113,14 +114,14 @@ export function MonorepoDisambiguationCard({
           htmlFor="custom-root-input"
           className="text-xs font-medium text-muted-foreground"
         >
-          Atau tentukan root direktori custom:
+          {agentMessages.orCustomRoot}
         </label>
         <div className="flex max-w-md items-center gap-2">
           <Input
             id="custom-root-input"
             data-testid="monorepo-custom-input"
             type="text"
-            placeholder="./packages/docs"
+            placeholder={agentMessages.customRootPlaceholder}
             value={customPath}
             onChange={(e) => setCustomPath(e.target.value)}
             onKeyDown={(e) => {

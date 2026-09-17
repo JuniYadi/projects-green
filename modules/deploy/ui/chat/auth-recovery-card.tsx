@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { cn } from "@/lib/utils"
 
 export type AuthRecoveryCardProps = {
@@ -29,6 +30,8 @@ export function AuthRecoveryCard({
   className,
 }: AuthRecoveryCardProps) {
   const isId = lang === "id"
+  const messages = getMessagesForMaybeLocale(lang)
+  const agentMessages = messages.console.app.deployAgent
   const [showPatInput, setShowPatInput] = useState(false)
   const [patToken, setPatToken] = useState("")
   const [isSubmittingPat, setIsSubmittingPat] = useState(false)
@@ -133,29 +136,26 @@ export function AuthRecoveryCard({
           weight="bold"
         />
         <h2 className="text-xs font-bold tracking-wider text-foreground uppercase sm:text-sm">
-          [!] AKSES REPOSITORY DIBUTUHKAN (PRIVATE REPOSITORY)
+          {agentMessages.authRequiredHeader}
         </h2>
       </div>
 
       {/* Explanatory Copy */}
       <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:text-sm">
         <p>
-          Repository{" "}
+          {agentMessages.repoPrivateNoticePrefix}{" "}
           <span className="font-mono font-semibold text-foreground">
             &apos;{repoName}&apos;
           </span>{" "}
-          bersifat privat dan belum diotorisasi.
+          {agentMessages.repoPrivateNoticeSuffix}
         </p>
-        <p>
-          Tanya membutuhkan izin baca kode untuk menganalisis stack dan
-          menyiapkan blueprint.
-        </p>
+        <p>{agentMessages.repoAuthExplanation}</p>
       </div>
 
       {/* Pilihan Solusi */}
       <div className="flex flex-col gap-2 pt-1">
         <span className="text-xs font-semibold text-foreground">
-          Pilihan Solusi:
+          {agentMessages.solutionChoices}
         </span>
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Primary: GitHub App Popup */}
@@ -171,7 +171,7 @@ export function AuthRecoveryCard({
             ) : (
               <Key className="h-4 w-4" weight="bold" />
             )}
-            <span>[ 🔑 Otorisasi via GitHub App (Popup) ]</span>
+            <span>{agentMessages.authViaGithubApp}</span>
           </Button>
 
           {/* Secondary: Personal Access Token Toggle */}
@@ -183,7 +183,7 @@ export function AuthRecoveryCard({
             className="h-9 gap-2 border-border bg-background text-xs font-medium text-foreground hover:bg-muted"
           >
             <ClipboardText className="h-4 w-4 text-muted-foreground" />
-            <span>[ 📋 Gunakan Personal Access Token ]</span>
+            <span>{agentMessages.usePat}</span>
           </Button>
         </div>
       </div>
@@ -200,7 +200,7 @@ export function AuthRecoveryCard({
               htmlFor="pat-token-input"
               className="text-xs font-medium text-foreground"
             >
-              Personal Access Token (classic / fine-grained with repo scope)
+              {agentMessages.patLabel}
             </label>
           </div>
           <div className="flex flex-col items-center gap-2 sm:flex-row">
@@ -208,7 +208,7 @@ export function AuthRecoveryCard({
               id="pat-token-input"
               data-testid="pat-token-input"
               type="password"
-              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+              placeholder={agentMessages.patPlaceholder}
               value={patToken}
               onChange={(e) => setPatToken(e.target.value)}
               className="h-9 font-mono text-xs"
@@ -234,8 +234,7 @@ export function AuthRecoveryCard({
 
       {/* Footer Informational Note */}
       <div className="border-t border-border/40 pt-2 text-[11px] text-muted-foreground sm:text-xs">
-        Jendela popup akan tertutup otomatis setelah otorisasi selesai tanpa
-        me-reload halaman.
+        {agentMessages.authPopupNote}
       </div>
     </div>
   )

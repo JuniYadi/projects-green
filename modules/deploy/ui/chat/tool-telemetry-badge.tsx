@@ -1,6 +1,7 @@
 "use client"
 
 import { Gear } from "@phosphor-icons/react"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { cn } from "@/lib/utils"
 
 export type ToolTelemetryBadgeProps = {
@@ -9,6 +10,7 @@ export type ToolTelemetryBadgeProps = {
   result?: unknown
   durationMs?: number
   message?: string
+  lang?: string
   className?: string
 }
 
@@ -18,8 +20,11 @@ export function ToolTelemetryBadge({
   result,
   durationMs,
   message,
+  lang = "en",
   className,
 }: ToolTelemetryBadgeProps) {
+  const messages = getMessagesForMaybeLocale(lang)
+  const agentMessages = messages.console.app.deployAgent
   let formatted = message
 
   if (!formatted && toolName) {
@@ -57,7 +62,7 @@ export function ToolTelemetryBadge({
   return (
     <div
       role="status"
-      aria-label="Tool execution telemetry"
+      aria-label={agentMessages.toolTelemetryAriaLabel}
       data-testid="tool-telemetry-badge"
       className={cn(
         "flex items-center gap-2 rounded-md border border-border/50 bg-muted/40 px-2.5 py-1.5 font-mono text-xs text-muted-foreground",

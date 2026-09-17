@@ -978,9 +978,13 @@ export function DeployChatStream({
             {/* Message header */}
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {msg.role === "user" ? (
-                <span className="font-semibold text-foreground">🧑 User</span>
+                <span className="font-semibold text-foreground">
+                  {agentMessages.userRoleLabel}
+                </span>
               ) : (
-                <span className="font-semibold text-primary">🤖 Tanya P</span>
+                <span className="font-semibold text-primary">
+                  {agentMessages.assistantRoleLabel}
+                </span>
               )}
             </div>
 
@@ -1003,6 +1007,7 @@ export function DeployChatStream({
                       result={tel.result}
                       durationMs={tel.durationMs}
                       message={tel.message}
+                      lang={lang}
                     />
                   ))}
                 </div>
@@ -1013,7 +1018,7 @@ export function DeployChatStream({
                 <div className="flex flex-col gap-1 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   <div className="flex items-center gap-1.5 font-semibold">
                     <WarningCircle className="h-4 w-4 shrink-0" weight="fill" />
-                    <span>Inspection Failed</span>
+                    <span>{agentMessages.inspectionFailed}</span>
                   </div>
                   <span className="text-foreground/80">{msg.error}</span>
                 </div>
@@ -1120,6 +1125,7 @@ export function DeployChatStream({
         <DeployPromptBar
           disabled={isProcessing}
           onSend={(text) => void handleSendMessage(text)}
+          lang={lang}
           placeholder={
             isId
               ? 'Ketik prompt (misal: "Ganti port ke 8080", "Deploy https://github.com/...")'

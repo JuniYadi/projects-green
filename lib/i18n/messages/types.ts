@@ -3821,6 +3821,71 @@ export type AppMessages = {
         topUp: string
         recommendedBadge: string
         catalogBadge: string
+        aiVerificationSummary: string
+        verifiedViaSummary: string
+        toolsExecutedLabel: string
+        aiConfidenceSummary: string
+        productionReadyConfig: string
+        launchCardTitle: string
+        targetStackLabel: string
+        listenPortLabel: string
+        branchDirLabel: string
+        subdomainFieldLabel: string
+        computePlanLabel: string
+        tenantBalanceLabel: string
+        balanceVerifiedSufficient: string
+        environmentFieldLabel: string
+        launchAppNow: string
+        launchingApp: string
+        backToChat: string
+        lowConfidenceHeader: string
+        lowConfidenceDetected: string
+        lowConfidenceInstructions: string
+        quickPicksForm: string
+        runtimeLabelField: string
+        startCommandField: string
+        startCommandPlaceholder: string
+        listenPortField: string
+        saveGenerateBlueprint: string
+        cancelChangeRepo: string
+        authRequiredHeader: string
+        repoPrivateNoticePrefix: string
+        repoPrivateNoticeSuffix: string
+        repoAuthExplanation: string
+        solutionChoices: string
+        authViaGithubApp: string
+        usePat: string
+        patLabel: string
+        patPlaceholder: string
+        authPopupNote: string
+        inlineBlueprintProposal: string
+        blueprintStack: string
+        blueprintPort: string
+        blueprintCompute: string
+        blueprintDomain: string
+        blueprintEnvVars: string
+        blueprintSecrets: string
+        readyToDeployCta: string
+        tweakPromptChip: string
+        monorepoDetectedHeader: string
+        monorepoExplanation: string
+        monorepoWhichApp: string
+        selectTargetDirectory: string
+        orCustomRoot: string
+        customRootPlaceholder: string
+        policyBlockedHeader: string
+        policyMarketplaceRecommend: string
+        policyDockerRecommend: string
+        openMarketplaceBtn: string
+        useCustomDockerfileBtn: string
+        balanceValidationFailed: string
+        quickTopUpBtn: string
+        launchDisabledSubtext: string
+        sendPromptAriaLabel: string
+        sendPromptBtn: string
+        toolTelemetryAriaLabel: string
+        userRoleLabel: string
+        assistantRoleLabel: string
       }
       deployWizard: {
         heading: string
