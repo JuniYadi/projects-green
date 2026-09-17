@@ -8,7 +8,9 @@ import {
   type FormEvent,
   type ChangeEvent,
 } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { eden } from "@/lib/eden"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -64,6 +66,9 @@ export function ProfileDialog({
   authMethodLabel,
 }: ProfileDialogProps) {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(user.name ?? "")
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
@@ -220,19 +225,21 @@ export function ProfileDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserIcon className="size-5 text-primary" />
-            Account & Profile
+            {messages.pProfileDialog.accountAndProfile}
           </DialogTitle>
           <DialogDescription>
-            Manage your profile, connected login accounts, and active device
-            sessions.
+            {messages.pProfileDialog.manageProfileDescription}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="profile">
+              {messages.pProfileDialog.profileTab}
+            </TabsTrigger>
             <TabsTrigger value="sessions">
-              Active Sessions ({sessions.length})
+              {messages.pProfileDialog.activeSessionsLabel}
+              {sessions.length})
             </TabsTrigger>
           </TabsList>
 
@@ -252,7 +259,7 @@ export function ProfileDialog({
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                     className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center rounded-2xl bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 disabled:cursor-not-allowed"
-                    title="Click to change profile picture"
+                    title={messages.pProfileDialog.changeProfilePictureTitle}
                   >
                     <CameraIcon className="size-5" />
                     <span className="mt-0.5 text-[9px] font-medium">
@@ -275,11 +282,11 @@ export function ProfileDialog({
                     </span>
                     <Badge variant="success" className="gap-1 text-[10px]">
                       <CheckCircleIcon className="size-3" />
-                      Verified
+                      {messages.pProfileDialog.verifiedBadge}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Click the photo to upload a new profile picture.
+                    {messages.pProfileDialog.uploadPhotoHint}
                   </p>
                 </div>
               </div>
@@ -291,19 +298,19 @@ export function ProfileDialog({
                     htmlFor="profile-name"
                     className="text-xs font-medium text-muted-foreground"
                   >
-                    Full Name
+                    {messages.pProfileDialog.fullNameLabel}
                   </label>
                   <Input
                     id="profile-name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Juni Yadi"
+                    placeholder={messages.pProfileDialog.fullNamePlaceholder}
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Email Address
+                    {messages.pProfileDialog.emailAddressLabel}
                   </label>
                   <Input
                     value={user.email ?? ""}
@@ -317,7 +324,7 @@ export function ProfileDialog({
               <div className="space-y-2 rounded-xl border border-border/80 bg-card p-3">
                 <div className="flex items-center gap-2 text-xs font-medium text-foreground">
                   <ShieldCheckIcon className="size-4 text-emerald-500" />
-                  Connected Identities
+                  {messages.pProfileDialog.connectedIdentitiesLabel}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   {(() => {
@@ -327,7 +334,7 @@ export function ProfileDialog({
                       if (clean.includes("github")) return "GitHub OAuth"
                       if (clean.includes("apple")) return "Apple OAuth"
                       if (clean.includes("magic") || clean.includes("email"))
-                        return "Magic Link (Email Code)"
+                        return messages.pProfileDialog.magicLinkEmailCode
                       if (clean.includes("password")) return "Password"
                       return raw.replace(/OAuth$/i, " OAuth").trim()
                     }
@@ -352,7 +359,7 @@ export function ProfileDialog({
                           variant="outline"
                           className="text-xs font-normal"
                         >
-                          Magic Link (Email Code)
+                          {messages.pProfileDialog.magicLinkEmailCode}
                         </Badge>
                       )
                     }
@@ -378,7 +385,7 @@ export function ProfileDialog({
 
               {success && (
                 <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-xs text-emerald-600 dark:text-emerald-400">
-                  Profile updated successfully.
+                  {messages.pProfileDialog.profileUpdatedSuccess}
                 </div>
               )}
 
@@ -388,7 +395,7 @@ export function ProfileDialog({
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  Cancel
+                  {messages.pProfileDialog.cancelButton}
                 </Button>
                 <Button type="submit" disabled={isSubmitting || isUploading}>
                   {isSubmitting ? "Saving..." : "Save Changes"}
@@ -400,21 +407,20 @@ export function ProfileDialog({
           <TabsContent value="sessions" className="space-y-3 pt-2">
             <div className="space-y-1">
               <h4 className="text-xs font-medium text-muted-foreground">
-                Current Active Sessions
+                {messages.pProfileDialog.currentActiveSessionsHeading}
               </h4>
               <p className="text-xs text-muted-foreground">
-                These are the devices and browsers currently signed in to your
-                account.
+                {messages.pProfileDialog.sessionsDescription}
               </p>
             </div>
 
             {isLoadingDetails ? (
               <div className="py-6 text-center text-xs text-muted-foreground">
-                Loading sessions...
+                {messages.pProfileDialog.loadingSessions}
               </div>
             ) : sessions.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                No other active sessions found.
+                {messages.pProfileDialog.noActiveSessions}
               </div>
             ) : (
               <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
@@ -459,12 +465,12 @@ export function ProfileDialog({
                                 variant="success"
                                 className="h-4 px-1.5 text-[9px]"
                               >
-                                Current Device
+                                {messages.pProfileDialog.currentDeviceBadge}
                               </Badge>
                             ) : null}
                           </div>
                           <span className="text-[11px] text-muted-foreground">
-                            Started:{" "}
+                            {messages.pProfileDialog.startedLabel}{" "}
                             {(() => {
                               const d = new Date(session.createdAt)
                               return new Intl.DateTimeFormat(undefined, {
@@ -476,7 +482,7 @@ export function ProfileDialog({
                                 hour12: false,
                               }).format(d)
                             })()}{" "}
-                            • Expires:{" "}
+                            {messages.pProfileDialog.expiresLabel}{" "}
                             {(() => {
                               const d = new Date(session.expiresAt)
                               return new Intl.DateTimeFormat(undefined, {
@@ -497,7 +503,7 @@ export function ProfileDialog({
                           size="icon"
                           className="size-7 text-muted-foreground hover:text-destructive"
                           onClick={() => handleRevokeSession(session.id)}
-                          title="Revoke session"
+                          title={messages.pProfileDialog.revokeSessionTitle}
                         >
                           <TrashIcon className="size-3.5" />
                         </Button>
