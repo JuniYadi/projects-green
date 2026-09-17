@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type {
   PaymentConfirmationDTO,
   PaymentInfoDTO,
@@ -76,25 +79,32 @@ type PaymentMethodGatewayCardProps = {
 export function PaymentMethodGatewayCard({
   payment,
 }: PaymentMethodGatewayCardProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const methodLabel = getPaymentMethodLabel(payment.method)
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">
-          Payment Method &amp; Gateway
+          {messages.pInvoicesInvoicePaymentSection.paymentMethodAndGatewayTitle}
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 text-sm">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <p className="text-xs text-muted-foreground">Payment Method</p>
+            <p className="text-xs text-muted-foreground">
+              {messages.pInvoicesInvoicePaymentSection.paymentMethodLabel}
+            </p>
             <p className="font-medium">{methodLabel.description}</p>
           </div>
 
           {payment.gateway ? (
             <div>
-              <p className="text-xs text-muted-foreground">Gateway</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.pInvoicesInvoicePaymentSection.gatewayLabel}
+              </p>
               <p className="font-medium">
                 {payment.gateway.name}{" "}
                 <span className="text-xs text-muted-foreground">
@@ -108,11 +118,13 @@ export function PaymentMethodGatewayCard({
         {payment.reference ? (
           <div className="grid gap-3 rounded-md border bg-muted/30 p-3">
             <p className="text-xs font-medium text-muted-foreground">
-              Payment Reference
+              {messages.pInvoicesInvoicePaymentSection.paymentReferenceLabel}
             </p>
             {payment.reference.vaNumber ? (
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">VA Number</span>
+                <span className="text-xs text-muted-foreground">
+                  {messages.pInvoicesInvoicePaymentSection.vaNumberLabel}
+                </span>
                 <span className="font-mono text-sm font-medium">
                   {payment.reference.vaNumber}
                 </span>
@@ -121,7 +133,7 @@ export function PaymentMethodGatewayCard({
             {payment.reference.paymentUrl ? (
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
-                  Payment URL
+                  {messages.pInvoicesInvoicePaymentSection.paymentUrlLabel}
                 </span>
                 <a
                   href={payment.reference.paymentUrl}
@@ -129,14 +141,17 @@ export function PaymentMethodGatewayCard({
                   rel="noopener noreferrer"
                   className="text-sm font-medium text-blue-600 underline-offset-2 hover:underline"
                 >
-                  Open Payment Page
+                  {messages.pInvoicesInvoicePaymentSection.openPaymentPageLink}
                 </a>
               </div>
             ) : null}
             {payment.reference.gatewayReference ? (
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
-                  Gateway Reference
+                  {
+                    messages.pInvoicesInvoicePaymentSection
+                      .gatewayReferenceLabel
+                  }
                 </span>
                 <span className="font-mono text-sm font-medium">
                   {payment.reference.gatewayReference}
@@ -161,6 +176,9 @@ export function PaymentConfirmationList({
   canManage,
   onActionComplete,
 }: PaymentConfirmationListProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [selectedConfirmation, setSelectedConfirmation] =
     useState<PaymentConfirmationDTO | null>(null)
 
@@ -173,21 +191,38 @@ export function PaymentConfirmationList({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            Payment Confirmations ({confirmations.length})
+            {messages.pInvoicesInvoicePaymentSection.paymentConfirmationsTitle.replace(
+              "{{1}}",
+              String(confirmations.length)
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Bank</TableHead>
-                <TableHead>Account</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Sender</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  {messages.pInvoicesInvoicePaymentSection.bankColumnHeader}
+                </TableHead>
+                <TableHead>
+                  {messages.pInvoicesInvoicePaymentSection.accountColumnHeader}
+                </TableHead>
+                <TableHead className="text-right">
+                  {messages.pInvoicesInvoicePaymentSection.amountColumnHeader}
+                </TableHead>
+                <TableHead>
+                  {messages.pInvoicesInvoicePaymentSection.senderColumnHeader}
+                </TableHead>
+                <TableHead>
+                  {messages.pInvoicesInvoicePaymentSection.dateColumnHeader}
+                </TableHead>
+                <TableHead>
+                  {messages.pInvoicesInvoicePaymentSection.statusColumnHeader}
+                </TableHead>
                 {canManage ? (
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="text-right">
+                    {messages.pInvoicesInvoicePaymentSection.actionColumnHeader}
+                  </TableHead>
                 ) : null}
               </TableRow>
             </TableHeader>
@@ -227,7 +262,7 @@ export function PaymentConfirmationList({
                           variant="outline"
                           onClick={() => setSelectedConfirmation(confirmation)}
                         >
-                          Review
+                          {messages.pInvoicesInvoicePaymentSection.reviewButton}
                         </Button>
                       </TableCell>
                     ) : canManage ? (
@@ -285,6 +320,10 @@ type PaymentTimelineProps = {
 }
 
 function PaymentTimeline({ timeline }: PaymentTimelineProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   if (timeline.length === 0) {
     return null
   }
@@ -292,7 +331,9 @@ function PaymentTimeline({ timeline }: PaymentTimelineProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Payment Timeline</CardTitle>
+        <CardTitle className="text-base">
+          {messages.pInvoicesInvoicePaymentSection.paymentTimelineTitle}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="relative ml-3 space-y-0">
