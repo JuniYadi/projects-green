@@ -162,10 +162,19 @@ const toSafeToolTrace = (value: unknown): AiDetectionToolTrace | null => {
   const requestedPath = value.inputSummary.requestedPath
   const listedFileCount = value.listedFileCount
   const errorCategory = value.errorCategory
+  const fileSizeBytes =
+    typeof value.fileSizeBytes === "number"
+      ? value.fileSizeBytes
+      : typeof value.size === "number"
+        ? value.size
+        : undefined
   if (
     (requestedPath !== undefined && typeof requestedPath !== "string") ||
     (listedFileCount !== undefined && typeof listedFileCount !== "number") ||
-    (errorCategory !== undefined && errorCategory !== "tool_failure")
+    (errorCategory !== undefined && errorCategory !== "tool_failure") ||
+    (value.fileSizeBytes !== undefined &&
+      typeof value.fileSizeBytes !== "number") ||
+    (value.size !== undefined && typeof value.size !== "number")
   ) {
     return null
   }
@@ -177,6 +186,7 @@ const toSafeToolTrace = (value: unknown): AiDetectionToolTrace | null => {
     outcome: value.outcome,
     durationMs: value.durationMs,
     ...(typeof listedFileCount === "number" ? { listedFileCount } : {}),
+    ...(fileSizeBytes !== undefined ? { fileSizeBytes } : {}),
     ...(errorCategory === "tool_failure" ? { errorCategory } : {}),
   }
 }

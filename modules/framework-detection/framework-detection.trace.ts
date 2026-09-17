@@ -1,11 +1,7 @@
 export const AI_DETECTION_TRACE_VERSION = 1 as const
 
 export type ProviderDiagnosticCategory =
-  | "configuration"
-  | "schema"
-  | "provider"
-  | "transient_provider"
-  | "network"
+  "configuration" | "schema" | "provider" | "transient_provider" | "network"
 
 export type ProviderDiagnostics = {
   model: string
@@ -16,10 +12,7 @@ export type ProviderDiagnostics = {
 }
 
 export type AiDetectionTraceTerminalStage =
-  | "provider"
-  | "tool"
-  | "output"
-  | "completed"
+  "provider" | "tool" | "output" | "completed"
 
 export type AiDetectionToolTrace = {
   name: "list_repo_files" | "read_repo_file"
@@ -27,8 +20,12 @@ export type AiDetectionToolTrace = {
     requestedPath?: string
   }
   outcome: "completed" | "failed"
+  status?: "completed" | "failed"
   durationMs: number
   listedFileCount?: number
+  fileSizeBytes?: number
+  size?: number
+  path?: string
   errorCategory?: "tool_failure"
 }
 
