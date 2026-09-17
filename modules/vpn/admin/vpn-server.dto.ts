@@ -26,6 +26,18 @@ export type VpnServerDTO = {
   updatedAt: string
 }
 
+export type WireGuardSessionDTO = {
+  serverId: string
+  serverName: string
+  protocol: "OPENVPN" | "WIREGUARD"
+  username: string
+  ip: string
+  status: "Online" | "Offline" | "Stale"
+  handshake: string
+  rx: string
+  tx: string
+}
+
 type VpnServerWithRelations = Prisma.VpnServerGetPayload<{
   include: {
     region: { select: { id: true; name: true; slug: true; countryCode: true } }

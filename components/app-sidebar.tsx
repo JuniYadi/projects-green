@@ -422,13 +422,13 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/vpn/audit-logs"),
       },
       {
-        title: "WireGuard",
+        title: "Live VPN Sessions",
         url: localizePathname({
-          pathname: "/portal/vpn/wireguard",
+          pathname: "/portal/vpn/live",
           locale,
         }),
         icon: <ShieldCheckIcon />,
-        isActive: startsWithRoute(path, "/portal/vpn/wireguard"),
+        isActive: startsWithRoute(path, "/portal/vpn/live"),
       },
     ],
   },

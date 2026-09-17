@@ -121,6 +121,18 @@ export type OpenVpnUserItem = {
   connectedSince: string | null
 }
 
+export type WireGuardSessionItem = {
+  serverId: string
+  serverName: string
+  protocol: "OPENVPN" | "WIREGUARD"
+  username: string
+  ip: string
+  status: "Online" | "Offline" | "Stale"
+  handshake: string
+  rx: string
+  tx: string
+}
+
 export type VpnServerItem = {
   id: string
   name: string
@@ -193,11 +205,7 @@ export type VpnServerAccountEntry = {
   protocol: "OPENVPN" | "WIREGUARD" | "PROXY"
   username: string
   provisioningStatus:
-    | "PENDING"
-    | "PROVISIONING"
-    | "ACTIVE"
-    | "FAILED"
-    | "REVOKED"
+    "PENDING" | "PROVISIONING" | "ACTIVE" | "FAILED" | "REVOKED"
   failureReason: string | null
   hasConfig: boolean
   hasCredentials: boolean
@@ -320,6 +328,18 @@ export async function listOpenVpnUsers(serverId: string) {
     "openvpn-users"
   ].get()) as EdenRes
   return unwrapData<OpenVpnUserItem[]>(res)
+}
+
+export async function listWireGuardSessions() {
+  const res = (await eden.api.admin.vpn["wireguard-sessions"].get()) as EdenRes
+  return unwrapData<WireGuardSessionItem[]>(res)
+}
+
+export async function listWireGuardSessionsByServer(serverId: string) {
+  const res = (await eden.api.admin.vpn.servers[serverId][
+    "wireguard-sessions"
+  ].get()) as EdenRes
+  return unwrapData<WireGuardSessionItem[]>(res)
 }
 
 export async function getVpnServerMetrics(serverId: string) {
