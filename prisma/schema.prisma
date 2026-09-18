@@ -278,6 +278,23 @@ model AiProviderConfig {
   @@map("AiProviderConfig")
 }
 
+model AiIntegrationConnection {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  name                 String
+  description          String?
+  baseUrl              String
+  encryptedHeadersJson String?  @db.Text
+  authType             String   @default("NONE") // "NONE" | "BEARER" | "API_KEY" | "BASIC" | "CUSTOM"
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId, isActive])
+  @@map("AiIntegrationConnection")
+}
+
 model GithubInstallStateNonce {
   id             String    @id @default(cuid())
   nonceHash      String    @unique
