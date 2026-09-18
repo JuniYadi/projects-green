@@ -569,6 +569,50 @@ describe("AiSessionChatService", () => {
       >
       const callArgs = rawCalls[0]?.[0]
       expect(callArgs?.system).toContain(TANYA_P_SYSTEM_PROMPT.slice(0, 30))
+      expect(callArgs?.system).toContain("Platform Runtime Operational Contract")
+    })
+
+    it("injects runtime operational contract and tunables into system prompt for framework", async () => {
+      const mockStreamText = mock(() => ({
+        textStream: (async function* () {
+          yield "Tanya P response"
+        })(),
+        toTextStreamResponse: () => new Response("Tanya P response"),
+      }))
+
+      mockDb.aiDeploymentSession.findFirst.mockResolvedValueOnce(
+        sampleSession({
+          serverContext: {
+            blueprint: {
+              framework: "Laravel 13.x",
+              port: 8080,
+            },
+          },
+        })
+      )
+
+      const service = new AiSessionChatService({
+        db: mockDb as unknown as PrismaClient,
+        getAiConfig: () => ({
+          apiKey: "test-api-key",
+          baseURL: "https://api.openai.com/v1",
+        }),
+        streamText: mockStreamText as unknown as typeof import("ai").streamText,
+      })
+
+      await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "Kenapa upload file 20MB error?",
+      })
+
+      const rawCalls = mockStreamText.mock.calls as unknown as Array<
+        [{ system?: string }]
+      >
+      const callArgs = rawCalls[0]?.[0]
+      expect(callArgs?.system).toContain("PHP_UPLOAD_MAX_FILESIZE")
+      expect(callArgs?.system).toContain("CONTAINER_ROLE")
+      expect(callArgs?.system).toContain("HTTP 413")
     })
 
     it("creates stream Response via fallback ReadableStream when toTextStreamResponse is omitted", async () => {

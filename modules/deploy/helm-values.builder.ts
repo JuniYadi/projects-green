@@ -116,6 +116,12 @@ export type HelmValuesInput = {
   logging?: boolean
   podAnnotations?: Record<string, string> | null
   runAsNonRoot?: boolean
+  runAsUser?: number | null
+  runAsGroup?: number | null
+  allowPrivilegeEscalation?: boolean | null
+  readOnlyRootFilesystem?: boolean | null
+  capabilitiesDrop?: string[] | null
+  securityContext?: Record<string, unknown> | null
   fsGroup?: number | null
   podSecurityContext?: Record<string, unknown> | null
 }
@@ -587,8 +593,36 @@ export class HelmValuesBuilder {
       },
     })
 
-    if (input.runAsNonRoot) {
-      this.securityContext({ runAsNonRoot: true })
+    const secContext: Record<string, unknown> = {}
+    if (input.runAsNonRoot !== undefined) {
+      secContext.runAsNonRoot = input.runAsNonRoot
+    }
+    if (input.runAsUser !== undefined && input.runAsUser !== null) {
+      secContext.runAsUser = input.runAsUser
+    }
+    if (input.runAsGroup !== undefined && input.runAsGroup !== null) {
+      secContext.runAsGroup = input.runAsGroup
+    }
+    if (
+      input.allowPrivilegeEscalation !== undefined &&
+      input.allowPrivilegeEscalation !== null
+    ) {
+      secContext.allowPrivilegeEscalation = input.allowPrivilegeEscalation
+    }
+    if (
+      input.readOnlyRootFilesystem !== undefined &&
+      input.readOnlyRootFilesystem !== null
+    ) {
+      secContext.readOnlyRootFilesystem = input.readOnlyRootFilesystem
+    }
+    if (input.capabilitiesDrop && input.capabilitiesDrop.length > 0) {
+      secContext.capabilities = { drop: input.capabilitiesDrop }
+    }
+    if (input.securityContext) {
+      Object.assign(secContext, input.securityContext)
+    }
+    if (Object.keys(secContext).length > 0) {
+      this.securityContext(secContext)
     }
 
     const resolvedFsGroup = input.fsGroup ?? input.storage?.fsGroup

@@ -234,6 +234,77 @@ describe("buildHelmValues", () => {
     expect(out.containerPorts).toEqual([{ containerPort: 80, name: "http" }])
   })
 
+  it("renders hardened non-root securityContext with UID 10001 and drop ALL capabilities", () => {
+    const out = buildHelmValues({
+      slug: "laravel-app",
+      imageRepository: "ghcr.io/pfnapp/base/frameworks/laravel",
+      imageTag: "latest",
+      env: [],
+      containerPort: 8080,
+      runAsNonRoot: true,
+      runAsUser: 10001,
+      runAsGroup: 10001,
+      allowPrivilegeEscalation: false,
+      capabilitiesDrop: ["ALL"],
+    })
+    expect(out.securityContext).toEqual({
+      runAsNonRoot: true,
+      runAsUser: 10001,
+      runAsGroup: 10001,
+      allowPrivilegeEscalation: false,
+      capabilities: {
+        drop: ["ALL"],
+      },
+    })
+    expect(out.service).toEqual({
+      enabled: true,
+      type: "ClusterIP",
+      port: 8080,
+      targetPort: 8080,
+    })
+    expect(out.containerPorts).toEqual([
+      { containerPort: 8080, name: "http" },
+    ])
+  })
+
+  it("renders livenessProbe and readinessProbe targeting port 8080", () => {
+    const out = buildHelmValues({
+      slug: "laravel-app",
+      imageRepository: "ghcr.io/pfnapp/base/frameworks/laravel",
+      imageTag: "latest",
+      env: [],
+      containerPort: 8080,
+      livenessProbe: {
+        path: "/healthz",
+        port: 8080,
+      },
+      readinessProbe: {
+        path: "/healthz",
+        port: 8080,
+      },
+    })
+    expect(out.livenessProbe).toEqual({
+      httpGet: {
+        path: "/healthz",
+        port: 8080,
+      },
+      initialDelaySeconds: 30,
+      periodSeconds: 10,
+      timeoutSeconds: 5,
+      failureThreshold: 3,
+    })
+    expect(out.readinessProbe).toEqual({
+      httpGet: {
+        path: "/healthz",
+        port: 8080,
+      },
+      initialDelaySeconds: 10,
+      periodSeconds: 5,
+      timeoutSeconds: 3,
+      failureThreshold: 3,
+    })
+  })
+
   it("omits env, externalSecret, simpleIngress, and simpleStorage when not applicable", () => {
     const out = buildHelmValues({
       slug: "s",
