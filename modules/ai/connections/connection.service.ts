@@ -32,6 +32,7 @@ export interface ExecuteConnectionRequestParams {
   connectionId: string
   organizationId: string
   path?: string
+  subpath?: string
   endpoint?: string
   method?: string
   headers?: Record<string, string>
@@ -393,7 +394,7 @@ export async function executeConnectionRequest(
     }
   }
 
-  const rawPath = params.path ?? params.endpoint ?? ""
+  const rawPath = params.path ?? params.subpath ?? params.endpoint ?? ""
   let targetUrl: URL
   try {
     const base = connection.baseUrl.endsWith("/")

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import type { AiChatMessage, AiChatSession } from "@prisma/client"
-import type { CoreMessage } from "ai"
+import type { CoreMessage } from "./ai-agent-session.service"
 
 const mockAiChatSessionFindUnique = mock()
 const mockAiChatSessionCreate = mock()
@@ -172,7 +172,7 @@ describe("ai-agent-session.service", () => {
         ]
 
         expect(key).toContain("sess_thread_99")
-        expect(token).toBe(lockToken)
+        expect(token).toBe(lockToken as string)
         expect(flags).toContain("EX")
         expect(flags).toContain(10)
         expect(flags).toContain("NX")

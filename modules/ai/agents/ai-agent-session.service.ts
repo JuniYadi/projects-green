@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto"
 import type { AiChatMessage, AiChatSession } from "@prisma/client"
-import type { CoreMessage } from "ai"
 
 import { prisma } from "@/lib/prisma"
 import { redis } from "@/lib/redis"
+
+export interface CoreMessage {
+  role: "user" | "assistant" | "system"
+  content: string
+}
 
 export interface GetOrCreateSessionParams {
   sessionId: string
@@ -120,13 +124,15 @@ export function slidingWindowPruning(
   const window = [...messages]
 
   while (window.length > 0 && getTotalLength(window) > maxChars) {
-    if (window[0]?.role === "assistant") {
+    const first = window[0]
+    if (first?.role === "assistant") {
       window.shift()
       continue
     }
 
     window.shift()
-    if (window[0]?.role === "assistant") {
+    const next = window[0]
+    if (next?.role === "assistant") {
       window.shift()
     }
   }

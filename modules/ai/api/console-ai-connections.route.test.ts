@@ -14,11 +14,11 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 
 const mockPrisma = {
   aiIntegrationConnection: {
-    findMany: mock(async () => []),
-    findFirst: mock(async () => null),
-    create: mock(async () => ({} as never)),
-    update: mock(async () => ({} as never)),
-    delete: mock(async () => ({} as never)),
+    findMany: mock(async (): Promise<unknown[]> => []),
+    findFirst: mock(async (): Promise<unknown> => null),
+    create: mock(async (): Promise<unknown> => ({} as never)),
+    update: mock(async (): Promise<unknown> => ({} as never)),
+    delete: mock(async (): Promise<unknown> => ({} as never)),
   },
 }
 mock.module("@/lib/prisma", () => ({
