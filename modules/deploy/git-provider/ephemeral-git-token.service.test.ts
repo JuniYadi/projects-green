@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
+import type { EphemeralGitTokenError } from "./ephemeral-git-token.service"
 
 const mockCreateInstallationToken = mock(
   async (_id: bigint | number) => "ghs_mock_token_123"
@@ -14,9 +15,8 @@ const mockPrisma = {
 }
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
-const { resolveEphemeralGitCredential, EphemeralGitTokenError } = await import(
-  "./ephemeral-git-token.service"
-)
+const { resolveEphemeralGitCredential, EphemeralGitTokenError: EphemeralGitTokenErrorClass } =
+  await import("./ephemeral-git-token.service")
 
 describe("ephemeral-git-token.service", () => {
   const stackId = "stack-123"
@@ -34,7 +34,7 @@ describe("ephemeral-git-token.service", () => {
         repoName: "my-repo",
         installation: {
           id: "inst-1",
-          githubInstallationId: 987654321n,
+          githubInstallationId: BigInt(987654321),
         },
       },
     },
@@ -57,7 +57,9 @@ describe("ephemeral-git-token.service", () => {
     expect(creds.token).toBe("ghs_mock_token_123")
     expect(creds.cloneUrl).toBe("https://github.com/my-org/my-repo.git")
     expect(creds.expiresAt).toBeGreaterThan(Math.floor(Date.now() / 1000))
-    expect(mockCreateInstallationToken).toHaveBeenCalledWith(987654321n)
+    expect(mockCreateInstallationToken).toHaveBeenCalledWith(
+      BigInt(987654321)
+    )
   })
 
   it("formats cloneUrl correctly if fullName already ends with .git", async () => {
@@ -81,7 +83,7 @@ describe("ephemeral-git-token.service", () => {
 
     expect(
       resolveEphemeralGitCredential(stackId, deploymentId)
-    ).rejects.toThrow(EphemeralGitTokenError)
+    ).rejects.toThrow(EphemeralGitTokenErrorClass)
 
     try {
       await resolveEphemeralGitCredential(stackId, deploymentId)
