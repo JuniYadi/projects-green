@@ -18,6 +18,7 @@ import { monitoringRoutes } from "@/modules/deploy/api/routes/monitoring.route"
 import { opensearchLogsRoutes } from "@/modules/deploy/api/routes/opensearch-logs.route"
 import { deployJenkinsWebhookRoutes } from "@/modules/deploy/api/routes/jenkins-webhook.route"
 import { deployJenkinsImageReadyRoutes } from "@/modules/deploy/api/routes/jenkins-image-ready.route"
+import { ephemeralGitTokenRoutes } from "@/modules/deploy/api/routes/ephemeral-git-token.route"
 import { podStatusRoutes } from "@/modules/deploy/api/routes/pod-status.route"
 import { publicSourceRoutes } from "@/modules/deploy/api/routes/public-source.route"
 import { appTemplateRoutes } from "@/modules/deploy/api/routes/templates.route"
@@ -46,6 +47,7 @@ export const deployRoutes = new Elysia()
   .use(opensearchLogsRoutes)
   .use(deployJenkinsWebhookRoutes)
   .use(deployJenkinsImageReadyRoutes)
+  .use(ephemeralGitTokenRoutes)
   .use(podStatusRoutes)
   .use(appTemplateRoutes)
   .use(adminTemplateRoutes)
