@@ -30,6 +30,7 @@ export type SecurityArtifactsTabProps = {
   onRollback?: (imageId: string) => Promise<void>
   onDownloadReport?: () => Promise<void>
   isRollingBack?: boolean
+  registryRepository?: string
 }
 
 export function SecurityArtifactsTab({
@@ -41,6 +42,7 @@ export function SecurityArtifactsTab({
   onRollback,
   onDownloadReport,
   isRollingBack = false,
+  registryRepository,
 }: SecurityArtifactsTabProps) {
   const [subView, setSubView] = useState<"registry" | "vulnerabilities">("registry")
   const [sourceFilter, setSourceFilter] = useState<"all" | "lang-pkgs" | "os-pkgs">("all")
@@ -48,6 +50,13 @@ export function SecurityArtifactsTab({
   const [selectedRollbackImage, setSelectedRollbackImage] = useState<ContainerImageDTO | null>(null)
 
   const activeImage = images.find((img) => img.status === "ACTIVE") ?? images[0]
+  const defaultRegistryHost =
+    process.env.NEXT_PUBLIC_CONTAINER_REGISTRY_HOST ||
+    process.env.NEXT_PUBLIC_REGISTRY_HOST ||
+    ""
+  const displayRepository =
+    registryRepository ||
+    (defaultRegistryHost ? `${defaultRegistryHost}/${stackSlug}` : stackSlug)
 
   // Filter findings based on selected source & search
   const filteredFindings = findings.filter((f) => {
@@ -129,7 +138,7 @@ export function SecurityArtifactsTab({
             <div>
               <span className="text-xs text-muted-foreground">Registry Repository</span>
               <p className="mt-1 font-mono text-xs font-semibold text-foreground truncate">
-                registry-apac.pfnapp.com/{stackSlug}
+                {displayRepository}
               </p>
             </div>
             <div>

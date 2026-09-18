@@ -260,7 +260,8 @@ describe("security-scan.route", () => {
         },
       })
       mockDeployRollbackService.rollbackDeployment.mockResolvedValue({
-        id: "deploy-rollback-1",
+        deploymentId: "deploy-rollback-1",
+        status: "QUEUED",
       })
 
       const res = await app.handle(

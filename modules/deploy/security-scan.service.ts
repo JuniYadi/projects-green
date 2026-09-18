@@ -6,6 +6,7 @@ import {
 } from "@/lib/storage/s3-storage"
 import { encryptTenantStoragePath } from "@/lib/crypto"
 import { enqueueSecurityScanIngest } from "@/lib/queue/security-scan-ingest"
+import { resolveClusterIntegration } from "./cluster-integration.service"
 import {
   toContainerImageDTO,
   toSecurityScanSummaryDTO,
@@ -38,6 +39,7 @@ export type ConfirmSecurityScanInput = {
 export type SecurityOverviewDTO = {
   activeImage: ContainerImageDTO | null
   latestScan: SecurityScanSummaryDTO | null
+  registryRepository?: string | null
 }
 
 export type GetScanFindingsInput = {
@@ -171,9 +173,41 @@ export async function getSecurityOverview(
     }
   }
 
+  let registryRepository: string | null = null
+  try {
+    let registryHost =
+      process.env.NEXT_PUBLIC_CONTAINER_REGISTRY_HOST ||
+      process.env.REGISTRY_HOST ||
+      process.env.JENKINS_DEFAULT_REGISTRY ||
+      ""
+    let registryNamespace: string | undefined
+
+    try {
+      const reg = await resolveClusterIntegration(stackId, "REGISTRY")
+      if (reg?.host) registryHost = reg.host
+      if (reg?.namespace) registryNamespace = reg.namespace
+    } catch {
+      // Cluster integration optional or not configured
+    }
+
+    if (registryHost) {
+      const stack = await prisma.applicationStack?.findFirst?.({
+        where: { id: stackId, organizationId },
+        select: { slug: true },
+      })
+      const slug = stack?.slug || ""
+      registryRepository = registryNamespace
+        ? `${registryHost}/${registryNamespace}/${slug}`
+        : `${registryHost}/${slug}`
+    }
+  } catch {
+    // Registry resolution fallback
+  }
+
   return {
     activeImage: activeImage ? toContainerImageDTO(activeImage) : null,
     latestScan,
+    registryRepository,
   }
 }
 

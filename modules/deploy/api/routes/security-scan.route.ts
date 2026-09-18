@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import type { VulnerabilitySeverity } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { resolveClusterIntegration } from "../../cluster-integration.service"
 import { verifyJenkinsHmacSignature } from "../../jenkins-webhook-auth"
@@ -247,7 +248,7 @@ export const securityScanRoutes = new Elysia({ prefix: "/deploy" })
       const findings = await getScanFindings({
         scanId: params.scanId,
         organizationId: auth.organizationId,
-        severity: query.severity as any,
+        severity: query.severity as VulnerabilitySeverity | undefined,
         class: query.class,
         search: query.search,
         limit: query.limit ? parseInt(query.limit, 10) : undefined,
@@ -333,11 +334,11 @@ export const securityScanRoutes = new Elysia({ prefix: "/deploy" })
         auth.organizationId
       )
 
-      if (!validation.allowed || !validation.image) {
+      if (!validation.allowed) {
         set.status = 400
         return {
           ok: false,
-          error: validation.reason || "ROLLBACK_NOT_ALLOWED",
+          error: validation.reason,
         }
       }
 
@@ -349,7 +350,7 @@ export const securityScanRoutes = new Elysia({ prefix: "/deploy" })
         return {
           ok: true,
           data: {
-            deploymentId: rollbackResult.id,
+            deploymentId: rollbackResult.deploymentId,
             imageTag: validation.image.imageTag,
           },
         }

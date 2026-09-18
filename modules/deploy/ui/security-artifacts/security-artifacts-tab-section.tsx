@@ -13,6 +13,7 @@ export function SecurityArtifactsTabSection({ slug }: { slug: string }) {
   const [activeScan, setActiveScan] = useState<SecurityScanSummaryDTO | null>(null)
   const [findings, setFindings] = useState<SecurityScanFindingDTO[]>([])
   const [totalFindings, setTotalFindings] = useState(0)
+  const [registryRepository, setRegistryRepository] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
   const [isRollingBack, setIsRollingBack] = useState(false)
   const [reloadTrigger, setReloadTrigger] = useState(0)
@@ -40,9 +41,14 @@ export function SecurityArtifactsTabSection({ slug }: { slug: string }) {
 
         if (overviewRes.ok) {
           const overviewData = await overviewRes.json()
-          if (overviewData.ok && overviewData.data?.latestScan) {
-            loadedScan = overviewData.data.latestScan
-            if (active) setActiveScan(loadedScan)
+          if (overviewData.ok && overviewData.data) {
+            if (overviewData.data.latestScan) {
+              loadedScan = overviewData.data.latestScan
+              if (active) setActiveScan(loadedScan)
+            }
+            if (overviewData.data.registryRepository && active) {
+              setRegistryRepository(overviewData.data.registryRepository)
+            }
           }
         }
 
@@ -139,6 +145,7 @@ export function SecurityArtifactsTabSection({ slug }: { slug: string }) {
       activeScan={activeScan}
       findings={findings}
       totalFindings={totalFindings}
+      registryRepository={registryRepository}
       onRollback={handleRollback}
       onDownloadReport={activeScan ? handleDownloadReport : undefined}
       isRollingBack={isRollingBack}

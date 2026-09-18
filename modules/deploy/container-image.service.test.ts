@@ -43,7 +43,7 @@ describe("container-image.service", () => {
           rotatedAt: null,
           purgedAt: null,
           digest: "sha256:abc",
-          sizeBytes: 150000000n,
+          sizeBytes: BigInt(150000000),
         }),
         findMany: mock().mockResolvedValue([
           { id: "img-3", status: "ACTIVE", pushedAt: new Date("2026-09-19T10:00:00Z") },
@@ -111,7 +111,9 @@ describe("container-image.service", () => {
 
     const activeCheck = await validateRollbackImage("stack-1", "img-2", "org-1")
     expect(activeCheck.allowed).toBe(false)
-    expect(activeCheck.reason).toContain("already the active")
+    if (!activeCheck.allowed) {
+      expect(activeCheck.reason).toContain("already the active")
+    }
 
     // 3. Expired image is rejected with re-build guide
     mockPrisma.applicationContainerImage.findFirst.mockResolvedValueOnce({
@@ -123,13 +125,17 @@ describe("container-image.service", () => {
 
     const expiredCheck = await validateRollbackImage("stack-1", "img-0", "org-1")
     expect(expiredCheck.allowed).toBe(false)
-    expect(expiredCheck.reason).toContain("auto-rotated to save space")
+    if (!expiredCheck.allowed) {
+      expect(expiredCheck.reason).toContain("auto-rotated to save space")
+    }
 
     // 4. Missing image is rejected
     mockPrisma.applicationContainerImage.findFirst.mockResolvedValueOnce(null)
     const missingCheck = await validateRollbackImage("stack-1", "img-missing", "org-1")
     expect(missingCheck.allowed).toBe(false)
-    expect(missingCheck.reason).toContain("not found")
+    if (!missingCheck.allowed) {
+      expect(missingCheck.reason).toContain("not found")
+    }
   })
 
   it("retrieves stack container images and serializes DTOs", async () => {
@@ -142,7 +148,7 @@ describe("container-image.service", () => {
         buildNumber: 1,
         imageTag: "1",
         digest: "sha256:111",
-        sizeBytes: 100000000n,
+        sizeBytes: BigInt(100000000),
         status: "READY",
         pushedAt: new Date("2026-09-19T08:00:00Z"),
         rotatedAt: null,

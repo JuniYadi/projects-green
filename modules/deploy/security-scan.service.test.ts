@@ -14,6 +14,9 @@ const mockPrisma = {
     findMany: mock(),
     count: mock(),
   },
+  applicationStack: {
+    findFirst: mock(),
+  },
 }
 
 const mockS3 = {
@@ -115,7 +118,7 @@ describe("security-scan.service", () => {
       buildNumber: 2,
       imageTag: "2",
       digest: "sha256:4f866c",
-      sizeBytes: 142000000n,
+      sizeBytes: BigInt(142000000),
       status: "ACTIVE",
       pushedAt: new Date("2026-09-19T10:00:00Z"),
       rotatedAt: null,
