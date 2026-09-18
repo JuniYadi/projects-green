@@ -66,8 +66,10 @@ describe("POST /deploy/stacks/:id/ephemeral-git-token", () => {
     mockResolveEphemeralGitCredential.mockClear()
     resolveCluster.mockClear()
     mockPrisma.applicationStack.findUnique.mockReset()
+    mockPrisma.applicationStack.findFirst.mockReset()
 
     mockPrisma.applicationStack.findUnique.mockResolvedValue(stackRecord)
+    mockPrisma.applicationStack.findFirst.mockResolvedValue(stackRecord)
     resolveCluster.mockResolvedValue({ webhookToken })
     mockResolveEphemeralGitCredential.mockResolvedValue({
       provider: "github" as const,
@@ -103,7 +105,11 @@ describe("POST /deploy/stacks/:id/ephemeral-git-token", () => {
     const body = createRequestBody()
     const rawBody = JSON.stringify(body)
     const timestamp = Math.floor(Date.now() / 1000).toString()
-    const signature = createJenkinsHmacSignature(rawBody, webhookToken, timestamp)
+    const signature = createJenkinsHmacSignature(
+      rawBody,
+      webhookToken,
+      timestamp
+    )
 
     const response = await ephemeralGitTokenRoutes.handle(
       new Request(
@@ -186,7 +192,11 @@ describe("POST /deploy/stacks/:id/ephemeral-git-token", () => {
     const body = createRequestBody()
     const rawBody = JSON.stringify(body)
     const timestamp = Math.floor(Date.now() / 1000).toString()
-    const signature = createJenkinsHmacSignature(rawBody, webhookToken, timestamp)
+    const signature = createJenkinsHmacSignature(
+      rawBody,
+      webhookToken,
+      timestamp
+    )
 
     const response = await ephemeralGitTokenRoutes.handle(
       new Request(
@@ -297,11 +307,16 @@ describe("POST /deploy/stacks/:id/ephemeral-git-token", () => {
 
   it("returns 404 when stack does not exist", async () => {
     mockPrisma.applicationStack.findUnique.mockResolvedValue(null)
+    mockPrisma.applicationStack.findFirst.mockResolvedValue(null)
     const body = createRequestBody()
     const rawBody = JSON.stringify(body)
     const timestamp = Math.floor(Date.now() / 1000).toString()
     process.env.JENKINS_WEBHOOK_TOKEN = webhookToken
-    const signature = createJenkinsHmacSignature(rawBody, webhookToken, timestamp)
+    const signature = createJenkinsHmacSignature(
+      rawBody,
+      webhookToken,
+      timestamp
+    )
 
     const response = await ephemeralGitTokenRoutes.handle(
       new Request(
@@ -329,7 +344,11 @@ describe("POST /deploy/stacks/:id/ephemeral-git-token", () => {
     const body = createRequestBody()
     const rawBody = JSON.stringify(body)
     const timestamp = Math.floor(Date.now() / 1000).toString()
-    const signature = createJenkinsHmacSignature(rawBody, webhookToken, timestamp)
+    const signature = createJenkinsHmacSignature(
+      rawBody,
+      webhookToken,
+      timestamp
+    )
 
     const response = await ephemeralGitTokenRoutes.handle(
       new Request(
@@ -362,7 +381,11 @@ describe("POST /deploy/stacks/:id/ephemeral-git-token", () => {
     const body = createRequestBody()
     const rawBody = JSON.stringify(body)
     const timestamp = Math.floor(Date.now() / 1000).toString()
-    const signature = createJenkinsHmacSignature(rawBody, webhookToken, timestamp)
+    const signature = createJenkinsHmacSignature(
+      rawBody,
+      webhookToken,
+      timestamp
+    )
 
     const response = await ephemeralGitTokenRoutes.handle(
       new Request(
@@ -397,7 +420,11 @@ describe("POST /deploy/stacks/:id/ephemeral-git-token", () => {
     const body = createRequestBody()
     const rawBody = JSON.stringify(body)
     const timestamp = Math.floor(Date.now() / 1000).toString()
-    const signature = createJenkinsHmacSignature(rawBody, webhookToken, timestamp)
+    const signature = createJenkinsHmacSignature(
+      rawBody,
+      webhookToken,
+      timestamp
+    )
 
     const response = await ephemeralGitTokenRoutes.handle(
       new Request(
@@ -432,7 +459,11 @@ describe("POST /deploy/stacks/:id/ephemeral-git-token", () => {
     }
     const rawBody = JSON.stringify(body)
     const timestamp = Math.floor(Date.now() / 1000).toString()
-    const signature = createJenkinsHmacSignature(rawBody, webhookToken, timestamp)
+    const signature = createJenkinsHmacSignature(
+      rawBody,
+      webhookToken,
+      timestamp
+    )
 
     const response = await ephemeralGitTokenRoutes.handle(
       new Request(
@@ -461,7 +492,11 @@ describe("POST /deploy/stacks/:id/ephemeral-git-token", () => {
     const body = createRequestBody()
     const rawBody = JSON.stringify(body)
     const timestamp = Math.floor(Date.now() / 1000).toString()
-    const signature = createJenkinsHmacSignature(rawBody, webhookToken, timestamp)
+    const signature = createJenkinsHmacSignature(
+      rawBody,
+      webhookToken,
+      timestamp
+    )
 
     const response = await parentApp.handle(
       new Request(
