@@ -2,6 +2,8 @@ import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 import type { BankAccountResponse } from "@/modules/payment/types/payment.types"
 
+mock.module("server-only", () => ({}))
+
 // Ensure default deps don't pick up leaked mocks from other files
 mock.module("@workos-inc/authkit-nextjs", () => ({
   withAuth: mock(async () => ({ user: null })),
@@ -108,6 +110,9 @@ const createApp = (input: {
   getOrganizationIdByBillingAccount?: (
     billingAccountId: string
   ) => Promise<string | null>
+  resolveOrganizations?: (
+    organizationIds: string[]
+  ) => Promise<Map<string, { id: string; name: string | null }>>
   resolveInvoiceRecipients?: (
     organizationId: string
   ) => Promise<Array<{ email: string }>>
@@ -131,6 +136,7 @@ const createApp = (input: {
       emailService: mockEmailService,
       getOrganizationIdByBillingAccount:
         input.getOrganizationIdByBillingAccount ?? (async () => "org_1"),
+      resolveOrganizations: input.resolveOrganizations,
       resolveInvoiceRecipients:
         input.resolveInvoiceRecipients ??
         (async () => [{ email: "billing@example.com" }]),
@@ -470,16 +476,37 @@ describe("invoices routes", () => {
     expect(response.status).toBe(403)
   })
 
-  it("returns all invoices for super admin without organization", async () => {
+  it("returns all invoices for super admin without organization and resolves organization names", async () => {
     const service = createService()
+    service.listInvoices = mock(async () => [
+      {
+        id: "inv_1",
+        invoiceNumber: "INV-2026-0001",
+        issuedAt: "2026-05-02T00:00:00.000Z",
+        dueAt: "2026-05-17T00:00:00.000Z",
+        totalAmount: 1500000,
+        currency: "IDR",
+        status: "open",
+        organizationId: "org_alpha",
+      },
+    ])
+    const mockResolveOrgs = mock(async (_ids: string[]) => {
+      return new Map([["org_alpha", { id: "org_alpha", name: "Alpha Corp" }]])
+    })
+
     const app = createApp({
       service,
       platformRole: "super_admin",
       auth: { organizationId: null },
+      resolveOrganizations: mockResolveOrgs,
     })
 
     const response = await app.handle(new Request("http://localhost/invoices"))
     expect(response.status).toBe(200)
+    const payload = await response.json()
+    expect(payload.ok).toBe(true)
+    expect(payload.invoices[0].organizationName).toBe("Alpha Corp")
+    expect(mockResolveOrgs).toHaveBeenCalledWith(["org_alpha"])
   })
 
   it("returns 500 when list invoices fails", async () => {

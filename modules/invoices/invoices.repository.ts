@@ -48,6 +48,9 @@ type InvoiceRecord = {
   metadata: unknown
   createdAt: Date
   updatedAt: Date
+  billingAccount?: {
+    organizationId: string
+  } | null
 }
 
 type InvoiceGatewayRecord = {
@@ -209,6 +212,13 @@ export const createPrismaInvoiceRepository = (): InvoiceRepository => {
 
       return getInvoiceDelegate().findMany({
         where: buildInvoiceListWhere({ organizationId, query }),
+        include: {
+          billingAccount: {
+            select: {
+              organizationId: true,
+            },
+          },
+        },
         orderBy: [{ [sortBy]: sortDir }, { createdAt: "desc" }],
         take: 200,
       })

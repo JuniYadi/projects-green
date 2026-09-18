@@ -39,6 +39,7 @@ import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { BankAccountService } from "@/modules/payment/services/bank-account.service"
 import { prisma } from "@/lib/prisma"
 import { getTenantOrganizationById } from "@/modules/tenants/services/tenant-workos.service"
+import { getCachedOrganizations } from "@/lib/workos-directory"
 const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   status: z
@@ -94,6 +95,9 @@ type InvoiceRouteDependencies = {
   getOrganizationIdByBillingAccount: (
     billingAccountId: string
   ) => Promise<string | null>
+  resolveOrganizations?: (
+    organizationIds: string[]
+  ) => Promise<Map<string, { id: string; name: string | null }>>
   resolveInvoiceRecipients?: (
     organizationId: string
   ) => Promise<BillingEmailRecipient[]>
@@ -111,6 +115,7 @@ const createDefaultDependencies = (): InvoiceRouteDependencies => ({
     })
     return billingAccount?.organizationId ?? null
   },
+  resolveOrganizations: (orgIds) => getCachedOrganizations(orgIds),
   resolveInvoiceRecipients: resolveInvoiceEmailRecipients,
 })
 
@@ -270,6 +275,30 @@ export const createInvoicesRoutes = (
               InvoiceSortDirection | undefined,
           },
         })
+
+        if (isSuperAdmin && dependencies.resolveOrganizations) {
+          const orgIds = [
+            ...new Set(
+              invoices
+                .map((inv) => inv.organizationId)
+                .filter((id): id is string => Boolean(id))
+            ),
+          ]
+
+          if (orgIds.length > 0) {
+            try {
+              const orgMap = await dependencies.resolveOrganizations(orgIds)
+              for (const inv of invoices) {
+                if (inv.organizationId) {
+                  inv.organizationName =
+                    orgMap.get(inv.organizationId)?.name ?? null
+                }
+              }
+            } catch {
+              // Non-fatal: organizations map resolution failure degrades to null name
+            }
+          }
+        }
 
         return {
           ok: true as const,
