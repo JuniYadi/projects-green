@@ -128,9 +128,9 @@ export function GitDeployWizard({
         primaryEngine: blueprint.runtime || undefined,
         defaultPort: blueprint.port || 80,
         resourcePlanId: isSmall ? "small" : "medium",
-        billingMode: "PACKAGE" as const,
-        cpu,
-        memory,
+        billingMode: "PAYG" as const,
+        cpu: isSmall ? 500 : 1000,
+        memory: isSmall ? 512 : 2048,
       }
 
       const res = await fetch("/api/deploy/submit", {

@@ -28,7 +28,7 @@ export type ExecutiveLaunchCardProps = {
   userName?: string
   balanceFormatted?: string
   toolsList?: string
-  onLaunch: () => Promise<void> | void
+  onLaunch: (planCode?: string) => Promise<void> | void
   onBackToChat: () => void
   isLaunching?: boolean
   onPlanChange?: (planCode: string, hourlyRate: number) => void
@@ -512,7 +512,11 @@ export function ExecutiveLaunchCard({
           <Button
             type="button"
             data-testid="launch-card-action-btn"
-            onClick={() => void onLaunch()}
+            onClick={() =>
+              void onLaunch(
+                matchedPlan?.code || selectedPlanCodeOverride || "MEDIUM"
+              )
+            }
             disabled={isLaunching || balanceError || !isBalanceSufficient}
             className={cn(
               "h-11 rounded-xl px-6 text-sm font-bold shadow-xs transition-all",
