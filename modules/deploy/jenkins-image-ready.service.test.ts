@@ -11,6 +11,8 @@ const defaultStack = {
   id: "stack-1",
   slug: "app-metacard-prod",
   customDomain: "metacard.co.id",
+  framework: "nextjs" as string | null,
+  metadataJson: null as Record<string, unknown> | null,
   cpu: 500,
   memory: 1024,
   envVarsJson: [

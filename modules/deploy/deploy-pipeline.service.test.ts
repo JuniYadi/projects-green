@@ -195,7 +195,7 @@ describe("deploy-pipeline.service", () => {
     })
 
     expect(mockPrisma.applicationStack.create).toHaveBeenCalled()
-    const createCall = mockPrisma.applicationStack.create.mock.calls[0][0] as any
+    const createCall = (mockPrisma.applicationStack.create.mock.calls as any)[0][0]
     expect(createCall.data.metadataJson).toMatchObject({
       defaultPort: 8080,
       containerPort: 8080,
