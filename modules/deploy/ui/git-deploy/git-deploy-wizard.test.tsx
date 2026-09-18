@@ -57,11 +57,11 @@ const mockFetch = mock(
         { status: 200, headers: { "Content-Type": "application/json" } }
       )
     }
-    if (url.includes("/confirm")) {
+    if (url.includes("/confirm") || url.includes("/api/deploy/submit")) {
       return new Response(
         JSON.stringify({
           ok: true,
-          data: { stackId: "stack-xyz" },
+          data: { stackId: "stack-xyz", deploymentId: "dep-xyz" },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       )

@@ -107,45 +107,51 @@ export function GitDeployWizard({
       subdomain,
       monthlyPrice: defaultMonthlyPrice,
       currency,
+      managedBaseDomain: blueprint.managedBaseDomain || "sg.pfnapp.dev",
     }
     setSizingConfig(sizing)
 
     try {
-      const session = inspectionData?.session as { id?: string } | undefined
-      const activeSessionId = sessionId || session?.id
-      if (activeSessionId) {
-        const res = await fetch(
-          `/api/deploy/ai-sessions/${activeSessionId}/confirm`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              subdomain,
-              resources: {
-                package: isSmall ? "small" : "medium",
-                cpu,
-                memory,
-              },
-            }),
-          }
-        )
-        const data = await res.json()
-        if (!res.ok || !data.ok) {
-          toast.error(
-            data.message || data.error || "Deployment failed to start."
-          )
-          setIsLaunching(false)
-          return
-        }
-        const createdStackId =
-          data.data?.stackId ||
-          data.data?.stack?.id ||
-          data.stackId ||
-          "dep-" + Date.now()
-        setDeploymentId(createdStackId)
-      } else {
-        setDeploymentId("dep-" + Date.now())
+      const isPublic = !source?.isPrivate
+      const repoUrl = source?.url || "https://github.com/laravel/laravel"
+      const repoBranch = source?.branch || "main"
+      const rootDir = source?.rootDir || "/"
+
+      const submitPayload = {
+        sourceType: isPublic ? ("PUBLIC" as const) : ("GITHUB" as const),
+        publicSourceUrl: isPublic ? repoUrl : undefined,
+        branchName: repoBranch,
+        rootDirectory: rootDir,
+        name: subdomain,
+        subdomain,
+        framework: blueprint.framework || undefined,
+        primaryEngine: blueprint.runtime || undefined,
+        defaultPort: blueprint.port || 80,
+        resourcePlanId: isSmall ? "small" : "medium",
+        billingMode: "PACKAGE" as const,
+        cpu,
+        memory,
       }
+
+      const res = await fetch("/api/deploy/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(submitPayload),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        toast.error(data.message || data.error || "Deployment failed to start.")
+        setIsLaunching(false)
+        return
+      }
+
+      const createdDeploymentId =
+        data.data?.deploymentId ||
+        data.data?.stackId ||
+        data.data?.slug ||
+        "dep-" + Date.now()
+      setDeploymentId(createdDeploymentId)
       setScreen("rollout")
       toast.success("Application deployment initiated!")
     } catch {
