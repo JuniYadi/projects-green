@@ -68,7 +68,11 @@ function formatComputePlan(
         : "$0.04/hour"
 
   const lower = (tierName || matchedPlan?.name || "").toLowerCase()
-  if (lower.includes("small") || lower.includes("starter")) {
+  if (
+    lower.includes("small") ||
+    lower.includes("starter") ||
+    lower.includes("(s)")
+  ) {
     return `Starter Tier (0.5 vCPU · 512MB RAM · ${rateText})`
   }
   if (lower.includes("large") || lower.includes("pro")) {
@@ -349,14 +353,87 @@ export function ExecutiveLaunchCard({
             </span>
           </div>
 
-          {/* Compute Plan */}
-          <div className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs font-medium text-muted-foreground">
+          {/* Compute Plan / Hardware Resource Sizing */}
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               {agentMessages.computePlanLabel}
             </span>
-            <span className="text-sm font-medium text-foreground">
-              {computePlan}
-            </span>
+            {catalogPlans.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {catalogPlans.map((plan, idx) => {
+                  const isSelected = matchedPlan?.code === plan.code
+                  const planKey = plan.id || plan.code || `plan-${idx}`
+                  const resources = getPlanResources(plan)
+                  const offer =
+                    plan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+                    plan.offers?.[0]
+                  const periodPrice = offer?.periodPrice
+                    ? Number(offer.periodPrice)
+                    : effectiveCurrency === "IDR"
+                      ? plan.code === "SMALL"
+                        ? 20000
+                        : 40000
+                      : plan.code === "SMALL"
+                        ? 2
+                        : 4
+                  const hourly =
+                    effectiveCurrency === "IDR"
+                      ? Math.ceil(periodPrice / 720)
+                      : Number((periodPrice / 720).toFixed(4))
+                  const cpuStr =
+                    resources.cpu >= 1000
+                      ? `${(resources.cpu / 1000).toFixed(1).replace(/\.0$/, "")} vCPU`
+                      : `${resources.cpu}m CPU`
+                  const memStr =
+                    resources.mem >= 1024
+                      ? `${Math.round(resources.mem / 1024)}GB RAM`
+                      : `${resources.mem}MB RAM`
+                  const priceStr =
+                    effectiveCurrency === "IDR"
+                      ? `Rp ${periodPrice.toLocaleString("id-ID")} / bulan (~IDR ${hourly}/jam)`
+                      : `$${periodPrice.toFixed(2)} / month (~$${hourly.toFixed(2)}/hr)`
+
+                  return (
+                    <button
+                      key={planKey}
+                      type="button"
+                      onClick={() => {
+                        blueprint.computeTier = plan.name || `${plan.code} Tier`
+                        blueprint.hourlyRate = hourly
+                      }}
+                      className={cn(
+                        "flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all",
+                        isSelected
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border bg-card hover:bg-muted/40"
+                      )}
+                    >
+                      <div className="flex w-full items-center justify-between">
+                        <span className="text-xs font-semibold text-foreground">
+                          {plan.name || `${plan.code} (Tier)`}
+                        </span>
+                        {isSelected && (
+                          <CheckCircle
+                            className="size-4 text-primary"
+                            weight="fill"
+                          />
+                        )}
+                      </div>
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {cpuStr} · {memStr}
+                      </span>
+                      <span className="text-[11px] font-medium text-foreground">
+                        {priceStr}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <span className="text-sm font-medium text-foreground">
+                {computePlan}
+              </span>
+            )}
           </div>
 
           {/* Tenant Balance */}

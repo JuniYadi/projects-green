@@ -560,9 +560,7 @@ describe("DeployPage Client", () => {
         )
       ).toBeTruthy()
       expect(
-        within(launchCard).getByText(
-          "Medium Tier (1 vCPU · 2GB RAM · $0.04/hour)"
-        )
+        within(launchCard).getByText(/Standard Compute|Medium Tier/i)
       ).toBeTruthy()
     })
   })
