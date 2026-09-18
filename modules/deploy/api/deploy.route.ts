@@ -27,6 +27,7 @@ import { appTelemetryRoutes } from "@/modules/deploy/api/routes/app-telemetry.ro
 import { appTrafficRoutes } from "@/modules/deploy/api/routes/app-traffic.route"
 import { appLogHealthRoutes } from "@/modules/deploy/api/routes/app-log-health.route"
 import { defaultClusterRoutes } from "@/modules/deploy/api/routes/default-cluster.route"
+import { securityScanRoutes } from "@/modules/deploy/api/routes/security-scan.route"
 
 export const deployRoutes = new Elysia()
   .use(aiDeploymentSessionRoutes)
@@ -54,3 +55,4 @@ export const deployRoutes = new Elysia()
   .use(appTelemetryRoutes)
   .use(appTrafficRoutes)
   .use(appLogHealthRoutes)
+  .use(securityScanRoutes)

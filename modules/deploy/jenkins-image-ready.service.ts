@@ -15,6 +15,7 @@ import {
   buildHelmApplicationManifest,
   resolveGitOpsManifestPaths,
 } from "./gitops-manifest.builder"
+import { registerContainerImage } from "./container-image.service"
 
 export type PrismaTransactionClient = Prisma.TransactionClient
 
@@ -87,6 +88,8 @@ export type JenkinsImageReadyInput = {
   imageTag: string
   commitSha?: string
   buildNumber?: number
+  digest?: string
+  sizeBytes?: bigint | number | string | null
 }
 
 export type JenkinsImageReadyResult = {
@@ -392,6 +395,16 @@ export async function handleJenkinsImageReady(
       tx,
       chartVersion: argocdConfig?.chartVersion,
       chartRepoUrl: argocdConfig?.chartRepo,
+    })
+
+    await registerContainerImage({
+      organizationId: stack.organizationId,
+      stackId: stack.id,
+      deploymentId: deployment.id,
+      buildNumber: input.buildNumber ?? (parseInt(input.imageTag, 10) || 1),
+      imageTag: input.imageTag,
+      digest: input.digest ?? null,
+      sizeBytes: input.sizeBytes ?? null,
     })
 
     return {

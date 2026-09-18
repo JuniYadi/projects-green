@@ -18,6 +18,7 @@ import {
   GitBranch,
   Cube,
   GlobeHemisphereWest,
+  ShieldCheck,
 } from "@phosphor-icons/react"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
@@ -40,6 +41,7 @@ import { ReinstallTemplateDialog } from "./reinstall-template-dialog"
 export type WorkspaceTabKey =
   | "overview"
   | "deployments"
+  | "security-artifacts"
   | "logs"
   | "terminal"
   | "metrics"
@@ -90,6 +92,11 @@ export function AppWorkspaceHeader({
       key: "deployments",
       label: "Deployments",
       icon: <ListMagnifyingGlass size={15} />,
+    },
+    {
+      key: "security-artifacts",
+      label: "Security & Artifacts",
+      icon: <ShieldCheck size={15} />,
     },
     { key: "logs", label: "Logs", icon: <ListMagnifyingGlass size={15} /> },
     {
