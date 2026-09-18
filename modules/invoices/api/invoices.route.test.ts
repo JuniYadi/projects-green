@@ -486,7 +486,7 @@ describe("invoices routes", () => {
         dueAt: "2026-05-17T00:00:00.000Z",
         totalAmount: 1500000,
         currency: "IDR",
-        status: "open",
+        status: "open" as const,
         organizationId: "org_alpha",
       },
     ])
