@@ -588,21 +588,15 @@ export function DeployChatStream({
           defaultPlan?.offers?.[0]
         const defaultMonthlyPrice = defaultOffer?.periodPrice
           ? Number(defaultOffer.periodPrice)
-          : isId
-            ? 40000
-            : 4
+          : undefined
 
-        const defaultHourlyRate = defaultPlan
-          ? (() => {
-              return isId
-                ? Math.ceil(defaultMonthlyPrice / 720)
-                : Number((defaultMonthlyPrice / 720).toFixed(4))
-            })()
-          : isId
-            ? 56
-            : 0.04
+        const defaultHourlyRate = defaultMonthlyPrice
+          ? isId
+            ? Math.ceil(defaultMonthlyPrice / 720)
+            : Number((defaultMonthlyPrice / 720).toFixed(4))
+          : undefined
 
-        const computeTier = defaultPlan?.name || "Medium (M)"
+        const computeTier = defaultPlan?.code || defaultPlan?.name || "MEDIUM"
 
         const rawRepoName = repoShort.split("/").pop() || "app"
         const repoSubdomain =
@@ -714,20 +708,29 @@ export function DeployChatStream({
       const inferredRt = cleanSub.includes("api") ? "Go 1.22" : "Node.js 20"
       const inferredPort = cleanSub.includes("api") ? 8080 : 3000
 
+      const defaultPlan =
+        catalogPlans.find((p) => p.code === "MEDIUM") || catalogPlans[0]
+      const defaultOffer =
+        defaultPlan?.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+        defaultPlan?.offers?.[0]
+      const monorepoMonthlyPrice = defaultOffer?.periodPrice
+        ? Number(defaultOffer.periodPrice)
+        : undefined
+
       const rawSubName = cleanSub.split("/").pop() || "app"
       const bp: InlineBlueprintData = {
         framework: inferredFw,
         runtime: inferredRt,
         port: inferredPort,
-        planCode: "MEDIUM",
-        computeTier: "Medium (M)",
+        planId: defaultPlan?.id,
+        planCode: defaultPlan?.code || "MEDIUM",
+        computeTier: defaultPlan?.code || "MEDIUM",
         subdomain: generateSuggestedAppName(rawSubName),
         startCommand: cleanSub.includes("api")
           ? "go run main.go"
           : "pnpm start",
         envVarsCount: 3,
-        monthlyPrice: isId ? 40000 : 4,
-        hourlyRate: 0.04,
+        monthlyPrice: monorepoMonthlyPrice,
         managedBaseDomain: clusterBaseDomain,
       }
 

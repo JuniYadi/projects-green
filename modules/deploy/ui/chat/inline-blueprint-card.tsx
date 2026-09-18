@@ -64,18 +64,14 @@ export function InlineBlueprintCard({
   const isRealIdr = blueprint.currency === "IDR"
   const planName = blueprint.computeTier || (isSmall ? "SMALL" : "MEDIUM")
   const monthlyPriceText =
-    typeof blueprint.monthlyPrice === "number"
+    typeof blueprint.monthlyPrice === "number" && blueprint.monthlyPrice > 0
       ? isRealIdr
         ? `Rp ${blueprint.monthlyPrice.toLocaleString("id-ID")} / bulan`
         : `$${blueprint.monthlyPrice.toFixed(2)} / mo`
-      : isRealIdr
-        ? isSmall
-          ? "Rp 20.000 / bulan"
-          : "Rp 40.000 / bulan"
-        : isSmall
-          ? "$2.00 / mo"
-          : "$4.00 / mo"
-  const compute = `${planName} · ${monthlyPriceText}`
+      : null
+  const compute = monthlyPriceText
+    ? `${planName} · ${monthlyPriceText}`
+    : planName
 
   const baseDomain = blueprint.managedBaseDomain || "sg.pfnapp.dev"
   const domain = `${blueprint.subdomain || "app"}.${baseDomain}`

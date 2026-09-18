@@ -33,6 +33,30 @@ describe("ExecutiveLaunchCard", () => {
     mockFetch.mockImplementation(
       async (input: RequestInfo | URL, _init?: RequestInit) => {
         const url = String(input)
+        if (url.includes("/api/billing/catalog/APP_HOSTING")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              product: {
+                plans: [
+                  {
+                    id: "cmtc7a5zh0000cb4c2uit9tbt",
+                    code: "SMALL",
+                    name: "SMALL (S)",
+                    offers: [{ periodPrice: 20000, billingPeriod: "MONTHLY" }],
+                  },
+                  {
+                    id: "cmtc7blho0003cb4catj4qj0l",
+                    code: "MEDIUM",
+                    name: "Medium (M)",
+                    offers: [{ periodPrice: 40000, billingPeriod: "MONTHLY" }],
+                  },
+                ],
+              },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        }
         if (url.includes("/api/billing/account")) {
           return new Response(
             JSON.stringify({
@@ -124,11 +148,9 @@ describe("ExecutiveLaunchCard", () => {
     expect(view.getByText("Subdomain:")).toBeTruthy()
     expect(view.getByText("backend-api.sg.pfnapp.dev")).toBeTruthy()
     expect(view.getByText("Compute Plan:")).toBeTruthy()
-    expect(
-      view.getByText(
-        /Medium Tier \(1 vCPU · 2GB RAM · (\$4\.00 \/ month|Rp 40\.000 \/ bulan)\)/i
-      )
-    ).toBeTruthy()
+    await waitFor(() => {
+      expect(view.getByText("Medium (M)")).toBeTruthy()
+    })
 
     // Balance check
     await waitFor(() => {
@@ -189,7 +211,7 @@ describe("ExecutiveLaunchCard", () => {
     expect(onBackToChat).toHaveBeenCalledTimes(1)
   })
 
-  it("handles GitHub repository adapter and different compute tier", () => {
+  it("handles GitHub repository adapter and different compute tier", async () => {
     const ghSource = {
       url: "https://github.com/facebook/react.git",
       branch: "develop",
@@ -222,11 +244,9 @@ describe("ExecutiveLaunchCard", () => {
     expect(view.getByText("3000 (HTTP)")).toBeTruthy()
     expect(view.getByText("develop / ./packages/react")).toBeTruthy()
     expect(view.getByText("react-preview.sg.pfnapp.dev")).toBeTruthy()
-    expect(
-      view.getByText(
-        /Starter Tier \(0\.5 vCPU · 512MB RAM · (\$2\.00 \/ month|Rp 20\.000 \/ bulan)\)/i
-      )
-    ).toBeTruthy()
+    await waitFor(() => {
+      expect(view.getByText("SMALL (S)")).toBeTruthy()
+    })
   })
 
   it("displays loading and disabled state when isLaunching is true", () => {
@@ -280,6 +300,30 @@ describe("ExecutiveLaunchCard", () => {
   it("disables launch button and renders deficit notice when balance is insufficient", async () => {
     mockFetch.mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input)
+      if (url.includes("/api/billing/catalog/APP_HOSTING")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            product: {
+              plans: [
+                {
+                  id: "cmtc7a5zh0000cb4c2uit9tbt",
+                  code: "SMALL",
+                  name: "SMALL (S)",
+                  offers: [{ periodPrice: 20000, billingPeriod: "MONTHLY" }],
+                },
+                {
+                  id: "cmtc7blho0003cb4catj4qj0l",
+                  code: "MEDIUM",
+                  name: "Medium (M)",
+                  offers: [{ periodPrice: 40000, billingPeriod: "MONTHLY" }],
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      }
       if (url.includes("/api/billing/account")) {
         return new Response(
           JSON.stringify({
