@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import { render, fireEvent, cleanup } from "@testing-library/react"
 
+import type { EnvVar, K8sEnvironmentId } from "../../operate.types"
 import { TabEnv } from "./tab-env"
 
 describe("TabEnv with RuntimeQuickTuningCard", () => {
   afterEach(cleanup)
+
   it("renders RuntimeQuickTuningCard and EnvVarsEditor", () => {
-    const envVars = {
-      production: [
+    const envVars: Record<K8sEnvironmentId, EnvVar[]> = {
+      prod: [
         {
           id: "env-1",
           key: "PHP_UPLOAD_MAX_FILESIZE",
@@ -17,6 +19,7 @@ describe("TabEnv with RuntimeQuickTuningCard", () => {
         },
       ],
       staging: [],
+      dev: [],
     }
 
     const setEnvVars = mock(() => {})
@@ -24,7 +27,7 @@ describe("TabEnv with RuntimeQuickTuningCard", () => {
 
     const view = render(
       <TabEnv
-        selectedEnv="production"
+        selectedEnv="prod"
         envVars={envVars}
         setEnvVars={setEnvVars}
         onPersist={onPersist}
@@ -38,8 +41,8 @@ describe("TabEnv with RuntimeQuickTuningCard", () => {
   })
 
   it("updates environment variables and persists when quick tuning preset is clicked", () => {
-    const envVars = {
-      production: [
+    const envVars: Record<K8sEnvironmentId, EnvVar[]> = {
+      prod: [
         {
           id: "env-1",
           key: "PHP_UPLOAD_MAX_FILESIZE",
@@ -49,6 +52,7 @@ describe("TabEnv with RuntimeQuickTuningCard", () => {
         },
       ],
       staging: [],
+      dev: [],
     }
 
     const setEnvVars = mock(() => {})
@@ -56,7 +60,7 @@ describe("TabEnv with RuntimeQuickTuningCard", () => {
 
     const view = render(
       <TabEnv
-        selectedEnv="production"
+        selectedEnv="prod"
         envVars={envVars}
         setEnvVars={setEnvVars}
         onPersist={onPersist}
