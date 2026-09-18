@@ -18,12 +18,14 @@ import {
 export const ephemeralGitTokenRoutes = new Elysia({
   prefix: "/deploy",
 }).post(
-  "/stacks/:id/ephemeral-git-token",
+  "/stacks/:slug/ephemeral-git-token",
   async ({ params, body, headers, request, set }) => {
     const envToken = process.env.JENKINS_WEBHOOK_TOKEN
 
-    const stack = await prisma.applicationStack.findUnique({
-      where: { id: params.id },
+    const stack = await prisma.applicationStack.findFirst({
+      where: {
+        OR: [{ id: params.slug }, { slug: params.slug }],
+      },
     })
 
     let expectedToken: string | null = envToken ?? null
@@ -137,7 +139,7 @@ export const ephemeralGitTokenRoutes = new Elysia({
   },
   {
     params: t.Object({
-      id: t.String(),
+      slug: t.String(),
     }),
     body: t.Object({
       clientPublicKey: t.Object(
