@@ -84,13 +84,15 @@ export function GitDeployWizard({
     setScreen("chat")
   }
 
-  const handleLaunch = async () => {
+  const handleLaunch = async (selectedPlanCode?: string) => {
     if (!source || !blueprint) return
 
     setIsLaunching(true)
-    const tier = blueprint.computeTier || "Medium"
+    const effectivePlanCode =
+      selectedPlanCode || blueprint.computeTier || "MEDIUM"
+    const isSmall = effectivePlanCode.toLowerCase().includes("small")
+    const tier = isSmall ? "SMALL (S)" : "Medium (M)"
     const subdomain = blueprint.subdomain || "app"
-    const isSmall = tier.toLowerCase().includes("small")
     const cpu = isSmall ? 500 : 1000
     const memory = isSmall ? 512 : 2048
     const defaultMonthlyPrice =
@@ -103,7 +105,7 @@ export function GitDeployWizard({
       tier,
       cpu,
       memory,
-      hourlyRate: blueprint.hourlyRate ?? defaultHourlyRate,
+      hourlyRate: defaultHourlyRate,
       subdomain,
       monthlyPrice: defaultMonthlyPrice,
       currency,

@@ -44,7 +44,7 @@ describe("InlineBlueprintCard", () => {
 
     expect(view.getByText("Laravel 11.x · PHP 8.2")).toBeTruthy()
     expect(view.getByText("8000 (HTTP)")).toBeTruthy()
-    expect(view.getByText("Medium (2GB RAM) · $0.04/jam")).toBeTruthy()
+    expect(view.getByText("Medium (2GB RAM) · $4.00 / mo")).toBeTruthy()
     expect(view.getByText("backend-api.sg.pfnapp.dev")).toBeTruthy()
     expect(view.getByText("12 keys from .env.example ready")).toBeTruthy()
     expect(
