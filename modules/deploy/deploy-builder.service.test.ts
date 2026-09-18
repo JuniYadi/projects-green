@@ -186,6 +186,11 @@ describe("processQueuedDeployment", () => {
     const result = await processQueuedDeployment("deploy-1")
     expect(result.processed).toBe(true)
     expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(1)
+    expect(triggerJenkinsJobMock).toHaveBeenCalledWith(
+      "app-test",
+      expect.anything(),
+      expect.anything()
+    )
     const eventTypes = txCreate.mock.calls
       .map((c) => {
         const arg = c[0] as {
@@ -281,9 +286,18 @@ describe("processQueuedDeployment", () => {
       },
     } as never)
     const result = await processQueuedDeployment("deploy-1")
+    expect(syncJenkinsPipelineMock).toHaveBeenCalledTimes(1)
+    expect(syncJenkinsPipelineMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slug: "app-test",
+        gitRepoUrl: "https://example.com/source",
+        branch: "main",
+        env: "dev",
+      })
+    )
     expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(1)
     expect(triggerJenkinsJobMock).toHaveBeenCalledWith(
-      "deploy-app-test",
+      "app-test",
       expect.objectContaining({
         PUBLIC_SOURCE_URL: "https://example.com/source",
         GIT_REF: "main",

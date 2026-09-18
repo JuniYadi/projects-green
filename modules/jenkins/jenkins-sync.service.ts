@@ -28,6 +28,8 @@ export type JenkinsSyncInput = {
   jenkinsRepo?: string
   /** Credential ID for Git access (default: "github-token") */
   gitCredentialId?: string
+  /** Explicit Git repository URL (defaults to https://github.com/${owner}/${repo}) */
+  gitRepoUrl?: string
 }
 
 export type JenkinsSyncResult = {
@@ -57,6 +59,22 @@ const FRAMEWORK_TO_PIPELINE: Record<string, PipelineType> = {
 
 function resolvePipelineType(framework: string): PipelineType {
   const normalized = framework.toLowerCase().trim()
+
+  if (normalized.includes("laravel") || normalized.includes("php")) {
+    return "php"
+  }
+  if (
+    normalized.includes("next") ||
+    normalized.includes("nuxt") ||
+    normalized.includes("bun") ||
+    normalized.includes("node")
+  ) {
+    return "node"
+  }
+  if (normalized.includes("docker")) {
+    return "docker"
+  }
+
   const pipelineType = FRAMEWORK_TO_PIPELINE[normalized]
 
   if (!pipelineType) {
@@ -107,8 +125,9 @@ export async function syncJenkinsPipeline(
   const pipelineType = resolvePipelineType(framework)
 
   // 2. Build repo URL and DSL options
-  const repoUrl = `https://github.com/${owner}/${repo}`
+  const repoUrl = input.gitRepoUrl ?? `https://github.com/${owner}/${repo}`
   const filePath = buildDslFilePath(slug)
+  const normalized = framework.toLowerCase().trim()
 
   const dslOptions = {
     appStackSlug: slug,
@@ -125,7 +144,10 @@ export async function syncJenkinsPipeline(
       dslContent = generatePhpDsl(dslOptions)
       break
     case "node":
-      dslContent = generateNodeDsl(dslOptions)
+      dslContent = generateNodeDsl({
+        ...dslOptions,
+        framework: normalized.includes("next") ? "nextjs" : "nodejs",
+      })
       break
     case "docker":
       dslContent = generateDockerDsl(dslOptions)

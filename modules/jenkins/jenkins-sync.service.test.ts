@@ -12,13 +12,12 @@ type CommitFileInput = {
 }
 
 // Mock the GitHub service before importing the module under test
-const mockCommitFileToRepo = mock(
-  (): Promise<CommitFileResult> =>
-    Promise.resolve({
-      commitSha: "abc123",
-      filePath: "jobs/pfnapp/app-test-dev.groovy",
-      action: "created" as const,
-    })
+const mockCommitFileToRepo = mock((): Promise<CommitFileResult> =>
+  Promise.resolve({
+    commitSha: "abc123",
+    filePath: "jobs/pfnapp/app-test-dev.groovy",
+    action: "created" as const,
+  })
 )
 
 mock.module("@/modules/github/github.service", () => ({
@@ -69,11 +68,30 @@ describe("syncJenkinsPipeline", () => {
     expect(call.repo).toBe("Jenkins")
     expect(call.filePath).toBe("jobs/pfnapp/app-test-dev.groovy")
     expect(call.message).toBe("feat: add Jenkins pipeline for app-test-dev")
-    expect(call.content).toContain("laravelPipeline")
+    expect(call.content).toContain("laravelPipelineV2([")
     expect(call.content).toContain("app-test-dev")
   })
 
-  test("maps Next.js framework to Node pipeline", async () => {
+  test("normalizes versioned Laravel framework to PHP pipeline", async () => {
+    const result13 = await syncJenkinsPipeline({
+      ...baseInput,
+      framework: "Laravel 13.x",
+    })
+    expect(result13.pipelineType).toBe("php")
+    let call = getMockCall()
+    expect(call.content).toContain("laravelPipelineV2([")
+
+    mockCommitFileToRepo.mockClear()
+    const result11 = await syncJenkinsPipeline({
+      ...baseInput,
+      framework: "Laravel 11.x",
+    })
+    expect(result11.pipelineType).toBe("php")
+    call = getMockCall()
+    expect(call.content).toContain("laravelPipelineV2([")
+  })
+
+  test("maps Next.js framework to Node pipeline with nextjs default", async () => {
     const result = await syncJenkinsPipeline({
       ...baseInput,
       framework: "nextjs",
@@ -82,10 +100,37 @@ describe("syncJenkinsPipeline", () => {
     expect(result.pipelineType).toBe("node")
 
     const call = getMockCall()
-    expect(call.content).toContain("nodejsPipeline")
+    expect(call.content).toContain("nodejsPipelineV2([")
+    expect(call.content).toContain("frameworkDefault: 'nextjs'")
   })
 
-  test("maps Bun framework to Node pipeline", async () => {
+  test("normalizes versioned Next.js framework to Node pipeline with nextjs default", async () => {
+    const result = await syncJenkinsPipeline({
+      ...baseInput,
+      framework: "Next.js 15",
+    })
+
+    expect(result.pipelineType).toBe("node")
+
+    const call = getMockCall()
+    expect(call.content).toContain("nodejsPipelineV2([")
+    expect(call.content).toContain("frameworkDefault: 'nextjs'")
+  })
+
+  test("normalizes plain Next.js framework", async () => {
+    const result = await syncJenkinsPipeline({
+      ...baseInput,
+      framework: "Next.js",
+    })
+
+    expect(result.pipelineType).toBe("node")
+
+    const call = getMockCall()
+    expect(call.content).toContain("nodejsPipelineV2([")
+    expect(call.content).toContain("frameworkDefault: 'nextjs'")
+  })
+
+  test("maps Bun framework to Node pipeline with nodejs default", async () => {
     const result = await syncJenkinsPipeline({
       ...baseInput,
       framework: "bun",
@@ -94,7 +139,8 @@ describe("syncJenkinsPipeline", () => {
     expect(result.pipelineType).toBe("node")
 
     const call = getMockCall()
-    expect(call.content).toContain("nodejsPipeline")
+    expect(call.content).toContain("nodejsPipelineV2([")
+    expect(call.content).toContain("frameworkDefault: 'nodejs'")
   })
 
   test("maps Docker framework to Docker pipeline", async () => {
@@ -179,6 +225,17 @@ describe("syncJenkinsPipeline", () => {
 
     const call = getMockCall()
     expect(call.content).toContain("https://github.com/pfnapp/pfnapp")
+  })
+
+  test("uses explicit gitRepoUrl when provided", async () => {
+    await syncJenkinsPipeline({
+      ...baseInput,
+      framework: "laravel",
+      gitRepoUrl: "https://gitlab.com/custom/project.git",
+    })
+
+    const call = getMockCall()
+    expect(call.content).toContain("https://gitlab.com/custom/project.git")
   })
 
   test("includes branch in DSL content", async () => {

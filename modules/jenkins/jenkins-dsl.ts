@@ -28,6 +28,7 @@ export interface JenkinsDslOptions {
   env?: "prod" | "dev"
   port?: number
   environmentVariables?: Record<string, string>
+  framework?: string
 }
 
 export function generatePhpDsl(options: JenkinsDslOptions): string {
@@ -71,7 +72,7 @@ pipelineJob('${escapeGroovy(appStackSlug)}') {
             script("""
 @Library('shared-library') _
 
-laravelPipeline([
+laravelPipelineV2([
     codeRepo: '${escapeGroovy(gitRepoUrl)}',
     codeGitCredentialsId: '${escapeGroovy(gitCredentialId)}',
     codeBranch: '${escapeGroovy(gitRepoBranch)}',
@@ -98,6 +99,7 @@ export function generateNodeDsl(options: JenkinsDslOptions): string {
     tagVersion = "latest",
     useAlpine = true,
     env = "dev",
+    framework = "nextjs",
   } = options
 
   return `// Node.js Application Pipeline Job DSL
@@ -126,13 +128,14 @@ pipelineJob('${escapeGroovy(appStackSlug)}') {
             script("""
 @Library('shared-library') _
 
-nodejsPipeline([
+nodejsPipelineV2([
     codeRepo: '${escapeGroovy(gitRepoUrl)}',
     codeGitCredentialsId: '${escapeGroovy(gitCredentialId)}',
     codeBranch: '${escapeGroovy(gitRepoBranch)}',
     dockerRepo: '${escapeGroovy(appStackSlug)}',
     codeDeployPath: '${escapeGroovy(appStackSlug)}',
     webhookEnv: '${escapeGroovy(env)}',
+    frameworkDefault: '${escapeGroovy(framework || "nextjs")}',
 ])
             """)
             sandbox()

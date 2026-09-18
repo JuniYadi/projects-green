@@ -141,7 +141,7 @@ export async function processQueuedDeployment(deploymentId: string) {
             })
 
             // Trigger Jenkins build
-            const jobName = `deploy-${connection.repoName}`
+            const jobName = stack.slug
             await triggerJenkinsJob(
               jobName,
               {
@@ -187,7 +187,63 @@ export async function processQueuedDeployment(deploymentId: string) {
         }
       } else if (stack.sourceType === "PUBLIC" && stack.publicSourceUrl) {
         try {
-          const jobName = `deploy-${stack.slug}`
+          const jenkinsOwner = jenkinsConfig?.dslOwner ?? "pfnapp"
+          const jenkinsRepo = jenkinsConfig?.dslRepo ?? "Jenkins"
+          const gitCredentialId =
+            jenkinsConfig?.gitCredentialId ?? "github-token"
+
+          let installationId = 1
+          if (stack.repositoryConnectionId) {
+            const connection =
+              await prisma.githubRepositoryConnection.findUnique({
+                where: { id: stack.repositoryConnectionId },
+                include: { installation: true },
+              })
+            if (connection) {
+              installationId = Number(
+                connection.installation.githubInstallationId
+              )
+            }
+          } else {
+            const installation = await prisma.githubInstallation?.findFirst?.({
+              where: { status: "active" },
+              orderBy: { installedAt: "desc" },
+            })
+            if (installation) {
+              installationId = Number(installation.githubInstallationId)
+            }
+          }
+
+          let repoOwner = jenkinsOwner
+          let repoName = stack.slug
+          try {
+            const parsed = new URL(stack.publicSourceUrl)
+            const segments = parsed.pathname
+              .replace(/^\/|\.git$/g, "")
+              .split("/")
+            if (segments.length >= 2) {
+              repoOwner = segments[0]
+              repoName = segments[1]
+            }
+          } catch {
+            // keep fallback
+          }
+
+          await syncJenkinsPipeline({
+            installationId,
+            owner: repoOwner,
+            repo: repoName,
+            slug: stack.slug,
+            branch: stack.publicSourceRef ?? stack.branchName,
+            framework: stack.framework ?? "docker",
+            env: "dev",
+            jenkinsOwner,
+            jenkinsRepo,
+            gitCredentialId,
+            gitRepoUrl: stack.publicSourceUrl,
+          })
+
+          const jobName = stack.slug
           await triggerJenkinsJob(
             jobName,
             {
@@ -206,6 +262,15 @@ export async function processQueuedDeployment(deploymentId: string) {
               type: "JENKINS_JOB_TRIGGERED",
               message: `Jenkins public-source job triggered for ${stack.slug}`,
               metadata: { jobName, sourceUrl: stack.publicSourceUrl },
+            },
+            tx
+          )
+          await recordDeployLog(
+            {
+              deploymentId: deployment.id,
+              scope: "build",
+              status: "BUILDING",
+              message: `Jenkins build triggered for ${stack.slug}`,
             },
             tx
           )
