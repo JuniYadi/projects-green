@@ -126,6 +126,9 @@ const toInvoiceListItem = (invoice: {
   currency: string
   status: PrismaInvoiceStatus
   createdAt: Date
+  billingAccount?: {
+    organizationId: string
+  } | null
 }): InvoiceListItem => {
   return {
     id: invoice.id,
@@ -137,6 +140,7 @@ const toInvoiceListItem = (invoice: {
     totalAmount: toNumber(invoice.totalAmount),
     currency: invoice.currency,
     status: toInvoiceStatus(invoice.status),
+    organizationId: invoice.billingAccount?.organizationId ?? null,
   }
 }
 

@@ -29,6 +29,8 @@ export type InvoiceListItem = {
   totalAmount: number
   currency: string
   status: InvoiceStatus
+  organizationId?: string | null
+  organizationName?: string | null
 }
 
 export type InvoiceLineItem = {

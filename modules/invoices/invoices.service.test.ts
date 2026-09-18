@@ -158,6 +158,7 @@ describe("invoice service", () => {
         totalAmount: 110,
         currency: "USD",
         status: "open",
+        organizationId: null,
       },
     ])
 

@@ -49,6 +49,25 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
       },
     },
     {
+      accessorKey: "organizationName",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Organization" />
+      ),
+      cell: ({ row }) => {
+        const orgName = row.original.organizationName
+        return (
+          <span className="font-medium text-foreground">
+            {orgName || "—"}
+          </span>
+        )
+      },
+      filterFn: (row, columnId, filterValue) => {
+        if (!filterValue) return true
+        const orgName = row.getValue<string | null | undefined>(columnId) ?? "—"
+        return orgName === filterValue
+      },
+    },
+    {
       accessorKey: "issuedAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Issued" />
@@ -179,6 +198,22 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
     }
   }, [fetchInvoices])
 
+  const orgFilterOptions = useMemo(() => {
+    if (state.status !== "success") return []
+    const names = [
+      ...new Set(
+        state.data
+          .map((inv) => inv.organizationName?.trim())
+          .filter((name): name is string => Boolean(name))
+      ),
+    ].sort((a, b) => a.localeCompare(b))
+
+    return names.map((name) => ({
+      label: name,
+      value: name,
+    }))
+  }, [state])
+
   if (state.status === "loading") {
     return <InvoicesTableSkeleton />
   }
@@ -209,9 +244,15 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
       defaultColumnVisibility={{
         dueAt: false,
       }}
-      searchPlaceholder="Filter by Invoice ID..."
-      searchableColumns={["invoiceNumber"]}
+      searchPlaceholder="Filter by Invoice ID or Organization..."
+      searchableColumns={["invoiceNumber", "organizationName"]}
       facetFilters={[
+        {
+          columnId: "organizationName",
+          label: "Organization",
+          allLabel: "All organizations",
+          options: orgFilterOptions,
+        },
         {
           columnId: "status",
           label: "Status",
