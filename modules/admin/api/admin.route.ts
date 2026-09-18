@@ -18,6 +18,7 @@ import { createAdminCronRoutes } from "@/modules/admin/api/routes/admin-cron.rou
 import { createManagedStockRoutes } from "@/modules/deploy/api/routes/app-managed-stock.route"
 import { createAdminRegionsRoutes } from "@/modules/billing/api/admin/regions.route"
 import { createAdminDeploymentsRoutes } from "@/modules/admin/api/routes/admin-deployments.route"
+import { runtimeManifestSyncRoutes } from "@/modules/deploy/api/routes/runtime-manifest-sync.route"
 
 export const adminRoutes = new Elysia()
   .use(createAdminOrganizationsRoutes())
@@ -36,3 +37,4 @@ export const adminRoutes = new Elysia()
   .use(createManagedStockRoutes())
   .use(createAdminRegionsRoutes())
   .use(createAdminDeploymentsRoutes())
+  .use(runtimeManifestSyncRoutes)

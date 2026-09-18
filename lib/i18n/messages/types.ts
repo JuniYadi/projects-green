@@ -161,6 +161,32 @@ export type AppMessages = {
         unableToSave: string
         unableToImportVault: string
       }
+      runtimeQuickTuning: {
+        title: string
+        description: string
+        maxUploadSize: string
+        uploadPresetAria: string
+        memoryLimit: string
+        memoryPresetAria: string
+        workloadRole: string
+        roleWebApp: string
+        roleWebAppDesc: string
+        roleWorker: string
+        roleWorkerDesc: string
+        roleHorizon: string
+        roleHorizonDesc: string
+        roleScheduler: string
+        roleSchedulerDesc: string
+        containerPort: string
+        portDesc: string
+        portDefaultNotice: string
+        environmentMode: string
+        envModeDesc: string
+      }
+      tabEnv: {
+        title: string
+        description: string
+      }
       operateMetrics: {
         timeRangeAria: string
         title: string
@@ -4767,6 +4793,7 @@ export type AppMessages = {
       settings: {
         heading: string
         description: string
+        selectAppPrompt: string
         tabs: {
           general: string
           domains: string

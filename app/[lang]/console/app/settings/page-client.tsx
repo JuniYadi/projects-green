@@ -423,6 +423,7 @@ export default function SettingsPage() {
             envVars={envVars}
             setEnvVars={setEnvVars}
             stackId={overview.stack.id}
+            framework={overview.stack.framework}
           />
         )
       case "scaling":
@@ -550,7 +551,7 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-border bg-muted/10 p-8 text-center text-sm text-muted-foreground">
-                Select an application to view its settings.
+                {messages.console.app.settings.selectAppPrompt}
               </div>
             )}
           </>

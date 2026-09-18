@@ -787,6 +787,66 @@ describe("AiSessionChatService", () => {
       expect(fallbackResp.status).toBe(200)
     })
 
+    it("responds to upload limit and HTTP 413 queries citing PHP_UPLOAD_MAX_FILESIZE", async () => {
+      const service = new AiSessionChatService({
+        db: mockDb as unknown as PrismaClient,
+        getAiConfig: () => {
+          throw new Error("No API key")
+        },
+      })
+
+      const resId = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "Kenapa upload file error 413 payload too large?",
+      })
+
+      let textId = ""
+      for await (const c of resId.textStream) textId += c
+      expect(textId).toContain("PHP_UPLOAD_MAX_FILESIZE")
+      expect(textId).toContain("PHP_POST_MAX_SIZE")
+
+      const resEn = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "How to fix max upload size limit?",
+      })
+
+      let textEn = ""
+      for await (const c of resEn.textStream) textEn += c
+      expect(textEn).toContain("PHP_UPLOAD_MAX_FILESIZE")
+    })
+
+    it("responds to memory limit and container role queries via fallback", async () => {
+      const service = new AiSessionChatService({
+        db: mockDb as unknown as PrismaClient,
+        getAiConfig: () => {
+          throw new Error("No API key")
+        },
+      })
+
+      const memRes = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "Aplikasi error memory exhausted",
+      })
+
+      let memText = ""
+      for await (const c of memRes.textStream) memText += c
+      expect(memText).toContain("PHP_MEMORY_LIMIT")
+
+      const roleRes = await service.handleSessionChat({
+        actor: { organizationId: "org-1", userId: "user-1" },
+        sessionId: "session-1",
+        message: "Bagaimana cara menjalankan queue worker atau horizon?",
+      })
+
+      let roleText = ""
+      for await (const c of roleRes.textStream) roleText += c
+      expect(roleText).toContain("CONTAINER_ROLE")
+    })
+
+
     it("handleSessionChat exported function delegates to default service", async () => {
       // Set default service db
       Object.assign(defaultAiSessionChatService, {

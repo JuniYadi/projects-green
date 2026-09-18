@@ -1020,6 +1020,33 @@ export const idMessages: AppMessages = {
         unableToSave: "Tidak dapat menyimpan rahasia ini.",
         unableToImportVault: "Tidak dapat mengimpor rahasia ke Vault.",
       },
+      runtimeQuickTuning: {
+        title: "Penyetelan Cepat Runtime",
+        description:
+          "Sesuaikan parameter operasional tanpa modifikasi manual Dockerfile. Perubahan memperbarui variabel lingkungan secara otomatis.",
+        maxUploadSize: "Ukuran Unggah Maksimal (PHP_UPLOAD_MAX_FILESIZE)",
+        uploadPresetAria: "Preset unggah {preset}",
+        memoryLimit: "Batas Memori Skrip (PHP_MEMORY_LIMIT)",
+        memoryPresetAria: "Preset memori {preset}",
+        workloadRole: "Peran Beban Kerja (CONTAINER_ROLE)",
+        roleWebApp: "Aplikasi Web",
+        roleWebAppDesc: "Server web Nginx + PHP-FPM",
+        roleWorker: "Pekerja Antrean",
+        roleWorkerDesc: "Pekerja antrean Artisan",
+        roleHorizon: "Horizon",
+        roleHorizonDesc: "Dasbor dan pekerja Redis Horizon",
+        roleScheduler: "Penjadwal",
+        roleSchedulerDesc: "Cron artisan schedule:run",
+        containerPort: "Port Kontainer (PORT)",
+        portDesc: "Port pendengar internal HTTP. Platform berjalan unprivileged.",
+        portDefaultNotice: "(Default unprivileged 8080)",
+        environmentMode: "Mode Lingkungan ({envKey})",
+        envModeDesc: "Mode eksekusi runtime teroptimasi standar.",
+      },
+      tabEnv: {
+        title: "Variabel Lingkungan",
+        description: "Kelola konfigurasi dan rahasia untuk lingkungan {env}.",
+      },
       operateMetrics: {
         timeRangeAria: "Rentang waktu",
         title: "Telemetri & Observabilitas Langsung",
@@ -5273,6 +5300,7 @@ export const idMessages: AppMessages = {
       settings: {
         heading: "Pengaturan Aplikasi",
         description: "Konfigurasi domain, environment, scaling, dan lainnya.",
+        selectAppPrompt: "Pilih aplikasi untuk melihat pengaturannya.",
         tabs: {
           general: "Umum",
           domains: "Domain",
