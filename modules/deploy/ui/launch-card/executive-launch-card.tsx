@@ -31,6 +31,7 @@ export type ExecutiveLaunchCardProps = {
   onLaunch: () => Promise<void> | void
   onBackToChat: () => void
   isLaunching?: boolean
+  onPlanChange?: (planCode: string, hourlyRate: number) => void
 }
 
 function getGitProvider(url: string): { name: string; host: string } {
@@ -93,6 +94,7 @@ export function ExecutiveLaunchCard({
   onLaunch,
   onBackToChat,
   isLaunching = false,
+  onPlanChange,
 }: ExecutiveLaunchCardProps) {
   const isId = lang === "id"
   const messages = getMessagesForMaybeLocale(lang)
@@ -163,15 +165,25 @@ export function ExecutiveLaunchCard({
     }
   }, [effectiveCurrency])
 
+  const [selectedPlanCodeOverride, setSelectedPlanCodeOverride] = useState<
+    string | null
+  >(null)
+
   const matchedPlan = useMemo(() => {
     if (!catalogPlans.length) return null
+    if (selectedPlanCodeOverride) {
+      const found = catalogPlans.find(
+        (p) => p.code === selectedPlanCodeOverride
+      )
+      if (found) return found
+    }
     const tierCode = (blueprint.computeTier || "MEDIUM").toUpperCase()
     return (
       catalogPlans.find((p) => tierCode.includes(p.code)) ||
       catalogPlans.find((p) => p.code === "MEDIUM") ||
       catalogPlans[0]
     )
-  }, [catalogPlans, blueprint.computeTier])
+  }, [catalogPlans, blueprint.computeTier, selectedPlanCodeOverride])
 
   const blueprintRateCurrency: "USD" | "IDR" =
     blueprint.currency ||
@@ -398,8 +410,10 @@ export function ExecutiveLaunchCard({
                       key={planKey}
                       type="button"
                       onClick={() => {
+                        setSelectedPlanCodeOverride(plan.code)
                         blueprint.computeTier = plan.name || `${plan.code} Tier`
                         blueprint.hourlyRate = hourly
+                        onPlanChange?.(plan.code, hourly)
                       }}
                       className={cn(
                         "flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all",
