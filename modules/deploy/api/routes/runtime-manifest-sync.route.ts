@@ -64,7 +64,19 @@ export const createRuntimeManifestSyncRoutes = (
   return new Elysia({ prefix: "/admin/runtimes" })
     .get(
       "/manifests",
-      async ({ query, set }) => {
+      async ({ query, request, set }) => {
+        const authorized = await authCheck(request.headers, "", set)
+        if (!authorized) {
+          if (!set.status || set.status === 200) {
+            set.status = 401
+          }
+          return {
+            ok: false as const,
+            error: "UNAUTHORIZED",
+            message: "Missing super admin access or valid sync credentials.",
+          }
+        }
+
         try {
           if (query.framework) {
             const manifest = await manifestService.getRuntimeManifest(

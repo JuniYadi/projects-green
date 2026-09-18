@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import {
   isAuthorizedForManifestSync,
 } from "@/modules/deploy/api/routes/runtime-manifest-sync.route"
-import { syncRuntimeManifests } from "@/modules/deploy/runtime-manifest.service"
+import { defaultRuntimeManifestService } from "@/modules/deploy/runtime-manifest.service"
 
 export async function POST(request: Request) {
   let rawBody = ""
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
   try {
     const body = rawBody ? JSON.parse(rawBody) : {}
-    const synced = await syncRuntimeManifests(body)
+    const synced = await defaultRuntimeManifestService.syncManifests(body)
     return NextResponse.json({
       ok: true,
       data: synced,

@@ -81,6 +81,33 @@ const toOperateEnvVars = (rows: EnvVar[]): OperateEnvVar[] => {
   })
 }
 
+const applyEnvVarUpdates = (
+  currentRows: EnvVar[],
+  updates: Record<string, string>
+): EnvVar[] => {
+  const nextRows = [...currentRows]
+  for (const [key, value] of Object.entries(updates)) {
+    const idx = nextRows.findIndex((r) => r.key === key)
+    if (idx >= 0) {
+      nextRows[idx] = {
+        ...nextRows[idx],
+        value,
+        lastUpdatedAt: new Date().toISOString(),
+      }
+    } else {
+      nextRows.push({
+        id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        key,
+        value,
+        type: "plain",
+        scope: "runtime",
+        lastUpdatedAt: new Date().toISOString(),
+      })
+    }
+  }
+  return nextRows
+}
+
 export function TabEnv({
   selectedEnv,
   envVars,
@@ -106,49 +133,11 @@ export function TabEnv({
   }
 
   const handleApplyEnvVar = (key: string, value: string) => {
-    const currentRows = [...editorEnvVars]
-    const idx = currentRows.findIndex((r) => r.key === key)
-    if (idx >= 0) {
-      currentRows[idx] = {
-        ...currentRows[idx],
-        value,
-        lastUpdatedAt: new Date().toISOString(),
-      }
-    } else {
-      currentRows.push({
-        id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        key,
-        value,
-        type: "plain",
-        scope: "runtime",
-        lastUpdatedAt: new Date().toISOString(),
-      })
-    }
-    handleEnvVarsChange(currentRows)
+    handleEnvVarsChange(applyEnvVarUpdates(editorEnvVars, { [key]: value }))
   }
 
   const handleApplyBatch = (updates: Record<string, string>) => {
-    const currentRows = [...editorEnvVars]
-    for (const [key, value] of Object.entries(updates)) {
-      const idx = currentRows.findIndex((r) => r.key === key)
-      if (idx >= 0) {
-        currentRows[idx] = {
-          ...currentRows[idx],
-          value,
-          lastUpdatedAt: new Date().toISOString(),
-        }
-      } else {
-        currentRows.push({
-          id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          key,
-          value,
-          type: "plain",
-          scope: "runtime",
-          lastUpdatedAt: new Date().toISOString(),
-        })
-      }
-    }
-    handleEnvVarsChange(currentRows)
+    handleEnvVarsChange(applyEnvVarUpdates(editorEnvVars, updates))
   }
 
   const pathname = usePathname()

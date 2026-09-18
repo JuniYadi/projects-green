@@ -13,5 +13,3 @@ CREATE TABLE IF NOT EXISTS "AppRuntimeManifest" (
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "AppRuntimeManifest_frameworkId_key" ON "AppRuntimeManifest"("frameworkId");
 
--- CreateIndex
-CREATE INDEX IF NOT EXISTS "AppRuntimeManifest_frameworkId_idx" ON "AppRuntimeManifest"("frameworkId");

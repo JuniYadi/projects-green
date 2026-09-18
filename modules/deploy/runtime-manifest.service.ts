@@ -96,10 +96,14 @@ export function createFallbackManifest(
 }
 
 export class RuntimeManifestService {
-  private readonly db: PrismaClient
+  private readonly customDb?: PrismaClient
 
   constructor(customDb?: PrismaClient) {
-    this.db = customDb ?? prisma
+    this.customDb = customDb
+  }
+
+  private get db(): PrismaClient {
+    return this.customDb ?? prisma
   }
 
   async upsertManifest(

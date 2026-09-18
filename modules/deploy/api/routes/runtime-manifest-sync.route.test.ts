@@ -83,9 +83,13 @@ describe("runtime-manifest-sync.route", () => {
     })
   })
 
-  it("GET /admin/runtimes/manifests returns all manifests", async () => {
+  it("GET /admin/runtimes/manifests returns all manifests when authorized", async () => {
     const res = await app.handle(
-      new Request("http://localhost/admin/runtimes/manifests")
+      new Request("http://localhost/admin/runtimes/manifests", {
+        headers: {
+          "x-runtime-sync-token": "test-sync-secret",
+        },
+      })
     )
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -93,9 +97,23 @@ describe("runtime-manifest-sync.route", () => {
     expect(json.data).toHaveLength(1)
   })
 
-  it("GET /admin/runtimes/manifests?framework=laravel returns specific manifest", async () => {
+  it("GET /admin/runtimes/manifests rejects unauthorized requests", async () => {
     const res = await app.handle(
-      new Request("http://localhost/admin/runtimes/manifests?framework=laravel")
+      new Request("http://localhost/admin/runtimes/manifests")
+    )
+    expect(res.status).toBe(401)
+    const json = await res.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("UNAUTHORIZED")
+  })
+
+  it("GET /admin/runtimes/manifests?framework=laravel returns specific manifest when authorized", async () => {
+    const res = await app.handle(
+      new Request("http://localhost/admin/runtimes/manifests?framework=laravel", {
+        headers: {
+          "x-runtime-sync-token": "test-sync-secret",
+        },
+      })
     )
     expect(res.status).toBe(200)
     const json = await res.json()
