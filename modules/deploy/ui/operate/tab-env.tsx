@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { EnvVarsEditor } from "@/modules/deploy/ui/env-vars-editor"
+import { RuntimeQuickTuningCard } from "@/modules/deploy/ui/runtime-quick-tuning-card"
 import { isSecretEnvVarType } from "@/modules/deploy/environment-vars"
 import type { EnvVar, SharedSecretOption } from "@/modules/deploy/deploy.types"
 import type {
@@ -100,8 +101,60 @@ export function TabEnv({
     void onPersist?.(nextRows)
   }
 
+  const handleApplyEnvVar = (key: string, value: string) => {
+    const currentRows = [...editorEnvVars]
+    const idx = currentRows.findIndex((r) => r.key === key)
+    if (idx >= 0) {
+      currentRows[idx] = {
+        ...currentRows[idx],
+        value,
+        lastUpdatedAt: new Date().toISOString(),
+      }
+    } else {
+      currentRows.push({
+        id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        key,
+        value,
+        type: "plain",
+        scope: "runtime",
+        lastUpdatedAt: new Date().toISOString(),
+      })
+    }
+    handleEnvVarsChange(currentRows)
+  }
+
+  const handleApplyBatch = (updates: Record<string, string>) => {
+    const currentRows = [...editorEnvVars]
+    for (const [key, value] of Object.entries(updates)) {
+      const idx = currentRows.findIndex((r) => r.key === key)
+      if (idx >= 0) {
+        currentRows[idx] = {
+          ...currentRows[idx],
+          value,
+          lastUpdatedAt: new Date().toISOString(),
+        }
+      } else {
+        currentRows.push({
+          id: `env-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          key,
+          value,
+          type: "plain",
+          scope: "runtime",
+          lastUpdatedAt: new Date().toISOString(),
+        })
+      }
+    }
+    handleEnvVarsChange(currentRows)
+  }
+
   return (
     <div className="space-y-6">
+      <RuntimeQuickTuningCard
+        framework={framework}
+        envVars={editorEnvVars}
+        onApplyEnvVar={handleApplyEnvVar}
+        onApplyBatch={handleApplyBatch}
+      />
       <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div className="flex flex-col gap-1">

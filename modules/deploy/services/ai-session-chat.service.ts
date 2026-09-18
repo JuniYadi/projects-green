@@ -10,6 +10,11 @@ import {
   type AiDeploymentSessionActor,
 } from "@/modules/deploy/ai-deployment-session.service"
 import { formatTunablesForAiPrompt } from "@/modules/framework-detection/platform-runtime-contract"
+import { createRuntimeKnowledgeTools } from "@/modules/deploy/ai-tools/runtime-knowledge.tool"
+import {
+  defaultRuntimeManifestService,
+  RuntimeManifestService,
+} from "@/modules/deploy/runtime-manifest.service"
 
 export const BLUEPRINT_FIELD_ENUM = z.enum([
   "port",
@@ -87,6 +92,7 @@ export type AiSessionChatDependencies = {
   getAiConfig?: typeof getAiProviderConfig
   model?: string
   now?: () => Date
+  manifestService?: RuntimeManifestService
 }
 
 export const TANYA_P_SYSTEM_PROMPT = `You are Tanya P (AI Deploy Helper), the dedicated deployment copilot on the Green cloud platform.
@@ -441,10 +447,13 @@ export function createBlueprintMutationTools(params: {
 export class AiSessionChatService {
   private readonly db: PrismaClient
   private readonly now: () => Date
+  private readonly manifestService: RuntimeManifestService
 
   constructor(private readonly deps: AiSessionChatDependencies = {}) {
     this.db = deps.db ?? prisma
     this.now = deps.now ?? (() => new Date())
+    this.manifestService =
+      deps.manifestService ?? defaultRuntimeManifestService
   }
 
   async handleSessionChat(
@@ -466,7 +475,7 @@ export class AiSessionChatService {
     const activeBlueprint = extractBlueprintFromSession(session)
     const trackedEvents: AiSessionChatEvent[] = []
 
-    const tools = createBlueprintMutationTools({
+    const mutationTools = createBlueprintMutationTools({
       sessionId: input.sessionId,
       activeBlueprint,
       db: this.db,
@@ -489,6 +498,15 @@ export class AiSessionChatService {
         })
       },
     })
+
+    const runtimeKnowledgeTools = createRuntimeKnowledgeTools({
+      manifestService: this.manifestService,
+    })
+
+    const tools = {
+      ...mutationTools,
+      ...runtimeKnowledgeTools,
+    }
 
     const conversationMessages: Array<{
       role: "user" | "assistant"
@@ -651,9 +669,10 @@ export class AiSessionChatService {
   private async runFallbackChat(
     sessionId: string,
     message: string,
-    tools: ReturnType<typeof createBlueprintMutationTools>,
+    tools: ReturnType<typeof createBlueprintMutationTools> &
+      ReturnType<typeof createRuntimeKnowledgeTools>,
     trackedEvents: AiSessionChatEvent[],
-    _activeBlueprint: DeploymentBlueprint
+    activeBlueprint: DeploymentBlueprint
   ): Promise<AiSessionChatResult> {
     const isIndonesian =
       /halo|ganti|ubah|tambah|bisa|tolong|kenapa|apakah|port|jalankan|siap/i.test(
@@ -766,6 +785,30 @@ export class AiSessionChatService {
       responseText = isIndonesian
         ? `Environment variable ${key} berhasil disimpan ke blueprint.`
         : `Environment variable ${key} successfully added to blueprint.`
+    } else if (
+      /upload|413|payload|terlalu besar|max\s*file|file\s*size/i.test(message)
+    ) {
+      responseText = isIndonesian
+        ? `Untuk menangani upload file besar atau error HTTP 413 (Payload Too Large), atur environment variable PHP_UPLOAD_MAX_FILESIZE dan PHP_POST_MAX_SIZE (misalnya: 100M). Anda dapat meminta saya untuk menambahkannya ke blueprint!`
+        : `To handle large uploads or HTTP 413 (Payload Too Large), configure PHP_UPLOAD_MAX_FILESIZE and PHP_POST_MAX_SIZE (e.g. 100M). You can ask me to add them to your blueprint!`
+    } else if (/memory|memori|exhausted/i.test(message)) {
+      responseText = isIndonesian
+        ? `Jika skrip kehabisan memori (Allowed memory size exhausted), naikkan batas memori dengan PHP_MEMORY_LIMIT (misalnya: 512M).`
+        : `If scripts exhaust memory, increase the limit by configuring PHP_MEMORY_LIMIT (e.g. 512M).`
+    } else if (/worker|horizon|queue|antrean|scheduler/i.test(message)) {
+      responseText = isIndonesian
+        ? `Base image mendukung CONTAINER_ROLE ('app', 'worker', 'horizon', 'scheduler', 'all') untuk menjalankan background worker atau scheduler tanpa Dockerfile baru.`
+        : `The base image supports CONTAINER_ROLE ('app', 'worker', 'horizon', 'scheduler', 'all') for running background workers or schedulers without custom Dockerfiles.`
+    } else if (/tunable|parameter|runtime|konfigurasi/i.test(message)) {
+      const framework =
+        (activeBlueprint as Record<string, unknown> | undefined)?.framework ??
+        (activeBlueprint as Record<string, unknown> | undefined)?.frameworkId
+      const fwStr = typeof framework === "string" ? framework : "laravel"
+      const tunables = await this.manifestService.getRuntimeTunables(fwStr)
+      const list = tunables.map((t) => `${t.key} (${t.default})`).join(", ")
+      responseText = isIndonesian
+        ? `Parameter runtime yang tersedia untuk ${fwStr}: ${list}.`
+        : `Available runtime tunables for ${fwStr}: ${list}.`
     } else {
       responseText = isIndonesian
         ? `Halo! Saya Tanya P, asisten deployment Anda. Blueprint aplikasi saat ini sudah siap. Anda dapat meminta saya untuk mengubah port, start command, compute tier, subdomain, atau menambahkan variabel environment.`

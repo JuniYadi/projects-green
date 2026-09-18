@@ -3786,3 +3786,15 @@ model CronJobExecution {
   @@index([cronJobId, startedAt(sort: Desc)])
   @@index([status])
 }
+
+model AppRuntimeManifest {
+  id           String   @id @default(cuid())
+  frameworkId  String   @unique
+  version      String
+  manifestJson Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([frameworkId])
+}
+

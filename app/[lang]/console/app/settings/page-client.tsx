@@ -423,6 +423,8 @@ export default function SettingsPage() {
             envVars={envVars}
             setEnvVars={setEnvVars}
             stackId={overview.stack.id}
+            framework={overview.stack.framework}
+            templateName={overview.stack.templateName}
           />
         )
       case "scaling":
