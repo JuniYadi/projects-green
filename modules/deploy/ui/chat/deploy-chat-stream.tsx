@@ -583,26 +583,26 @@ export function DeployChatStream({
         // Load real plan and rate from database catalog
         const defaultPlan =
           catalogPlans.find((p) => p.code === "MEDIUM") || catalogPlans[0]
+        const defaultOffer =
+          defaultPlan?.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+          defaultPlan?.offers?.[0]
+        const defaultMonthlyPrice = defaultOffer?.periodPrice
+          ? Number(defaultOffer.periodPrice)
+          : isId
+            ? 40000
+            : 4
+
         const defaultHourlyRate = defaultPlan
           ? (() => {
-              const offer =
-                defaultPlan.offers?.find(
-                  (o) => o.billingPeriod === "MONTHLY"
-                ) || defaultPlan.offers?.[0]
-              const periodPrice = offer?.periodPrice
-                ? Number(offer.periodPrice)
-                : isId
-                  ? 40000
-                  : 4
               return isId
-                ? Math.ceil(periodPrice / 720)
-                : Number((periodPrice / 720).toFixed(4))
+                ? Math.ceil(defaultMonthlyPrice / 720)
+                : Number((defaultMonthlyPrice / 720).toFixed(4))
             })()
           : isId
             ? 56
             : 0.04
 
-        const computeTier = defaultPlan?.name || "Medium (2GB RAM)"
+        const computeTier = defaultPlan?.name || "Medium (M)"
 
         const rawRepoName = repoShort.split("/").pop() || "app"
         const repoSubdomain =
@@ -625,10 +625,13 @@ export function DeployChatStream({
           framework,
           runtime,
           port,
+          planId: defaultPlan?.id,
+          planCode: defaultPlan?.code,
           computeTier,
           subdomain: repoSubdomain,
           startCommand,
           envVarsCount,
+          monthlyPrice: defaultMonthlyPrice,
           hourlyRate: defaultHourlyRate,
           currency: isId ? "IDR" : "USD",
           managedBaseDomain: clusterBaseDomain,
@@ -716,12 +719,14 @@ export function DeployChatStream({
         framework: inferredFw,
         runtime: inferredRt,
         port: inferredPort,
-        computeTier: "Medium (2GB RAM)",
+        planCode: "MEDIUM",
+        computeTier: "Medium (M)",
         subdomain: generateSuggestedAppName(rawSubName),
         startCommand: cleanSub.includes("api")
           ? "go run main.go"
           : "pnpm start",
         envVarsCount: 3,
+        monthlyPrice: isId ? 40000 : 4,
         hourlyRate: 0.04,
         managedBaseDomain: clusterBaseDomain,
       }

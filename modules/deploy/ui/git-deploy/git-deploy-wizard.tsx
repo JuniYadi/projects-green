@@ -84,19 +84,33 @@ export function GitDeployWizard({
     setScreen("chat")
   }
 
-  const handleLaunch = async (selectedPlanCode?: string) => {
+  const handleLaunch = async (selectedPlan?: { id: string; code: string }) => {
     if (!source || !blueprint) return
 
     setIsLaunching(true)
-    const effectivePlanCode =
-      selectedPlanCode || blueprint.computeTier || "MEDIUM"
-    const isSmall = effectivePlanCode.toLowerCase().includes("small")
-    const tier = isSmall ? "SMALL (S)" : "Medium (M)"
+    const planCode = (
+      selectedPlan?.code ||
+      blueprint.planCode ||
+      blueprint.computeTier ||
+      "SMALL"
+    ).toUpperCase()
+    const planId =
+      selectedPlan?.id || blueprint.planId || planCode.toLowerCase()
+    const isSmall = planCode.includes("SMALL")
+    const tier = isSmall ? "SMALL" : "MEDIUM"
     const subdomain = blueprint.subdomain || "app"
     const cpu = isSmall ? 500 : 1000
     const memory = isSmall ? 512 : 2048
     const defaultMonthlyPrice =
-      currency === "IDR" ? (isSmall ? 20000 : 40000) : isSmall ? 2 : 4
+      typeof blueprint.monthlyPrice === "number"
+        ? blueprint.monthlyPrice
+        : currency === "IDR"
+          ? isSmall
+            ? 20000
+            : 40000
+          : isSmall
+            ? 2
+            : 4
     const defaultHourlyRate =
       currency === "IDR"
         ? Math.ceil(defaultMonthlyPrice / 720)
@@ -107,6 +121,8 @@ export function GitDeployWizard({
       memory,
       hourlyRate: defaultHourlyRate,
       subdomain,
+      planName: tier,
+      planId,
       monthlyPrice: defaultMonthlyPrice,
       currency,
       managedBaseDomain: blueprint.managedBaseDomain || "sg.pfnapp.dev",
@@ -129,7 +145,9 @@ export function GitDeployWizard({
         framework: blueprint.framework || undefined,
         primaryEngine: blueprint.runtime || undefined,
         defaultPort: blueprint.port || 80,
-        resourcePlanId: isSmall ? "small" : "medium",
+        resourcePlanId: planId.toLowerCase().includes("small")
+          ? "small"
+          : "medium",
         billingMode: "PAYG" as const,
         cpu: isSmall ? 500 : 1000,
         memory: isSmall ? 512 : 2048,

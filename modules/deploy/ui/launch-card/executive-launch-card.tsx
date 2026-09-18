@@ -28,10 +28,13 @@ export type ExecutiveLaunchCardProps = {
   userName?: string
   balanceFormatted?: string
   toolsList?: string
-  onLaunch: (planCode?: string) => Promise<void> | void
+  onLaunch: (plan: { id: string; code: string }) => Promise<void> | void
   onBackToChat: () => void
   isLaunching?: boolean
-  onPlanChange?: (planCode: string, hourlyRate: number) => void
+  onPlanChange?: (
+    plan: { id: string; code: string },
+    monthlyPrice: number
+  ) => void
 }
 
 function getGitProvider(url: string): { name: string; host: string } {
@@ -159,15 +162,26 @@ export function ExecutiveLaunchCard({
     }
   }, [effectiveCurrency])
 
-  const [selectedPlanCodeOverride, setSelectedPlanCodeOverride] = useState<
+  const [selectedPlanIdOverride, setSelectedPlanIdOverride] = useState<
     string | null
-  >(null)
+  >(blueprint.planId || null)
 
   const matchedPlan = useMemo(() => {
     if (!catalogPlans.length) return null
-    if (selectedPlanCodeOverride) {
+    if (selectedPlanIdOverride) {
       const found = catalogPlans.find(
-        (p) => p.code === selectedPlanCodeOverride
+        (p) =>
+          p.id === selectedPlanIdOverride || p.code === selectedPlanIdOverride
+      )
+      if (found) return found
+    }
+    if (blueprint.planId) {
+      const found = catalogPlans.find((p) => p.id === blueprint.planId)
+      if (found) return found
+    }
+    if (blueprint.planCode) {
+      const found = catalogPlans.find(
+        (p) => p.code.toUpperCase() === blueprint.planCode?.toUpperCase()
       )
       if (found) return found
     }
@@ -177,7 +191,13 @@ export function ExecutiveLaunchCard({
       catalogPlans.find((p) => p.code === "MEDIUM") ||
       catalogPlans[0]
     )
-  }, [catalogPlans, blueprint.computeTier, selectedPlanCodeOverride])
+  }, [
+    catalogPlans,
+    blueprint.planId,
+    blueprint.planCode,
+    blueprint.computeTier,
+    selectedPlanIdOverride,
+  ])
 
   const blueprintRateCurrency: "USD" | "IDR" =
     blueprint.currency ||
@@ -406,10 +426,16 @@ export function ExecutiveLaunchCard({
                       key={planKey}
                       type="button"
                       onClick={() => {
-                        setSelectedPlanCodeOverride(plan.code)
+                        setSelectedPlanIdOverride(plan.id)
+                        blueprint.planId = plan.id
+                        blueprint.planCode = plan.code
                         blueprint.computeTier = plan.name || `${plan.code} Tier`
+                        blueprint.monthlyPrice = periodPrice
                         blueprint.hourlyRate = hourly
-                        onPlanChange?.(plan.code, hourly)
+                        onPlanChange?.(
+                          { id: plan.id, code: plan.code },
+                          periodPrice
+                        )
                       }}
                       className={cn(
                         "flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all",
@@ -528,7 +554,9 @@ export function ExecutiveLaunchCard({
             data-testid="launch-card-action-btn"
             onClick={() =>
               void onLaunch(
-                matchedPlan?.code || selectedPlanCodeOverride || "MEDIUM"
+                matchedPlan
+                  ? { id: matchedPlan.id, code: matchedPlan.code }
+                  : { id: "small", code: "SMALL" }
               )
             }
             disabled={isLaunching || balanceError || !isBalanceSufficient}
