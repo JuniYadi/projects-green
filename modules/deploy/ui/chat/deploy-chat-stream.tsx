@@ -23,6 +23,7 @@ import {
   type LowConfidenceOverrides,
 } from "./low-confidence-fallback-card"
 import { getCatalogProduct, type CatalogPlan } from "@/lib/billing-client"
+import { generateSuggestedAppName } from "@/modules/deploy/app-name-generator"
 import type { ConnectedRepository } from "../git-deploy/types"
 
 export type ChatMessage = {
@@ -97,6 +98,24 @@ export function DeployChatStream({
   const [isProcessing, setIsProcessing] = useState(false)
   const [repos, setRepos] = useState<ConnectedRepository[]>([])
   const [catalogPlans, setCatalogPlans] = useState<CatalogPlan[]>([])
+  const [clusterBaseDomain, setClusterBaseDomain] =
+    useState<string>("sg.pfnapp.dev")
+
+  // Fetch real cluster endpoint & managedBaseDomain from DB
+  useEffect(() => {
+    let active = true
+    fetch("/api/deploy/default-cluster")
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json?.ok && json?.data?.managedBaseDomain) {
+          setClusterBaseDomain(json.data.managedBaseDomain)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Fetch real catalog plans from database
   useEffect(() => {
@@ -585,10 +604,9 @@ export function DeployChatStream({
 
         const computeTier = defaultPlan?.name || "Medium (2GB RAM)"
 
+        const rawRepoName = repoShort.split("/").pop() || "app"
         const repoSubdomain =
-          plan?.domain?.hostname ||
-          repoShort.split("/").pop()?.toLowerCase() ||
-          "app"
+          plan?.domain?.hostname || generateSuggestedAppName(rawRepoName)
 
         const startCommand = Array.isArray(plan?.detection?.commands)
           ? plan.detection.commands[1] || plan.detection.commands[0]
@@ -613,6 +631,7 @@ export function DeployChatStream({
           envVarsCount,
           hourlyRate: defaultHourlyRate,
           currency: isId ? "IDR" : "USD",
+          managedBaseDomain: clusterBaseDomain,
         }
 
         setActiveBlueprint(bp)
@@ -692,17 +711,19 @@ export function DeployChatStream({
       const inferredRt = cleanSub.includes("api") ? "Go 1.22" : "Node.js 20"
       const inferredPort = cleanSub.includes("api") ? 8080 : 3000
 
+      const rawSubName = cleanSub.split("/").pop() || "app"
       const bp: InlineBlueprintData = {
         framework: inferredFw,
         runtime: inferredRt,
         port: inferredPort,
         computeTier: "Medium (2GB RAM)",
-        subdomain: cleanSub.split("/").pop() || "app",
+        subdomain: generateSuggestedAppName(rawSubName),
         startCommand: cleanSub.includes("api")
           ? "go run main.go"
           : "pnpm start",
         envVarsCount: 3,
         hourlyRate: 0.04,
+        managedBaseDomain: clusterBaseDomain,
       }
 
       setActiveBlueprint(bp)
@@ -748,6 +769,7 @@ export function DeployChatStream({
         startCommand: overrides.startCommand,
         envVarsCount: activeBlueprint?.envVarsCount ?? 1,
         hourlyRate: 0.04,
+        managedBaseDomain: clusterBaseDomain,
       }
 
       setActiveBlueprint(bp)

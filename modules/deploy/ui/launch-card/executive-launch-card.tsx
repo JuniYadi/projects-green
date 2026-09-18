@@ -361,7 +361,7 @@ export function ExecutiveLaunchCard({
               {agentMessages.subdomainFieldLabel}
             </span>
             <span className="font-mono text-sm font-medium text-foreground">
-              {subdomain}
+              {subdomain}.{blueprint.managedBaseDomain || "sg.pfnapp.dev"}
             </span>
           </div>
 

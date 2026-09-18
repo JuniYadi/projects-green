@@ -25,11 +25,13 @@ import { adminTemplateRoutes } from "@/modules/deploy/api/routes/admin-templates
 import { appTelemetryRoutes } from "@/modules/deploy/api/routes/app-telemetry.route"
 import { appTrafficRoutes } from "@/modules/deploy/api/routes/app-traffic.route"
 import { appLogHealthRoutes } from "@/modules/deploy/api/routes/app-log-health.route"
+import { defaultClusterRoutes } from "@/modules/deploy/api/routes/default-cluster.route"
 
 export const deployRoutes = new Elysia()
   .use(aiDeploymentSessionRoutes)
   .use(aiDeploymentSessionDecisionRoutes)
   .use(aiDeploymentSessionChatRoutes)
+  .use(defaultClusterRoutes)
   .use(recentSourcesRoutes)
   .use(appStacksRoutes)
   .use(deploySubmitRoutes)

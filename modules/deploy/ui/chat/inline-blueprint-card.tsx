@@ -21,6 +21,7 @@ export type InlineBlueprintData = {
   envVarsCount?: number
   hourlyRate?: number
   currency?: "USD" | "IDR"
+  managedBaseDomain?: string
 }
 
 export type InlineBlueprintCardProps = {
@@ -59,7 +60,8 @@ export function InlineBlueprintCard({
     ? `${tier} · IDR ${Math.round(blueprint.hourlyRate ?? 56)}/jam`
     : `${tier} · $${hourlyRateFormatted}/jam`
 
-  const domain = `${blueprint.subdomain || "app"}.pfnapp.dev`
+  const baseDomain = blueprint.managedBaseDomain || "sg.pfnapp.dev"
+  const domain = `${blueprint.subdomain || "app"}.${baseDomain}`
   const envVars = `${blueprint.envVarsCount ?? 0} keys from .env.example ready`
   const secrets = isId
     ? "Dapat disetel nanti di App Settings"
