@@ -427,11 +427,6 @@ export function ExecutiveLaunchCard({
                       type="button"
                       onClick={() => {
                         setSelectedPlanIdOverride(plan.id)
-                        blueprint.planId = plan.id
-                        blueprint.planCode = plan.code
-                        blueprint.computeTier = plan.name || `${plan.code} Tier`
-                        blueprint.monthlyPrice = periodPrice
-                        blueprint.hourlyRate = hourly
                         onPlanChange?.(
                           { id: plan.id, code: plan.code },
                           periodPrice

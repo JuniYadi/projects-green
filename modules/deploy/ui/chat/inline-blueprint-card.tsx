@@ -62,8 +62,7 @@ export function InlineBlueprintCard({
     .toUpperCase()
     .includes("SMALL")
   const isRealIdr = blueprint.currency === "IDR"
-  const planName =
-    blueprint.computeTier || (isSmall ? "SMALL (S)" : "Medium (M)")
+  const planName = blueprint.computeTier || (isSmall ? "SMALL" : "MEDIUM")
   const monthlyPriceText =
     typeof blueprint.monthlyPrice === "number"
       ? isRealIdr

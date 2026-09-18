@@ -92,7 +92,7 @@ export function GitDeployWizard({
       selectedPlan?.code ||
       blueprint.planCode ||
       blueprint.computeTier ||
-      "SMALL"
+      "MEDIUM"
     ).toUpperCase()
     const planId =
       selectedPlan?.id || blueprint.planId || planCode.toLowerCase()
