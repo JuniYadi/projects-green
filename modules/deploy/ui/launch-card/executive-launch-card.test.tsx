@@ -122,7 +122,7 @@ describe("ExecutiveLaunchCard", () => {
     expect(view.getByText("Branch / Dir:")).toBeTruthy()
     expect(view.getByText("main / ./")).toBeTruthy()
     expect(view.getByText("Subdomain:")).toBeTruthy()
-    expect(view.getByText("backend-api")).toBeTruthy()
+    expect(view.getByText("backend-api.sg.pfnapp.dev")).toBeTruthy()
     expect(view.getByText("Compute Plan:")).toBeTruthy()
     expect(
       view.getByText("Medium Tier (1 vCPU · 2GB RAM · $0.04/hour)")
@@ -220,7 +220,7 @@ describe("ExecutiveLaunchCard", () => {
     expect(view.getByText("Next.js 15.0.0 (Node.js 22)")).toBeTruthy()
     expect(view.getByText("3000 (HTTP)")).toBeTruthy()
     expect(view.getByText("develop / ./packages/react")).toBeTruthy()
-    expect(view.getByText("react-preview")).toBeTruthy()
+    expect(view.getByText("react-preview.sg.pfnapp.dev")).toBeTruthy()
     expect(
       view.getByText("Starter Tier (0.5 vCPU · 512MB RAM · $0.02/hour)")
     ).toBeTruthy()

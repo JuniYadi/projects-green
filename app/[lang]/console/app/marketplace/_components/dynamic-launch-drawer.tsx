@@ -78,44 +78,9 @@ export interface DynamicLaunchDrawerProps {
   currency?: string
 }
 
-const ADJECTIVES = [
-  "sparkling",
-  "swift",
-  "radiant",
-  "cosmic",
-  "nimble",
-  "vibrant",
-  "stellar",
-  "luminous",
-  "daring",
-  "zenith",
-]
+import { generateSuggestedAppName } from "@/modules/deploy/app-name-generator"
 
-const NOUNS = [
-  "star",
-  "nebula",
-  "aurora",
-  "phoenix",
-  "pulsar",
-  "falcon",
-  "voyager",
-  "atlas",
-  "horizon",
-  "comet",
-]
-
-export function generateSuggestedAppName(templateSlug: string): string {
-  const cleanSlug = templateSlug
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
-  const base = cleanSlug || "app"
-  const formattedBase = /^[0-9]/.test(base) ? `app-${base}` : base
-  const suffix = Math.random().toString(36).substring(2, 6)
-  return `${formattedBase}-${adj}-${noun}-${suffix}`
-}
+export { generateSuggestedAppName }
 
 export function DynamicLaunchDrawer({
   open,
