@@ -1,6 +1,8 @@
 "use client"
 
 import { useMemo } from "react"
+import { usePathname } from "next/navigation"
+
 import {
   Card,
   CardContent,
@@ -8,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { EnvVarsEditor } from "@/modules/deploy/ui/env-vars-editor"
 import { RuntimeQuickTuningCard } from "@/modules/deploy/ui/runtime-quick-tuning-card"
 import { isSecretEnvVarType } from "@/modules/deploy/environment-vars"
@@ -147,6 +151,10 @@ export function TabEnv({
     handleEnvVarsChange(currentRows)
   }
 
+  const pathname = usePathname()
+  const locale = resolveLocaleOrDefault(pathname)
+  const messages = getMessages(locale).console.deploy.tabEnv
+
   return (
     <div className="space-y-6">
       <RuntimeQuickTuningCard
@@ -159,11 +167,10 @@ export function TabEnv({
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div className="flex flex-col gap-1">
             <CardTitle className="text-base font-bold text-foreground">
-              Environment Variables
+              {messages.title}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Manage configuration and secrets for the {selectedEnv}{" "}
-              environment.
+              {messages.description.replace("{env}", selectedEnv)}
             </CardDescription>
           </div>
         </CardHeader>

@@ -1011,6 +1011,33 @@ export const enMessages: AppMessages = {
         unableToSave: "Unable to save this secret.",
         unableToImportVault: "Unable to import secrets into Vault.",
       },
+      runtimeQuickTuning: {
+        title: "Runtime Quick Tuning",
+        description:
+          "Tune operational parameters without manual Dockerfile modifications. Changes update environment variables automatically.",
+        maxUploadSize: "Max Upload Size (PHP_UPLOAD_MAX_FILESIZE)",
+        uploadPresetAria: "Upload preset {preset}",
+        memoryLimit: "Script Memory Limit (PHP_MEMORY_LIMIT)",
+        memoryPresetAria: "Memory preset {preset}",
+        workloadRole: "Workload Role (CONTAINER_ROLE)",
+        roleWebApp: "Web App",
+        roleWebAppDesc: "Nginx + PHP-FPM web server",
+        roleWorker: "Queue Worker",
+        roleWorkerDesc: "Artisan queue worker",
+        roleHorizon: "Horizon",
+        roleHorizonDesc: "Redis Horizon dashboard & workers",
+        roleScheduler: "Scheduler",
+        roleSchedulerDesc: "Cron artisan schedule:run",
+        containerPort: "Container Port (PORT)",
+        portDesc: "Internal HTTP listening port. Platform runs unprivileged.",
+        portDefaultNotice: "(Default unprivileged 8080)",
+        environmentMode: "Environment Mode ({envKey})",
+        envModeDesc: "Standard optimized runtime execution mode.",
+      },
+      tabEnv: {
+        title: "Environment Variables",
+        description: "Manage configuration and secrets for the {env} environment.",
+      },
       operateMetrics: {
         timeRangeAria: "Time range",
         title: "Live Telemetry & Observability",
@@ -5229,6 +5256,7 @@ export const enMessages: AppMessages = {
       settings: {
         heading: "Application Settings",
         description: "Configure domains, environment, scaling, and more.",
+        selectAppPrompt: "Select an application to view its settings.",
         tabs: {
           general: "General",
           domains: "Domains",
