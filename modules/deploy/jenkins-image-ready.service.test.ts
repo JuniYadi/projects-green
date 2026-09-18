@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
+import * as jsYaml from "js-yaml"
 import * as RealClusterIntegrationService from "@/modules/deploy/cluster-integration.service"
 
 const txCreate = mock(async (..._args: unknown[]) => ({ id: "event-1" }))
@@ -279,6 +280,48 @@ describe("handleJenkinsImageReady", () => {
     expect(files[1]?.content).toContain("kind: Application")
     expect(files[2]?.path).toBe("argocd-projects/app-metacard-prod.yml")
     expect(files[2]?.content).toContain("kind: Application")
+  })
+
+  it("enforces platform operational contract (port 8080, UID 10001, /healthz) for Laravel workloads", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      ...defaultStack,
+      framework: "Laravel 13.x",
+      metadataJson: {
+        containerPort: 8080,
+      },
+    })
+    const res = await handleJenkinsImageReady({
+      slug: "app-metacard-prod",
+      deploymentId: "deploy-1",
+      imageTag: "200",
+    })
+    expect(res.ok).toBe(true)
+    const callArgs = fakeCommit.mock.calls[0] as any as [
+      string,
+      string,
+      Array<{ path: string; content: string }>,
+    ]
+    const valuesContent = callArgs[2][0]?.content
+    const parsedValues = jsYaml.load(valuesContent) as Record<string, any>
+
+    expect(parsedValues.service.port).toBe(8080)
+    expect(parsedValues.service.targetPort).toBe(8080)
+    expect(parsedValues.containerPorts).toEqual([
+      { containerPort: 8080, name: "http" },
+    ])
+    expect(parsedValues.securityContext).toEqual({
+      runAsNonRoot: true,
+      runAsUser: 10001,
+      runAsGroup: 10001,
+      allowPrivilegeEscalation: false,
+      capabilities: {
+        drop: ["ALL"],
+      },
+    })
+    expect(parsedValues.livenessProbe.httpGet.path).toBe("/healthz")
+    expect(parsedValues.livenessProbe.httpGet.port).toBe(8080)
+    expect(parsedValues.readinessProbe.httpGet.path).toBe("/healthz")
+    expect(parsedValues.readinessProbe.httpGet.port).toBe(8080)
   })
   it("uses an external secret and removes Vault refs from Helm env", async () => {
     mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({

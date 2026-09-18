@@ -8,6 +8,7 @@ import {
   type GitOpsClusterConfig,
 } from "@/modules/deploy/cluster-integration.service"
 import { buildHelmValues } from "./helm-values.builder"
+import { resolvePlatformContract } from "@/modules/framework-detection/platform-runtime-contract"
 import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
 import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 import {
@@ -273,6 +274,60 @@ export async function handleJenkinsImageReady(
         ? `${stack.slug}.${cluster.managedBaseDomain}`
         : null)
 
+    const meta =
+      stack.metadataJson && typeof stack.metadataJson === "object"
+        ? (stack.metadataJson as Record<string, unknown>)
+        : {}
+
+    const contract = resolvePlatformContract(stack.framework)
+
+    const containerPort =
+      (typeof meta.containerPort === "number" ? meta.containerPort : null) ??
+      (typeof meta.defaultPort === "number" ? meta.defaultPort : null) ??
+      contract.containerPort
+
+    const runAsNonRoot =
+      typeof meta.runAsNonRoot === "boolean"
+        ? meta.runAsNonRoot
+        : contract.runAsNonRoot
+
+    const runAsUser =
+      (typeof meta.runAsUser === "number" ? meta.runAsUser : null) ??
+      contract.runAsUser
+
+    const runAsGroup =
+      (typeof meta.runAsGroup === "number" ? meta.runAsGroup : null) ??
+      contract.runAsGroup
+
+    const healthCheckPath =
+      (typeof meta.healthCheckPath === "string"
+        ? meta.healthCheckPath
+        : null) ?? contract.livenessProbe.path
+
+    const livenessProbe = healthCheckPath
+      ? {
+          path: healthCheckPath,
+          port: containerPort,
+        }
+      : null
+
+    const readinessProbe = healthCheckPath
+      ? {
+          path: healthCheckPath,
+          port: containerPort,
+        }
+      : null
+
+    const deploymentType =
+      meta.deploymentType === "deployment" ||
+      meta.deploymentType === "statefulset"
+        ? meta.deploymentType
+        : undefined
+
+    const additionalContainerPorts = Array.isArray(meta.additionalPorts)
+      ? (meta.additionalPorts as Array<{ port: number; name: string }>)
+      : undefined
+
     values = buildHelmValues({
       slug: stack.slug,
       imageRepository,
@@ -281,6 +336,17 @@ export async function handleJenkinsImageReady(
       replicas: 1,
       cpu: stack.cpu,
       memory: stack.memory,
+      containerPort,
+      servicePort: containerPort,
+      runAsNonRoot,
+      runAsUser,
+      runAsGroup,
+      allowPrivilegeEscalation: false,
+      capabilitiesDrop: contract.capabilitiesDrop,
+      livenessProbe,
+      readinessProbe,
+      deploymentType,
+      additionalContainerPorts,
       domain: resolvedDomain,
       nodeSelector: cluster.nodeSelector,
       tolerations: cluster.tolerations,

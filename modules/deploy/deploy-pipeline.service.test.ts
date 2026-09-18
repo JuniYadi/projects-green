@@ -174,6 +174,38 @@ describe("deploy-pipeline.service", () => {
     expect(mockPrisma.applicationStack.update).not.toHaveBeenCalled()
   })
 
+  it("createOrUpdateStack embeds platform operational contract defaults into metadataJson", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+
+    await createOrUpdateStack({
+      organizationId: "org-1",
+      name: "laravel-app",
+      slug: "laravel-app",
+      repositoryConnectionId: "repo-1",
+      branchName: "main",
+      rootDirectory: "/",
+      framework: "Laravel 13.x",
+      buildCommand: "composer install",
+      dockerfileDetected: false,
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      hourlyCost: "1.5",
+      envVars: [],
+      sourceType: "GITHUB",
+    })
+
+    expect(mockPrisma.applicationStack.create).toHaveBeenCalled()
+    const createCall = mockPrisma.applicationStack.create.mock.calls[0][0] as any
+    expect(createCall.data.metadataJson).toMatchObject({
+      defaultPort: 8080,
+      containerPort: 8080,
+      runAsUser: 10001,
+      runAsGroup: 10001,
+      runAsNonRoot: true,
+      healthCheckPath: "/healthz",
+    })
+  })
+
   it("createOrUpdateStack updates an existing idle stack", async () => {
     mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
       ...mockStack,

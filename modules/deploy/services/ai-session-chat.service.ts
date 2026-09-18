@@ -9,6 +9,7 @@ import {
   AiDeploymentSessionError,
   type AiDeploymentSessionActor,
 } from "@/modules/deploy/ai-deployment-session.service"
+import { formatTunablesForAiPrompt } from "@/modules/framework-detection/platform-runtime-contract"
 
 export const BLUEPRINT_FIELD_ENUM = z.enum([
   "port",
@@ -101,6 +102,17 @@ Your role in Fase 1 (In-Stream Dialogue):
   2. add_environment_variable({ key, value, isSecret }): adds or updates an environment variable.
 - Whenever a user asks to change or update any of these fields (e.g. "ganti port jadi 8080", "set compute tier to medium", "tambah env FOO=bar"), immediately call the appropriate mutation tool.
 - Confirm changes concisely after executing tool calls.
+
+Platform Runtime Operational Contract & Troubleshooting Knowledge:
+- Container workloads use hardened, unprivileged base images (listening on port 8080 as non-root UID 10001).
+- If a user asks about uploading large files or HTTP 413 (Payload Too Large) in Laravel / PHP:
+  Instruct them to add both PHP_UPLOAD_MAX_FILESIZE and PHP_POST_MAX_SIZE (e.g. 100M). You can call add_environment_variable for them!
+- If a user asks about memory exhaustion in PHP:
+  Instruct them to set PHP_MEMORY_LIMIT (e.g. 512M).
+- If a user asks about queue workers, background jobs, Horizon, or scheduler in Laravel:
+  Inform them that the base image supports CONTAINER_ROLE ("worker", "horizon", "scheduler", "all") without separate Dockerfiles.
+- If a user asks about Next.js / Node / Bun server ports:
+  Inform them the platform listens on port 8080 by default.
 `
 
 export function extractBlueprintFromSession(
@@ -516,7 +528,14 @@ export class AiSessionChatService {
           (process.env.AI_CHAT_MODEL?.trim() || "gpt-4.1-mini")
         const streamFn = this.deps.streamText ?? streamText
 
-        const systemPrompt = `${TANYA_P_SYSTEM_PROMPT}\n\nCurrent deployment blueprint:\n${JSON.stringify(activeBlueprint, null, 2)}`
+        const framework =
+          (activeBlueprint as Record<string, unknown> | undefined)?.framework ??
+          (activeBlueprint as Record<string, unknown> | undefined)?.frameworkId
+        const runtimeKnowledge = formatTunablesForAiPrompt(
+          typeof framework === "string" ? framework : undefined
+        )
+
+        const systemPrompt = `${TANYA_P_SYSTEM_PROMPT}\n\n${runtimeKnowledge}\n\nCurrent deployment blueprint:\n${JSON.stringify(activeBlueprint, null, 2)}`
 
         const streamResult = streamFn({
           model: provider(modelName),

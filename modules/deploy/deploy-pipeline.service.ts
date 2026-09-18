@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { releaseManagedStock } from "@/modules/deploy/app-managed-stock.service"
+import { resolvePlatformContract } from "@/modules/framework-detection/platform-runtime-contract"
 import { resolveDefaultAppHostingClusterId } from "@/modules/deploy/cluster-integration.service"
 import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
 import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
@@ -180,6 +181,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       throw new Error("STACK_DEPLOY_IN_PROGRESS")
     }
 
+    const contract = resolvePlatformContract(input.framework)
     const buildMetadata: Record<string, unknown> = {}
     if (input.frameworkVersion != null)
       buildMetadata.frameworkVersion = input.frameworkVersion
@@ -193,7 +195,11 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       buildMetadata.secondaryEngine = input.secondaryEngine
     if (input.secondaryEngineVersion != null)
       buildMetadata.secondaryEngineVersion = input.secondaryEngineVersion
-    if (input.defaultPort != null) buildMetadata.defaultPort = input.defaultPort
+    buildMetadata.defaultPort = input.defaultPort ?? contract.containerPort
+    buildMetadata.containerPort = input.defaultPort ?? contract.containerPort
+    buildMetadata.runAsUser = contract.runAsUser
+    buildMetadata.runAsGroup = contract.runAsGroup
+    buildMetadata.runAsNonRoot = contract.runAsNonRoot
     if (input.imageRepository != null)
       buildMetadata.imageRepository = input.imageRepository
     if (input.deploymentType != null)
@@ -202,8 +208,8 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       buildMetadata.additionalPorts = input.additionalPorts
     if (input.command !== undefined) buildMetadata.command = input.command
     if (input.args !== undefined) buildMetadata.args = input.args
-    if (input.healthCheckPath !== undefined)
-      buildMetadata.healthCheckPath = input.healthCheckPath
+    buildMetadata.healthCheckPath =
+      input.healthCheckPath ?? contract.livenessProbe.path
     if (input.fsGroup !== undefined) buildMetadata.fsGroup = input.fsGroup
     const templateIdentifier = input.templateSlug ?? input.templateId
     if (templateIdentifier != null) {
