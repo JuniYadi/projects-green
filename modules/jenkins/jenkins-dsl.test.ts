@@ -25,7 +25,7 @@ describe("jenkins-dsl", () => {
     it("generates valid PHP DSL with all defaults", () => {
       const dsl = generatePhpDsl(baseOptions)
       expect(dsl).toContain("pipelineJob('my-app')")
-      expect(dsl).toContain("laravelPipeline([")
+      expect(dsl).toContain("laravelPipelineV2([")
       expect(dsl).toContain("codeRepo: 'https://github.com/acme/my-app'")
       expect(dsl).toContain("codeBranch: 'main'")
       expect(dsl).toContain("codeGitCredentialsId: 'github-app-creds'")
@@ -46,16 +46,22 @@ describe("jenkins-dsl", () => {
     it("generates valid Node.js DSL", () => {
       const dsl = generateNodeDsl(baseOptions)
       expect(dsl).toContain("pipelineJob('my-app')")
-      expect(dsl).toContain("nodejsPipeline([")
+      expect(dsl).toContain("nodejsPipelineV2([")
       expect(dsl).toContain("helpers.nodejsParameters(")
       expect(dsl).toContain("'22'") // nodeVersion passed to helper
+      expect(dsl).toContain("frameworkDefault: 'nextjs'")
     })
 
     it("respects runNodeBuild flag", () => {
       const dsl = generateNodeDsl({ ...baseOptions, runNodeBuild: true })
       // runNodeBuild is handled via helper parameters, verify DSL is generated
-      expect(dsl).toContain("nodejsPipeline([")
+      expect(dsl).toContain("nodejsPipelineV2([")
       expect(dsl).not.toContain("runNodeBuild:") // Not a direct property
+    })
+
+    it("uses custom framework when provided", () => {
+      const dsl = generateNodeDsl({ ...baseOptions, framework: "nodejs" })
+      expect(dsl).toContain("frameworkDefault: 'nodejs'")
     })
   })
 
@@ -92,7 +98,7 @@ describe("jenkins-dsl", () => {
         type: "php",
         repositoryUrl: "https://github.com/acme/app",
       })
-      expect(dsl).toContain("laravelPipeline([")
+      expect(dsl).toContain("laravelPipelineV2([")
     })
 
     it("dispatches to Node generator", () => {
@@ -101,7 +107,7 @@ describe("jenkins-dsl", () => {
         type: "node",
         repositoryUrl: "https://github.com/acme/app",
       })
-      expect(dsl).toContain("nodejsPipeline([")
+      expect(dsl).toContain("nodejsPipelineV2([")
     })
 
     it("dispatches to Docker generator", () => {
