@@ -1,9 +1,11 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
+import { resolveClusterIntegration } from "../../cluster-integration.service"
 import {
   recordDeployEventOnce,
   recordDeployLog,
 } from "../../deploy-event.service"
+import { verifyJenkinsHmacSignature } from "../../jenkins-webhook-auth"
 
 /**
  * POST /api/deploy/jenkins-webhook
@@ -18,10 +20,51 @@ export const deployJenkinsWebhookRoutes = new Elysia({
   prefix: "/deploy",
 }).post(
   "/jenkins-webhook",
-  async ({ body, set }) => {
-    const token = process.env.JENKINS_WEBHOOK_TOKEN
-    // ponytail: simple token check; add HMAC if needed later
-    if (!token || body.token !== token) {
+  async ({ body, request, set }) => {
+    const envToken = process.env.JENKINS_WEBHOOK_TOKEN
+
+    const stack = await prisma.applicationStack.findFirst({
+      where: { slug: body.slug },
+    })
+
+    let expectedToken: string | null = envToken ?? null
+    if (stack) {
+      try {
+        const jenkinsConfig = await resolveClusterIntegration(
+          stack.id,
+          "JENKINS"
+        )
+        expectedToken = jenkinsConfig.webhookToken
+      } catch {
+        expectedToken = envToken ?? null
+      }
+    }
+
+    if (!expectedToken) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED" }
+    }
+
+    let rawBody = ""
+    try {
+      rawBody = await request.clone().text()
+    } catch {
+      rawBody = ""
+    }
+    if (!rawBody) {
+      rawBody = JSON.stringify(body)
+    }
+
+    const isValid =
+      verifyJenkinsHmacSignature(rawBody, request.headers, expectedToken) ||
+      (rawBody !== JSON.stringify(body) &&
+        verifyJenkinsHmacSignature(
+          JSON.stringify(body),
+          request.headers,
+          expectedToken
+        ))
+
+    if (!isValid) {
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED" }
     }
@@ -37,9 +80,6 @@ export const deployJenkinsWebhookRoutes = new Elysia({
     } = body
 
     if (phase) {
-      const stack = await prisma.applicationStack.findFirst({
-        where: { slug },
-      })
       if (stack) {
         const deployment = await prisma.applicationDeployment.findFirst({
           where: {
@@ -88,10 +128,6 @@ export const deployJenkinsWebhookRoutes = new Elysia({
       }
       return { ok: true, message: `Recorded phase ${phase}` }
     }
-
-    const stack = await prisma.applicationStack.findFirst({
-      where: { slug },
-    })
 
     if (!stack) {
       set.status = 404
@@ -217,7 +253,6 @@ export const deployJenkinsWebhookRoutes = new Elysia({
           t.Literal("COMPLETED"),
         ])
       ),
-      token: t.Optional(t.String()),
     }),
   }
 )
