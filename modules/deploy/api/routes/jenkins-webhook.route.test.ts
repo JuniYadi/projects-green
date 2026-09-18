@@ -226,6 +226,7 @@ describe("deploy jenkins-webhook.route", () => {
     const payload = {
       slug: "my-app",
       buildStatus: "FAILURE",
+      errorMessage: "Compilation error",
     }
     const rawBody = JSON.stringify(payload)
     const headers = createJenkinsWebhookHeaders(rawBody, "cluster-token")
@@ -257,6 +258,7 @@ describe("deploy jenkins-webhook.route", () => {
     const payload = {
       slug: "my-app",
       buildStatus: "FAILURE",
+      errorMessage: "Persistent failure",
     }
     const rawBody = JSON.stringify(payload)
     const headers = createJenkinsWebhookHeaders(rawBody, "cluster-token")

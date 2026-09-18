@@ -52,14 +52,11 @@ export const deployJenkinsImageReadyRoutes = new Elysia({
       rawBody = JSON.stringify(body)
     }
 
-    const isValid =
-      verifyJenkinsHmacSignature(rawBody, request.headers, expectedToken) ||
-      (rawBody !== JSON.stringify(body) &&
-        verifyJenkinsHmacSignature(
-          JSON.stringify(body),
-          request.headers,
-          expectedToken
-        ))
+    const isValid = verifyJenkinsHmacSignature(
+      rawBody,
+      request.headers,
+      expectedToken
+    )
 
     if (!isValid) {
       set.status = 401

@@ -103,4 +103,23 @@ describe("jenkins-webhook-auth", () => {
     }
     expect(verifyJenkinsHmacSignature(rawBody, headers, secret)).toBe(false)
   })
+
+  it("rejects when rawBody is not a string or headers is falsy", () => {
+    const headers = createJenkinsWebhookHeaders(rawBody, secret)
+    expect(
+      verifyJenkinsHmacSignature(null as unknown as string, headers, secret)
+    ).toBe(false)
+    expect(
+      verifyJenkinsHmacSignature(rawBody, null as unknown as Headers, secret)
+    ).toBe(false)
+  })
+
+  it("rejects when signature length does not match expected length", () => {
+    const timestamp = Math.floor(Date.now() / 1000).toString()
+    const headers = {
+      "x-jenkins-timestamp": timestamp,
+      "x-jenkins-signature-256": "short-signature",
+    }
+    expect(verifyJenkinsHmacSignature(rawBody, headers, secret)).toBe(false)
+  })
 })

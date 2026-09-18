@@ -128,10 +128,6 @@ export function verifyJenkinsHmacSignature(
     const sigBuf = Buffer.from(cleanSignature, "hex")
     const expBuf = Buffer.from(expected, "hex")
 
-    if (sigBuf.length !== expBuf.length) {
-      return false
-    }
-
     return crypto.timingSafeEqual(sigBuf, expBuf)
   } catch {
     return false

@@ -55,14 +55,11 @@ export const deployJenkinsWebhookRoutes = new Elysia({
       rawBody = JSON.stringify(body)
     }
 
-    const isValid =
-      verifyJenkinsHmacSignature(rawBody, request.headers, expectedToken) ||
-      (rawBody !== JSON.stringify(body) &&
-        verifyJenkinsHmacSignature(
-          JSON.stringify(body),
-          request.headers,
-          expectedToken
-        ))
+    const isValid = verifyJenkinsHmacSignature(
+      rawBody,
+      request.headers,
+      expectedToken
+    )
 
     if (!isValid) {
       set.status = 401
@@ -253,6 +250,7 @@ export const deployJenkinsWebhookRoutes = new Elysia({
           t.Literal("COMPLETED"),
         ])
       ),
+      errorMessage: t.Optional(t.String()),
     }),
   }
 )
