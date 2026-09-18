@@ -50,15 +50,17 @@ export function InlineBlueprintCard({
   const stack = `${frameworkText}${runtimeText}`
 
   const port = `${blueprint.port ?? 3000} (HTTP)`
-  const hourlyRateFormatted =
-    typeof blueprint.hourlyRate === "number"
-      ? blueprint.hourlyRate.toFixed(2)
-      : "0.04"
   const tier = blueprint.computeTier || "Medium (2GB RAM)"
+  const isSmall = tier.toLowerCase().includes("small")
   const isRealIdr = blueprint.currency === "IDR"
-  const compute = isRealIdr
-    ? `${tier} · IDR ${Math.round(blueprint.hourlyRate ?? 56)}/jam`
-    : `${tier} · $${hourlyRateFormatted}/jam`
+  const monthlyPriceText = isRealIdr
+    ? isSmall
+      ? "Rp 20.000 / bulan"
+      : "Rp 40.000 / bulan"
+    : isSmall
+      ? "$2.00 / mo"
+      : "$4.00 / mo"
+  const compute = `${tier} · ${monthlyPriceText}`
 
   const baseDomain = blueprint.managedBaseDomain || "sg.pfnapp.dev"
   const domain = `${blueprint.subdomain || "app"}.${baseDomain}`

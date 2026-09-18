@@ -18,6 +18,8 @@ describe("BalanceGuard", () => {
     const view = render(
       <BalanceGuard
         hourlyRate={0.04}
+        monthlyPrice={40000}
+        rateCurrency="IDR"
         balance={5000}
         currency="IDR"
         lang="id"
@@ -33,9 +35,9 @@ describe("BalanceGuard", () => {
 
     // Details: Saldo Anda saat ini, buffer, deficit
     expect(view.getByText(/IDR 5\.000/i)).toBeDefined()
-    expect(view.getByText(/IDR 15\.000 \(\$0\.96\)/i)).toBeDefined()
+    expect(view.getByText(/IDR 40\.000/i)).toBeDefined()
     expect(
-      view.getByText(/Dibutuhkan top-up minimal IDR 10\.000/i)
+      view.getByText(/Dibutuhkan top-up minimal IDR 35\.000/i)
     ).toBeDefined()
 
     // Top-up CTA button

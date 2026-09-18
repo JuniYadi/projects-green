@@ -54,32 +54,26 @@ function formatRepoUrl(url: string): string {
 
 function formatComputePlan(
   tierName?: string,
-  hourlyRate?: number,
+  _hourlyRate?: number,
   rateCurrency?: string,
   matchedPlan?: CatalogPlan | null
 ): string {
   const isIdr = rateCurrency === "IDR"
-  const rateText =
-    hourlyRate !== undefined
-      ? isIdr
-        ? `IDR ${Math.round(hourlyRate)}/jam`
-        : `$${hourlyRate.toFixed(2)}/hour`
-      : isIdr
-        ? "IDR 56/jam"
-        : "$0.04/hour"
-
   const lower = (tierName || matchedPlan?.name || "").toLowerCase()
   if (
     lower.includes("small") ||
     lower.includes("starter") ||
     lower.includes("(s)")
   ) {
-    return `Starter Tier (0.5 vCPU · 512MB RAM · ${rateText})`
+    const priceText = isIdr ? "Rp 20.000 / bulan" : "$2.00 / month"
+    return `Starter Tier (0.5 vCPU · 512MB RAM · ${priceText})`
   }
   if (lower.includes("large") || lower.includes("pro")) {
-    return `Large Tier (2 vCPU · 4GB RAM · ${rateText})`
+    const priceText = isIdr ? "Rp 80.000 / bulan" : "$8.00 / month"
+    return `Large Tier (2 vCPU · 4GB RAM · ${priceText})`
   }
-  return `Medium Tier (1 vCPU · 2GB RAM · ${rateText})`
+  const priceText = isIdr ? "Rp 40.000 / bulan" : "$4.00 / month"
+  return `Medium Tier (1 vCPU · 2GB RAM · ${priceText})`
 }
 
 export function ExecutiveLaunchCard({
@@ -207,6 +201,7 @@ export function ExecutiveLaunchCard({
           effectiveCurrency === "IDR"
             ? Math.ceil(periodPrice / 720)
             : Number((periodPrice / 720).toFixed(4))
+        const monthlyPrice = periodPrice
         const rate = blueprint.hourlyRate ?? calculatedRate
         const cpu =
           resources.cpu >= 1000
@@ -218,8 +213,8 @@ export function ExecutiveLaunchCard({
             : `${resources.mem}MB RAM`
         const formattedRate =
           effectiveCurrency === "IDR"
-            ? `IDR ${Math.round(rate)}/jam`
-            : `$${rate.toFixed(4)}/hour`
+            ? `Rp ${monthlyPrice.toLocaleString("id-ID")}/bulan`
+            : `$${monthlyPrice.toFixed(2)}/month`
         return {
           planName: matchedPlan.name || `${matchedPlan.code} Tier`,
           cpuText: cpu,
@@ -230,9 +225,10 @@ export function ExecutiveLaunchCard({
       }
       const isIdr = blueprintRateCurrency === "IDR"
       const fallbackRate = blueprint.hourlyRate ?? (isIdr ? 56 : 0.04)
+      const fallbackMonthly = isIdr ? 40000 : 4
       const formattedRate = isIdr
-        ? `IDR ${Math.round(fallbackRate)}/jam`
-        : `$${fallbackRate.toFixed(2)}/hour`
+        ? `Rp ${fallbackMonthly.toLocaleString("id-ID")}/bulan`
+        : `$${fallbackMonthly.toFixed(2)}/month`
       return {
         planName: blueprint.computeTier || "Medium Tier",
         cpuText: "1 vCPU",
@@ -402,8 +398,8 @@ export function ExecutiveLaunchCard({
                       : `${resources.mem}MB RAM`
                   const priceStr =
                     effectiveCurrency === "IDR"
-                      ? `Rp ${periodPrice.toLocaleString("id-ID")} / bulan (~IDR ${hourly}/jam)`
-                      : `$${periodPrice.toFixed(2)} / month (~$${hourly.toFixed(2)}/hr)`
+                      ? `Rp ${periodPrice.toLocaleString("id-ID")} / bulan`
+                      : `$${periodPrice.toFixed(2)} / month`
 
                   return (
                     <button
@@ -482,6 +478,24 @@ export function ExecutiveLaunchCard({
             <div className="sm:col-span-2">
               <BalanceGuard
                 hourlyRate={realHourlyRate}
+                monthlyPrice={
+                  matchedPlan
+                    ? Number(
+                        matchedPlan.offers?.find(
+                          (o) => o.billingPeriod === "MONTHLY"
+                        )?.periodPrice ||
+                          (effectiveCurrency === "IDR"
+                            ? matchedPlan.code === "SMALL"
+                              ? 20000
+                              : 40000
+                            : matchedPlan.code === "SMALL"
+                              ? 2
+                              : 4)
+                      )
+                    : effectiveCurrency === "IDR"
+                      ? 40000
+                      : 4
+                }
                 rateCurrency={blueprintRateCurrency}
                 currency={effectiveCurrency}
                 balanceFormatted={balanceFormatted}

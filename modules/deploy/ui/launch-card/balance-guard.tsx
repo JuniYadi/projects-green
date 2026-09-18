@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 
 export type BalanceGuardProps = {
   hourlyRate?: number
+  monthlyPrice?: number
   rateCurrency?: "USD" | "IDR"
   currency?: "USD" | "IDR"
   balance?: number
@@ -27,6 +28,7 @@ const DEFAULT_USD_TO_IDR = 15625
 
 export function BalanceGuard({
   hourlyRate = 0.04,
+  monthlyPrice,
   rateCurrency = "USD",
   currency = "IDR",
   balance,
@@ -107,22 +109,29 @@ export function BalanceGuard({
     return 0
   }, [account, balance, balanceFormatted, currency])
 
-  // Compute 24-hour buffer: hourlyRate * 24
+  // Compute package required buffer (1 month upfront cost)
   const isRateInIdr = rateCurrency === "IDR"
-  const bufferIdr = useMemo(
-    () =>
-      isRateInIdr
-        ? Math.round(hourlyRate * 24)
-        : Math.round(hourlyRate * 24 * DEFAULT_USD_TO_IDR),
-    [hourlyRate, isRateInIdr]
-  )
-  const bufferUsd = useMemo(
-    () =>
-      isRateInIdr
-        ? Number(((hourlyRate * 24) / DEFAULT_USD_TO_IDR).toFixed(2))
-        : Number((hourlyRate * 24).toFixed(2)),
-    [hourlyRate, isRateInIdr]
-  )
+  const bufferIdr = useMemo(() => {
+    if (monthlyPrice !== undefined) {
+      return isRateInIdr
+        ? Math.round(monthlyPrice)
+        : Math.round(monthlyPrice * DEFAULT_USD_TO_IDR)
+    }
+    return isRateInIdr
+      ? Math.round(hourlyRate * 24)
+      : Math.round(hourlyRate * 24 * DEFAULT_USD_TO_IDR)
+  }, [hourlyRate, monthlyPrice, isRateInIdr])
+
+  const bufferUsd = useMemo(() => {
+    if (monthlyPrice !== undefined) {
+      return isRateInIdr
+        ? Number((monthlyPrice / DEFAULT_USD_TO_IDR).toFixed(2))
+        : Number(monthlyPrice.toFixed(2))
+    }
+    return isRateInIdr
+      ? Number(((hourlyRate * 24) / DEFAULT_USD_TO_IDR).toFixed(2))
+      : Number((hourlyRate * 24).toFixed(2))
+  }, [hourlyRate, monthlyPrice, isRateInIdr])
 
   const effectiveCurrency =
     account?.currency === "IDR" || account?.balanceIdr ? "IDR" : currency
@@ -220,8 +229,8 @@ export function BalanceGuard({
         <div>
           <span className="font-medium text-muted-foreground">
             {isId
-              ? "Minimum buffer 24 jam untuk tier ini:"
-              : "Minimum 24-hour buffer for this tier:"}
+              ? "Biaya paket bulanan untuk tier ini:"
+              : "Monthly package cost for this tier:"}
           </span>{" "}
           <span className="font-semibold text-foreground">
             {formattedBuffer}
