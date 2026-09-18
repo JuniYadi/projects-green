@@ -57,6 +57,7 @@ export type GitSizingConfig = {
   subdomain: string
   customDomain?: string
   planName?: string
+  planId?: string
   monthlyPrice?: number
   currency?: string
   managedBaseDomain?: string

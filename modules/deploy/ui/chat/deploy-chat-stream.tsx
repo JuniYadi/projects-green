@@ -583,26 +583,20 @@ export function DeployChatStream({
         // Load real plan and rate from database catalog
         const defaultPlan =
           catalogPlans.find((p) => p.code === "MEDIUM") || catalogPlans[0]
-        const defaultHourlyRate = defaultPlan
-          ? (() => {
-              const offer =
-                defaultPlan.offers?.find(
-                  (o) => o.billingPeriod === "MONTHLY"
-                ) || defaultPlan.offers?.[0]
-              const periodPrice = offer?.periodPrice
-                ? Number(offer.periodPrice)
-                : isId
-                  ? 40000
-                  : 4
-              return isId
-                ? Math.ceil(periodPrice / 720)
-                : Number((periodPrice / 720).toFixed(4))
-            })()
-          : isId
-            ? 56
-            : 0.04
+        const defaultOffer =
+          defaultPlan?.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+          defaultPlan?.offers?.[0]
+        const defaultMonthlyPrice = defaultOffer?.periodPrice
+          ? Number(defaultOffer.periodPrice)
+          : undefined
 
-        const computeTier = defaultPlan?.name || "Medium (2GB RAM)"
+        const defaultHourlyRate = defaultMonthlyPrice
+          ? isId
+            ? Math.ceil(defaultMonthlyPrice / 720)
+            : Number((defaultMonthlyPrice / 720).toFixed(4))
+          : undefined
+
+        const computeTier = defaultPlan?.code || defaultPlan?.name || "MEDIUM"
 
         const rawRepoName = repoShort.split("/").pop() || "app"
         const repoSubdomain =
@@ -625,10 +619,13 @@ export function DeployChatStream({
           framework,
           runtime,
           port,
+          planId: defaultPlan?.id,
+          planCode: defaultPlan?.code,
           computeTier,
           subdomain: repoSubdomain,
           startCommand,
           envVarsCount,
+          monthlyPrice: defaultMonthlyPrice,
           hourlyRate: defaultHourlyRate,
           currency: isId ? "IDR" : "USD",
           managedBaseDomain: clusterBaseDomain,
@@ -711,18 +708,29 @@ export function DeployChatStream({
       const inferredRt = cleanSub.includes("api") ? "Go 1.22" : "Node.js 20"
       const inferredPort = cleanSub.includes("api") ? 8080 : 3000
 
+      const defaultPlan =
+        catalogPlans.find((p) => p.code === "MEDIUM") || catalogPlans[0]
+      const defaultOffer =
+        defaultPlan?.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+        defaultPlan?.offers?.[0]
+      const monorepoMonthlyPrice = defaultOffer?.periodPrice
+        ? Number(defaultOffer.periodPrice)
+        : undefined
+
       const rawSubName = cleanSub.split("/").pop() || "app"
       const bp: InlineBlueprintData = {
         framework: inferredFw,
         runtime: inferredRt,
         port: inferredPort,
-        computeTier: "Medium (2GB RAM)",
+        planId: defaultPlan?.id,
+        planCode: defaultPlan?.code || "MEDIUM",
+        computeTier: defaultPlan?.code || "MEDIUM",
         subdomain: generateSuggestedAppName(rawSubName),
         startCommand: cleanSub.includes("api")
           ? "go run main.go"
           : "pnpm start",
         envVarsCount: 3,
-        hourlyRate: 0.04,
+        monthlyPrice: monorepoMonthlyPrice,
         managedBaseDomain: clusterBaseDomain,
       }
 

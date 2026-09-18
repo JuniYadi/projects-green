@@ -15,10 +15,13 @@ export type InlineBlueprintData = {
   framework?: string
   runtime?: string
   port?: number
+  planId?: string
+  planCode?: string
   computeTier?: string
   subdomain?: string
   startCommand?: string
   envVarsCount?: number
+  monthlyPrice?: number
   hourlyRate?: number
   currency?: "USD" | "IDR"
   managedBaseDomain?: string
@@ -50,17 +53,25 @@ export function InlineBlueprintCard({
   const stack = `${frameworkText}${runtimeText}`
 
   const port = `${blueprint.port ?? 3000} (HTTP)`
-  const tier = blueprint.computeTier || "Medium (2GB RAM)"
-  const isSmall = tier.toLowerCase().includes("small")
+  const isSmall = (
+    blueprint.planCode ||
+    blueprint.planId ||
+    blueprint.computeTier ||
+    ""
+  )
+    .toUpperCase()
+    .includes("SMALL")
   const isRealIdr = blueprint.currency === "IDR"
-  const monthlyPriceText = isRealIdr
-    ? isSmall
-      ? "Rp 20.000 / bulan"
-      : "Rp 40.000 / bulan"
-    : isSmall
-      ? "$2.00 / mo"
-      : "$4.00 / mo"
-  const compute = `${tier} · ${monthlyPriceText}`
+  const planName = blueprint.computeTier || (isSmall ? "SMALL" : "MEDIUM")
+  const monthlyPriceText =
+    typeof blueprint.monthlyPrice === "number" && blueprint.monthlyPrice > 0
+      ? isRealIdr
+        ? `Rp ${blueprint.monthlyPrice.toLocaleString("id-ID")} / bulan`
+        : `$${blueprint.monthlyPrice.toFixed(2)} / mo`
+      : null
+  const compute = monthlyPriceText
+    ? `${planName} · ${monthlyPriceText}`
+    : planName
 
   const baseDomain = blueprint.managedBaseDomain || "sg.pfnapp.dev"
   const domain = `${blueprint.subdomain || "app"}.${baseDomain}`

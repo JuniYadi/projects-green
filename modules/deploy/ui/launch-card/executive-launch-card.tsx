@@ -28,10 +28,13 @@ export type ExecutiveLaunchCardProps = {
   userName?: string
   balanceFormatted?: string
   toolsList?: string
-  onLaunch: (planCode?: string) => Promise<void> | void
+  onLaunch: (plan: { id: string; code: string }) => Promise<void> | void
   onBackToChat: () => void
   isLaunching?: boolean
-  onPlanChange?: (planCode: string, hourlyRate: number) => void
+  onPlanChange?: (
+    plan: { id: string; code: string },
+    monthlyPrice: number
+  ) => void
 }
 
 function getGitProvider(url: string): { name: string; host: string } {
@@ -59,21 +62,26 @@ function formatComputePlan(
   matchedPlan?: CatalogPlan | null
 ): string {
   const isIdr = rateCurrency === "IDR"
-  const lower = (tierName || matchedPlan?.name || "").toLowerCase()
-  if (
-    lower.includes("small") ||
-    lower.includes("starter") ||
-    lower.includes("(s)")
-  ) {
-    const priceText = isIdr ? "Rp 20.000 / bulan" : "$2.00 / month"
-    return `Starter Tier (0.5 vCPU · 512MB RAM · ${priceText})`
+  const offer =
+    matchedPlan?.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+    matchedPlan?.offers?.[0]
+  if (matchedPlan && offer?.periodPrice) {
+    const resources = getPlanResources(matchedPlan)
+    const cpu =
+      resources.cpu >= 1000
+        ? `${(resources.cpu / 1000).toFixed(1).replace(/\.0$/, "")} vCPU`
+        : `${resources.cpu}m CPU`
+    const mem =
+      resources.mem >= 1024
+        ? `${Math.round(resources.mem / 1024)}GB RAM`
+        : `${resources.mem}MB RAM`
+    const price = Number(offer.periodPrice)
+    const priceText = isIdr
+      ? `Rp ${price.toLocaleString("id-ID")} / bulan`
+      : `$${price.toFixed(2)} / month`
+    return `${matchedPlan.name || matchedPlan.code} (${cpu} · ${mem} · ${priceText})`
   }
-  if (lower.includes("large") || lower.includes("pro")) {
-    const priceText = isIdr ? "Rp 80.000 / bulan" : "$8.00 / month"
-    return `Large Tier (2 vCPU · 4GB RAM · ${priceText})`
-  }
-  const priceText = isIdr ? "Rp 40.000 / bulan" : "$4.00 / month"
-  return `Medium Tier (1 vCPU · 2GB RAM · ${priceText})`
+  return tierName || "Compute Plan"
 }
 
 export function ExecutiveLaunchCard({
@@ -159,15 +167,26 @@ export function ExecutiveLaunchCard({
     }
   }, [effectiveCurrency])
 
-  const [selectedPlanCodeOverride, setSelectedPlanCodeOverride] = useState<
+  const [selectedPlanIdOverride, setSelectedPlanIdOverride] = useState<
     string | null
-  >(null)
+  >(blueprint.planId || null)
 
   const matchedPlan = useMemo(() => {
     if (!catalogPlans.length) return null
-    if (selectedPlanCodeOverride) {
+    if (selectedPlanIdOverride) {
       const found = catalogPlans.find(
-        (p) => p.code === selectedPlanCodeOverride
+        (p) =>
+          p.id === selectedPlanIdOverride || p.code === selectedPlanIdOverride
+      )
+      if (found) return found
+    }
+    if (blueprint.planId) {
+      const found = catalogPlans.find((p) => p.id === blueprint.planId)
+      if (found) return found
+    }
+    if (blueprint.planCode) {
+      const found = catalogPlans.find(
+        (p) => p.code.toUpperCase() === blueprint.planCode?.toUpperCase()
       )
       if (found) return found
     }
@@ -177,7 +196,13 @@ export function ExecutiveLaunchCard({
       catalogPlans.find((p) => p.code === "MEDIUM") ||
       catalogPlans[0]
     )
-  }, [catalogPlans, blueprint.computeTier, selectedPlanCodeOverride])
+  }, [
+    catalogPlans,
+    blueprint.planId,
+    blueprint.planCode,
+    blueprint.computeTier,
+    selectedPlanIdOverride,
+  ])
 
   const blueprintRateCurrency: "USD" | "IDR" =
     blueprint.currency ||
@@ -192,11 +217,16 @@ export function ExecutiveLaunchCard({
         const offer =
           matchedPlan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
           matchedPlan.offers?.[0]
-        const periodPrice = offer?.periodPrice
-          ? Number(offer.periodPrice)
-          : effectiveCurrency === "IDR"
-            ? 40000
-            : 4
+        if (!offer?.periodPrice) {
+          return {
+            planName: matchedPlan.name || matchedPlan.code,
+            cpuText: `${resources.cpu}m CPU`,
+            memText: `${resources.mem}MB RAM`,
+            realHourlyRate: 0,
+            rateText: "-",
+          }
+        }
+        const periodPrice = Number(offer.periodPrice)
         const calculatedRate =
           effectiveCurrency === "IDR"
             ? Math.ceil(periodPrice / 720)
@@ -223,25 +253,18 @@ export function ExecutiveLaunchCard({
           rateText: formattedRate,
         }
       }
-      const isIdr = blueprintRateCurrency === "IDR"
-      const fallbackRate = blueprint.hourlyRate ?? (isIdr ? 56 : 0.04)
-      const fallbackMonthly = isIdr ? 40000 : 4
-      const formattedRate = isIdr
-        ? `Rp ${fallbackMonthly.toLocaleString("id-ID")}/bulan`
-        : `$${fallbackMonthly.toFixed(2)}/month`
       return {
-        planName: blueprint.computeTier || "Medium Tier",
-        cpuText: "1 vCPU",
-        memText: "2GB RAM",
-        realHourlyRate: fallbackRate,
-        rateText: formattedRate,
+        planName: blueprint.computeTier || "Compute Plan",
+        cpuText: "-",
+        memText: "-",
+        realHourlyRate: 0,
+        rateText: "-",
       }
     }, [
       matchedPlan,
       blueprint.computeTier,
       blueprint.hourlyRate,
       effectiveCurrency,
-      blueprintRateCurrency,
     ])
 
   const balanceLoading = !balanceFormatted && isLoadingAccount
@@ -375,19 +398,8 @@ export function ExecutiveLaunchCard({
                   const offer =
                     plan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
                     plan.offers?.[0]
-                  const periodPrice = offer?.periodPrice
-                    ? Number(offer.periodPrice)
-                    : effectiveCurrency === "IDR"
-                      ? plan.code === "SMALL"
-                        ? 20000
-                        : 40000
-                      : plan.code === "SMALL"
-                        ? 2
-                        : 4
-                  const hourly =
-                    effectiveCurrency === "IDR"
-                      ? Math.ceil(periodPrice / 720)
-                      : Number((periodPrice / 720).toFixed(4))
+                  if (!offer?.periodPrice) return null
+                  const periodPrice = Number(offer.periodPrice)
                   const cpuStr =
                     resources.cpu >= 1000
                       ? `${(resources.cpu / 1000).toFixed(1).replace(/\.0$/, "")} vCPU`
@@ -406,10 +418,11 @@ export function ExecutiveLaunchCard({
                       key={planKey}
                       type="button"
                       onClick={() => {
-                        setSelectedPlanCodeOverride(plan.code)
-                        blueprint.computeTier = plan.name || `${plan.code} Tier`
-                        blueprint.hourlyRate = hourly
-                        onPlanChange?.(plan.code, hourly)
+                        setSelectedPlanIdOverride(plan.id)
+                        onPlanChange?.(
+                          { id: plan.id, code: plan.code },
+                          periodPrice
+                        )
                       }}
                       className={cn(
                         "flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all",
@@ -483,18 +496,9 @@ export function ExecutiveLaunchCard({
                     ? Number(
                         matchedPlan.offers?.find(
                           (o) => o.billingPeriod === "MONTHLY"
-                        )?.periodPrice ||
-                          (effectiveCurrency === "IDR"
-                            ? matchedPlan.code === "SMALL"
-                              ? 20000
-                              : 40000
-                            : matchedPlan.code === "SMALL"
-                              ? 2
-                              : 4)
+                        )?.periodPrice || 0
                       )
-                    : effectiveCurrency === "IDR"
-                      ? 40000
-                      : 4
+                    : undefined
                 }
                 rateCurrency={blueprintRateCurrency}
                 currency={effectiveCurrency}
@@ -528,7 +532,9 @@ export function ExecutiveLaunchCard({
             data-testid="launch-card-action-btn"
             onClick={() =>
               void onLaunch(
-                matchedPlan?.code || selectedPlanCodeOverride || "MEDIUM"
+                matchedPlan
+                  ? { id: matchedPlan.id, code: matchedPlan.code }
+                  : { id: "small", code: "SMALL" }
               )
             }
             disabled={isLaunching || balanceError || !isBalanceSufficient}

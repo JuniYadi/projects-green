@@ -9,11 +9,12 @@ const sampleBlueprint: InlineBlueprintData = {
   framework: "Laravel 11.x",
   runtime: "PHP 8.2",
   port: 8000,
-  computeTier: "Medium (2GB RAM)",
+  planCode: "MEDIUM",
+  computeTier: "Medium (M)",
   subdomain: "backend-api",
   startCommand: "php artisan serve",
   envVarsCount: 12,
-  hourlyRate: 0.04,
+  monthlyPrice: 4,
 }
 
 describe("InlineBlueprintCard", () => {
@@ -44,7 +45,7 @@ describe("InlineBlueprintCard", () => {
 
     expect(view.getByText("Laravel 11.x · PHP 8.2")).toBeTruthy()
     expect(view.getByText("8000 (HTTP)")).toBeTruthy()
-    expect(view.getByText("Medium (2GB RAM) · $4.00 / mo")).toBeTruthy()
+    expect(view.getByText("Medium (M) · $4.00 / mo")).toBeTruthy()
     expect(view.getByText("backend-api.sg.pfnapp.dev")).toBeTruthy()
     expect(view.getByText("12 keys from .env.example ready")).toBeTruthy()
     expect(
