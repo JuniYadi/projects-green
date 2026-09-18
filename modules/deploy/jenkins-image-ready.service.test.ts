@@ -45,6 +45,11 @@ const mockTx = {
     findUnique: txFindFirst,
     upsert: txUpsert,
   },
+  applicationContainerImage: {
+    updateMany: mock(async () => ({ count: 0 })),
+    upsert: mock(async () => ({ id: "img-1", status: "ACTIVE" })),
+    findMany: mock(async () => []),
+  },
 }
 
 type MockEdgeDomain = {

@@ -73,6 +73,8 @@ export const deployJenkinsImageReadyRoutes = new Elysia({
       ...(body.buildNumber !== undefined
         ? { buildNumber: body.buildNumber }
         : {}),
+      ...(body.digest !== undefined ? { digest: body.digest } : {}),
+      ...(body.sizeBytes !== undefined ? { sizeBytes: body.sizeBytes } : {}),
     })
 
     return result
@@ -84,6 +86,8 @@ export const deployJenkinsImageReadyRoutes = new Elysia({
       deploymentId: t.Optional(t.String()),
       commitSha: t.Optional(t.String()),
       buildNumber: t.Optional(t.Number()),
+      digest: t.Optional(t.String()),
+      sizeBytes: t.Optional(t.Union([t.Number(), t.String()])),
     }),
   }
 )

@@ -67,6 +67,7 @@ import { TabScaling } from "@/modules/deploy/ui/operate/tab-scaling"
 import { TabMounts } from "@/modules/deploy/ui/operate/tab-mounts"
 import { TabBuild } from "@/app/[lang]/console/app/settings/_components/tab-build"
 import { TabDanger } from "@/app/[lang]/console/app/settings/_components/tab-danger"
+import { SecurityArtifactsTabSection } from "@/modules/deploy/ui/security-artifacts/security-artifacts-tab-section"
 
 type HistoryMeta = {
   page: number
@@ -1028,6 +1029,11 @@ export default function PlatformInstanceWorkspacePage() {
                 hideSummaryHeader={true}
               />
             </div>
+          )}
+
+          {/* TAB: SECURITY & ARTIFACTS */}
+          {activeWorkspaceTab === "security-artifacts" && (
+            <SecurityArtifactsTabSection slug={slug} />
           )}
 
           {/* TAB 3: LOGS */}

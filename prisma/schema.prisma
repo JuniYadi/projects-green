@@ -474,6 +474,8 @@ model ApplicationStack {
   trafficSnapshots     AppHostingDailyTrafficSnapshot[]
   logSnapshots         AppHostingDailyLogSnapshot[]
   ipBlocks             AppHostingIpBlock[]
+  containerImages      ApplicationContainerImage[]
+  securityScans        ApplicationSecurityScan[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -635,6 +637,7 @@ model ApplicationDeployment {
   stack  ApplicationStack           @relation(fields: [stackId], references: [id], onDelete: Cascade)
   events ApplicationDeployEvent[]
   logs   ApplicationDeploymentLog[]
+  containerImages ApplicationContainerImage[]
 
   @@index([stackId])
   @@index([organizationId])
@@ -692,6 +695,124 @@ model ApplicationDeploymentLog {
   @@index([deploymentId])
   @@index([timestamp(sort: Desc)])
   @@map("DeploymentLog")
+}
+
+// ─── App Hosting Container Images & Security Scans ───────────────────────────
+
+enum ContainerImageStatus {
+  ACTIVE
+  READY
+  EXPIRED
+  PURGED
+}
+
+enum SecurityScanStatus {
+  PASSED
+  WARNING
+  FAILED
+}
+
+enum VulnerabilitySeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  UNKNOWN
+}
+
+model ApplicationContainerImage {
+  id             String               @id @default(cuid())
+  organizationId String
+  stackId        String
+  deploymentId   String?
+  buildNumber    Int
+  imageTag       String
+  digest         String?
+  sizeBytes      BigInt?
+  status         ContainerImageStatus @default(READY)
+  pushedAt       DateTime             @default(now())
+  rotatedAt      DateTime?
+  purgedAt       DateTime?
+
+  stack        ApplicationStack        @relation(fields: [stackId], references: [id], onDelete: Cascade)
+  deployment   ApplicationDeployment?  @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
+  securityScan ApplicationSecurityScan?
+
+  @@unique([stackId, imageTag])
+  @@index([organizationId])
+  @@index([stackId, status])
+  @@map("ApplicationContainerImage")
+}
+
+model ApplicationSecurityScan {
+  id             String             @id @default(cuid())
+  organizationId String
+  stackId        String
+  imageId        String             @unique
+  imageTag       String
+  scannerEngine  String             @default("trivy")
+  scannerVersion String             @default("0.73.0")
+  status         SecurityScanStatus @default(PASSED)
+
+  criticalCount Int @default(0)
+  highCount     Int @default(0)
+  mediumCount   Int @default(0)
+  lowCount      Int @default(0)
+  unfixedCount  Int @default(0)
+
+  storageKey String
+  scannedAt  DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  image    ApplicationContainerImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  stack    ApplicationStack          @relation(fields: [stackId], references: [id], onDelete: Cascade)
+  findings SecurityScanFinding[]
+
+  @@index([organizationId, scannedAt])
+  @@index([stackId, status])
+  @@map("ApplicationSecurityScan")
+}
+
+model SecurityVulnerability {
+  cveId       String                @id
+  title       String
+  description String?
+  severity    VulnerabilitySeverity
+  cvssScore   Float?
+  primaryUrl  String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  findings SecurityScanFinding[]
+
+  @@index([severity])
+  @@map("SecurityVulnerability")
+}
+
+model SecurityScanFinding {
+  id           String                @id @default(cuid())
+  scanId       String
+  cveId        String
+  severity     VulnerabilitySeverity
+
+  packageName      String
+  installedVersion String
+  fixedVersion     String?
+  sourceTarget     String
+  class            String
+  introducedBy     String?
+
+  createdAt DateTime @default(now())
+
+  scan          ApplicationSecurityScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  vulnerability SecurityVulnerability   @relation(fields: [cveId], references: [cveId], onDelete: Restrict)
+
+  @@unique([scanId, cveId, packageName])
+  @@index([scanId, severity])
+  @@index([cveId])
+  @@index([packageName])
+  @@index([class])
+  @@map("SecurityScanFinding")
 }
 
 model GithubWebhookEvent {
