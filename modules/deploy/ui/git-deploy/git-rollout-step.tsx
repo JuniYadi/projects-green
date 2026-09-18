@@ -45,7 +45,8 @@ export function GitRolloutStep({
     `[INFO] ArgoCD rollout triggered on namespace app-${sizing.subdomain} (cluster: sgp-k8s-prod-01)`,
   ]
 
-  const liveUrl = `https://${sizing.subdomain}.pfnapp.dev`
+  const baseDomain = sizing.managedBaseDomain || "sg.pfnapp.dev"
+  const liveUrl = `https://${sizing.subdomain}.${baseDomain}`
 
   return (
     <div className="flex flex-col gap-6">
