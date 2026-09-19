@@ -5876,6 +5876,7 @@ export type AppMessages = {
         openCanvasButton: string
         editButton: string
         embedWebsiteButton: string
+        simulatorButton: string
       }
       bindingModal: {
         title: string
@@ -6015,6 +6016,48 @@ export type AppMessages = {
         copyLinkButton: string
         copiedLinkButton: string
         openLinkButton: string
+      }
+      simulator: {
+        tabTitle: string
+        title: string
+        subtitle: string
+        selectAgentLabel: string
+        selectAgentPlaceholder: string
+        noAgentsAvailable: string
+        sandboxBadge: string
+        clearChatButton: string
+        chatPlaceholder: string
+        emptyChatTitle: string
+        emptyChatSubtitle: string
+        inputPlaceholder: string
+        sendButton: string
+        thinking: string
+        quickReplyBadge: string
+        ctaUrlBadge: string
+        inspectorTitle: string
+        inspectorSubtitle: string
+        emptyInspectorTitle: string
+        emptyInspectorSubtitle: string
+        metricsTitle: string
+        totalTokens: string
+        promptTokens: string
+        completionTokens: string
+        latency: string
+        toolTraceTitle: string
+        noToolsExecuted: string
+        toolArgs: string
+        toolOutput: string
+        responseComparisonTitle: string
+        tabCleanOutput: string
+        tabRawOutput: string
+        cleanOutputBadge: string
+        rawOutputBadge: string
+        badgeApiVersion: string
+        toolCountSuffix: string
+        turnLabel: string
+        noData: string
+        errorMessage: string
+        rateLimitError: string
       }
     }
     aiSessions: {

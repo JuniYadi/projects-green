@@ -17,6 +17,7 @@ import {
   ArrowsClockwise,
   PencilSimple,
   Globe,
+  Flask,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
@@ -48,6 +49,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ActionIntentBuilder from "@/modules/ai/agents/ui/action-intent-builder"
 import WidgetEmbedCustomizer from
   "@/modules/ai/widget/ui/widget-embed-customizer"
+import AgentSimulator from "@/modules/ai/agents/ui/agent-simulator"
 
 export type AgentProfile = {
   id: string
@@ -98,6 +100,9 @@ export default function AiAgentsPage() {
     string | null
   >(null)
   const [selectedAgentForWidget, setSelectedAgentForWidget] = useState<
+    string | null
+  >(null)
+  const [selectedAgentForSimulator, setSelectedAgentForSimulator] = useState<
     string | null
   >(null)
   const [isOpen, setIsOpen] = useState(false)
@@ -519,6 +524,10 @@ export default function AiAgentsPage() {
             <TabsTrigger value="agents" className="gap-2 text-xs">
               <Robot size={15} />
               <span>{messages.heading}</span>
+            </TabsTrigger>
+            <TabsTrigger value="simulator" className="gap-2 text-xs">
+              <Flask size={15} className="text-emerald-500" />
+              <span>{messages.simulator.tabTitle}</span>
             </TabsTrigger>
             <TabsTrigger value="action-intents" className="gap-2 text-xs">
               <Lightning
@@ -963,6 +972,18 @@ export default function AiAgentsPage() {
                         size="sm"
                         className="h-8 gap-1 text-xs"
                         onClick={() => {
+                          setSelectedAgentForSimulator(agent.id)
+                          setActiveMainTab("simulator")
+                        }}
+                      >
+                        <Flask size={13} className="text-emerald-500" />
+                        <span>{messages.card.simulatorButton}</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1 text-xs"
+                        onClick={() => {
                           setSelectedAgentForWidget(agent.id)
                           setActiveMainTab("widget-embed")
                         }}
@@ -1269,6 +1290,15 @@ export default function AiAgentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </TabsContent>
+
+    <TabsContent value="simulator" className="mt-0">
+      <AgentSimulator
+        agents={agents}
+        selectedAgentId={selectedAgentForSimulator}
+        onAgentChange={setSelectedAgentForSimulator}
+        lang={lang}
+      />
     </TabsContent>
 
     <TabsContent value="action-intents" className="mt-0">

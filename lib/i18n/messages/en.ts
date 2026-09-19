@@ -6436,6 +6436,7 @@ export const enMessages: AppMessages = {
         openCanvasButton: "Open in Canvas",
         editButton: "Edit Settings",
         embedWebsiteButton: "Embed Website",
+        simulatorButton: "Simulator",
       },
       bindingModal: {
         title: "Manage Assistant's WhatsApp Numbers",
@@ -6609,6 +6610,57 @@ export const enMessages: AppMessages = {
         copyLinkButton: "Copy Link",
         copiedLinkButton: "Link Copied!",
         openLinkButton: "Open",
+      },
+      simulator: {
+        tabTitle: "Simulator & Inspector",
+        title: "AI Agent Simulator & Execution Inspector",
+        subtitle:
+          "Test conversational intelligence, evaluate tool call traces, and" +
+          " inspect interactive WhatsApp reply buttons in real-time.",
+        selectAgentLabel: "Select AI Agent",
+        selectAgentPlaceholder: "Choose an agent profile...",
+        noAgentsAvailable:
+          "No agent profiles available. Create an agent first.",
+        sandboxBadge: "Test Sandbox",
+        clearChatButton: "Clear Chat",
+        chatPlaceholder: "Type your message to test the agent...",
+        emptyChatTitle: "Ready to Test",
+        emptyChatSubtitle:
+          "Send a message below to test conversation flow, slot filling," +
+          " and tool invocations.",
+        inputPlaceholder: "Type a WhatsApp test message...",
+        sendButton: "Send",
+        thinking: "Thinking...",
+        quickReplyBadge: "Quick Reply",
+        ctaUrlBadge: "URL Link",
+        inspectorTitle: "Execution Inspector",
+        inspectorSubtitle:
+          "Real-time telemetry, tool invocation trace, and raw LLM response" +
+          " comparison.",
+        emptyInspectorTitle: "No Execution Data Yet",
+        emptyInspectorSubtitle:
+          "Send a message in the simulator to inspect tool executions," +
+          " latency, and token metrics.",
+        metricsTitle: "Turn Telemetry",
+        totalTokens: "Total Tokens",
+        promptTokens: "Prompt Tokens",
+        completionTokens: "Completion Tokens",
+        latency: "Latency",
+        toolTraceTitle: "Tool Executions",
+        noToolsExecuted: "No tools invoked in this turn.",
+        toolArgs: "Input Arguments",
+        toolOutput: "Execution Output",
+        responseComparisonTitle: "Output Comparison",
+        tabCleanOutput: "Clean Reply",
+        tabRawOutput: "Raw LLM Output",
+        cleanOutputBadge: "Cleaned WhatsApp Text",
+        rawOutputBadge: "Raw LLM Response",
+        badgeApiVersion: "WhatsApp API v2.0",
+        toolCountSuffix: "tools",
+        turnLabel: "Turn:",
+        noData: "No data",
+        errorMessage: "Failed to simulate agent response.",
+        rateLimitError: "Rate limit exceeded. Please wait a moment.",
       },
     },
     aiSessions: {
