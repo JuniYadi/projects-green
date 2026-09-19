@@ -6368,6 +6368,7 @@ export const enMessages: AppMessages = {
         editDescription:
           "Update settings and WhatsApp channel behavior for this assistant.",
         saveChangesButton: "Save Changes",
+        savingButton: "Saving...",
       },
       tabs: {
         aiAssistant: "AI Assistance (Auto-Generate)",
@@ -6409,8 +6410,8 @@ export const enMessages: AppMessages = {
         previewTitle: "Interactive Reply Preview",
         previewSubtitle: "How button messages appear on WhatsApp",
         mockMessage:
-          "Halo kak! Terima kasih sudah menghubungi kami. " +
-          "Silakan pilih layanan:",
+          "Hi! Thank you for contacting us. " +
+          "Please choose a service:",
         buttonAskProduct: "💬 Ask Product",
         buttonCheckOrder: "📦 Check Order",
         buttonVisitWebsite: "🌐 Visit Website",

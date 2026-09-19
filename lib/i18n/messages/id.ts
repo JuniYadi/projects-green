@@ -6426,6 +6426,7 @@ export const idMessages: AppMessages = {
           "Perbarui pengaturan dan perilaku channel WhatsApp " +
           "untuk asisten ini.",
         saveChangesButton: "Simpan Perubahan",
+        savingButton: "Menyimpan...",
       },
       tabs: {
         aiAssistant: "Bantuan AI (Auto-Generate)",

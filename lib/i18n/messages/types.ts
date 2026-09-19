@@ -5819,6 +5819,7 @@ export type AppMessages = {
         editTitle: string
         editDescription: string
         saveChangesButton: string
+        savingButton: string
       }
       tabs: {
         aiAssistant: string

@@ -1234,7 +1234,7 @@ export default function AiAgentsPage() {
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               {savingEdit
-                ? "Menyimpan..."
+                ? messages.dialog.savingButton
                 : messages.dialog.saveChangesButton}
             </Button>
           </DialogFooter>
