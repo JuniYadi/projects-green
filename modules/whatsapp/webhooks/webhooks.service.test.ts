@@ -599,6 +599,20 @@ describe("extractMessageBody", () => {
     expect(result).toBe("Need Help")
   })
 
+  it("extracts button_reply id when title is empty or missing", () => {
+    const result = extractMessageBody({
+      from: "628123456789",
+      id: "wamid.1",
+      timestamp: "1723456789",
+      type: "interactive",
+      interactive: {
+        type: "button_reply",
+        button_reply: { id: "btn_help", title: "" },
+      },
+    })
+    expect(result).toBe("btn_help")
+  })
+
   it("extracts list_reply title from interactive payload", () => {
     const result = extractMessageBody({
       from: "628123456789",

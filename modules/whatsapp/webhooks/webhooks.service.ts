@@ -292,7 +292,8 @@ export async function processInboundMessage(
             contactPhone: normalizedPhone,
             inboundMessageText: body || "",
             conversationId: conversation.id,
-            inboundMessageId: whatsappMessage.id,
+            inboundMessageId:
+              whatsappMessage.waMessageId || whatsappMessage.id,
             mediaUrl: effectiveMediaUrl,
             mediaType: mediaType ?? undefined,
           })
@@ -360,14 +361,18 @@ export function extractMessageBody(
       interactive.button_reply &&
       typeof interactive.button_reply === "object"
     ) {
-      return String(
-        (interactive.button_reply as Record<string, unknown>).title ?? ""
-      )
+      const reply = interactive.button_reply as Record<string, unknown>
+      const title =
+        typeof reply.title === "string" ? reply.title.trim() : ""
+      const id = typeof reply.id === "string" ? reply.id.trim() : ""
+      return title || id || ""
     }
     if (interactive.list_reply && typeof interactive.list_reply === "object") {
-      return String(
-        (interactive.list_reply as Record<string, unknown>).title ?? ""
-      )
+      const reply = interactive.list_reply as Record<string, unknown>
+      const title =
+        typeof reply.title === "string" ? reply.title.trim() : ""
+      const id = typeof reply.id === "string" ? reply.id.trim() : ""
+      return title || id || ""
     }
   }
 

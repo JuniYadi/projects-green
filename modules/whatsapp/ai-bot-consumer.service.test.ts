@@ -367,8 +367,120 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
         phoneNumber: "+62812345678",
         message: "Halo, ada yang bisa kami bantu mengenai pesanan Anda?",
         deviceId: "dev_1",
+        replyToMessageId: "msg_1",
       })
     )
     expect(mockRedis.eval).toHaveBeenCalled()
+  })
+
+  it("includes interactive button guidance in system prompt", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        name: "CS Official Bot",
+        isActive: true,
+        systemPrompt: "Anda adalah CS toko.",
+        maxCharLength: 500,
+        dailyUserLimit: 20,
+      },
+    } as never)
+
+    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
+      id: "sess_1",
+      totalMessages: 0,
+    } as never)
+
+    await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Pilihan menu apa saja?",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_1",
+    })
+
+    expect(mockGenerateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        system: expect.stringContaining("[BUTTON: Label Singkat]"),
+      })
+    )
+  })
+
+  it(
+    "dispatches interactive payload when action tags are detected",
+    async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        name: "CS Official Bot",
+        isActive: true,
+        systemPrompt: "Anda adalah CS toko.",
+        maxCharLength: 500,
+        dailyUserLimit: 20,
+      },
+    } as never)
+
+    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
+      id: "sess_1",
+      totalMessages: 0,
+    } as never)
+
+    mockGenerateText.mockResolvedValueOnce({
+      text:
+        "Silakan tentukan pilihan Anda:\n" +
+        "[BUTTON: Beli Sekarang]\n" +
+        "[BUTTON: Tanya Admin CS]\n" +
+        "[URL: Kunjungi Web | https://example.com/shop]",
+      usage: { totalTokens: 30, promptTokens: 10, completionTokens: 20 },
+    } as never)
+
+    const res = await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Mau belanja dong",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_inbound_99",
+    })
+
+    expect(res.handled).toBe(true)
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org_1",
+        phoneNumber: "+62812345678",
+        deviceId: "dev_1",
+        type: "interactive",
+        replyToMessageId: "msg_inbound_99",
+        message: "Silakan tentukan pilihan Anda:",
+        interactivePayload: expect.objectContaining({
+          type: "button",
+          body: { text: "Silakan tentukan pilihan Anda:" },
+          action: expect.objectContaining({
+            buttons: [
+              {
+                type: "reply",
+                reply: { id: "btn_1", title: "Beli Sekarang" },
+              },
+              {
+                type: "reply",
+                reply: { id: "btn_2", title: "Tanya Admin CS" },
+              },
+              {
+                type: "cta_url",
+                cta_url: {
+                  id: "url_3",
+                  display_text: "Kunjungi Web",
+                  url: "https://example.com/shop",
+                },
+              },
+            ],
+          }),
+        }),
+      })
+    )
   })
 })

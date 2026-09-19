@@ -144,9 +144,18 @@ export const messageService: MessageService = {
       replyToMessageId,
       interactivePayload,
     } = options
-    const context =
-      requestedContext ??
-      (replyToMessageId ? { message_id: replyToMessageId } : undefined)
+    let context = requestedContext
+    if (!context && replyToMessageId) {
+      if (replyToMessageId.startsWith("wamid.")) {
+        context = { message_id: replyToMessageId }
+      } else {
+        const found = await prisma.whatsappMessage?.findUnique?.({
+          where: { id: replyToMessageId },
+          select: { waMessageId: true },
+        })
+        context = { message_id: found?.waMessageId ?? replyToMessageId }
+      }
+    }
     const jobId = `wa-job-${Bun.randomUUIDv7()}`
     // Get or create device first (needed for quota gate checks)
     const device = deviceId
@@ -505,7 +514,15 @@ export const messageService: MessageService = {
         conversationId,
         direction: "OUTBOX",
         messageType: type,
-        body: type === "text" ? message : caption,
+        body:
+          type === "text"
+            ? message
+            : type === "interactive"
+              ? (message ??
+                (interactivePayload && "body" in interactivePayload
+                  ? interactivePayload.body.text
+                  : undefined))
+              : caption,
         mediaUrl,
         metadata: {
           jobId,
