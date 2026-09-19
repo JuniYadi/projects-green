@@ -1,4 +1,4 @@
-import { generateText, stepCountIs } from "ai"
+import { generateText, stepCountIs, type ModelMessage } from "ai"
 
 import { prisma } from "@/lib/prisma"
 import {
@@ -10,7 +10,6 @@ import {
   acquireSessionLock,
   getSlidingWindowMessages,
   releaseSessionLock,
-  type CoreMessage,
 } from "@/modules/ai/agents/ai-agent-session.service"
 import { buildAgentTools } from "@/modules/ai/agents/ai-agent-tools"
 import { messageService } from "@/modules/whatsapp/messages/messages.service"
@@ -22,6 +21,8 @@ export type ProcessAiBotInboundOptions = {
   inboundMessageText: string
   conversationId: string
   inboundMessageId: string
+  mediaUrl?: string
+  mediaType?: string
 }
 
 export type ProcessAiBotInboundResult = {
@@ -31,6 +32,29 @@ export type ProcessAiBotInboundResult = {
   agentProfileId?: string
   tokensUsed?: number
 }
+
+const VISION_MODEL_PATTERNS = [
+  /gpt-4o/i,
+  /gpt-4-turbo/i,
+  /claude-3/i,
+  /claude-sonnet/i,
+  /claude-opus/i,
+  /gemini-1\.5/i,
+  /gemini-2\.0/i,
+]
+
+/**
+ * Checks whether an AI model name supports multimodal vision capabilities.
+ */
+export function isVisionSupportedModel(modelName: string): boolean {
+  if (!modelName) return false
+  return VISION_MODEL_PATTERNS.some((pattern) => pattern.test(modelName))
+}
+
+export const VISION_FALLBACK_TEXT =
+  "Halo kak! Saat ini kami belum dapat mengenali gambar secara otomatis. " +
+  "Boleh sebutkan nama produk atau kodenya? Atau klik tombol di bawah " +
+  "untuk dibantu CS kami:"
 
 /**
  * Handles an inbound WhatsApp text message through the tenant's AI Agent
@@ -47,11 +71,33 @@ export async function processWhatsappAiBotInbound(
     contactPhone,
     inboundMessageText,
     conversationId,
+    mediaUrl,
+    mediaType,
   } = options
 
-  const cleanText = inboundMessageText.trim()
+  const trimmedText = inboundMessageText.trim()
+  const isImage = Boolean(
+    mediaUrl &&
+      (!mediaType ||
+        mediaType.startsWith("image") ||
+        mediaType === "image" ||
+        mediaUrl.includes("image"))
+  )
+  const isPdf = Boolean(
+    mediaType === "application/pdf" ||
+      mediaType === "pdf" ||
+      (mediaUrl && mediaUrl.toLowerCase().endsWith(".pdf"))
+  )
+
+  let cleanText = trimmedText
   if (!cleanText) {
-    return { handled: false, reason: "EMPTY_TEXT" }
+    if (isImage) {
+      cleanText = "Tolong bantu analisis gambar ini kak."
+    } else if (isPdf) {
+      cleanText = "Tolong bantu periksa dokumen PDF ini kak."
+    } else {
+      return { handled: false, reason: "EMPTY_TEXT" }
+    }
   }
 
   // 1. Check if device is bound to an active AI Agent Profile
@@ -160,27 +206,131 @@ export async function processWhatsappAiBotInbound(
       }
     }
 
+    // 4. Universal AI Model Resolution (BYOK via Vault or Managed)
+    let model
+    let resolvedModelName = ""
+    try {
+      const providerConfig = await resolveAiProviderConfig({
+        organizationId,
+        modelOverride: undefined,
+      })
+      resolvedModelName = providerConfig.defaultModel || ""
+      model = createAiLanguageModel(providerConfig)
+    } catch (error) {
+      console.error("[whatsapp-ai-bot] Failed to resolve AI model:", error)
+      if (agent.fallbackMessage) {
+        await messageService.sendMessage({
+          organizationId,
+          phoneNumber: contactPhone,
+          message: agent.fallbackMessage,
+          deviceId,
+        })
+      }
+      return {
+        handled: true,
+        reason: "AI_PROVIDER_ERROR",
+        agentProfileId: agent.id,
+      }
+    }
+
+    // 5. Vision Capability Fallback Check
+    if (isImage && !isVisionSupportedModel(resolvedModelName)) {
+      const fallbackResult = await messageService.sendMessage({
+        organizationId,
+        phoneNumber: contactPhone,
+        deviceId,
+        type: "interactive",
+        interactivePayload: {
+          type: "button",
+          body: { text: VISION_FALLBACK_TEXT },
+          action: {
+            buttons: [
+              {
+                type: "reply",
+                reply: {
+                  id: "action_contact_cs",
+                  title: "💬 Hubungi CS Admin",
+                },
+              },
+            ],
+          },
+        },
+      })
+
+      await prisma.aiChatMessage.create({
+        data: {
+          sessionId: session.id,
+          role: "assistant",
+          content: VISION_FALLBACK_TEXT,
+          promptTokens: 0,
+          responseTokens: 0,
+        },
+      })
+
+      return {
+        handled: true,
+        responseMessageId: fallbackResult.messageId,
+        agentProfileId: agent.id,
+        tokensUsed: 0,
+      }
+    }
+
     // Load multi-turn history using sliding window (last 10 turns)
     const history = await getSlidingWindowMessages(session.id, 10)
+
+    // Construct inbound message content (multimodal or text)
+    type MessageContent =
+      | string
+      | Array<
+          | { type: "text"; text: string }
+          | { type: "image"; image: URL }
+        >
+
+    let userMessageContent: MessageContent = cleanText
+    if (isImage && mediaUrl) {
+      try {
+        const imageUrl = new URL(mediaUrl)
+        userMessageContent = [
+          {
+            type: "text",
+            text: trimmedText || "Tolong bantu periksa gambar ini.",
+          },
+          {
+            type: "image",
+            image: imageUrl,
+          },
+        ]
+      } catch {
+        // Fall back to string text if mediaUrl is invalid URL
+        userMessageContent = cleanText
+      }
+    } else if (isPdf) {
+      userMessageContent = trimmedText
+        ? `[Dokumen PDF terlampir]: ${trimmedText}`
+        : "Tolong bantu periksa dokumen PDF ini kak."
+    }
 
     // Log user message
     await prisma.aiChatMessage.create({
       data: {
         sessionId: session.id,
         role: "user",
-        content: cleanText,
+        content:
+          typeof userMessageContent === "string"
+            ? userMessageContent
+            : JSON.stringify(userMessageContent),
         promptTokens: 0,
         responseTokens: 0,
       },
     })
 
-    const messages: CoreMessage[] = [...history]
-    const lastMsg = messages[messages.length - 1]
-    if (!lastMsg || lastMsg.role !== "user" || lastMsg.content !== cleanText) {
-      messages.push({ role: "user", content: cleanText })
-    }
+    const messages: ModelMessage[] = history.map((msg) => ({
+      role: msg.role as "user" | "assistant",
+      content: msg.content,
+    }))
+    messages.push({ role: "user", content: userMessageContent } as ModelMessage)
 
-    // 4. In-Database Hybrid RAG (pgvector + BM25 ts_rank)
+    // 6. In-Database Hybrid RAG (pgvector + BM25 ts_rank)
     const knowledgeChunks = await searchHybridKnowledge({
       organizationId,
       agentProfileId: agent.id,
@@ -213,38 +363,30 @@ export async function processWhatsappAiBotInbound(
       "jelaskan secara sopan, sarankan periksa ulang data, " +
       "dan tawarkan bantuan customer service."
 
+    const outOfStockGuidance =
+      "\n\n### KEBIJAKAN PRODUK HABIS (OUT OF STOCK):\n" +
+      "- Jika produk atau SKU yang dikenali dari gambar atau pencarian " +
+      "stoknya 0 atau habis, jelaskan bahwa produk tersebut sedang habis.\n" +
+      "- Berikan saran alternatif model atau produk serupa yang tersedia.\n" +
+      "- Informasikan opsi tombol aksi [Lihat Model Serupa] " +
+      "dan [Kabari Saat Restock] kepada pelanggan."
+
+    const pdfDocumentGuidance = isPdf
+      ? "\n\n### PENANGANAN DOKUMEN PDF:\n" +
+        "- Pengguna melampirkan dokumen PDF. Berikan konfirmasi " +
+        "penerimaan dokumen secara sopan dan jelaskan informasi " +
+        "yang dapat Anda bantu terkait dokumen tersebut."
+      : ""
+
     const systemPrompt = contextText
       ? `${basePrompt}\n\n### KONTEKS DOKUMEN RESMI:\n${contextText}\n\n` +
         "Jawab pertanyaan pelanggan berdasarkan konteks dokumen di atas " +
-        `secara ringkas dan sopan.${slotClarificationGuidance}`
-      : `${basePrompt}${slotClarificationGuidance}`
+        `secara ringkas dan sopan.${slotClarificationGuidance}` +
+        `${outOfStockGuidance}${pdfDocumentGuidance}`
+      : `${basePrompt}${slotClarificationGuidance}` +
+        `${outOfStockGuidance}${pdfDocumentGuidance}`
 
-    // 5. Universal AI Model Resolution (BYOK via Vault or Managed)
-    let model
-    try {
-      const providerConfig = await resolveAiProviderConfig({
-        organizationId,
-        modelOverride: undefined,
-      })
-      model = createAiLanguageModel(providerConfig)
-    } catch (error) {
-      console.error("[whatsapp-ai-bot] Failed to resolve AI model:", error)
-      if (agent.fallbackMessage) {
-        await messageService.sendMessage({
-          organizationId,
-          phoneNumber: contactPhone,
-          message: agent.fallbackMessage,
-          deviceId,
-        })
-      }
-      return {
-        handled: true,
-        reason: "AI_PROVIDER_ERROR",
-        agentProfileId: agent.id,
-      }
-    }
-
-    // 6. Build active tools and execute multi-step reasoning
+    // 7. Build active tools and execute multi-step reasoning
     const tools = await buildAgentTools({
       organizationId,
       agentProfileId: agent.id,

@@ -195,6 +195,11 @@ export async function processInboundMessage(
   // Fire-and-forget: download media from Meta if this is a media message
   // ponytail: background download, don't block the webhook response
   const mediaId = extractMediaMetaId(payload)
+  const mediaType = payload.image
+    ? "image"
+    : payload.document
+      ? payload.document.mime_type || "application/pdf"
+      : payload.type
   if (mediaId) {
     downloadAndSave(deviceId, organizationId, mediaId)
       .then((record) => {
@@ -246,7 +251,7 @@ export async function processInboundMessage(
   }
   // Fire-and-forget: Automated bot evaluation (Workflow Engine first -> AI Bot fallback)
   // DEBT: Inbound bot pipeline uses async dynamic imports | Fix when: Unified bot event dispatcher queue is extracted
-  if (body || payload.interactive) {
+  if (body || payload.interactive || mediaUrl || mediaId) {
     const interactiveObj = payload.interactive as
       | { button_reply?: { id?: string }; list_reply?: { id?: string } }
       | undefined
@@ -266,16 +271,18 @@ export async function processInboundMessage(
         })
 
         // Only fallback to AI Agent if Workflow didn't handle the message
-        if (!wfResult.handled && body) {
+        if (!wfResult.handled && (body || mediaUrl || mediaId)) {
           const { processWhatsappAiBotInbound } =
             await import("@/modules/whatsapp/ai-bot-consumer.service")
           await processWhatsappAiBotInbound({
             organizationId,
             deviceId,
             contactPhone: normalizedPhone,
-            inboundMessageText: body,
+            inboundMessageText: body || "",
             conversationId: conversation.id,
             inboundMessageId: whatsappMessage.id,
+            mediaUrl: mediaUrl ?? undefined,
+            mediaType: mediaType ?? undefined,
           })
         }
       })
