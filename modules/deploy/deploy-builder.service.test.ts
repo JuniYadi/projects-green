@@ -143,15 +143,20 @@ mock.module("@/modules/deploy/cluster-integration.service", () => ({
   resolveClusterIntegration: mockResolveClusterIntegration,
 }))
 
-const { processQueuedDeployment, resolveStackProbes, resolveStorageMounts } =
-  await import("./deploy-builder.service")
+const {
+  processQueuedDeployment,
+  triggerJenkinsJobWithRetry,
+  resolveStackProbes,
+  resolveStorageMounts,
+} = await import("./deploy-builder.service")
 
 describe("processQueuedDeployment", () => {
   let originalEagerFlag: string | undefined
 
   beforeEach(() => {
     txCreate.mockClear()
-    triggerJenkinsJobMock.mockClear()
+    triggerJenkinsJobMock.mockReset()
+    triggerJenkinsJobMock.mockResolvedValue(undefined)
     syncJenkinsPipelineMock.mockClear()
     commitFilesMock.mockClear()
     mockPrisma.applicationDeployment.findUnique.mockReset()
@@ -162,6 +167,8 @@ describe("processQueuedDeployment", () => {
     mockPrisma.applicationStack.update.mockClear()
     mockTx.applicationDeployment.update.mockClear()
     mockTx.applicationStack.update.mockClear()
+    mockTx.applicationDeploymentLog.create.mockClear()
+    mockPrisma.applicationDeploymentLog.create.mockClear()
     originalEagerFlag = process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK
   })
 
@@ -185,12 +192,29 @@ describe("processQueuedDeployment", () => {
     delete process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK
     const result = await processQueuedDeployment("deploy-1")
     expect(result.processed).toBe(true)
+    expect(syncJenkinsPipelineMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: "owner",
+        repo: "console-next-app",
+        jenkinsOwner: "pfnapp",
+        jenkinsRepo: "Jenkins",
+        gitRepoUrl: "https://github.com/owner/console-next-app",
+        slug: "app-test",
+        branch: "main",
+        env: "dev",
+      })
+    )
     expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(1)
     expect(triggerJenkinsJobMock).toHaveBeenCalledWith(
       "app-test",
       expect.anything(),
       expect.anything()
     )
+    const logMessages = mockTx.applicationDeploymentLog.create.mock.calls.map(
+      (c) => (c[0] as { data?: { message?: string } })?.data?.message
+    )
+    expect(logMessages).toContain("Generating pipeline job...")
+    expect(logMessages).toContain("Pipeline job ready, starting build...")
     const eventTypes = txCreate.mock.calls
       .map((c) => {
         const arg = c[0] as {
@@ -380,6 +404,13 @@ describe("processQueuedDeployment", () => {
         }),
       })
     )
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith({
+      where: { id: "stack-1" },
+      data: {
+        status: "FAILED",
+        lastDeployStatus: "FAILED",
+      },
+    })
   })
 
   it("advances a TEMPLATE deployment straight to DEPLOYING without ever going through BUILDING", async () => {
@@ -661,6 +692,169 @@ describe("processQueuedDeployment", () => {
     expect(filesArg[0]?.content).toContain(
       "podSecurityContext:\n  fsGroup: 10000"
     )
+  })
+
+  it("retries triggerJenkinsJob on 404 and succeeds when job becomes ready", async () => {
+    delete process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK
+    const notFoundError = new Error("Jenkins API error: Not Found")
+    ;(notFoundError as unknown as { status: number }).status = 404
+
+    triggerJenkinsJobMock
+      .mockRejectedValueOnce(notFoundError)
+      .mockResolvedValueOnce(undefined)
+
+    const result = await processQueuedDeployment("deploy-1")
+    expect(result.processed).toBe(true)
+    expect(result.status).toBe("BUILDING")
+    expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(2)
+
+    const logMessages = mockTx.applicationDeploymentLog.create.mock.calls.map(
+      (c) => (c[0] as { data?: { message?: string } })?.data?.message
+    )
+    expect(logMessages).toContain("Generating pipeline job...")
+    expect(logMessages).toContain("Pipeline job ready, starting build...")
+  })
+
+  it("fails deployment and marks stack as FAILED when Jenkins trigger fails permanently", async () => {
+    delete process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK
+    triggerJenkinsJobMock.mockRejectedValue(
+      new Error("Jenkins API error: Internal Server Error")
+    )
+
+    const result = await processQueuedDeployment("deploy-1")
+    expect(result.status).toBe("FAILED")
+    expect(mockPrisma.applicationDeployment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "deploy-1" },
+        data: expect.objectContaining({
+          status: "FAILED",
+        }),
+      })
+    )
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith({
+      where: { id: "stack-1" },
+      data: {
+        status: "FAILED",
+        lastDeployStatus: "FAILED",
+      },
+    })
+  })
+
+  it("marks stack as FAILED when template deployment fails", async () => {
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      id: "deploy-tpl-fail",
+      stackId: "stack-tpl-fail",
+      status: "QUEUED",
+      attempt: 1,
+      stack: {
+        id: "stack-tpl-fail",
+        slug: "fail-tpl",
+        name: "fail-tpl",
+        sourceType: "TEMPLATE",
+        templateId: "tpl-fail",
+        clusterId: "cluster-1",
+        customDomain: null,
+        envVarsJson: [],
+        metadataJson: {},
+        template: {
+          blueprintJson: {
+            runtime: {
+              image: "app:latest",
+              defaultPort: 8080,
+            },
+          },
+        },
+      },
+    } as never)
+
+    mockResolveClusterIntegration.mockRejectedValueOnce(
+      new Error("Cluster unavailable")
+    )
+
+    const result = await processQueuedDeployment("deploy-tpl-fail")
+    expect(result.status).toBe("FAILED")
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith({
+      where: { id: "stack-tpl-fail" },
+      data: {
+        status: "FAILED",
+        lastDeployStatus: "FAILED",
+      },
+    })
+  })
+})
+
+describe("triggerJenkinsJobWithRetry", () => {
+  beforeEach(() => {
+    triggerJenkinsJobMock.mockReset()
+    triggerJenkinsJobMock.mockResolvedValue(undefined)
+  })
+
+  it("succeeds on first attempt without delay", async () => {
+    let readyCalled = false
+    await triggerJenkinsJobWithRetry("my-job", { FOO: "bar" }, undefined, {
+      onReady: async () => {
+        readyCalled = true
+      },
+    })
+
+    expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(1)
+    expect(readyCalled).toBe(true)
+  })
+
+  it("retries on 404 error and succeeds when job becomes available", async () => {
+    const notFoundError = new Error("Jenkins API error: Not Found")
+    ;(notFoundError as unknown as { status: number }).status = 404
+
+    triggerJenkinsJobMock
+      .mockRejectedValueOnce(notFoundError)
+      .mockRejectedValueOnce(notFoundError)
+      .mockResolvedValueOnce(undefined)
+
+    let readyCalled = false
+    await triggerJenkinsJobWithRetry("my-job", { FOO: "bar" }, undefined, {
+      maxAttempts: 5,
+      initialDelayMs: 1,
+      maxDelayMs: 2,
+      onReady: async () => {
+        readyCalled = true
+      },
+    })
+
+    expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(3)
+    expect(readyCalled).toBe(true)
+  })
+
+  it("throws when 404 retries exceed maxAttempts", async () => {
+    const notFoundError = new Error("Jenkins API error: Not Found")
+    ;(notFoundError as unknown as { status: number }).status = 404
+
+    triggerJenkinsJobMock.mockRejectedValue(notFoundError)
+
+    await expect(
+      triggerJenkinsJobWithRetry("my-job", {}, undefined, {
+        maxAttempts: 3,
+        initialDelayMs: 1,
+        maxDelayMs: 2,
+      })
+    ).rejects.toThrow("Jenkins API error: Not Found")
+
+    expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(3)
+  })
+
+  it("fails immediately on non-404 error without retrying", async () => {
+    const authError = new Error("Jenkins authentication failed: Unauthorized")
+    ;(authError as unknown as { status: number }).status = 401
+
+    triggerJenkinsJobMock.mockRejectedValue(authError)
+
+    await expect(
+      triggerJenkinsJobWithRetry("my-job", {}, undefined, {
+        maxAttempts: 5,
+        initialDelayMs: 1,
+      })
+    ).rejects.toThrow("Jenkins authentication failed: Unauthorized")
+
+    expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(1)
   })
 })
 
