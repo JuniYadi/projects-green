@@ -6480,6 +6480,100 @@ export const idMessages: AppMessages = {
         availableBadge: "Tersedia",
         doneButton: "Selesai",
       },
+      actionIntents: {
+        tabTitle: "Action Intents & Tools",
+        title: "AI Agent Action Intent Builder",
+        subtitle:
+          "Rancang tool/aksi otomatis tanpa coding, lengkapi parameter" +
+          " slot, dan aktifkan konfirmasi anti-halusinasi.",
+        createButton: "Buat Action Intent Baru",
+        editButton: "Edit",
+        deleteButton: "Hapus",
+        emptyTitle: "Belum ada Action Intent dibuat",
+        emptyDescription:
+          'Tambahkan aksi baru dengan tombol "Buat Action Intent Baru"' +
+          " di atas untuk menghubungkan bot ke REST API bisnis Anda.",
+        filterAllAgents: "Semua Profil Asisten AI",
+        nameLabel: "Nama Aksi (Tool Name)",
+        namePlaceholder: "Misal: Cek Hasil Lab Pasien",
+        descriptionLabel: "Kapan Dipicu? (Deskripsi Tool untuk AI)",
+        descriptionPlaceholder:
+          "Misal: Saat pasien menanyakan jadwal atau status hasil" +
+          " pemeriksaan darah",
+        connectionLabel: "Koneksi API (Connection Pool)",
+        connectionPlaceholder: "Pilih koneksi integrasi...",
+        noConnectionOption: "Tanpa Koneksi Pool (REST Langsung)",
+        methodLabel: "HTTP Method",
+        subpathLabel: "Endpoint Subpath",
+        subpathPlaceholder: "Misal: /v1/lab/result",
+        autoDetectButton: "AI Auto-Detect dari Sample JSON",
+        autoDetectDialog: {
+          title: "Auto-Detect Parameter dari Contoh JSON",
+          description:
+            "Tempelkan contoh respons atau payload JSON. Sistem akan" +
+            " mendeteksi kunci, tipe data, dan mengisi baris slot otomatis.",
+          textareaPlaceholder:
+            '{\n  "no_registrasi": "LAB-202609-01",\n  "tahun_lahir": 1990,' +
+            '\n  "tgl_periksa": "2026-09-19"\n}',
+          parseButton: "Ekstrak Parameter Otomatis",
+          cancelButton: "Batal",
+          invalidJson:
+            "Format JSON tidak valid. Periksa kembali tanda kutip atau koma.",
+          noKeysFound: "Tidak ditemukan properti objek dalam JSON.",
+          success: "Berhasil mendeteksi parameter slot dari JSON!",
+        },
+        slotsSection: {
+          title: "Data yang Wajib Diminta ke Customer (Slot Form)",
+          description:
+            "Parameter yang harus dikumpulkan bot dari percakapan" +
+            " sebelum mengeksekusi API ini.",
+          colName: "Nama Data",
+          colType: "Tipe Data",
+          colRequired: "Wajib?",
+          colQuestion: "Pertanyaan AI ke Customer",
+          colAction: "Aksi",
+          typeString: "Teks (STRING)",
+          typeNumber: "Angka (NUMBER)",
+          typeDate: "Tanggal (DATE)",
+          questionPlaceholder:
+            "Misal: Boleh minta nomor di kwitansinya?",
+          addRowButton: "+ Tambah Parameter Baru",
+          emptySlots:
+            "Belum ada parameter slot. Tambahkan parameter manual atau" +
+            " gunakan AI Auto-Detect dari JSON.",
+        },
+        toggles: {
+          visionTitle: "Multimodal Vision (OCR Kwitansi / Berkas)",
+          visionLabel:
+            "Izinkan customer kirim foto kwitansi / surat pengantar" +
+            " (Vision OCR)",
+          visionDesc:
+            "AI akan mengekstrak nomor resi atau identitas dari foto yang" +
+            " dikirim di WhatsApp.",
+          confirmationGateTitle: "Anti-Hallucination Confirmation Gate",
+          confirmationGateLabel:
+            "Wajibkan konfirmasi customer sebelum panggil API",
+          confirmationGateDesc:
+            "AI akan merangkum seluruh parameter dan meminta customer" +
+            " menekan tombol konfirmasi sebelum API dijalankan.",
+          previewTitle: "Pratinjau Tombol WhatsApp:",
+          previewConfirm: "✅ Benar, Cek Sekarang",
+          previewReject: "❌ Koreksi Data",
+        },
+        buttons: {
+          save: "Simpan Action Intent",
+          saving: "Menyimpan...",
+          cancel: "Batal",
+        },
+        toasts: {
+          createSuccess: "Action Intent berhasil dibuat!",
+          updateSuccess: "Action Intent berhasil diperbarui!",
+          deleteSuccess: "Action Intent berhasil dihapus.",
+          deleteConfirm:
+            "Apakah Anda yakin ingin menghapus Action Intent ini?",
+          loadError: "Gagal memuat daftar Action Intent.",
+        },
+      },
     },
     aiSessions: {
       breadcrumbGovernance: "AI Governance",

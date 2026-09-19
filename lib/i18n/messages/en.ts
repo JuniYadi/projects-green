@@ -6423,6 +6423,98 @@ export const enMessages: AppMessages = {
         availableBadge: "Available",
         doneButton: "Done",
       },
+      actionIntents: {
+        tabTitle: "Action Intents & Tools",
+        title: "AI Agent Action Intent Builder",
+        subtitle:
+          "Build no-code AI actions, configure slot parameters, and" +
+          " guard against hallucinations with customer confirmation.",
+        createButton: "Create Action Intent",
+        editButton: "Edit",
+        deleteButton: "Delete",
+        emptyTitle: "No Action Intents created yet",
+        emptyDescription:
+          'Click the "Create Action Intent" button above to connect' +
+          " your bot to external REST APIs.",
+        filterAllAgents: "All AI Agent Profiles",
+        nameLabel: "Action Name (Tool Name)",
+        namePlaceholder: "E.g., Check Lab Results",
+        descriptionLabel: "When Triggered? (Tool Description for AI)",
+        descriptionPlaceholder:
+          "E.g., When the patient asks about test status or lab results",
+        connectionLabel: "API Connection Pool",
+        connectionPlaceholder: "Select integration connection...",
+        noConnectionOption: "No Pool Connection (Direct REST)",
+        methodLabel: "HTTP Method",
+        subpathLabel: "Endpoint Subpath",
+        subpathPlaceholder: "E.g., /v1/lab/result",
+        autoDetectButton: "AI Auto-Detect from Sample JSON",
+        autoDetectDialog: {
+          title: "Auto-Detect Parameters from Sample JSON",
+          description:
+            "Paste sample response or request JSON. The system will" +
+            " detect keys, infer types, and populate slot rows.",
+          textareaPlaceholder:
+            '{\n  "registration_no": "LAB-202609-01",\n  "birth_year": 1990,' +
+            '\n  "exam_date": "2026-09-19"\n}',
+          parseButton: "Extract Parameters Automatically",
+          cancelButton: "Cancel",
+          invalidJson:
+            "Invalid JSON format. Please verify quotes or commas.",
+          noKeysFound: "No object keys found in JSON.",
+          success: "Successfully detected slot parameters from JSON!",
+        },
+        slotsSection: {
+          title: "Parameters Required from Customer (Slot Form)",
+          description:
+            "Parameters the bot must collect from conversation before" +
+            " calling this API.",
+          colName: "Field Name",
+          colType: "Data Type",
+          colRequired: "Required?",
+          colQuestion: "AI Inquiry Question to Customer",
+          colAction: "Action",
+          typeString: "Text (STRING)",
+          typeNumber: "Number (NUMBER)",
+          typeDate: "Date (DATE)",
+          questionPlaceholder:
+            "E.g., Could you provide the receipt number?",
+          addRowButton: "+ Add New Parameter",
+          emptySlots:
+            "No slot parameters yet. Add parameters manually or use" +
+            " AI Auto-Detect from JSON.",
+        },
+        toggles: {
+          visionTitle: "Multimodal Vision (Receipt / Document OCR)",
+          visionLabel:
+            "Allow customer to send receipt/document photo (Vision OCR)",
+          visionDesc:
+            "AI will extract receipt numbers or identities directly from" +
+            " images sent on WhatsApp.",
+          confirmationGateTitle: "Anti-Hallucination Confirmation Gate",
+          confirmationGateLabel:
+            "Require customer confirmation before calling API",
+          confirmationGateDesc:
+            "AI will summarize all parameters and require customer" +
+            " confirmation before executing external API.",
+          previewTitle: "WhatsApp Button Preview:",
+          previewConfirm: "✅ Correct, Check Now",
+          previewReject: "❌ Correct Data",
+        },
+        buttons: {
+          save: "Save Action Intent",
+          saving: "Saving...",
+          cancel: "Cancel",
+        },
+        toasts: {
+          createSuccess: "Action Intent created successfully!",
+          updateSuccess: "Action Intent updated successfully!",
+          deleteSuccess: "Action Intent deleted successfully.",
+          deleteConfirm:
+            "Are you sure you want to delete this Action Intent?",
+          loadError: "Failed to load Action Intents.",
+        },
+      },
     },
     aiSessions: {
       breadcrumbGovernance: "AI Governance",
