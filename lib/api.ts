@@ -22,6 +22,9 @@ import { createConsoleAiWorkflowsRoutes } from "@/modules/ai/api/console-ai-work
 import { createConsoleAiAgentPRoutes } from "@/modules/ai/api/console-ai-agent-p.route"
 import { createConsoleAiConnectionsRoutes } from "@/modules/ai/api/console-ai-connections.route"
 import { createConsoleAiActionsRoutes } from "@/modules/ai/api/console-ai-actions.route"
+import {
+  createConsoleAiSimulateRoutes,
+} from "@/modules/ai/api/console-ai-simulate.route"
 import { createPublicAiWidgetRoutes } from "@/modules/ai/widget/widget-stream.route"
 import { deployRoutes } from "@/modules/deploy/api/deploy.route"
 import { frameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
@@ -306,6 +309,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(createConsoleAiAgentPRoutes())
   .use(createConsoleAiConnectionsRoutes())
   .use(createConsoleAiActionsRoutes())
+  .use(createConsoleAiSimulateRoutes())
   .use(createPublicAiWidgetRoutes())
   .use(deployRoutes)
   .use(frameworkDetectionRoutes)
