@@ -155,6 +155,20 @@ describe("resolveSidebarMenu", () => {
     expect(navMain[0]?.isActive).toBe(true)
   })
 
+  it("returns AI Studio context for /console/ai/agents/[id]/canvas", () => {
+    const { navMain, projects, navMainLabel } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/ai/agents/wf-123/canvas",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("AI Studio")
+    expect(projects[0]?.name).toBe("Back to Console")
+    expect(
+      navMain.find((item) => item.title === "AI Agents")?.isActive
+    ).toBe(true)
+  })
+
   it("includes Events link in app-hosting context", () => {
     const { navMain, navMainLabel } = resolveSidebarMenu({
       surface: "portal",

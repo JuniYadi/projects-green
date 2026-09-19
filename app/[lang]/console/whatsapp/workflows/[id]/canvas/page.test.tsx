@@ -1,123 +1,32 @@
-import { describe, expect, it, mock, afterEach } from "bun:test"
-import { cleanup, render, waitFor } from "@testing-library/react"
-import { renderToString } from "react-dom/server"
-import {
-  createSimulatorSession,
-  stepSimulatorSession,
-} from "@/modules/whatsapp/workflow/workflow-simulator"
-import {
-  WORKFLOW_TEMPLATES,
-} from "@/modules/whatsapp/workflow/workflow-templates"
+import { describe, expect, it, mock } from "bun:test"
 
-const searchParams = new URLSearchParams()
+const mockRedirect = mock((_dest: string) => {})
 
 mock.module("next/navigation", () => ({
-  useParams: () => ({ lang: "en", id: "new" }),
-  useRouter: () => ({ push: mock(() => {}) }),
-  useSearchParams: () => searchParams,
+  redirect: mockRedirect,
 }))
 
-mock.module("sonner", () => ({
-  toast: {
-    success: mock(() => {}),
-    error: mock(() => {}),
-    warning: mock(() => {}),
-    info: mock(() => {}),
-  },
-}))
+import WhatsappWorkflowCanvasRedirectPage from "./page"
 
-mock.module("@/lib/eden", () => ({
-  eden: {
-    api: {
-      whatsapp: {
-        devices: { get: mock(async () => ({ data: { devices: [] } })) },
-      },
-      console: {
-        ai: {
-          agents: {
-            get: mock(async () => ({ data: { ok: true, data: [] } })),
-          },
-        },
-      },
-    },
-  },
-}))
-
-global.ResizeObserver = class {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-
-import WhatsappWorkflowCanvasPage from "./page"
-
-describe("Canvas simulator integration", () => {
-  afterEach(cleanup)
-  it("runs a template graph when a simulated customer message is sent", () => {
-    const workflow = WORKFLOW_TEMPLATES[0].workflow
-    let session = createSimulatorSession(workflow)
-    session = stepSimulatorSession(session, workflow)
-    session = stepSimulatorSession(
-      session,
-      workflow,
-      "My checkout is not working"
-    )
-
-    expect(session.history.some((message) => message.sender === "user")).toBe(
-      true
-    )
-    expect(session.history.some((message) => message.sender === "bot")).toBe(
-      true
-    )
-    expect(session.variables.customer_issue).toBe("My checkout is not working")
-  })
-
-  it("hydrates the selected starter template from the URL", async () => {
-    const orderTemplate = WORKFLOW_TEMPLATES.find(
-      (t) => t.id === "template_order_tracking"
-    )!
-    searchParams.set("template", orderTemplate.id)
-    const view = render(<WhatsappWorkflowCanvasPage />)
-
-    await waitFor(() => {
-      expect(
-        view.getByDisplayValue("Order Tracking & Status Bot")
-      ).toBeDefined()
+describe("WhatsappWorkflowCanvasRedirectPage", () => {
+  it("redirects to canonical AI Studio agent canvas route", async () => {
+    await WhatsappWorkflowCanvasRedirectPage({
+      params: Promise.resolve({ lang: "en", id: "wf_123" }),
+      searchParams: Promise.resolve({ template: "template_order" }),
     })
-    searchParams.delete("template")
+
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/en/console/ai/agents/wf_123/canvas?template=template_order"
+    )
   })
 
-  it("renders localized canvas labels", () => {
-    const html = renderToString(<WhatsappWorkflowCanvasPage />)
-
-    expect(html).toContain("Add a step")
-    expect(html).toContain("Simulate test")
-    expect(html).toContain("Save and deploy")
-    expect(html).toContain("AI Assist")
-  })
-  it(
-    "renders canvas with step palette and supports quick deletion callback",
-    async () => {
-    const view = render(<WhatsappWorkflowCanvasPage />)
-
-    await waitFor(() => {
-      expect(view.getByText("Add a step")).toBeDefined()
-      expect(view.getByText("Cost-Saving Handover")).toBeDefined()
-      expect(view.getByText("Web/Chat Redirect")).toBeDefined()
-      expect(view.getByText("CS Ticket & Telegram Alert")).toBeDefined()
-      expect(view.getByText("Send Payment Link")).toBeDefined()
-      expect(view.getByRole("button", { name: "Send message" })).toBeDefined()
-      expect(view.getByRole("button", { name: "Ask for input" })).toBeDefined()
+  it("redirects cleanly when searchParams are not provided", async () => {
+    await WhatsappWorkflowCanvasRedirectPage({
+      params: Promise.resolve({ lang: "id", id: "new" }),
     })
-  })
-  it("renders header actions and allows simulation trigger", async () => {
-    const view = render(<WhatsappWorkflowCanvasPage />)
 
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: "Simulate test" })).toBeDefined()
-      expect(
-        view.getByRole("button", { name: "Save and deploy" })
-      ).toBeDefined()
-    })
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/id/console/ai/agents/new/canvas"
+    )
   })
 })

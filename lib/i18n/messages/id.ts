@@ -5668,6 +5668,9 @@ export const idMessages: AppMessages = {
       title: "Alur Bot & AI WhatsApp",
       subtitle:
         "Bangun percakapan WhatsApp otomatis dengan langkah alur bertenaga AI.",
+      unifiedStudioBanner:
+        "Editor alur kerja visual kini disatukan di AI Studio " +
+        "(/console/ai/agents/[id]/canvas).",
       createNewButton: "Buat alur",
       loadingList: "Memuat alur...",
       emptyState: {
