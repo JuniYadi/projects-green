@@ -337,7 +337,10 @@ describe("workflow simulator", () => {
 
       const session = stepSimulatorSession(initial, workflow)
 
-      expect(session.stepOutputs["redir"]?.offloaded).toBe(true)
+      const redirOutput = session.stepOutputs["redir"] as
+        | { offloaded?: boolean }
+        | undefined
+      expect(redirOutput?.offloaded).toBe(true)
       expect(session.variables["ticketNumber"]).toMatch(/^TCK-SIM-/)
       expect(session.variables["paymentUrl"]).toContain("ORD-123")
       expect(
