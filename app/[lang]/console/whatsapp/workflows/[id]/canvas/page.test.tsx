@@ -5,7 +5,9 @@ import {
   createSimulatorSession,
   stepSimulatorSession,
 } from "@/modules/whatsapp/workflow/workflow-simulator"
-import { WORKFLOW_TEMPLATES } from "@/modules/whatsapp/workflow/workflow-templates"
+import {
+  WORKFLOW_TEMPLATES,
+} from "@/modules/whatsapp/workflow/workflow-templates"
 
 const searchParams = new URLSearchParams()
 
@@ -93,11 +95,17 @@ describe("Canvas simulator integration", () => {
     expect(html).toContain("Save and deploy")
     expect(html).toContain("AI Assist")
   })
-  it("renders canvas with step palette and supports quick deletion callback", async () => {
+  it(
+    "renders canvas with step palette and supports quick deletion callback",
+    async () => {
     const view = render(<WhatsappWorkflowCanvasPage />)
 
     await waitFor(() => {
       expect(view.getByText("Add a step")).toBeDefined()
+      expect(view.getByText("Cost-Saving Handover")).toBeDefined()
+      expect(view.getByText("Pengalihan Web/Chat")).toBeDefined()
+      expect(view.getByText("Eskalasi Tiket & Telegram")).toBeDefined()
+      expect(view.getByText("Kirim Link Pembayaran")).toBeDefined()
       expect(view.getByRole("button", { name: "Send message" })).toBeDefined()
       expect(view.getByRole("button", { name: "Ask for input" })).toBeDefined()
     })

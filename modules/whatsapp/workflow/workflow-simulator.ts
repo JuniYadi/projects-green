@@ -324,6 +324,113 @@ export function stepSimulatorSession(
         outputPort = "success"
         break
       }
+
+      case "channel_redirect": {
+        const target = asString(node.config.targetChannel, "WEB_LIVECHAT")
+        const redirectUrl = evaluateMustacheTemplate(
+          asString(node.config.redirectUrl),
+          templateContext
+        )
+        const message = evaluateMustacheTemplate(
+          asString(node.config.message),
+          templateContext
+        )
+        const buttonText = evaluateMustacheTemplate(
+          asString(node.config.buttonText, "Lanjutkan di Web"),
+          templateContext
+        )
+        session.stepOutputs[node.id] = {
+          redirectUrl,
+          targetChannel: target,
+          offloaded: true,
+        }
+        session.history.push({
+          sender: "bot",
+          text: `[Offload ke ${target}] ${message} -> [${buttonText}]`,
+          timestamp: timestamp(),
+        })
+        outputPort = "default"
+        break
+      }
+
+      case "cs_ticket_escalate": {
+        const ticketNumber = `TCK-SIM-${Date.now().toString().slice(-6)}`
+        const dept = asString(node.config.department, "SUPPORT")
+        const prio = asString(node.config.priority, "HIGH")
+        const subject = evaluateMustacheTemplate(
+          asString(node.config.subject),
+          templateContext
+        )
+        const defaultReply =
+          `Tiket bantuan #${ticketNumber} telah dibuat, ` +
+          `tim CS kami akan segera menghubungi Anda.`
+        const autoReply = node.config.autoReplyMessage
+          ? evaluateMustacheTemplate(
+              asString(node.config.autoReplyMessage),
+              {
+                ...templateContext,
+                variables: {
+                  ...templateContext.variables,
+                  ticketNumber,
+                },
+              }
+            )
+          : defaultReply
+
+        session.variables["ticketNumber"] = ticketNumber
+        session.stepOutputs[node.id] = {
+          ticketNumber,
+          department: dept,
+          priority: prio,
+          subject,
+          telegramNotified: Boolean(node.config.notifyTelegram),
+        }
+        session.history.push({
+          sender: "bot",
+          text: autoReply,
+          timestamp: timestamp(),
+        })
+        outputPort = "default"
+        break
+      }
+
+      case "payment_link_dispatch": {
+        const gw = asString(node.config.gateway, "MANUAL")
+        const amountVar = asString(node.config.amountVariable, "amount")
+        const orderIdVar = asString(node.config.orderIdVariable, "orderId")
+        const amount = String(session.variables[amountVar] ?? "0")
+        const orderId = String(session.variables[orderIdVar] ?? "ORD-SIM")
+        const title = evaluateMustacheTemplate(
+          asString(node.config.buttonTitle, "Bayar Sekarang"),
+          templateContext
+        )
+        const fallback = evaluateMustacheTemplate(
+          asString(node.config.fallbackText),
+          templateContext
+        )
+        const paymentUrl = node.config.paymentUrl
+          ? evaluateMustacheTemplate(
+              asString(node.config.paymentUrl),
+              templateContext
+            )
+          : `https://pay.example.com/checkout?orderId=${orderId}` +
+            `&amount=${amount}`
+
+        session.variables["paymentUrl"] = paymentUrl
+        session.stepOutputs[node.id] = {
+          gateway: gw,
+          orderId,
+          amount,
+          paymentUrl,
+        }
+        session.history.push({
+          sender: "bot",
+          text: `${fallback}\nCTA: [${title}](${paymentUrl})`,
+          timestamp: timestamp(),
+        })
+        outputPort = "default"
+        break
+      }
     }
 
     const nextEdge =

@@ -211,8 +211,8 @@ export async function processWhatsappWorkflowInbound(
           (e) => e.sourceNodeId === node.id && e.sourcePort === "default"
         )
 
-      if (!outgoingEdge) {
-        // Reached terminal end of graph
+      if (!outgoingEdge || executionResult.stepOutput?.terminateWorkflow) {
+        // Terminal end or workflow offloaded to external channel
         await workflowSessionStore.clearSession(organizationId, contactPhone)
         return {
           handled: true,

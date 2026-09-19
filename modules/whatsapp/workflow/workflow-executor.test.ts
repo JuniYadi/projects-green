@@ -19,6 +19,15 @@ const mockPrisma = {
   aiAgentProfile: {
     findFirst: mock(),
   },
+  supportTicket: {
+    create: mock(async (args: { data: Record<string, unknown> }) => ({
+      id: "tck-test-1",
+      ticketNumber: args.data.ticketNumber,
+      department: args.data.department,
+      priority: args.data.priority,
+      status: "OPEN",
+    })),
+  },
 }
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 const searchHybridKnowledge = mock(async (): Promise<MockHybridChunk[]> => [])
@@ -183,7 +192,9 @@ describe("executeWorkflowNode", () => {
     expect(putResult.outputPort).toBe("success")
     globalThis.fetch = original
   })
-  test("generates AI output, does not send reply by default, and respects sendReply: true", async () => {
+  test(
+    "generates AI output, does not send reply, respects sendReply",
+    async () => {
     const result = await executeWorkflowNode(
       base({
         type: "ai_generate",
@@ -232,7 +243,9 @@ describe("executeWorkflowNode", () => {
     expect(failed.status).toBe("FAILED")
   })
 
-  test("inherits AI agent template persona and executes RAG when agentProfileId is set", async () => {
+  test(
+    "inherits AI template persona and runs RAG when agentProfileId is set",
+    async () => {
     mockPrisma.aiAgentProfile.findFirst.mockResolvedValueOnce({
       id: "agent_123",
       isActive: true,
@@ -299,7 +312,9 @@ describe("executeWorkflowNode", () => {
     )
   })
 
-  test("blocks output and sends fallback when AI agent profanity filter triggers", async () => {
+  test(
+    "blocks output and sends fallback when AI agent profanity filter triggers",
+    async () => {
     mockPrisma.aiAgentProfile.findFirst.mockResolvedValueOnce({
       id: "agent_123",
       isActive: true,
@@ -337,7 +352,9 @@ describe("executeWorkflowNode", () => {
     expect(generateText).not.toHaveBeenCalled()
   })
 
-  test("does not false-positive on substrings when profanity filter uses word boundaries", async () => {
+  test(
+    "no false-positives on substrings when filter uses word boundaries",
+    async () => {
     mockPrisma.aiAgentProfile.findFirst.mockResolvedValueOnce({
       id: "agent_123",
       isActive: true,
@@ -367,5 +384,104 @@ describe("executeWorkflowNode", () => {
     expect(result.status).toBe("COMPLETED")
     expect(generateText).toHaveBeenCalled()
     expect(result.capturedVariable?.value).toBe("generated answer")
+  })
+
+  test(
+    "executes channel_redirect node through executeWorkflowNode",
+    async () => {
+    const result = await executeWorkflowNode(
+      base({
+        type: "channel_redirect",
+        id: "node_red",
+        name: "Web Offload",
+        config: {
+          targetChannel: "WEB_LIVECHAT",
+          redirectUrl: "https://webchat.example.com",
+          message: "Lanjutkan ke web livechat:",
+          buttonText: "Buka Web",
+          includeContext: true,
+        },
+      })
+    )
+
+    expect(result.status).toBe("COMPLETED")
+    expect(result.stepOutput?.offloaded).toBe(true)
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "interactive",
+        phoneNumber: "+1",
+      })
+    )
+  })
+
+  test("executes cs_ticket_escalate node and creates ticket", async () => {
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = mock(
+      async () => new Response(JSON.stringify({ ok: true }))
+    ) as never
+
+    const result = await executeWorkflowNode(
+      base({
+        type: "cs_ticket_escalate",
+        id: "node_esc",
+        name: "Eskalasi CS",
+        config: {
+          department: "SUPPORT",
+          priority: "HIGH",
+          subject: "Bantuan Manual",
+          description: "Perlu ditangani staf",
+          notifyTelegram: false,
+        },
+      })
+    )
+
+    expect(result.status).toBe("COMPLETED")
+    expect(result.capturedVariable?.name).toBe("ticketNumber")
+    expect(mockPrisma.supportTicket.create).toHaveBeenCalled()
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("telah dibuat"),
+      })
+    )
+
+    globalThis.fetch = originalFetch
+  })
+
+  test(
+    "executes payment_link_dispatch node and resolves variables",
+    async () => {
+    const result = await executeWorkflowNode(
+      base(
+        {
+          type: "payment_link_dispatch",
+          id: "node_pay",
+          name: "Bayar",
+          config: {
+            gateway: "MIDTRANS",
+            amountVariable: "total",
+            orderIdVariable: "orderId",
+            buttonTitle: "Bayar",
+            fallbackText: "Silakan bayar tagihan Anda.",
+          },
+        },
+        {
+          templateContext: {
+            variables: { total: "50000", orderId: "ORD-1" },
+            steps: {},
+            session: {},
+          },
+        }
+      )
+    )
+
+    expect(result.status).toBe("COMPLETED")
+    expect(result.capturedVariable?.value).toBe(
+      "https://app.midtrans.com/snap/v2/vtweb/ORD-1"
+    )
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "interactive",
+      })
+    )
   })
 })

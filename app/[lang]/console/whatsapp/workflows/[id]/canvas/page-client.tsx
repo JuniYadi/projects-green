@@ -41,6 +41,9 @@ import {
   MapTrifold,
   Lightning,
   Robot,
+  ArrowSquareOut,
+  Headset,
+  CreditCard,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -78,6 +81,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
 import type {
   WorkflowDefinition,
   WorkflowEdge,
@@ -662,7 +666,42 @@ export default function WhatsappWorkflowCanvasPage() {
       let defaultName = t.canvas.addNodeHeader
       let defaultConfig: Record<string, unknown> = {}
 
-      if (type === "send_message") {
+      if (type === "channel_redirect") {
+        defaultName = `Pengalihan Web #${count}`
+        defaultConfig = {
+          targetChannel: "WEB_LIVECHAT",
+          redirectUrl: "https://chat.example.com/live",
+          message:
+            "Untuk mengisi formulir lengkap bebas kuota, " +
+            "silakan lanjutkan di tautan web kami berikut:",
+          buttonText: "Lanjutkan di Web",
+          includeContext: true,
+        }
+      } else if (type === "cs_ticket_escalate") {
+        defaultName = `Eskalasi Tiket CS #${count}`
+        defaultConfig = {
+          department: "SUPPORT",
+          priority: "HIGH",
+          subject: "Kendala Pelanggan WhatsApp",
+          description: "Pelanggan membutuhkan eskalasi ke tim CS.",
+          notifyTelegram: true,
+          telegramChatId: "",
+          autoReplyMessage:
+            "Tiket bantuan #{{variables.ticketNumber}} telah dibuat, " +
+            "tim CS kami akan segera menghubungi Anda.",
+        }
+      } else if (type === "payment_link_dispatch") {
+        defaultName = `Link Pembayaran #${count}`
+        defaultConfig = {
+          gateway: "MANUAL",
+          amountVariable: "total_amount",
+          orderIdVariable: "order_id",
+          paymentUrl: "",
+          buttonTitle: "Bayar Sekarang",
+          fallbackText:
+            "Silakan selesaikan pembayaran pesanan Anda via tautan berikut.",
+        }
+      } else if (type === "send_message") {
         defaultName = `${t.canvas.nodes.sendMessage} #${count}`
         defaultConfig = { text: t.inspector.messageTextPlaceholder }
       } else if (type === "prompt_input") {
@@ -1339,87 +1378,267 @@ export default function WhatsappWorkflowCanvasPage() {
         )}
 
         {/* Node Palette Bar (Floating Left) */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 rounded-xl border border-border/80 bg-card/90 p-1.5 shadow-lg backdrop-blur">
-          <div className="flex items-center justify-between px-2 py-1">
-            <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+        <div
+          className={cn(
+            "absolute top-4 left-4 z-10 flex max-h-[calc(100vh-120px)]",
+            "w-56 flex-col gap-1.5 overflow-y-auto rounded-xl border",
+            "border-border/80 bg-card/95 p-2 shadow-lg backdrop-blur"
+          )}
+        >
+          <div className="flex items-center justify-between px-1 py-0.5">
+            <span
+              className={cn(
+                "text-[10px] font-semibold tracking-wider",
+                "text-muted-foreground uppercase"
+              )}
+            >
               {t.canvas.addNodeHeader}
             </span>
             <button
               type="button"
               onClick={() => setShowCopilot((prev) => !prev)}
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5",
+                "text-[10px] font-medium transition-colors",
                 showCopilot
                   ? "bg-primary text-primary-foreground"
                   : "bg-primary/10 text-primary hover:bg-primary/20"
-              }`}
+              )}
               title={canvasMessages.generateWithAiCopilot}
             >
               <Sparkle className="h-3 w-3" weight="fill" />
               <span>{canvasMessages.aiAssist}</span>
             </button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleAddNode("send_message")}
-            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-sky-500/50 hover:bg-sky-500/10"
-          >
-            <ChatCircleText className="h-4 w-4 text-sky-400" weight="duotone" />
-            <span>{t.canvas.nodes.sendMessage}</span>
-          </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleAddNode("prompt_input")}
-            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-emerald-500/50 hover:bg-emerald-500/10"
+          {/* Cost-Saving Notice Banner */}
+          <div
+            className={cn(
+              "rounded-lg border border-emerald-500/30 bg-emerald-500/10",
+              "p-2 text-[10px] leading-snug text-emerald-800",
+              "dark:text-emerald-300"
+            )}
           >
-            <Question className="h-4 w-4 text-emerald-400" weight="duotone" />
-            <span>{t.canvas.nodes.promptInput}</span>
-          </Button>
+            <div
+              className={cn(
+                "mb-0.5 flex items-center gap-1 font-semibold",
+                "text-emerald-600 dark:text-emerald-400"
+              )}
+            >
+              <Lightning className="h-3 w-3 shrink-0" weight="fill" />
+              <span>Cost-Saving Handover</span>
+            </div>
+            Hemat biaya WhatsApp Meta dengan mengalihkan pengisian form panjang
+            ke Web LiveChat atau eskalasi CS.
+          </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleAddNode("condition")}
-            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-amber-500/50 hover:bg-amber-500/10"
-          >
-            <GitBranch className="h-4 w-4 text-amber-400" weight="duotone" />
-            <span>{t.canvas.nodes.condition}</span>
-          </Button>
+          {/* Cost-Saving Offload Handover Group */}
+          <div className="space-y-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddNode("channel_redirect")}
+              className={cn(
+                "h-auto w-full flex-col items-start gap-0.5",
+                "border-emerald-500/30 bg-emerald-500/5 p-1.5 text-left",
+                "hover:border-emerald-500/60 hover:bg-emerald-500/15"
+              )}
+            >
+              <div className="flex w-full items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <ArrowSquareOut
+                    className="h-3.5 w-3.5 text-emerald-500"
+                    weight="duotone"
+                  />
+                  <span className="text-xs font-medium">
+                    Pengalihan Web/Chat
+                  </span>
+                </div>
+              </div>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "mt-0.5 border-emerald-500/40 bg-emerald-500/10 px-1 py-0",
+                  "text-[8px] font-semibold text-emerald-600",
+                  "dark:text-emerald-300"
+                )}
+              >
+                Cost-Saving Offload
+              </Badge>
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleAddNode("send_interactive")}
-            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-indigo-500/50 hover:bg-indigo-500/10"
-          >
-            <SlidersHorizontal
-              className="h-4 w-4 text-indigo-400"
-              weight="duotone"
-            />
-            <span>{t.canvas.nodes.interactiveButtons}</span>
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddNode("cs_ticket_escalate")}
+              className={cn(
+                "h-auto w-full flex-col items-start gap-0.5",
+                "border-orange-500/30 bg-orange-500/5 p-1.5 text-left",
+                "hover:border-orange-500/60 hover:bg-orange-500/15"
+              )}
+            >
+              <div className="flex w-full items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Headset
+                    className="h-3.5 w-3.5 text-orange-500"
+                    weight="duotone"
+                  />
+                  <span className="text-xs font-medium">
+                    Eskalasi Tiket & Telegram
+                  </span>
+                </div>
+              </div>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "mt-0.5 border-orange-500/40 bg-orange-500/10 px-1 py-0",
+                  "text-[8px] font-semibold text-orange-600",
+                  "dark:text-orange-300"
+                )}
+              >
+                Human Handover
+              </Badge>
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleAddNode("ai_generate")}
-            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-purple-500/50 hover:bg-purple-500/10"
-          >
-            <Brain className="h-4 w-4 text-purple-400" weight="duotone" />
-            <span>{t.canvas.nodes.aiGenerate}</span>
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddNode("payment_link_dispatch")}
+              className={cn(
+                "h-auto w-full flex-col items-start gap-0.5",
+                "border-teal-500/30 bg-teal-500/5 p-1.5 text-left",
+                "hover:border-teal-500/60 hover:bg-teal-500/15"
+              )}
+            >
+              <div className="flex w-full items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <CreditCard
+                    className="h-3.5 w-3.5 text-teal-500"
+                    weight="duotone"
+                  />
+                  <span className="text-xs font-medium">
+                    Kirim Link Pembayaran
+                  </span>
+                </div>
+              </div>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "mt-0.5 border-teal-500/40 bg-teal-500/10 px-1 py-0",
+                  "text-[8px] font-semibold text-teal-600",
+                  "dark:text-teal-300"
+                )}
+              >
+                Single Utility
+              </Badge>
+            </Button>
+          </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleAddNode("http_request")}
-            className="h-8 justify-start gap-2 border-border/60 text-xs hover:border-pink-500/50 hover:bg-pink-500/10"
-          >
-            <Globe className="h-4 w-4 text-pink-400" weight="duotone" />
-            <span>{t.canvas.nodes.httpRequest}</span>
-          </Button>
+          {/* Standard Logic & Messages Group */}
+          <div className="mt-1 space-y-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddNode("send_message")}
+              className={cn(
+                "h-7 w-full justify-start gap-2 border-border/60 text-xs",
+                "hover:border-sky-500/50 hover:bg-sky-500/10"
+              )}
+            >
+              <ChatCircleText
+                className="h-3.5 w-3.5 text-sky-400"
+                weight="duotone"
+              />
+              <span>{t.canvas.nodes.sendMessage}</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddNode("send_interactive")}
+              className={cn(
+                "h-7 w-full justify-start gap-2 border-border/60 text-xs",
+                "hover:border-indigo-500/50 hover:bg-indigo-500/10"
+              )}
+            >
+              <SlidersHorizontal
+                className="h-3.5 w-3.5 text-indigo-400"
+                weight="duotone"
+              />
+              <span>{t.canvas.nodes.interactiveButtons}</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddNode("condition")}
+              className={cn(
+                "h-7 w-full justify-start gap-2 border-border/60 text-xs",
+                "hover:border-amber-500/50 hover:bg-amber-500/10"
+              )}
+            >
+              <GitBranch
+                className="h-3.5 w-3.5 text-amber-400"
+                weight="duotone"
+              />
+              <span>{t.canvas.nodes.condition}</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddNode("ai_generate")}
+              className={cn(
+                "h-7 w-full justify-start gap-2 border-border/60 text-xs",
+                "hover:border-purple-500/50 hover:bg-purple-500/10"
+              )}
+            >
+              <Brain
+                className="h-3.5 w-3.5 text-purple-400"
+                weight="duotone"
+              />
+              <span>{t.canvas.nodes.aiGenerate}</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddNode("http_request")}
+              className={cn(
+                "h-7 w-full justify-start gap-2 border-border/60 text-xs",
+                "hover:border-pink-500/50 hover:bg-pink-500/10"
+              )}
+            >
+              <Globe
+                className="h-3.5 w-3.5 text-pink-400"
+                weight="duotone"
+              />
+              <span>{t.canvas.nodes.httpRequest}</span>
+            </Button>
+          </div>
+
+          {/* Legacy Decommissioned Node */}
+          <div className="mt-1 border-t border-border/40 pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={t.canvas.nodes.promptInput}
+              onClick={() => handleAddNode("prompt_input")}
+              className={cn(
+                "h-6 w-full justify-start gap-1.5 text-[10px]",
+                "text-muted-foreground hover:bg-muted/50"
+              )}
+            >
+              <Question
+                className="h-3 w-3 text-muted-foreground"
+                weight="duotone"
+              />
+              <span className="line-through opacity-75">
+                {t.canvas.nodes.promptInput}
+              </span>
+              <span className="text-[9px] text-amber-500">(Deprecated)</span>
+            </Button>
+          </div>
         </div>
 
         {/* React Flow Interactive Graph */}
@@ -1548,8 +1767,497 @@ export default function WhatsappWorkflowCanvasPage() {
                   </div>
                 )}
 
+                {selectedNodeData.type === "channel_redirect" && (
+                  <div
+                    className={cn(
+                      "space-y-4 rounded-lg border border-border/50",
+                      "bg-background/50 p-4"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "rounded border border-emerald-500/20",
+                        "bg-emerald-500/10 p-2.5 text-xs text-emerald-700",
+                        "dark:text-emerald-300"
+                      )}
+                    >
+                      <strong>Cost-Saving Offload:</strong> Mengalihkan
+                      pelanggan ke Web LiveChat atau Form bebas kuota untuk
+                      menghindari biaya percakapan Meta.
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Saluran Tujuan
+                      </Label>
+                      <Select
+                        value={
+                          (selectedNodeData.config
+                            ?.targetChannel as string) || "WEB_LIVECHAT"
+                        }
+                        onValueChange={(val) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            targetChannel: val,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Pilih Saluran" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="WEB_LIVECHAT">
+                            Web LiveChat (Bebas Biaya Meta)
+                          </SelectItem>
+                          <SelectItem value="WEB_FORM">
+                            Web Form (Formulir Web)
+                          </SelectItem>
+                          <SelectItem value="TELEGRAM">
+                            Telegram Bot / Channel
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        URL Pengalihan
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config
+                            ?.redirectUrl as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            redirectUrl: e.target.value,
+                          }))
+                        }
+                        placeholder="https://chat.example.com/live"
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Pesan Pengantar
+                      </Label>
+                      <Textarea
+                        rows={3}
+                        value={
+                          (selectedNodeData.config?.message as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            message: e.target.value,
+                          }))
+                        }
+                        placeholder="Lanjutkan di tautan web kami berikut..."
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Teks Tombol CTA
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config
+                            ?.buttonText as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            buttonText: e.target.value,
+                          }))
+                        }
+                        placeholder="Lanjutkan di Web"
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    <div
+                      className={cn(
+                        "flex items-center justify-between rounded-lg",
+                        "border border-border/50 bg-card p-2.5"
+                      )}
+                    >
+                      <div className="space-y-0.5">
+                        <Label className="text-xs font-semibold">
+                          Sertakan Konteks Telepon & Sesi
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Tambahkan query ?phone=...&sessionId=...
+                        </p>
+                      </div>
+                      <Switch
+                        checked={
+                          (selectedNodeData.config
+                            ?.includeContext as boolean) ?? true
+                        }
+                        onCheckedChange={(checked) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            includeContext: checked,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedNodeData.type === "cs_ticket_escalate" && (
+                  <div
+                    className={cn(
+                      "space-y-4 rounded-lg border border-border/50",
+                      "bg-background/50 p-4"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "rounded border border-orange-500/20",
+                        "bg-orange-500/10 p-2.5 text-xs text-orange-700",
+                        "dark:text-orange-300"
+                      )}
+                    >
+                      <strong>Human Handover:</strong> Membuat tiket bantuan di
+                      console dan mengirimkan alert instan ke Telegram CS.
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">
+                          Departemen
+                        </Label>
+                        <Input
+                          value={
+                            (selectedNodeData.config
+                              ?.department as string) || "SUPPORT"
+                          }
+                          onChange={(e) =>
+                            handleUpdateSelectedNode((cfg) => ({
+                              ...cfg,
+                              department: e.target.value,
+                            }))
+                          }
+                          placeholder="SUPPORT"
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">
+                          Prioritas
+                        </Label>
+                        <Select
+                          value={
+                            (selectedNodeData.config
+                              ?.priority as string) || "HIGH"
+                          }
+                          onValueChange={(val) =>
+                            handleUpdateSelectedNode((cfg) => ({
+                              ...cfg,
+                              priority: val,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="Prioritas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="LOW">Low</SelectItem>
+                            <SelectItem value="NORMAL">Normal</SelectItem>
+                            <SelectItem value="HIGH">High</SelectItem>
+                            <SelectItem value="URGENT">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Subjek Tiket
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config?.subject as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            subject: e.target.value,
+                          }))
+                        }
+                        placeholder="Kendala Pembayaran {{variables.order_id}}"
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Deskripsi Kendala
+                      </Label>
+                      <Textarea
+                        rows={3}
+                        value={
+                          (selectedNodeData.config
+                            ?.description as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            description: e.target.value,
+                          }))
+                        }
+                        placeholder="Rincian kendala pelanggan..."
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div
+                      className={cn(
+                        "flex items-center justify-between rounded-lg",
+                        "border border-border/50 bg-card p-2.5"
+                      )}
+                    >
+                      <div className="space-y-0.5">
+                        <Label className="text-xs font-semibold">
+                          Notifikasi Telegram Admin
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Kirim alert instan ke grup Telegram tim CS
+                        </p>
+                      </div>
+                      <Switch
+                        checked={
+                          (selectedNodeData.config
+                            ?.notifyTelegram as boolean) ?? true
+                        }
+                        onCheckedChange={(checked) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            notifyTelegram: checked,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Telegram Chat ID (Opsional)
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config
+                            ?.telegramChatId as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            telegramChatId: e.target.value,
+                          }))
+                        }
+                        placeholder="@grup_cs atau -100123456"
+                        className="h-9 font-mono text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Pesan Balasan Otomatis
+                      </Label>
+                      <Textarea
+                        rows={2}
+                        value={
+                          (selectedNodeData.config
+                            ?.autoReplyMessage as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            autoReplyMessage: e.target.value,
+                          }))
+                        }
+                        placeholder="Tiket #{{variables.ticketNumber}}..."
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedNodeData.type === "payment_link_dispatch" && (
+                  <div
+                    className={cn(
+                      "space-y-4 rounded-lg border border-border/50",
+                      "bg-background/50 p-4"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "rounded border border-teal-500/20",
+                        "bg-teal-500/10 p-2.5 text-xs text-teal-700",
+                        "dark:text-teal-300"
+                      )}
+                    >
+                      <strong>Single Utility:</strong> Mengirim link
+                      pembayaran berbiaya utilitas rendah Meta.
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Payment Gateway
+                      </Label>
+                      <Select
+                        value={
+                          (selectedNodeData.config
+                            ?.gateway as string) || "MANUAL"
+                        }
+                        onValueChange={(val) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            gateway: val,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Pilih Gateway" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="MIDTRANS">
+                            Midtrans Snap
+                          </SelectItem>
+                          <SelectItem value="XENDIT">
+                            Xendit Invoice
+                          </SelectItem>
+                          <SelectItem value="MANUAL">
+                            Manual / Kustom
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">
+                          Variabel Nominal
+                        </Label>
+                        <Input
+                          value={
+                            (selectedNodeData.config
+                              ?.amountVariable as string) || ""
+                          }
+                          onChange={(e) =>
+                            handleUpdateSelectedNode((cfg) => ({
+                              ...cfg,
+                              amountVariable: e.target.value,
+                            }))
+                          }
+                          placeholder="total_amount"
+                          className="h-9 font-mono text-xs"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">
+                          Variabel Order ID
+                        </Label>
+                        <Input
+                          value={
+                            (selectedNodeData.config
+                              ?.orderIdVariable as string) || ""
+                          }
+                          onChange={(e) =>
+                            handleUpdateSelectedNode((cfg) => ({
+                              ...cfg,
+                              orderIdVariable: e.target.value,
+                            }))
+                          }
+                          placeholder="order_id"
+                          className="h-9 font-mono text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        URL Pembayaran Kustom (Opsional)
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config
+                            ?.paymentUrl as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            paymentUrl: e.target.value,
+                          }))
+                        }
+                        placeholder={
+                          "https://pay.example.com/checkout?" +
+                          "orderId={{variables.order_id}}"
+                        }
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Judul Tombol CTA
+                      </Label>
+                      <Input
+                        value={
+                          (selectedNodeData.config
+                            ?.buttonTitle as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            buttonTitle: e.target.value,
+                          }))
+                        }
+                        placeholder="Bayar Sekarang"
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold">
+                        Teks Pesan Pembayaran
+                      </Label>
+                      <Textarea
+                        rows={3}
+                        value={
+                          (selectedNodeData.config
+                            ?.fallbackText as string) || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateSelectedNode((cfg) => ({
+                            ...cfg,
+                            fallbackText: e.target.value,
+                          }))
+                        }
+                        placeholder="Silakan selesaikan pembayaran via link..."
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {selectedNodeData.type === "prompt_input" && (
                   <div className="space-y-4 rounded-lg border border-border/50 bg-background/50 p-4">
+                    <div
+                      className={cn(
+                        "rounded border border-amber-500/30",
+                        "bg-amber-500/10 p-2.5 text-xs text-amber-600",
+                        "dark:text-amber-400"
+                      )}
+                    >
+                      <strong>Node ini deprecated:</strong> Pertanyaan berulang
+                      dalam WhatsApp memicu biaya percakapan Meta. Disarankan
+                      beralih ke node <em>Pengalihan Web/Chat</em>.
+                    </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
                         {t.inspector.questionLabel}
