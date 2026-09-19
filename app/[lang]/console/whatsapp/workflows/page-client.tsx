@@ -20,7 +20,9 @@ import {
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { WORKFLOW_TEMPLATES } from "@/modules/whatsapp/workflow/workflow-templates"
+import {
+  WORKFLOW_TEMPLATES,
+} from "@/modules/whatsapp/workflow/workflow-templates"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -87,9 +89,33 @@ export default function WhatsappWorkflowsPage() {
           asChild
           className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
         >
-          <Link href={`/${lang}/console/whatsapp/workflows/new/canvas`}>
+          <Link href={`/${lang}/console/ai/agents/new/canvas`}>
             <Plus size={16} weight="bold" />
             <span>{t.createNewButton}</span>
+          </Link>
+        </Button>
+      </div>
+
+      <div
+        className={
+          "flex items-center justify-between rounded-lg border " +
+          "border-primary/20 bg-primary/5 p-4 text-sm text-foreground"
+        }
+      >
+        <div className="flex items-center gap-3">
+          <Sparkle className="size-5 shrink-0 text-primary" weight="fill" />
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            {t.unifiedStudioBanner}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+          className="shrink-0 text-xs"
+        >
+          <Link href={`/${lang}/console/ai/agents`}>
+            <span>AI Studio</span>
           </Link>
         </Button>
       </div>
@@ -112,10 +138,13 @@ export default function WhatsappWorkflowsPage() {
                 </div>
                 <Button
                   asChild
-                  className="shrink-0 gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                  className={
+                    "shrink-0 gap-2 bg-emerald-600 text-white " +
+                    "hover:bg-emerald-700"
+                  }
                   size="sm"
                 >
-                  <Link href={`/${lang}/console/whatsapp/workflows/new/canvas`}>
+                  <Link href={`/${lang}/console/ai/agents/new/canvas`}>
                     <Sparkle size={14} weight="fill" />
                     <span>{t.emptyState.createCta}</span>
                   </Link>
@@ -183,7 +212,7 @@ export default function WhatsappWorkflowsPage() {
                 const description =
                   t.templates[template.descKey as keyof typeof t.templates]
                 const href =
-                  `/${lang}/console/whatsapp/workflows/new/canvas` +
+                  `/${lang}/console/ai/agents/new/canvas` +
                   `?template=${template.id}`
 
                 return (
@@ -312,7 +341,7 @@ export default function WhatsappWorkflowsPage() {
                     className="w-full justify-between text-xs"
                   >
                     <Link
-                      href={`/${lang}/console/whatsapp/workflows/${wf.id}/canvas`}
+                      href={`/${lang}/console/ai/agents/${wf.id}/canvas`}
                     >
                       <span>{t.card.openCanvas}</span>
                       <ArrowRight size={14} />

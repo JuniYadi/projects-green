@@ -5119,6 +5119,7 @@ export type AppMessages = {
     whatsappWorkflows: {
       title: string
       subtitle: string
+      unifiedStudioBanner: string
       createNewButton: string
       loadingList: string
       emptyState: {

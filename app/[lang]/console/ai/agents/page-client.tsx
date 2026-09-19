@@ -335,8 +335,8 @@ export default function AiAgentsPage() {
               JSON.stringify(draftPayload)
             )
           }
-          toast.success("Asisten disimpan! Membuka di WhatsApp Canvas...")
-          router.push(`/${lang}/console/whatsapp/workflows/new/canvas`)
+          toast.success("Asisten disimpan! Membuka di AI Canvas...")
+          router.push(`/${lang}/console/ai/agents/new/canvas`)
           return
         }
 
@@ -1030,11 +1030,20 @@ export default function AiAgentsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 gap-1 border-emerald-500/30 text-xs text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400"
+                        className={
+                          "h-8 gap-1 border-emerald-500/30 text-xs " +
+                          "text-emerald-600 hover:bg-emerald-500/10 " +
+                          "hover:text-emerald-700 dark:text-emerald-400"
+                        }
                         asChild
                       >
                         <Link
-                          href={`/${lang}/console/whatsapp/workflows/new/canvas?agentProfileId=${agent.id}&agentProfileName=${encodeURIComponent(agent.name)}`}
+                          href={
+                            `/${lang}/console/ai/agents/${agent.id}/canvas` +
+                            `?agentProfileId=${agent.id}&agentProfileName=` +
+                            encodeURIComponent(agent.name)
+                          }
+                          title="Buka Canvas Workflow"
                         >
                           <Sparkle size={13} weight="fill" />
                           <span>{messages.card.openCanvasButton}</span>

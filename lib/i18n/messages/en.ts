@@ -5619,6 +5619,9 @@ export const enMessages: AppMessages = {
       title: "AI & Bot Workflows",
       subtitle:
         "Build automated WhatsApp conversations with AI-powered workflow steps.",
+      unifiedStudioBanner:
+        "Canvas workflow editing is now unified under AI Studio " +
+        "(/console/ai/agents/[id]/canvas).",
       createNewButton: "Create workflow",
       loadingList: "Loading workflows...",
       emptyState: {

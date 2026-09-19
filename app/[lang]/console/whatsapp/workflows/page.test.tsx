@@ -37,7 +37,7 @@ describe("WhatsappWorkflowsPage UI", () => {
     mockGetWorkflows.mockResolvedValue({ data: { data: [] } })
   })
 
-  it("renders localized header and create button", async () => {
+  it("renders localized header, banner, and create button", async () => {
     const view = render(<WhatsappWorkflowsPage />)
     expect(
       view.getByRole("heading", { level: 1, name: "AI & Bot Workflows" })
@@ -49,13 +49,21 @@ describe("WhatsappWorkflowsPage UI", () => {
         })
       ).toBeInTheDocument()
     )
+    expect(
+      view.getByText(
+        "Canvas workflow editing is now unified under AI Studio " +
+        "(/console/ai/agents/[id]/canvas)."
+      )
+    ).toBeInTheDocument()
     expect(view.getByRole("link", { name: "Create workflow" })).toHaveAttribute(
       "href",
-      "/en/console/whatsapp/workflows/new/canvas"
+      "/en/console/ai/agents/new/canvas"
     )
   })
 
-  it("renders onboarding guide and starter template links when empty", async () => {
+  it(
+    "renders onboarding guide and starter template links when empty",
+    async () => {
     const view = render(<WhatsappWorkflowsPage />)
 
     await waitFor(() =>
@@ -81,12 +89,14 @@ describe("WhatsappWorkflowsPage UI", () => {
       const link = view.getByRole("link", { name: new RegExp(title) })
       expect(link).toHaveAttribute(
         "href",
-        `/en/console/whatsapp/workflows/new/canvas?template=${id}`
+        `/en/console/ai/agents/new/canvas?template=${id}`
       )
     }
   })
 
-  it("renders active workflow cards with localized badges and actions", async () => {
+  it(
+    "renders active workflow cards with localized badges and actions",
+    async () => {
     mockGetWorkflows.mockResolvedValue({
       data: {
         ok: true,
@@ -141,6 +151,6 @@ describe("WhatsappWorkflowsPage UI", () => {
     expect(view.getByText("Support number")).toBeInTheDocument()
     expect(
       view.getAllByRole("link", { name: "Open canvas" })[0]
-    ).toHaveAttribute("href", "/en/console/whatsapp/workflows/wf-1/canvas")
+    ).toHaveAttribute("href", "/en/console/ai/agents/wf-1/canvas")
   })
 })
