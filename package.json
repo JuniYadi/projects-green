@@ -34,6 +34,7 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "typecheck:changed": "bun run scripts/typecheck-changed.ts",
     "worker:all": "bun run scripts/workers.ts",
     "worker:github": "bun run scripts/github-worker.ts",
     "schedule:run": "bun run scripts/schedule-runner.ts",
