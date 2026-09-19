@@ -12,6 +12,10 @@ import {
   releaseSessionLock,
 } from "@/modules/ai/agents/ai-agent-session.service"
 import { buildAgentTools } from "@/modules/ai/agents/ai-agent-tools"
+import {
+  buildInteractivePayload,
+  parseInteractiveButtons,
+} from "@/modules/whatsapp/ai/ai-interactive-parser"
 import { messageService } from "@/modules/whatsapp/messages/messages.service"
 
 export type ProcessAiBotInboundOptions = {
@@ -71,6 +75,7 @@ export async function processWhatsappAiBotInbound(
     contactPhone,
     inboundMessageText,
     conversationId,
+    inboundMessageId,
     mediaUrl,
     mediaType,
   } = options
@@ -139,6 +144,7 @@ export async function processWhatsappAiBotInbound(
           phoneNumber: contactPhone,
           message: agent.fallbackMessage,
           deviceId,
+          replyToMessageId: inboundMessageId,
         })
       }
       return {
@@ -197,6 +203,7 @@ export async function processWhatsappAiBotInbound(
           phoneNumber: contactPhone,
           message: agent.fallbackMessage,
           deviceId,
+          replyToMessageId: inboundMessageId,
         })
       }
       return {
@@ -224,6 +231,7 @@ export async function processWhatsappAiBotInbound(
           phoneNumber: contactPhone,
           message: agent.fallbackMessage,
           deviceId,
+          replyToMessageId: inboundMessageId,
         })
       }
       return {
@@ -240,6 +248,7 @@ export async function processWhatsappAiBotInbound(
         phoneNumber: contactPhone,
         deviceId,
         type: "interactive",
+        replyToMessageId: inboundMessageId,
         interactivePayload: {
           type: "button",
           body: { text: VISION_FALLBACK_TEXT },
@@ -407,13 +416,20 @@ export async function processWhatsappAiBotInbound(
         "yang dapat Anda bantu terkait dokumen tersebut."
       : ""
 
+    const interactiveGuidance =
+      "\n\n### TOMBOL AKSI INTERAKTIF:\n" +
+      "- Anda dapat menyertakan tombol aksi interaktif di akhir balasan " +
+      "jika relevan dengan format [BUTTON: Label Singkat] " +
+      "(maksimal 3 tombol) atau [URL: Label | https://tautan.com].\n" +
+      "- Pastikan label tombol ringkas (maksimal 20 karakter) dan relevan."
+
     const systemPrompt = contextText
       ? `${basePrompt}\n\n### KONTEKS DOKUMEN RESMI:\n${contextText}\n\n` +
         "Jawab pertanyaan pelanggan berdasarkan konteks dokumen di atas " +
         `secara ringkas dan sopan.${slotClarificationGuidance}` +
-        `${outOfStockGuidance}${pdfDocumentGuidance}`
+        `${outOfStockGuidance}${pdfDocumentGuidance}${interactiveGuidance}`
       : `${basePrompt}${slotClarificationGuidance}` +
-        `${outOfStockGuidance}${pdfDocumentGuidance}`
+        `${outOfStockGuidance}${pdfDocumentGuidance}${interactiveGuidance}`
 
     // 7. Build active tools and execute multi-step reasoning
     const tools = await buildAgentTools({
@@ -432,18 +448,33 @@ export async function processWhatsappAiBotInbound(
         ...({ maxSteps: 5 } as Record<string, unknown>),
       })
 
-      const replyText =
+      const rawReplyText =
         aiResult.text.trim() ||
         agent.fallbackMessage ||
         "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
 
+      const { cleanText, buttons } = parseInteractiveButtons(rawReplyText)
+      const hasButtons = buttons.length > 0
+      const outboundText = cleanText || rawReplyText
+
       // Send reply back to customer
-      const sendResult = await messageService.sendMessage({
-        organizationId,
-        phoneNumber: contactPhone,
-        message: replyText,
-        deviceId,
-      })
+      const sendResult = hasButtons
+        ? await messageService.sendMessage({
+            organizationId,
+            phoneNumber: contactPhone,
+            deviceId,
+            type: "interactive",
+            interactivePayload: buildInteractivePayload(cleanText, buttons),
+            message: outboundText,
+            replyToMessageId: inboundMessageId,
+          })
+        : await messageService.sendMessage({
+            organizationId,
+            phoneNumber: contactPhone,
+            deviceId,
+            message: outboundText,
+            replyToMessageId: inboundMessageId,
+          })
       await prisma.aiChatSession.update({
         where: { id: session.id },
         data: {
@@ -461,7 +492,7 @@ export async function processWhatsappAiBotInbound(
         data: {
           sessionId: session.id,
           role: "assistant",
-          content: replyText,
+          content: outboundText,
           promptTokens: usage?.promptTokens || 0,
           responseTokens: usage?.completionTokens || 0,
         },
@@ -481,6 +512,7 @@ export async function processWhatsappAiBotInbound(
           phoneNumber: contactPhone,
           message: agent.fallbackMessage,
           deviceId,
+          replyToMessageId: inboundMessageId,
         })
       }
       return {
