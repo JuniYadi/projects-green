@@ -6,6 +6,7 @@ import {
   triggerJenkinsJob,
   type JenkinsApiConfig,
 } from "@/modules/jenkins/jenkins.service"
+import { jenkinsApiFetch } from "@/modules/jenkins/jenkins-api"
 import {
   resolveAppHostingClusterForStack,
   resolveClusterIntegration,
@@ -138,7 +139,18 @@ export async function processQueuedDeployment(deploymentId: string) {
               framework: stack.framework ?? "docker",
               env: "dev",
               gitCredentialId,
+              gitopsPat: gitopsConfig?.pat,
             })
+
+            try {
+              await jenkinsApiFetch(
+                "job/base-jenkins-project-generator-dsl/build?delay=0sec",
+                { method: "POST" },
+                jenkinsApiConfig
+              )
+            } catch {
+              // Non-fatal seed job trigger
+            }
 
             // Trigger Jenkins build
             const jobName = stack.slug
@@ -241,7 +253,18 @@ export async function processQueuedDeployment(deploymentId: string) {
             jenkinsRepo,
             gitCredentialId,
             gitRepoUrl: stack.publicSourceUrl,
+            gitopsPat: gitopsConfig?.pat,
           })
+
+          try {
+            await jenkinsApiFetch(
+              "job/base-jenkins-project-generator-dsl/build?delay=0sec",
+              { method: "POST" },
+              jenkinsApiConfig
+            )
+          } catch {
+            // Non-fatal seed job trigger
+          }
 
           const jobName = stack.slug
           await triggerJenkinsJob(

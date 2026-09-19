@@ -286,7 +286,6 @@ export async function handleJenkinsImageReady(
 
     const containerPort =
       (typeof meta.containerPort === "number" ? meta.containerPort : null) ??
-      (typeof meta.defaultPort === "number" ? meta.defaultPort : null) ??
       contract.containerPort
 
     const runAsNonRoot =
@@ -395,7 +394,7 @@ export async function handleJenkinsImageReady(
 
   return prisma.$transaction(async (tx) => {
     const lockKey = `jenkins-image-ready:${deployment.id}`
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`
 
     const locked = await tx.applicationDeployment.findUnique({
       where: { id: deployment.id },
