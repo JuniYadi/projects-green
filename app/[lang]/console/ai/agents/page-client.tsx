@@ -41,6 +41,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import ActionIntentBuilder from "@/modules/ai/agents/ui/action-intent-builder"
 
 export type AgentProfile = {
   id: string
@@ -81,6 +82,10 @@ export default function AiAgentsPage() {
   const messages = getMessagesForMaybeLocale(lang).console.aiAgents
 
   const [agents, setAgents] = useState<AgentProfile[]>([])
+  const [activeMainTab, setActiveMainTab] = useState("agents")
+  const [selectedAgentForActions, setSelectedAgentForActions] = useState<
+    string | null
+  >(null)
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -426,15 +431,44 @@ export default function AiAgentsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {messages.heading}
-          </h1>
-          <p className="text-sm text-muted-foreground">{messages.subtitle}</p>
+      <Tabs
+        value={activeMainTab}
+        onValueChange={setActiveMainTab}
+        className="w-full space-y-6"
+      >
+        <div
+          className={
+            "flex items-center justify-between border-b border-border pb-3"
+          }
+        >
+          <TabsList>
+            <TabsTrigger value="agents" className="gap-2 text-xs">
+              <Robot size={15} />
+              <span>{messages.heading}</span>
+            </TabsTrigger>
+            <TabsTrigger value="action-intents" className="gap-2 text-xs">
+              <Lightning
+                size={15}
+                weight="fill"
+                className="text-emerald-500"
+              />
+              <span>{messages.actionIntents.tabTitle}</span>
+            </TabsTrigger>
+          </TabsList>
         </div>
 
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <TabsContent value="agents" className="mt-0 space-y-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">
+                {messages.heading}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {messages.subtitle}
+              </p>
+            </div>
+
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700">
               <Plus size={16} weight="bold" />
@@ -814,6 +848,22 @@ export default function AiAgentsPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="h-8 gap-1 text-xs"
+                        onClick={() => {
+                          setSelectedAgentForActions(agent.id)
+                          setActiveMainTab("action-intents")
+                        }}
+                      >
+                        <Lightning
+                          size={13}
+                          className="text-emerald-500"
+                          weight="fill"
+                        />
+                        <span>Actions</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="h-8 text-xs"
                         onClick={() => handleOpenBindingModal(agent)}
                       >
@@ -983,6 +1033,17 @@ export default function AiAgentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </TabsContent>
+
+    <TabsContent value="action-intents" className="mt-0">
+      <ActionIntentBuilder
+        key={selectedAgentForActions || "all"}
+        initialAgentProfileId={selectedAgentForActions || undefined}
+        agents={agents.map((a) => ({ id: a.id, name: a.name }))}
+        lang={lang}
+      />
+    </TabsContent>
+  </Tabs>
+</div>
   )
 }

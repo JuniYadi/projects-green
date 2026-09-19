@@ -122,6 +122,7 @@ model AiAgentProfile {
   channelBindings      AiChannelBinding[]
   knowledgeDocuments   AiKnowledgeDocument[]
   chatSessions         AiChatSession[]
+  actionIntents        AiActionIntent[]
 
   @@index([organizationId, isActive])
   @@map("AiAgentProfile")
@@ -290,9 +291,35 @@ model AiIntegrationConnection {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
+  actionIntents        AiActionIntent[]
+
   @@unique([organizationId, name])
   @@index([organizationId, isActive])
   @@map("AiIntegrationConnection")
+}
+
+model AiActionIntent {
+  id                          String                   @id @default(cuid())
+  organizationId              String
+  agentProfileId              String?
+  name                        String
+  description                 String?
+  connectionId                String?
+  subpath                     String                   @default("/")
+  method                      String                   @default("GET")
+  slots                       Json                     @default("[]")
+  requireCustomerConfirmation Boolean                  @default(false)
+  enableMultimodalVision      Boolean                  @default(false)
+  isActive                    Boolean                  @default(true)
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime                 @updatedAt
+
+  agentProfile                AiAgentProfile?          @relation(fields: [agentProfileId], references: [id], onDelete: Cascade)
+  connection                  AiIntegrationConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, isActive])
+  @@index([agentProfileId])
+  @@map("AiActionIntent")
 }
 
 model GithubInstallStateNonce {

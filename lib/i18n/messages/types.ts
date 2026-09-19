@@ -5869,6 +5869,91 @@ export type AppMessages = {
         availableBadge: string
         doneButton: string
       }
+      actionIntents: {
+        tabTitle: string
+        title: string
+        subtitle: string
+        loading: string
+        createButton: string
+        editButton: string
+        deleteButton: string
+        emptyTitle: string
+        emptyDescription: string
+        filterAllAgents: string
+        agentProfileLabel: string
+        agentProfilePlaceholder: string
+        globalAgentOption: string
+        noDescription: string
+        restApiFallback: string
+        slotsCountLabel: string
+        noSlotsFallback: string
+        nameLabel: string
+        namePlaceholder: string
+        descriptionLabel: string
+        descriptionPlaceholder: string
+        connectionLabel: string
+        connectionPlaceholder: string
+        noConnectionOption: string
+        methodLabel: string
+        subpathLabel: string
+        subpathPlaceholder: string
+        autoDetectButton: string
+        autoDetectDialog: {
+          title: string
+          description: string
+          textareaPlaceholder: string
+          parseButton: string
+          cancelButton: string
+          invalidJson: string
+          noKeysFound: string
+          success: string
+        }
+        slotsSection: {
+          title: string
+          description: string
+          colName: string
+          colType: string
+          colRequired: string
+          colQuestion: string
+          colAction: string
+          typeString: string
+          typeNumber: string
+          typeDate: string
+          questionPlaceholder: string
+          addRowButton: string
+          emptySlots: string
+        }
+        toggles: {
+          visionTitle: string
+          visionLabel: string
+          visionDesc: string
+          confirmationGateTitle: string
+          confirmationGateLabel: string
+          confirmationGateDesc: string
+          previewTitle: string
+          previewGreeting: string
+          previewQuestion: string
+          previewCustomerValue: string
+          previewConfirm: string
+          previewReject: string
+        }
+        buttons: {
+          save: string
+          saving: string
+          cancel: string
+        }
+        toasts: {
+          createSuccess: string
+          createError: string
+          updateSuccess: string
+          updateError: string
+          saveError: string
+          deleteSuccess: string
+          deleteError: string
+          deleteConfirm: string
+          loadError: string
+        }
+      }
     }
     aiSessions: {
       breadcrumbGovernance: string
