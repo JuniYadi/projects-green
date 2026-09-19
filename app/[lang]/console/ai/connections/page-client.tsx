@@ -637,10 +637,18 @@ export default function AiConnectionsPageClient({
                                   "font-mono text-[11px] text-muted-foreground"
                                 }
                               >
-                                <span className="font-semibold text-foreground">
+                                <span
+                                  className="font-semibold text-foreground"
+                                >
                                   {`${k}: `}
                                 </span>
-                                {v}
+                                {v.startsWith("Bearer ")
+                                  ? `Bearer ****${v.slice(-4)}`
+                                  : v.includes("****")
+                                    ? v
+                                    : v.length > 8
+                                      ? `****${v.slice(-4)}`
+                                      : "****"}
                               </span>
                             ))}
                           </div>

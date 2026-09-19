@@ -7180,7 +7180,7 @@ export const idMessages: AppMessages = {
     toastSaveError: "Terjadi kesalahan saat menyimpan koneksi",
     toastDeleteSuccess: "Koneksi berhasil dihapus",
     toastDeleteError: "Terjadi kesalahan saat menghapus koneksi",
-    toastTestResponded: "Koneksi merespons dalam {latencyMs}md",
+    toastTestResponded: "Koneksi merespons dalam {latencyMs}ms",
     toastTestFailed: "Pengujian gagal: {error}",
     toastPingFailed: "Permintaan ping gagal",
     toastNetworkError: "Kesalahan jaringan saat menguji koneksi",

@@ -126,7 +126,7 @@ describe("AiConnectionsPage", () => {
     expect(html).toContain("Authorization")
     expect(html).toContain("Bearer ****9876")
     expect(html).toContain("X-Client-Id")
-    expect(html).toContain("client-prod")
+    expect(html).toContain("****prod")
   })
 
   it("validates base URL formats properly", () => {
