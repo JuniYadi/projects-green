@@ -1,8 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Dialog,
   DialogContent,
@@ -50,9 +53,11 @@ function formatTimestamp(iso: string): string {
 function CheckRow({
   check,
   onEnableProtocol,
+  enableNowLabel = "Enable now?",
 }: {
   check: ScanCheckResult
   onEnableProtocol?: (protocol: ScanCheckResult["protocol"]) => void
+  enableNowLabel?: string
 }) {
   const isMisconfig = check.suggestedAction === "ENABLE_PROTOCOL"
   const isProblem = check.status === "fail" || check.status === "error"
@@ -93,7 +98,7 @@ function CheckRow({
             className="cursor-pointer underline hover:text-foreground"
             onClick={() => onEnableProtocol?.(check.protocol)}
           >
-            Enable now?
+            {enableNowLabel}
           </button>
         </p>
       )}
@@ -141,6 +146,9 @@ export function ConnectionTestModal({
   onRerun: () => void
 }) {
   const [copied, setCopied] = useState(false)
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pVpnConnectionTestModal
 
   const copyReport = async () => {
     if (!result) return
@@ -165,15 +173,18 @@ export function ConnectionTestModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Connection Test Results — {serverName}</DialogTitle>
+          <DialogTitle>
+            {messages.testResultsTitle.replace("{serverName}", serverName)}
+          </DialogTitle>
         </DialogHeader>
 
         {summary && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-sm">
             <span>
-              ✅ {summary.passed} passed&nbsp;&nbsp;❌ {summary.failed}{" "}
-              failed&nbsp;&nbsp;⚠ {summary.errors} error&nbsp;&nbsp;⏭{" "}
-              {summary.skipped} skipped
+              {"✅ "}{summary.passed} {messages.passed}{"\u00A0\u00A0"}
+              {"❌ "}{summary.failed} {messages.failed}{"\u00A0\u00A0"}
+              {"⚠ "}{summary.errors} {messages.error}{"\u00A0\u00A0"}
+              {"⏭ "}{summary.skipped} {messages.skipped}
             </span>
             <span className="text-muted-foreground">
               {(durationMs / 1000).toFixed(1)}s
@@ -184,11 +195,15 @@ export function ConnectionTestModal({
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
           {running && !result && (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Running checks…
+              {messages.runningChecks}
             </p>
           )}
           {result?.results.map((check) => (
-            <CheckRow key={check.check} check={check} />
+            <CheckRow
+              key={check.check}
+              check={check}
+              enableNowLabel={messages.enableNow}
+            />
           ))}
         </div>
 
@@ -198,12 +213,12 @@ export function ConnectionTestModal({
             onClick={copyReport}
             disabled={!result || running}
           >
-            {copied ? "Copied!" : "Copy Report"}
+            {copied ? messages.copied : messages.copyReport}
           </Button>
           <Button variant="secondary" onClick={onRerun} disabled={running}>
-            {running ? "Running…" : "Re-run"}
+            {running ? messages.running : messages.rerun}
           </Button>
-          <Button onClick={() => onOpenChange(false)}>Close</Button>
+          <Button onClick={() => onOpenChange(false)}>{messages.close}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

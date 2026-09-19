@@ -8,38 +8,47 @@ import {
   Preview,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 interface RenewalSuccessEmailProps {
   organizationName?: string
   packageName?: string
   period?: string
+  locale?: AppLocale
 }
 
 export const RenewalSuccessEmail = ({
   organizationName = "your organization",
   packageName = "VPN",
   period = "the current billing period",
-}: RenewalSuccessEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>VPN subscription renewed</Preview>
-    <Body style={s.body}>
-      <Container style={s.container}>
-        <Heading style={s.heading}>Subscription Renewed</Heading>
-        <Text style={s.text}>
-          Your {packageName} subscription for {organizationName} has been
-          successfully renewed for {period}.
-        </Text>
-        <Text style={s.text}>
-          Your VPN service continues as normal. You do not need to take any
-          action.
-        </Text>
-        <Hr style={s.hr} />
-        <Text style={s.footer}>Thank you for being a valued customer.</Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  locale = "en",
+}: RenewalSuccessEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.vpn
+
+  return (
+    <Html>
+      <Head />
+      <Preview>{messages.renewSuccessPreview}</Preview>
+      <Body style={s.body}>
+        <Container style={s.container}>
+          <Heading style={s.heading}>{messages.renewSuccessHeading}</Heading>
+          <Text style={s.text}>
+            {messages.renewSuccessText1
+              .replace("{packageName}", packageName)
+              .replace("{organizationName}", organizationName)
+              .replace("{period}", period)}
+          </Text>
+          <Text style={s.text}>
+            {messages.renewSuccessText2}
+          </Text>
+          <Hr style={s.hr} />
+          <Text style={s.footer}>{messages.renewSuccessFooter}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 const s = {
   body: {

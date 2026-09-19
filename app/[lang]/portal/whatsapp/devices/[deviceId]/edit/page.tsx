@@ -2,6 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
@@ -79,14 +80,14 @@ export default async function EditWhatsAppDevicePage({
     pathname: `/portal/whatsapp/devices/${deviceRecord.id}`,
     locale,
   })
+  const messages = getMessages(locale).pPortalPages.whatsappDeviceEdit
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Edit WhatsApp Device</h1>
+        <h1 className="text-2xl font-semibold">{messages.title}</h1>
         <p className="text-sm text-muted-foreground">
-          Update Meta Cloud API credentials, token storage, quotas, and device
-          metadata.
+          {messages.description}
         </p>
       </header>
 

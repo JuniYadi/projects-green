@@ -8,38 +8,46 @@ import {
   Preview,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 interface SubscriptionExpiredEmailProps {
   organizationName?: string
   packageName?: string
+  locale?: AppLocale
 }
 
 export const SubscriptionExpiredEmail = ({
   organizationName = "your organization",
   packageName = "VPN",
-}: SubscriptionExpiredEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>VPN subscription expired</Preview>
-    <Body style={s.body}>
-      <Container style={s.container}>
-        <Heading style={s.heading}>VPN Subscription Expired</Heading>
-        <Text style={s.text}>
-          Your {packageName} subscription for {organizationName} has expired due
-          to non-payment.
-        </Text>
-        <Text style={s.text}>
-          All VPN access has been revoked. To restore service, please create a
-          new subscription from the console.
-        </Text>
-        <Hr style={s.hr} />
-        <Text style={s.footer}>
-          We hope to see you again. Contact support if you have any questions.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  locale = "en",
+}: SubscriptionExpiredEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.vpn
+
+  return (
+    <Html>
+      <Head />
+      <Preview>{messages.expiredPreview}</Preview>
+      <Body style={s.body}>
+        <Container style={s.container}>
+          <Heading style={s.heading}>{messages.expiredHeading}</Heading>
+          <Text style={s.text}>
+            {messages.expiredText1
+              .replace("{packageName}", packageName)
+              .replace("{organizationName}", organizationName)}
+          </Text>
+          <Text style={s.text}>
+            {messages.expiredText2}
+          </Text>
+          <Hr style={s.hr} />
+          <Text style={s.footer}>
+            {messages.expiredFooter}
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 const s = {
   body: {

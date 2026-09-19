@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { SupportTicketAdminCreateScreen } from "@/app/[lang]/portal/support-tickets/support-ticket-admin-create-screen"
 
@@ -18,6 +19,7 @@ export default async function SupportTicketCreatePage({
 }: SupportTicketCreatePageProps) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pPortalPages.supportTicketsNew
 
   const listPath = localizePathname({
     pathname: "/portal/support-tickets",
@@ -28,14 +30,13 @@ export default async function SupportTicketCreatePage({
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-2">
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
-          <Link href={listPath}>Back to Support Tickets</Link>
+          <Link href={listPath}>{messages.backLink}</Link>
         </Button>
         <h1 className="text-2xl font-semibold">
-          Create Support Ticket (Admin)
+          {messages.title}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Open a ticket on behalf of an organization with optional secure
-          credentials and attachments.
+          {messages.description}
         </p>
       </header>
 

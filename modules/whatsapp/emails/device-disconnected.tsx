@@ -9,6 +9,8 @@ import {
   Section,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 interface DeviceDisconnectedEmailProps {
   deviceName: string
@@ -16,6 +18,7 @@ interface DeviceDisconnectedEmailProps {
   orgName: string
   lastHeartbeatAt: string
   disconnectedAt: string
+  locale?: AppLocale
 }
 
 export const DeviceDisconnectedEmail = ({
@@ -24,50 +27,51 @@ export const DeviceDisconnectedEmail = ({
   orgName,
   lastHeartbeatAt,
   disconnectedAt,
+  locale = "en",
 }: DeviceDisconnectedEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.whatsapp
+
   return (
     <Html>
       <Head />
       <Preview>
-        [{orgName}] WhatsApp Device Disconnected: {phoneNumber}
+        {messages.disconnPreview
+          .replace("{orgName}", orgName)
+          .replace("{phoneNumber}", phoneNumber)}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>WhatsApp Device Disconnected</Heading>
+          <Heading style={styles.heading}>{messages.disconnHeading}</Heading>
 
           <Text style={styles.intro}>
-            A WhatsApp device under <strong>{orgName}</strong> has gone offline
-            and is no longer responding to health checks.
+            {messages.disconnIntro.replace("{orgName}", orgName)}
           </Text>
 
           <Section style={styles.deviceInfo}>
             <Text style={styles.deviceName}>{deviceName}</Text>
             <Text style={styles.phoneNumber}>{phoneNumber}</Text>
-            <Text style={styles.statusBadge}>DISCONNECTED</Text>
+            <Text style={styles.statusBadge}>{messages.disconnBadge}</Text>
           </Section>
 
           <Section style={styles.details}>
             <Text style={styles.detailRow}>
-              <strong>Last seen:</strong> {lastHeartbeatAt}
+              <strong>{messages.lastSeen}</strong> {lastHeartbeatAt}
             </Text>
             <Text style={styles.detailRow}>
-              <strong>Disconnected at:</strong> {disconnectedAt}
+              <strong>{messages.disconnectedAt}</strong> {disconnectedAt}
             </Text>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.note}>
-            WhatsApp messaging through this device will fail until it
-            reconnects. Please verify the device&apos;s connection to Meta and
-            check your network.
+            {messages.disconnNote}
           </Text>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            This is an automated alert from your WhatsApp monitoring system. You
-            can manage device health from the dashboard.
+            {messages.disconnFooter}
           </Text>
         </Container>
       </Body>

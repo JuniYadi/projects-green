@@ -1,7 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { DocumentationForm } from "@/modules/docs/ui/documentation-form"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -24,6 +27,10 @@ type DocEntry = {
 }
 
 export default function PortalDocumentationsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pPortalDocumentations
+
   const [docs, setDocs] = useState<DocEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -91,7 +98,7 @@ export default function PortalDocumentationsPage() {
       {
         accessorKey: "title",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Title" />
+          <DataTableColumnHeader column={column} title={messages.colTitle} />
         ),
         cell: ({ row }) => (
           <span
@@ -105,7 +112,7 @@ export default function PortalDocumentationsPage() {
       {
         accessorKey: "path",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Path" />
+          <DataTableColumnHeader column={column} title={messages.colPath} />
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">{row.original.path}</span>
@@ -114,7 +121,7 @@ export default function PortalDocumentationsPage() {
       {
         accessorKey: "updatedAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Updated" />
+          <DataTableColumnHeader column={column} title={messages.colUpdated} />
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
@@ -149,9 +156,9 @@ export default function PortalDocumentationsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Documentation Registry</h1>
+        <h1 className="text-2xl font-semibold">{messages.heading}</h1>
         <p className="text-sm text-muted-foreground">
-          Browse, create, edit, or delete documentation entries.
+          {messages.description}
         </p>
       </header>
 
@@ -163,7 +170,7 @@ export default function PortalDocumentationsPage() {
 
       <section className="space-y-4">
         <Input
-          placeholder="Search by title or path..."
+          placeholder={messages.searchPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
@@ -180,7 +187,7 @@ export default function PortalDocumentationsPage() {
             tableId="portal-documentations"
             columns={columns}
             data={filteredDocs}
-            searchPlaceholder="Search by title or path..."
+            searchPlaceholder={messages.searchPlaceholder}
             searchableColumns={["title", "path"]}
             defaultColumnVisibility={{}}
           />
@@ -190,7 +197,7 @@ export default function PortalDocumentationsPage() {
       <section className="rounded-lg border border-border p-4 md:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            {selectedDoc ? `Edit: ${selectedDoc.title}` : "Create New Entry"}
+            {selectedDoc ? `Edit: ${selectedDoc.title}` : messages.createNewEntry}
           </h2>
           {selectedDoc && (
             <Button
@@ -199,7 +206,7 @@ export default function PortalDocumentationsPage() {
               size="sm"
               onClick={() => setSelectedDoc(null)}
             >
-              Create New Entry
+              {messages.createNewEntry}
             </Button>
           )}
         </div>

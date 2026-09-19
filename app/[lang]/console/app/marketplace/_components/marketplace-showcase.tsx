@@ -9,6 +9,8 @@ import { MagnifyingGlass, Plus } from "@/components/ui/phosphor-icons"
 import { TemplateCard, type MarketplaceTemplateItem } from "./template-card"
 import { OFFICIAL_APP_TEMPLATES } from "@/modules/deploy/app-template.seed"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export const MARKETPLACE_CATEGORIES = [
   "ALL",
@@ -32,6 +34,7 @@ export function MarketplaceShowcase({
   onDeploy,
   locale = "en",
 }: MarketplaceShowcaseProps) {
+  const messages = getMessages(resolveLocaleOrDefault(locale)).pMarketplaceShowcase
   const [selectedCategory, setSelectedCategory] =
     useState<MarketplaceCategory>("ALL")
   const [searchQuery, setSearchQuery] = useState("")
@@ -131,10 +134,10 @@ export function MarketplaceShowcase({
           className="w-fit"
         >
           <TabsList>
-            <TabsTrigger value="marketplace">Marketplace Hub</TabsTrigger>
+            <TabsTrigger value="marketplace">{messages.marketplaceHub}</TabsTrigger>
             <TabsTrigger value="workspace" asChild>
               <Link href={`/${locale}/console/app/marketplace/my-templates`}>
-                My Workspace Templates
+                {messages.myWorkspaceTemplates}
               </Link>
             </TabsTrigger>
           </TabsList>
@@ -143,7 +146,7 @@ export function MarketplaceShowcase({
         <Button asChild variant="outline" size="sm" className="w-fit gap-1.5">
           <Link href={`/${locale}/console/app/marketplace/builder`}>
             <Plus className="size-4" />
-            <span>Create Custom Template</span>
+            <span>{messages.createCustomTemplate}</span>
           </Link>
         </Button>
       </div>
@@ -155,11 +158,10 @@ export function MarketplaceShowcase({
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                  App Marketplace
+                  {messages.appMarketplace}
                 </h1>
                 <p className="text-xs text-muted-foreground">
-                  1-Click deploy open-source apps, AI agents, automations, and
-                  databases.
+                  {messages.appMarketplaceDesc}
                 </p>
               </div>
 
@@ -167,7 +169,7 @@ export function MarketplaceShowcase({
               <div className="relative w-full sm:w-72">
                 <MagnifyingGlass className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search apps by name or stack…"
+                  placeholder={messages.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 pl-8 text-xs"
@@ -208,10 +210,10 @@ export function MarketplaceShowcase({
           ) : (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border p-12 text-center">
               <p className="text-sm font-medium text-foreground">
-                No templates found
+                {messages.noTemplatesFound}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Try adjusting your search criteria or category filter.
+                {messages.adjustFilters}
               </p>
               <Button
                 variant="outline"
@@ -222,7 +224,7 @@ export function MarketplaceShowcase({
                   setSelectedCategory("ALL")
                 }}
               >
-                Clear filters
+                {messages.clearFilters}
               </Button>
             </div>
           )}

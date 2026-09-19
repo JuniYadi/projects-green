@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useParams } from "next/navigation"
 import {
   ShieldCheck,
   ShieldWarning,
@@ -15,6 +16,9 @@ import {
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { AppLocale } from "@/lib/i18n/config"
 import type {
   ContainerImageDTO,
   SecurityScanSummaryDTO,
@@ -31,6 +35,7 @@ export type SecurityArtifactsTabProps = {
   onDownloadReport?: () => Promise<void>
   isRollingBack?: boolean
   registryRepository?: string
+  locale?: AppLocale
 }
 
 export function SecurityArtifactsTab({
@@ -43,7 +48,12 @@ export function SecurityArtifactsTab({
   onDownloadReport,
   isRollingBack = false,
   registryRepository,
+  locale: propLocale,
 }: SecurityArtifactsTabProps) {
+  const params = useParams<{ lang?: string }>()
+  const resolvedLocale = resolveLocaleOrDefault(propLocale ?? params?.lang)
+  const messages = getMessages(resolvedLocale).pSecurityArtifactsTab
+
   const [subView, setSubView] = useState<"registry" | "vulnerabilities">("registry")
   const [sourceFilter, setSourceFilter] = useState<"all" | "lang-pkgs" | "os-pkgs">("all")
   const [searchQuery, setSearchQuery] = useState("")
@@ -83,7 +93,7 @@ export function SecurityArtifactsTab({
             className="h-8 text-xs font-medium"
           >
             <Cube size={14} className="mr-1.5" />
-            <span>Image Registry & Rollback</span>
+            <span>{messages.tabRegistry}</span>
           </Button>
           <Button
             type="button"
@@ -93,7 +103,7 @@ export function SecurityArtifactsTab({
             className="h-8 text-xs font-medium"
           >
             <ShieldCheck size={14} className="mr-1.5" />
-            <span>Vulnerability Explorer ({totalFindings})</span>
+            <span>{messages.tabVulnerabilities.replace("{count}", String(totalFindings))}</span>
           </Button>
         </div>
 
@@ -106,7 +116,7 @@ export function SecurityArtifactsTab({
             className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             <DownloadSimple size={14} />
-            <span>Download Full Report</span>
+            <span>{messages.downloadReport}</span>
           </Button>
         )}
       </div>
@@ -119,12 +129,10 @@ export function SecurityArtifactsTab({
           </div>
           <div className="space-y-1">
             <h4 className="font-semibold text-foreground">
-              Free Tier Retention Policy (Max 3 Images)
+              {messages.retentionTitle}
             </h4>
             <p className="text-muted-foreground">
-              The free version automatically retains up to 3 images (1 Active live pod + 2 Ready for rollback).
-              Older images are gracefully rotated to EXPIRED status to save space. Expired images are safely locked
-              and require a re-build before deployment to protect against container crashes.
+              {messages.retentionDesc}
             </p>
           </div>
         </div>
@@ -136,21 +144,21 @@ export function SecurityArtifactsTab({
           {/* Metadata Banner */}
           <div className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-3">
             <div>
-              <span className="text-xs text-muted-foreground">Registry Repository</span>
+              <span className="text-xs text-muted-foreground">{messages.registryRepo}</span>
               <p className="mt-1 font-mono text-xs font-semibold text-foreground truncate">
                 {displayRepository}
               </p>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground">Active Live Image</span>
+              <span className="text-xs text-muted-foreground">{messages.activeLiveImage}</span>
               <p className="mt-1 text-xs font-semibold text-foreground">
                 {activeImage ? `tag: ${activeImage.imageTag}` : "None"}
               </p>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground">Retained Images</span>
+              <span className="text-xs text-muted-foreground">{messages.retainedImages}</span>
               <p className="mt-1 text-xs font-semibold text-foreground">
-                {images.length} tracked ({images.filter((i) => i.status === "READY").length} rollback ready)
+                {images.length} {messages.tracked} ({images.filter((i) => i.status === "READY").length} {messages.rollbackReady})
               </p>
             </div>
           </div>
@@ -159,19 +167,19 @@ export function SecurityArtifactsTab({
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="border-b border-border p-4">
               <h3 className="text-sm font-semibold text-foreground">
-                Retained Image History & Safe Rollback Center
+                {messages.tableHeading}
               </h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Tag</th>
-                    <th className="px-4 py-3 font-medium">Digest</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Security Status</th>
-                    <th className="px-4 py-3 font-medium">Pushed</th>
-                    <th className="px-4 py-3 font-medium text-right">Action</th>
+                    <th className="px-4 py-3 font-medium">{messages.colTag}</th>
+                    <th className="px-4 py-3 font-medium">{messages.colDigest}</th>
+                    <th className="px-4 py-3 font-medium">{messages.colStatus}</th>
+                    <th className="px-4 py-3 font-medium">{messages.colSecurityStatus}</th>
+                    <th className="px-4 py-3 font-medium">{messages.colPushed}</th>
+                    <th className="px-4 py-3 font-medium text-right">{messages.colAction}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -192,18 +200,18 @@ export function SecurityArtifactsTab({
                           {isLive && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                               <span className="size-1.5 rounded-full bg-current" />
-                              ACTIVE (Live)
+                              {messages.statusActive}
                             </span>
                           )}
                           {isReady && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
-                              READY (Stored)
+                              {messages.statusReady}
                             </span>
                           )}
                           {isExpired && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                               <Lock size={10} />
-                              EXPIRED (Rotated)
+                              {messages.statusExpired}
                             </span>
                           )}
                         </td>
@@ -211,19 +219,19 @@ export function SecurityArtifactsTab({
                           {img.securityScan ? (
                             img.securityScan.status === "PASSED" ? (
                               <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                                0 Vulnerabilities
+                                {messages.zeroVulnerabilities}
                               </span>
                             ) : img.securityScan.status === "WARNING" ? (
                               <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                {img.securityScan.highCount} High CVEs
+                                {messages.highCves.replace("{count}", String(img.securityScan.highCount))}
                               </span>
                             ) : (
                               <span className="text-rose-600 dark:text-rose-400 font-medium">
-                                {img.securityScan.criticalCount} Critical CVEs
+                                {messages.criticalCves.replace("{count}", String(img.securityScan.criticalCount))}
                               </span>
                             )
                           ) : (
-                            <span className="text-muted-foreground">Pending</span>
+                            <span className="text-muted-foreground">{messages.pending}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
@@ -231,7 +239,7 @@ export function SecurityArtifactsTab({
                         </td>
                         <td className="px-4 py-3 text-right">
                           {isLive ? (
-                            <span className="text-muted-foreground text-xs font-medium">Current</span>
+                            <span className="text-muted-foreground text-xs font-medium">{messages.current}</span>
                           ) : isReady ? (
                             <Button
                               type="button"
@@ -242,7 +250,7 @@ export function SecurityArtifactsTab({
                               className="h-7 px-2.5 text-xs gap-1"
                             >
                               <ArrowCounterClockwise size={12} />
-                              <span>Rollback</span>
+                              <span>{messages.rollback}</span>
                             </Button>
                           ) : (
                             <Button
@@ -251,10 +259,10 @@ export function SecurityArtifactsTab({
                               size="sm"
                               disabled
                               className="h-7 px-2.5 text-xs gap-1 text-muted-foreground"
-                              title="Image auto-rotated. Re-build commit to deploy again."
+                              title={messages.lockedTooltip}
                             >
                               <Lock size={12} />
-                              <span>Locked</span>
+                              <span>{messages.locked}</span>
                             </Button>
                           )}
                         </td>
@@ -264,7 +272,7 @@ export function SecurityArtifactsTab({
                   {images.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                        No container images built yet.
+                        {messages.noImages}
                       </td>
                     </tr>
                   )}
@@ -278,11 +286,10 @@ export function SecurityArtifactsTab({
             <div className="rounded-xl border border-primary/40 bg-card p-5 space-y-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <ArrowCounterClockwise size={16} className="text-primary" />
-                <span>Confirm Safe Rollback: Tag {selectedRollbackImage.imageTag}</span>
+                <span>{messages.rollbackModalTitle.replace("{tag}", selectedRollbackImage.imageTag)}</span>
               </h4>
               <p className="text-xs text-muted-foreground">
-                This image is intact and confirmed in storage. Executing this rollback will instantly point the live Kubernetes pod
-                to tag <strong className="text-foreground">{selectedRollbackImage.imageTag}</strong> without triggering a rebuild.
+                {messages.rollbackModalDesc.replace("{tag}", selectedRollbackImage.imageTag)}
               </p>
               <div className="flex items-center gap-2 pt-2">
                 <Button
@@ -298,7 +305,7 @@ export function SecurityArtifactsTab({
                   className="h-8 gap-1.5 text-xs"
                 >
                   <ArrowCounterClockwise size={13} className={isRollingBack ? "animate-spin" : ""} />
-                  <span>{isRollingBack ? "Rolling back..." : "Execute 1-Click Rollback"}</span>
+                  <span>{isRollingBack ? messages.rollingBack : messages.confirmRollback}</span>
                 </Button>
                 <Button
                   type="button"
@@ -307,7 +314,7 @@ export function SecurityArtifactsTab({
                   onClick={() => setSelectedRollbackImage(null)}
                   className="h-8 text-xs"
                 >
-                  Cancel
+                  {messages.cancel}
                 </Button>
               </div>
             </div>
@@ -320,22 +327,22 @@ export function SecurityArtifactsTab({
           <div className="rounded-xl border border-border bg-card p-5 space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <span className="text-xs text-muted-foreground">Security Posture Status</span>
+                <span className="text-xs text-muted-foreground">{messages.securityPosture}</span>
                 <div className="mt-1 flex items-center gap-2">
                   {activeScan?.status === "PASSED" ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                       <ShieldCheck size={14} />
-                      PASSED (Zero High/Critical Vulnerabilities)
+                      {messages.passedStatus}
                     </span>
                   ) : activeScan?.status === "WARNING" ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
                       <ShieldWarning size={14} />
-                      WARNING (Actionable Fixes Available)
+                      {messages.warningStatus}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-0.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
                       <WarningOctagon size={14} />
-                      FAILED (Critical Vulnerabilities Detected)
+                      {messages.failedStatus}
                     </span>
                   )}
                 </div>
@@ -343,8 +350,8 @@ export function SecurityArtifactsTab({
 
               {activeScan && (
                 <div className="text-xs text-muted-foreground sm:text-right">
-                  <span>Engine: {activeScan.scannerEngine} {activeScan.scannerVersion}</span>
-                  <p>Scanned: {new Date(activeScan.scannedAt).toLocaleTimeString()}</p>
+                  <span>{messages.engine} {activeScan.scannerEngine} {activeScan.scannerVersion}</span>
+                  <p>{messages.scanned} {new Date(activeScan.scannedAt).toLocaleTimeString()}</p>
                 </div>
               )}
             </div>
@@ -352,19 +359,19 @@ export function SecurityArtifactsTab({
             {/* Severity Counter Tiles */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 pt-2">
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400">CRITICAL</span>
+                <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{messages.sevCritical}</span>
                 <p className="mt-1 text-xl font-bold text-foreground">{activeScan?.criticalCount ?? 0}</p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">HIGH</span>
+                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">{messages.sevHigh}</span>
                 <p className="mt-1 text-xl font-bold text-foreground">{activeScan?.highCount ?? 0}</p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">MEDIUM</span>
+                <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">{messages.sevMedium}</span>
                 <p className="mt-1 text-xl font-bold text-foreground">{activeScan?.mediumCount ?? 0}</p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <span className="text-[11px] font-medium text-muted-foreground">LOW</span>
+                <span className="text-[11px] font-medium text-muted-foreground">{messages.sevLow}</span>
                 <p className="mt-1 text-xl font-bold text-foreground">{activeScan?.lowCount ?? 0}</p>
               </div>
             </div>
@@ -382,7 +389,7 @@ export function SecurityArtifactsTab({
                   onClick={() => setSourceFilter("all")}
                   className="h-7 text-xs"
                 >
-                  All Sources ({findings.length})
+                  {messages.filterAll.replace("{count}", String(findings.length))}
                 </Button>
                 <Button
                   type="button"
@@ -392,7 +399,7 @@ export function SecurityArtifactsTab({
                   className="h-7 text-xs"
                 >
                   <FileCode size={13} className="mr-1" />
-                  App Dependencies ({findings.filter((f) => f.class === "lang-pkgs").length})
+                  {messages.filterLangPkgs.replace("{count}", String(findings.filter((f) => f.class === "lang-pkgs").length))}
                 </Button>
                 <Button
                   type="button"
@@ -402,7 +409,7 @@ export function SecurityArtifactsTab({
                   className="h-7 text-xs"
                 >
                   <Cube size={13} className="mr-1" />
-                  Base System ({findings.filter((f) => f.class === "os-pkgs").length})
+                  {messages.filterOsPkgs.replace("{count}", String(findings.filter((f) => f.class === "os-pkgs").length))}
                 </Button>
               </div>
 
@@ -410,7 +417,7 @@ export function SecurityArtifactsTab({
                 <MagnifyingGlass size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search CVE or package..."
+                  placeholder={messages.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 pl-8 text-xs"
@@ -423,13 +430,13 @@ export function SecurityArtifactsTab({
               <table className="w-full text-left text-xs">
                 <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                   <tr>
-                    <th className="px-4 py-2.5 font-medium">CVE ID</th>
-                    <th className="px-4 py-2.5 font-medium">Severity</th>
-                    <th className="px-4 py-2.5 font-medium">Package</th>
-                    <th className="px-4 py-2.5 font-medium">Origin / Layer</th>
-                    <th className="px-4 py-2.5 font-medium">Installed</th>
-                    <th className="px-4 py-2.5 font-medium">Fixed In</th>
-                    <th className="px-4 py-2.5 font-medium">Provenance / Action</th>
+                    <th className="px-4 py-2.5 font-medium">{messages.colCveId}</th>
+                    <th className="px-4 py-2.5 font-medium">{messages.colSeverity}</th>
+                    <th className="px-4 py-2.5 font-medium">{messages.colPackage}</th>
+                    <th className="px-4 py-2.5 font-medium">{messages.colOriginLayer}</th>
+                    <th className="px-4 py-2.5 font-medium">{messages.colInstalled}</th>
+                    <th className="px-4 py-2.5 font-medium">{messages.colFixedIn}</th>
+                    <th className="px-4 py-2.5 font-medium">{messages.colProvenanceAction}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -486,7 +493,7 @@ export function SecurityArtifactsTab({
                   {filteredFindings.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                        No vulnerabilities found matching current filters.
+                        {messages.noFindings}
                       </td>
                     </tr>
                   )}

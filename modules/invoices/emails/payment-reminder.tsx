@@ -11,6 +11,7 @@ import {
   Text,
 } from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
+import { getMessages } from "@/lib/i18n/messages"
 import type { PaymentReminderEmailProps } from "./types"
 import {
   InvoiceCostBreakdown,
@@ -33,23 +34,28 @@ export const PaymentReminderEmail = ({
   lineItems,
   recipientEmail,
   organizationName,
+  locale = "en",
 }: PaymentReminderEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.invoices
   const invoiceUrl = `${getEmailBaseUrl()}/console/invoices/${invoiceNumber}`
 
   return (
     <Html>
       <Head />
       <Preview>
-        Payment Reminder: Invoice {invoiceNumber} is due on {dueAt} ({amount})
+        {messages.reminderPreview
+          .replace("{invoiceNumber}", invoiceNumber)
+          .replace("{dueAt}", dueAt)
+          .replace("{amount}", amount)}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>Payment Reminder</Heading>
+          <Heading style={styles.heading}>{messages.reminderHeading}</Heading>
 
           <Text style={styles.intro}>
-            This is a friendly reminder that Invoice {invoiceNumber} is due for
-            payment on <strong>{dueAt}</strong>. Please ensure timely payment to
-            avoid any service interruption.
+            {messages.reminderIntro
+              .replace("{invoiceNumber}", invoiceNumber)
+              .replace("{dueAt}", dueAt)}
           </Text>
 
           <InvoiceSummarySection
@@ -61,29 +67,30 @@ export const PaymentReminderEmail = ({
             periodEnd={periodEnd}
             recipientEmail={recipientEmail}
             organizationName={organizationName}
+            locale={locale}
           />
 
-          <InvoiceItemsList lineItems={lineItems} />
+          <InvoiceItemsList lineItems={lineItems} locale={locale} />
 
           <InvoiceCostBreakdown
             amount={amount}
             subtotalAmount={subtotalAmount}
             taxAmount={taxAmount}
             discountAmount={discountAmount}
-            totalLabel="Amount Due"
+            totalLabel={messages.totalAmount}
+            locale={locale}
           />
 
           <Section style={styles.actions}>
             <Button href={invoiceUrl} style={styles.button}>
-              Pay Invoice Now
+              {messages.reminderPayNow}
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have already processed this payment, please disregard this
-            reminder.
+            {messages.createdFooter}
           </Text>
         </Container>
       </Body>

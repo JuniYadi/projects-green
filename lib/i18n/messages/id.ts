@@ -9506,4 +9506,648 @@ export const idMessages: AppMessages = {
     rateTierLabel: "Tingkatan Tarif (Margin Biaya)",
     selectRateTierPlaceholder: "Pilih tingkatan tarif",
   },
+  pPortalPages: {
+    adminOrganizations: {
+      title: "Organisasi",
+      description: "Kelola semua organisasi pada platform",
+      detailsTitle: "Detail Organisasi",
+    },
+    adminUsers: {
+      title: "Pengguna",
+      description: "Kelola dan tinjau semua pengguna lintas organisasi pada platform",
+    },
+    adminInvitations: {
+      title: "Undangan",
+      description: "Lihat, kirim, dan kelola undangan lintas semua organisasi pada platform",
+    },
+    orgs: {
+      title: "Ikhtisar Organisasi",
+      description: "Statistik dan pengelolaan organisasi tingkat platform",
+    },
+    vpnAuditLogs: {
+      title: "Log Audit",
+      description: "Lacak setiap langkah provisi VPN, pencabutan, unduhan konfigurasi, dan aksi admin. Buka baris mana pun untuk melihat detail lengkap.",
+    },
+    vpnRegions: {
+      title: "Wilayah",
+      description: "Tentukan lokasi server VPN berada.",
+    },
+    vpnDevices: {
+      title: "Perangkat VPN",
+      description: "Lihat dan kelola semua perangkat mobile VPN di berbagai langganan.",
+    },
+    vpnSshKeys: {
+      title: "Kunci SSH",
+      description: "Simpan kunci SSH sekali dan gunakan kembali di berbagai server. Kunci disimpan terenkripsi dan tidak akan ditampilkan lagi.",
+    },
+    vpnSubscriptions: {
+      title: "Operasional Layanan VPN",
+      description: "Kelola akun server per protokol dan provisi untuk layanan VPN yang dibeli. Pembayaran, pesanan, dan perpanjangan dikelola di Billing.",
+    },
+    vpnServers: {
+      title: "Server",
+      description: "Tambah server VPN dan atur protokol yang didukung masing-masing server.",
+    },
+    settingsOwnership: {
+      title: "Kepemilikan",
+      description: "Lihat pemilik organisasi saat ini dan transfer kepemilikan.",
+    },
+    settingsEmails: {
+      title: "Templat Email",
+      description: "Pratinjau semua templat email transaksional yang dikirim oleh platform.",
+      deliveryLogs: "Log Pengiriman",
+    },
+    settingsEmailsDeliveryLogs: {
+      title: "Log Pengiriman Email",
+      description: "Lihat status pengiriman dan pratinjau templat email transaksional.",
+    },
+    settingsMembers: {
+      title: "Anggota",
+      description: "Kelola anggota organisasi dan peran mereka.",
+    },
+    settingsInvitations: {
+      title: "Undangan",
+      description: "Kirim dan kelola undangan untuk anggota organisasi baru.",
+    },
+    billingOverview: {
+      title: "Ikhtisar Tagihan",
+      description: "Statistik penagihan dan pengelolaan organisasi tingkat platform",
+    },
+    billingInvoices: {
+      title: "Faktur",
+      description: "Tinjau catatan penagihan, unduh bukti pembayaran, dan kelola status faktur.",
+    },
+    billingPayments: {
+      title: "Pembayaran",
+      description: "Kelola gateway pembayaran, rekening bank, dan konfirmasi pembayaran.",
+    },
+    appDetector: {
+      title: "Pusat Kontrol Detektor",
+      description: "Atur Toolchain Detektor AI — kelola aturan deteksi, pemetaan runtime, dan tinjau rekomendasi AI.",
+    },
+    appEventsGithub: {
+      title: "Event GitHub",
+      description: "Pantau pengiriman webhook GitHub, konteks repositori, detail commit, status pemrosesan, dan payload mentah untuk App Hosting.",
+    },
+    appManagedStocks: {
+      title: "Pool Stok Database Terkelola",
+      description: "Impor dan kelola slot database yang telah disiapkan untuk deployment aplikasi 1-klik.",
+    },
+    whatsappTemplates: {
+      heading: "Templat",
+      description: "Lihat dan kelola templat pesan WhatsApp Anda.",
+      cardTitle: "Templat Pesan",
+      cardDescription: "Templat pesan WhatsApp Anda",
+    },
+    whatsappDeviceEdit: {
+      title: "Edit Perangkat WhatsApp",
+      description: "Perbarui kredensial Meta Cloud API, penyimpanan token, kuota, dan metadata perangkat.",
+    },
+    whatsappDeviceNew: {
+      title: "Tambah Perangkat WhatsApp",
+      description: "Daftarkan perangkat WhatsApp Business baru dengan konfigurasi terperinci.",
+    },
+    supportTickets: {
+      title: "Tiket Dukungan (Admin)",
+      description: "Kelola, prioritaskan, dan balas semua tiket dukungan lintas organisasi.",
+    },
+    supportTicketsNew: {
+      backLink: "Kembali ke Tiket Dukungan",
+      title: "Buat Tiket Dukungan (Admin)",
+      description: "Buka tiket atas nama organisasi dengan kredensial aman dan lampiran opsional.",
+    },
+    supportTicketsDetail: {
+      backLink: "Kembali ke Tiket Dukungan",
+      title: "Detail Tiket Dukungan (Admin)",
+      description: "Lihat detail utas lengkap, ubah kategori, balas, atau hapus tiket.",
+    },
+  },
+  pConsolePages: {
+    invoices: {
+      title: "Faktur",
+      description: "Tinjau catatan penagihan, unduh tanda terima, dan kelola status faktur.",
+      billingHistory: "Riwayat Penagihan",
+    },
+    invoiceDetail: {
+      backLink: "Kembali ke Faktur",
+      title: "Detail Faktur",
+      description: "Tinjau detail faktur, unduh PDF, dan kelola pembayaran.",
+    },
+    supportTickets: {
+      title: "Tiket Dukungan",
+      description: "Lacak permintaan dukungan terkini dan tindak lanjuti isu yang tertunda.",
+    },
+    supportTicketsNew: {
+      backLink: "Kembali ke Tiket Dukungan",
+      title: "Buka Tiket Dukungan",
+      description: "Kirim tiket dengan detail formulir aman dan lampiran opsional.",
+    },
+    supportTicketsDetail: {
+      backLink: "Kembali ke Tiket Dukungan",
+      title: "Detail Tiket Dukungan",
+      description: "Tinjau riwayat pesan, balas, unggah lampiran, dan tutup tiket.",
+    },
+  },
+  pAuthPages: {
+    login: {
+      badge: "Akses akun",
+      panelTitle: "Masuk atau buat akun",
+      panelDescription:
+        "Masuk untuk mengelola konsol PFNApp Anda. Baru di sini? Buat akun PFNApp untuk memulai.",
+    },
+    selectOrganization: {
+      badge: "Akses organisasi",
+      panelTitle: "Pilih ruang kerja Anda",
+      panelDescription:
+        "Pilih organisasi PFNApp yang ingin Anda kelola sebelum masuk ke konsol.",
+    },
+    invite: {
+      invitedToJoin: "Anda diundang untuk bergabung dengan {org}",
+      youveBeenInvited: "Anda telah diundang",
+      acceptInvitationFor: "Terima undangan untuk",
+      bySigningIn:
+        "dengan masuk. Gunakan alamat email yang sama dengan tujuan undangan ini.",
+      continueWithEmailCode: "Lanjutkan dengan kode email",
+      orContinueWith: "Atau lanjutkan dengan",
+      continueWith: "Lanjutkan dengan",
+      invitationNotFound: "Undangan tidak ditemukan",
+      invitationNotFoundDesc:
+        "Tautan undangan ini tidak valid atau sudah digunakan. Minta admin organisasi Anda untuk mengirim undangan baru.",
+      goToSignIn: "Ke halaman masuk",
+      invitationUnavailable: "Undangan tidak tersedia",
+      expired: "Undangan ini telah kedaluwarsa.",
+      accepted: "Undangan ini telah diterima.",
+      revoked: "Undangan ini telah dicabut.",
+      inactive: "Undangan ini sudah tidak aktif.",
+    },
+  },
+  pDocs: {
+    paginationAriaLabel: "Paginasi Dokumen",
+    previous: "SEBELUMNYA",
+    next: "SELANJUTNYA",
+  },
+  pSecurityArtifactsTab: {
+    tabRegistry: "Registry Image & Rollback",
+    tabVulnerabilities: "Penjelajah Kerentanan ({count})",
+    downloadReport: "Unduh Laporan Lengkap",
+    retentionTitle: "Kebijakan Retensi Paket Gratis (Maks 3 Image)",
+    retentionDesc:
+      "Versi gratis secara otomatis mempertahankan hingga 3 image (1 pod aktif langsung + 2 siap untuk rollback). Image lama dirotasi ke status EXPIRED untuk menghemat ruang. Image kedaluwarsa dikunci dengan aman dan memerlukan build ulang sebelum deployment untuk mencegah crash container.",
+    registryRepo: "Repositori Registry",
+    activeLiveImage: "Image Aktif Langsung",
+    retainedImages: "Image Dipertahankan",
+    tracked: "dilacak",
+    rollbackReady: "siap rollback",
+    tableHeading: "Riwayat Image Dipertahankan & Pusat Rollback Aman",
+    colTag: "Tag",
+    colDigest: "Digest",
+    colStatus: "Status",
+    colSecurityStatus: "Status Keamanan",
+    colPushed: "Diunggah",
+    colAction: "Aksi",
+    statusActive: "ACTIVE (Aktif)",
+    statusReady: "READY (Tersimpan)",
+    statusExpired: "EXPIRED (Dirotasi)",
+    zeroVulnerabilities: "0 Kerentanan",
+    highCves: "{count} CVE Tinggi",
+    criticalCves: "{count} CVE Kritis",
+    pending: "Tertunda",
+    current: "Saat Ini",
+    rollback: "Rollback",
+    rollingBack: "Melakukan rollback...",
+    lockedTooltip: "Image dirotasi otomatis. Build ulang commit untuk deploy kembali.",
+    locked: "Terkunci",
+    noImages: "Belum ada container image yang dibangun.",
+    rollbackModalTitle: "Konfirmasi Rollback Aman: Tag {tag}",
+    rollbackModalDesc:
+      "Image ini utuh dan terkonfirmasi dalam penyimpanan. Menjalankan rollback ini akan langsung mengarahkan pod Kubernetes aktif ke tag {tag} tanpa perlu build ulang.",
+    cancel: "Batal",
+    confirmRollback: "Jalankan Rollback 1-Klik",
+    securityPosture: "Status Postur Keamanan",
+    passedStatus: "PASSED (Nol Kerentanan Tinggi/Kritis)",
+    warningStatus: "WARNING (Perbaikan Dapat Ditindaklanjuti Tersedia)",
+    failedStatus: "FAILED (Kerentanan Kritis Terdeteksi)",
+    engine: "Mesin:",
+    scanned: "Dipindai:",
+    sevCritical: "CRITICAL",
+    sevHigh: "HIGH",
+    sevMedium: "MEDIUM",
+    sevLow: "LOW",
+    filterAll: "Semua Sumber ({count})",
+    filterLangPkgs: "Dependensi Aplikasi ({count})",
+    filterOsPkgs: "Sistem Dasar ({count})",
+    searchPlaceholder: "Cari CVE atau paket...",
+    colCveId: "ID CVE",
+    colSeverity: "Tingkat Keparahan",
+    colPackage: "Paket",
+    colOriginLayer: "Asal / Layer",
+    colInstalled: "Terpasang",
+    colFixedIn: "Diperbaiki Pada",
+    colProvenanceAction: "Asal Usul / Aksi",
+    noFindings: "Tidak ada kerentanan ditemukan yang cocok dengan filter saat ini.",
+  },
+  pInvoicesTable: {
+    colInvoiceId: "ID Faktur",
+    colOrganization: "Organisasi",
+    colIssued: "Diterbitkan",
+    colDue: "Jatuh Tempo",
+    colAmount: "Jumlah",
+    colStatus: "Status",
+    retry: "Coba Lagi",
+    searchPlaceholderConsole: "Filter berdasarkan ID Faktur...",
+    searchPlaceholderPortal: "Filter berdasarkan ID Faktur atau Organisasi...",
+    noInvoicesMatch: "Tidak ada faktur yang cocok dengan filter Anda.",
+  },
+  pSelectOrgForm: {
+    chooseOrganization: "Pilih organisasi",
+    accountBelongsWithEmail:
+      "Akun Anda {email} terdaftar di beberapa organisasi. Pilih salah satu untuk masuk.",
+    accountBelongs:
+      "Akun Anda terdaftar di beberapa organisasi. Pilih salah satu untuk masuk.",
+    noOrgsFound: "Tidak ada organisasi ditemukan. Silakan hubungi dukungan.",
+    signingIn: "Sedang masuk...",
+    needDifferentAccount: "Perlu menggunakan akun lain?",
+    backToLogin: "Kembali ke halaman masuk",
+  },
+  pOwnershipView: {
+    currentOwner: "Pemilik Saat Ini",
+    currentOwnerDesc: "Pengguna yang saat ini memiliki organisasi ini",
+    noOwnerFound: "Tidak ada pemilik ditemukan",
+    transferOwnership: "Transfer Kepemilikan",
+    transferWarning:
+      "Mentransfer kepemilikan akan menurunkan peran Anda menjadi administrator. Pemilik baru akan memiliki kendali penuh atas organisasi.",
+    selectNewOwner: "Pilih pemilik baru",
+    selectAdminPlaceholder: "Pilih administrator",
+    noOtherAdmins: "Tidak ada administrator aktif lainnya yang tersedia",
+    transferring: "Mentransfer...",
+    onlyCurrentOwnerCanTransfer:
+      "Hanya pemilik saat ini yang dapat mentransfer kepemilikan.",
+  },
+  pVpnPairingQrModal: {
+    modalTitle: "Pasangkan perangkat seluler",
+    selectSubPlaceholder: "Pilih langganan",
+    continueButton: "Lanjutkan",
+    qrAlt: "Pindai dengan aplikasi seluler untuk memasangkan perangkat",
+    codeExpired: "Kode kedaluwarsa",
+    scanBeforeExpires: "Pindai dengan aplikasi seluler sebelum waktu habis",
+    thisCodeExpired: "Kode ini telah kedaluwarsa.",
+    devicePairedSuccess: "Perangkat berhasil dipasangkan",
+    vpnProfilesAvailable:
+      "Profil VPN sekarang tersedia di perangkat yang dipasangkan.",
+    regenerate: "Buat Ulang",
+  },
+  pMarketplaceShowcase: {
+    marketplaceHub: "Pusat Marketplace",
+    myWorkspaceTemplates: "Templat Ruang Kerja Saya",
+    createCustomTemplate: "Buat Templat Kustom",
+    appMarketplace: "Marketplace Aplikasi",
+    appMarketplaceDesc:
+      "Deploy 1-Klik aplikasi open-source, AI agent, otomasi, dan database.",
+    searchPlaceholder: "Cari aplikasi berdasarkan nama atau stack…",
+    noTemplatesFound: "Tidak ada templat ditemukan",
+    adjustFilters:
+      "Coba sesuaikan kriteria pencarian atau filter kategori Anda.",
+    clearFilters: "Hapus filter",
+  },
+  pConfirmDeployDialog: {
+    title: "Konfirmasi deployment",
+    description: "Ini akan membuat/memperbarui app stack dan memulai build.",
+    repository: "Repositori",
+    runtime: "Runtime",
+    resources: "Sumber Daya",
+    cpuUnit: "{cpu}m CPU",
+    estimatedCost: "Perkiraan biaya",
+    domain: "Domain",
+    cancel: "Batal",
+    confirmDeploy: "Konfirmasi & deploy",
+    deploying: "Mendeploy…",
+    notDetected: "Tidak terdeteksi",
+  },
+  pHomeFeatures: {
+    worksWithStack: "Bekerja dengan stack Anda",
+    builtForDevelopers: "Dibuat untuk developer",
+    platformHeadingStart: "Platform yang tidak",
+    platformHeadingHighlight: "menghalangi langkah Anda",
+    platformDesc:
+      "Pengaturan default yang masuk akal, kontrol penuh. Dibuat oleh developer, untuk developer yang peduli dengan kualitas.",
+    readyToBuild: "Siap untuk membangun?",
+    getStartedIn2Min: "Mulai dalam 2 menit. Tidak perlu kartu kredit.",
+    getStartedFree: "Mulai gratis",
+  },
+  pLogHealthSummaryCards: {
+    stabilityScore: "Skor Kestabilan Aplikasi",
+    stable: "Stabil",
+    incident: "Insiden",
+    totalErrorIncidents: "Total Insiden Error",
+    needsAttention: "Perlu perhatian developer",
+    noExceptions: "Tidak ada exception",
+    warnings: "Peringatan (Warn)",
+    nonCriticalWarnings: "Level peringatan non-kritis",
+    totalLogLines: "Total Baris Log",
+    stdoutStderr: "Output container stdout/stderr",
+  },
+  pEmailTemplates: {
+    invoices: {
+      createdPreview:
+        "Faktur {invoiceNumber} - Jatuh Tempo Pembayaran {dueAt} ({amount})",
+      paidPreview:
+        "Tanda Terima Pembayaran - Faktur {invoiceNumber} ({amount})",
+      overduePreview:
+        "TINDAKAN DIPERLUKAN: Faktur {invoiceNumber} Terlambat ({amount})",
+      cancelledPreview:
+        "Pemberitahuan: Faktur {invoiceNumber} Telah Dibatalkan ({amount})",
+      reminderPreview:
+        "Pengingat Pembayaran: Faktur {invoiceNumber} jatuh tempo pada {dueAt} ({amount})",
+      confirmationPreview:
+        "Konfirmasi pembayaran diterima untuk faktur {invoiceNumber}",
+      invoiceDetails: "DETAIL FAKTUR",
+      invoiceNumber: "Nomor Faktur:",
+      billedTo: "Ditagihkan Kepada:",
+      issueDate: "Tanggal Terbit:",
+      dueDate: "Jatuh Tempo:",
+      billingPeriod: "Periode Penagihan:",
+      paidOn: "Dibayar Pada:",
+      paymentMethod: "Metode Pembayaran:",
+      status: "Status:",
+      itemsAndServices: "ITEM & LAYANAN",
+      qty: "Jml",
+      paymentBreakdown: "RINCIAN PEMBAYARAN",
+      subtotal: "Subtotal:",
+      discountVoucher: "Diskon / Voucher:",
+      tax: "Pajak:",
+      discount: "Diskon:",
+      totalAmount: "Total Tagihan",
+      createdHeading: "Faktur {invoiceNumber}",
+      createdIntro:
+        "Faktur baru telah diterbitkan untuk akun Anda. Harap tinjau detail di bawah dan lakukan pembayaran sebelum tanggal jatuh tempo.",
+      createdViewAndPay: "Lihat dan Bayar Faktur",
+      createdFooter:
+        "Jika Anda memiliki pertanyaan mengenai faktur ini, silakan hubungi tim dukungan kami.",
+      paidHeading: "Pembayaran Diterima",
+      paidIntro:
+        "Terima kasih atas pembayaran Anda. Kami telah berhasil memproses pembayaran untuk faktur {invoiceNumber}.",
+      paidViewReceipt: "Lihat Faktur & Tanda Terima",
+      paidFooter:
+        "Saldo akun Anda telah diperbarui. Terima kasih atas kerja sama Anda.",
+      overdueHeading: "Pembayaran Faktur Terlambat",
+      overdueIntro:
+        "Faktur Anda {invoiceNumber} kini telah jatuh tempo. Harap segera selesaikan pembayaran ini untuk menghindari gangguan pada layanan aktif Anda.",
+      overduePayNow: "Bayar Faktur Sekarang",
+      overdueGraceNotice:
+        "Jika pembayaran sudah dikirim, harap tunggu 1-2 hari kerja untuk pemrosesan atau balas dengan bukti pembayaran.",
+      cancelledHeading: "Faktur Dibatalkan",
+      cancelledIntro:
+        "Faktur {invoiceNumber} telah dibatalkan dan dibatalkan keabsahannya. Tidak ada pembayaran yang diperlukan untuk faktur ini.",
+      cancelledReason: "Alasan Pembatalan:",
+      cancelledView: "Lihat Faktur yang Dibatalkan",
+      reminderHeading: "Pengingat Pembayaran Mendatang",
+      reminderIntro:
+        "Ini adalah pengingat bahwa faktur {invoiceNumber} akan jatuh tempo pada {dueAt}.",
+      reminderPayNow: "Bayar Faktur",
+      confirmationHeading: "Konfirmasi Pembayaran Diterima",
+      confirmationIntro:
+        "Kami telah menerima konfirmasi pembayaran Anda untuk faktur {invoiceNumber}. Tim keuangan kami sedang meninjau transaksi Anda.",
+      confirmationViewStatus: "Periksa Status Verifikasi",
+      automatedNotice:
+        "Ini adalah pesan transaksional otomatis. Mohon tidak membalas langsung ke email ini.",
+    },
+    supportTickets: {
+      previewCreated:
+        "Tiket dukungan Anda #{ticketNumber} telah dibuat",
+      previewClosed: "Tiket dukungan #{ticketNumber} telah {status}",
+      previewReplied: "Re: Tiket dukungan #{ticketNumber} - {subject}",
+      repliedBy: "Dibalas oleh",
+      newAlertHeading: "Tiket Dukungan Baru Dikirim",
+      newAlertIntro:
+        "Tiket dukungan baru telah dibuka dan memerlukan triage admin.",
+      ticketDetails: "DETAIL TIKET",
+      ticketId: "ID Tiket:",
+      requester: "Pemohon:",
+      organization: "Organisasi:",
+      department: "Departemen:",
+      priority: "Prioritas:",
+      subject: "Subjek:",
+      viewInAdmin: "Buka di Portal Admin",
+      createdHeading: "Kami Telah Menerima Permintaan Dukungan Anda",
+      createdIntro:
+        "Kami telah menerima permintaan dukungan Anda dan tim kami akan segera meninjaunya.",
+      viewTicketThread: "Lihat Utas Tiket",
+      repliedHeading: "Balasan Baru pada Tiket Anda",
+      repliedIntro:
+        "Anggota tim telah memposting pembaruan baru pada utas tiket dukungan Anda.",
+      viewAndReply: "Lihat dan Balas",
+      closedHeading: "Tiket Dukungan Anda Telah Ditutup",
+      closedIntro:
+        "Tiket dukungan Anda telah ditandai sebagai selesai. Jika Anda membutuhkan bantuan lebih lanjut, Anda dapat membukanya kembali kapan saja.",
+      viewResolvedTicket: "Lihat Tiket yang Selesai",
+      status: "Status:",
+      service: "Layanan:",
+      email: "Email:",
+      finalStatus: "Status Akhir:",
+      resolved: "Diselesaikan:",
+      closed: "Ditutup:",
+      viewTicket: "Lihat Tiket",
+      viewFullConversation: "Lihat Percakapan Lengkap",
+      viewAndRespond: "Lihat & Tanggapi Tiket",
+      openOrganization: "Buka Organisasi",
+      alertCreatedIntro:
+        "Tiket dukungan baru telah dikirimkan dan membutuhkan perhatian.",
+      alertReplyIntro:
+        "Pemohon membalas tiket dukungan dan membutuhkan perhatian staf.",
+      createdFooter:
+        "Jika Anda memiliki informasi tambahan untuk ditambahkan, silakan balas email ini atau kunjungi dashboard dukungan Anda.",
+      adminFooter:
+        "Anda menerima email ini karena Anda berlangganan pemberitahuan tiket dukungan.",
+      closedResolvedIntro:
+        "Tiket dukungan Anda telah diselesaikan. Jika Anda membutuhkan bantuan lebih lanjut, Anda dapat membukanya kembali.",
+      closedClosedIntro:
+        "Tiket dukungan Anda telah ditutup. Terima kasih telah menghubungi kami.",
+      closedReopenNote:
+        "Butuh bantuan lagi? Anda dapat membuka kembali tiket ini dengan membalas email ini atau mengunjungi halaman tiket.",
+      closedFooter:
+        "Terima kasih telah menggunakan layanan dukungan kami. Jika Anda memiliki pertanyaan lain, jangan ragu untuk menghubungi kami.",
+      repliedDefaultIntro:
+        "Anggota tim dukungan kami telah membalas tiket Anda.",
+      repliedFooter:
+        "Anda dapat membalas email ini secara langsung atau klik tombol di atas untuk melihat percakapan lengkap.",
+      secureDetailsNotice:
+        "Detail aman terlampir (terenkripsi). Buka tiket untuk melihat.",
+      latestReply: "Balasan terbaru:",
+      descriptionLabel: "Deskripsi:",
+    },
+    vpn: {
+      cancelledPreview: "Langganan akan dibatalkan pada akhir periode",
+      cancelledHeading: "Pembatalan Langganan Dikonfirmasi",
+      cancelledText1:
+        "Langganan {packageName} Anda untuk {organizationName} telah dijadwalkan untuk dibatalkan.",
+      cancelledText2:
+        "Anda akan tetap memiliki akses hingga {periodEnd}. Setelah tanggal tersebut, langganan Anda akan dihentikan dan semua data terkait akan dihapus.",
+      cancelledFooter:
+        "Jika Anda berubah pikiran, Anda dapat membatalkan pembatalan dari konsol Anda sebelum periode berakhir.",
+      createdPreview: "Langganan VPN Anda sedang disiapkan",
+      createdHeading: "Pembuatan Langganan VPN",
+      createdText1:
+        "Terima kasih telah berlangganan paket {packageName} untuk {organizationName}. Kami sedang menyiapkan akun VPN Anda.",
+      createdText2:
+        "Proses ini biasanya memakan waktu beberapa menit. Anda akan menerima email lain setelah VPN siap digunakan.",
+      createdFooter:
+        "Jika Anda memiliki pertanyaan, silakan hubungi tim dukungan kami.",
+      provSuccessPreview: "Akun VPN Anda sudah siap",
+      provSuccessHeading: "Akun VPN Siap",
+      provSuccessText1:
+        "Langganan {packageName} Anda untuk {organizationName} kini aktif.",
+      provSuccessText2:
+        "Anda dapat mengunduh berkas konfigurasi dan terhubung ke VPN dari konsol.",
+      provSuccessFooter:
+        "Jika Anda mengalami masalah, silakan hubungi tim dukungan kami.",
+      provFailedPreview: "Provisi gagal — hubungi dukungan",
+      provFailedHeading: "Provisi Gagal",
+      provFailedText1:
+        "Kami mengalami kendala saat menyiapkan langganan {packageName} untuk {organizationName}.",
+      provFailedText2:
+        "Tim kami telah diberi tahu dan akan menyelidikinya. Jika masalah berlanjut, silakan hubungi dukungan untuk bantuan.",
+      provFailedFooter:
+        "Kami mohon maaf atas ketidaknyamanan ini. Hubungi dukungan untuk bantuan.",
+      renewSuccessPreview: "Langganan VPN diperpanjang",
+      renewSuccessHeading: "Langganan Diperpanjang",
+      renewSuccessText1:
+        "Langganan {packageName} Anda untuk {organizationName} telah berhasil diperpanjang untuk {period}.",
+      renewSuccessText2:
+        "Layanan VPN Anda berlanjut seperti biasa. Anda tidak perlu mengambil tindakan apa pun.",
+      renewSuccessFooter: "Terima kasih telah menjadi pelanggan setia kami.",
+      renewFailedPreview: "Pembayaran gagal — silakan isi ulang saldo Anda",
+      renewFailedHeading: "Pembayaran Perpanjangan Gagal",
+      renewFailedText1:
+        "Kami tidak dapat memperpanjang langganan {packageName} Anda untuk {organizationName} karena saldo tidak mencukupi.",
+      renewFailedText2:
+        "Harap isi ulang saldo akun Anda untuk menghindari gangguan layanan. Kami akan mencoba memproses pembayaran secara otomatis dalam beberapa hari ke depan.",
+      renewFailedFooter: "Butuh bantuan? Hubungi tim dukungan kami.",
+      expiredPreview: "Langganan VPN telah kedaluwarsa",
+      expiredHeading: "Langganan VPN Kedaluwarsa",
+      expiredText1:
+        "Langganan {packageName} Anda untuk {organizationName} telah kedaluwarsa karena keterlambatan pembayaran.",
+      expiredText2:
+        "Semua akses VPN telah dicabut. Untuk memulihkan layanan, silakan buat langganan baru dari konsol.",
+      expiredFooter:
+        "Kami berharap dapat melayani Anda kembali. Hubungi dukungan jika ada pertanyaan.",
+      suspendedPreview: "VPN ditangguhkan karena pembayaran jatuh tempo",
+      suspendedHeading: "Langganan VPN Ditangguhkan",
+      suspendedText1:
+        "Langganan {packageName} Anda untuk {organizationName} telah ditangguhkan karena pembayaran melewati jatuh tempo.",
+      suspendedText2:
+        "Harap isi ulang saldo Anda untuk memulihkan layanan. Jika tidak ada pembayaran yang diterima dalam beberapa hari ke depan, langganan Anda akan kedaluwarsa secara permanen.",
+      suspendedFooter: "Butuh bantuan? Hubungi tim dukungan kami.",
+    },
+    whatsapp: {
+      digestPreview:
+        "[Ringkasan Harian] Ringkasan Status Perangkat WhatsApp ({total} Perangkat)",
+      digestHeading: "Ringkasan Harian Perangkat WhatsApp",
+      digestIntro:
+        "Ringkasan harian semua perangkat WhatsApp dan status persetujuan Meta per",
+      totalDevices: "Total Perangkat",
+      nameApproved: "Nama Disetujui",
+      pendingReview: "Menunggu Tinjauan",
+      declinedIssues: "Ditolak / Masalah",
+      deviceBreakdown: "Rincian Perangkat:",
+      qualityRating: "Kualitas:",
+      connectionStatus: "Koneksi:",
+      noDevicesFound: "Tidak ada perangkat WhatsApp terdaftar ditemukan.",
+      automatedDigestFooter:
+        "Ini adalah ringkasan otomatis yang dikirimkan kepada administrator platform.",
+      disconnPreview:
+        "[{orgName}] Perangkat WhatsApp Terputus: {phoneNumber}",
+      disconnHeading: "Perangkat WhatsApp Terputus",
+      disconnIntro:
+        "Perangkat WhatsApp di bawah {orgName} sedang offline dan tidak merespons pemeriksaan kesehatan.",
+      disconnBadge: "TERPUTUS",
+      lastSeen: "Terakhir terlihat:",
+      disconnectedAt: "Terputus pada:",
+      disconnNote:
+        "Pengiriman pesan WhatsApp melalui perangkat ini akan gagal hingga terhubung kembali. Silakan periksa koneksi perangkat ke Meta dan periksa jaringan Anda.",
+      disconnFooter:
+        "Ini adalah peringatan otomatis dari sistem pemantauan WhatsApp Anda. Anda dapat mengelola kesehatan perangkat dari dashboard.",
+      stateChangePreview:
+        "[Peringatan Admin] Status Perangkat WhatsApp Berubah: {phoneNumber} ({orgName})",
+      stateChangeHeading: "Pembaruan Status Perangkat WhatsApp",
+      stateChangeIntro:
+        "Perubahan status perangkat WhatsApp Meta telah terdeteksi untuk {orgName}.",
+      detectedChanges: "Perubahan Terdeteksi:",
+      detectedAt: "Terdeteksi Pada:",
+      stateChangeFooter:
+        "Ini adalah peringatan super-admin otomatis. Anda dapat memeriksa perangkat ini di portal admin.",
+    },
+  },
+  pPayAsYouGoSelector: {
+    cpuLabel: "CPU (m)",
+    cpuHint: "Minimum 100m, maksimum 2000m (2 core).",
+    memoryLabel: "Memori (Mi)",
+    memoryHint: "Minimum 256Mi, maksimum 4096Mi (4Gi).",
+    bufferHoursLabel: "Buffer runtime (jam)",
+    bufferHoursHint:
+      "Minimum 24 jam. Saldo Anda harus mencukupi sebelum deploy.",
+    requiredBalance: "Saldo yang dibutuhkan",
+  },
+  pAppWorkspaceHeader: {
+    switchApplication: "Switch Application",
+    source: "source",
+    plan: "plan",
+    cluster: "cluster",
+    syncTooltip: "Sync latest configuration and state",
+    syncing: "Syncing...",
+    syncConfig: "Sync Config",
+    workspaceTabsAria: "App Workspace Tabs",
+    liveTerminalSession: "Live terminal session",
+  },
+  pConsoleVpnDevices: {
+    heading: "Perangkat VPN Saya",
+    description:
+      "Lihat dan kelola perangkat yang dipasangkan ke langganan VPN Anda.",
+    errorHeading: "Perangkat VPN Saya",
+    errorDescription: "Perangkat yang dipasangkan ke langganan VPN Anda.",
+    retry: "Coba Lagi",
+    pairNewDevice: "Pasangkan Perangkat Baru",
+    needActiveSubPrefix:
+      "Anda memerlukan langganan VPN aktif untuk memasangkan perangkat.",
+    viewSubscriptions: "Lihat langganan",
+  },
+  pVpnConnectionTestModal: {
+    enableNow: "Aktifkan sekarang?",
+    testResultsTitle: "Hasil Uji Koneksi — {serverName}",
+    passed: "berhasil",
+    failed: "gagal",
+    error: "kesalahan",
+    skipped: "dilewati",
+    runningChecks: "Menjalankan pemeriksaan…",
+    close: "Tutup",
+    copied: "Disalin!",
+    copyReport: "Salin Laporan",
+    running: "Menjalankan…",
+    rerun: "Jalankan Ulang",
+  },
+  pVpnDevicesList: {
+    revokeDeviceTitle: "Cabut perangkat",
+    revokeDesc:
+      "Ini akan langsung memutuskan sambungan VPN pada {device}. Perangkat dapat dipasangkan kembali nanti jika diperlukan.",
+    cancel: "Batal",
+    revoke: "Cabut",
+    searchPlaceholder: "Cari perangkat...",
+    noDevicesFound: "Tidak ada perangkat ditemukan.",
+  },
+  pPortalDocumentations: {
+    heading: "Registri Dokumentasi",
+    description: "Jelajahi, buat, edit, atau hapus entri dokumentasi.",
+    searchPlaceholder: "Cari berdasarkan judul atau path...",
+    createNewEntry: "Buat Entri Baru",
+    colTitle: "Judul",
+    colPath: "Path",
+    colUpdated: "Diperbarui",
+  },
+  pPortalAdminOrganizationsTable: {
+    colOrganization: "Organisasi",
+    colMembers: "Anggota",
+    colCreated: "Dibuat",
+    searchPlaceholder: "Cari organisasi...",
+    previous: "Sebelumnya",
+    next: "Berikutnya",
+  },
 }

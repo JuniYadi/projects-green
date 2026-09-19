@@ -11,9 +11,14 @@ import {
   Text,
 } from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 import type { SupportTicket, SupportTicketReply } from "../support-ticket.types"
-import { SUPPORT_TICKET_DEPARTMENT_LABELS } from "../support-ticket.types"
-import { SUPPORT_TICKET_PRIORITY_LABELS } from "../support-ticket.types"
+import {
+  SUPPORT_TICKET_DEPARTMENT_LABELS,
+  SUPPORT_TICKET_PRIORITY_LABELS,
+  SUPPORT_TICKET_STATUS_LABELS,
+} from "../support-ticket.types"
 
 interface TicketNewAdminAlertEmailProps {
   ticket: SupportTicket
@@ -32,6 +37,7 @@ interface TicketNewAdminAlertEmailProps {
     hasSecureDetails: boolean
     repliedAt: Date
   }
+  locale?: AppLocale
 }
 
 export const TicketNewAdminAlertEmail = ({
@@ -42,12 +48,14 @@ export const TicketNewAdminAlertEmail = ({
   reply,
   organization,
   replyContext,
+  locale = "en",
 }: TicketNewAdminAlertEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.supportTickets
   const ticketUrl = `${getEmailBaseUrl()}/portal/support-tickets/${ticket.id}`
   const isReply = variant === "reply"
 
   const formattedRepliedAt = replyContext
-    ? new Intl.DateTimeFormat("en-US", {
+    ? new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
         dateStyle: "medium",
         timeStyle: "short",
         timeZone: "UTC",
@@ -58,21 +66,21 @@ export const TicketNewAdminAlertEmail = ({
     <Html>
       <Head />
       <Preview>
-        {isReply ? "New reply on" : "New support ticket"} #{ticket.ticketNumber}{" "}
+        {isReply ? messages.repliedHeading : messages.newAlertHeading} #{ticket.ticketNumber}{" "}
         - {ticket.subject}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Heading style={styles.heading}>
-            {isReply ? "New Reply on" : "New Support Ticket"} #
+            {isReply ? messages.repliedHeading : messages.newAlertHeading} #
             {ticket.ticketNumber}
           </Heading>
 
           <Section style={styles.alertBox}>
             <Text style={styles.alertText}>
               {isReply
-                ? "A requester replied to a support ticket and needs staff attention."
-                : "A new support ticket has been submitted and requires attention."}
+                ? messages.alertReplyIntro
+                : messages.alertCreatedIntro}
             </Text>
           </Section>
 
@@ -82,34 +90,34 @@ export const TicketNewAdminAlertEmail = ({
             </Heading>
 
             <Text style={styles.meta}>
-              <strong>Status:</strong> Open
+              <strong>{messages.status}</strong> {SUPPORT_TICKET_STATUS_LABELS[ticket.status] ?? ticket.status}
             </Text>
             <Text style={styles.meta}>
-              <strong>Department:</strong>{" "}
+              <strong>{messages.department}</strong>{" "}
               {SUPPORT_TICKET_DEPARTMENT_LABELS[ticket.department]}
             </Text>
             <Text style={styles.meta}>
-              <strong>Priority:</strong>{" "}
+              <strong>{messages.priority}</strong>{" "}
               {SUPPORT_TICKET_PRIORITY_LABELS[ticket.priority]}
             </Text>
             {ticket.service && (
               <Text style={styles.meta}>
-                <strong>Service:</strong> {ticket.service}
+                <strong>{messages.service}</strong> {ticket.service}
               </Text>
             )}
             {requesterName && (
               <Text style={styles.meta}>
-                <strong>Requester:</strong> {requesterName}
+                <strong>{messages.requester}</strong> {requesterName}
               </Text>
             )}
             {requesterEmail && (
               <Text style={styles.meta}>
-                <strong>Email:</strong> {requesterEmail}
+                <strong>{messages.email}</strong> {requesterEmail}
               </Text>
             )}
             {organization && (
               <Text style={styles.meta}>
-                <strong>Organization:</strong>{" "}
+                <strong>{messages.organization}</strong>{" "}
                 {organization.organizationName ?? "Unknown organization"} (
                 {organization.organizationId})
               </Text>
@@ -122,28 +130,28 @@ export const TicketNewAdminAlertEmail = ({
                 <strong>Re: {ticket.subject}</strong>
               </Text>
               <Text style={styles.descriptionText}>
-                Replied by {replyContext.authorName} ({replyContext.authorRole})
+                {messages.repliedBy} {replyContext.authorName} ({replyContext.authorRole})
                 {" · "}
                 {formattedRepliedAt}
               </Text>
               <Text style={styles.descriptionText}>{reply.body}</Text>
               {replyContext.hasSecureDetails && (
                 <Text style={styles.descriptionText}>
-                  Secure details attached (encrypted). Open the ticket to view.
+                  {messages.secureDetailsNotice}
                 </Text>
               )}
             </Section>
           ) : isReply && reply ? (
             <Section style={styles.description}>
               <Text style={styles.descriptionLabel}>
-                <strong>Latest reply:</strong>
+                <strong>{messages.latestReply}</strong>
               </Text>
               <Text style={styles.descriptionText}>{reply.body}</Text>
             </Section>
           ) : ticket.description ? (
             <Section style={styles.description}>
               <Text style={styles.descriptionLabel}>
-                <strong>Description:</strong>
+                <strong>{messages.descriptionLabel}</strong>
               </Text>
               <Text style={styles.descriptionText}>{ticket.description}</Text>
             </Section>
@@ -153,7 +161,7 @@ export const TicketNewAdminAlertEmail = ({
 
           <Section style={styles.actions}>
             <Button href={ticketUrl} style={styles.button}>
-              View & Respond to Ticket
+              {messages.viewAndRespond}
             </Button>
           </Section>
 
@@ -164,7 +172,7 @@ export const TicketNewAdminAlertEmail = ({
                   href={organization.organizationUrl}
                   style={styles.button}
                 >
-                  Open Organization
+                  {messages.openOrganization}
                 </Button>
               </Section>
             </>
@@ -173,8 +181,7 @@ export const TicketNewAdminAlertEmail = ({
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            You are receiving this because you are subscribed to support ticket
-            notifications.
+            {messages.adminFooter}
           </Text>
         </Container>
       </Body>

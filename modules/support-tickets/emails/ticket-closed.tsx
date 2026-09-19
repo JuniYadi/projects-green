@@ -11,14 +11,18 @@ import {
   Text,
 } from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 import type { SupportTicket } from "../support-ticket.types"
 import { SUPPORT_TICKET_STATUS_LABELS } from "../support-ticket.types"
 
 interface TicketClosedEmailProps {
   ticket: SupportTicket
+  locale?: AppLocale
 }
 
-export const TicketClosedEmail = ({ ticket }: TicketClosedEmailProps) => {
+export const TicketClosedEmail = ({ ticket, locale = "en" }: TicketClosedEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.supportTickets
   const ticketUrl = `${getEmailBaseUrl()}/console/support-tickets/${ticket.id}`
   const statusLabel = SUPPORT_TICKET_STATUS_LABELS[ticket.status]
   const isResolved = ticket.status === "resolved"
@@ -27,19 +31,20 @@ export const TicketClosedEmail = ({ ticket }: TicketClosedEmailProps) => {
     <Html>
       <Head />
       <Preview>
-        Support ticket #{ticket.ticketNumber} has been{" "}
-        {statusLabel.toLowerCase()}
+        {messages.previewClosed
+          .replace("{ticketNumber}", String(ticket.ticketNumber))
+          .replace("{status}", statusLabel.toLowerCase())}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Heading style={styles.heading}>
-            Support Ticket #{ticket.ticketNumber} {statusLabel}
+            {messages.closedHeading} #{ticket.ticketNumber} ({statusLabel})
           </Heading>
 
           <Text style={styles.intro}>
             {isResolved
-              ? "Your support ticket has been resolved. If you need further assistance, you can reopen it."
-              : "Your support ticket has been closed. Thank you for reaching out to us."}
+              ? messages.closedResolvedIntro
+              : messages.closedClosedIntro}
           </Text>
 
           <Section style={styles.ticketInfo}>
@@ -48,17 +53,17 @@ export const TicketClosedEmail = ({ ticket }: TicketClosedEmailProps) => {
             </Heading>
 
             <Text style={styles.meta}>
-              <strong>Final Status:</strong> {statusLabel}
+              <strong>{messages.finalStatus}</strong> {statusLabel}
             </Text>
             {ticket.resolvedAt && (
               <Text style={styles.meta}>
-                <strong>Resolved:</strong>{" "}
+                <strong>{messages.resolved}</strong>{" "}
                 {new Date(ticket.resolvedAt).toLocaleDateString()}
               </Text>
             )}
             {ticket.closedAt && (
               <Text style={styles.meta}>
-                <strong>Closed:</strong>{" "}
+                <strong>{messages.closed}</strong>{" "}
                 {new Date(ticket.closedAt).toLocaleDateString()}
               </Text>
             )}
@@ -69,20 +74,18 @@ export const TicketClosedEmail = ({ ticket }: TicketClosedEmailProps) => {
           <Section style={styles.actions}>
             {isResolved && (
               <Text style={styles.reopenNote}>
-                Need more help? You can reopen this ticket by replying to this
-                email or visiting the ticket page.
+                {messages.closedReopenNote}
               </Text>
             )}
             <Button href={ticketUrl} style={styles.button}>
-              View Ticket
+              {messages.viewTicket}
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            Thank you for using our support services. If you have any other
-            questions, please don&apos;t hesitate to reach out.
+            {messages.closedFooter}
           </Text>
         </Container>
       </Body>

@@ -1,17 +1,26 @@
 import type { Metadata } from "next"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { AuditLogsTable } from "../_components/audit-logs-table"
 
 export const metadata: Metadata = { title: "Audit Logs" }
 
-export default async function VpnAuditLogsPage() {
+export default async function VpnAuditLogsPage({
+  params,
+}: {
+  params?: Promise<{ lang?: string }>
+} = {}) {
+  const resolvedParams = params ? await params : undefined
+  const locale = resolveLocaleOrDefault(resolvedParams?.lang)
+  const messages = getMessages(locale).pPortalPages.vpnAuditLogs
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Audit Logs</h1>
+        <h1 className="text-2xl font-semibold">{messages.title}</h1>
         <p className="text-sm text-muted-foreground">
-          Track every VPN provisioning step, revocation, configuration download,
-          and admin action. Expand any row to inspect the full detail payload.
+          {messages.description}
         </p>
       </header>
       <AuditLogsTable />

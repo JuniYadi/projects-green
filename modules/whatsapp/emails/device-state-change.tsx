@@ -9,6 +9,8 @@ import {
   Section,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 export interface DeviceStateChangeDiff {
   field: string
@@ -22,6 +24,7 @@ export interface DeviceStateChangeEmailProps {
   orgName: string
   changes: DeviceStateChangeDiff[]
   changedAt: string
+  locale?: AppLocale
 }
 
 export const DeviceStateChangeEmail = ({
@@ -30,22 +33,26 @@ export const DeviceStateChangeEmail = ({
   orgName,
   changes,
   changedAt,
+  locale = "en",
 }: DeviceStateChangeEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.whatsapp
+
   return (
     <Html>
       <Head />
       <Preview>
-        [Admin Alert] WhatsApp Device Status Changed: {phoneNumber} ({orgName})
+        {messages.stateChangePreview
+          .replace("{phoneNumber}", phoneNumber)
+          .replace("{orgName}", orgName)}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Heading style={styles.heading}>
-            WhatsApp Device Status Update
+            {messages.stateChangeHeading}
           </Heading>
 
           <Text style={styles.intro}>
-            A Meta WhatsApp device state change has been detected for{" "}
-            <strong>{orgName}</strong>.
+            {messages.stateChangeIntro.replace("{orgName}", orgName)}
           </Text>
 
           <Section style={styles.deviceInfo}>
@@ -54,7 +61,7 @@ export const DeviceStateChangeEmail = ({
           </Section>
 
           <Section style={styles.details}>
-            <Text style={styles.subHeading}>Detected Changes:</Text>
+            <Text style={styles.subHeading}>{messages.detectedChanges}</Text>
             {changes.map((change, index) => (
               <div key={index} style={styles.changeRow}>
                 <Text style={styles.changeField}>{change.field}</Text>
@@ -70,15 +77,14 @@ export const DeviceStateChangeEmail = ({
               </div>
             ))}
             <Text style={styles.timestamp}>
-              <strong>Detected At:</strong> {changedAt}
+              <strong>{messages.detectedAt}</strong> {changedAt}
             </Text>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            This is an automated super-admin alert. You can inspect this device
-            in the admin portal.
+            {messages.stateChangeFooter}
           </Text>
         </Container>
       </Body>

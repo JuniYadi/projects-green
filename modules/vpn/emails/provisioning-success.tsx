@@ -8,37 +8,46 @@ import {
   Preview,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 interface ProvisioningSuccessEmailProps {
   organizationName?: string
   packageName?: string
+  locale?: AppLocale
 }
 
 export const ProvisioningSuccessEmail = ({
   organizationName = "your organization",
   packageName = "VPN",
-}: ProvisioningSuccessEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>Your VPN account is ready</Preview>
-    <Body style={s.body}>
-      <Container style={s.container}>
-        <Heading style={s.heading}>VPN Account Ready</Heading>
-        <Text style={s.text}>
-          Your {packageName} subscription for {organizationName} is now active.
-        </Text>
-        <Text style={s.text}>
-          You can download configuration files and connect to your VPN from the
-          console.
-        </Text>
-        <Hr style={s.hr} />
-        <Text style={s.footer}>
-          If you experience any issues, please contact our support team.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  locale = "en",
+}: ProvisioningSuccessEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.vpn
+
+  return (
+    <Html>
+      <Head />
+      <Preview>{messages.provSuccessPreview}</Preview>
+      <Body style={s.body}>
+        <Container style={s.container}>
+          <Heading style={s.heading}>{messages.provSuccessHeading}</Heading>
+          <Text style={s.text}>
+            {messages.provSuccessText1
+              .replace("{packageName}", packageName)
+              .replace("{organizationName}", organizationName)}
+          </Text>
+          <Text style={s.text}>
+            {messages.provSuccessText2}
+          </Text>
+          <Hr style={s.hr} />
+          <Text style={s.footer}>
+            {messages.provSuccessFooter}
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 const s = {
   body: {

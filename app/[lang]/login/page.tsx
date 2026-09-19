@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { AuthPageShell } from "@/components/auth-page-shell"
 import { LoginForm } from "@/components/login-form"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export const metadata: Metadata = {
@@ -32,6 +33,7 @@ export default async function LoginPage({
 }: LoginPageProps) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pAuthPages.login
   const search = await searchParams
   const next = getSafeNext(
     search?.next,
@@ -40,9 +42,9 @@ export default async function LoginPage({
 
   return (
     <AuthPageShell
-      badge="Account access"
-      panelTitle="Sign in or create an account"
-      panelDescription="Sign in to manage your PFNApp console. New here? Create your PFNApp account to get started."
+      badge={messages.badge}
+      panelTitle={messages.panelTitle}
+      panelDescription={messages.panelDescription}
     >
       <LoginForm nextPath={next} errorMessage={search?.error} />
     </AuthPageShell>

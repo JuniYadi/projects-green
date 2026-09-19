@@ -11,6 +11,7 @@ import {
   Text,
 } from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
+import { getMessages } from "@/lib/i18n/messages"
 import type { InvoiceOverdueEmailProps } from "./types"
 import {
   InvoiceCostBreakdown,
@@ -33,30 +34,30 @@ export const InvoiceOverdueEmail = ({
   lineItems,
   recipientEmail,
   organizationName,
+  locale = "en",
 }: InvoiceOverdueEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.invoices
   const invoiceUrl = `${getEmailBaseUrl()}/console/invoices/${invoiceNumber}`
 
   return (
     <Html>
       <Head />
       <Preview>
-        ACTION REQUIRED: Invoice {invoiceNumber} is Overdue ({amount})
+        {messages.overduePreview
+          .replace("{invoiceNumber}", invoiceNumber)
+          .replace("{amount}", amount)}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>Invoice Overdue</Heading>
+          <Heading style={styles.heading}>{messages.overdueHeading}</Heading>
 
           <Text style={styles.intro}>
-            Your payment for Invoice {invoiceNumber} was due on{" "}
-            <strong>{dueAt}</strong> and is now overdue. Please settle this
-            invoice immediately to prevent any potential service suspension.
+            {messages.overdueIntro.replace("{invoiceNumber}", invoiceNumber)}
           </Text>
 
           <Section style={styles.noticeBox}>
             <Text style={styles.noticeText}>
-              <strong>Urgent:</strong> Outstanding balance of{" "}
-              <strong>{amount}</strong> must be paid to maintain uninterrupted
-              services.
+              <strong>{messages.overdueGraceNotice}</strong>
             </Text>
           </Section>
 
@@ -69,16 +70,18 @@ export const InvoiceOverdueEmail = ({
             periodEnd={periodEnd}
             recipientEmail={recipientEmail}
             organizationName={organizationName}
+            locale={locale}
           />
 
-          <InvoiceItemsList lineItems={lineItems} />
+          <InvoiceItemsList lineItems={lineItems} locale={locale} />
 
           <InvoiceCostBreakdown
             amount={amount}
             subtotalAmount={subtotalAmount}
             taxAmount={taxAmount}
             discountAmount={discountAmount}
-            totalLabel="Overdue Balance"
+            totalLabel={messages.totalAmount}
+            locale={locale}
           />
 
           <Section style={styles.actions}>
@@ -86,15 +89,14 @@ export const InvoiceOverdueEmail = ({
               href={invoiceUrl}
               style={{ ...styles.button, backgroundColor: "#dc2626" }}
             >
-              Pay Overdue Balance Now
+              {messages.overduePayNow}
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have recently made this payment, please contact our support
-            team with proof of payment to expedite account review.
+            {messages.createdFooter}
           </Text>
         </Container>
       </Body>

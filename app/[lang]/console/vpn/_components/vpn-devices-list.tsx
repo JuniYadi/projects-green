@@ -1,11 +1,14 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
 
 import { DataTable } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Dialog,
   DialogContent,
@@ -59,10 +62,12 @@ function RevokeButton({
   device,
   onRevoke,
   revoking,
+  messages,
 }: {
   device: MobileDeviceEntry
   onRevoke: (id: string) => void
   revoking: string | null
+  messages: ReturnType<typeof getMessages>["pVpnDevicesList"]
 }) {
   const [open, setOpen] = useState(false)
 
@@ -79,21 +84,19 @@ function RevokeButton({
           className="h-7 text-xs text-destructive hover:text-destructive"
           disabled={revoking === device.id}
         >
-          {revoking === device.id ? "Revoking…" : "Revoke"}
+          {revoking === device.id ? "Revoking…" : messages.revoke}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Revoke device</DialogTitle>
+          <DialogTitle>{messages.revokeDeviceTitle}</DialogTitle>
           <DialogDescription>
-            This will disconnect VPN on{" "}
-            <span className="font-medium">{device.deviceName}</span>{" "}
-            immediately. The device can be re-paired later if needed.
+            {messages.revokeDesc.replace("{device}", device.deviceName)}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {messages.cancel}
           </Button>
           <Button
             variant="destructive"
@@ -102,7 +105,7 @@ function RevokeButton({
               onRevoke(device.id)
             }}
           >
-            Revoke
+            {messages.revoke}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -116,6 +119,10 @@ export function VpnDevicesList({
   revoking,
   defaultStatusFilter = "ACTIVE",
 }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pVpnDevicesList
+
   const columns = useMemo<ColumnDef<MobileDeviceEntry, unknown>[]>(
     () => [
       {
@@ -168,12 +175,13 @@ export function VpnDevicesList({
               device={row.original}
               onRevoke={onRevoke}
               revoking={revoking}
+              messages={messages}
             />
           </div>
         ),
       },
     ],
-    [onRevoke, revoking]
+    [onRevoke, revoking, messages]
   )
 
   const initialColumnFilters =
@@ -186,7 +194,7 @@ export function VpnDevicesList({
       columns={columns}
       data={devices}
       tableId="console-vpn-devices"
-      searchPlaceholder="Search devices..."
+      searchPlaceholder={messages.searchPlaceholder}
       searchableColumns={["deviceName", "platform", "pairedVia"]}
       initialColumnFilters={initialColumnFilters}
       facetFilters={[
@@ -201,7 +209,7 @@ export function VpnDevicesList({
         },
       ]}
       defaultColumnVisibility={{ pairedAt: false, lastSeenAt: false }}
-      emptyMessage="No devices found."
+      emptyMessage={messages.noDevicesFound}
     />
   )
 }
