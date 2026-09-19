@@ -7092,6 +7092,99 @@ export const idMessages: AppMessages = {
     previousButton: "Sebelumnya",
     nextButton: "Berikutnya",
   },
+  pConsoleAiConnectionsPageClient: {
+    pageTitle: "Koneksi API",
+    pageDescription:
+      "Kelola koneksi API eksternal, URL dasar, dan header autentikasi " +
+      "untuk eksekusi alat AI.",
+    addConnectionButton: "Tambah Koneksi",
+    filterPlaceholder:
+      "Filter koneksi berdasarkan nama, URL, atau autentikasi...",
+    loadingConnections: "Memuat koneksi...",
+    noConnectionsTitle: "Tidak Ada Koneksi API",
+    noMatchingTitle: "Koneksi tidak ditemukan",
+    emptyStateDescription:
+      "Konfigurasikan endpoint dan kredensial API eksternal untuk alat AI " +
+      "dan alur kerja agen Anda.",
+    noMatchingDescription: "Coba sesuaikan kueri pencarian Anda.",
+    configuredConnectionsTitle: "Koneksi Terkonfigurasi",
+    configuredConnectionsDescription:
+      "Integrasi keluar yang dapat diakses oleh mesin eksekusi AI.",
+    columnConnection: "Koneksi",
+    columnBaseUrl: "URL Dasar",
+    columnAuthType: "Tipe Autentikasi",
+    columnMaskedHeaders: "Header Disamarkan",
+    columnPingStatus: "Status Ping",
+    columnActions: "Aksi",
+    badgeInactive: "Tidak Aktif",
+    badgeNone: "Tidak Ada",
+    badgeUntested: "Belum Diuji",
+    badgeTesting: "Menguji...",
+    badgeFailed: "Gagal",
+    testButtonTooltip: "Uji Ping Koneksi",
+    testButtonLabel: "Uji",
+    editButtonTooltip: "Edit Koneksi",
+    deleteButtonTooltip: "Hapus Koneksi",
+    createDialogTitle: "Buat Koneksi API",
+    editDialogTitle: "Edit Koneksi API",
+    dialogDescription:
+      "Konfigurasikan detail koneksi keluar dan kredensial untuk " +
+      "integrasi alat AI.",
+    nameLabel: "Nama Koneksi",
+    namePlaceholder: "Misal: Layanan Core CRM",
+    descriptionLabel: "Deskripsi (Opsional)",
+    descriptionPlaceholder:
+      "Misal: Layanan data pelanggan dan tiket keluar",
+    baseUrlLabel: "URL Dasar",
+    baseUrlPlaceholder: "https://api.example.com/v1",
+    authTypeLabel: "Tipe Autentikasi",
+    authTypePlaceholder: "Pilih tipe autentikasi",
+    authTypeNone: "NONE (Tanpa autentikasi)",
+    authTypeBearer: "BEARER (Token Bearer Otorisasi)",
+    authTypeApiKey: "API_KEY (Header API Key)",
+    authTypeCustom: "CUSTOM (Header Khusus)",
+    activeLabel: "Koneksi Aktif",
+    activeDescription: "Aktifkan atau nonaktifkan akses AI ke koneksi ini.",
+    headersSectionTitle: "Header & Rahasia Khusus",
+    headersSectionDescription:
+      "Header dikirim pada setiap permintaan. Nilai dienkripsi dalam " +
+      "penyimpanan.",
+    addHeaderButton: "Tambah Header",
+    noHeadersConfigured:
+      'Belum ada header yang dikonfigurasi. Klik "Tambah Header" untuk ' +
+      "mendefinisikan header khusus.",
+    headerKeyColumn: "Kunci Header",
+    headerValueColumn: "Nilai / Rahasia",
+    headerKeyPlaceholder: "Nama-Header",
+    headerValuePlaceholder: "Nilai-Header",
+    revealSecretAria: "Tampilkan rahasia",
+    maskSecretAria: "Samarkan rahasia",
+    cancelButton: "Batal",
+    saveChangesButton: "Simpan Perubahan",
+    createConnectionButton: "Buat Koneksi",
+    savingButton: "Menyimpan...",
+    deleteDialogTitle: "Hapus Koneksi API",
+    deleteDialogDescription:
+      'Apakah Anda yakin ingin menghapus "{name}"? Eksekusi alat AI ' +
+      "yang menggunakan koneksi ini akan gagal. Tindakan ini tidak dapat " +
+      "dibatalkan.",
+    deleteDialogCancel: "Batal",
+    deleteDialogConfirm: "Hapus Koneksi",
+    deleteDialogDeleting: "Menghapus...",
+    toastLoadError: "Gagal memuat koneksi",
+    toastNameRequired: "Nama koneksi wajib diisi",
+    toastUpdateSuccess: "Koneksi berhasil diperbarui",
+    toastUpdateError: "Gagal memperbarui koneksi",
+    toastCreateSuccess: "Koneksi berhasil dibuat",
+    toastCreateError: "Gagal membuat koneksi",
+    toastSaveError: "Terjadi kesalahan saat menyimpan koneksi",
+    toastDeleteSuccess: "Koneksi berhasil dihapus",
+    toastDeleteError: "Terjadi kesalahan saat menghapus koneksi",
+    toastTestResponded: "Koneksi merespons dalam {latencyMs}md",
+    toastTestFailed: "Pengujian gagal: {error}",
+    toastPingFailed: "Permintaan ping gagal",
+    toastNetworkError: "Kesalahan jaringan saat menguji koneksi",
+  },
   pConsoleAiProvidersPageClient: {
     pageTitle: "Provider AI (BYOK)",
     pageDescription:

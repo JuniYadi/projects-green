@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import {
   ArrowClockwise,
   CheckCircle,
@@ -59,6 +60,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type AuthType = "NONE" | "BEARER" | "API_KEY" | "CUSTOM"
 
@@ -131,6 +134,10 @@ export function validateBaseUrl(url: string): string | null {
 export default function AiConnectionsPageClient({
   initialConnections,
 }: AiConnectionsPageClientProps = {}) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [connections, setConnections] = useState<ConnectionItem[]>(
     initialConnections ?? []
   )
@@ -165,11 +172,11 @@ export default function AiConnectionsPageClient({
       }
     } catch (err) {
       console.error("[ai-connections] load error:", err)
-      toast.error("Failed to load connections")
+      toast.error(messages.pConsoleAiConnectionsPageClient.toastLoadError)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [messages])
 
   useEffect(() => {
     if (!initialConnections) {
@@ -266,7 +273,7 @@ export default function AiConnectionsPageClient({
     const trimmedUrl = baseUrl.trim()
     const urlErr = validateBaseUrl(trimmedUrl)
     if (!trimmedName) {
-      toast.error("Connection name is required")
+      toast.error(messages.pConsoleAiConnectionsPageClient.toastNameRequired)
       return
     }
     if (urlErr) {
@@ -297,11 +304,16 @@ export default function AiConnectionsPageClient({
             Object.keys(headerRecord).length > 0 ? headerRecord : undefined,
         })
         if (res.data && res.data.ok) {
-          toast.success("Connection updated successfully")
+          toast.success(
+            messages.pConsoleAiConnectionsPageClient.toastUpdateSuccess
+          )
           setDialogOpen(false)
           await loadConnections()
         } else {
-          toast.error(res.data?.error || "Failed to update connection")
+          toast.error(
+            res.data?.error ||
+              messages.pConsoleAiConnectionsPageClient.toastUpdateError
+          )
         }
       } else {
         const res = await eden.api.console.ai.connections.post({
@@ -313,16 +325,21 @@ export default function AiConnectionsPageClient({
             Object.keys(headerRecord).length > 0 ? headerRecord : undefined,
         })
         if (res.data && res.data.ok) {
-          toast.success("Connection created successfully")
+          toast.success(
+            messages.pConsoleAiConnectionsPageClient.toastCreateSuccess
+          )
           setDialogOpen(false)
           await loadConnections()
         } else {
-          toast.error(res.data?.error || "Failed to create connection")
+          toast.error(
+            res.data?.error ||
+              messages.pConsoleAiConnectionsPageClient.toastCreateError
+          )
         }
       }
     } catch (err) {
       console.error("[ai-connections] save error:", err)
-      toast.error("An error occurred while saving the connection")
+      toast.error(messages.pConsoleAiConnectionsPageClient.toastSaveError)
     } finally {
       setSaving(false)
     }
@@ -336,15 +353,20 @@ export default function AiConnectionsPageClient({
         deleteTarget.id
       ].delete()
       if (res.data && res.data.ok) {
-        toast.success("Connection deleted successfully")
+        toast.success(
+          messages.pConsoleAiConnectionsPageClient.toastDeleteSuccess
+        )
         setConnections((prev) => prev.filter((c) => c.id !== deleteTarget.id))
         setDeleteTarget(null)
       } else {
-        toast.error(res.data?.error || "Failed to delete connection")
+        toast.error(
+          res.data?.error ||
+            messages.pConsoleAiConnectionsPageClient.toastDeleteError
+        )
       }
     } catch (err) {
       console.error("[ai-connections] delete error:", err)
-      toast.error("An error occurred while deleting connection")
+      toast.error(messages.pConsoleAiConnectionsPageClient.toastDeleteError)
     } finally {
       setDeleting(false)
     }
@@ -372,11 +394,18 @@ export default function AiConnectionsPageClient({
             statusCode: execData?.status ?? 200,
           },
         }))
-        toast.success(`Connection responded in ${latencyMs}ms`)
+        toast.success(
+          messages.pConsoleAiConnectionsPageClient.toastTestResponded.replace(
+            "{latencyMs}",
+            String(latencyMs)
+          )
+        )
       } else {
         const execData = res.data?.data
         const errMsg =
-          execData?.error || res.data?.error || "Ping request failed"
+          execData?.error ||
+          res.data?.error ||
+          messages.pConsoleAiConnectionsPageClient.toastPingFailed
         setTestResults((prev) => ({
           ...prev,
           [item.id]: {
@@ -386,12 +415,19 @@ export default function AiConnectionsPageClient({
             error: String(errMsg),
           },
         }))
-        toast.error(`Test failed: ${errMsg}`)
+        toast.error(
+          messages.pConsoleAiConnectionsPageClient.toastTestFailed.replace(
+            "{error}",
+            String(errMsg)
+          )
+        )
       }
     } catch (err) {
       const latencyMs = Math.round(getNow() - start)
       const errMsg =
-        err instanceof Error ? err.message : "Network error testing connection"
+        err instanceof Error
+          ? err.message
+          : messages.pConsoleAiConnectionsPageClient.toastNetworkError
       setTestResults((prev) => ({
         ...prev,
         [item.id]: {
@@ -401,7 +437,12 @@ export default function AiConnectionsPageClient({
           error: errMsg,
         },
       }))
-      toast.error(`Test failed: ${errMsg}`)
+      toast.error(
+        messages.pConsoleAiConnectionsPageClient.toastTestFailed.replace(
+          "{error}",
+          errMsg
+        )
+      )
     }
   }
 
@@ -425,11 +466,10 @@ export default function AiConnectionsPageClient({
       >
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            API Connections
+            {messages.pConsoleAiConnectionsPageClient.pageTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Manage external API connections, base URLs, and authentication
-            headers for AI tool execution.
+            {messages.pConsoleAiConnectionsPageClient.pageDescription}
           </p>
         </div>
         <Button
@@ -437,13 +477,17 @@ export default function AiConnectionsPageClient({
           className="gap-2 self-start sm:self-auto"
         >
           <Plus size={16} weight="bold" />
-          <span>Add Connection</span>
+          <span>
+            {messages.pConsoleAiConnectionsPageClient.addConnectionButton}
+          </span>
         </Button>
       </div>
 
       <div className="flex items-center gap-4">
         <Input
-          placeholder="Filter connections by name, URL, or auth..."
+          placeholder={
+            messages.pConsoleAiConnectionsPageClient.filterPlaceholder
+          }
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="max-w-sm"
@@ -455,7 +499,7 @@ export default function AiConnectionsPageClient({
           <CardContent
             className="p-8 text-center text-sm text-muted-foreground"
           >
-            Loading connections...
+            {messages.pConsoleAiConnectionsPageClient.loadingConnections}
           </CardContent>
         </Card>
       ) : filteredConnections.length === 0 ? (
@@ -475,19 +519,20 @@ export default function AiConnectionsPageClient({
           </div>
           <h3 className="text-base font-semibold">
             {connections.length === 0
-              ? "No API Connections"
-              : "No matching connections"}
+              ? messages.pConsoleAiConnectionsPageClient.noConnectionsTitle
+              : messages.pConsoleAiConnectionsPageClient.noMatchingTitle}
           </h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             {connections.length === 0
-              ? "Configure external API endpoints and credentials for your" +
-                " AI tools and agent workflows."
-              : "Try adjusting your search query."}
+              ? messages.pConsoleAiConnectionsPageClient.emptyStateDescription
+              : messages.pConsoleAiConnectionsPageClient.noMatchingDescription}
           </p>
           {connections.length === 0 && (
             <Button onClick={openCreateDialog} className="mt-4 gap-2">
               <Plus size={16} weight="bold" />
-              <span>Add Connection</span>
+              <span>
+                {messages.pConsoleAiConnectionsPageClient.addConnectionButton}
+              </span>
             </Button>
           )}
         </div>
@@ -495,22 +540,42 @@ export default function AiConnectionsPageClient({
         <Card className="border-border bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">
-              Configured Connections ({filteredConnections.length})
+              {messages.pConsoleAiConnectionsPageClient
+                .configuredConnectionsTitle}{" "}
+              ({filteredConnections.length})
             </CardTitle>
             <CardDescription className="text-xs">
-              Outbound integrations accessible by AI execution engines.
+              {
+                messages.pConsoleAiConnectionsPageClient
+                  .configuredConnectionsDescription
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Connection</TableHead>
-                  <TableHead>Base URL</TableHead>
-                  <TableHead>Auth Type</TableHead>
-                  <TableHead>Masked Headers</TableHead>
-                  <TableHead>Ping Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>
+                    {messages.pConsoleAiConnectionsPageClient.columnConnection}
+                  </TableHead>
+                  <TableHead>
+                    {messages.pConsoleAiConnectionsPageClient.columnBaseUrl}
+                  </TableHead>
+                  <TableHead>
+                    {messages.pConsoleAiConnectionsPageClient.columnAuthType}
+                  </TableHead>
+                  <TableHead>
+                    {
+                      messages.pConsoleAiConnectionsPageClient
+                        .columnMaskedHeaders
+                    }
+                  </TableHead>
+                  <TableHead>
+                    {messages.pConsoleAiConnectionsPageClient.columnPingStatus}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {messages.pConsoleAiConnectionsPageClient.columnActions}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -530,7 +595,10 @@ export default function AiConnectionsPageClient({
                                 variant="secondary"
                                 className="text-[10px]"
                               >
-                                Inactive
+                                {
+                                  messages.pConsoleAiConnectionsPageClient
+                                    .badgeInactive
+                                }
                               </Badge>
                             )}
                           </div>
@@ -556,7 +624,7 @@ export default function AiConnectionsPageClient({
                       <TableCell>
                         {headerEntries.length === 0 ? (
                           <span className="text-xs text-muted-foreground">
-                            None
+                            {messages.pConsoleAiConnectionsPageClient.badgeNone}
                           </span>
                         ) : (
                           <div className="flex max-w-xs flex-wrap gap-1">
@@ -581,14 +649,20 @@ export default function AiConnectionsPageClient({
                       <TableCell>
                         {!testRes || testRes.status === "idle" ? (
                           <span className="text-xs text-muted-foreground">
-                            Untested
+                            {
+                              messages.pConsoleAiConnectionsPageClient
+                                .badgeUntested
+                            }
                           </span>
                         ) : testRes.status === "testing" ? (
                           <Badge
                             variant="outline"
                             className="animate-pulse text-xs"
                           >
-                            Testing...
+                            {
+                              messages.pConsoleAiConnectionsPageClient
+                                .badgeTesting
+                            }
                           </Badge>
                         ) : testRes.status === "success" ? (
                           <div className="flex flex-col gap-0.5">
@@ -601,7 +675,8 @@ export default function AiConnectionsPageClient({
                             >
                               <CheckCircle size={12} weight="bold" />
                               <span>
-                                {testRes.statusCode} ({testRes.latencyMs}ms)
+                                {`${testRes.statusCode} ` +
+                                  `(${testRes.latencyMs}ms)`}
                               </span>
                             </Badge>
                           </div>
@@ -612,7 +687,11 @@ export default function AiConnectionsPageClient({
                               className="w-fit gap-1 text-xs"
                             >
                               <XCircle size={12} weight="bold" />
-                              <span>Failed ({testRes.latencyMs}ms)</span>
+                              <span>
+                                {messages.pConsoleAiConnectionsPageClient
+                                  .badgeFailed}
+                                {` (${testRes.latencyMs}ms)`}
+                              </span>
                             </Badge>
                             {testRes.error && (
                               <span
@@ -635,7 +714,10 @@ export default function AiConnectionsPageClient({
                             size="sm"
                             onClick={() => handleTestConnection(item)}
                             disabled={testRes?.status === "testing"}
-                            title="Test Connection Ping"
+                            title={
+                              messages.pConsoleAiConnectionsPageClient
+                                .testButtonTooltip
+                            }
                             className="h-8 gap-1 px-2 text-xs"
                           >
                             <ArrowClockwise
@@ -646,13 +728,21 @@ export default function AiConnectionsPageClient({
                                   : ""
                               }
                             />
-                            <span>Test</span>
+                            <span>
+                              {
+                                messages.pConsoleAiConnectionsPageClient
+                                  .testButtonLabel
+                              }
+                            </span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => openEditDialog(item)}
-                            title="Edit Connection"
+                            title={
+                              messages.pConsoleAiConnectionsPageClient
+                                .editButtonTooltip
+                            }
                             className="h-8 w-8 p-0"
                           >
                             <PencilSimple size={14} />
@@ -661,7 +751,10 @@ export default function AiConnectionsPageClient({
                             variant="ghost"
                             size="sm"
                             onClick={() => setDeleteTarget(item)}
-                            title="Delete Connection"
+                            title={
+                              messages.pConsoleAiConnectionsPageClient
+                                .deleteButtonTooltip
+                            }
                             className={
                               "h-8 w-8 p-0 text-destructive " +
                               "hover:text-destructive"
@@ -685,32 +778,41 @@ export default function AiConnectionsPageClient({
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
-              {editingItem ? "Edit API Connection" : "Create API Connection"}
+              {editingItem
+                ? messages.pConsoleAiConnectionsPageClient.editDialogTitle
+                : messages.pConsoleAiConnectionsPageClient.createDialogTitle}
             </DialogTitle>
             <DialogDescription>
-              Configure outbound connection details and credentials for AI
-              tool integrations.
+              {messages.pConsoleAiConnectionsPageClient.dialogDescription}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="conn-name">
-                Connection Name <span className="text-destructive">*</span>
+                {messages.pConsoleAiConnectionsPageClient.nameLabel}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="conn-name"
-                placeholder="e.g. Core CRM Service"
+                placeholder={
+                  messages.pConsoleAiConnectionsPageClient.namePlaceholder
+                }
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="conn-desc">Description (Optional)</Label>
+              <Label htmlFor="conn-desc">
+                {messages.pConsoleAiConnectionsPageClient.descriptionLabel}
+              </Label>
               <Input
                 id="conn-desc"
-                placeholder="e.g. Outbound customer data and ticket service"
+                placeholder={
+                  messages.pConsoleAiConnectionsPageClient
+                    .descriptionPlaceholder
+                }
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -718,11 +820,14 @@ export default function AiConnectionsPageClient({
 
             <div className="space-y-2">
               <Label htmlFor="conn-url">
-                Base URL <span className="text-destructive">*</span>
+                {messages.pConsoleAiConnectionsPageClient.baseUrlLabel}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="conn-url"
-                placeholder="https://api.example.com/v1"
+                placeholder={
+                  messages.pConsoleAiConnectionsPageClient.baseUrlPlaceholder
+                }
                 value={baseUrl}
                 onChange={(e) => {
                   setBaseUrl(e.target.value)
@@ -736,26 +841,33 @@ export default function AiConnectionsPageClient({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="conn-auth">Authentication Type</Label>
+              <Label htmlFor="conn-auth">
+                {messages.pConsoleAiConnectionsPageClient.authTypeLabel}
+              </Label>
               <Select
                 value={authType}
                 onValueChange={(val: AuthType) => handleAuthTypeChange(val)}
               >
                 <SelectTrigger id="conn-auth">
-                  <SelectValue placeholder="Select auth type" />
+                  <SelectValue
+                    placeholder={
+                      messages.pConsoleAiConnectionsPageClient
+                        .authTypePlaceholder
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NONE">
-                    NONE (No authentication)
+                    {messages.pConsoleAiConnectionsPageClient.authTypeNone}
                   </SelectItem>
                   <SelectItem value="BEARER">
-                    BEARER (Authorization Bearer Token)
+                    {messages.pConsoleAiConnectionsPageClient.authTypeBearer}
                   </SelectItem>
                   <SelectItem value="API_KEY">
-                    API_KEY (API Key Header)
+                    {messages.pConsoleAiConnectionsPageClient.authTypeApiKey}
                   </SelectItem>
                   <SelectItem value="CUSTOM">
-                    CUSTOM (Custom Headers)
+                    {messages.pConsoleAiConnectionsPageClient.authTypeCustom}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -770,10 +882,13 @@ export default function AiConnectionsPageClient({
               >
                 <div className="space-y-0.5">
                   <Label htmlFor="conn-active" className="text-sm font-medium">
-                    Connection Active
+                    {messages.pConsoleAiConnectionsPageClient.activeLabel}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Enable or disable AI access to this connection.
+                    {
+                      messages.pConsoleAiConnectionsPageClient
+                        .activeDescription
+                    }
                   </p>
                 </div>
                 <Switch
@@ -789,11 +904,16 @@ export default function AiConnectionsPageClient({
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-sm font-medium">
-                    Custom Headers &amp; Secrets
+                    {
+                      messages.pConsoleAiConnectionsPageClient
+                        .headersSectionTitle
+                    }
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Headers sent with each request. Values are encrypted at
-                    rest.
+                    {
+                      messages.pConsoleAiConnectionsPageClient
+                        .headersSectionDescription
+                    }
                   </p>
                 </div>
                 <Button
@@ -804,7 +924,9 @@ export default function AiConnectionsPageClient({
                   className="gap-1 text-xs"
                 >
                   <Plus size={12} weight="bold" />
-                  <span>Add Header</span>
+                  <span>
+                    {messages.pConsoleAiConnectionsPageClient.addHeaderButton}
+                  </span>
                 </Button>
               </div>
 
@@ -815,8 +937,7 @@ export default function AiConnectionsPageClient({
                     "p-4 text-center text-xs text-muted-foreground"
                   }
                 >
-                  No headers configured. Click &quot;Add Header&quot; to define
-                  custom headers.
+                  {messages.pConsoleAiConnectionsPageClient.noHeadersConfigured}
                 </div>
               ) : (
                 <div className="space-y-2 rounded-md border border-border p-2">
@@ -826,8 +947,15 @@ export default function AiConnectionsPageClient({
                       "text-muted-foreground"
                     }
                   >
-                    <div className="col-span-5">Header Key</div>
-                    <div className="col-span-6">Value / Secret</div>
+                    <div className="col-span-5">
+                      {messages.pConsoleAiConnectionsPageClient.headerKeyColumn}
+                    </div>
+                    <div className="col-span-6">
+                      {
+                        messages.pConsoleAiConnectionsPageClient
+                          .headerValueColumn
+                      }
+                    </div>
                     <div className="col-span-1 text-right" />
                   </div>
                   {headers.map((h) => (
@@ -837,7 +965,10 @@ export default function AiConnectionsPageClient({
                     >
                       <div className="col-span-5">
                         <Input
-                          placeholder="Header-Name"
+                          placeholder={
+                            messages.pConsoleAiConnectionsPageClient
+                              .headerKeyPlaceholder
+                          }
                           value={h.key}
                           onChange={(e) =>
                             updateHeaderRow(h.id, "key", e.target.value)
@@ -848,7 +979,10 @@ export default function AiConnectionsPageClient({
                       <div className="relative col-span-6">
                         <Input
                           type={h.isMasked ? "password" : "text"}
-                          placeholder="Header-Value"
+                          placeholder={
+                            messages.pConsoleAiConnectionsPageClient
+                              .headerValuePlaceholder
+                          }
                           value={h.value}
                           onChange={(e) =>
                             updateHeaderRow(h.id, "value", e.target.value)
@@ -859,7 +993,11 @@ export default function AiConnectionsPageClient({
                           type="button"
                           onClick={() => toggleHeaderMask(h.id)}
                           aria-label={
-                            h.isMasked ? "Reveal secret" : "Mask secret"
+                            h.isMasked
+                              ? messages.pConsoleAiConnectionsPageClient
+                                  .revealSecretAria
+                              : messages.pConsoleAiConnectionsPageClient
+                                  .maskSecretAria
                           }
                           className={
                             "absolute right-2 top-1/2 -translate-y-1/2 " +
@@ -900,7 +1038,7 @@ export default function AiConnectionsPageClient({
               variant="ghost"
               onClick={() => setDialogOpen(false)}
             >
-              Cancel
+              {messages.pConsoleAiConnectionsPageClient.cancelButton}
             </Button>
             <Button
               type="button"
@@ -908,10 +1046,11 @@ export default function AiConnectionsPageClient({
               disabled={saving}
             >
               {saving
-                ? "Saving..."
+                ? messages.pConsoleAiConnectionsPageClient.savingButton
                 : editingItem
-                  ? "Save Changes"
-                  : "Create Connection"}
+                  ? messages.pConsoleAiConnectionsPageClient.saveChangesButton
+                  : messages.pConsoleAiConnectionsPageClient
+                      .createConnectionButton}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -924,15 +1063,21 @@ export default function AiConnectionsPageClient({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete API Connection</AlertDialogTitle>
+            <AlertDialogTitle>
+              {messages.pConsoleAiConnectionsPageClient.deleteDialogTitle}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;?
-              AI tool executions using this connection will fail. This action
-              cannot be undone.
+              {messages.pConsoleAiConnectionsPageClient
+                .deleteDialogDescription.replace(
+                  "{name}",
+                  deleteTarget?.name ?? ""
+                )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>
+              {messages.pConsoleAiConnectionsPageClient.deleteDialogCancel}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}
@@ -941,7 +1086,11 @@ export default function AiConnectionsPageClient({
                 "hover:bg-destructive/90"
               }
             >
-              {deleting ? "Deleting..." : "Delete Connection"}
+              {deleting
+                ? messages.pConsoleAiConnectionsPageClient
+                    .deleteDialogDeleting
+                : messages.pConsoleAiConnectionsPageClient
+                    .deleteDialogConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
