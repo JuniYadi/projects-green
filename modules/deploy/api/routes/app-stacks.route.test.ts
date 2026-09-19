@@ -1331,7 +1331,7 @@ describe("appStacksRoutes", () => {
         message: "Runner auth failed",
         text: "401 Unauthorized",
         isBuilding: false,
-        status: "failed",
+        status: "failed" as const,
         buildNumber: null,
       })
 

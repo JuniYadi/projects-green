@@ -988,7 +988,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
             orderBy: { createdAt: "asc" },
           },
           containerImages: {
-            orderBy: { createdAt: "desc" },
+            orderBy: { pushedAt: "desc" },
             take: 1,
           },
         },
