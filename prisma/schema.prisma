@@ -141,6 +141,9 @@ model AiKnowledgeDocument {
   errorMessage    String?
   contentMarkdown String?          @db.Text
   contentHash     String?
+  crawlMode       String?          @default("SINGLE_PAGE")
+  syncSchedule    String?          @default("MANUAL")
+  lastSyncedAt    DateTime?
   pageCount       Int              @default(1)
   chunkIndex      Int              @default(0)
   parentChunkId   String?
