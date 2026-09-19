@@ -3,8 +3,12 @@ import { describe, expect, it, mock } from "bun:test"
 mock.module("@/lib/prisma", () => ({ prisma: {} }))
 
 const { VaultSecretNotFoundError } = await import("@/lib/vault/vault-client")
-const { VaultSecretsService, VaultStackNotFoundError } =
-  await import("./vault-secrets.service")
+const {
+  VaultSecretsService,
+  VaultStackNotFoundError,
+  VaultSecretValidationError,
+  VaultSecretsServiceError,
+} = await import("./vault-secrets.service")
 
 const stack = (envVarsJson: unknown = []) => ({
   id: "stack-1",
@@ -202,5 +206,57 @@ describe("VaultSecretsService", () => {
       where: { id: "stack-1", organizationId: "org-2" },
       select: { id: true, organizationId: true, envVarsJson: true },
     })
+  })
+
+  it("rejects secret reference with foreign tenant vault path", async () => {
+    const dependencies = createDependencies([
+      {
+        type: "secret_ref",
+        key: "DATABASE_URL",
+        environment: "prod",
+        vaultPath: "tenants/foreign-org/stacks/other-stack/prod/app-env",
+        vaultKey: "DATABASE_URL",
+        version: 1,
+        updatedAt: "2026-08-18T12:00:00.000Z",
+      },
+    ])
+    const service = new VaultSecretsService(dependencies as never)
+
+    await expect(
+      service.revealSecret({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "prod",
+        key: "DATABASE_URL",
+        workosUserId: "user-1",
+      })
+    ).rejects.toBeInstanceOf(VaultSecretValidationError)
+    expect(dependencies.client.readKV).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when audit logger throws", async () => {
+    const dependencies = createDependencies([
+      {
+        type: "secret_ref",
+        key: "DATABASE_URL",
+        environment: "prod",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "DATABASE_URL",
+        version: 1,
+        updatedAt: "2026-08-18T12:00:00.000Z",
+      },
+    ])
+    dependencies.auditLogger.mockRejectedValue(new Error("DB audit error"))
+    const service = new VaultSecretsService(dependencies as never)
+
+    await expect(
+      service.revealSecret({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "prod",
+        key: "DATABASE_URL",
+        workosUserId: "user-1",
+      })
+    ).rejects.toBeInstanceOf(VaultSecretsServiceError)
   })
 })

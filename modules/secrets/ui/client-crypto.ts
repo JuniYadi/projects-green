@@ -1,6 +1,8 @@
-import type {
-  ClientPublicKeyJwk,
-  EnvelopeEncryptedPayload,
+import {
+  ENVELOPE_HKDF_INFO,
+  ENVELOPE_HKDF_SALT,
+  type ClientPublicKeyJwk,
+  type EnvelopeEncryptedPayload,
 } from "@/lib/vault/vault-envelope"
 
 export type ClientSessionCrypto = {
@@ -25,7 +27,7 @@ export async function createClientSessionCrypto(): Promise<ClientSessionCrypto> 
 
   const keypair = (await subtle.generateKey(
     { name: "ECDH", namedCurve: "P-256" },
-    true,
+    false,
     ["deriveBits"]
   )) as CryptoKeyPair
 
@@ -51,10 +53,23 @@ export async function createClientSessionCrypto(): Promise<ClientSessionCrypto> 
       256
     )
 
-    const aesKey = await subtle.importKey(
+    const hkdfKey = await subtle.importKey(
       "raw",
       sharedBits,
-      { name: "AES-GCM" },
+      { name: "HKDF" },
+      false,
+      ["deriveKey"]
+    )
+
+    const aesKey = await subtle.deriveKey(
+      {
+        name: "HKDF",
+        hash: "SHA-256",
+        salt: ENVELOPE_HKDF_SALT,
+        info: ENVELOPE_HKDF_INFO,
+      },
+      hkdfKey,
+      { name: "AES-GCM", length: 256 },
       false,
       ["decrypt"]
     )

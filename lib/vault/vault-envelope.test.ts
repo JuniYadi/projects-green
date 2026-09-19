@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test"
-import { encryptEnvelope } from "./vault-envelope"
+import {
+  ENVELOPE_HKDF_INFO,
+  ENVELOPE_HKDF_SALT,
+  encryptEnvelope,
+} from "./vault-envelope"
 
 describe("vault-envelope", () => {
   it("encrypts plaintext using client ECDH P-256 public key", async () => {
@@ -41,10 +45,23 @@ describe("vault-envelope", () => {
       256
     )
 
-    const aesKey = await subtle.importKey(
+    const hkdfKey = await subtle.importKey(
       "raw",
       sharedBits,
-      { name: "AES-GCM" },
+      { name: "HKDF" },
+      false,
+      ["deriveKey"]
+    )
+
+    const aesKey = await subtle.deriveKey(
+      {
+        name: "HKDF",
+        hash: "SHA-256",
+        salt: ENVELOPE_HKDF_SALT,
+        info: ENVELOPE_HKDF_INFO,
+      },
+      hkdfKey,
+      { name: "AES-GCM", length: 256 },
       false,
       ["decrypt"]
     )
