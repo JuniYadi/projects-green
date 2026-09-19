@@ -67,11 +67,13 @@ describe("deploy-monitor.dto", () => {
         manifestPushed: false,
         argocdSynced: false,
         failureReason: "boom",
+        commitSha: null,
         startedAt: null as unknown as Date,
         completedAt: null as unknown as Date,
       })
 
       expect(dto.attempt).toBe(1)
+      expect(dto.commitSha).toBeNull()
       expect(dto.startedAt).toBeNull()
       expect(dto.completedAt).toBeNull()
 
