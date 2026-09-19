@@ -140,7 +140,7 @@ export function LogHealthSummaryCards({
               {messages.totalLogLines}
             </p>
             <p className="text-2xl font-bold tracking-tight text-foreground">
-              {totalLogs.toLocaleString("id-ID")}
+              {totalLogs.toLocaleString(locale === "id" ? "id-ID" : "en-US")}
             </p>
             <p className="text-[11px] text-muted-foreground">
               {messages.stdoutStderr}
