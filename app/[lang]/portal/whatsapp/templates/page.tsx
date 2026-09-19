@@ -2,6 +2,8 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import type { Metadata } from "next"
 
 import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -18,7 +20,10 @@ type Props = {
   searchParams: Promise<Record<string, string>>
 }
 
-export default async function PortalTemplatesPage({}: Props) {
+export default async function PortalTemplatesPage({ params }: Props) {
+  const { lang } = await params
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pPortalPages.whatsappTemplates
   const auth = await withAuth({ ensureSignedIn: true })
   const platformRole = await getPlatformRoleForUser({
     id: auth.user.id,
@@ -29,17 +34,17 @@ export default async function PortalTemplatesPage({}: Props) {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{messages.heading}</h1>
         <p className="text-muted-foreground">
-          View and manage your WhatsApp message templates.
+          {messages.description}
         </p>
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Message Templates</CardTitle>
-            <CardDescription>Your WhatsApp message templates</CardDescription>
+            <CardTitle>{messages.cardTitle}</CardTitle>
+            <CardDescription>{messages.cardDescription}</CardDescription>
           </div>
         </CardHeader>
         <CardContent>

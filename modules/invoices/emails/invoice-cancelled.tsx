@@ -11,6 +11,7 @@ import {
   Text,
 } from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
+import { getMessages } from "@/lib/i18n/messages"
 import type { InvoiceCancelledEmailProps } from "./types"
 import {
   InvoiceCostBreakdown,
@@ -34,28 +35,31 @@ export const InvoiceCancelledEmail = ({
   lineItems,
   recipientEmail,
   organizationName,
+  locale = "en",
 }: InvoiceCancelledEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.invoices
   const invoiceUrl = `${getEmailBaseUrl()}/console/invoices/${invoiceNumber}`
 
   return (
     <Html>
       <Head />
       <Preview>
-        Notice: Invoice {invoiceNumber} Has Been Cancelled ({amount})
+        {messages.cancelledPreview
+          .replace("{invoiceNumber}", invoiceNumber)
+          .replace("{amount}", amount)}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>Invoice Cancelled</Heading>
+          <Heading style={styles.heading}>{messages.cancelledHeading}</Heading>
 
           <Text style={styles.intro}>
-            Invoice {invoiceNumber} has been officially cancelled. No payment is
-            required for this invoice, and no further action is needed from you.
+            {messages.cancelledIntro.replace("{invoiceNumber}", invoiceNumber)}
           </Text>
 
           {reason && (
             <Section style={styles.noticeBox}>
               <Text style={styles.noticeText}>
-                <strong>Cancellation Reason:</strong> {reason}
+                <strong>{messages.cancelledReason}</strong> {reason}
               </Text>
             </Section>
           )}
@@ -69,16 +73,18 @@ export const InvoiceCancelledEmail = ({
             periodEnd={periodEnd}
             recipientEmail={recipientEmail}
             organizationName={organizationName}
+            locale={locale}
           />
 
-          <InvoiceItemsList lineItems={lineItems} />
+          <InvoiceItemsList lineItems={lineItems} locale={locale} />
 
           <InvoiceCostBreakdown
             amount={amount}
             subtotalAmount={subtotalAmount}
             taxAmount={taxAmount}
             discountAmount={discountAmount}
-            totalLabel="Cancelled Amount"
+            totalLabel={messages.totalAmount}
+            locale={locale}
           />
 
           <Section style={styles.actions}>
@@ -86,15 +92,14 @@ export const InvoiceCancelledEmail = ({
               href={invoiceUrl}
               style={{ ...styles.button, backgroundColor: "#64748b" }}
             >
-              View Invoice Details
+              {messages.cancelledView}
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have questions regarding this cancellation or need a revised
-            invoice, please reach out to our billing team.
+            {messages.createdFooter}
           </Text>
         </Container>
       </Body>

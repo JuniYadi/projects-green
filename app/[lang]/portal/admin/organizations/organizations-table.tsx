@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { eden } from "@/lib/eden"
-import { useRouter } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,6 +31,9 @@ type ListMetadata = {
 
 export function OrganizationsTable() {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pPortalAdminOrganizationsTable
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [listMetadata, setListMetadata] = useState<ListMetadata>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -130,7 +135,7 @@ export function OrganizationsTable() {
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Organization" />
+          <DataTableColumnHeader column={column} title={messages.colOrganization} />
         ),
         cell: ({ row }) => (
           <span
@@ -157,7 +162,7 @@ export function OrganizationsTable() {
       {
         accessorKey: "memberCount",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Members" />
+          <DataTableColumnHeader column={column} title={messages.colMembers} />
         ),
         cell: ({ row }) => (
           <span>{memberCounts[row.original.id] ?? "..."}</span>
@@ -166,14 +171,14 @@ export function OrganizationsTable() {
       {
         accessorKey: "createdAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Created" />
+          <DataTableColumnHeader column={column} title={messages.colCreated} />
         ),
         cell: ({ row }) => (
           <span>{new Date(row.original.createdAt).toLocaleDateString()}</span>
         ),
       },
     ],
-    [router, memberCounts]
+    [router, memberCounts, messages]
   )
 
   if (isLoading && organizations.length === 0) {
@@ -197,7 +202,7 @@ export function OrganizationsTable() {
         <div className="relative max-w-sm flex-1">
           <MagnifyingGlassIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search organizations..."
+            placeholder={messages.searchPlaceholder}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             className="pl-9"
@@ -208,7 +213,7 @@ export function OrganizationsTable() {
         tableId="portal-admin-organizations"
         columns={columns}
         data={organizations}
-        searchPlaceholder="Search organizations..."
+        searchPlaceholder={messages.searchPlaceholder}
         searchableColumns={["name", "id"]}
         defaultColumnVisibility={{ id: false, createdAt: false }}
       />
@@ -220,7 +225,7 @@ export function OrganizationsTable() {
           disabled={!listMetadata.before || isLoading}
         >
           <ArrowLeftIcon className="mr-2 h-4 w-4" />
-          Previous
+          {messages.previous}
         </Button>
         <Button
           variant="outline"
@@ -228,7 +233,7 @@ export function OrganizationsTable() {
           onClick={handleNext}
           disabled={!listMetadata.after || isLoading}
         >
-          Next
+          {messages.next}
           <ArrowRightIcon className="ml-2 h-4 w-4" />
         </Button>
       </div>

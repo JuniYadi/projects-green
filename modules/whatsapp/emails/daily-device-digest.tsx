@@ -9,6 +9,8 @@ import {
   Section,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 export interface DeviceDigestItem {
   id: string
@@ -30,57 +32,61 @@ export interface DailyDeviceDigestEmailProps {
     declinedOrExpired: number
     active: number
   }
+  locale?: AppLocale
 }
 
 export const DailyDeviceDigestEmail = ({
   devices,
   generatedAt,
   stats,
+  locale = "en",
 }: DailyDeviceDigestEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.whatsapp
+
   return (
     <Html>
       <Head />
       <Preview>
-        {`[Daily Digest] WhatsApp Device Status Summary (${stats.total} Devices)`}
+        {messages.digestPreview.replace("{total}", String(stats.total))}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>WhatsApp Daily Device Digest</Heading>
+          <Heading style={styles.heading}>{messages.digestHeading}</Heading>
 
           <Text style={styles.intro}>
-            Daily summary of all WhatsApp devices and Meta approval statuses as
-            of <strong>{generatedAt}</strong>.
+            {messages.digestIntro}{" "}
+            <strong>{generatedAt}</strong>.
           </Text>
 
           {/* KPI Summary */}
           <Section style={styles.kpiGrid}>
             <div style={styles.kpiCard}>
               <Text style={styles.kpiValue}>{stats.total}</Text>
-              <Text style={styles.kpiLabel}>Total Devices</Text>
+              <Text style={styles.kpiLabel}>{messages.totalDevices}</Text>
             </div>
             <div style={styles.kpiCard}>
               <Text style={{ ...styles.kpiValue, color: "#16a34a" }}>
                 {stats.approved}
               </Text>
-              <Text style={styles.kpiLabel}>Name Approved</Text>
+              <Text style={styles.kpiLabel}>{messages.nameApproved}</Text>
             </div>
             <div style={styles.kpiCard}>
               <Text style={{ ...styles.kpiValue, color: "#d97706" }}>
                 {stats.pending}
               </Text>
-              <Text style={styles.kpiLabel}>Pending Review</Text>
+              <Text style={styles.kpiLabel}>{messages.pendingReview}</Text>
             </div>
             <div style={styles.kpiCard}>
               <Text style={{ ...styles.kpiValue, color: "#dc2626" }}>
                 {stats.declinedOrExpired}
               </Text>
-              <Text style={styles.kpiLabel}>Declined / Issues</Text>
+              <Text style={styles.kpiLabel}>{messages.declinedIssues}</Text>
             </div>
           </Section>
 
           {/* Devices Table */}
           <Section style={styles.tableSection}>
-            <Text style={styles.sectionTitle}>Device Breakdown:</Text>
+            <Text style={styles.sectionTitle}>{messages.deviceBreakdown}</Text>
             {devices.map((device) => (
               <div key={device.id} style={styles.deviceRow}>
                 <div style={styles.deviceHeader}>
@@ -108,9 +114,10 @@ export const DailyDeviceDigestEmail = ({
                   </span>
                 </div>
                 <Text style={styles.deviceSub}>
-                  <strong style={styles.phone}>{device.phoneNumber}</strong> (
-                  {device.displayName}) &bull; Quality: {device.qualityRating}{" "}
-                  &bull; Connection: {device.status}
+                  <strong style={styles.phone}>{device.phoneNumber}</strong>{" "}
+                  ({device.displayName}){" • "}
+                  {messages.qualityRating} {device.qualityRating}{" • "}
+                  {messages.connectionStatus} {device.status}
                 </Text>
               </div>
             ))}
@@ -119,8 +126,7 @@ export const DailyDeviceDigestEmail = ({
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            This is an automated 07:00 AM daily briefing sent to super
-            administrators.
+            {messages.automatedDigestFooter}
           </Text>
         </Container>
       </Body>

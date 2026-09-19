@@ -5,6 +5,7 @@ import { eden } from "@/lib/eden"
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import { InvoicesTableSkeleton } from "@/modules/invoices/ui/invoices-table-skeleton"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
@@ -24,12 +25,13 @@ import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download
 
 const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pInvoicesTable
 
   return [
     {
       accessorKey: "invoiceNumber",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Invoice ID" />
+        <DataTableColumnHeader column={column} title={messages.colInvoiceId} />
       ),
       cell: ({ row }) => {
         const invoicePath = localizePathname({
@@ -50,7 +52,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
     {
       accessorKey: "issuedAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Issued" />
+        <DataTableColumnHeader column={column} title={messages.colIssued} />
       ),
       cell: ({ row }) => formatInvoiceDate(row.original.issuedAt, locale),
       sortingFn: "datetime",
@@ -58,7 +60,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
     {
       accessorKey: "dueAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Due" />
+        <DataTableColumnHeader column={column} title={messages.colDue} />
       ),
       cell: ({ row }) => formatInvoiceDate(row.original.dueAt, locale),
       sortingFn: "datetime",
@@ -66,7 +68,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
     {
       accessorKey: "totalAmount",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Amount" />
+        <DataTableColumnHeader column={column} title={messages.colAmount} />
       ),
       cell: ({ row }) =>
         formatInvoiceCurrency(
@@ -78,7 +80,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader column={column} title={messages.colStatus} />
       ),
       cell: ({ row }) => <InvoiceStatusPill status={row.original.status} />,
     },
@@ -122,8 +124,8 @@ const getErrorMessage = (payload: InvoiceErrorResponse | null) => {
 }
 
 export function InvoicesTable({ lang }: InvoicesTableProps) {
-  // ponytail: locale unused but kept for i18n expansion readiness
-  void resolveLocaleOrDefault(lang)
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pInvoicesTable
   const [state, setState] = useState<InvoiceListRequestState>({
     status: "loading",
   })
@@ -195,7 +197,7 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
             variant="outline"
             onClick={() => void loadInvoices()}
           >
-            Retry
+            {messages.retry}
           </Button>
         </div>
       </div>
@@ -210,7 +212,7 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
       defaultColumnVisibility={{
         dueAt: false,
       }}
-      searchPlaceholder="Filter by Invoice ID..."
+      searchPlaceholder={messages.searchPlaceholderConsole}
       searchableColumns={["invoiceNumber"]}
       facetFilters={[
         {
@@ -221,7 +223,7 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
         },
       ]}
       initialSorting={[{ id: "issuedAt", desc: true }]}
-      emptyMessage="No invoices match your filters."
+      emptyMessage={messages.noInvoicesMatch}
     />
   )
 }

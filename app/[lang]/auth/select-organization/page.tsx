@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import { AuthPageShell } from "@/components/auth-page-shell"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { SelectOrganizationForm } from "@/components/select-organization-form"
 
@@ -22,8 +24,9 @@ export default async function SelectOrganizationPage({
   searchParams,
   params,
 }: SelectOrganizationPageProps) {
-  // ponytail: lang unused but kept for type compliance with Next.js params
-  void (await params)
+  const { lang } = await params
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pAuthPages.selectOrganization
   const search = await searchParams
   const pendingAuthenticationToken = search?.pendingAuthenticationToken ?? ""
   const email = search?.email
@@ -43,9 +46,9 @@ export default async function SelectOrganizationPage({
 
   return (
     <AuthPageShell
-      badge="Organization access"
-      panelTitle="Select your workspace"
-      panelDescription="Select the PFNApp organization you want to manage before entering the console."
+      badge={messages.badge}
+      panelTitle={messages.panelTitle}
+      panelDescription={messages.panelDescription}
       className="lg:max-w-lg"
     >
       <SelectOrganizationForm

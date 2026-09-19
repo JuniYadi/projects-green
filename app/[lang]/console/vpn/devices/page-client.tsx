@@ -1,9 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useState, startTransition } from "react"
+import { useParams } from "next/navigation"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   listMobileDevices,
   revokeMobileDevice,
@@ -25,6 +28,10 @@ type PageState =
   | { phase: "error"; message: string }
 
 export default function ConsoleVpnDevicesPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pConsoleVpnDevices
+
   const [state, setState] = useState<PageState>({ phase: "loading" })
   const [revoking, setRevoking] = useState<string | null>(null)
   const [pairOpen, setPairOpen] = useState(false)
@@ -101,15 +108,15 @@ export default function ConsoleVpnDevicesPage() {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold">My VPN Devices</h1>
+          <h1 className="text-2xl font-semibold">{messages.errorHeading}</h1>
           <p className="text-sm text-muted-foreground">
-            Devices paired to your VPN subscriptions.
+            {messages.errorDescription}
           </p>
         </header>
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
           <p className="text-sm text-destructive">{state.message}</p>
           <Button className="mt-4" onClick={load}>
-            Retry
+            {messages.retry}
           </Button>
         </div>
       </main>
@@ -119,9 +126,9 @@ export default function ConsoleVpnDevicesPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">My VPN Devices</h1>
+        <h1 className="text-2xl font-semibold">{messages.heading}</h1>
         <p className="text-sm text-muted-foreground">
-          View and manage devices paired to your VPN subscriptions.
+          {messages.description}
         </p>
       </header>
 
@@ -131,15 +138,15 @@ export default function ConsoleVpnDevicesPage() {
           disabled={state.subscriptions.length === 0}
         >
           <DeviceMobileIcon className="mr-2 h-4 w-4" />
-          Pair New Device
+          {messages.pairNewDevice}
         </Button>
       </div>
 
       {state.subscriptions.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          You need an active VPN subscription to pair a device.{" "}
+          {messages.needActiveSubPrefix}{" "}
           <a className="underline" href="../subscriptions">
-            View subscriptions
+            {messages.viewSubscriptions}
           </a>
         </p>
       )}

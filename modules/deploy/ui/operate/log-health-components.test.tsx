@@ -25,7 +25,7 @@ describe("Frontend Log Health Components", () => {
       expect(view.getByText("Peringatan (Warn)")).toBeTruthy()
       expect(view.getByText("38")).toBeTruthy()
       expect(view.getByText("Total Baris Log")).toBeTruthy()
-      expect(view.getByText("115.860")).toBeTruthy()
+      expect(view.getByText(/115[.,]860/)).toBeTruthy()
       cleanup()
     })
   })

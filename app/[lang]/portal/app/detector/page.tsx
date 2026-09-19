@@ -1,25 +1,31 @@
 import type { Metadata } from "next"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { DetectorTabs } from "./_components/detector-tabs"
 
 export const metadata: Metadata = { title: "Detector Control Center" }
 
 export default async function DetectorGovernancePage({
   searchParams,
+  params,
 }: Readonly<{
   searchParams: Promise<{
     tab?: string
   }>
+  params?: Promise<{ lang?: string }>
 }>) {
   const { tab } = await searchParams
+  const resolvedParams = params ? await params : undefined
+  const locale = resolveLocaleOrDefault(resolvedParams?.lang)
+  const messages = getMessages(locale).pPortalPages.appDetector
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Detector Control Center</h1>
+        <h1 className="text-2xl font-semibold">{messages.title}</h1>
         <p className="text-sm text-muted-foreground">
-          Govern the AI Detector Toolchain — manage detection rules, runtime
-          mappings, and review AI recommendations.
+          {messages.description}
         </p>
       </header>
       <DetectorTabs defaultTab={tab} />

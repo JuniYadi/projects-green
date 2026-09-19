@@ -9,6 +9,7 @@ import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Button } from "@/components/ui/button"
 import { InvoicesTableSkeleton } from "@/modules/invoices/ui/invoices-table-skeleton"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   DEFAULT_INVOICE_SORT,
@@ -25,12 +26,13 @@ import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download
 
 const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pInvoicesTable
 
   return [
     {
       accessorKey: "invoiceNumber",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Invoice ID" />
+        <DataTableColumnHeader column={column} title={messages.colInvoiceId} />
       ),
       cell: ({ row }) => {
         const invoicePath = localizePathname({
@@ -51,7 +53,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
     {
       accessorKey: "organizationName",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Organization" />
+        <DataTableColumnHeader column={column} title={messages.colOrganization} />
       ),
       cell: ({ row }) => {
         const orgName = row.original.organizationName
@@ -70,7 +72,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
     {
       accessorKey: "issuedAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Issued" />
+        <DataTableColumnHeader column={column} title={messages.colIssued} />
       ),
       cell: ({ row }) => formatInvoiceDate(row.original.issuedAt, locale),
       sortingFn: "datetime",
@@ -78,7 +80,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
     {
       accessorKey: "dueAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Due" />
+        <DataTableColumnHeader column={column} title={messages.colDue} />
       ),
       cell: ({ row }) => formatInvoiceDate(row.original.dueAt, locale),
       sortingFn: "datetime",
@@ -86,7 +88,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
     {
       accessorKey: "totalAmount",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Amount" />
+        <DataTableColumnHeader column={column} title={messages.colAmount} />
       ),
       cell: ({ row }) =>
         formatInvoiceCurrency(
@@ -98,7 +100,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader column={column} title={messages.colStatus} />
       ),
       cell: ({ row }) => <InvoiceStatusPill status={row.original.status} />,
     },
@@ -218,6 +220,9 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
     return <InvoicesTableSkeleton />
   }
 
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pInvoicesTable
+
   if (state.status === "error") {
     return (
       <div className="grid gap-3 rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm">
@@ -229,7 +234,7 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
             variant="outline"
             onClick={() => void loadInvoices()}
           >
-            Retry
+            {messages.retry}
           </Button>
         </div>
       </div>
@@ -244,7 +249,7 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
       defaultColumnVisibility={{
         dueAt: false,
       }}
-      searchPlaceholder="Filter by Invoice ID or Organization..."
+      searchPlaceholder={messages.searchPlaceholderPortal}
       searchableColumns={["invoiceNumber", "organizationName"]}
       facetFilters={[
         {
@@ -261,7 +266,7 @@ export function InvoicesTable({ lang }: InvoicesTableProps) {
         },
       ]}
       initialSorting={[{ id: "issuedAt", desc: true }]}
-      emptyMessage="No invoices match your filters."
+      emptyMessage={messages.noInvoicesMatch}
     />
   )
 }

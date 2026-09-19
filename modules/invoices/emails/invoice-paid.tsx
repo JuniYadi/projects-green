@@ -11,6 +11,7 @@ import {
   Text,
 } from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
+import { getMessages } from "@/lib/i18n/messages"
 import type { InvoicePaidEmailProps } from "./types"
 import {
   InvoiceCostBreakdown,
@@ -35,23 +36,25 @@ export const InvoicePaidEmail = ({
   lineItems,
   recipientEmail,
   organizationName,
+  locale = "en",
 }: InvoicePaidEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.invoices
   const invoiceUrl = `${getEmailBaseUrl()}/console/invoices/${invoiceNumber}`
 
   return (
     <Html>
       <Head />
       <Preview>
-        Payment Receipt - Invoice {invoiceNumber} ({amount})
+        {messages.paidPreview
+          .replace("{invoiceNumber}", invoiceNumber)
+          .replace("{amount}", amount)}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>Payment Receipt</Heading>
+          <Heading style={styles.heading}>{messages.paidHeading}</Heading>
 
           <Text style={styles.intro}>
-            Thank you! We have successfully received and confirmed your payment
-            for Invoice {invoiceNumber}. Your account is active and in good
-            standing.
+            {messages.paidIntro.replace("{invoiceNumber}", invoiceNumber)}
           </Text>
 
           <InvoiceSummarySection
@@ -65,29 +68,30 @@ export const InvoicePaidEmail = ({
             paymentMethod={paymentMethod}
             recipientEmail={recipientEmail}
             organizationName={organizationName}
+            locale={locale}
           />
 
-          <InvoiceItemsList lineItems={lineItems} />
+          <InvoiceItemsList lineItems={lineItems} locale={locale} />
 
           <InvoiceCostBreakdown
             amount={amount}
             subtotalAmount={subtotalAmount}
             taxAmount={taxAmount}
             discountAmount={discountAmount}
-            totalLabel="Total Paid"
+            totalLabel={messages.totalAmount}
+            locale={locale}
           />
 
           <Section style={styles.actions}>
             <Button href={invoiceUrl} style={styles.button}>
-              View Receipt in Console
+              {messages.paidViewReceipt}
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            Thank you for choosing our services. If you need any assistance,
-            feel free to reply or contact support.
+            {messages.paidFooter}
           </Text>
         </Container>
       </Body>

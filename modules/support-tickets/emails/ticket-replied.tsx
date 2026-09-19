@@ -11,6 +11,8 @@ import {
   Text,
 } from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 import type { SupportTicket, SupportTicketReply } from "../support-ticket.types"
 import { SUPPORT_TICKET_STATUS_LABELS } from "../support-ticket.types"
 
@@ -23,17 +25,20 @@ interface TicketRepliedEmailProps {
     hasSecureDetails: boolean
     repliedAt: Date
   }
+  locale?: AppLocale
 }
 
 export const TicketRepliedEmail = ({
   ticket,
   reply,
   replyContext,
+  locale = "en",
 }: TicketRepliedEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.supportTickets
   const ticketUrl = `${getEmailBaseUrl()}/console/support-tickets/${ticket.id}`
 
   const formattedRepliedAt = replyContext
-    ? new Intl.DateTimeFormat("en-US", {
+    ? new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
         dateStyle: "medium",
         timeStyle: "short",
         timeZone: "UTC",
@@ -44,7 +49,9 @@ export const TicketRepliedEmail = ({
     <Html>
       <Head />
       <Preview>
-        Re: Support ticket #{ticket.ticketNumber} - {ticket.subject}
+        {messages.previewReplied
+          .replace("{ticketNumber}", String(ticket.ticketNumber))
+          .replace("{subject}", ticket.subject)}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
@@ -52,12 +59,12 @@ export const TicketRepliedEmail = ({
 
           {replyContext ? (
             <Text style={styles.intro}>
-              Replied by {replyContext.authorName} ({replyContext.authorRole}) ·{" "}
+              {messages.repliedBy} {replyContext.authorName} ({replyContext.authorRole}) ·{" "}
               {formattedRepliedAt}
             </Text>
           ) : (
             <Text style={styles.intro}>
-              A member of our support team has replied to your ticket.
+              {messages.repliedDefaultIntro}
             </Text>
           )}
 
@@ -67,7 +74,7 @@ export const TicketRepliedEmail = ({
             </Heading>
 
             <Text style={styles.meta}>
-              <strong>Status:</strong>{" "}
+              <strong>{messages.status}</strong>{" "}
               {SUPPORT_TICKET_STATUS_LABELS[ticket.status]}
             </Text>
           </Section>
@@ -76,7 +83,7 @@ export const TicketRepliedEmail = ({
             <Text style={styles.replyBody}>{reply.body}</Text>
             {replyContext?.hasSecureDetails && (
               <Text style={styles.replyBody}>
-                Secure details attached (encrypted). Open the ticket to view.
+                {messages.secureDetailsNotice}
               </Text>
             )}
           </Section>
@@ -85,15 +92,14 @@ export const TicketRepliedEmail = ({
 
           <Section style={styles.actions}>
             <Button href={ticketUrl} style={styles.button}>
-              View Full Conversation
+              {messages.viewFullConversation}
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            You can reply directly to this email to add more information to your
-            ticket.
+            {messages.repliedFooter}
           </Text>
         </Container>
       </Body>

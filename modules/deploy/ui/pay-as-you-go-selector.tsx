@@ -1,7 +1,10 @@
+import { useParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { PAYG_BASE_LIMITS } from "@/modules/deploy/deploy.constants"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type PayAsYouGoSelectorProps = {
   cpu: number
@@ -22,6 +25,9 @@ export function PayAsYouGoSelector({
   onMemoryChange,
   onBufferHoursChange,
 }: PayAsYouGoSelectorProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pPayAsYouGoSelector
   const requiredBalance =
     hourlyCost !== undefined ? hourlyCost * bufferHours : null
 
@@ -29,7 +35,7 @@ export function PayAsYouGoSelector({
     <div className="space-y-6 rounded-md border bg-muted/30 p-4">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">CPU (m)</Label>
+          <Label className="text-sm font-medium">{messages.cpuLabel}</Label>
           <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
             {cpu}m
           </span>
@@ -42,13 +48,13 @@ export function PayAsYouGoSelector({
           onValueChange={([value]) => onCpuChange(value!)}
         />
         <p className="text-[10px] text-muted-foreground">
-          Minimum 100m, maximum 2000m (2 cores).
+          {messages.cpuHint}
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Memory (Mi)</Label>
+          <Label className="text-sm font-medium">{messages.memoryLabel}</Label>
           <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
             {memory}Mi
           </span>
@@ -61,13 +67,13 @@ export function PayAsYouGoSelector({
           onValueChange={([value]) => onMemoryChange(value!)}
         />
         <p className="text-[10px] text-muted-foreground">
-          Minimum 256Mi, maximum 4096Mi (4Gi).
+          {messages.memoryHint}
         </p>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="payg-buffer-hours" className="text-sm font-medium">
-          Runtime buffer (hours)
+          {messages.bufferHoursLabel}
         </Label>
         <Input
           id="payg-buffer-hours"
@@ -82,13 +88,13 @@ export function PayAsYouGoSelector({
           className="w-24"
         />
         <p className="text-[10px] text-muted-foreground">
-          Minimum 24 hours. Your balance must cover this before deploy.
+          {messages.bufferHoursHint}
         </p>
       </div>
 
       {requiredBalance !== null && (
         <div className="rounded-md border bg-background p-3">
-          <p className="text-xs text-muted-foreground">Required balance</p>
+          <p className="text-xs text-muted-foreground">{messages.requiredBalance}</p>
           <p className="text-sm font-medium">
             {hourlyCost !== undefined && (
               <span>

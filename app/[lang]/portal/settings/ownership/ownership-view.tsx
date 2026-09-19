@@ -1,7 +1,10 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Select,
   SelectContent,
@@ -30,6 +33,9 @@ type OwnershipViewProps = {
 }
 
 export function OwnershipView({ organizationId }: OwnershipViewProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pOwnershipView
   const [members, setMembers] = useState<TenantMembershipSummary[]>([])
   const [authorization, setAuthorization] =
     useState<TenantAuthorizationResponse | null>(null)
@@ -134,9 +140,9 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-medium">Current Owner</CardTitle>
+          <CardTitle className="text-base font-medium">{messages.currentOwner}</CardTitle>
           <CardDescription>
-            The user who currently owns this organization
+            {messages.currentOwnerDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -150,7 +156,7 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
               </span>
             </div>
           ) : (
-            <span className="text-muted-foreground">No owner found</span>
+            <span className="text-muted-foreground">{messages.noOwnerFound}</span>
           )}
         </CardContent>
       </Card>
@@ -161,28 +167,27 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
             <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
               <Warning className="h-5 w-5" />
               <CardTitle className="text-base font-medium">
-                Transfer Ownership
+                {messages.transferOwnership}
               </CardTitle>
             </div>
             <CardDescription className="text-amber-700 dark:text-amber-300">
-              Transferring ownership will demote you to an administrator role.
-              The new owner will have full control over the organization.
+              {messages.transferWarning}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Select new owner</label>
+              <label className="text-sm font-medium">{messages.selectNewOwner}</label>
               <Select
                 value={selectedAdminId}
                 onValueChange={setSelectedAdminId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an administrator" />
+                  <SelectValue placeholder={messages.selectAdminPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {admins.length === 0 ? (
                     <div className="p-2 text-center text-sm text-muted-foreground">
-                      No other active administrators available
+                      {messages.noOtherAdmins}
                     </div>
                   ) : (
                     admins.map((admin) => (
@@ -200,7 +205,7 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
               disabled={!selectedAdminId || isSubmitting}
               onClick={handleTransfer}
             >
-              {isSubmitting ? "Transferring..." : "Transfer Ownership"}
+              {isSubmitting ? messages.transferring : messages.transferOwnership}
             </Button>
           </CardContent>
         </Card>
@@ -208,7 +213,7 @@ export function OwnershipView({ organizationId }: OwnershipViewProps) {
 
       {!canTransfer && (
         <p className="text-center text-sm text-muted-foreground">
-          Only the current owner can transfer ownership.
+          {messages.onlyCurrentOwnerCanTransfer}
         </p>
       )}
     </div>

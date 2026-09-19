@@ -8676,6 +8676,569 @@ export type AppMessages = {
     rateTierLabel: string
     selectRateTierPlaceholder: string
   }
+  pPortalPages: {
+    adminOrganizations: {
+      title: string
+      description: string
+      detailsTitle: string
+    }
+    adminUsers: {
+      title: string
+      description: string
+    }
+    adminInvitations: {
+      title: string
+      description: string
+    }
+    orgs: {
+      title: string
+      description: string
+    }
+    vpnAuditLogs: {
+      title: string
+      description: string
+    }
+    vpnRegions: {
+      title: string
+      description: string
+    }
+    vpnDevices: {
+      title: string
+      description: string
+    }
+    vpnSshKeys: {
+      title: string
+      description: string
+    }
+    vpnSubscriptions: {
+      title: string
+      description: string
+    }
+    vpnServers: {
+      title: string
+      description: string
+    }
+    settingsOwnership: {
+      title: string
+      description: string
+    }
+    settingsEmails: {
+      title: string
+      description: string
+      deliveryLogs: string
+    }
+    settingsEmailsDeliveryLogs: {
+      title: string
+      description: string
+    }
+    settingsMembers: {
+      title: string
+      description: string
+    }
+    settingsInvitations: {
+      title: string
+      description: string
+    }
+    billingOverview: {
+      title: string
+      description: string
+    }
+    billingInvoices: {
+      title: string
+      description: string
+    }
+    billingPayments: {
+      title: string
+      description: string
+    }
+    appDetector: {
+      title: string
+      description: string
+    }
+    appEventsGithub: {
+      title: string
+      description: string
+    }
+    appManagedStocks: {
+      title: string
+      description: string
+    }
+    whatsappTemplates: {
+      heading: string
+      description: string
+      cardTitle: string
+      cardDescription: string
+    }
+    whatsappDeviceEdit: {
+      title: string
+      description: string
+    }
+    whatsappDeviceNew: {
+      title: string
+      description: string
+    }
+    supportTickets: {
+      title: string
+      description: string
+    }
+    supportTicketsNew: {
+      backLink: string
+      title: string
+      description: string
+    }
+    supportTicketsDetail: {
+      backLink: string
+      title: string
+      description: string
+    }
+  }
+  pConsolePages: {
+    invoices: {
+      title: string
+      description: string
+      billingHistory: string
+    }
+    invoiceDetail: {
+      backLink: string
+      title: string
+      description: string
+    }
+    supportTickets: {
+      title: string
+      description: string
+    }
+    supportTicketsNew: {
+      backLink: string
+      title: string
+      description: string
+    }
+    supportTicketsDetail: {
+      backLink: string
+      title: string
+      description: string
+    }
+  }
+  pAuthPages: {
+    login: {
+      badge: string
+      panelTitle: string
+      panelDescription: string
+    }
+    selectOrganization: {
+      badge: string
+      panelTitle: string
+      panelDescription: string
+    }
+    invite: {
+      invitedToJoin: string
+      youveBeenInvited: string
+      acceptInvitationFor: string
+      bySigningIn: string
+      continueWithEmailCode: string
+      orContinueWith: string
+      continueWith: string
+      invitationNotFound: string
+      invitationNotFoundDesc: string
+      goToSignIn: string
+      invitationUnavailable: string
+      expired: string
+      accepted: string
+      revoked: string
+      inactive: string
+    }
+  }
+  pDocs: {
+    paginationAriaLabel: string
+    previous: string
+    next: string
+  }
+  pSecurityArtifactsTab: {
+    tabRegistry: string
+    tabVulnerabilities: string
+    downloadReport: string
+    retentionTitle: string
+    retentionDesc: string
+    registryRepo: string
+    activeLiveImage: string
+    retainedImages: string
+    tracked: string
+    rollbackReady: string
+    tableHeading: string
+    colTag: string
+    colDigest: string
+    colStatus: string
+    colSecurityStatus: string
+    colPushed: string
+    colAction: string
+    statusActive: string
+    statusReady: string
+    statusExpired: string
+    zeroVulnerabilities: string
+    highCves: string
+    criticalCves: string
+    pending: string
+    current: string
+    rollback: string
+    rollingBack: string
+    lockedTooltip: string
+    locked: string
+    noImages: string
+    rollbackModalTitle: string
+    rollbackModalDesc: string
+    cancel: string
+    confirmRollback: string
+    securityPosture: string
+    passedStatus: string
+    warningStatus: string
+    failedStatus: string
+    engine: string
+    scanned: string
+    sevCritical: string
+    sevHigh: string
+    sevMedium: string
+    sevLow: string
+    filterAll: string
+    filterLangPkgs: string
+    filterOsPkgs: string
+    searchPlaceholder: string
+    colCveId: string
+    colSeverity: string
+    colPackage: string
+    colOriginLayer: string
+    colInstalled: string
+    colFixedIn: string
+    colProvenanceAction: string
+    noFindings: string
+  }
+  pInvoicesTable: {
+    colInvoiceId: string
+    colOrganization: string
+    colIssued: string
+    colDue: string
+    colAmount: string
+    colStatus: string
+    retry: string
+    searchPlaceholderConsole: string
+    searchPlaceholderPortal: string
+    noInvoicesMatch: string
+  }
+  pSelectOrgForm: {
+    chooseOrganization: string
+    accountBelongsWithEmail: string
+    accountBelongs: string
+    noOrgsFound: string
+    signingIn: string
+    needDifferentAccount: string
+    backToLogin: string
+  }
+  pOwnershipView: {
+    currentOwner: string
+    currentOwnerDesc: string
+    noOwnerFound: string
+    transferOwnership: string
+    transferWarning: string
+    selectNewOwner: string
+    selectAdminPlaceholder: string
+    noOtherAdmins: string
+    transferring: string
+    onlyCurrentOwnerCanTransfer: string
+  }
+  pVpnPairingQrModal: {
+    modalTitle: string
+    selectSubPlaceholder: string
+    continueButton: string
+    qrAlt: string
+    codeExpired: string
+    scanBeforeExpires: string
+    thisCodeExpired: string
+    devicePairedSuccess: string
+    vpnProfilesAvailable: string
+    regenerate: string
+  }
+  pMarketplaceShowcase: {
+    marketplaceHub: string
+    myWorkspaceTemplates: string
+    createCustomTemplate: string
+    appMarketplace: string
+    appMarketplaceDesc: string
+    searchPlaceholder: string
+    noTemplatesFound: string
+    adjustFilters: string
+    clearFilters: string
+  }
+  pConfirmDeployDialog: {
+    title: string
+    description: string
+    repository: string
+    runtime: string
+    resources: string
+    cpuUnit: string
+    estimatedCost: string
+    domain: string
+    cancel: string
+    confirmDeploy: string
+    deploying: string
+    notDetected: string
+  }
+  pHomeFeatures: {
+    worksWithStack: string
+    builtForDevelopers: string
+    platformHeadingStart: string
+    platformHeadingHighlight: string
+    platformDesc: string
+    readyToBuild: string
+    getStartedIn2Min: string
+    getStartedFree: string
+  }
+  pLogHealthSummaryCards: {
+    stabilityScore: string
+    stable: string
+    incident: string
+    totalErrorIncidents: string
+    needsAttention: string
+    noExceptions: string
+    warnings: string
+    nonCriticalWarnings: string
+    totalLogLines: string
+    stdoutStderr: string
+  }
+  pEmailTemplates: {
+    invoices: {
+      createdPreview: string
+      paidPreview: string
+      overduePreview: string
+      cancelledPreview: string
+      reminderPreview: string
+      confirmationPreview: string
+      invoiceDetails: string
+      invoiceNumber: string
+      billedTo: string
+      issueDate: string
+      dueDate: string
+      billingPeriod: string
+      paidOn: string
+      paymentMethod: string
+      status: string
+      itemsAndServices: string
+      qty: string
+      paymentBreakdown: string
+      subtotal: string
+      discountVoucher: string
+      tax: string
+      discount: string
+      totalAmount: string
+      createdHeading: string
+      createdIntro: string
+      createdViewAndPay: string
+      createdFooter: string
+      paidHeading: string
+      paidIntro: string
+      paidViewReceipt: string
+      paidFooter: string
+      overdueHeading: string
+      overdueIntro: string
+      overduePayNow: string
+      overdueGraceNotice: string
+      cancelledHeading: string
+      cancelledIntro: string
+      cancelledReason: string
+      cancelledView: string
+      reminderHeading: string
+      reminderIntro: string
+      reminderPayNow: string
+      confirmationHeading: string
+      confirmationIntro: string
+      confirmationViewStatus: string
+      automatedNotice: string
+    }
+    supportTickets: {
+      previewCreated: string
+      previewClosed: string
+      previewReplied: string
+      repliedBy: string
+      newAlertHeading: string
+      newAlertIntro: string
+      ticketDetails: string
+      ticketId: string
+      requester: string
+      organization: string
+      department: string
+      priority: string
+      subject: string
+      viewInAdmin: string
+      createdHeading: string
+      createdIntro: string
+      viewTicketThread: string
+      repliedHeading: string
+      repliedIntro: string
+      viewAndReply: string
+      closedHeading: string
+      closedIntro: string
+      viewResolvedTicket: string
+      status: string
+      service: string
+      email: string
+      finalStatus: string
+      resolved: string
+      closed: string
+      viewTicket: string
+      viewFullConversation: string
+      viewAndRespond: string
+      openOrganization: string
+      alertCreatedIntro: string
+      alertReplyIntro: string
+      createdFooter: string
+      adminFooter: string
+      closedResolvedIntro: string
+      closedClosedIntro: string
+      closedReopenNote: string
+      closedFooter: string
+      repliedDefaultIntro: string
+      repliedFooter: string
+      secureDetailsNotice: string
+      latestReply: string
+      descriptionLabel: string
+    }
+    vpn: {
+      cancelledPreview: string
+      cancelledHeading: string
+      cancelledText1: string
+      cancelledText2: string
+      cancelledFooter: string
+      createdPreview: string
+      createdHeading: string
+      createdText1: string
+      createdText2: string
+      createdFooter: string
+      provSuccessPreview: string
+      provSuccessHeading: string
+      provSuccessText1: string
+      provSuccessText2: string
+      provSuccessFooter: string
+      provFailedPreview: string
+      provFailedHeading: string
+      provFailedText1: string
+      provFailedText2: string
+      provFailedFooter: string
+      renewSuccessPreview: string
+      renewSuccessHeading: string
+      renewSuccessText1: string
+      renewSuccessText2: string
+      renewSuccessFooter: string
+      renewFailedPreview: string
+      renewFailedHeading: string
+      renewFailedText1: string
+      renewFailedText2: string
+      renewFailedFooter: string
+      expiredPreview: string
+      expiredHeading: string
+      expiredText1: string
+      expiredText2: string
+      expiredFooter: string
+      suspendedPreview: string
+      suspendedHeading: string
+      suspendedText1: string
+      suspendedText2: string
+      suspendedFooter: string
+    }
+    whatsapp: {
+      digestPreview: string
+      digestHeading: string
+      digestIntro: string
+      totalDevices: string
+      nameApproved: string
+      pendingReview: string
+      declinedIssues: string
+      deviceBreakdown: string
+      qualityRating: string
+      connectionStatus: string
+      noDevicesFound: string
+      automatedDigestFooter: string
+      disconnPreview: string
+      disconnHeading: string
+      disconnIntro: string
+      disconnBadge: string
+      lastSeen: string
+      disconnectedAt: string
+      disconnNote: string
+      disconnFooter: string
+      stateChangePreview: string
+      stateChangeHeading: string
+      stateChangeIntro: string
+      detectedChanges: string
+      detectedAt: string
+      stateChangeFooter: string
+    }
+  }
+  pPayAsYouGoSelector: {
+    cpuLabel: string
+    cpuHint: string
+    memoryLabel: string
+    memoryHint: string
+    bufferHoursLabel: string
+    bufferHoursHint: string
+    requiredBalance: string
+  }
+  pAppWorkspaceHeader: {
+    switchApplication: string
+    source: string
+    plan: string
+    cluster: string
+    syncTooltip: string
+    syncing: string
+    syncConfig: string
+    workspaceTabsAria: string
+    liveTerminalSession: string
+  }
+  pConsoleVpnDevices: {
+    heading: string
+    description: string
+    errorHeading: string
+    errorDescription: string
+    retry: string
+    pairNewDevice: string
+    needActiveSubPrefix: string
+    viewSubscriptions: string
+  }
+  pVpnConnectionTestModal: {
+    enableNow: string
+    testResultsTitle: string
+    passed: string
+    failed: string
+    error: string
+    skipped: string
+    runningChecks: string
+    close: string
+    copied: string
+    copyReport: string
+    running: string
+    rerun: string
+  }
+  pVpnDevicesList: {
+    revokeDeviceTitle: string
+    revokeDesc: string
+    cancel: string
+    revoke: string
+    searchPlaceholder: string
+    noDevicesFound: string
+  }
+  pPortalDocumentations: {
+    heading: string
+    description: string
+    searchPlaceholder: string
+    createNewEntry: string
+    colTitle: string
+    colPath: string
+    colUpdated: string
+  }
+  pPortalAdminOrganizationsTable: {
+    colOrganization: string
+    colMembers: string
+    colCreated: string
+    searchPlaceholder: string
+    previous: string
+    next: string
+  }
 }
 
 export type ClusterMessages = AppMessages["console"]["app"]["clusters"]

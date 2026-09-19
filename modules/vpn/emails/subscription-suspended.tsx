@@ -8,37 +8,44 @@ import {
   Preview,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 interface SubscriptionSuspendedEmailProps {
   organizationName?: string
   packageName?: string
+  locale?: AppLocale
 }
 
 export const SubscriptionSuspendedEmail = ({
   organizationName = "your organization",
   packageName = "VPN",
-}: SubscriptionSuspendedEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>VPN suspended due to payment overdue</Preview>
-    <Body style={s.body}>
-      <Container style={s.container}>
-        <Heading style={s.heading}>VPN Subscription Suspended</Heading>
-        <Text style={s.text}>
-          Your {packageName} subscription for {organizationName} has been
-          suspended due to overdue payment.
-        </Text>
-        <Text style={s.text}>
-          Please top up your balance to restore service. If no payment is
-          received within the next few days, your subscription will be
-          permanently expired.
-        </Text>
-        <Hr style={s.hr} />
-        <Text style={s.footer}>Need help? Contact our support team.</Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  locale = "en",
+}: SubscriptionSuspendedEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.vpn
+
+  return (
+    <Html>
+      <Head />
+      <Preview>{messages.suspendedPreview}</Preview>
+      <Body style={s.body}>
+        <Container style={s.container}>
+          <Heading style={s.heading}>{messages.suspendedHeading}</Heading>
+          <Text style={s.text}>
+            {messages.suspendedText1
+              .replace("{packageName}", packageName)
+              .replace("{organizationName}", organizationName)}
+          </Text>
+          <Text style={s.text}>
+            {messages.suspendedText2}
+          </Text>
+          <Hr style={s.hr} />
+          <Text style={s.footer}>{messages.suspendedFooter}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 const s = {
   body: {

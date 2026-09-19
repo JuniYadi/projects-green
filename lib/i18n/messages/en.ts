@@ -9417,4 +9417,645 @@ export const enMessages: AppMessages = {
     rateTierLabel: "Rate Tier (Fee Margin)",
     selectRateTierPlaceholder: "Select rate tier",
   },
+  pPortalPages: {
+    adminOrganizations: {
+      title: "Organizations",
+      description: "Manage all organizations on the platform",
+      detailsTitle: "Organization Details",
+    },
+    adminUsers: {
+      title: "Users",
+      description: "Manage and inspect all users across organizations on the platform",
+    },
+    adminInvitations: {
+      title: "Invitations",
+      description: "View, send, and manage invitations across all organizations on the platform",
+    },
+    orgs: {
+      title: "Organization Overview",
+      description: "Platform-wide organization stats and management",
+    },
+    vpnAuditLogs: {
+      title: "Audit Logs",
+      description: "Track every VPN provisioning step, revocation, configuration download, and admin action. Expand any row to inspect the full detail payload.",
+    },
+    vpnRegions: {
+      title: "Regions",
+      description: "Define where VPN servers are located.",
+    },
+    vpnDevices: {
+      title: "VPN Devices",
+      description: "View and manage all VPN mobile devices across subscriptions.",
+    },
+    vpnSshKeys: {
+      title: "SSH Keys",
+      description: "Store SSH keys once and reuse them across servers. Keys are stored encrypted and never displayed again.",
+    },
+    vpnSubscriptions: {
+      title: "VPN Service Operations",
+      description: "Manage per-protocol server accounts and provisioning for purchased VPN services. Payment, orders, and renewals are managed in Billing.",
+    },
+    vpnServers: {
+      title: "Servers",
+      description: "Add VPN servers and control which protocols each supports.",
+    },
+    settingsOwnership: {
+      title: "Ownership",
+      description: "View the current organization owner and transfer ownership.",
+    },
+    settingsEmails: {
+      title: "Email Templates",
+      description: "Preview all transactional email templates sent by the platform.",
+      deliveryLogs: "Delivery Logs",
+    },
+    settingsEmailsDeliveryLogs: {
+      title: "Email Delivery Logs",
+      description: "View delivery status and rendered previews of transactional emails.",
+    },
+    settingsMembers: {
+      title: "Members",
+      description: "Manage organization members and their roles.",
+    },
+    settingsInvitations: {
+      title: "Invitations",
+      description: "Send and manage invitations for new organization members.",
+    },
+    billingOverview: {
+      title: "Billing Overview",
+      description: "Platform-wide billing stats and organization management",
+    },
+    billingInvoices: {
+      title: "Invoices",
+      description: "Review billing records, download receipts, and manage invoice status.",
+    },
+    billingPayments: {
+      title: "Payments",
+      description: "Manage payment gateways, bank accounts, and payment confirmations.",
+    },
+    appDetector: {
+      title: "Detector Control Center",
+      description: "Govern the AI Detector Toolchain — manage detection rules, runtime mappings, and review AI recommendations.",
+    },
+    appEventsGithub: {
+      title: "GitHub Events",
+      description: "Monitor GitHub webhook deliveries, repository context, commit details, processing state, and raw payloads for App Hosting.",
+    },
+    appManagedStocks: {
+      title: "Managed Database Stock Pool",
+      description: "Import and manage pre-provisioned database slots for 1-click app deployments.",
+    },
+    whatsappTemplates: {
+      heading: "Templates",
+      description: "View and manage your WhatsApp message templates.",
+      cardTitle: "Message Templates",
+      cardDescription: "Your WhatsApp message templates",
+    },
+    whatsappDeviceEdit: {
+      title: "Edit WhatsApp Device",
+      description: "Update Meta Cloud API credentials, token storage, quotas, and device metadata.",
+    },
+    whatsappDeviceNew: {
+      title: "Add WhatsApp Device",
+      description: "Register a new WhatsApp Business device with detailed configuration.",
+    },
+    supportTickets: {
+      title: "Support Tickets (Admin)",
+      description: "Manage, prioritize, and reply to all support tickets across organizations.",
+    },
+    supportTicketsNew: {
+      backLink: "Back to Support Tickets",
+      title: "Create Support Ticket (Admin)",
+      description: "Open a ticket on behalf of an organization with optional secure credentials and attachments.",
+    },
+    supportTicketsDetail: {
+      backLink: "Back to Support Tickets",
+      title: "Support Ticket Details (Admin)",
+      description: "View full thread details, change categorization, reply, or delete the ticket.",
+    },
+  },
+  pConsolePages: {
+    invoices: {
+      title: "Invoices",
+      description: "Review billing records, download receipts, and manage invoice status.",
+      billingHistory: "Billing History",
+    },
+    invoiceDetail: {
+      backLink: "Back to Invoices",
+      title: "Invoice Detail",
+      description: "Review invoice details, download PDF, and manage billing actions.",
+    },
+    supportTickets: {
+      title: "Support Tickets",
+      description: "Track current support requests and follow up on pending issues.",
+    },
+    supportTicketsNew: {
+      backLink: "Back to Support Tickets",
+      title: "Open Support Ticket",
+      description: "Submit a ticket with optional secure form details and attachments.",
+    },
+    supportTicketsDetail: {
+      backLink: "Back to Support Tickets",
+      title: "Support Ticket Detail",
+      description: "Review thread history, reply, upload attachments, and close the ticket.",
+    },
+  },
+  pAuthPages: {
+    login: {
+      badge: "Account access",
+      panelTitle: "Sign in or create an account",
+      panelDescription:
+        "Sign in to manage your PFNApp console. New here? Create your PFNApp account to get started.",
+    },
+    selectOrganization: {
+      badge: "Organization access",
+      panelTitle: "Select your workspace",
+      panelDescription:
+        "Select the PFNApp organization you want to manage before entering the console.",
+    },
+    invite: {
+      invitedToJoin: "You're invited to join {org}",
+      youveBeenInvited: "You've been invited",
+      acceptInvitationFor: "Accept the invitation for",
+      bySigningIn:
+        "by signing in. Use the same email address this invite was sent to.",
+      continueWithEmailCode: "Continue with email code",
+      orContinueWith: "Or continue with",
+      continueWith: "Continue with",
+      invitationNotFound: "Invitation not found",
+      invitationNotFoundDesc:
+        "This invitation link is invalid or has already been used. Ask your organization admin to send a new invitation.",
+      goToSignIn: "Go to sign in",
+      invitationUnavailable: "Invitation unavailable",
+      expired: "This invitation has expired.",
+      accepted: "This invitation has already been accepted.",
+      revoked: "This invitation has been revoked.",
+      inactive: "This invitation is no longer active.",
+    },
+  },
+  pDocs: {
+    paginationAriaLabel: "Document Pagination",
+    previous: "PREVIOUS",
+    next: "NEXT",
+  },
+  pSecurityArtifactsTab: {
+    tabRegistry: "Image Registry & Rollback",
+    tabVulnerabilities: "Vulnerability Explorer ({count})",
+    downloadReport: "Download Full Report",
+    retentionTitle: "Free Tier Retention Policy (Max 3 Images)",
+    retentionDesc:
+      "The free version automatically retains up to 3 images (1 Active live pod + 2 Ready for rollback). Older images are gracefully rotated to EXPIRED status to save space. Expired images are safely locked and require a re-build before deployment to protect against container crashes.",
+    registryRepo: "Registry Repository",
+    activeLiveImage: "Active Live Image",
+    retainedImages: "Retained Images",
+    tracked: "tracked",
+    rollbackReady: "rollback ready",
+    tableHeading: "Retained Image History & Safe Rollback Center",
+    colTag: "Tag",
+    colDigest: "Digest",
+    colStatus: "Status",
+    colSecurityStatus: "Security Status",
+    colPushed: "Pushed",
+    colAction: "Action",
+    statusActive: "ACTIVE (Live)",
+    statusReady: "READY (Stored)",
+    statusExpired: "EXPIRED (Rotated)",
+    zeroVulnerabilities: "0 Vulnerabilities",
+    highCves: "{count} High CVEs",
+    criticalCves: "{count} Critical CVEs",
+    pending: "Pending",
+    current: "Current",
+    rollback: "Rollback",
+    rollingBack: "Rolling back...",
+    lockedTooltip: "Image auto-rotated. Re-build commit to deploy again.",
+    locked: "Locked",
+    noImages: "No container images built yet.",
+    rollbackModalTitle: "Confirm Safe Rollback: Tag {tag}",
+    rollbackModalDesc:
+      "This image is intact and confirmed in storage. Executing this rollback will instantly point the live Kubernetes pod to tag {tag} without triggering a rebuild.",
+    cancel: "Cancel",
+    confirmRollback: "Execute 1-Click Rollback",
+    securityPosture: "Security Posture Status",
+    passedStatus: "PASSED (Zero High/Critical Vulnerabilities)",
+    warningStatus: "WARNING (Actionable Fixes Available)",
+    failedStatus: "FAILED (Critical Vulnerabilities Detected)",
+    engine: "Engine:",
+    scanned: "Scanned:",
+    sevCritical: "CRITICAL",
+    sevHigh: "HIGH",
+    sevMedium: "MEDIUM",
+    sevLow: "LOW",
+    filterAll: "All Sources ({count})",
+    filterLangPkgs: "App Dependencies ({count})",
+    filterOsPkgs: "Base System ({count})",
+    searchPlaceholder: "Search CVE or package...",
+    colCveId: "CVE ID",
+    colSeverity: "Severity",
+    colPackage: "Package",
+    colOriginLayer: "Origin / Layer",
+    colInstalled: "Installed",
+    colFixedIn: "Fixed In",
+    colProvenanceAction: "Provenance / Action",
+    noFindings: "No vulnerabilities found matching current filters.",
+  },
+  pInvoicesTable: {
+    colInvoiceId: "Invoice ID",
+    colOrganization: "Organization",
+    colIssued: "Issued",
+    colDue: "Due",
+    colAmount: "Amount",
+    colStatus: "Status",
+    retry: "Retry",
+    searchPlaceholderConsole: "Filter by Invoice ID...",
+    searchPlaceholderPortal: "Filter by Invoice ID or Organization...",
+    noInvoicesMatch: "No invoices match your filters.",
+  },
+  pSelectOrgForm: {
+    chooseOrganization: "Choose an organization",
+    accountBelongsWithEmail:
+      "Your account {email} belongs to multiple organizations. Select which one to sign in to.",
+    accountBelongs:
+      "Your account belongs to multiple organizations. Select which one to sign in to.",
+    noOrgsFound: "No organizations found. Please contact support.",
+    signingIn: "Signing in...",
+    needDifferentAccount: "Need to use a different account?",
+    backToLogin: "Back to login",
+  },
+  pOwnershipView: {
+    currentOwner: "Current Owner",
+    currentOwnerDesc: "The user who currently owns this organization",
+    noOwnerFound: "No owner found",
+    transferOwnership: "Transfer Ownership",
+    transferWarning:
+      "Transferring ownership will demote you to an administrator role. The new owner will have full control over the organization.",
+    selectNewOwner: "Select new owner",
+    selectAdminPlaceholder: "Select an administrator",
+    noOtherAdmins: "No other active administrators available",
+    transferring: "Transferring...",
+    onlyCurrentOwnerCanTransfer:
+      "Only the current owner can transfer ownership.",
+  },
+  pVpnPairingQrModal: {
+    modalTitle: "Pair a mobile device",
+    selectSubPlaceholder: "Select subscription",
+    continueButton: "Continue",
+    qrAlt: "Scan with mobile app to pair device",
+    codeExpired: "Code expired",
+    scanBeforeExpires: "Scan with the mobile app before this expires",
+    thisCodeExpired: "This code has expired.",
+    devicePairedSuccess: "Device paired successfully",
+    vpnProfilesAvailable:
+      "VPN profiles are now available on the paired device.",
+    regenerate: "Regenerate",
+  },
+  pMarketplaceShowcase: {
+    marketplaceHub: "Marketplace Hub",
+    myWorkspaceTemplates: "My Workspace Templates",
+    createCustomTemplate: "Create Custom Template",
+    appMarketplace: "App Marketplace",
+    appMarketplaceDesc:
+      "1-Click deploy open-source apps, AI agents, automations, and databases.",
+    searchPlaceholder: "Search apps by name or stack…",
+    noTemplatesFound: "No templates found",
+    adjustFilters: "Try adjusting your search criteria or category filter.",
+    clearFilters: "Clear filters",
+  },
+  pConfirmDeployDialog: {
+    title: "Confirm deployment",
+    description: "This will create/update the app stack and start a build.",
+    repository: "Repository",
+    runtime: "Runtime",
+    resources: "Resources",
+    cpuUnit: "{cpu}m CPU",
+    estimatedCost: "Estimated cost",
+    domain: "Domain",
+    cancel: "Cancel",
+    confirmDeploy: "Confirm & deploy",
+    deploying: "Deploying…",
+    notDetected: "Not detected",
+  },
+  pHomeFeatures: {
+    worksWithStack: "Works with your stack",
+    builtForDevelopers: "Built for developers",
+    platformHeadingStart: "The platform that gets",
+    platformHeadingHighlight: "out of your way",
+    platformDesc:
+      "Sensible defaults, powerful overrides. Built by developers, for developers who care about their craft.",
+    readyToBuild: "Ready to build?",
+    getStartedIn2Min: "Get started in 2 minutes. No credit card required.",
+    getStartedFree: "Get started free",
+  },
+  pLogHealthSummaryCards: {
+    stabilityScore: "Skor Kestabilan Aplikasi",
+    stable: "Stabil",
+    incident: "Insiden",
+    totalErrorIncidents: "Total Insiden Error",
+    needsAttention: "Requires developer attention",
+    noExceptions: "No exceptions",
+    warnings: "Peringatan (Warn)",
+    nonCriticalWarnings: "Non-critical warning level",
+    totalLogLines: "Total Baris Log",
+    stdoutStderr: "Container stdout/stderr output",
+  },
+  pEmailTemplates: {
+    invoices: {
+      createdPreview:
+        "Invoice {invoiceNumber} - Payment Due {dueAt} ({amount})",
+      paidPreview: "Payment Receipt - Invoice {invoiceNumber} ({amount})",
+      overduePreview:
+        "ACTION REQUIRED: Invoice {invoiceNumber} is Overdue ({amount})",
+      cancelledPreview:
+        "Notice: Invoice {invoiceNumber} Has Been Cancelled ({amount})",
+      reminderPreview:
+        "Payment Reminder: Invoice {invoiceNumber} is due on {dueAt} ({amount})",
+      confirmationPreview:
+        "Payment confirmation received for invoice {invoiceNumber}",
+      invoiceDetails: "INVOICE DETAILS",
+      invoiceNumber: "Invoice Number:",
+      billedTo: "Billed To:",
+      issueDate: "Issue Date:",
+      dueDate: "Due Date:",
+      billingPeriod: "Billing Period:",
+      paidOn: "Paid On:",
+      paymentMethod: "Payment Method:",
+      status: "Status:",
+      itemsAndServices: "ITEMS & SERVICES",
+      qty: "Qty",
+      paymentBreakdown: "PAYMENT BREAKDOWN",
+      subtotal: "Subtotal:",
+      discountVoucher: "Discount / Voucher:",
+      tax: "Tax:",
+      discount: "Discount:",
+      totalAmount: "Total Amount",
+      createdHeading: "Invoice {invoiceNumber}",
+      createdIntro:
+        "A new invoice has been issued for your account. Please review the details below and arrange payment before the due date.",
+      createdViewAndPay: "View and Pay Invoice",
+      createdFooter:
+        "If you have any questions regarding this invoice, please reach out to our support team.",
+      paidHeading: "Payment Received",
+      paidIntro:
+        "Thank you for your payment. We have successfully processed your payment for invoice {invoiceNumber}.",
+      paidViewReceipt: "View Invoice & Receipt",
+      paidFooter:
+        "Your account balance has been updated. Thank you for your continued partnership.",
+      overdueHeading: "Invoice Payment Overdue",
+      overdueIntro:
+        "Your invoice {invoiceNumber} is now overdue. Please settle this payment promptly to avoid interruption to your active services.",
+      overduePayNow: "Pay Invoice Now",
+      overdueGraceNotice:
+        "If payment has already been sent, please allow 1-2 business days for processing or reply with proof of payment.",
+      cancelledHeading: "Invoice Cancelled",
+      cancelledIntro:
+        "Invoice {invoiceNumber} has been cancelled and voided. No payment is required for this invoice.",
+      cancelledReason: "Cancellation Reason:",
+      cancelledView: "View Cancelled Invoice",
+      reminderHeading: "Upcoming Payment Reminder",
+      reminderIntro:
+        "This is a friendly reminder that invoice {invoiceNumber} is due on {dueAt}.",
+      reminderPayNow: "Pay Invoice",
+      confirmationHeading: "Payment Confirmation Received",
+      confirmationIntro:
+        "We have received your payment confirmation for invoice {invoiceNumber}. Our finance team is reviewing your transaction.",
+      confirmationViewStatus: "Check Verification Status",
+      automatedNotice:
+        "This is an automated transactional message. Please do not reply directly to this email.",
+    },
+    supportTickets: {
+      previewCreated:
+        "Your support ticket #{ticketNumber} has been created",
+      previewClosed: "Support ticket #{ticketNumber} has been {status}",
+      previewReplied: "Re: Support ticket #{ticketNumber} - {subject}",
+      repliedBy: "Replied by",
+      newAlertHeading: "New Support Ticket Submitted",
+      newAlertIntro:
+        "A new support ticket has been opened and requires admin triage.",
+      ticketDetails: "TICKET DETAILS",
+      ticketId: "Ticket ID:",
+      requester: "Requester:",
+      organization: "Organization:",
+      department: "Department:",
+      priority: "Priority:",
+      subject: "Subject:",
+      viewInAdmin: "Open in Admin Portal",
+      createdHeading: "We've Received Your Support Request",
+      createdIntro:
+        "We've received your support request and our team will review it shortly.",
+      viewTicketThread: "View Ticket Thread",
+      repliedHeading: "New Reply on Your Ticket",
+      repliedIntro:
+        "A team member has posted a new update to your support ticket thread.",
+      viewAndReply: "View and Reply",
+      closedHeading: "Your Support Ticket Has Been Closed",
+      closedIntro:
+        "Your support ticket has been marked as resolved. If you need further assistance, you can reopen it anytime.",
+      viewResolvedTicket: "View Resolved Ticket",
+      status: "Status:",
+      service: "Service:",
+      email: "Email:",
+      finalStatus: "Final Status:",
+      resolved: "Resolved:",
+      closed: "Closed:",
+      viewTicket: "View Ticket",
+      viewFullConversation: "View Full Conversation",
+      viewAndRespond: "View & Respond to Ticket",
+      openOrganization: "Open Organization",
+      alertCreatedIntro:
+        "A new support ticket has been submitted and requires attention.",
+      alertReplyIntro:
+        "A requester replied to a support ticket and needs staff attention.",
+      createdFooter:
+        "If you have additional information to add, please reply to this email or visit your support dashboard.",
+      adminFooter:
+        "You are receiving this because you are subscribed to support ticket notifications.",
+      closedResolvedIntro:
+        "Your support ticket has been resolved. If you need further assistance, you can reopen it.",
+      closedClosedIntro:
+        "Your support ticket has been closed. Thank you for reaching out to us.",
+      closedReopenNote:
+        "Need more help? You can reopen this ticket by replying to this email or visiting the ticket page.",
+      closedFooter:
+        "Thank you for using our support services. If you have any other questions, please don't hesitate to reach out.",
+      repliedDefaultIntro:
+        "A member of our support team has replied to your ticket.",
+      repliedFooter:
+        "You can reply to this email directly or click the button above to view the full conversation.",
+      secureDetailsNotice:
+        "Secure details attached (encrypted). Open the ticket to view.",
+      latestReply: "Latest reply:",
+      descriptionLabel: "Description:",
+    },
+    vpn: {
+      cancelledPreview: "Subscription will be cancelled at period end",
+      cancelledHeading: "Subscription Cancellation Confirmed",
+      cancelledText1:
+        "Your {packageName} subscription for {organizationName} has been scheduled for cancellation.",
+      cancelledText2:
+        "You will retain access until {periodEnd}. After that date, your subscription will be terminated and all associated data will be removed.",
+      cancelledFooter:
+        "If you change your mind, you can cancel the cancellation from your console before the period ends.",
+      createdPreview: "Your VPN subscription is being provisioned",
+      createdHeading: "VPN Subscription Creating",
+      createdText1:
+        "Thank you for subscribing to the {packageName} plan for {organizationName}. We are now provisioning your VPN account.",
+      createdText2:
+        "This usually takes a few minutes. You will receive another email once your VPN is ready to use.",
+      createdFooter:
+        "If you have any questions, please contact our support team.",
+      provSuccessPreview: "Your VPN account is ready",
+      provSuccessHeading: "VPN Account Ready",
+      provSuccessText1:
+        "Your {packageName} subscription for {organizationName} is now active.",
+      provSuccessText2:
+        "You can download configuration files and connect to your VPN from the console.",
+      provSuccessFooter:
+        "If you experience any issues, please contact our support team.",
+      provFailedPreview: "Provisioning failed — contact support",
+      provFailedHeading: "Provisioning Failed",
+      provFailedText1:
+        "We encountered a problem while setting up your {packageName} subscription for {organizationName}.",
+      provFailedText2:
+        "Our team has been notified and will investigate. If the issue persists, please reach out to support for assistance.",
+      provFailedFooter:
+        "We apologize for the inconvenience. Contact support for help.",
+      renewSuccessPreview: "VPN subscription renewed",
+      renewSuccessHeading: "Subscription Renewed",
+      renewSuccessText1:
+        "Your {packageName} subscription for {organizationName} has been successfully renewed for {period}.",
+      renewSuccessText2:
+        "Your VPN service continues as normal. You do not need to take any action.",
+      renewSuccessFooter: "Thank you for being a valued customer.",
+      renewFailedPreview: "Payment failed — please top up your balance",
+      renewFailedHeading: "Renewal Payment Failed",
+      renewFailedText1:
+        "We were unable to renew your {packageName} subscription for {organizationName} due to insufficient balance.",
+      renewFailedText2:
+        "Please top up your account balance to avoid service interruption. We will retry the payment automatically over the coming days.",
+      renewFailedFooter: "Need help? Contact our support team.",
+      expiredPreview: "VPN subscription expired",
+      expiredHeading: "VPN Subscription Expired",
+      expiredText1:
+        "Your {packageName} subscription for {organizationName} has expired due to non-payment.",
+      expiredText2:
+        "All VPN access has been revoked. To restore service, please create a new subscription from the console.",
+      expiredFooter:
+        "We hope to see you again. Contact support if you have any questions.",
+      suspendedPreview: "VPN suspended due to payment overdue",
+      suspendedHeading: "VPN Subscription Suspended",
+      suspendedText1:
+        "Your {packageName} subscription for {organizationName} has been suspended due to overdue payment.",
+      suspendedText2:
+        "Please top up your balance to restore service. If no payment is received within the next few days, your subscription will be permanently expired.",
+      suspendedFooter: "Need help? Contact our support team.",
+    },
+    whatsapp: {
+      digestPreview:
+        "[Daily Digest] WhatsApp Device Status Summary ({total} Devices)",
+      digestHeading: "WhatsApp Daily Device Digest",
+      digestIntro:
+        "Daily summary of all WhatsApp devices and Meta approval statuses as of",
+      totalDevices: "Total Devices",
+      nameApproved: "Name Approved",
+      pendingReview: "Pending Review",
+      declinedIssues: "Declined / Issues",
+      deviceBreakdown: "Device Breakdown:",
+      qualityRating: "Quality:",
+      connectionStatus: "Connection:",
+      noDevicesFound: "No registered WhatsApp devices found.",
+      automatedDigestFooter:
+        "This is an automated digest sent to platform administrators.",
+      disconnPreview:
+        "[{orgName}] WhatsApp Device Disconnected: {phoneNumber}",
+      disconnHeading: "WhatsApp Device Disconnected",
+      disconnIntro:
+        "A WhatsApp device under {orgName} has gone offline and is no longer responding to health checks.",
+      disconnBadge: "DISCONNECTED",
+      lastSeen: "Last seen:",
+      disconnectedAt: "Disconnected at:",
+      disconnNote:
+        "WhatsApp messaging through this device will fail until it reconnects. Please verify the device's connection to Meta and check your network.",
+      disconnFooter:
+        "This is an automated alert from your WhatsApp monitoring system. You can manage device health from the dashboard.",
+      stateChangePreview:
+        "[Admin Alert] WhatsApp Device Status Changed: {phoneNumber} ({orgName})",
+      stateChangeHeading: "WhatsApp Device Status Update",
+      stateChangeIntro:
+        "A Meta WhatsApp device state change has been detected for {orgName}.",
+      detectedChanges: "Detected Changes:",
+      detectedAt: "Detected At:",
+      stateChangeFooter:
+        "This is an automated super-admin alert. You can inspect this device in the admin portal.",
+    },
+  },
+  pPayAsYouGoSelector: {
+    cpuLabel: "CPU (m)",
+    cpuHint: "Minimum 100m, maximum 2000m (2 cores).",
+    memoryLabel: "Memory (Mi)",
+    memoryHint: "Minimum 256Mi, maximum 4096Mi (4Gi).",
+    bufferHoursLabel: "Runtime buffer (hours)",
+    bufferHoursHint:
+      "Minimum 24 hours. Your balance must cover this before deploy.",
+    requiredBalance: "Required balance",
+  },
+  pAppWorkspaceHeader: {
+    switchApplication: "Switch Application",
+    source: "source",
+    plan: "plan",
+    cluster: "cluster",
+    syncTooltip: "Sync latest configuration and state",
+    syncing: "Syncing...",
+    syncConfig: "Sync Config",
+    workspaceTabsAria: "App Workspace Tabs",
+    liveTerminalSession: "Live terminal session",
+  },
+  pConsoleVpnDevices: {
+    heading: "My VPN Devices",
+    description: "View and manage devices paired to your VPN subscriptions.",
+    errorHeading: "My VPN Devices",
+    errorDescription: "Devices paired to your VPN subscriptions.",
+    retry: "Retry",
+    pairNewDevice: "Pair New Device",
+    needActiveSubPrefix:
+      "You need an active VPN subscription to pair a device.",
+    viewSubscriptions: "View subscriptions",
+  },
+  pVpnConnectionTestModal: {
+    enableNow: "Enable now?",
+    testResultsTitle: "Connection Test Results — {serverName}",
+    passed: "passed",
+    failed: "failed",
+    error: "error",
+    skipped: "skipped",
+    runningChecks: "Running checks…",
+    close: "Close",
+    copied: "Copied!",
+    copyReport: "Copy Report",
+    running: "Running…",
+    rerun: "Re-run",
+  },
+  pVpnDevicesList: {
+    revokeDeviceTitle: "Revoke device",
+    revokeDesc:
+      "This will disconnect VPN on {device} immediately. The device can be re-paired later if needed.",
+    cancel: "Cancel",
+    revoke: "Revoke",
+    searchPlaceholder: "Search devices...",
+    noDevicesFound: "No devices found.",
+  },
+  pPortalDocumentations: {
+    heading: "Documentation Registry",
+    description: "Browse, create, edit, or delete documentation entries.",
+    searchPlaceholder: "Search by title or path...",
+    createNewEntry: "Create New Entry",
+    colTitle: "Title",
+    colPath: "Path",
+    colUpdated: "Updated",
+  },
+  pPortalAdminOrganizationsTable: {
+    colOrganization: "Organization",
+    colMembers: "Members",
+    colCreated: "Created",
+    searchPlaceholder: "Search organizations...",
+    previous: "Previous",
+    next: "Next",
+  },
 }

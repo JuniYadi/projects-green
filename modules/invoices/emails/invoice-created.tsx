@@ -11,6 +11,7 @@ import {
   Text,
 } from "react-email"
 import { getEmailBaseUrl } from "@/lib/email-url"
+import { getMessages } from "@/lib/i18n/messages"
 import type { InvoiceCreatedEmailProps } from "./types"
 import {
   InvoiceCostBreakdown,
@@ -33,22 +34,28 @@ export const InvoiceCreatedEmail = ({
   lineItems,
   recipientEmail,
   organizationName,
+  locale = "en",
 }: InvoiceCreatedEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.invoices
   const invoiceUrl = `${getEmailBaseUrl()}/console/invoices/${invoiceNumber}`
 
   return (
     <Html>
       <Head />
       <Preview>
-        Invoice {invoiceNumber} - Payment Due {dueAt} ({amount})
+        {messages.createdPreview
+          .replace("{invoiceNumber}", invoiceNumber)
+          .replace("{dueAt}", dueAt)
+          .replace("{amount}", amount)}
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>Invoice {invoiceNumber}</Heading>
+          <Heading style={styles.heading}>
+            {messages.createdHeading.replace("{invoiceNumber}", invoiceNumber)}
+          </Heading>
 
           <Text style={styles.intro}>
-            A new invoice has been issued for your account. Please review the
-            breakdown and complete payment by the due date.
+            {messages.createdIntro}
           </Text>
 
           <InvoiceSummarySection
@@ -60,29 +67,30 @@ export const InvoiceCreatedEmail = ({
             periodEnd={periodEnd}
             recipientEmail={recipientEmail}
             organizationName={organizationName}
+            locale={locale}
           />
 
-          <InvoiceItemsList lineItems={lineItems} />
+          <InvoiceItemsList lineItems={lineItems} locale={locale} />
 
           <InvoiceCostBreakdown
             amount={amount}
             subtotalAmount={subtotalAmount}
             taxAmount={taxAmount}
             discountAmount={discountAmount}
-            totalLabel="Total Due"
+            totalLabel={messages.totalAmount}
+            locale={locale}
           />
 
           <Section style={styles.actions}>
             <Button href={invoiceUrl} style={styles.button}>
-              View &amp; Pay Invoice
+              {messages.createdViewAndPay}
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have any questions or need billing assistance, please reach
-            out to our support team.
+            {messages.createdFooter}
           </Text>
         </Container>
       </Body>

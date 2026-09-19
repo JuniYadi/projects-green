@@ -104,6 +104,7 @@ describe("SecurityArtifactsTab", () => {
         activeScan={sampleImages[0].securityScan}
         findings={sampleFindings}
         totalFindings={2}
+        locale="en"
       />
     )
 
@@ -131,6 +132,7 @@ describe("SecurityArtifactsTab", () => {
         activeScan={sampleImages[0].securityScan}
         findings={sampleFindings}
         totalFindings={2}
+        locale="en"
       />
     )
 
@@ -163,6 +165,7 @@ describe("SecurityArtifactsTab", () => {
         findings={sampleFindings}
         totalFindings={2}
         onRollback={onRollback}
+        locale="en"
       />
     )
 

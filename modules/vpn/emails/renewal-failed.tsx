@@ -8,36 +8,44 @@ import {
   Preview,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 interface RenewalFailedEmailProps {
   organizationName?: string
   packageName?: string
+  locale?: AppLocale
 }
 
 export const RenewalFailedEmail = ({
   organizationName = "your organization",
   packageName = "VPN",
-}: RenewalFailedEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>Payment failed — please top up your balance</Preview>
-    <Body style={s.body}>
-      <Container style={s.container}>
-        <Heading style={s.heading}>Renewal Payment Failed</Heading>
-        <Text style={s.text}>
-          We were unable to renew your {packageName} subscription for{" "}
-          {organizationName} due to insufficient balance.
-        </Text>
-        <Text style={s.text}>
-          Please top up your account balance to avoid service interruption. We
-          will retry the payment automatically over the coming days.
-        </Text>
-        <Hr style={s.hr} />
-        <Text style={s.footer}>Need help? Contact our support team.</Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  locale = "en",
+}: RenewalFailedEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.vpn
+
+  return (
+    <Html>
+      <Head />
+      <Preview>{messages.renewFailedPreview}</Preview>
+      <Body style={s.body}>
+        <Container style={s.container}>
+          <Heading style={s.heading}>{messages.renewFailedHeading}</Heading>
+          <Text style={s.text}>
+            {messages.renewFailedText1
+              .replace("{packageName}", packageName)
+              .replace("{organizationName}", organizationName)}
+          </Text>
+          <Text style={s.text}>
+            {messages.renewFailedText2}
+          </Text>
+          <Hr style={s.hr} />
+          <Text style={s.footer}>{messages.renewFailedFooter}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 const s = {
   body: {

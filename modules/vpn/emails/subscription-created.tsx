@@ -8,38 +8,46 @@ import {
   Preview,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 interface SubscriptionCreatedEmailProps {
   organizationName?: string
   packageName?: string
+  locale?: AppLocale
 }
 
 export const SubscriptionCreatedEmail = ({
   organizationName = "your organization",
   packageName = "VPN",
-}: SubscriptionCreatedEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>Your VPN subscription is being provisioned</Preview>
-    <Body style={s.body}>
-      <Container style={s.container}>
-        <Heading style={s.heading}>VPN Subscription Creating</Heading>
-        <Text style={s.text}>
-          Thank you for subscribing to the {packageName} plan for{" "}
-          {organizationName}. We are now provisioning your VPN account.
-        </Text>
-        <Text style={s.text}>
-          This usually takes a few minutes. You will receive another email once
-          your VPN is ready to use.
-        </Text>
-        <Hr style={s.hr} />
-        <Text style={s.footer}>
-          If you have any questions, please contact our support team.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  locale = "en",
+}: SubscriptionCreatedEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.vpn
+
+  return (
+    <Html>
+      <Head />
+      <Preview>{messages.createdPreview}</Preview>
+      <Body style={s.body}>
+        <Container style={s.container}>
+          <Heading style={s.heading}>{messages.createdHeading}</Heading>
+          <Text style={s.text}>
+            {messages.createdText1
+              .replace("{packageName}", packageName)
+              .replace("{organizationName}", organizationName)}
+          </Text>
+          <Text style={s.text}>
+            {messages.createdText2}
+          </Text>
+          <Hr style={s.hr} />
+          <Text style={s.footer}>
+            {messages.createdFooter}
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 const s = {
   body: {

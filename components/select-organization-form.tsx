@@ -3,8 +3,10 @@
 import { useState } from "react"
 import { eden } from "@/lib/eden"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { cn } from "@/lib/utils"
 
 import {
@@ -56,6 +58,9 @@ export function SelectOrganizationForm({
   ...props
 }: SelectOrganizationFormProps) {
   const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pSelectOrgForm
 
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -96,19 +101,11 @@ export function SelectOrganizationForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <FieldGroup>
         <div className="flex flex-col gap-1 text-center">
-          <h1 className="text-xl font-bold">Choose an organization</h1>
+          <h1 className="text-xl font-bold">{messages.chooseOrganization}</h1>
           <FieldDescription>
-            {email ? (
-              <>
-                Your account <strong>{email}</strong> belongs to multiple
-                organizations. Select which one to sign in to.
-              </>
-            ) : (
-              <>
-                Your account belongs to multiple organizations. Select which one
-                to sign in to.
-              </>
-            )}
+            {email
+              ? messages.accountBelongsWithEmail.replace("{email}", email)
+              : messages.accountBelongs}
           </FieldDescription>
         </div>
 
@@ -121,7 +118,7 @@ export function SelectOrganizationForm({
         {organizations.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">
-              No organizations found. Please contact support.
+              {messages.noOrgsFound}
             </p>
           </div>
         ) : (
@@ -164,7 +161,7 @@ export function SelectOrganizationForm({
                   </div>
                   {isThisSubmitting ? (
                     <span className="text-xs text-muted-foreground">
-                      Signing in...
+                      {messages.signingIn}
                     </span>
                   ) : null}
                 </button>
@@ -175,9 +172,9 @@ export function SelectOrganizationForm({
 
         <Field>
           <FieldDescription className="text-center">
-            Need to use a different account?{" "}
+            {messages.needDifferentAccount}{" "}
             <Link href="/login" className="underline underline-offset-4">
-              Back to login
+              {messages.backToLogin}
             </Link>
           </FieldDescription>
         </Field>

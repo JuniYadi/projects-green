@@ -13,6 +13,8 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
 import { renderMarkdownToHtml } from "@/lib/markdown"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { MermaidRenderer } from "../components/mermaid-renderer"
 import { CodeBlockCopyEnhancer } from "../components/code-copy-enhancer"
 import { OnThisPage, type TocItem } from "../components/on-this-page"
@@ -115,6 +117,8 @@ function estimateReadingTime(text: string): number {
 
 export default async function PublicDocDetailPage({ params }: Props) {
   const { lang, slug } = await params
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pDocs
   const docPath = `/${slug.join("/")}`
 
   // 1. Fetch document matching the active locale
@@ -270,7 +274,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
         {/* Bottom Pagination Flow (Previous / Next Article Cards) */}
         {(prevDoc || nextDoc) && (
           <nav
-            aria-label="Document Pagination"
+            aria-label={messages.paginationAriaLabel}
             className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2"
           >
             {prevDoc ? (
@@ -280,7 +284,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
               >
                 <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground group-hover:text-emerald-500">
                   <ArrowLeft size={12} />
-                  <span>{lang === "id" ? "SEBELUMNYA" : "PREVIOUS"}</span>
+                  <span>{messages.previous}</span>
                 </div>
                 <span className="text-sm font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
                   {prevDoc.title}
@@ -299,7 +303,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
                 className="group flex flex-col items-end gap-1.5 rounded-2xl border border-border/50 bg-card/40 p-5 text-right transition-all hover:border-emerald-500/40 hover:bg-card/80 hover:shadow-sm"
               >
                 <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground group-hover:text-emerald-500">
-                  <span>{lang === "id" ? "SELANJUTNYA" : "NEXT"}</span>
+                  <span>{messages.next}</span>
                   <ArrowRight size={12} />
                 </div>
                 <span className="text-sm font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400">

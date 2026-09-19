@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { InvoiceDetailScreen } from "@/modules/invoices/ui/invoice-detail-screen"
 
@@ -19,6 +20,7 @@ export default async function InvoiceDetailPage({
 }: InvoiceDetailPageProps) {
   const { lang, invoiceId } = await params
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pConsolePages.invoiceDetail
 
   const invoicesPath = localizePathname({
     pathname: "/console/invoices",
@@ -29,11 +31,11 @@ export default async function InvoiceDetailPage({
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-2">
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
-          <Link href={invoicesPath}>Back to Invoices</Link>
+          <Link href={invoicesPath}>{messages.backLink}</Link>
         </Button>
-        <h1 className="text-2xl font-semibold">Invoice Detail</h1>
+        <h1 className="text-2xl font-semibold">{messages.title}</h1>
         <p className="text-sm text-muted-foreground">
-          Review invoice details, download PDF, and manage billing actions.
+          {messages.description}
         </p>
       </header>
 

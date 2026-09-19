@@ -9,6 +9,8 @@ import {
   Section,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 interface PaymentConfirmationSubmittedEmailProps {
   invoiceNumber: string
@@ -16,6 +18,7 @@ interface PaymentConfirmationSubmittedEmailProps {
   bankName: string
   senderName?: string
   confirmationId: string
+  locale?: AppLocale
 }
 
 export const PaymentConfirmationSubmittedEmail = ({
@@ -24,43 +27,48 @@ export const PaymentConfirmationSubmittedEmail = ({
   bankName,
   senderName,
   confirmationId,
-}: PaymentConfirmationSubmittedEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>Payment confirmation received for invoice {invoiceNumber}</Preview>
-    <Body style={styles.body}>
-      <Container style={styles.container}>
-        <Heading style={styles.heading}>Payment Confirmation Submitted</Heading>
-        <Text style={styles.intro}>
-          A payment confirmation has been submitted and is awaiting review.
-        </Text>
-        <Section>
-          <Text style={styles.detail}>
-            <strong>Invoice:</strong> {invoiceNumber}
+  locale = "en",
+}: PaymentConfirmationSubmittedEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.invoices
+
+  return (
+    <Html>
+      <Head />
+      <Preview>{messages.confirmationPreview.replace("{invoiceNumber}", invoiceNumber)}</Preview>
+      <Body style={styles.body}>
+        <Container style={styles.container}>
+          <Heading style={styles.heading}>{messages.confirmationHeading}</Heading>
+          <Text style={styles.intro}>
+            {messages.confirmationIntro.replace("{invoiceNumber}", invoiceNumber)}
           </Text>
-          <Text style={styles.detail}>
-            <strong>Amount:</strong> {amount}
-          </Text>
-          <Text style={styles.detail}>
-            <strong>Bank:</strong> {bankName}
-          </Text>
-          {senderName ? (
+          <Section>
             <Text style={styles.detail}>
-              <strong>Sender:</strong> {senderName}
+              <strong>{messages.invoiceNumber}</strong> {invoiceNumber}
             </Text>
-          ) : null}
-          <Text style={styles.detail}>
-            <strong>Confirmation ID:</strong> {confirmationId}
+            <Text style={styles.detail}>
+              <strong>{messages.totalAmount}:</strong> {amount}
+            </Text>
+            <Text style={styles.detail}>
+              <strong>{messages.paymentMethod}</strong> {bankName}
+            </Text>
+            {senderName ? (
+              <Text style={styles.detail}>
+                <strong>{messages.billedTo}</strong> {senderName}
+              </Text>
+            ) : null}
+            <Text style={styles.detail}>
+              <strong>{messages.confirmationViewStatus}:</strong> {confirmationId}
+            </Text>
+          </Section>
+          <Hr style={styles.divider} />
+          <Text style={styles.footer}>
+            {messages.automatedNotice}
           </Text>
-        </Section>
-        <Hr style={styles.divider} />
-        <Text style={styles.footer}>
-          Please review this payment confirmation in the billing portal.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 const styles = {
   body: {

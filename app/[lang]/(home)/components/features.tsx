@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import {
   GitBranch,
   Timer,
@@ -10,6 +11,8 @@ import {
   Cpu,
   ArrowRight,
 } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const features = [
   {
@@ -74,6 +77,10 @@ const logos = [
 ]
 
 export function FeaturesSection() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pHomeFeatures
+
   return (
     <section id="features" className="relative bg-[#07091a] py-28">
       {/* Separator gradient from prev section */}
@@ -84,7 +91,7 @@ export function FeaturesSection() {
         {/* Tech stack marquee */}
         <div className="mb-20">
           <p className="mb-6 text-center text-xs tracking-widest text-white/30 uppercase">
-            Works with your stack
+            {messages.worksWithStack}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             {logos.map((logo) => (
@@ -102,18 +109,17 @@ export function FeaturesSection() {
         <div className="mb-16 text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5">
             <span className="text-xs font-semibold tracking-widest text-white/50 uppercase">
-              Built for developers
+              {messages.builtForDevelopers}
             </span>
           </div>
           <h2 className="mb-5 text-4xl font-bold tracking-tight text-white lg:text-5xl">
-            The platform that gets{" "}
+            {messages.platformHeadingStart}{" "}
             <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-              out of your way
+              {messages.platformHeadingHighlight}
             </span>
           </h2>
           <p className="mx-auto max-w-2xl text-lg text-white/40">
-            Sensible defaults, powerful overrides. Built by developers, for
-            developers who care about their craft.
+            {messages.platformDesc}
           </p>
         </div>
 
@@ -141,10 +147,10 @@ export function FeaturesSection() {
         <div className="flex flex-col items-center justify-between gap-6 rounded-2xl border border-white/10 bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 p-8 sm:flex-row">
           <div>
             <h3 className="mb-1 text-xl font-bold text-white">
-              Ready to build?
+              {messages.readyToBuild}
             </h3>
             <p className="text-sm text-white/40">
-              Get started in 2 minutes. No credit card required.
+              {messages.getStartedIn2Min}
             </p>
           </div>
           <Link
@@ -152,7 +158,7 @@ export function FeaturesSection() {
             id="features-cta-signup"
             className="group inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3 font-semibold whitespace-nowrap text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40"
           >
-            Get started free
+            {messages.getStartedFree}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>

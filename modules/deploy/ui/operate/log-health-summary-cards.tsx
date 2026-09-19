@@ -1,3 +1,6 @@
+"use client"
+
+import { useParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -7,6 +10,8 @@ import {
   FileText,
 } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export interface LogHealthSummaryCardsProps {
   healthScore: number
@@ -23,6 +28,9 @@ export function LogHealthSummaryCards({
   warnCount = 0,
   periodLabel = "",
 }: LogHealthSummaryCardsProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pLogHealthSummaryCards
   const isHealthy = healthScore >= 95
 
   return (
@@ -32,7 +40,7 @@ export function LogHealthSummaryCards({
         <CardContent className="flex items-center justify-between p-5">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Skor Kestabilan Aplikasi
+              {messages.stabilityScore}
             </p>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold tracking-tight text-foreground">
@@ -50,12 +58,12 @@ export function LogHealthSummaryCards({
                 {isHealthy ? (
                   <>
                     <ShieldCheck size={12} weight="fill" />
-                    <span>Stabil</span>
+                    <span>{messages.stable}</span>
                   </>
                 ) : (
                   <>
                     <WarningCircle size={12} weight="fill" />
-                    <span>Insiden</span>
+                    <span>{messages.incident}</span>
                   </>
                 )}
               </Badge>
@@ -80,15 +88,15 @@ export function LogHealthSummaryCards({
         <CardContent className="flex items-center justify-between p-5">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Total Insiden Error
+              {messages.totalErrorIncidents}
             </p>
             <p className="text-2xl font-bold tracking-tight text-foreground">
-              {errorCount.toLocaleString("id-ID")}
+              {errorCount.toLocaleString(locale === "id" ? "id-ID" : "en-US")}
             </p>
             <p className="text-[11px] text-muted-foreground">
               {errorCount > 0
-                ? "Perlu perhatian developer"
-                : "Tidak ada exception"}
+                ? messages.needsAttention
+                : messages.noExceptions}
             </p>
           </div>
           <div
@@ -109,13 +117,13 @@ export function LogHealthSummaryCards({
         <CardContent className="flex items-center justify-between p-5">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Peringatan (Warn)
+              {messages.warnings}
             </p>
             <p className="text-2xl font-bold tracking-tight text-foreground">
-              {warnCount.toLocaleString("id-ID")}
+              {warnCount.toLocaleString(locale === "id" ? "id-ID" : "en-US")}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              Level peringatan non-kritis
+              {messages.nonCriticalWarnings}
             </p>
           </div>
           <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/20 text-muted-foreground">
@@ -129,13 +137,13 @@ export function LogHealthSummaryCards({
         <CardContent className="flex items-center justify-between p-5">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Total Baris Log
+              {messages.totalLogLines}
             </p>
             <p className="text-2xl font-bold tracking-tight text-foreground">
-              {totalLogs.toLocaleString("id-ID")}
+              {totalLogs.toLocaleString(locale === "id" ? "id-ID" : "en-US")}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              Output container stdout/stderr
+              {messages.stdoutStderr}
             </p>
           </div>
           <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-muted/20 text-muted-foreground">

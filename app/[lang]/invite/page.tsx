@@ -9,6 +9,7 @@ import {
   INVITE_COOKIE_NAME,
 } from "@/modules/auth/invite-cookie"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import type { AppLocale } from "@/lib/i18n/config"
 import {
   acceptTenantInvitation,
@@ -80,6 +81,7 @@ export default async function InvitePage({
 }: InvitePageProps) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pAuthPages.invite
   const search = await searchParams
   const token = (search?.invitation_token ?? search?.invitationToken)?.trim()
 
@@ -143,27 +145,26 @@ export default async function InvitePage({
             <div className="space-y-2 text-center">
               <h1 className="text-xl font-semibold">
                 {invitation.organizationName
-                  ? `You're invited to join ${invitation.organizationName}`
-                  : "You've been invited"}
+                  ? messages.invitedToJoin.replace("{org}", invitation.organizationName)
+                  : messages.youveBeenInvited}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Accept the invitation for{" "}
+                {messages.acceptInvitationFor}{" "}
                 <span className="font-medium text-foreground">
                   {invitation.email}
                 </span>{" "}
-                by signing in. Use the same email address this invite was sent
-                to.
+                {messages.bySigningIn}
               </p>
             </div>
 
             <form action={continueWithEmail} className="flex flex-col gap-3">
               <Button type="submit" className="w-full">
-                Continue with email code
+                {messages.continueWithEmailCode}
               </Button>
             </form>
 
             <div className="relative text-center text-xs text-muted-foreground">
-              <span className="bg-card px-2">Or continue with</span>
+              <span className="bg-card px-2">{messages.orContinueWith}</span>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -175,7 +176,7 @@ export default async function InvitePage({
                     variant="outline"
                     className="w-full capitalize"
                   >
-                    Continue with {provider}
+                    {messages.continueWith} {provider}
                   </Button>
                 </form>
               ))}
@@ -188,16 +189,16 @@ export default async function InvitePage({
 }
 
 function InviteUnavailable({ locale }: { locale: AppLocale }) {
+  const messages = getMessages(locale).pAuthPages.invite
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6 text-center shadow-sm">
-      <h1 className="text-xl font-semibold">Invitation not found</h1>
+      <h1 className="text-xl font-semibold">{messages.invitationNotFound}</h1>
       <p className="text-sm text-muted-foreground">
-        This invitation link is invalid or has already been used. Ask your
-        organization admin to send a new invitation.
+        {messages.invitationNotFoundDesc}
       </p>
       <Button asChild variant="outline" className="w-full">
         <a href={localizePathname({ pathname: "/login", locale })}>
-          Go to sign in
+          {messages.goToSignIn}
         </a>
       </Button>
     </div>
@@ -211,21 +212,22 @@ function InviteInactive({
   invitation: ResolvedInvitation
   locale: AppLocale
 }) {
+  const messages = getMessages(locale).pAuthPages.invite
   const reason = invitation.expired
-    ? "This invitation has expired."
+    ? messages.expired
     : invitation.state === "accepted"
-      ? "This invitation has already been accepted."
+      ? messages.accepted
       : invitation.state === "revoked"
-        ? "This invitation has been revoked."
-        : "This invitation is no longer active."
+        ? messages.revoked
+        : messages.inactive
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6 text-center shadow-sm">
-      <h1 className="text-xl font-semibold">Invitation unavailable</h1>
+      <h1 className="text-xl font-semibold">{messages.invitationUnavailable}</h1>
       <p className="text-sm text-muted-foreground">{reason}</p>
       <Button asChild variant="outline" className="w-full">
         <a href={localizePathname({ pathname: "/login", locale })}>
-          Go to sign in
+          {messages.goToSignIn}
         </a>
       </Button>
     </div>

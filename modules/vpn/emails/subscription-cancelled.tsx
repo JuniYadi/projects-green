@@ -8,42 +8,48 @@ import {
   Preview,
   Text,
 } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 
 interface SubscriptionCancelledEmailProps {
   organizationName?: string
   packageName?: string
   periodEnd?: string
+  locale?: AppLocale
 }
 
 export const SubscriptionCancelledEmail = ({
   organizationName = "your organization",
   packageName = "VPN",
   periodEnd = "the end of the current billing period",
-}: SubscriptionCancelledEmailProps) => (
-  <Html>
-    <Head />
-    <Preview>Subscription will be cancelled at period end</Preview>
-    <Body style={s.body}>
-      <Container style={s.container}>
-        <Heading style={s.heading}>Subscription Cancellation Confirmed</Heading>
-        <Text style={s.text}>
-          Your {packageName} subscription for {organizationName} has been
-          scheduled for cancellation.
-        </Text>
-        <Text style={s.text}>
-          You will retain access until {periodEnd}. After that date, your
-          subscription will be terminated and all associated data will be
-          removed.
-        </Text>
-        <Hr style={s.hr} />
-        <Text style={s.footer}>
-          If you change your mind, you can cancel the cancellation from your
-          console before the period ends.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  locale = "en",
+}: SubscriptionCancelledEmailProps) => {
+  const messages = getMessages(locale).pEmailTemplates.vpn
+
+  return (
+    <Html>
+      <Head />
+      <Preview>{messages.cancelledPreview}</Preview>
+      <Body style={s.body}>
+        <Container style={s.container}>
+          <Heading style={s.heading}>{messages.cancelledHeading}</Heading>
+          <Text style={s.text}>
+            {messages.cancelledText1
+              .replace("{packageName}", packageName)
+              .replace("{organizationName}", organizationName)}
+          </Text>
+          <Text style={s.text}>
+            {messages.cancelledText2.replace("{periodEnd}", periodEnd)}
+          </Text>
+          <Hr style={s.hr} />
+          <Text style={s.footer}>
+            {messages.cancelledFooter}
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 const s = {
   body: {

@@ -1,17 +1,26 @@
 import type { Metadata } from "next"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { SubscriptionsTable } from "../_components/subscriptions-table"
 
 export const metadata: Metadata = { title: "VPN Service Operations" }
 
-export default async function VpnSubscriptionsPage() {
+export default async function VpnSubscriptionsPage({
+  params,
+}: {
+  params?: Promise<{ lang?: string }>
+} = {}) {
+  const resolvedParams = params ? await params : undefined
+  const locale = resolveLocaleOrDefault(resolvedParams?.lang)
+  const messages = getMessages(locale).pPortalPages.vpnSubscriptions
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">VPN Service Operations</h1>
+        <h1 className="text-2xl font-semibold">{messages.title}</h1>
         <p className="text-sm text-muted-foreground">
-          Manage per-protocol server accounts and provisioning for purchased VPN
-          services. Payment, orders, and renewals are managed in Billing.
+          {messages.description}
         </p>
       </header>
       <SubscriptionsTable />

@@ -21,6 +21,7 @@ import {
   ShieldCheck,
 } from "@phosphor-icons/react"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { CountryFlag } from "@/components/ui/country-flag"
 import {
@@ -83,6 +84,7 @@ export function AppWorkspaceHeader({
   const tone = STATUS_TONE[selectedApp.status] ?? STATUS_TONE.idle
   const statusLabel =
     DEPLOY_STATUS_LABELS[selectedApp.status] ?? selectedApp.status
+  const messages = getMessages(locale).pAppWorkspaceHeader
 
   const getTabUrl = (tab: WorkspaceTabKey, slug = selectedApp.slug) => {
     return `/${locale}/console/app/platform/${slug}?tab=${tab}`
@@ -147,7 +149,7 @@ export function AppWorkspaceHeader({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-64">
                     <DropdownMenuLabel className="text-xs text-muted-foreground">
-                      Switch Application
+                      {messages.switchApplication}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {apps.map((app) => (
@@ -192,7 +194,7 @@ export function AppWorkspaceHeader({
                       size={13}
                       className="shrink-0 text-muted-foreground"
                     />
-                    <span>source</span>
+                    <span>{messages.source}</span>
                     <strong className="font-mono text-foreground">
                       {selectedApp.dockerVersion
                         ? `v${selectedApp.dockerVersion.replace(/^v/, "")}`
@@ -205,7 +207,7 @@ export function AppWorkspaceHeader({
                       size={13}
                       className="shrink-0 text-muted-foreground"
                     />
-                    <span>source</span>
+                    <span>{messages.source}</span>
                     <strong className="font-mono text-foreground">
                       {selectedApp.branchName}
                     </strong>
@@ -216,7 +218,7 @@ export function AppWorkspaceHeader({
                 <>
                   <span>&bull;</span>
                   <span>
-                    plan{" "}
+                    {messages.plan}{" "}
                     <strong className="text-foreground">
                       {selectedApp.resourcePlanId}
                     </strong>
@@ -227,7 +229,7 @@ export function AppWorkspaceHeader({
                 <>
                   <span>&bull;</span>
                   <span className="inline-flex items-center gap-1.5">
-                    <span>cluster</span>
+                    <span>{messages.cluster}</span>
                     <CountryFlag
                       country={selectedApp.cluster.countryCode}
                       className="rounded-2xs h-3 w-4.5 shrink-0 object-cover shadow-2xs"
@@ -313,13 +315,13 @@ export function AppWorkspaceHeader({
               onClick={onSync}
               disabled={isSyncing}
               className="h-8 gap-1.5 px-3 text-xs"
-              title="Sync latest configuration and state"
+              title={messages.syncTooltip}
             >
               <ArrowsClockwise
                 size={14}
                 className={isSyncing ? "animate-spin" : ""}
               />
-              <span>{isSyncing ? "Syncing..." : "Sync Config"}</span>
+              <span>{isSyncing ? messages.syncing : messages.syncConfig}</span>
             </Button>
           )}
           {targetDomain ? (
@@ -346,7 +348,7 @@ export function AppWorkspaceHeader({
       <div className="flex border-b border-border">
         <nav
           className="-mb-px flex space-x-6 overflow-x-auto"
-          aria-label="App Workspace Tabs"
+          aria-label={messages.workspaceTabsAria}
         >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key
@@ -366,7 +368,7 @@ export function AppWorkspaceHeader({
                 {tab.key === "terminal" && isTerminalActive && (
                   <span
                     className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"
-                    title="Live terminal session"
+                    title={messages.liveTerminalSession}
                   />
                 )}
               </Link>

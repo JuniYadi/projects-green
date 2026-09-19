@@ -8,6 +8,10 @@ import {
   startTransition,
 } from "react"
 import QRCode from "qrcode"
+import { useParams } from "next/navigation"
+
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import {
   Dialog,
@@ -69,6 +73,10 @@ export function VpnPairingQrModal({
   availableSubscriptions,
   onPaired,
 }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pVpnPairingQrModal
+
   const [state, setState] = useState<PairingPhase>({ phase: "idle" })
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -227,7 +235,7 @@ export function VpnPairingQrModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Pair a mobile device</DialogTitle>
+          <DialogTitle>{messages.modalTitle}</DialogTitle>
           <DialogDescription>
             {state.phase === "selecting"
               ? "Select the subscription you want to pair a device to."
@@ -245,7 +253,7 @@ export function VpnPairingQrModal({
                 onValueChange={setSelectedSubscriptionId}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select subscription" />
+                  <SelectValue placeholder={messages.selectSubPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableSubscriptions?.map((sub) => (
@@ -259,7 +267,7 @@ export function VpnPairingQrModal({
                 onClick={() => generate(selectedSubscriptionId!)}
                 disabled={!selectedSubscriptionId}
               >
-                Continue
+                {messages.continueButton}
               </Button>
             </div>
           )}
@@ -278,7 +286,7 @@ export function VpnPairingQrModal({
                   // eslint-disable-next-line @next/next/no-img-element -- data URL, cannot use next/image
                   <img
                     src={state.qrDataUrl}
-                    alt="Scan with mobile app to pair device"
+                    alt={messages.qrAlt}
                     width={256}
                     height={256}
                     className="rounded-md"
@@ -286,7 +294,7 @@ export function VpnPairingQrModal({
                 ) : (
                   <div className="flex h-48 w-48 items-center justify-center rounded-md bg-muted">
                     <p className="text-sm text-muted-foreground">
-                      Code expired
+                      {messages.codeExpired}
                     </p>
                   </div>
                 )}
@@ -299,13 +307,13 @@ export function VpnPairingQrModal({
                       {formatCountdown(countdown)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Scan with the mobile app before this expires
+                      {messages.scanBeforeExpires}
                     </p>
                   </>
                 )}
                 {state.phase === "expired" && (
                   <p className="text-sm text-muted-foreground">
-                    This code has expired.
+                    {messages.thisCodeExpired}
                   </p>
                 )}
               </div>
@@ -315,10 +323,10 @@ export function VpnPairingQrModal({
           {state.phase === "claimed" && (
             <div className="flex flex-col items-center gap-2 py-4">
               <p className="text-lg font-semibold text-green-600">
-                Device paired successfully
+                {messages.devicePairedSuccess}
               </p>
               <p className="text-sm text-muted-foreground">
-                VPN profiles are now available on the paired device.
+                {messages.vpnProfilesAvailable}
               </p>
             </div>
           )}
@@ -333,7 +341,7 @@ export function VpnPairingQrModal({
             <Button
               onClick={() => generate(selectedSubscriptionId ?? undefined)}
             >
-              Regenerate
+              {messages.regenerate}
             </Button>
           </div>
         )}

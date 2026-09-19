@@ -1,18 +1,28 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { OrgOverviewStatsCards } from "./org-overview-stats-cards"
 import { OrgSummaryTable } from "@/app/[lang]/portal/billing/overview/org-summary-table"
 
 export const metadata: Metadata = { title: "Organization Overview" }
 
-export default async function PortalOrgsPage() {
+export default async function PortalOrgsPage({
+  params,
+}: {
+  params?: Promise<{ lang?: string }>
+} = {}) {
+  const resolvedParams = params ? await params : undefined
+  const locale = resolveLocaleOrDefault(resolvedParams?.lang)
+  const messages = getMessages(locale).pPortalPages.orgs
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header>
-        <h1 className="text-2xl font-bold">Organization Overview</h1>
+        <h1 className="text-2xl font-bold">{messages.title}</h1>
         <p className="text-muted-foreground">
-          Platform-wide organization stats and management
+          {messages.description}
         </p>
       </header>
 

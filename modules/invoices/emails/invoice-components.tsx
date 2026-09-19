@@ -1,5 +1,7 @@
 import React from "react"
 import { Hr, Section, Text } from "react-email"
+import { getMessages } from "@/lib/i18n/messages"
+import type { AppLocale } from "@/lib/i18n/config"
 import type { InvoiceEmailLineItem } from "./types"
 
 interface InvoiceSummaryProps {
@@ -13,6 +15,7 @@ interface InvoiceSummaryProps {
   paymentMethod?: string
   recipientEmail?: string
   organizationName?: string
+  locale?: AppLocale
 }
 
 const getStatusBadgeStyle = (status: string) => {
@@ -40,21 +43,23 @@ export const InvoiceSummarySection = ({
   paymentMethod,
   recipientEmail,
   organizationName,
+  locale = "en",
 }: InvoiceSummaryProps) => {
+  const messages = getMessages(locale).pEmailTemplates.invoices
   const statusStyle = getStatusBadgeStyle(status)
 
   return (
     <Section style={styles.card}>
-      <Text style={styles.cardHeader}>INVOICE DETAILS</Text>
+      <Text style={styles.cardHeader}>{messages.invoiceDetails}</Text>
 
       <Text style={styles.metaRow}>
-        <span style={styles.metaLabel}>Invoice Number:</span>{" "}
+        <span style={styles.metaLabel}>{messages.invoiceNumber}</span>{" "}
         <span style={styles.metaValue}>{invoiceNumber}</span>
       </Text>
 
       {organizationName && (
         <Text style={styles.metaRow}>
-          <span style={styles.metaLabel}>Billed To:</span>{" "}
+          <span style={styles.metaLabel}>{messages.billedTo}</span>{" "}
           <span style={styles.metaValue}>
             {organizationName}
             {recipientEmail ? ` (${recipientEmail})` : ""}
@@ -64,18 +69,18 @@ export const InvoiceSummarySection = ({
 
       {!organizationName && recipientEmail && (
         <Text style={styles.metaRow}>
-          <span style={styles.metaLabel}>Billed To:</span>{" "}
+          <span style={styles.metaLabel}>{messages.billedTo}</span>{" "}
           <span style={styles.metaValue}>{recipientEmail}</span>
         </Text>
       )}
 
       <Text style={styles.metaRow}>
-        <span style={styles.metaLabel}>Issue Date:</span>{" "}
+        <span style={styles.metaLabel}>{messages.issueDate}</span>{" "}
         <span style={styles.metaValue}>{issuedAt}</span>
       </Text>
 
       <Text style={styles.metaRow}>
-        <span style={styles.metaLabel}>Due Date:</span>{" "}
+        <span style={styles.metaLabel}>{messages.dueDate}</span>{" "}
         <span style={styles.metaValue}>{dueAt}</span>
       </Text>
 
@@ -84,7 +89,7 @@ export const InvoiceSummarySection = ({
         periodStart !== "N/A" &&
         periodEnd !== "N/A" && (
           <Text style={styles.metaRow}>
-            <span style={styles.metaLabel}>Billing Period:</span>{" "}
+            <span style={styles.metaLabel}>{messages.billingPeriod}</span>{" "}
             <span style={styles.metaValue}>
               {periodStart} – {periodEnd}
             </span>
@@ -93,20 +98,20 @@ export const InvoiceSummarySection = ({
 
       {paidAt && paidAt !== "N/A" && (
         <Text style={styles.metaRow}>
-          <span style={styles.metaLabel}>Paid On:</span>{" "}
+          <span style={styles.metaLabel}>{messages.paidOn}</span>{" "}
           <span style={styles.metaValue}>{paidAt}</span>
         </Text>
       )}
 
       {paymentMethod && (
         <Text style={styles.metaRow}>
-          <span style={styles.metaLabel}>Payment Method:</span>{" "}
+          <span style={styles.metaLabel}>{messages.paymentMethod}</span>{" "}
           <span style={styles.metaValue}>{paymentMethod}</span>
         </Text>
       )}
 
       <Text style={styles.metaRow}>
-        <span style={styles.metaLabel}>Status:</span>{" "}
+        <span style={styles.metaLabel}>{messages.status}</span>{" "}
         <span style={statusStyle}>{status}</span>
       </Text>
     </Section>
@@ -115,16 +120,18 @@ export const InvoiceSummarySection = ({
 
 interface InvoiceItemsListProps {
   lineItems?: InvoiceEmailLineItem[]
+  locale?: AppLocale
 }
 
-export const InvoiceItemsList = ({ lineItems }: InvoiceItemsListProps) => {
+export const InvoiceItemsList = ({ lineItems, locale = "en" }: InvoiceItemsListProps) => {
+  const messages = getMessages(locale).pEmailTemplates.invoices
   if (!lineItems || lineItems.length === 0) {
     return null
   }
 
   return (
     <Section style={styles.card}>
-      <Text style={styles.cardHeader}>ITEMS & SERVICES</Text>
+      <Text style={styles.cardHeader}>{messages.itemsAndServices}</Text>
 
       {lineItems.map((item, index) => (
         <React.Fragment key={item.id || index}>
@@ -142,7 +149,7 @@ export const InvoiceItemsList = ({ lineItems }: InvoiceItemsListProps) => {
                   <td style={styles.itemLeftCol}>
                     <Text style={styles.itemTitle}>{item.description}</Text>
                     <Text style={styles.itemSubtitle}>
-                      Qty {item.quantity} × {item.unitPrice}
+                      {messages.qty} {item.quantity} × {item.unitPrice}
                     </Text>
                   </td>
                   <td align="right" style={styles.itemRightCol}>
@@ -164,6 +171,7 @@ interface InvoiceCostBreakdownProps {
   taxAmount?: string
   discountAmount?: string
   totalLabel?: string
+  locale?: AppLocale
 }
 
 export const InvoiceCostBreakdown = ({
@@ -171,8 +179,11 @@ export const InvoiceCostBreakdown = ({
   subtotalAmount,
   taxAmount,
   discountAmount,
-  totalLabel = "Total Amount",
+  totalLabel,
+  locale = "en",
 }: InvoiceCostBreakdownProps) => {
+  const messages = getMessages(locale).pEmailTemplates.invoices
+  const displayTotalLabel = totalLabel ?? messages.totalAmount
   const hasSubtotal = Boolean(subtotalAmount && subtotalAmount !== "N/A")
   const hasTax = Boolean(
     taxAmount && taxAmount !== "N/A" && /[1-9]/.test(taxAmount)
@@ -183,7 +194,7 @@ export const InvoiceCostBreakdown = ({
 
   return (
     <Section style={styles.card}>
-      <Text style={styles.cardHeader}>PAYMENT BREAKDOWN</Text>
+      <Text style={styles.cardHeader}>{messages.paymentBreakdown}</Text>
 
       <table
         width="100%"
@@ -197,7 +208,7 @@ export const InvoiceCostBreakdown = ({
             <tr>
               <td style={styles.breakdownLeftCol}>
                 <Text style={styles.breakdownRow}>
-                  <span style={styles.metaLabel}>Subtotal:</span>
+                  <span style={styles.metaLabel}>{messages.subtotal}</span>
                 </Text>
               </td>
               <td align="right" style={styles.breakdownRightCol}>
@@ -212,7 +223,7 @@ export const InvoiceCostBreakdown = ({
             <tr>
               <td style={styles.breakdownLeftCol}>
                 <Text style={styles.breakdownRow}>
-                  <span style={styles.metaLabel}>Discount / Voucher:</span>
+                  <span style={styles.metaLabel}>{messages.discountVoucher}</span>
                 </Text>
               </td>
               <td align="right" style={styles.breakdownRightCol}>
@@ -227,7 +238,7 @@ export const InvoiceCostBreakdown = ({
             <tr>
               <td style={styles.breakdownLeftCol}>
                 <Text style={styles.breakdownRow}>
-                  <span style={styles.metaLabel}>Tax:</span>
+                  <span style={styles.metaLabel}>{messages.tax}</span>
                 </Text>
               </td>
               <td align="right" style={styles.breakdownRightCol}>
@@ -255,7 +266,7 @@ export const InvoiceCostBreakdown = ({
           <tr>
             <td style={styles.breakdownLeftCol}>
               <Text style={styles.totalRow}>
-                <span style={styles.totalLabel}>{totalLabel}:</span>
+                <span style={styles.totalLabel}>{displayTotalLabel}:</span>
               </Text>
             </td>
             <td align="right" style={styles.breakdownRightCol}>

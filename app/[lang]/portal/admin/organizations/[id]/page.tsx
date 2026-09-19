@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 
 import { Button } from "@/components/ui/button"
 import { ArrowLeftIcon } from "@/components/ui/phosphor-icons"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import Link from "next/link"
 import { MembersTable } from "./members-table"
 
@@ -10,9 +12,11 @@ export const metadata: Metadata = { title: "Organization Details" }
 export default async function OrganizationDetailPage({
   params,
 }: Readonly<{
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string; lang?: string }>
 }>) {
-  const { id } = await params
+  const { id, lang } = await params
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale).pPortalPages.adminOrganizations
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -24,7 +28,7 @@ export default async function OrganizationDetailPage({
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold">Organization Details</h1>
+            <h1 className="text-2xl font-bold">{messages.detailsTitle}</h1>
             <p className="font-mono text-sm text-muted-foreground">{id}</p>
           </div>
         </div>
