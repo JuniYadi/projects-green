@@ -6495,6 +6495,7 @@ export const idMessages: AppMessages = {
         openCanvasButton: "Buka di Canvas",
         editButton: "Edit Pengaturan",
         embedWebsiteButton: "Embed Website",
+        simulatorButton: "Simulator",
       },
       bindingModal: {
         title: "Kelola Nomor WhatsApp Asisten",
@@ -6670,6 +6671,58 @@ export const idMessages: AppMessages = {
         copyLinkButton: "Salin Link",
         copiedLinkButton: "Link Tersalin!",
         openLinkButton: "Buka",
+      },
+      simulator: {
+        tabTitle: "Simulator & Inspector",
+        title: "Simulator Asisten AI & Inspektur Eksekusi",
+        subtitle:
+          "Uji kecerdasan percakapan, pantau jejak pemanggilan tools, dan" +
+          " uji coba tombol interaktif WhatsApp secara langsung.",
+        selectAgentLabel: "Pilih Asisten AI",
+        selectAgentPlaceholder: "Pilih profil asisten...",
+        noAgentsAvailable:
+          "Belum ada profil asisten. Buat asisten baru terlebih dahulu.",
+        sandboxBadge: "Sandbox Uji Coba",
+        clearChatButton: "Hapus Obrolan",
+        chatPlaceholder: "Ketik pesan untuk menguji asisten...",
+        emptyChatTitle: "Siap Digunakan",
+        emptyChatSubtitle:
+          "Kirim pesan di bawah untuk menguji alur percakapan," +
+          " pengumpulan informasi, dan pemanggilan tool.",
+        inputPlaceholder: "Ketik pesan pengujian WhatsApp...",
+        sendButton: "Kirim",
+        thinking: "Sedang berpikir...",
+        quickReplyBadge: "Balasan Cepat",
+        ctaUrlBadge: "Tautan URL",
+        inspectorTitle: "Inspektur Eksekusi",
+        inspectorSubtitle:
+          "Telemetri real-time, jejak eksekusi tool, dan perbandingan" +
+          " respons mentah LLM.",
+        emptyInspectorTitle: "Belum Ada Data Eksekusi",
+        emptyInspectorSubtitle:
+          "Kirim pesan pada simulator untuk melihat jejak eksekusi tool," +
+          " latensi, dan metrik token.",
+        metricsTitle: "Telemetri Putaran",
+        totalTokens: "Total Token",
+        promptTokens: "Token Prompt",
+        completionTokens: "Token Selesai",
+        latency: "Latensi",
+        toolTraceTitle: "Jejak Eksekusi Tool",
+        noToolsExecuted: "Tidak ada tool yang dipanggil pada putaran ini.",
+        toolArgs: "Argumen Masukan",
+        toolOutput: "Hasil Eksekusi",
+        responseComparisonTitle: "Perbandingan Respons",
+        tabCleanOutput: "Respons Bersih",
+        tabRawOutput: "Respons Mentah LLM",
+        cleanOutputBadge: "Teks Bersih WhatsApp",
+        rawOutputBadge: "Respons Mentah LLM",
+        badgeApiVersion: "WhatsApp API v2.0",
+        toolCountSuffix: "tool",
+        turnLabel: "Putaran:",
+        noData: "Tidak ada data",
+        errorMessage: "Gagal menjalankan simulasi asisten.",
+        rateLimitError:
+          "Batas frekuensi terlampaui. Silakan tunggu beberapa saat.",
       },
     },
     aiSessions: {
