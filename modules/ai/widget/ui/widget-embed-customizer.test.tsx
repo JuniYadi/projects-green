@@ -32,6 +32,7 @@ mock.module("sonner", () => ({
 
 import WidgetEmbedCustomizer, {
   isValidDomainPattern,
+  normalizeDomainPattern,
 } from "./widget-embed-customizer"
 
 describe("WidgetEmbedCustomizer", () => {
@@ -67,7 +68,17 @@ describe("WidgetEmbedCustomizer", () => {
     })
   })
 
-  describe("isValidDomainPattern", () => {
+  describe("normalizeDomainPattern & isValidDomainPattern", () => {
+    it("normalizes domains by stripping scheme and path", () => {
+      expect(normalizeDomainPattern("https://example.com/chat")).toBe(
+        "example.com"
+      )
+      expect(normalizeDomainPattern("http://*.toko.co.id/")).toBe(
+        "*.toko.co.id"
+      )
+      expect(normalizeDomainPattern("klinik.com")).toBe("klinik.com")
+    })
+
     it("validates exact domains and wildcard subdomains", () => {
       expect(isValidDomainPattern("klinik.com")).toBe(true)
       expect(isValidDomainPattern("*.toko.co.id")).toBe(true)
@@ -103,8 +114,8 @@ describe("WidgetEmbedCustomizer", () => {
     })
     expect(launcherBtn.style.backgroundColor).toBe("#10B981")
 
-    // Click preset Blue (#2563EB)
-    const bluePreset = getByText("Blue")
+    // Click preset Biru (localized Blue in id)
+    const bluePreset = getByText("Biru")
     fireEvent.click(bluePreset)
 
     expect(launcherBtn.style.backgroundColor).toBe("#2563EB")

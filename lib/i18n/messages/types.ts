@@ -5977,6 +5977,8 @@ export type AppMessages = {
         tabTitle: string
         title: string
         subtitle: string
+        customizerCardTitle: string
+        customizerCardDesc: string
         agentSelectLabel: string
         agentSelectPlaceholder: string
         noAgentSelected: string
@@ -6009,8 +6011,10 @@ export type AppMessages = {
         tabShareLink: string
         copyButton: string
         copiedButton: string
+        copyFailed: string
         copyLinkButton: string
         copiedLinkButton: string
+        openLinkButton: string
       }
     }
     aiSessions: {

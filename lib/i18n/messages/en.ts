@@ -6565,6 +6565,10 @@ export const enMessages: AppMessages = {
         subtitle:
           "Customize launcher appearance and get 1-click embed code" +
           " snippets for your website.",
+        customizerCardTitle: "Customize Widget Appearance",
+        customizerCardDesc:
+          "Customize color, launcher button position, and initial greeting" +
+          " message for customers.",
         agentSelectLabel: "Select AI Agent",
         agentSelectPlaceholder: "Select an assistant...",
         noAgentSelected: "No AI agent selected or available.",
@@ -6601,8 +6605,10 @@ export const enMessages: AppMessages = {
         tabShareLink: "Standalone Link",
         copyButton: "Copy Code",
         copiedButton: "Copied!",
+        copyFailed: "Failed to copy code.",
         copyLinkButton: "Copy Link",
         copiedLinkButton: "Link Copied!",
+        openLinkButton: "Open",
       },
     },
     aiSessions: {

@@ -73,7 +73,8 @@ export function createConsoleAiAgentsRoutes() {
           name,
           description,
           systemPrompt = "Anda adalah asisten AI toko resmi.",
-          fallbackMessage = "Maaf, pertanyaan Anda akan kami teruskan ke tim CS kami.",
+          fallbackMessage =
+            "Maaf, pertanyaan Anda akan kami teruskan ke tim CS kami.",
           dailyUserLimit = 20,
           enableProfanityFilter = true,
           allowInteractiveReplies = true,
@@ -125,8 +126,12 @@ export function createConsoleAiAgentsRoutes() {
           enableProfanityFilter: t.Optional(t.Boolean()),
           allowInteractiveReplies: t.Optional(t.Boolean()),
           allowedDomains: t.Optional(t.Array(t.String())),
-          widgetColor: t.Optional(t.String()),
-          widgetPosition: t.Optional(t.String()),
+          widgetColor: t.Optional(
+            t.String({ pattern: "^#[0-9a-fA-F]{3,8}$" })
+          ),
+          widgetPosition: t.Optional(
+            t.Union([t.Literal("bottom-right"), t.Literal("bottom-left")])
+          ),
           welcomeMessage: t.Optional(t.String()),
         }),
       }
@@ -204,8 +209,12 @@ export function createConsoleAiAgentsRoutes() {
           enableProfanityFilter: t.Optional(t.Boolean()),
           allowInteractiveReplies: t.Optional(t.Boolean()),
           allowedDomains: t.Optional(t.Array(t.String())),
-          widgetColor: t.Optional(t.String()),
-          widgetPosition: t.Optional(t.String()),
+          widgetColor: t.Optional(
+            t.String({ pattern: "^#[0-9a-fA-F]{3,8}$" })
+          ),
+          widgetPosition: t.Optional(
+            t.Union([t.Literal("bottom-right"), t.Literal("bottom-left")])
+          ),
           welcomeMessage: t.Optional(t.String()),
           isActive: t.Optional(t.Boolean()),
         }),

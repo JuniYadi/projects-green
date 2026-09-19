@@ -61,11 +61,21 @@ export const COLOR_PRESETS = [
   { label: "Dark", hex: "#18181B" },
 ] as const
 
+export function normalizeDomainPattern(pattern: string): string {
+  return (
+    pattern
+      .trim()
+      .toLowerCase()
+      .replace(/^[a-zA-Z]+:\/\//, "")
+      .split("/")[0]
+      ?.trim() || ""
+  )
+}
+
 export function isValidDomainPattern(pattern: string): boolean {
-  const trimmed = pattern.trim().toLowerCase()
-  if (!trimmed) return false
-  if (trimmed === "*") return true
-  const clean = trimmed.replace(/^[a-zA-Z]+:\/\//, "").split("/")[0] || ""
+  const clean = normalizeDomainPattern(pattern)
+  if (!clean) return false
+  if (clean === "*") return true
   if (
     clean === "localhost" ||
     clean.startsWith("localhost:") ||
@@ -97,14 +107,26 @@ export default function WidgetEmbedCustomizer({
   const currentAgent =
     agents.find((a) => a.id === selectedAgentId) || agents[0] || null
 
+  const safePosition =
+    currentAgent?.widgetPosition === "bottom-left"
+      ? "bottom-left"
+      : "bottom-right"
+
+  const presetLabels: Record<string, string> = {
+    Emerald: messages.colorPresetEmerald,
+    Blue: messages.colorPresetBlue,
+    Violet: messages.colorPresetViolet,
+    Amber: messages.colorPresetAmber,
+    Dark: messages.colorPresetDark,
+  }
+
   const [prevAgentId, setPrevAgentId] = useState(currentAgent?.id)
   const [color, setColor] = useState(currentAgent?.widgetColor || "#10B981")
   const [position, setPosition] = useState<"bottom-right" | "bottom-left">(
-    (currentAgent?.widgetPosition as "bottom-right" | "bottom-left") ||
-      "bottom-right"
+    safePosition
   )
   const [welcomeMessage, setWelcomeMessage] = useState(
-    currentAgent?.welcomeMessage || "Halo! Mau tanya produk apa kak?"
+    currentAgent?.welcomeMessage || messages.welcomeMessagePlaceholder
   )
   const [domainsText, setDomainsText] = useState(
     currentAgent?.allowedDomains ? currentAgent.allowedDomains.join("\n") : ""
@@ -119,11 +141,12 @@ export default function WidgetEmbedCustomizer({
     setPrevAgentId(currentAgent.id)
     setColor(currentAgent.widgetColor || "#10B981")
     setPosition(
-      (currentAgent.widgetPosition as "bottom-right" | "bottom-left") ||
-        "bottom-right"
+      currentAgent.widgetPosition === "bottom-left"
+        ? "bottom-left"
+        : "bottom-right"
     )
     setWelcomeMessage(
-      currentAgent.welcomeMessage || "Halo! Mau tanya produk apa kak?"
+      currentAgent.welcomeMessage || messages.welcomeMessagePlaceholder
     )
     setDomainsText(
       currentAgent.allowedDomains ? currentAgent.allowedDomains.join("\n") : ""
@@ -133,7 +156,7 @@ export default function WidgetEmbedCustomizer({
   // Parse and validate domains
   const parsedDomains = domainsText
     .split(/[\n,]+/)
-    .map((d) => d.trim())
+    .map((d) => normalizeDomainPattern(d))
     .filter(Boolean)
 
   const invalidDomains = parsedDomains.filter((d) => !isValidDomainPattern(d))
@@ -170,7 +193,7 @@ export default function WidgetEmbedCustomizer({
       }, 2000)
       toast.success(messages.copiedButton)
     } catch {
-      toast.error("Gagal menyalin kode.")
+      toast.error(messages.copyFailed)
     }
   }
 
@@ -279,11 +302,10 @@ export default function WidgetEmbedCustomizer({
                   weight="fill"
                   className="text-emerald-500"
                 />
-                <span>Kustomisasi Tampilan Widget</span>
+                <span>{messages.customizerCardTitle}</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                Sesuaikan warna, posisi tombol launcher, dan sapaan pesan
-                pertama pelanggan.
+                {messages.customizerCardDesc}
               </CardDescription>
             </CardHeader>
 
@@ -315,27 +337,31 @@ export default function WidgetEmbedCustomizer({
                     />
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {COLOR_PRESETS.map((preset) => (
-                      <button
-                        key={preset.hex}
-                        type="button"
-                        onClick={() => setColor(preset.hex)}
-                        title={preset.label}
-                        className={
-                          "flex h-7 items-center gap-1.5 rounded-md border " +
-                          "border-border/60 px-2 text-[11px] font-medium " +
-                          "transition-colors hover:bg-muted"
-                        }
-                      >
-                        <span
+                    {COLOR_PRESETS.map((preset) => {
+                      const label =
+                        presetLabels[preset.label] || preset.label
+                      return (
+                        <button
+                          key={preset.hex}
+                          type="button"
+                          onClick={() => setColor(preset.hex)}
+                          title={label}
                           className={
-                            "h-3 w-3 rounded-full border border-black/10"
+                            "flex h-7 items-center gap-1.5 rounded-md " +
+                            "border border-border/60 px-2 text-[11px] " +
+                            "font-medium transition-colors hover:bg-muted"
                           }
-                          style={{ backgroundColor: preset.hex }}
-                        />
-                        <span>{preset.label}</span>
-                      </button>
-                    ))}
+                        >
+                          <span
+                            className={
+                              "h-3 w-3 rounded-full border border-black/10"
+                            }
+                            style={{ backgroundColor: preset.hex }}
+                          />
+                          <span>{label}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -900,7 +926,7 @@ export default function WidgetEmbedCustomizer({
                       rel="noopener noreferrer"
                     >
                       <ArrowSquareOut size={14} />
-                      <span>Buka</span>
+                      <span>{messages.openLinkButton}</span>
                     </a>
                   </Button>
                 </div>

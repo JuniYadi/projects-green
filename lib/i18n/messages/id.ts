@@ -6626,6 +6626,10 @@ export const idMessages: AppMessages = {
         subtitle:
           "Kustomisasi tampilan launcher dan dapatkan kode snippet" +
           " 1-klik untuk website Anda.",
+        customizerCardTitle: "Kustomisasi Tampilan Widget",
+        customizerCardDesc:
+          "Sesuaikan warna, posisi tombol launcher, dan sapaan pesan" +
+          " pertama pelanggan.",
         agentSelectLabel: "Pilih Asisten AI",
         agentSelectPlaceholder: "Pilih asisten...",
         noAgentSelected: "Belum ada asisten AI yang dipilih atau tersedia.",
@@ -6662,8 +6666,10 @@ export const idMessages: AppMessages = {
         tabShareLink: "Link Mandiri",
         copyButton: "Salin Kode",
         copiedButton: "Tersalin!",
+        copyFailed: "Gagal menyalin kode.",
         copyLinkButton: "Salin Link",
         copiedLinkButton: "Link Tersalin!",
+        openLinkButton: "Buka",
       },
     },
     aiSessions: {

@@ -162,6 +162,32 @@ describe("Console AI Agents Route", () => {
     })
   })
 
+  it("rejects invalid widgetColor or widgetPosition on create", async () => {
+    const resColor = await app.handle(
+      new Request("http://localhost/console/ai/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Test Agent",
+          widgetColor: "invalid-color-xss",
+        }),
+      })
+    )
+    expect(resColor.status).toBe(422)
+
+    const resPos = await app.handle(
+      new Request("http://localhost/console/ai/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Test Agent",
+          widgetPosition: "top-center",
+        }),
+      })
+    )
+    expect(resPos.status).toBe(422)
+  })
+
   it("updates agent profile including allowInteractiveReplies", async () => {
     mockPrisma.aiAgentProfile.findFirst.mockResolvedValue({
       id: "agent_1",
