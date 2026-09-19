@@ -1,1 +1,1 @@
-bun run typecheck
+bun run typecheck:changed && bun run test:changed
