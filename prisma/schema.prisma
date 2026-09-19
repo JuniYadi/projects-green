@@ -116,6 +116,10 @@ model AiAgentProfile {
   enableIpProtection   Boolean                @default(true)
   strikeEscalation     Boolean                @default(true)
   allowInteractiveReplies Boolean             @default(true)
+  allowedDomains       String[]               @default([])
+  widgetColor          String?                @default("#10B981")
+  widgetPosition       String?                @default("bottom-right") // "bottom-right" | "bottom-left"
+  welcomeMessage       String?                @default("Halo! Ada yang bisa kami bantu?")
   isActive             Boolean                @default(true)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
