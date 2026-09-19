@@ -1,5 +1,6 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 mock.module("server-only", () => ({}))
+
 // Mock WorkOS auth before imports
 const mockAuth = mock(() =>
   Promise.resolve({
@@ -25,10 +26,15 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-// Mock BullMQ enqueue
+// Mock BullMQ worker functions
 const mockEnqueue = mock(() => Promise.resolve("job_123"))
+const mockScheduleSync = mock(() => Promise.resolve("repeat_job_123"))
+const mockRemoveSync = mock(() => Promise.resolve(true))
+
 mock.module("@/modules/ai/ai-ingestion.worker", () => ({
   enqueueDocumentIngestion: mockEnqueue,
+  schedulePeriodicCrawlerSync: mockScheduleSync,
+  removePeriodicCrawlerSync: mockRemoveSync,
 }))
 
 const { createConsoleAiKnowledgeRoutes } =
@@ -45,6 +51,8 @@ describe("Console AI Knowledge Route", () => {
     mockPrisma.aiKnowledgeDocument.update.mockClear()
     mockPrisma.aiKnowledgeDocument.delete.mockClear()
     mockEnqueue.mockClear()
+    mockScheduleSync.mockClear()
+    mockRemoveSync.mockClear()
 
     mockAuth.mockResolvedValue({
       user: { id: "user_1", organizationId: "org_1" },
@@ -53,6 +61,7 @@ describe("Console AI Knowledge Route", () => {
 
     app = createConsoleAiKnowledgeRoutes()
   })
+
   it("lists knowledge documents for tenant", async () => {
     mockPrisma.aiKnowledgeDocument.findMany.mockResolvedValue([
       {
@@ -61,6 +70,11 @@ describe("Console AI Knowledge Route", () => {
         purpose: "Catalog",
         category: "Pricelist",
         sourceType: "PDF",
+        sourceUrl: null,
+        crawlMode: "SINGLE_PAGE",
+        syncSchedule: "MANUAL",
+        lastSyncedAt: null,
+        contentHash: null,
         status: "READY",
         pageCount: 14,
         chunkIndex: 0,
@@ -81,7 +95,7 @@ describe("Console AI Knowledge Route", () => {
     expect(json.data.length).toBe(1)
   })
 
-  it("accepts document upload, creates record, and enqueues BullMQ job", async () => {
+  it("accepts document upload, creates record, and enqueues job", async () => {
     mockPrisma.aiKnowledgeDocument.create.mockResolvedValue({
       id: "doc_new",
       organizationId: "org_1",
@@ -123,6 +137,66 @@ describe("Console AI Knowledge Route", () => {
     )
     expect(mockEnqueue).toHaveBeenCalled()
   })
+
+  it("accepts URL crawler ingest and schedules periodic sync", async () => {
+    mockPrisma.aiKnowledgeDocument.create.mockResolvedValue({
+      id: "doc_url_1",
+      organizationId: "org_1",
+      title: "example.com/docs/faq",
+      purpose: "Tenant Web Knowledge",
+      category: "Website",
+      sourceType: "URL_FIRECRAWL",
+      sourceUrl: "https://example.com/docs/faq",
+      crawlMode: "SUBPATH_RECURSIVE",
+      syncSchedule: "WEEKLY",
+      status: "QUEUED",
+    })
+
+    const res = await app.handle(
+      new Request("http://localhost/console/ai/knowledge/url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: "https://example.com/docs/faq",
+          crawlMode: "SUBPATH_RECURSIVE",
+          syncSchedule: "WEEKLY",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(202)
+    const json = (await res.json()) as {
+      ok: boolean
+      data: { id: string; status: string; crawlMode: string }
+    }
+    expect(json.ok).toBe(true)
+    expect(json.data.status).toBe("QUEUED")
+    expect(json.data.crawlMode).toBe("SUBPATH_RECURSIVE")
+    expect(mockScheduleSync).toHaveBeenCalledWith({
+      documentId: "doc_url_1",
+      organizationId: "org_1",
+      syncSchedule: "WEEKLY",
+    })
+  })
+
+  it("rejects private/reserved IP target in URL crawler endpoint", async () => {
+    const res = await app.handle(
+      new Request("http://localhost/console/ai/knowledge/url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: "http://127.0.0.1:8080/admin",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = (await res.json()) as { ok: boolean; error: string }
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("INVALID_URL")
+    expect(mockPrisma.aiKnowledgeDocument.create).not.toHaveBeenCalled()
+  })
+
   it("marks document as FAILED if queueing fails", async () => {
     mockPrisma.aiKnowledgeDocument.create.mockResolvedValue({
       id: "doc_fail",
@@ -156,10 +230,11 @@ describe("Console AI Knowledge Route", () => {
     })
   })
 
-  it("deletes document", async () => {
+  it("deletes document and removes scheduled sync", async () => {
     mockPrisma.aiKnowledgeDocument.findFirst.mockResolvedValue({
       id: "doc_1",
       organizationId: "org_1",
+      syncSchedule: "WEEKLY",
     })
     mockPrisma.aiKnowledgeDocument.delete.mockResolvedValue({ id: "doc_1" })
 
@@ -172,6 +247,7 @@ describe("Console AI Knowledge Route", () => {
     expect(res.status).toBe(200)
     const json = (await res.json()) as { ok: boolean }
     expect(json.ok).toBe(true)
+    expect(mockRemoveSync).toHaveBeenCalledWith("doc_1")
     expect(mockPrisma.aiKnowledgeDocument.delete).toHaveBeenCalled()
   })
 })
