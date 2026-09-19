@@ -6429,6 +6429,7 @@ export const enMessages: AppMessages = {
         subtitle:
           "Build no-code AI actions, configure slot parameters, and" +
           " guard against hallucinations with customer confirmation.",
+        loading: "Loading Action Intents...",
         createButton: "Create Action Intent",
         editButton: "Edit",
         deleteButton: "Delete",
@@ -6437,6 +6438,13 @@ export const enMessages: AppMessages = {
           'Click the "Create Action Intent" button above to connect' +
           " your bot to external REST APIs.",
         filterAllAgents: "All AI Agent Profiles",
+        agentProfileLabel: "AI Agent Profile",
+        agentProfilePlaceholder: "Select Profile...",
+        globalAgentOption: "Global (All Profiles)",
+        noDescription: "No trigger instructions configured",
+        restApiFallback: "REST API",
+        slotsCountLabel: "Parameter Slots",
+        noSlotsFallback: "No additional parameter slots",
         nameLabel: "Action Name (Tool Name)",
         namePlaceholder: "E.g., Check Lab Results",
         descriptionLabel: "When Triggered? (Tool Description for AI)",
@@ -6498,8 +6506,13 @@ export const enMessages: AppMessages = {
             "AI will summarize all parameters and require customer" +
             " confirmation before executing external API.",
           previewTitle: "WhatsApp Button Preview:",
+          previewGreeting:
+            "Hi, please confirm your inspection details:",
+          previewQuestion:
+            "Is the above information correct to proceed?",
+          previewCustomerValue: "<customer value>",
           previewConfirm: "✅ Correct, Check Now",
-          previewReject: "❌ Correct Data",
+          previewReject: "❌ Fix Data",
         },
         buttons: {
           save: "Save Action Intent",
@@ -6508,8 +6521,12 @@ export const enMessages: AppMessages = {
         },
         toasts: {
           createSuccess: "Action Intent created successfully!",
+          createError: "Failed to create Action Intent.",
           updateSuccess: "Action Intent updated successfully!",
+          updateError: "Failed to update Action Intent.",
+          saveError: "An error occurred while saving Action Intent.",
           deleteSuccess: "Action Intent deleted successfully.",
+          deleteError: "Failed to delete Action Intent.",
           deleteConfirm:
             "Are you sure you want to delete this Action Intent?",
           loadError: "Failed to load Action Intents.",

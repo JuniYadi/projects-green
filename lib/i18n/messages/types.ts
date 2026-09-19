@@ -5873,12 +5873,20 @@ export type AppMessages = {
         tabTitle: string
         title: string
         subtitle: string
+        loading: string
         createButton: string
         editButton: string
         deleteButton: string
         emptyTitle: string
         emptyDescription: string
         filterAllAgents: string
+        agentProfileLabel: string
+        agentProfilePlaceholder: string
+        globalAgentOption: string
+        noDescription: string
+        restApiFallback: string
+        slotsCountLabel: string
+        noSlotsFallback: string
         nameLabel: string
         namePlaceholder: string
         descriptionLabel: string
@@ -5923,6 +5931,9 @@ export type AppMessages = {
           confirmationGateLabel: string
           confirmationGateDesc: string
           previewTitle: string
+          previewGreeting: string
+          previewQuestion: string
+          previewCustomerValue: string
           previewConfirm: string
           previewReject: string
         }
@@ -5933,8 +5944,12 @@ export type AppMessages = {
         }
         toasts: {
           createSuccess: string
+          createError: string
           updateSuccess: string
+          updateError: string
+          saveError: string
           deleteSuccess: string
+          deleteError: string
           deleteConfirm: string
           loadError: string
         }

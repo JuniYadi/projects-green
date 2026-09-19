@@ -295,7 +295,7 @@ export default function ActionIntentBuilder({
           setModalOpen(false)
           void loadActions()
         } else {
-          toast.error("Gagal memperbarui Action Intent.")
+          toast.error(t.toasts.updateError)
         }
       } else {
         const res = await eden.api.console.ai.actions.post(payload)
@@ -304,12 +304,12 @@ export default function ActionIntentBuilder({
           setModalOpen(false)
           void loadActions()
         } else {
-          toast.error("Gagal membuat Action Intent.")
+          toast.error(t.toasts.createError)
         }
       }
     } catch (err) {
       console.error("[action-builder] save error:", err)
-      toast.error("Terjadi kesalahan saat menyimpan Action Intent.")
+      toast.error(t.toasts.saveError)
     } finally {
       setSaving(false)
     }
@@ -323,11 +323,11 @@ export default function ActionIntentBuilder({
         toast.success(t.toasts.deleteSuccess)
         void loadActions()
       } else {
-        toast.error("Gagal menghapus Action Intent.")
+        toast.error(t.toasts.deleteError)
       }
     } catch (err) {
       console.error("[action-builder] delete error:", err)
-      toast.error("Terjadi kesalahan saat menghapus.")
+      toast.error(t.toasts.deleteError)
     }
   }
 
@@ -377,7 +377,7 @@ export default function ActionIntentBuilder({
       {/* Action Intent List */}
       {loading ? (
         <div className="flex justify-center p-8 text-xs text-muted-foreground">
-          Memuat Action Intent...
+          {t.loading}
         </div>
       ) : actions.length === 0 ? (
         <Card
@@ -422,7 +422,7 @@ export default function ActionIntentBuilder({
                     </CardTitle>
                   </div>
                   <CardDescription className="line-clamp-2 text-xs">
-                    {act.description || "Tanpa instruksi pemicu"}
+                    {act.description || t.noDescription}
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-1">
@@ -459,7 +459,7 @@ export default function ActionIntentBuilder({
                   }
                 >
                   <span className="font-medium text-foreground">
-                    {act.connectionName || "REST API"}
+                    {act.connectionName || t.restApiFallback}
                   </span>
                   <span className="ml-1">{act.subpath}</span>
                 </div>
@@ -467,7 +467,7 @@ export default function ActionIntentBuilder({
                 {/* Slots Preview */}
                 <div className="space-y-1">
                   <Label className="text-[11px] text-muted-foreground">
-                    Parameter Slots ({act.slots.length}):
+                    {t.slotsCountLabel} ({act.slots.length}):
                   </Label>
                   {act.slots.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
@@ -488,7 +488,7 @@ export default function ActionIntentBuilder({
                     </div>
                   ) : (
                     <p className="text-[11px] italic text-muted-foreground">
-                      Tanpa parameter slot tambahan
+                      {t.noSlotsFallback}
                     </p>
                   )}
                 </div>
@@ -562,7 +562,7 @@ export default function ActionIntentBuilder({
                   htmlFor="action-agent"
                   className="text-xs font-semibold"
                 >
-                  Profil Asisten AI
+                  {t.agentProfileLabel}
                 </Label>
                 <Select
                   value={agentProfileId || "GLOBAL"}
@@ -571,11 +571,11 @@ export default function ActionIntentBuilder({
                   }
                 >
                   <SelectTrigger id="action-agent">
-                    <SelectValue placeholder="Pilih Profil..." />
+                    <SelectValue placeholder={t.agentProfilePlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="GLOBAL">
-                      Global (Semua Profil)
+                      {t.globalAgentOption}
                     </SelectItem>
                     {agents.map((ag) => (
                       <SelectItem key={ag.id} value={ag.id}>
@@ -924,7 +924,7 @@ export default function ActionIntentBuilder({
                       }
                     >
                       <p className="text-muted-foreground">
-                        Halo Kak, mohon konfirmasi data pemeriksaan Anda:
+                        {t.toggles.previewGreeting}
                       </p>
                       <ul className="my-1 list-disc pl-4 text-[11px]">
                         {slots.length > 0 ? (
@@ -934,7 +934,7 @@ export default function ActionIntentBuilder({
                                 {s.name || `param_${idx + 1}`}:
                               </span>{" "}
                               <span className="italic text-muted-foreground">
-                                &lt;nilai pelanggan&gt;
+                                {t.toggles.previewCustomerValue}
                               </span>
                             </li>
                           ))
@@ -950,7 +950,7 @@ export default function ActionIntentBuilder({
                         )}
                       </ul>
                       <p className="text-[11px] text-muted-foreground">
-                        Apakah data di atas sudah benar untuk dicek?
+                        {t.toggles.previewQuestion}
                       </p>
                     </div>
 

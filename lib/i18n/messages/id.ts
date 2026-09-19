@@ -6486,6 +6486,7 @@ export const idMessages: AppMessages = {
         subtitle:
           "Rancang tool/aksi otomatis tanpa coding, lengkapi parameter" +
           " slot, dan aktifkan konfirmasi anti-halusinasi.",
+        loading: "Memuat Action Intent...",
         createButton: "Buat Action Intent Baru",
         editButton: "Edit",
         deleteButton: "Hapus",
@@ -6494,6 +6495,13 @@ export const idMessages: AppMessages = {
           'Tambahkan aksi baru dengan tombol "Buat Action Intent Baru"' +
           " di atas untuk menghubungkan bot ke REST API bisnis Anda.",
         filterAllAgents: "Semua Profil Asisten AI",
+        agentProfileLabel: "Profil Asisten AI",
+        agentProfilePlaceholder: "Pilih Profil...",
+        globalAgentOption: "Global (Semua Profil)",
+        noDescription: "Tanpa instruksi pemicu",
+        restApiFallback: "REST API",
+        slotsCountLabel: "Parameter Slots",
+        noSlotsFallback: "Tanpa parameter slot tambahan",
         nameLabel: "Nama Aksi (Tool Name)",
         namePlaceholder: "Misal: Cek Hasil Lab Pasien",
         descriptionLabel: "Kapan Dipicu? (Deskripsi Tool untuk AI)",
@@ -6557,6 +6565,11 @@ export const idMessages: AppMessages = {
             "AI akan merangkum seluruh parameter dan meminta customer" +
             " menekan tombol konfirmasi sebelum API dijalankan.",
           previewTitle: "Pratinjau Tombol WhatsApp:",
+          previewGreeting:
+            "Halo Kak, mohon konfirmasi data pemeriksaan Anda:",
+          previewQuestion:
+            "Apakah data di atas sudah benar untuk dicek?",
+          previewCustomerValue: "<nilai pelanggan>",
           previewConfirm: "✅ Benar, Cek Sekarang",
           previewReject: "❌ Koreksi Data",
         },
@@ -6567,8 +6580,12 @@ export const idMessages: AppMessages = {
         },
         toasts: {
           createSuccess: "Action Intent berhasil dibuat!",
+          createError: "Gagal membuat Action Intent.",
           updateSuccess: "Action Intent berhasil diperbarui!",
+          updateError: "Gagal memperbarui Action Intent.",
+          saveError: "Terjadi kesalahan saat menyimpan Action Intent.",
           deleteSuccess: "Action Intent berhasil dihapus.",
+          deleteError: "Gagal menghapus Action Intent.",
           deleteConfirm:
             "Apakah Anda yakin ingin menghapus Action Intent ini?",
           loadError: "Gagal memuat daftar Action Intent.",

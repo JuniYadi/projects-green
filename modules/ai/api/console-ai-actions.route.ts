@@ -73,13 +73,14 @@ export function createConsoleAiActionsRoutes() {
           set.status = 201
           return { ok: true, data: action }
         } catch (err: unknown) {
-          set.status = 400
+          const msg =
+            err instanceof Error
+              ? err.message
+              : "Failed to create action intent"
+          set.status = msg.toLowerCase().includes("not found") ? 404 : 400
           return {
             ok: false,
-            error:
-              err instanceof Error
-                ? err.message
-                : "Failed to create action intent",
+            error: msg,
           }
         }
       },
@@ -137,13 +138,14 @@ export function createConsoleAiActionsRoutes() {
           })
           return { ok: true, data: updated }
         } catch (err: unknown) {
-          set.status = 400
+          const msg =
+            err instanceof Error
+              ? err.message
+              : "Failed to update action intent"
+          set.status = msg.toLowerCase().includes("not found") ? 404 : 400
           return {
             ok: false,
-            error:
-              err instanceof Error
-                ? err.message
-                : "Failed to update action intent",
+            error: msg,
           }
         }
       },
