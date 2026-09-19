@@ -8213,6 +8213,65 @@ export type AppMessages = {
     settings: string
     triggerSettings: string
     whatsappDevice: string
+    costSavingNoticeTitle: string
+    costSavingNoticeDescription: string
+    costSavingOffloadBadge: string
+    humanHandoverBadge: string
+    singleUtilityBadge: string
+    channelRedirectTitle: string
+    channelRedirectOffloadNote: string
+    channelRedirectTargetChannelLabel: string
+    channelRedirectTargetChannelPlaceholder: string
+    channelRedirectWebLiveChat: string
+    channelRedirectWebForm: string
+    channelRedirectTelegram: string
+    channelRedirectUrlLabel: string
+    channelRedirectUrlPlaceholder: string
+    channelRedirectMessageLabel: string
+    channelRedirectMessagePlaceholder: string
+    channelRedirectButtonTextLabel: string
+    channelRedirectButtonTextPlaceholder: string
+    channelRedirectIncludeContextLabel: string
+    channelRedirectIncludeContextHint: string
+    csTicketEscalateTitle: string
+    csTicketEscalateHandoverNote: string
+    csTicketDepartmentLabel: string
+    csTicketDepartmentPlaceholder: string
+    csTicketPriorityLabel: string
+    csTicketPriorityPlaceholder: string
+    csTicketPriorityLow: string
+    csTicketPriorityNormal: string
+    csTicketPriorityHigh: string
+    csTicketPriorityUrgent: string
+    csTicketSubjectLabel: string
+    csTicketSubjectPlaceholder: string
+    csTicketDescriptionLabel: string
+    csTicketDescriptionPlaceholder: string
+    csTicketTelegramNotifyLabel: string
+    csTicketTelegramNotifyHint: string
+    csTicketTelegramChatIdLabel: string
+    csTicketTelegramChatIdPlaceholder: string
+    csTicketAutoReplyLabel: string
+    csTicketAutoReplyPlaceholder: string
+    paymentLinkDispatchTitle: string
+    paymentLinkDispatchUtilityNote: string
+    paymentLinkGatewayLabel: string
+    paymentLinkGatewayPlaceholder: string
+    paymentLinkGatewayMidtrans: string
+    paymentLinkGatewayXendit: string
+    paymentLinkGatewayManual: string
+    paymentLinkAmountVariableLabel: string
+    paymentLinkAmountVariablePlaceholder: string
+    paymentLinkOrderIdVariableLabel: string
+    paymentLinkOrderIdVariablePlaceholder: string
+    paymentLinkPaymentUrlLabel: string
+    paymentLinkPaymentUrlPlaceholder: string
+    paymentLinkButtonTitleLabel: string
+    paymentLinkButtonTitlePlaceholder: string
+    paymentLinkFallbackTextLabel: string
+    paymentLinkFallbackTextPlaceholder: string
+    promptInputDeprecatedBadge: string
+    promptInputDeprecatedWarning: string
   }
   pDeployGitDeployAiAgentSummaryCard: {
     balanceAvailable: string

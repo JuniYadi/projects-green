@@ -1426,10 +1426,9 @@ export default function WhatsappWorkflowCanvasPage() {
               )}
             >
               <Lightning className="h-3 w-3 shrink-0" weight="fill" />
-              <span>Cost-Saving Handover</span>
+              <span>{canvasMessages.costSavingNoticeTitle}</span>
             </div>
-            Hemat biaya WhatsApp Meta dengan mengalihkan pengisian form panjang
-            ke Web LiveChat atau eskalasi CS.
+            {canvasMessages.costSavingNoticeDescription}
           </div>
 
           {/* Cost-Saving Offload Handover Group */}
@@ -1451,7 +1450,7 @@ export default function WhatsappWorkflowCanvasPage() {
                     weight="duotone"
                   />
                   <span className="text-xs font-medium">
-                    Pengalihan Web/Chat
+                    {canvasMessages.channelRedirectTitle}
                   </span>
                 </div>
               </div>
@@ -1463,7 +1462,7 @@ export default function WhatsappWorkflowCanvasPage() {
                   "dark:text-emerald-300"
                 )}
               >
-                Cost-Saving Offload
+                {canvasMessages.costSavingOffloadBadge}
               </Badge>
             </Button>
 
@@ -1484,7 +1483,7 @@ export default function WhatsappWorkflowCanvasPage() {
                     weight="duotone"
                   />
                   <span className="text-xs font-medium">
-                    Eskalasi Tiket & Telegram
+                    {canvasMessages.csTicketEscalateTitle}
                   </span>
                 </div>
               </div>
@@ -1496,7 +1495,7 @@ export default function WhatsappWorkflowCanvasPage() {
                   "dark:text-orange-300"
                 )}
               >
-                Human Handover
+                {canvasMessages.humanHandoverBadge}
               </Badge>
             </Button>
 
@@ -1517,7 +1516,7 @@ export default function WhatsappWorkflowCanvasPage() {
                     weight="duotone"
                   />
                   <span className="text-xs font-medium">
-                    Kirim Link Pembayaran
+                    {canvasMessages.paymentLinkDispatchTitle}
                   </span>
                 </div>
               </div>
@@ -1529,7 +1528,7 @@ export default function WhatsappWorkflowCanvasPage() {
                   "dark:text-teal-300"
                 )}
               >
-                Single Utility
+                {canvasMessages.singleUtilityBadge}
               </Badge>
             </Button>
           </div>
@@ -1636,7 +1635,9 @@ export default function WhatsappWorkflowCanvasPage() {
               <span className="line-through opacity-75">
                 {t.canvas.nodes.promptInput}
               </span>
-              <span className="text-[9px] text-amber-500">(Deprecated)</span>
+              <span className="text-[9px] text-amber-500">
+                {canvasMessages.promptInputDeprecatedBadge}
+              </span>
             </Button>
           </div>
         </div>
@@ -1781,14 +1782,15 @@ export default function WhatsappWorkflowCanvasPage() {
                         "dark:text-emerald-300"
                       )}
                     >
-                      <strong>Cost-Saving Offload:</strong> Mengalihkan
-                      pelanggan ke Web LiveChat atau Form bebas kuota untuk
-                      menghindari biaya percakapan Meta.
+                      <strong>
+                        {canvasMessages.costSavingOffloadBadge}:
+                      </strong>{" "}
+                      {canvasMessages.channelRedirectOffloadNote}
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Saluran Tujuan
+                        {canvasMessages.channelRedirectTargetChannelLabel}
                       </Label>
                       <Select
                         value={
@@ -1803,17 +1805,22 @@ export default function WhatsappWorkflowCanvasPage() {
                         }
                       >
                         <SelectTrigger className="h-9 text-xs">
-                          <SelectValue placeholder="Pilih Saluran" />
+                          <SelectValue
+                            placeholder={
+                              canvasMessages
+                                .channelRedirectTargetChannelPlaceholder
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="WEB_LIVECHAT">
-                            Web LiveChat (Bebas Biaya Meta)
+                            {canvasMessages.channelRedirectWebLiveChat}
                           </SelectItem>
                           <SelectItem value="WEB_FORM">
-                            Web Form (Formulir Web)
+                            {canvasMessages.channelRedirectWebForm}
                           </SelectItem>
                           <SelectItem value="TELEGRAM">
-                            Telegram Bot / Channel
+                            {canvasMessages.channelRedirectTelegram}
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -1821,7 +1828,7 @@ export default function WhatsappWorkflowCanvasPage() {
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        URL Pengalihan
+                        {canvasMessages.channelRedirectUrlLabel}
                       </Label>
                       <Input
                         value={
@@ -1834,14 +1841,16 @@ export default function WhatsappWorkflowCanvasPage() {
                             redirectUrl: e.target.value,
                           }))
                         }
-                        placeholder="https://chat.example.com/live"
+                        placeholder={
+                          canvasMessages.channelRedirectUrlPlaceholder
+                        }
                         className="h-9 text-xs"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Pesan Pengantar
+                        {canvasMessages.channelRedirectMessageLabel}
                       </Label>
                       <Textarea
                         rows={3}
@@ -1854,14 +1863,16 @@ export default function WhatsappWorkflowCanvasPage() {
                             message: e.target.value,
                           }))
                         }
-                        placeholder="Lanjutkan di tautan web kami berikut..."
+                        placeholder={
+                          canvasMessages.channelRedirectMessagePlaceholder
+                        }
                         className="text-sm"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Teks Tombol CTA
+                        {canvasMessages.channelRedirectButtonTextLabel}
                       </Label>
                       <Input
                         value={
@@ -1874,7 +1885,9 @@ export default function WhatsappWorkflowCanvasPage() {
                             buttonText: e.target.value,
                           }))
                         }
-                        placeholder="Lanjutkan di Web"
+                        placeholder={
+                          canvasMessages.channelRedirectButtonTextPlaceholder
+                        }
                         className="h-9 text-xs"
                       />
                     </div>
@@ -1887,10 +1900,10 @@ export default function WhatsappWorkflowCanvasPage() {
                     >
                       <div className="space-y-0.5">
                         <Label className="text-xs font-semibold">
-                          Sertakan Konteks Telepon & Sesi
+                          {canvasMessages.channelRedirectIncludeContextLabel}
                         </Label>
                         <p className="text-[11px] text-muted-foreground">
-                          Tambahkan query ?phone=...&sessionId=...
+                          {canvasMessages.channelRedirectIncludeContextHint}
                         </p>
                       </div>
                       <Switch
@@ -1923,14 +1936,16 @@ export default function WhatsappWorkflowCanvasPage() {
                         "dark:text-orange-300"
                       )}
                     >
-                      <strong>Human Handover:</strong> Membuat tiket bantuan di
-                      console dan mengirimkan alert instan ke Telegram CS.
+                      <strong>
+                        {canvasMessages.humanHandoverBadge}:
+                      </strong>{" "}
+                      {canvasMessages.csTicketEscalateHandoverNote}
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label className="text-xs font-semibold">
-                          Departemen
+                          {canvasMessages.csTicketDepartmentLabel}
                         </Label>
                         <Input
                           value={
@@ -1943,13 +1958,15 @@ export default function WhatsappWorkflowCanvasPage() {
                               department: e.target.value,
                             }))
                           }
-                          placeholder="SUPPORT"
+                          placeholder={
+                            canvasMessages.csTicketDepartmentPlaceholder
+                          }
                           className="h-9 text-xs"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-xs font-semibold">
-                          Prioritas
+                          {canvasMessages.csTicketPriorityLabel}
                         </Label>
                         <Select
                           value={
@@ -1964,13 +1981,25 @@ export default function WhatsappWorkflowCanvasPage() {
                           }
                         >
                           <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Prioritas" />
+                            <SelectValue
+                              placeholder={
+                                canvasMessages.csTicketPriorityPlaceholder
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="LOW">Low</SelectItem>
-                            <SelectItem value="NORMAL">Normal</SelectItem>
-                            <SelectItem value="HIGH">High</SelectItem>
-                            <SelectItem value="URGENT">Urgent</SelectItem>
+                            <SelectItem value="LOW">
+                              {canvasMessages.csTicketPriorityLow}
+                            </SelectItem>
+                            <SelectItem value="NORMAL">
+                              {canvasMessages.csTicketPriorityNormal}
+                            </SelectItem>
+                            <SelectItem value="HIGH">
+                              {canvasMessages.csTicketPriorityHigh}
+                            </SelectItem>
+                            <SelectItem value="URGENT">
+                              {canvasMessages.csTicketPriorityUrgent}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1978,7 +2007,7 @@ export default function WhatsappWorkflowCanvasPage() {
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Subjek Tiket
+                        {canvasMessages.csTicketSubjectLabel}
                       </Label>
                       <Input
                         value={
@@ -1990,14 +2019,16 @@ export default function WhatsappWorkflowCanvasPage() {
                             subject: e.target.value,
                           }))
                         }
-                        placeholder="Kendala Pembayaran {{variables.order_id}}"
+                        placeholder={
+                          canvasMessages.csTicketSubjectPlaceholder
+                        }
                         className="h-9 text-xs"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Deskripsi Kendala
+                        {canvasMessages.csTicketDescriptionLabel}
                       </Label>
                       <Textarea
                         rows={3}
@@ -2011,7 +2042,9 @@ export default function WhatsappWorkflowCanvasPage() {
                             description: e.target.value,
                           }))
                         }
-                        placeholder="Rincian kendala pelanggan..."
+                        placeholder={
+                          canvasMessages.csTicketDescriptionPlaceholder
+                        }
                         className="text-sm"
                       />
                     </div>
@@ -2024,10 +2057,10 @@ export default function WhatsappWorkflowCanvasPage() {
                     >
                       <div className="space-y-0.5">
                         <Label className="text-xs font-semibold">
-                          Notifikasi Telegram Admin
+                          {canvasMessages.csTicketTelegramNotifyLabel}
                         </Label>
                         <p className="text-[11px] text-muted-foreground">
-                          Kirim alert instan ke grup Telegram tim CS
+                          {canvasMessages.csTicketTelegramNotifyHint}
                         </p>
                       </div>
                       <Switch
@@ -2046,7 +2079,7 @@ export default function WhatsappWorkflowCanvasPage() {
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Telegram Chat ID (Opsional)
+                        {canvasMessages.csTicketTelegramChatIdLabel}
                       </Label>
                       <Input
                         value={
@@ -2059,14 +2092,16 @@ export default function WhatsappWorkflowCanvasPage() {
                             telegramChatId: e.target.value,
                           }))
                         }
-                        placeholder="@grup_cs atau -100123456"
+                        placeholder={
+                          canvasMessages.csTicketTelegramChatIdPlaceholder
+                        }
                         className="h-9 font-mono text-xs"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Pesan Balasan Otomatis
+                        {canvasMessages.csTicketAutoReplyLabel}
                       </Label>
                       <Textarea
                         rows={2}
@@ -2080,7 +2115,9 @@ export default function WhatsappWorkflowCanvasPage() {
                             autoReplyMessage: e.target.value,
                           }))
                         }
-                        placeholder="Tiket #{{variables.ticketNumber}}..."
+                        placeholder={
+                          canvasMessages.csTicketAutoReplyPlaceholder
+                        }
                         className="text-sm"
                       />
                     </div>
@@ -2101,13 +2138,15 @@ export default function WhatsappWorkflowCanvasPage() {
                         "dark:text-teal-300"
                       )}
                     >
-                      <strong>Single Utility:</strong> Mengirim link
-                      pembayaran berbiaya utilitas rendah Meta.
+                      <strong>
+                        {canvasMessages.singleUtilityBadge}:
+                      </strong>{" "}
+                      {canvasMessages.paymentLinkDispatchUtilityNote}
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Payment Gateway
+                        {canvasMessages.paymentLinkGatewayLabel}
                       </Label>
                       <Select
                         value={
@@ -2122,17 +2161,21 @@ export default function WhatsappWorkflowCanvasPage() {
                         }
                       >
                         <SelectTrigger className="h-9 text-xs">
-                          <SelectValue placeholder="Pilih Gateway" />
+                          <SelectValue
+                            placeholder={
+                              canvasMessages.paymentLinkGatewayPlaceholder
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="MIDTRANS">
-                            Midtrans Snap
+                            {canvasMessages.paymentLinkGatewayMidtrans}
                           </SelectItem>
                           <SelectItem value="XENDIT">
-                            Xendit Invoice
+                            {canvasMessages.paymentLinkGatewayXendit}
                           </SelectItem>
                           <SelectItem value="MANUAL">
-                            Manual / Kustom
+                            {canvasMessages.paymentLinkGatewayManual}
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -2141,7 +2184,7 @@ export default function WhatsappWorkflowCanvasPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label className="text-xs font-semibold">
-                          Variabel Nominal
+                          {canvasMessages.paymentLinkAmountVariableLabel}
                         </Label>
                         <Input
                           value={
@@ -2154,13 +2197,15 @@ export default function WhatsappWorkflowCanvasPage() {
                               amountVariable: e.target.value,
                             }))
                           }
-                          placeholder="total_amount"
+                          placeholder={
+                            canvasMessages.paymentLinkAmountVariablePlaceholder
+                          }
                           className="h-9 font-mono text-xs"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-xs font-semibold">
-                          Variabel Order ID
+                          {canvasMessages.paymentLinkOrderIdVariableLabel}
                         </Label>
                         <Input
                           value={
@@ -2173,7 +2218,9 @@ export default function WhatsappWorkflowCanvasPage() {
                               orderIdVariable: e.target.value,
                             }))
                           }
-                          placeholder="order_id"
+                          placeholder={
+                            canvasMessages.paymentLinkOrderIdVariablePlaceholder
+                          }
                           className="h-9 font-mono text-xs"
                         />
                       </div>
@@ -2181,7 +2228,7 @@ export default function WhatsappWorkflowCanvasPage() {
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        URL Pembayaran Kustom (Opsional)
+                        {canvasMessages.paymentLinkPaymentUrlLabel}
                       </Label>
                       <Input
                         value={
@@ -2195,8 +2242,7 @@ export default function WhatsappWorkflowCanvasPage() {
                           }))
                         }
                         placeholder={
-                          "https://pay.example.com/checkout?" +
-                          "orderId={{variables.order_id}}"
+                          canvasMessages.paymentLinkPaymentUrlPlaceholder
                         }
                         className="h-9 text-xs"
                       />
@@ -2204,7 +2250,7 @@ export default function WhatsappWorkflowCanvasPage() {
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Judul Tombol CTA
+                        {canvasMessages.paymentLinkButtonTitleLabel}
                       </Label>
                       <Input
                         value={
@@ -2217,14 +2263,16 @@ export default function WhatsappWorkflowCanvasPage() {
                             buttonTitle: e.target.value,
                           }))
                         }
-                        placeholder="Bayar Sekarang"
+                        placeholder={
+                          canvasMessages.paymentLinkButtonTitlePlaceholder
+                        }
                         className="h-9 text-xs"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">
-                        Teks Pesan Pembayaran
+                        {canvasMessages.paymentLinkFallbackTextLabel}
                       </Label>
                       <Textarea
                         rows={3}
@@ -2238,7 +2286,9 @@ export default function WhatsappWorkflowCanvasPage() {
                             fallbackText: e.target.value,
                           }))
                         }
-                        placeholder="Silakan selesaikan pembayaran via link..."
+                        placeholder={
+                          canvasMessages.paymentLinkFallbackTextPlaceholder
+                        }
                         className="text-sm"
                       />
                     </div>
@@ -2254,9 +2304,7 @@ export default function WhatsappWorkflowCanvasPage() {
                         "dark:text-amber-400"
                       )}
                     >
-                      <strong>Node ini deprecated:</strong> Pertanyaan berulang
-                      dalam WhatsApp memicu biaya percakapan Meta. Disarankan
-                      beralih ke node <em>Pengalihan Web/Chat</em>.
+                      {canvasMessages.promptInputDeprecatedWarning}
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold">

@@ -103,9 +103,9 @@ describe("Canvas simulator integration", () => {
     await waitFor(() => {
       expect(view.getByText("Add a step")).toBeDefined()
       expect(view.getByText("Cost-Saving Handover")).toBeDefined()
-      expect(view.getByText("Pengalihan Web/Chat")).toBeDefined()
-      expect(view.getByText("Eskalasi Tiket & Telegram")).toBeDefined()
-      expect(view.getByText("Kirim Link Pembayaran")).toBeDefined()
+      expect(view.getByText("Web/Chat Redirect")).toBeDefined()
+      expect(view.getByText("CS Ticket & Telegram Alert")).toBeDefined()
+      expect(view.getByText("Send Payment Link")).toBeDefined()
       expect(view.getByRole("button", { name: "Send message" })).toBeDefined()
       expect(view.getByRole("button", { name: "Ask for input" })).toBeDefined()
     })
