@@ -182,6 +182,13 @@ describe("deploy-monitor.service", () => {
         type: "DEPLOY_FAILED",
       })
     )
+    expect(mockUpdateStack).toHaveBeenCalledWith({
+      where: { id: "stack-1" },
+      data: {
+        status: "FAILED",
+        lastDeployStatus: "FAILED",
+      },
+    })
   })
 
   it("handles failure during checkDeploymentStatus and updates deployment and stack", async () => {
@@ -220,7 +227,10 @@ describe("deploy-monitor.service", () => {
     })
     expect(mockUpdateStack).toHaveBeenCalledWith({
       where: { id: "stack-fail" },
-      data: { lastDeployStatus: "FAILED" },
+      data: {
+        status: "FAILED",
+        lastDeployStatus: "FAILED",
+      },
     })
   })
 

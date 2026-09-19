@@ -82,10 +82,12 @@ export async function monitorActiveDeployments() {
           message: `Monitor detected failure: ${reason}`,
         })
 
-        // Only update lastDeployStatus, not the full status - stack can still accept new deploys
         await prisma.applicationStack.update({
           where: { id: deployment.stackId },
-          data: { lastDeployStatus: "FAILED" },
+          data: {
+            status: "FAILED",
+            lastDeployStatus: "FAILED",
+          },
         })
       } else {
         results.push(result.value)
@@ -139,7 +141,10 @@ async function checkDeploymentStatus(deployment: {
       })
       await prisma.applicationStack.update({
         where: { id: deployment.stackId },
-        data: { lastDeployStatus: "FAILED" },
+        data: {
+          status: "FAILED",
+          lastDeployStatus: "FAILED",
+        },
       })
       return {
         deploymentId: deployment.id,

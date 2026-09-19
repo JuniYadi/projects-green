@@ -29,6 +29,55 @@ import {
   resolveHelmEnvInputs,
 } from "./jenkins-image-ready.service"
 
+export type TriggerJenkinsJobRetryOptions = {
+  maxAttempts?: number
+  initialDelayMs?: number
+  delayMs?: number
+  backoffFactor?: number
+  maxDelayMs?: number
+  onReady?: () => Promise<void>
+}
+
+export async function triggerJenkinsJobWithRetry(
+  jobName: string,
+  parameters: Record<string, string | boolean | number> = {},
+  config?: JenkinsApiConfig,
+  options?: TriggerJenkinsJobRetryOptions
+): Promise<void> {
+  const maxAttempts = options?.maxAttempts ?? 15
+  const defaultDelay =
+    Number(process.env.APP_HOSTING_JENKINS_RETRY_DELAY_MS) || 2500
+  let delay = options?.delayMs ?? options?.initialDelayMs ?? defaultDelay
+  const backoffFactor = options?.backoffFactor ?? 1
+  const maxDelay = options?.maxDelayMs ?? 3000
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await triggerJenkinsJob(jobName, parameters, config)
+      if (options?.onReady) {
+        await options.onReady()
+      }
+      return
+    } catch (err) {
+      const is404 =
+        Boolean(
+          err &&
+          typeof err === "object" &&
+          ((err as { status?: number }).status === 404 ||
+            (err as { statusCode?: number }).statusCode === 404)
+        ) ||
+        (err instanceof Error && /404|not found/i.test(err.message))
+
+      if (!is404 || attempt === maxAttempts) {
+        throw err
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      delay = Math.min(Math.round(delay * backoffFactor), maxDelay)
+    }
+  }
+}
+
 /**
  * Processes a QUEUED deployment through the build/deploy pipeline.
  * Called by the deploy-monitor interval.
@@ -132,15 +181,28 @@ export async function processQueuedDeployment(deploymentId: string) {
               installationId: Number(
                 connection.installation.githubInstallationId
               ),
-              owner: jenkinsOwner,
-              repo: jenkinsRepo,
+              owner: connection.ownerLogin,
+              repo: connection.repoName,
               slug: stack.slug,
               branch: stack.branchName,
               framework: stack.framework ?? "docker",
               env: "dev",
+              jenkinsOwner,
+              jenkinsRepo,
               gitCredentialId,
+              gitRepoUrl: `https://github.com/${connection.ownerLogin}/${connection.repoName}`,
               gitopsPat: gitopsConfig?.pat,
             })
+
+            await recordDeployLog(
+              {
+                deploymentId: deployment.id,
+                scope: "build",
+                status: "BUILDING",
+                message: "Generating pipeline job...",
+              },
+              tx
+            )
 
             try {
               await jenkinsApiFetch(
@@ -154,7 +216,7 @@ export async function processQueuedDeployment(deploymentId: string) {
 
             // Trigger Jenkins build
             const jobName = stack.slug
-            await triggerJenkinsJob(
+            await triggerJenkinsJobWithRetry(
               jobName,
               {
                 GIT_REF: stack.branchName,
@@ -164,7 +226,20 @@ export async function processQueuedDeployment(deploymentId: string) {
                   ? { PFNAPP_WEBHOOK_TOKEN: jenkinsConfig.webhookToken }
                   : {}),
               },
-              jenkinsApiConfig
+              jenkinsApiConfig,
+              {
+                onReady: async () => {
+                  await recordDeployLog(
+                    {
+                      deploymentId: deployment.id,
+                      scope: "build",
+                      status: "BUILDING",
+                      message: "Pipeline job ready, starting build...",
+                    },
+                    tx
+                  )
+                },
+              }
             )
 
             await recordDeployEventOnce(
@@ -194,7 +269,9 @@ export async function processQueuedDeployment(deploymentId: string) {
               `[deploy-builder] Jenkins sync failed for ${stack.slug}:`,
               err
             )
-            // Non-fatal — continue; Jenkins webhook will update status
+            if (!eagerFallback) {
+              throw err
+            }
           }
         }
       } else if (stack.sourceType === "PUBLIC" && stack.publicSourceUrl) {
@@ -256,6 +333,16 @@ export async function processQueuedDeployment(deploymentId: string) {
             gitopsPat: gitopsConfig?.pat,
           })
 
+          await recordDeployLog(
+            {
+              deploymentId: deployment.id,
+              scope: "build",
+              status: "BUILDING",
+              message: "Generating pipeline job...",
+            },
+            tx
+          )
+
           try {
             await jenkinsApiFetch(
               "job/base-jenkins-project-generator-dsl/build?delay=0sec",
@@ -267,7 +354,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           }
 
           const jobName = stack.slug
-          await triggerJenkinsJob(
+          await triggerJenkinsJobWithRetry(
             jobName,
             {
               PUBLIC_SOURCE_URL: stack.publicSourceUrl,
@@ -277,7 +364,20 @@ export async function processQueuedDeployment(deploymentId: string) {
                 ? { PFNAPP_WEBHOOK_TOKEN: jenkinsConfig.webhookToken }
                 : {}),
             },
-            jenkinsApiConfig
+            jenkinsApiConfig,
+            {
+              onReady: async () => {
+                await recordDeployLog(
+                  {
+                    deploymentId: deployment.id,
+                    scope: "build",
+                    status: "BUILDING",
+                    message: "Pipeline job ready, starting build...",
+                  },
+                  tx
+                )
+              },
+            }
           )
           await recordDeployEventOnce(
             {
@@ -292,7 +392,7 @@ export async function processQueuedDeployment(deploymentId: string) {
             {
               deploymentId: deployment.id,
               scope: "build",
-              status: "BUILDING",
+              status: "BUILD_TRIGGERED",
               message: `Jenkins build triggered for ${stack.slug}`,
             },
             tx
@@ -302,6 +402,9 @@ export async function processQueuedDeployment(deploymentId: string) {
             `[deploy-builder] Public Jenkins trigger failed for ${stack.slug}:`,
             error
           )
+          if (!eagerFallback) {
+            throw error
+          }
         }
       }
 
@@ -518,7 +621,10 @@ export async function processQueuedDeployment(deploymentId: string) {
     })
     await prisma.applicationStack.update({
       where: { id: stack.id },
-      data: { lastDeployStatus: "FAILED" },
+      data: {
+        status: "FAILED",
+        lastDeployStatus: "FAILED",
+      },
     })
     await recordDeployEventOnce({
       deploymentId: deployment.id,
@@ -952,7 +1058,10 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
     })
     await prisma.applicationStack.update({
       where: { id: stack.id },
-      data: { lastDeployStatus: "FAILED" },
+      data: {
+        status: "FAILED",
+        lastDeployStatus: "FAILED",
+      },
     })
     await recordDeployEventOnce({
       deploymentId: deployment.id,

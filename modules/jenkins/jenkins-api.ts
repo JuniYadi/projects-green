@@ -30,16 +30,19 @@ function resolveConfig(config?: JenkinsApiConfig): {
   apiToken: string
 } {
   if (config) return config
-  if (!JENKINS_URL) {
+  const baseUrl = process.env.JENKINS_URL ?? JENKINS_URL
+  const username = process.env.JENKINS_USERNAME ?? JENKINS_USERNAME
+  const apiToken = process.env.JENKINS_API_TOKEN ?? JENKINS_API_TOKEN
+  if (!baseUrl) {
     throw new Error("JENKINS_URL is not defined")
   }
-  if (!JENKINS_USERNAME || !JENKINS_API_TOKEN) {
+  if (!username || !apiToken) {
     throw new Error("Jenkins credentials not configured")
   }
   return {
-    baseUrl: JENKINS_URL,
-    username: JENKINS_USERNAME,
-    apiToken: JENKINS_API_TOKEN,
+    baseUrl,
+    username,
+    apiToken,
   }
 }
 
@@ -74,12 +77,20 @@ export async function jenkinsApiFetch(
     )
 
     if (response.status === 401 || response.status === 403) {
-      throw new Error(`Jenkins authentication failed: ${response.statusText}`)
+      const error = Object.assign(
+        new Error(`Jenkins authentication failed: ${response.statusText}`),
+        { status: response.status }
+      )
+      throw error
     }
 
     if (!response.ok) {
       await response.text() // consume body to allow connection reuse
-      throw new Error(`Jenkins API error: ${response.statusText}`)
+      const error = Object.assign(
+        new Error(`Jenkins API error: ${response.statusText}`),
+        { status: response.status }
+      )
+      throw error
     }
 
     const contentType = response.headers.get("content-type")
