@@ -41,18 +41,57 @@ export type ExecuteNodeContext = {
   inboundAnswer?: string
 }
 
+export function isPrivateHost(hostname: string): boolean {
+  const h = hostname.toLowerCase()
+  if (
+    h === "localhost" ||
+    h === "127.0.0.1" ||
+    h === "0.0.0.0" ||
+    h === "::1"
+  ) {
+    return true
+  }
+  if (
+    h.startsWith("10.") ||
+    h.startsWith("192.168.") ||
+    h.startsWith("169.254.")
+  ) {
+    return true
+  }
+  const match = h.match(/^172\.(\d+)\./)
+  if (match) {
+    const octet = Number(match[1])
+    if (octet >= 16 && octet <= 31) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Maps workflow department config to Prisma SupportTicketDepartment.
+ * Note: Workflow department "SUPPORT" explicitly maps to TECHNICAL
+ * as the general customer assistance department in console.
+ */
 function mapDepartment(dept: string): SupportTicketDepartment {
   const d = dept.toUpperCase().trim()
   if (d === "BILLING") return SupportTicketDepartment.BILLING
   if (d === "ACCOUNT") return SupportTicketDepartment.ACCOUNT
   if (d === "COMPLIANCE") return SupportTicketDepartment.COMPLIANCE
+  if (d === "SUPPORT") return SupportTicketDepartment.TECHNICAL
   return SupportTicketDepartment.TECHNICAL
 }
 
+/**
+ * Maps workflow priority config to Prisma SupportTicketPriority.
+ * Note: Prisma enum only has LOW | MEDIUM | HIGH.
+ * Workflow "NORMAL" maps to MEDIUM, and "URGENT" maps to HIGH.
+ */
 function mapPriority(prio: string): SupportTicketPriority {
   const p = prio.toUpperCase().trim()
   if (p === "LOW") return SupportTicketPriority.LOW
   if (p === "NORMAL") return SupportTicketPriority.MEDIUM
+  if (p === "URGENT") return SupportTicketPriority.HIGH
   return SupportTicketPriority.HIGH
 }
 
@@ -79,15 +118,7 @@ export async function dispatchTelegramNotification(
     if (parsedUrl.protocol !== "https:") {
       return { sent: false, reason: "HTTPS protocol required" }
     }
-    const hostname = parsedUrl.hostname.toLowerCase()
-    if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "0.0.0.0" ||
-      hostname.startsWith("10.") ||
-      hostname.startsWith("192.168.") ||
-      hostname.startsWith("169.254.")
-    ) {
+    if (isPrivateHost(parsedUrl.hostname)) {
       return { sent: false, reason: "Targeting private internal IP blocked" }
     }
 
@@ -627,32 +658,7 @@ export async function executeWorkflowNode(
         }
       }
 
-      const hostname = parsedUrl.hostname.toLowerCase()
-      if (
-        hostname === "localhost" ||
-        hostname === "127.0.0.1" ||
-        hostname === "0.0.0.0" ||
-        hostname === "::1" ||
-        hostname.startsWith("169.254.") ||
-        hostname.startsWith("10.") ||
-        hostname.startsWith("172.16.") ||
-        hostname.startsWith("172.17.") ||
-        hostname.startsWith("172.18.") ||
-        hostname.startsWith("172.19.") ||
-        hostname.startsWith("172.20.") ||
-        hostname.startsWith("172.21.") ||
-        hostname.startsWith("172.22.") ||
-        hostname.startsWith("172.23.") ||
-        hostname.startsWith("172.24.") ||
-        hostname.startsWith("172.25.") ||
-        hostname.startsWith("172.26.") ||
-        hostname.startsWith("172.27.") ||
-        hostname.startsWith("172.28.") ||
-        hostname.startsWith("172.29.") ||
-        hostname.startsWith("172.30.") ||
-        hostname.startsWith("172.31.") ||
-        hostname.startsWith("192.168.")
-      ) {
+      if (isPrivateHost(parsedUrl.hostname)) {
         return {
           status: "FAILED",
           outputPort: "error",

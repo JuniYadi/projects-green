@@ -293,14 +293,53 @@ describe("Workflow Handover - CS Ticket Escalate Node", () => {
   test(
     "dispatchTelegramNotification blocks internal SSRF IP addresses",
     async () => {
-    const ssrfResult = await dispatchTelegramNotification({
-      chatId: "123",
-      text: "Alert",
-      webhookUrl: "https://127.0.0.1/webhook",
+      const ssrfResult = await dispatchTelegramNotification({
+        chatId: "123",
+        text: "Alert",
+        webhookUrl: "https://127.0.0.1/webhook",
+      })
+
+      expect(ssrfResult.sent).toBe(false)
+      expect(ssrfResult.reason).toContain(
+        "Targeting private internal IP blocked"
+      )
+
+      const ssrf172 = await dispatchTelegramNotification({
+        chatId: "123",
+        text: "Alert",
+        webhookUrl: "https://172.20.0.1/webhook",
+      })
+      expect(ssrf172.sent).toBe(false)
+      expect(ssrf172.reason).toContain(
+        "Targeting private internal IP blocked"
+      )
+    }
+  )
+
+  test("explicitly maps SUPPORT department and URGENT priority", async () => {
+    const context = makeContext({
+      type: "cs_ticket_escalate",
+      id: "node_urgent_support",
+      name: "Eskalasi Urgent",
+      config: {
+        department: "SUPPORT",
+        priority: "URGENT",
+        subject: "Kendala Server",
+        description: "Darurat",
+        notifyTelegram: false,
+      },
     })
 
-    expect(ssrfResult.sent).toBe(false)
-    expect(ssrfResult.reason).toContain("Targeting private internal IP blocked")
+    const result = await executeWorkflowNode(context)
+    expect(result.status).toBe("COMPLETED")
+    expect(mockTicketCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          department: SupportTicketDepartment.TECHNICAL,
+          priority: SupportTicketPriority.HIGH,
+        }),
+      })
+    )
   })
 })
 
