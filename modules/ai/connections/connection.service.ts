@@ -514,3 +514,5 @@ export async function executeConnectionRequest(
     }
   }
 }
+
+export const invokeConnection = executeConnectionRequest
