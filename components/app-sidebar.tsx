@@ -49,6 +49,7 @@ import {
   Storefront as StorefrontIcon,
   Users as UsersIcon,
   EnvelopeSimple as EnvelopeSimpleIcon,
+  PlugsConnected as PlugsConnectedIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 import { useWhatsAppOnboardingStore } from "@/modules/whatsapp/onboarding/whatsapp-onboarding.store"
@@ -1029,6 +1030,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <KeyIcon />,
         isActive: startsWithRoute(path, "/console/ai/providers"),
+      },
+      {
+        title: "API Connections",
+        url: localizePathname({
+          pathname: "/console/ai/connections",
+          locale,
+        }),
+        icon: <PlugsConnectedIcon />,
+        isActive: startsWithRoute(path, "/console/ai/connections"),
       },
     ],
   },
