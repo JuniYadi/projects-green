@@ -45,8 +45,8 @@ const mockGetDeploymentJenkinsLog = mock(async () => ({
   ok: true,
   text: "[Pipeline] Start of Pipeline\n> git checkout\nBuild completed",
   isBuilding: true,
-  status: "building" as const,
-  buildNumber: 3,
+  status: "building" as import("../../deploy.types").DeployStatus,
+  buildNumber: 3 as number | null,
 }))
 
 mock.module("../../jenkins-stream.service", () => ({
