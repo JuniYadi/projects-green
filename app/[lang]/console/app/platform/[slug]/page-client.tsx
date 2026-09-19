@@ -607,7 +607,7 @@ export default function PlatformInstanceWorkspacePage() {
       if (freshOverview?.ok && freshOverview.data) {
         setOverview(freshOverview.data)
       }
-      setActiveWorkspaceTab("deployments")
+      router.push(`/${locale}/console/app/platform/${slug}?tab=deployments`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Deploy failed.")
     } finally {
