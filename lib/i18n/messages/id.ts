@@ -1038,7 +1038,8 @@ export const idMessages: AppMessages = {
         roleScheduler: "Penjadwal",
         roleSchedulerDesc: "Cron artisan schedule:run",
         containerPort: "Port Kontainer (PORT)",
-        portDesc: "Port pendengar internal HTTP. Platform berjalan unprivileged.",
+        portDesc:
+          "Port pendengar internal HTTP. Platform berjalan unprivileged.",
         portDefaultNotice: "(Default unprivileged 8080)",
         environmentMode: "Mode Lingkungan ({envKey})",
         envModeDesc: "Mode eksekusi runtime teroptimasi standar.",
@@ -5247,6 +5248,12 @@ export const idMessages: AppMessages = {
       },
       timeline: {
         steps: {
+          queuedInit: "Antrean & Inisialisasi",
+          jenkinsBuild: "Build & Scan di Jenkins",
+          artifactsScan: "Notifikasi Artefak & Trivy",
+          gitopsConfig: "Sinkronisasi GitOps (Helm)",
+          cloudRollout: "Rollout Cluster & Pod Ready",
+          liveServing: "Aplikasi Berjalan Aktif",
           queued: "Dalam antrean",
           monitorWait: "Menunggu di antrean",
           monitorPickedUp: "Menyiapkan build",
@@ -5295,6 +5302,32 @@ export const idMessages: AppMessages = {
             "Aplikasi membutuhkan waktu lebih lama dari biasanya untuk dimulai. Periksa log di bawah atau klik Coba Lagi Deploy.",
           registryHint:
             "Kluster tujuan tidak memiliki integrasi Registri Kontainer yang aktif. Harap konfigurasikan registri di pengaturan admin.",
+        },
+        terminal: {
+          tabJenkins: "Live Jenkins Log",
+          tabGitOps: "Log Rilis & GitOps",
+          tabRuntime: "Log Aplikasi (Live)",
+          autoscrollOn: "Autoscroll: ON",
+          autoscrollOff: "Autoscroll: OFF",
+          searchPlaceholder: "Cari log...",
+          copyLog: "Salin Log",
+          copied: "Disalin!",
+          fullscreen: "Tampilan Penuh",
+          exitFullscreen: "Keluar Tampilan Penuh",
+          liveStreaming: "Streaming log langsung dari Runner Jenkins...",
+          noLogs: "Belum ada log tersedia.",
+          waitingJenkins:
+            "Menunggu runner Jenkins mengalokasikan slot build...",
+          waitingRuntime:
+            "Log runtime aplikasi akan streaming setelah pod sehat.",
+          diagnosticTitle: "Panduan Diagnostik",
+          authFailedTip:
+            "Jenkins menolak kredensial runner (401 Unauthorized). Periksa kredensial integrasi klaster atau token API runner.",
+          registryFailedTip:
+            "Registry kontainer menolak push image. Periksa kredensial registry dan kuota repositori.",
+          timeoutFailedTip:
+            "Waktu build habis: Proses build melampaui durasi maksimum yang dialokasikan.",
+          retryDeploy: "Deploy Ulang",
         },
       },
       settings: {
@@ -6459,8 +6492,7 @@ export const idMessages: AppMessages = {
         profanityFilterLabel: "Filter Kata Kasar & Spam",
       },
       interactiveReplies: {
-        title:
-          "Izinkan Tombol Interaktif WhatsApp (Quick Replies & URL Links)",
+        title: "Izinkan Tombol Interaktif WhatsApp (Quick Replies & URL Links)",
         description:
           "Izinkan asisten AI mengirim balasan dengan tombol interaktif " +
           "WhatsApp seperti Quick Replies dan link tombol URL CTA.",
@@ -6573,8 +6605,7 @@ export const idMessages: AppMessages = {
           typeString: "Teks (STRING)",
           typeNumber: "Angka (NUMBER)",
           typeDate: "Tanggal (DATE)",
-          questionPlaceholder:
-            "Misal: Boleh minta nomor di kwitansinya?",
+          questionPlaceholder: "Misal: Boleh minta nomor di kwitansinya?",
           addRowButton: "+ Tambah Parameter Baru",
           emptySlots:
             "Belum ada parameter slot. Tambahkan parameter manual atau" +
@@ -6595,10 +6626,8 @@ export const idMessages: AppMessages = {
             "AI akan merangkum seluruh parameter dan meminta customer" +
             " menekan tombol konfirmasi sebelum API dijalankan.",
           previewTitle: "Pratinjau Tombol WhatsApp:",
-          previewGreeting:
-            "Halo Kak, mohon konfirmasi data pemeriksaan Anda:",
-          previewQuestion:
-            "Apakah data di atas sudah benar untuk dicek?",
+          previewGreeting: "Halo Kak, mohon konfirmasi data pemeriksaan Anda:",
+          previewQuestion: "Apakah data di atas sudah benar untuk dicek?",
           previewCustomerValue: "<nilai pelanggan>",
           previewConfirm: "✅ Benar, Cek Sekarang",
           previewReject: "❌ Koreksi Data",
@@ -6616,8 +6645,7 @@ export const idMessages: AppMessages = {
           saveError: "Terjadi kesalahan saat menyimpan Action Intent.",
           deleteSuccess: "Action Intent berhasil dihapus.",
           deleteError: "Gagal menghapus Action Intent.",
-          deleteConfirm:
-            "Apakah Anda yakin ingin menghapus Action Intent ini?",
+          deleteConfirm: "Apakah Anda yakin ingin menghapus Action Intent ini?",
           loadError: "Gagal memuat daftar Action Intent.",
         },
       },
@@ -7377,8 +7405,7 @@ export const idMessages: AppMessages = {
     nameLabel: "Nama Koneksi",
     namePlaceholder: "Misal: Layanan Core CRM",
     descriptionLabel: "Deskripsi (Opsional)",
-    descriptionPlaceholder:
-      "Misal: Layanan data pelanggan dan tiket keluar",
+    descriptionPlaceholder: "Misal: Layanan data pelanggan dan tiket keluar",
     baseUrlLabel: "URL Dasar",
     baseUrlPlaceholder: "https://api.example.com/v1",
     authTypeLabel: "Tipe Autentikasi",
@@ -9567,11 +9594,13 @@ export const idMessages: AppMessages = {
     },
     adminUsers: {
       title: "Pengguna",
-      description: "Kelola dan tinjau semua pengguna lintas organisasi pada platform",
+      description:
+        "Kelola dan tinjau semua pengguna lintas organisasi pada platform",
     },
     adminInvitations: {
       title: "Undangan",
-      description: "Lihat, kirim, dan kelola undangan lintas semua organisasi pada platform",
+      description:
+        "Lihat, kirim, dan kelola undangan lintas semua organisasi pada platform",
     },
     orgs: {
       title: "Ikhtisar Organisasi",
@@ -9579,7 +9608,8 @@ export const idMessages: AppMessages = {
     },
     vpnAuditLogs: {
       title: "Log Audit",
-      description: "Lacak setiap langkah provisi VPN, pencabutan, unduhan konfigurasi, dan aksi admin. Buka baris mana pun untuk melihat detail lengkap.",
+      description:
+        "Lacak setiap langkah provisi VPN, pencabutan, unduhan konfigurasi, dan aksi admin. Buka baris mana pun untuk melihat detail lengkap.",
     },
     vpnRegions: {
       title: "Wilayah",
@@ -9587,32 +9617,39 @@ export const idMessages: AppMessages = {
     },
     vpnDevices: {
       title: "Perangkat VPN",
-      description: "Lihat dan kelola semua perangkat mobile VPN di berbagai langganan.",
+      description:
+        "Lihat dan kelola semua perangkat mobile VPN di berbagai langganan.",
     },
     vpnSshKeys: {
       title: "Kunci SSH",
-      description: "Simpan kunci SSH sekali dan gunakan kembali di berbagai server. Kunci disimpan terenkripsi dan tidak akan ditampilkan lagi.",
+      description:
+        "Simpan kunci SSH sekali dan gunakan kembali di berbagai server. Kunci disimpan terenkripsi dan tidak akan ditampilkan lagi.",
     },
     vpnSubscriptions: {
       title: "Operasional Layanan VPN",
-      description: "Kelola akun server per protokol dan provisi untuk layanan VPN yang dibeli. Pembayaran, pesanan, dan perpanjangan dikelola di Billing.",
+      description:
+        "Kelola akun server per protokol dan provisi untuk layanan VPN yang dibeli. Pembayaran, pesanan, dan perpanjangan dikelola di Billing.",
     },
     vpnServers: {
       title: "Server",
-      description: "Tambah server VPN dan atur protokol yang didukung masing-masing server.",
+      description:
+        "Tambah server VPN dan atur protokol yang didukung masing-masing server.",
     },
     settingsOwnership: {
       title: "Kepemilikan",
-      description: "Lihat pemilik organisasi saat ini dan transfer kepemilikan.",
+      description:
+        "Lihat pemilik organisasi saat ini dan transfer kepemilikan.",
     },
     settingsEmails: {
       title: "Templat Email",
-      description: "Pratinjau semua templat email transaksional yang dikirim oleh platform.",
+      description:
+        "Pratinjau semua templat email transaksional yang dikirim oleh platform.",
       deliveryLogs: "Log Pengiriman",
     },
     settingsEmailsDeliveryLogs: {
       title: "Log Pengiriman Email",
-      description: "Lihat status pengiriman dan pratinjau templat email transaksional.",
+      description:
+        "Lihat status pengiriman dan pratinjau templat email transaksional.",
     },
     settingsMembers: {
       title: "Anggota",
@@ -9624,27 +9661,33 @@ export const idMessages: AppMessages = {
     },
     billingOverview: {
       title: "Ikhtisar Tagihan",
-      description: "Statistik penagihan dan pengelolaan organisasi tingkat platform",
+      description:
+        "Statistik penagihan dan pengelolaan organisasi tingkat platform",
     },
     billingInvoices: {
       title: "Faktur",
-      description: "Tinjau catatan penagihan, unduh bukti pembayaran, dan kelola status faktur.",
+      description:
+        "Tinjau catatan penagihan, unduh bukti pembayaran, dan kelola status faktur.",
     },
     billingPayments: {
       title: "Pembayaran",
-      description: "Kelola gateway pembayaran, rekening bank, dan konfirmasi pembayaran.",
+      description:
+        "Kelola gateway pembayaran, rekening bank, dan konfirmasi pembayaran.",
     },
     appDetector: {
       title: "Pusat Kontrol Detektor",
-      description: "Atur Toolchain Detektor AI — kelola aturan deteksi, pemetaan runtime, dan tinjau rekomendasi AI.",
+      description:
+        "Atur Toolchain Detektor AI — kelola aturan deteksi, pemetaan runtime, dan tinjau rekomendasi AI.",
     },
     appEventsGithub: {
       title: "Event GitHub",
-      description: "Pantau pengiriman webhook GitHub, konteks repositori, detail commit, status pemrosesan, dan payload mentah untuk App Hosting.",
+      description:
+        "Pantau pengiriman webhook GitHub, konteks repositori, detail commit, status pemrosesan, dan payload mentah untuk App Hosting.",
     },
     appManagedStocks: {
       title: "Pool Stok Database Terkelola",
-      description: "Impor dan kelola slot database yang telah disiapkan untuk deployment aplikasi 1-klik.",
+      description:
+        "Impor dan kelola slot database yang telah disiapkan untuk deployment aplikasi 1-klik.",
     },
     whatsappTemplates: {
       heading: "Templat",
@@ -9654,31 +9697,37 @@ export const idMessages: AppMessages = {
     },
     whatsappDeviceEdit: {
       title: "Edit Perangkat WhatsApp",
-      description: "Perbarui kredensial Meta Cloud API, penyimpanan token, kuota, dan metadata perangkat.",
+      description:
+        "Perbarui kredensial Meta Cloud API, penyimpanan token, kuota, dan metadata perangkat.",
     },
     whatsappDeviceNew: {
       title: "Tambah Perangkat WhatsApp",
-      description: "Daftarkan perangkat WhatsApp Business baru dengan konfigurasi terperinci.",
+      description:
+        "Daftarkan perangkat WhatsApp Business baru dengan konfigurasi terperinci.",
     },
     supportTickets: {
       title: "Tiket Dukungan (Admin)",
-      description: "Kelola, prioritaskan, dan balas semua tiket dukungan lintas organisasi.",
+      description:
+        "Kelola, prioritaskan, dan balas semua tiket dukungan lintas organisasi.",
     },
     supportTicketsNew: {
       backLink: "Kembali ke Tiket Dukungan",
       title: "Buat Tiket Dukungan (Admin)",
-      description: "Buka tiket atas nama organisasi dengan kredensial aman dan lampiran opsional.",
+      description:
+        "Buka tiket atas nama organisasi dengan kredensial aman dan lampiran opsional.",
     },
     supportTicketsDetail: {
       backLink: "Kembali ke Tiket Dukungan",
       title: "Detail Tiket Dukungan (Admin)",
-      description: "Lihat detail utas lengkap, ubah kategori, balas, atau hapus tiket.",
+      description:
+        "Lihat detail utas lengkap, ubah kategori, balas, atau hapus tiket.",
     },
   },
   pConsolePages: {
     invoices: {
       title: "Faktur",
-      description: "Tinjau catatan penagihan, unduh tanda terima, dan kelola status faktur.",
+      description:
+        "Tinjau catatan penagihan, unduh tanda terima, dan kelola status faktur.",
       billingHistory: "Riwayat Penagihan",
     },
     invoiceDetail: {
@@ -9688,17 +9737,20 @@ export const idMessages: AppMessages = {
     },
     supportTickets: {
       title: "Tiket Dukungan",
-      description: "Lacak permintaan dukungan terkini dan tindak lanjuti isu yang tertunda.",
+      description:
+        "Lacak permintaan dukungan terkini dan tindak lanjuti isu yang tertunda.",
     },
     supportTicketsNew: {
       backLink: "Kembali ke Tiket Dukungan",
       title: "Buka Tiket Dukungan",
-      description: "Kirim tiket dengan detail formulir aman dan lampiran opsional.",
+      description:
+        "Kirim tiket dengan detail formulir aman dan lampiran opsional.",
     },
     supportTicketsDetail: {
       backLink: "Kembali ke Tiket Dukungan",
       title: "Detail Tiket Dukungan",
-      description: "Tinjau riwayat pesan, balas, unggah lampiran, dan tutup tiket.",
+      description:
+        "Tinjau riwayat pesan, balas, unggah lampiran, dan tutup tiket.",
     },
   },
   pAuthPages: {
@@ -9768,7 +9820,8 @@ export const idMessages: AppMessages = {
     current: "Saat Ini",
     rollback: "Rollback",
     rollingBack: "Melakukan rollback...",
-    lockedTooltip: "Image dirotasi otomatis. Build ulang commit untuk deploy kembali.",
+    lockedTooltip:
+      "Image dirotasi otomatis. Build ulang commit untuk deploy kembali.",
     locked: "Terkunci",
     noImages: "Belum ada container image yang dibangun.",
     rollbackModalTitle: "Konfirmasi Rollback Aman: Tag {tag}",
@@ -9797,7 +9850,8 @@ export const idMessages: AppMessages = {
     colInstalled: "Terpasang",
     colFixedIn: "Diperbaiki Pada",
     colProvenanceAction: "Asal Usul / Aksi",
-    noFindings: "Tidak ada kerentanan ditemukan yang cocok dengan filter saat ini.",
+    noFindings:
+      "Tidak ada kerentanan ditemukan yang cocok dengan filter saat ini.",
   },
   pInvoicesTable: {
     colInvoiceId: "ID Faktur",
@@ -9965,8 +10019,7 @@ export const idMessages: AppMessages = {
         "Ini adalah pesan transaksional otomatis. Mohon tidak membalas langsung ke email ini.",
     },
     supportTickets: {
-      previewCreated:
-        "Tiket dukungan Anda #{ticketNumber} telah dibuat",
+      previewCreated: "Tiket dukungan Anda #{ticketNumber} telah dibuat",
       previewClosed: "Tiket dukungan #{ticketNumber} telah {status}",
       previewReplied: "Re: Tiket dukungan #{ticketNumber} - {subject}",
       repliedBy: "Dibalas oleh",
@@ -10107,8 +10160,7 @@ export const idMessages: AppMessages = {
       noDevicesFound: "Tidak ada perangkat WhatsApp terdaftar ditemukan.",
       automatedDigestFooter:
         "Ini adalah ringkasan otomatis yang dikirimkan kepada administrator platform.",
-      disconnPreview:
-        "[{orgName}] Perangkat WhatsApp Terputus: {phoneNumber}",
+      disconnPreview: "[{orgName}] Perangkat WhatsApp Terputus: {phoneNumber}",
       disconnHeading: "Perangkat WhatsApp Terputus",
       disconnIntro:
         "Perangkat WhatsApp di bawah {orgName} sedang offline dan tidak merespons pemeriksaan kesehatan.",

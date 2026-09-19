@@ -1036,7 +1036,8 @@ export const enMessages: AppMessages = {
       },
       tabEnv: {
         title: "Environment Variables",
-        description: "Manage configuration and secrets for the {env} environment.",
+        description:
+          "Manage configuration and secrets for the {env} environment.",
       },
       operateMetrics: {
         timeRangeAria: "Time range",
@@ -5203,6 +5204,12 @@ export const enMessages: AppMessages = {
       },
       timeline: {
         steps: {
+          queuedInit: "Queued & Init",
+          jenkinsBuild: "Jenkins Build & Scan",
+          artifactsScan: "Artifacts & Scan Ingest",
+          gitopsConfig: "GitOps Configuration",
+          cloudRollout: "Rollout Cluster & Pod Ready",
+          liveServing: "Live & Serving",
           queued: "Queued",
           monitorWait: "Waiting in queue",
           monitorPickedUp: "Preparing build",
@@ -5251,6 +5258,32 @@ export const enMessages: AppMessages = {
             "The application took longer than expected to start up. Check application logs below or click Retry Deploy.",
           registryHint:
             "The target cluster is missing an active Container Registry integration. Please configure or activate the cluster registry in admin settings.",
+        },
+        terminal: {
+          tabJenkins: "Live Jenkins Log",
+          tabGitOps: "Log Rilis & GitOps",
+          tabRuntime: "Log Aplikasi (Live)",
+          autoscrollOn: "Autoscroll: ON",
+          autoscrollOff: "Autoscroll: OFF",
+          searchPlaceholder: "Search logs...",
+          copyLog: "Copy Full Log",
+          copied: "Copied!",
+          fullscreen: "Fullscreen",
+          exitFullscreen: "Exit Fullscreen",
+          liveStreaming: "Streaming live log from Jenkins Runner...",
+          noLogs: "No logs available yet.",
+          waitingJenkins:
+            "Waiting for Jenkins runner to allocate build slot...",
+          waitingRuntime:
+            "Application runtime logs will stream once the pod is healthy.",
+          diagnosticTitle: "Diagnostic Guidance",
+          authFailedTip:
+            "Jenkins rejected runner credentials (401 Unauthorized). Verify cluster integration credentials or runner API token.",
+          registryFailedTip:
+            "Container registry rejected the image push. Verify registry credentials and repository quota.",
+          timeoutFailedTip:
+            "Build timeout: The build process exceeded the maximum allocated duration.",
+          retryDeploy: "Retry Deploy",
         },
       },
       settings: {
@@ -6400,8 +6433,7 @@ export const enMessages: AppMessages = {
         profanityFilterLabel: "Profanity & Spam Filter",
       },
       interactiveReplies: {
-        title:
-          "Allow WhatsApp Interactive Replies (Quick Replies & URL Links)",
+        title: "Allow WhatsApp Interactive Replies (Quick Replies & URL Links)",
         description:
           "Allow the AI assistant to send replies with WhatsApp interactive " +
           "buttons such as Quick Replies and URL CTA buttons.",
@@ -6410,8 +6442,7 @@ export const enMessages: AppMessages = {
         previewTitle: "Interactive Reply Preview",
         previewSubtitle: "How button messages appear on WhatsApp",
         mockMessage:
-          "Hi! Thank you for contacting us. " +
-          "Please choose a service:",
+          "Hi! Thank you for contacting us. " + "Please choose a service:",
         buttonAskProduct: "💬 Ask Product",
         buttonCheckOrder: "📦 Check Order",
         buttonVisitWebsite: "🌐 Visit Website",
@@ -6495,8 +6526,7 @@ export const enMessages: AppMessages = {
             '\n  "exam_date": "2026-09-19"\n}',
           parseButton: "Extract Parameters Automatically",
           cancelButton: "Cancel",
-          invalidJson:
-            "Invalid JSON format. Please verify quotes or commas.",
+          invalidJson: "Invalid JSON format. Please verify quotes or commas.",
           noKeysFound: "No object keys found in JSON.",
           success: "Successfully detected slot parameters from JSON!",
         },
@@ -6513,8 +6543,7 @@ export const enMessages: AppMessages = {
           typeString: "Text (STRING)",
           typeNumber: "Number (NUMBER)",
           typeDate: "Date (DATE)",
-          questionPlaceholder:
-            "E.g., Could you provide the receipt number?",
+          questionPlaceholder: "E.g., Could you provide the receipt number?",
           addRowButton: "+ Add New Parameter",
           emptySlots:
             "No slot parameters yet. Add parameters manually or use" +
@@ -6534,10 +6563,8 @@ export const enMessages: AppMessages = {
             "AI will summarize all parameters and require customer" +
             " confirmation before executing external API.",
           previewTitle: "WhatsApp Button Preview:",
-          previewGreeting:
-            "Hi, please confirm your inspection details:",
-          previewQuestion:
-            "Is the above information correct to proceed?",
+          previewGreeting: "Hi, please confirm your inspection details:",
+          previewQuestion: "Is the above information correct to proceed?",
           previewCustomerValue: "<customer value>",
           previewConfirm: "✅ Correct, Check Now",
           previewReject: "❌ Fix Data",
@@ -6555,8 +6582,7 @@ export const enMessages: AppMessages = {
           saveError: "An error occurred while saving Action Intent.",
           deleteSuccess: "Action Intent deleted successfully.",
           deleteError: "Failed to delete Action Intent.",
-          deleteConfirm:
-            "Are you sure you want to delete this Action Intent?",
+          deleteConfirm: "Are you sure you want to delete this Action Intent?",
           loadError: "Failed to load Action Intents.",
         },
       },
@@ -7305,8 +7331,7 @@ export const enMessages: AppMessages = {
     nameLabel: "Connection Name",
     namePlaceholder: "e.g. Core CRM Service",
     descriptionLabel: "Description (Optional)",
-    descriptionPlaceholder:
-      "e.g. Outbound customer data and ticket service",
+    descriptionPlaceholder: "e.g. Outbound customer data and ticket service",
     baseUrlLabel: "Base URL",
     baseUrlPlaceholder: "https://api.example.com/v1",
     authTypeLabel: "Authentication Type",
@@ -9477,11 +9502,13 @@ export const enMessages: AppMessages = {
     },
     adminUsers: {
       title: "Users",
-      description: "Manage and inspect all users across organizations on the platform",
+      description:
+        "Manage and inspect all users across organizations on the platform",
     },
     adminInvitations: {
       title: "Invitations",
-      description: "View, send, and manage invitations across all organizations on the platform",
+      description:
+        "View, send, and manage invitations across all organizations on the platform",
     },
     orgs: {
       title: "Organization Overview",
@@ -9489,7 +9516,8 @@ export const enMessages: AppMessages = {
     },
     vpnAuditLogs: {
       title: "Audit Logs",
-      description: "Track every VPN provisioning step, revocation, configuration download, and admin action. Expand any row to inspect the full detail payload.",
+      description:
+        "Track every VPN provisioning step, revocation, configuration download, and admin action. Expand any row to inspect the full detail payload.",
     },
     vpnRegions: {
       title: "Regions",
@@ -9497,15 +9525,18 @@ export const enMessages: AppMessages = {
     },
     vpnDevices: {
       title: "VPN Devices",
-      description: "View and manage all VPN mobile devices across subscriptions.",
+      description:
+        "View and manage all VPN mobile devices across subscriptions.",
     },
     vpnSshKeys: {
       title: "SSH Keys",
-      description: "Store SSH keys once and reuse them across servers. Keys are stored encrypted and never displayed again.",
+      description:
+        "Store SSH keys once and reuse them across servers. Keys are stored encrypted and never displayed again.",
     },
     vpnSubscriptions: {
       title: "VPN Service Operations",
-      description: "Manage per-protocol server accounts and provisioning for purchased VPN services. Payment, orders, and renewals are managed in Billing.",
+      description:
+        "Manage per-protocol server accounts and provisioning for purchased VPN services. Payment, orders, and renewals are managed in Billing.",
     },
     vpnServers: {
       title: "Servers",
@@ -9513,16 +9544,19 @@ export const enMessages: AppMessages = {
     },
     settingsOwnership: {
       title: "Ownership",
-      description: "View the current organization owner and transfer ownership.",
+      description:
+        "View the current organization owner and transfer ownership.",
     },
     settingsEmails: {
       title: "Email Templates",
-      description: "Preview all transactional email templates sent by the platform.",
+      description:
+        "Preview all transactional email templates sent by the platform.",
       deliveryLogs: "Delivery Logs",
     },
     settingsEmailsDeliveryLogs: {
       title: "Email Delivery Logs",
-      description: "View delivery status and rendered previews of transactional emails.",
+      description:
+        "View delivery status and rendered previews of transactional emails.",
     },
     settingsMembers: {
       title: "Members",
@@ -9538,23 +9572,28 @@ export const enMessages: AppMessages = {
     },
     billingInvoices: {
       title: "Invoices",
-      description: "Review billing records, download receipts, and manage invoice status.",
+      description:
+        "Review billing records, download receipts, and manage invoice status.",
     },
     billingPayments: {
       title: "Payments",
-      description: "Manage payment gateways, bank accounts, and payment confirmations.",
+      description:
+        "Manage payment gateways, bank accounts, and payment confirmations.",
     },
     appDetector: {
       title: "Detector Control Center",
-      description: "Govern the AI Detector Toolchain — manage detection rules, runtime mappings, and review AI recommendations.",
+      description:
+        "Govern the AI Detector Toolchain — manage detection rules, runtime mappings, and review AI recommendations.",
     },
     appEventsGithub: {
       title: "GitHub Events",
-      description: "Monitor GitHub webhook deliveries, repository context, commit details, processing state, and raw payloads for App Hosting.",
+      description:
+        "Monitor GitHub webhook deliveries, repository context, commit details, processing state, and raw payloads for App Hosting.",
     },
     appManagedStocks: {
       title: "Managed Database Stock Pool",
-      description: "Import and manage pre-provisioned database slots for 1-click app deployments.",
+      description:
+        "Import and manage pre-provisioned database slots for 1-click app deployments.",
     },
     whatsappTemplates: {
       heading: "Templates",
@@ -9564,51 +9603,61 @@ export const enMessages: AppMessages = {
     },
     whatsappDeviceEdit: {
       title: "Edit WhatsApp Device",
-      description: "Update Meta Cloud API credentials, token storage, quotas, and device metadata.",
+      description:
+        "Update Meta Cloud API credentials, token storage, quotas, and device metadata.",
     },
     whatsappDeviceNew: {
       title: "Add WhatsApp Device",
-      description: "Register a new WhatsApp Business device with detailed configuration.",
+      description:
+        "Register a new WhatsApp Business device with detailed configuration.",
     },
     supportTickets: {
       title: "Support Tickets (Admin)",
-      description: "Manage, prioritize, and reply to all support tickets across organizations.",
+      description:
+        "Manage, prioritize, and reply to all support tickets across organizations.",
     },
     supportTicketsNew: {
       backLink: "Back to Support Tickets",
       title: "Create Support Ticket (Admin)",
-      description: "Open a ticket on behalf of an organization with optional secure credentials and attachments.",
+      description:
+        "Open a ticket on behalf of an organization with optional secure credentials and attachments.",
     },
     supportTicketsDetail: {
       backLink: "Back to Support Tickets",
       title: "Support Ticket Details (Admin)",
-      description: "View full thread details, change categorization, reply, or delete the ticket.",
+      description:
+        "View full thread details, change categorization, reply, or delete the ticket.",
     },
   },
   pConsolePages: {
     invoices: {
       title: "Invoices",
-      description: "Review billing records, download receipts, and manage invoice status.",
+      description:
+        "Review billing records, download receipts, and manage invoice status.",
       billingHistory: "Billing History",
     },
     invoiceDetail: {
       backLink: "Back to Invoices",
       title: "Invoice Detail",
-      description: "Review invoice details, download PDF, and manage billing actions.",
+      description:
+        "Review invoice details, download PDF, and manage billing actions.",
     },
     supportTickets: {
       title: "Support Tickets",
-      description: "Track current support requests and follow up on pending issues.",
+      description:
+        "Track current support requests and follow up on pending issues.",
     },
     supportTicketsNew: {
       backLink: "Back to Support Tickets",
       title: "Open Support Ticket",
-      description: "Submit a ticket with optional secure form details and attachments.",
+      description:
+        "Submit a ticket with optional secure form details and attachments.",
     },
     supportTicketsDetail: {
       backLink: "Back to Support Tickets",
       title: "Support Ticket Detail",
-      description: "Review thread history, reply, upload attachments, and close the ticket.",
+      description:
+        "Review thread history, reply, upload attachments, and close the ticket.",
     },
   },
   pAuthPages: {
@@ -9873,8 +9922,7 @@ export const enMessages: AppMessages = {
         "This is an automated transactional message. Please do not reply directly to this email.",
     },
     supportTickets: {
-      previewCreated:
-        "Your support ticket #{ticketNumber} has been created",
+      previewCreated: "Your support ticket #{ticketNumber} has been created",
       previewClosed: "Support ticket #{ticketNumber} has been {status}",
       previewReplied: "Re: Support ticket #{ticketNumber} - {subject}",
       repliedBy: "Replied by",
@@ -10015,8 +10063,7 @@ export const enMessages: AppMessages = {
       noDevicesFound: "No registered WhatsApp devices found.",
       automatedDigestFooter:
         "This is an automated digest sent to platform administrators.",
-      disconnPreview:
-        "[{orgName}] WhatsApp Device Disconnected: {phoneNumber}",
+      disconnPreview: "[{orgName}] WhatsApp Device Disconnected: {phoneNumber}",
       disconnHeading: "WhatsApp Device Disconnected",
       disconnIntro:
         "A WhatsApp device under {orgName} has gone offline and is no longer responding to health checks.",

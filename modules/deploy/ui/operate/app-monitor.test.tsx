@@ -1,5 +1,5 @@
-import { describe, expect, it, mock } from "bun:test"
-import { render } from "@testing-library/react"
+import { afterEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, render } from "@testing-library/react"
 import { AppMonitor } from "./app-monitor"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
 
@@ -27,7 +27,12 @@ const mockStack: StackSummaryDTO = {
   currentStepIndex: 4,
   currentStepStartedAt: new Date().toISOString(),
 }
+
 describe("AppMonitor component", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   it("renders workspace action buttons (Settings & Env, Logs, Metrics)", () => {
     const { getByRole } = render(
       <AppMonitor
@@ -68,8 +73,47 @@ describe("AppMonitor component", () => {
 
     const openAppLinks = getAllByRole("link", { name: /open app/i })
     expect(openAppLinks.length).toBeGreaterThan(0)
-    expect(openAppLinks[0].getAttribute("href")).toBe(
+    expect(openAppLinks[0]?.getAttribute("href")).toBe(
       "https://hermes-vibrant-comet.pfnapp.dev"
     )
+  })
+
+  it("renders 2-column split-pane layout when deployment is present", () => {
+    const { getByTestId } = render(
+      <AppMonitor
+        stack={mockStack}
+        deployment={{
+          id: "deploy-1",
+          status: "building",
+          attempt: 1,
+          manifestPushed: false,
+          argocdSynced: false,
+          failureReason: null,
+          startedAt: new Date().toISOString(),
+          completedAt: null,
+        }}
+        logScope="all"
+        onLogScopeChange={() => {}}
+        locale="en"
+      />
+    )
+
+    const workspace = getByTestId("deployment-split-workspace")
+    expect(workspace).toBeInTheDocument()
+  })
+
+  it("renders no-deployments state when no deployId exists", () => {
+    const stackNoDeploy = { ...mockStack, latestDeploymentId: null }
+    const { getByText } = render(
+      <AppMonitor
+        stack={stackNoDeploy}
+        deployment={null}
+        logScope="all"
+        onLogScopeChange={() => {}}
+        locale="en"
+      />
+    )
+
+    expect(getByText(/No deployments yet for this app/i)).toBeInTheDocument()
   })
 })

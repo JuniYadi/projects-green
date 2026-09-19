@@ -4744,6 +4744,12 @@ export type AppMessages = {
       }
       timeline: {
         steps: {
+          queuedInit: string
+          jenkinsBuild: string
+          artifactsScan: string
+          gitopsConfig: string
+          cloudRollout: string
+          liveServing: string
           queued: string
           monitorWait: string
           monitorPickedUp: string
@@ -4788,6 +4794,27 @@ export type AppMessages = {
           noDeployments: string
           timeoutHint: string
           registryHint: string
+        }
+        terminal: {
+          tabJenkins: string
+          tabGitOps: string
+          tabRuntime: string
+          autoscrollOn: string
+          autoscrollOff: string
+          searchPlaceholder: string
+          copyLog: string
+          copied: string
+          fullscreen: string
+          exitFullscreen: string
+          liveStreaming: string
+          noLogs: string
+          waitingJenkins: string
+          waitingRuntime: string
+          diagnosticTitle: string
+          authFailedTip: string
+          registryFailedTip: string
+          timeoutFailedTip: string
+          retryDeploy: string
         }
       }
       settings: {

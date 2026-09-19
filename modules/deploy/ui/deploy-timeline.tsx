@@ -61,19 +61,20 @@ type FetchedEvent = {
   createdAt: string
 }
 
-const STATUS_ORDER: DeployStatus[] = [
-  "queued",
-  "building",
-  "deploying",
-  "running",
-  "failed",
-]
-
 function activeStepIndex(status: DeployStatus): number {
   if (status === "idle") return -1
-  if (status === "running") return 13
-  if (status === "failed") return 6
-  return STATUS_ORDER.indexOf(status)
+  if (status === "running") return 6
+  if (status === "failed") return 1
+  switch (status) {
+    case "queued":
+      return 0
+    case "building":
+      return 1
+    case "deploying":
+      return 3
+    default:
+      return 0
+  }
 }
 
 function stepUiState(
@@ -84,8 +85,8 @@ function stepUiState(
   skipBuildSteps: boolean,
   degraded: boolean
 ): StepUiState {
-  if (skipBuildSteps && stepIndex < 8) return "skipped"
-  if (degraded && stepIndex >= 9 && stepIndex <= 11) return "completed"
+  if (skipBuildSteps && (stepIndex === 1 || stepIndex === 2)) return "skipped"
+  if (degraded && stepIndex === 4) return "completed"
   if (status === "failed") {
     const failure = failedIndex ?? activeIndex
     if (stepIndex < failure) return "completed"
@@ -180,8 +181,24 @@ export function DeployStepTimeline({
   const getStepLabel = useCallback(
     (step: { id: string; label: string }): string => {
       switch (step.id) {
+        case "queued-init":
         case "queued":
-          return t.steps.queued
+          return t.steps.queuedInit ?? t.steps.queued
+        case "jenkins-build":
+        case "jenkins-running":
+          return t.steps.jenkinsBuild ?? t.steps.jenkinsRunning
+        case "artifacts-scan":
+        case "image-tag-received":
+          return t.steps.artifactsScan ?? t.steps.imageTagReceived
+        case "gitops-config":
+        case "gitops-committed":
+          return t.steps.gitopsConfig ?? t.steps.gitopsCommitted
+        case "cloud-rollout":
+        case "argocd-sync-started":
+          return t.steps.cloudRollout ?? t.steps.argocdSyncStarted
+        case "live-serving":
+        case "live":
+          return t.steps.liveServing ?? t.steps.live
         case "monitor-wait":
           return t.steps.monitorWait
         case "monitor-picked-up":
@@ -190,22 +207,12 @@ export function DeployStepTimeline({
           return t.steps.jenkinsTriggered
         case "jenkins-queued":
           return t.steps.jenkinsQueued
-        case "jenkins-running":
-          return t.steps.jenkinsRunning
         case "image-pushed":
           return t.steps.imagePushed
-        case "image-tag-received":
-          return t.steps.imageTagReceived
-        case "gitops-committed":
-          return t.steps.gitopsCommitted
-        case "argocd-sync-started":
-          return t.steps.argocdSyncStarted
         case "argocd-synced":
           return t.steps.argocdSynced
         case "pods-ready":
           return t.steps.podsReady
-        case "live":
-          return t.steps.live
         case "base-image-ready":
           return t.steps.templateReady
         default:
@@ -254,7 +261,7 @@ export function DeployStepTimeline({
     events.length === 0
       ? activeStepIndex(effectiveStatus)
       : latestEvent?.type === "DEPLOY_COMPLETED"
-        ? 13
+        ? 6
         : latestEvent
           ? DEPLOY_EVENT_STEP_INDEX[latestEvent.type]
           : -1
@@ -291,6 +298,15 @@ export function DeployStepTimeline({
     }
     return [
       {
+        step: steps[0] ?? {
+          id: "queued-init",
+          label: "Queued & Init",
+          status: "queued" as const,
+        },
+        originalIndex: 0,
+        isSynthetic: false,
+      },
+      {
         step: {
           id: "base-image-ready",
           label: "Template ready",
@@ -299,9 +315,9 @@ export function DeployStepTimeline({
         originalIndex: -1,
         isSynthetic: true,
       },
-      ...steps.slice(8).map((step, sliceIndex) => ({
+      ...steps.slice(3).map((step, sliceIndex) => ({
         step,
-        originalIndex: sliceIndex + 8,
+        originalIndex: sliceIndex + 3,
         isSynthetic: false,
       })),
     ]
@@ -535,7 +551,7 @@ export function DeployStepTimeline({
                       )}
                     </div>
                   )}
-                  {isDegraded && originalIndex >= 9 && originalIndex <= 11 && (
+                  {isDegraded && originalIndex === 4 && (
                     <p className="text-xs text-amber-600">
                       {t.badges.healthVerification}
                     </p>

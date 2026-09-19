@@ -26,6 +26,7 @@ const mockPrisma = {
   applicationDeployment: {
     count: mock(async () => 0),
     findMany: mock(async () => []),
+    findUnique: mock(async () => null),
   },
   billingAccount: {
     findUnique: mock(async () => null),
@@ -39,6 +40,18 @@ const mockPrisma = {
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
+
+const mockGetDeploymentJenkinsLog = mock(async () => ({
+  ok: true,
+  text: "[Pipeline] Start of Pipeline\n> git checkout\nBuild completed",
+  isBuilding: true,
+  status: "building" as const,
+  buildNumber: 3,
+}))
+
+mock.module("../../jenkins-stream.service", () => ({
+  getDeploymentJenkinsLog: mockGetDeploymentJenkinsLog,
+}))
 const mockQueryAppLogs = mock(async () => ({
   hits: [
     {
@@ -389,7 +402,7 @@ describe("appStacksRoutes", () => {
     expect(body.data[0]?.status).toBe("running")
     expect(body.data[0]?.latestDeploymentId).toBe("deploy-1")
     expect(body.data[0]?.currentStepLabel).toBe("Deployment verified")
-    expect(body.data[0]?.currentStepIndex).toBe(10)
+    expect(body.data[0]?.currentStepIndex).toBe(4)
     expect(body.data[0]?.currentStepStartedAt).toBe("2026-06-05T09:10:00.000Z")
   })
 
@@ -425,7 +438,7 @@ describe("appStacksRoutes", () => {
       }>
     }
     expect(body.data[0]?.currentStepLabel).toBe("Application live")
-    expect(body.data[0]?.currentStepIndex).toBe(12)
+    expect(body.data[0]?.currentStepIndex).toBe(5)
     expect(body.data[0]?.currentStepStartedAt).toBe("2026-06-05T09:30:00.000Z")
     expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith({
       where: { organizationId: "org-1" },
@@ -576,7 +589,7 @@ describe("appStacksRoutes", () => {
     }
     expect(body.data.stack.slug).toBe("console-next-app")
     expect(body.data.stack.currentStepLabel).toBe("Deployment verified")
-    expect(body.data.stack.currentStepIndex).toBe(10)
+    expect(body.data.stack.currentStepIndex).toBe(4)
     expect(body.data.stack.currentStepStartedAt).toBe(
       "2026-06-05T09:10:00.000Z"
     )
@@ -620,7 +633,7 @@ describe("appStacksRoutes", () => {
       }
     }
     expect(body.data.stack.currentStepLabel).toBe("Application live")
-    expect(body.data.stack.currentStepIndex).toBe(12)
+    expect(body.data.stack.currentStepIndex).toBe(5)
     expect(body.data.stack.currentStepStartedAt).toBe(
       "2026-06-05T09:30:00.000Z"
     )
@@ -1209,6 +1222,125 @@ describe("appStacksRoutes", () => {
           limit: 100,
         })
       )
+    })
+  })
+
+  describe("GET /deploy/apps/:slug/deployments/:deployId/jenkins-stream", () => {
+    it("returns 401 when unauthenticated", async () => {
+      mockWithAuth.mockResolvedValueOnce({ user: null } as never)
+      const res = await get(
+        "/deploy/apps/console-next-app/deployments/deploy-1/jenkins-stream"
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 when user has no organizationId", async () => {
+      mockWithAuth.mockResolvedValueOnce({
+        user: { id: "u-1" },
+        organizationId: null,
+      } as never)
+      const res = await get(
+        "/deploy/apps/console-next-app/deployments/deploy-1/jenkins-stream"
+      )
+      expect(res.status).toBe(403)
+    })
+
+    it("returns 404 when stack is not found", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null)
+      const res = await get(
+        "/deploy/apps/nonexistent/deployments/deploy-1/jenkins-stream"
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it("returns 404 when deployment is not found", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "console-next-app",
+      } as never)
+      mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce(null)
+      const res = await get(
+        "/deploy/apps/console-next-app/deployments/deploy-1/jenkins-stream"
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it("returns live jenkins console log for authorized deployment", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "console-next-app",
+      } as never)
+      mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+        id: "deploy-1",
+        stackId: "stack-1",
+        organizationId: "org-1",
+        status: "BUILDING",
+        attempt: 1,
+      } as never)
+
+      const res = await get(
+        "/deploy/apps/console-next-app/deployments/deploy-1/jenkins-stream"
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as {
+        ok: boolean
+        text: string
+        isBuilding: boolean
+      }
+      expect(body.ok).toBe(true)
+      expect(body.text).toContain("[Pipeline] Start of Pipeline")
+      expect(body.isBuilding).toBe(true)
+    })
+
+    it("returns plain text format when format=text query param is provided", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "console-next-app",
+      } as never)
+      mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+        id: "deploy-1",
+        stackId: "stack-1",
+        organizationId: "org-1",
+        status: "BUILDING",
+        attempt: 1,
+      } as never)
+
+      const res = await get(
+        "/deploy/apps/console-next-app/deployments/deploy-1/jenkins-stream?format=text"
+      )
+      expect(res.status).toBe(200)
+      const text = await res.text()
+      expect(text).toContain("[Pipeline] Start of Pipeline")
+    })
+
+    it("returns 401 with JENKINS_AUTH_FAILED when runner token is rejected", async () => {
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "console-next-app",
+      } as never)
+      mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+        id: "deploy-1",
+        stackId: "stack-1",
+        organizationId: "org-1",
+        status: "BUILDING",
+        attempt: 1,
+      } as never)
+      mockGetDeploymentJenkinsLog.mockResolvedValueOnce({
+        ok: false,
+        error: "JENKINS_AUTH_FAILED",
+        message: "Runner auth failed",
+        text: "401 Unauthorized",
+        isBuilding: false,
+        status: "failed",
+        buildNumber: null,
+      })
+
+      const res = await get(
+        "/deploy/apps/console-next-app/deployments/deploy-1/jenkins-stream"
+      )
+      expect(res.status).toBe(401)
+      const body = (await res.json()) as { error: string }
+      expect(body.error).toBe("JENKINS_AUTH_FAILED")
     })
   })
 })

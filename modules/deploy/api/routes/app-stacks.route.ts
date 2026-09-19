@@ -20,6 +20,7 @@ import {
 import { mapRecentDeploySource } from "../../recent-sources.dto"
 
 import { queryAppLogs } from "../../opensearch/opensearch-query.service"
+import { getDeploymentJenkinsLog } from "../../jenkins-stream.service"
 const MAX_RECENT_SOURCE_LIMIT = 3
 
 export const recentSourcesRoutes = new Elysia({ prefix: "/deploy" }).get(
@@ -934,6 +935,108 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           to: t.Optional(t.String()),
           limit: t.Optional(t.String()),
           order: t.Optional(t.String()),
+        })
+      ),
+    }
+  )
+  .get(
+    "/:slug/deployments/:deployId/jenkins-stream",
+    async ({ params, query, set, request }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+      }
+
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
+      const stack = await prisma.applicationStack.findUnique({
+        where: {
+          organizationId_slug: {
+            organizationId: auth.organizationId,
+            slug: params.slug,
+          },
+        },
+        select: {
+          id: true,
+          slug: true,
+          clusterId: true,
+          sourceType: true,
+        },
+      })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application not found",
+        }
+      }
+
+      const deployment = await prisma.applicationDeployment.findUnique({
+        where: { id: params.deployId },
+        include: {
+          events: {
+            orderBy: { createdAt: "asc" },
+          },
+          containerImages: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
+      })
+
+      if (!deployment || deployment.stackId !== stack.id) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Deployment not found",
+        }
+      }
+
+      if (deployment.organizationId !== auth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied" }
+      }
+
+      const result = await getDeploymentJenkinsLog({
+        stack,
+        deployment,
+      })
+
+      if (!result.ok && result.error === "JENKINS_AUTH_FAILED") {
+        set.status = 401
+        return result
+      }
+
+      if (
+        query?.format === "text" ||
+        request.headers.get("accept")?.includes("text/plain")
+      ) {
+        return new Response(result.text, {
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        })
+      }
+
+      return result
+    },
+    {
+      params: t.Object({
+        slug: t.String(),
+        deployId: t.String(),
+      }),
+      query: t.Optional(
+        t.Object({
+          format: t.Optional(t.String()),
         })
       ),
     }

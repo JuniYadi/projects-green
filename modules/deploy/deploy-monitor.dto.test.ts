@@ -90,7 +90,7 @@ describe("deploy-monitor.dto", () => {
       ]
       expect(deriveCurrentDeployStep(events)).toEqual({
         currentStepLabel: "Deployment verified",
-        currentStepIndex: 10,
+        currentStepIndex: 4,
         currentStepStartedAt: "2026-06-05T10:05:00.000Z",
       })
     })
@@ -311,21 +311,14 @@ describe("deploy-monitor.dto", () => {
   })
 
   describe("buildDeployTimelineItems", () => {
-    it("returns the 13 canonical ordered steps", () => {
+    it("returns the 6 canonical ordered steps", () => {
       expect(buildDeployTimelineItems().map((item) => item.id)).toEqual([
-        "queued",
-        "monitor-wait",
-        "monitor-picked-up",
-        "jenkins-triggered",
-        "jenkins-queued",
-        "jenkins-running",
-        "image-pushed",
-        "image-tag-received",
-        "gitops-committed",
-        "argocd-sync-started",
-        "argocd-synced",
-        "pods-ready",
-        "live",
+        "queued-init",
+        "jenkins-build",
+        "artifacts-scan",
+        "gitops-config",
+        "cloud-rollout",
+        "live-serving",
       ])
     })
   })
@@ -424,7 +417,7 @@ describe("deploy-monitor.dto", () => {
       expect(dto.latestDeploymentId).toBe("deploy-9")
       expect(dto.lastDeployedAt).toBe(lastDeployedAt.toISOString())
       expect(dto.currentStepLabel).toBe("Deployment verified")
-      expect(dto.currentStepIndex).toBe(10)
+      expect(dto.currentStepIndex).toBe(4)
       expect(dto.currentStepStartedAt).toBeNull()
     })
 
@@ -453,7 +446,7 @@ describe("deploy-monitor.dto", () => {
       })
 
       expect(dto.currentStepLabel).toBe("Application live")
-      expect(dto.currentStepIndex).toBe(12)
+      expect(dto.currentStepIndex).toBe(5)
       expect(dto.currentStepStartedAt).toBe("2026-06-05T09:30:00.000Z")
     })
 
