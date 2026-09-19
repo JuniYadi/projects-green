@@ -41,13 +41,17 @@ const mockPrisma = {
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
-const mockGetDeploymentJenkinsLog = mock(async () => ({
-  ok: true,
-  text: "[Pipeline] Start of Pipeline\n> git checkout\nBuild completed",
-  isBuilding: true,
-  status: "building" as import("../../deploy.types").DeployStatus,
-  buildNumber: 3 as number | null,
-}))
+const mockGetDeploymentJenkinsLog = mock(
+  async (): Promise<
+    import("../../jenkins-stream.service").JenkinsStreamResult
+  > => ({
+    ok: true,
+    text: "[Pipeline] Start of Pipeline\n> git checkout\nBuild completed",
+    isBuilding: true,
+    status: "building",
+    buildNumber: 3,
+  })
+)
 
 mock.module("../../jenkins-stream.service", () => ({
   getDeploymentJenkinsLog: mockGetDeploymentJenkinsLog,
