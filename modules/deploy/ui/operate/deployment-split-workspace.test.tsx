@@ -74,8 +74,8 @@ describe("DeploymentSplitWorkspace", () => {
 
     // Right column: terminal with source tabs
     expect(view.getByText("Live Jenkins Log")).toBeInTheDocument()
-    expect(view.getByText("Log Rilis & GitOps")).toBeInTheDocument()
-    expect(view.getByText("Log Aplikasi (Live)")).toBeInTheDocument()
+    expect(view.getByText("Release & GitOps Log")).toBeInTheDocument()
+    expect(view.getByText("Application Log (Live)")).toBeInTheDocument()
   })
 
   it("renders retry deploy button on failure", () => {

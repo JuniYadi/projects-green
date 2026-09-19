@@ -31,6 +31,7 @@ type JenkinsLiveTerminalProps = {
   locale?: string
   className?: string
   initialTab?: LogSourceTab
+  onTabChange?: (tab: LogSourceTab) => void
 }
 
 type AnsiSpan = {
@@ -98,6 +99,7 @@ export function JenkinsLiveTerminal({
   locale: localeProp,
   className,
   initialTab,
+  onTabChange,
 }: JenkinsLiveTerminalProps) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
@@ -324,6 +326,7 @@ export function JenkinsLiveTerminal({
             onClick={() => {
               userInteractedTabRef.current = true
               setActiveTab("jenkins")
+              onTabChange?.("jenkins")
             }}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
@@ -343,6 +346,7 @@ export function JenkinsLiveTerminal({
             onClick={() => {
               userInteractedTabRef.current = true
               setActiveTab("gitops")
+              onTabChange?.("gitops")
             }}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
@@ -358,6 +362,7 @@ export function JenkinsLiveTerminal({
             onClick={() => {
               userInteractedTabRef.current = true
               setActiveTab("app")
+              onTabChange?.("app")
             }}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",

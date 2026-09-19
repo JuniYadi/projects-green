@@ -5261,8 +5261,8 @@ export const enMessages: AppMessages = {
         },
         terminal: {
           tabJenkins: "Live Jenkins Log",
-          tabGitOps: "Log Rilis & GitOps",
-          tabRuntime: "Log Aplikasi (Live)",
+          tabGitOps: "Release & GitOps Log",
+          tabRuntime: "Application Log (Live)",
           autoscrollOn: "Autoscroll: ON",
           autoscrollOff: "Autoscroll: OFF",
           searchPlaceholder: "Search logs...",

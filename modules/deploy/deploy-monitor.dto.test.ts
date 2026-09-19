@@ -41,6 +41,7 @@ describe("deploy-monitor.dto", () => {
         manifestPushed: true,
         argocdSynced: true,
         failureReason: null,
+        commitSha: null,
         startedAt,
         completedAt,
       })
@@ -52,6 +53,7 @@ describe("deploy-monitor.dto", () => {
         manifestPushed: true,
         argocdSynced: true,
         failureReason: null,
+        commitSha: null,
         startedAt: startedAt.toISOString(),
         completedAt: completedAt.toISOString(),
       })

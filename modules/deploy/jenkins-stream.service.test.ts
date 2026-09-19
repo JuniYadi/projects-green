@@ -140,4 +140,72 @@ describe("jenkins-stream.service", () => {
     expect(result.ok).toBe(true)
     expect(result.text).toBe("[BUILD] Step 1 done")
   })
+
+  it("handles non-404 non-401 error response from Jenkins", async () => {
+    mockResolveClusterIntegration.mockResolvedValueOnce({
+      baseUrl: "https://jenkins.example.com",
+      username: "admin",
+      apiToken: "token123",
+    } as never)
+
+    globalThis.fetch = mock(async () => {
+      return new Response("Bad Gateway", {
+        status: 502,
+        statusText: "Bad Gateway",
+      })
+    }) as unknown as typeof globalThis.fetch
+
+    const result = await getDeploymentJenkinsLog({
+      stack: { id: "stack-1", slug: "my-app" },
+      deployment: {
+        id: "deploy-1",
+        status: "BUILDING",
+        attempt: 1,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.text).toContain("Jenkins console returned HTTP 502")
+  })
+
+  it("handles fetch exception when Jenkins is unreachable", async () => {
+    mockResolveClusterIntegration.mockResolvedValueOnce({
+      baseUrl: "https://jenkins.example.com",
+      username: "admin",
+      apiToken: "token123",
+    } as never)
+
+    globalThis.fetch = mock(async () => {
+      throw new Error("Connection refused")
+    }) as unknown as typeof globalThis.fetch
+
+    const result = await getDeploymentJenkinsLog({
+      stack: { id: "stack-1", slug: "my-app" },
+      deployment: {
+        id: "deploy-1",
+        status: "FAILED",
+        attempt: 1,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.text).toContain("Unable to reach Jenkins runner")
+  })
+
+  it("returns clean fallback text when no db logs exist and Jenkins is unconfigured", async () => {
+    mockResolveClusterIntegration.mockResolvedValueOnce(null as never)
+    mockFindManyLogs.mockResolvedValueOnce([])
+
+    const result = await getDeploymentJenkinsLog({
+      stack: { id: "stack-1", slug: "my-app" },
+      deployment: {
+        id: "deploy-1",
+        status: "QUEUED",
+        attempt: 1,
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.text).toContain("Waiting for Jenkins build runner")
+  })
 })

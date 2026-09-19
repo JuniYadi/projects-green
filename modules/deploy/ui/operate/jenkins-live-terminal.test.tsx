@@ -61,8 +61,8 @@ describe("JenkinsLiveTerminal", () => {
     )
 
     expect(view.getByText("Live Jenkins Log")).toBeInTheDocument()
-    expect(view.getByText("Log Rilis & GitOps")).toBeInTheDocument()
-    expect(view.getByText("Log Aplikasi (Live)")).toBeInTheDocument()
+    expect(view.getByText("Release & GitOps Log")).toBeInTheDocument()
+    expect(view.getByText("Application Log (Live)")).toBeInTheDocument()
 
     // Controls
     expect(view.getByText("Autoscroll: ON")).toBeInTheDocument()
@@ -115,7 +115,7 @@ describe("JenkinsLiveTerminal", () => {
     expect(view.getByText("Autoscroll: OFF")).toBeInTheDocument()
 
     // Switch to GitOps tab
-    const gitOpsTab = view.getByText("Log Rilis & GitOps")
+    const gitOpsTab = view.getByText("Release & GitOps Log")
     fireEvent.click(gitOpsTab)
 
     await waitFor(() => {

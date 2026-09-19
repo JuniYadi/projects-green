@@ -39,8 +39,8 @@ export type DeploymentSplitWorkspaceProps = {
   deployment: DeploymentStatusDTO | null
   deployId: string
   status: DeployStatus
-  logScope: DeployLogScope
-  onLogScopeChange: (scope: DeployLogScope) => void
+  logScope?: DeployLogScope
+  onLogScopeChange?: (scope: DeployLogScope) => void
   onRetry?: () => void
   liveDomain?: string
   locale?: string
@@ -60,8 +60,8 @@ export function DeploymentSplitWorkspace({
   deployment,
   deployId,
   status,
-  logScope: _logScope,
-  onLogScopeChange: _onLogScopeChange,
+  logScope,
+  onLogScopeChange,
   onRetry,
   liveDomain,
   locale: localeProp,
@@ -92,7 +92,10 @@ export function DeploymentSplitWorkspace({
       )
     : null
 
-  const commitSha = stack.slug ? stack.slug.slice(0, 7) : null
+  const commitSha =
+    deployment?.commitSha && deployment.commitSha.trim().length > 0
+      ? deployment.commitSha.slice(0, 7)
+      : null
 
   return (
     <div
@@ -193,6 +196,20 @@ export function DeploymentSplitWorkspace({
           deployId={deployId}
           status={status}
           failureReason={deployment?.failureReason ?? null}
+          initialTab={
+            logScope === "runtime"
+              ? "app"
+              : logScope === "build"
+                ? "jenkins"
+                : undefined
+          }
+          onTabChange={(tab) => {
+            if (onLogScopeChange) {
+              onLogScopeChange(
+                tab === "app" ? "runtime" : tab === "jenkins" ? "build" : "all"
+              )
+            }
+          }}
           onRetry={onRetry}
           locale={locale}
         />

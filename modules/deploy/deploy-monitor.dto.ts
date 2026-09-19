@@ -28,6 +28,7 @@ export type DeploymentStatusDTO = {
   manifestPushed: boolean
   argocdSynced: boolean
   failureReason: string | null
+  commitSha?: string | null
   startedAt: string | null
   completedAt: string | null
 }
@@ -129,6 +130,7 @@ export const toDeploymentStatusDTO = (
     | "manifestPushed"
     | "argocdSynced"
     | "failureReason"
+    | "commitSha"
     | "startedAt"
     | "completedAt"
   >
@@ -140,6 +142,7 @@ export const toDeploymentStatusDTO = (
     manifestPushed: deployment.manifestPushed,
     argocdSynced: deployment.argocdSynced,
     failureReason: deployment.failureReason ?? null,
+    commitSha: deployment.commitSha ?? null,
     startedAt: deployment.startedAt ? deployment.startedAt.toISOString() : null,
     completedAt: deployment.completedAt
       ? deployment.completedAt.toISOString()
