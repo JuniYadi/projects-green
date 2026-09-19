@@ -129,4 +129,36 @@ describe("AppWorkspaceHeader", () => {
     expect(view.getByText("Ganti Template")).toBeDefined()
     expect(view.queryByText("Deploy Update")).toBeNull()
   })
+
+  it("calls onDeploy without passing click event when Deploy Update is clicked", () => {
+    const onDeployMock = mock((...args: unknown[]) => args)
+    const view = render(
+      <AppWorkspaceHeader
+        selectedApp={sampleGitApp}
+        activeTab="overview"
+        onDeploy={onDeployMock}
+      />
+    )
+
+    const button = view.getByRole("button", { name: /Deploy Update/i })
+    button.click()
+
+    expect(onDeployMock).toHaveBeenCalledTimes(1)
+    expect(onDeployMock.mock.calls[0]).toEqual([])
+  })
+
+  it("renders 'Sedang Deploy...' and disables button when isDeploying is true", () => {
+    const view = render(
+      <AppWorkspaceHeader
+        selectedApp={sampleGitApp}
+        activeTab="overview"
+        onDeploy={() => {}}
+        isDeploying={true}
+      />
+    )
+
+    const button = view.getByRole("button", { name: /Sedang Deploy/i })
+    expect(button).toBeDefined()
+    expect((button as HTMLButtonElement).disabled).toBe(true)
+  })
 })

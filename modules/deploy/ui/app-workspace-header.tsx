@@ -283,7 +283,7 @@ export function AppWorkspaceHeader({
               type="button"
               variant="default"
               size="sm"
-              onClick={onDeploy}
+              onClick={() => onDeploy?.()}
               disabled={isDeploying}
               className="h-8 gap-1.5 px-3 text-xs font-medium"
               title={
@@ -299,7 +299,7 @@ export function AppWorkspaceHeader({
               <span>
                 {isDeploying
                   ? locale.startsWith("id")
-                    ? "Mendeploy..."
+                    ? "Sedang Deploy..."
                     : "Deploying..."
                   : locale.startsWith("id")
                     ? "Deploy Update"
