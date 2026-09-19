@@ -83,6 +83,56 @@ describe("widget-stream.route", () => {
     )
   })
 
+  it("should return 400 when body is not valid JSON", async () => {
+    const res = await app.handle(
+      new Request("http://localhost/ai/widget/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "invalid-json-text",
+      })
+    )
+    expect(res.status).toBe(400)
+    const json = (await res.json()) as { error: string }
+    expect(json.error).toBe("VALIDATION_ERROR")
+  })
+
+  it("should handle error during text streaming gracefully", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+    })
+
+    const errorApp = new Elysia().use(
+      createPublicAiWidgetRoutes({
+        streamTextFn: (() => {
+          throw new Error("AI provider quota exceeded")
+        }) as never,
+      })
+    )
+
+    const res = await errorApp.handle(
+      new Request("http://localhost/ai/widget/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          message: "Halo",
+          visitorId: "vis-1",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    expect(text).toContain("AI provider quota exceeded")
+  })
+
   it("should return 422 when missing required body fields", async () => {
     const res = await app.handle(
       new Request("http://localhost/ai/widget/stream", {

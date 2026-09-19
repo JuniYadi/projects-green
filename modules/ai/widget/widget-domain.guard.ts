@@ -24,20 +24,16 @@ function extractHostnameAndPort(
       : new URL(`http://${trimmed}`)
 
     const hostname = url.hostname.toLowerCase()
+    if (!hostname) {
+      return null
+    }
+
     const port = url.port || (url.protocol === "https:" ? "443" : "80")
     const host = url.port ? `${hostname}:${url.port}` : hostname
 
     return { hostname, port, host }
   } catch {
-    // If URL parsing fails, perform simple string-based cleanup
-    const withoutProto = trimmed.replace(/^[a-zA-Z]+:\/\//, "")
-    const hostPart = withoutProto.split("/")[0]?.split("?")[0] || ""
-    const [hostnameRaw, portRaw] = hostPart.split(":")
-    const hostname = (hostnameRaw || "").toLowerCase()
-    const port = portRaw || "80"
-    const host = portRaw ? `${hostname}:${portRaw}` : hostname
-
-    return hostname ? { hostname, port, host } : null
+    return null
   }
 }
 
