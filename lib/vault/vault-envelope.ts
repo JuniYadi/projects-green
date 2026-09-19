@@ -7,6 +7,11 @@ export type EnvelopeEncryptedPayload = {
   ciphertext: string // base64
 }
 
+export const ENVELOPE_HKDF_INFO = new TextEncoder().encode(
+  "vault-envelope-aes-256-gcm"
+)
+export const ENVELOPE_HKDF_SALT = new Uint8Array(32)
+
 /**
  * Server-side envelope encryption using Web Crypto API.
  * Derives a shared secret with the client's ephemeral ECDH P-256 public key,
@@ -38,10 +43,23 @@ export async function encryptEnvelope(
     256
   )
 
-  const aesKey = await subtle.importKey(
+  const hkdfKey = await subtle.importKey(
     "raw",
     sharedBits,
-    { name: "AES-GCM" },
+    { name: "HKDF" },
+    false,
+    ["deriveKey"]
+  )
+
+  const aesKey = await subtle.deriveKey(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: ENVELOPE_HKDF_SALT,
+      info: ENVELOPE_HKDF_INFO,
+    },
+    hkdfKey,
+    { name: "AES-GCM", length: 256 },
     false,
     ["encrypt"]
   )

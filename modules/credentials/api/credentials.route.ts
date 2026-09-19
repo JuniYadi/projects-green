@@ -9,35 +9,84 @@ import {
   revokeCredential,
 } from "@/modules/credentials/app-credential.service"
 import { getCredentialTypeDef } from "@/modules/credentials/credential-type-registry"
+import {
+  canManageTenant,
+  resolveTenantRoleFromClaims,
+} from "@/modules/tenants/tenant-policy"
+import { getPlatformRoleForUser } from "@/lib/platform-role"
 
-const requireOrg = (auth: Awaited<ReturnType<typeof withAuth>>) => {
-  if (!auth.user) return { error: "UNAUTHORIZED", status: 401 as const }
-  if (!auth.organizationId) return { error: "FORBIDDEN", status: 403 as const }
+type RequireOrgOptions = {
+  requireManage?: boolean
+}
+
+type RequireOrgResult =
+  | { orgId: string }
+  | {
+      error: "UNAUTHORIZED" | "FORBIDDEN"
+      status: 401 | 403
+      message?: string
+    }
+
+type AuthSession = {
+  user: { id: string; email?: string | null } | null
+  organizationId?: string | null
+  role?: string | null
+  roles?: string[] | null
+}
+
+const requireOrg = async (
+  auth: AuthSession,
+  options?: RequireOrgOptions
+): Promise<RequireOrgResult> => {
+  if (!auth.user) return { error: "UNAUTHORIZED", status: 401 }
+  if (!auth.organizationId) return { error: "FORBIDDEN", status: 403 }
+
+  if (options?.requireManage) {
+    const platformRole = await getPlatformRoleForUser({
+      id: auth.user.id,
+      email: auth.user.email,
+    })
+    const tenantRole = resolveTenantRoleFromClaims(auth.role, auth.roles)
+    if (!canManageTenant({ platformRole, tenantRole })) {
+      return {
+        error: "FORBIDDEN",
+        status: 403,
+        message: "You are not allowed to manage credentials.",
+      }
+    }
+  }
+
   return { orgId: auth.organizationId }
 }
 
 export const credentialsRoutes = new Elysia({ prefix: "/app/credentials" })
-  .get("/", async () => {
+  .get("/", async ({ set }) => {
     const auth = await withAuth({ ensureSignedIn: true })
-    const check = requireOrg(auth)
-    if ("error" in check) return { ok: false, error: check.error }
+    const check = await requireOrg(auth)
+    if ("error" in check) {
+      set.status = check.status
+      return { ok: false, error: check.error }
+    }
 
     try {
       const credentials = await listCredentials(check.orgId)
       return { ok: true, credentials }
     } catch (error) {
       console.error("[Credentials] Error listing credentials:", error)
+      set.status = 500
       return {
         ok: false,
         error: "Unable to load credentials. Please try again.",
       }
     }
   })
-  .post("/", async ({ body }) => {
+  .post("/", async ({ body, set }) => {
     const auth = await withAuth({ ensureSignedIn: true })
-    const check = requireOrg(auth)
-    if ("error" in check) return { ok: false, error: check.error }
-
+    const check = await requireOrg(auth, { requireManage: true })
+    if ("error" in check) {
+      set.status = check.status
+      return { ok: false, error: check.error, message: check.message }
+    }
     const {
       type,
       name,
@@ -46,6 +95,7 @@ export const credentialsRoutes = new Elysia({ prefix: "/app/credentials" })
     } = body as Record<string, unknown>
 
     if (!type || !name) {
+      set.status = 400
       return {
         ok: false,
         error: "VALIDATION",
@@ -56,6 +106,7 @@ export const credentialsRoutes = new Elysia({ prefix: "/app/credentials" })
     try {
       getCredentialTypeDef(type as AppCredentialType)
     } catch {
+      set.status = 400
       return {
         ok: false,
         error: "VALIDATION",
@@ -66,11 +117,12 @@ export const credentialsRoutes = new Elysia({ prefix: "/app/credentials" })
     const def = getCredentialTypeDef(type as AppCredentialType)
     const metaResult = def.metadataSchema.safeParse(metadata)
     if (!metaResult.success) {
+      set.status = 400
       return { ok: false, error: "VALIDATION", issues: metaResult.error.issues }
     }
-
     const secretsResult = def.secretsSchema.safeParse(secrets)
     if (!secretsResult.success) {
+      set.status = 400
       return {
         ok: false,
         error: "VALIDATION",
@@ -85,22 +137,36 @@ export const credentialsRoutes = new Elysia({ prefix: "/app/credentials" })
       metadata: metaResult.data,
       secrets: secretsResult.data,
     })
-
+    set.status = 201
     return { ok: true, credential }
   })
-  .delete("/:id", async ({ params }) => {
+  .delete("/:id", async ({ params, set }) => {
     const auth = await withAuth({ ensureSignedIn: true })
-    const check = requireOrg(auth)
-    if ("error" in check) return { ok: false, error: check.error }
+    const check = await requireOrg(auth, { requireManage: true })
+    if ("error" in check) {
+      set.status = check.status
+      return { ok: false, error: check.error, message: check.message }
+    }
 
-    await deleteCredential(check.orgId, params.id)
+    const result = await deleteCredential(check.orgId, params.id)
+    if (result.count === 0) {
+      set.status = 404
+      return { ok: false, error: "NOT_FOUND", message: "Credential not found" }
+    }
     return { ok: true }
   })
-  .post("/:id/revoke", async ({ params }) => {
+  .post("/:id/revoke", async ({ params, set }) => {
     const auth = await withAuth({ ensureSignedIn: true })
-    const check = requireOrg(auth)
-    if ("error" in check) return { ok: false, error: check.error }
+    const check = await requireOrg(auth, { requireManage: true })
+    if ("error" in check) {
+      set.status = check.status
+      return { ok: false, error: check.error, message: check.message }
+    }
 
-    await revokeCredential(check.orgId, params.id)
+    const result = await revokeCredential(check.orgId, params.id)
+    if (result.count === 0) {
+      set.status = 404
+      return { ok: false, error: "NOT_FOUND", message: "Credential not found" }
+    }
     return { ok: true }
   })

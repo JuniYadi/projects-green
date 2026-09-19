@@ -358,12 +358,24 @@ export class VaultSecretsService {
 
     if (!reference) {
       reference = storedItems.find(
-        (item) => item.type === "secret_ref" && item.key === key
+        (item) =>
+          item.type === "secret_ref" &&
+          item.key === key &&
+          (!item.environment || item.environment === environment)
       ) as VaultSecretReference | undefined
     }
 
     if (!reference) {
       throw new VaultSecretNotFoundError(`Secret ${key} was not found`)
+    }
+    const tenantStackPrefix = `tenants/${stack.organizationId}/stacks/${stack.id}/`
+    if (
+      reference.vaultPath &&
+      !reference.vaultPath.startsWith(tenantStackPrefix)
+    ) {
+      throw new VaultSecretValidationError(
+        "Secret reference path does not belong to this tenant stack."
+      )
     }
 
     const effectiveVaultPath = reference.vaultPath || vaultPath
@@ -392,6 +404,7 @@ export class VaultSecretsService {
       })
     } catch (error) {
       console.error("[VaultSecretAudit] Failed to log reveal:", error)
+      throw new VaultSecretsServiceError("Failed to record secret audit log.")
     }
 
     return {

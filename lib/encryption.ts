@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 
 const ALGORITHM = "aes-256-gcm"
-const IV_LENGTH = 16
+const IV_LENGTH = 12
 
 export interface EncryptedData {
   encrypted: string
