@@ -107,6 +107,7 @@ import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { WorkflowNodeComponent } from "./workflow-node"
 import { DeletableEdge } from "./deletable-edge"
+
 export default function AiWorkflowCanvasPage() {
   const params = useParams()
   const router = useRouter()
