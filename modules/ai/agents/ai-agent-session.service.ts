@@ -101,6 +101,15 @@ export async function getConversationHistory(
   }))
 }
 
+export async function getSlidingWindowMessages(
+  sessionId: string,
+  limit: number = 10,
+  maxChars: number = DEFAULT_TOKEN_BUDGET_CHARS
+): Promise<CoreMessage[]> {
+  const history = await getConversationHistory(sessionId, limit)
+  return slidingWindowPruning(history, maxChars)
+}
+
 export const DEFAULT_TOKEN_BUDGET_CHARS = 12000 // ~3,000 tokens
 
 export function slidingWindowPruning(

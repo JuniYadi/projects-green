@@ -1,4 +1,4 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 const mockPrisma = {
   aiChannelBinding: {
@@ -8,6 +8,7 @@ const mockPrisma = {
     findUnique: mock(async () => null as unknown),
     create: mock(async (args: { data: Record<string, unknown> }) => ({
       id: "sess_1",
+      sessionId: args.data?.sessionId,
       totalMessages: 0,
       ...args.data,
     })),
@@ -21,15 +22,32 @@ const mockPrisma = {
     ),
   },
   aiChatMessage: {
+    findMany: mock(async () => [] as unknown[]),
     create: mock(async () => ({})),
   },
   aiKnowledgeDocument: {
     findMany: mock(async () => []),
   },
+  aiIntegrationConnection: {
+    findMany: mock(async () => [] as unknown[]),
+  },
+  aiUsageAudit: {
+    create: mock(async () => ({})),
+  },
+}
+
+const mockRedis = {
+  set: mock(async () => "OK" as string | null),
+  get: mock(async () => null as string | null),
+  del: mock(async () => 1),
+  eval: mock(async () => 1),
 }
 
 const mockMessageService = {
-  sendMessage: mock(async () => ({ jobId: "job_1", messageId: "msg_sent_1" })),
+  sendMessage: mock(async () => ({
+    jobId: "job_1",
+    messageId: "msg_sent_1",
+  })),
 }
 
 const mockSearchHybridKnowledge = mock(async () => [
@@ -52,6 +70,10 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
+mock.module("@/lib/redis", () => ({
+  redis: mockRedis,
+}))
+
 mock.module("@/modules/whatsapp/messages/messages.service", () => ({
   messageService: mockMessageService,
 }))
@@ -67,6 +89,8 @@ mock.module("@/modules/ai/ai-provider.factory", () => ({
 
 mock.module("ai", () => ({
   generateText: mockGenerateText,
+  stepCountIs: mock((n: number) => n),
+  tool: mock((def: unknown) => def),
 }))
 
 const { processWhatsappAiBotInbound } =
@@ -78,12 +102,26 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     mockPrisma.aiChatSession.findUnique.mockClear()
     mockPrisma.aiChatSession.create.mockClear()
     mockPrisma.aiChatSession.update.mockClear()
+    mockPrisma.aiChatMessage.findMany.mockClear()
     mockPrisma.aiChatMessage.create.mockClear()
+    mockPrisma.aiIntegrationConnection.findMany.mockClear()
+    mockPrisma.aiUsageAudit.create.mockClear()
+
+    mockRedis.set.mockClear()
+    mockRedis.get.mockClear()
+    mockRedis.del.mockClear()
+    mockRedis.eval.mockClear()
+
     mockResolveAiProviderConfig.mockClear()
     mockCreateAiLanguageModel.mockClear()
     mockMessageService.sendMessage.mockClear()
     mockSearchHybridKnowledge.mockClear()
     mockGenerateText.mockClear()
+
+    mockRedis.set.mockResolvedValue("OK")
+    mockRedis.eval.mockResolvedValue(1)
+    mockPrisma.aiChatMessage.findMany.mockResolvedValue([])
+    mockPrisma.aiIntegrationConnection.findMany.mockResolvedValue([])
   })
 
   it("returns handled: false when message text is empty", async () => {
@@ -101,7 +139,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockPrisma.aiChannelBinding.findFirst).not.toHaveBeenCalled()
   })
 
-  it("returns handled: false when no active agent binding exists for this device", async () => {
+  it("returns handled: false when no active binding exists", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce(null)
 
     const res = await processWhatsappAiBotInbound({
@@ -118,7 +156,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockMessageService.sendMessage).not.toHaveBeenCalled()
   })
 
-  it("returns MAX_CHAR_EXCEEDED when input exceeds agent maxCharLength", async () => {
+  it("returns MAX_CHAR_EXCEEDED when input exceeds limit", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
       isActive: true,
@@ -144,7 +182,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(res.reason).toBe("MAX_CHAR_EXCEEDED")
   })
 
-  it("filters blocked words and sends fallback message when profanity is detected", async () => {
+  it("filters blocked words and sends fallback message", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
       isActive: true,
@@ -176,7 +214,36 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     )
   })
 
-  it("enforces daily limit and rolls back message counter on limit exceeded", async () => {
+  it("returns SESSION_LOCKED when lock cannot be acquired", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        maxCharLength: 500,
+        enableProfanityFilter: false,
+      },
+    } as never)
+
+    mockRedis.set.mockResolvedValueOnce(null)
+
+    const res = await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Halo admin toko",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_1",
+    })
+
+    expect(res.handled).toBe(false)
+    expect(res.reason).toBe("SESSION_LOCKED")
+    expect(mockRedis.set).toHaveBeenCalled()
+    expect(mockRedis.eval).not.toHaveBeenCalled()
+  })
+
+  it("enforces daily limit and rolls back message counter", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
       isActive: true,
@@ -217,9 +284,10 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
         message: "Batas chat harian Anda telah habis.",
       })
     )
+    expect(mockRedis.eval).toHaveBeenCalled()
   })
 
-  it("executes hybrid RAG, generates AI reply, sends WhatsApp message, and logs metrics", async () => {
+  it("executes autonomous multi-step reasoning with tools", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
       isActive: true,
@@ -236,6 +304,16 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
       },
     } as never)
 
+    mockPrisma.aiChatMessage.findMany.mockResolvedValueOnce([
+      {
+        id: "m_1",
+        sessionId: "sess_1",
+        role: "user",
+        content: "Halo",
+        createdAt: new Date(),
+      },
+    ])
+
     mockSearchHybridKnowledge.mockResolvedValueOnce([
       {
         id: "chunk_1",
@@ -246,21 +324,43 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
       },
     ])
 
+    mockPrisma.aiIntegrationConnection.findMany.mockResolvedValueOnce([
+      {
+        id: "conn_1",
+        name: "checkLabStatus",
+        description: "Cek hasil lab",
+        baseUrl: "https://lab.example.com",
+        isActive: true,
+      },
+    ])
+
     mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce(null)
 
     const res = await processWhatsappAiBotInbound({
       organizationId: "org_1",
       deviceId: "dev_1",
       contactPhone: "+62812345678",
-      inboundMessageText: "Jam berapa toko buka?",
+      inboundMessageText: "Berapa nomor registrasi hasil lab?",
       conversationId: "conv_1",
       inboundMessageId: "msg_1",
     })
 
     expect(res.handled).toBe(true)
     expect(res.agentProfileId).toBe("agent_1")
-    expect(mockSearchHybridKnowledge).toHaveBeenCalled()
-    expect(mockGenerateText).toHaveBeenCalled()
+    expect(mockRedis.set).toHaveBeenCalled()
+    expect(mockPrisma.aiChatMessage.findMany).toHaveBeenCalled()
+    expect(mockGenerateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxSteps: 5,
+        messages: expect.arrayContaining([
+          expect.objectContaining({ role: "user" }),
+        ]),
+        tools: expect.objectContaining({
+          queryKnowledgeBase: expect.anything(),
+          checkLabStatus: expect.anything(),
+        }),
+      })
+    )
     expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: "org_1",
@@ -269,6 +369,6 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
         deviceId: "dev_1",
       })
     )
-    expect(mockPrisma.aiChatMessage.create).toHaveBeenCalled()
+    expect(mockRedis.eval).toHaveBeenCalled()
   })
 })
