@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import dns from "node:dns/promises"
 import { parseDocument } from "htmlparser2"
 import type { Element, Node, DataNode, ChildNode } from "domhandler"
 
@@ -9,7 +10,9 @@ export type CrawlOptions = {
   maxPages?: number
   maxDepth?: number
   timeoutMs?: number
+  delayMs?: number
   fetchFn?: typeof fetch
+  dnsLookupFn?: (host: string) => Promise<{ address: string }>
 }
 
 export type CrawledPage = {
@@ -30,6 +33,7 @@ export type CrawlResult = {
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (compatible; PFNAppGreenCrawler/1.0; +https://pfnapp.com/bot)"
 const DEFAULT_TIMEOUT_MS = 10000
+const DEFAULT_POLITE_DELAY_MS = 20
 const MAX_PAGES_LIMIT = 50
 const MAX_DEPTH_LIMIT = 2
 
@@ -99,6 +103,36 @@ export function assertAllowedUrl(targetUrl: string): URL {
   if (isPrivateOrReservedHost(parsed.hostname)) {
     throw new Error(
       `SSRF_BLOCKED: Host "${parsed.hostname}" is private or reserved`
+    )
+  }
+
+  return parsed
+}
+
+/**
+ * Asserts URL with DNS lookup to prevent DNS-rebinding SSRF attacks.
+ */
+export async function assertAllowedUrlAsync(
+  targetUrl: string,
+  dnsLookupFn?: (host: string) => Promise<{ address: string }>
+): Promise<URL> {
+  const parsed = assertAllowedUrl(targetUrl)
+  const lookup = dnsLookupFn || dns.lookup
+
+  try {
+    const resolved = await lookup(parsed.hostname)
+    if (isPrivateOrReservedHost(resolved.address)) {
+      throw new Error(
+        `SSRF_BLOCKED: Host "${parsed.hostname}" resolved to ` +
+          `private IP "${resolved.address}"`
+      )
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("SSRF_BLOCKED")) {
+      throw err
+    }
+    throw new Error(
+      `SSRF_BLOCKED: DNS resolution failed for "${parsed.hostname}"`
     )
   }
 
@@ -369,7 +403,6 @@ export function stripHtmlBoilerplate(html: string): {
     }
   }
 
-  // Render markdown directly from target DOM node
   const rendered = cleanWhitespace(renderNodeToMarkdown(targetNode))
 
   return {
@@ -388,14 +421,15 @@ export function htmlToMarkdown(html: string): string {
 }
 
 /**
- * Fetches HTML from target URL with timeout and custom User-Agent.
+ * Fetches HTML from target URL with timeout, DNS SSRF check, and custom UA.
  */
 export async function fetchHtml(
   url: string,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-  customFetch: typeof fetch = fetch
+  customFetch: typeof fetch = fetch,
+  dnsLookupFn?: (host: string) => Promise<{ address: string }>
 ): Promise<string> {
-  assertAllowedUrl(url)
+  await assertAllowedUrlAsync(url, dnsLookupFn)
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -413,6 +447,16 @@ export async function fetchHtml(
     if (!res.ok) {
       throw new Error(
         `FETCH_ERROR: HTTP ${res.status} ${res.statusText} from ${url}`
+      )
+    }
+
+    const contentType = res.headers.get("content-type") || ""
+    if (
+      !contentType.includes("text/html") &&
+      !contentType.includes("application/xhtml+xml")
+    ) {
+      throw new Error(
+        `INVALID_CONTENT_TYPE: Expected HTML from ${url} (got ${contentType})`
       )
     }
 
@@ -486,7 +530,6 @@ export async function crawlUrl(
   targetUrl: string,
   options?: CrawlOptions
 ): Promise<CrawlResult> {
-  const parsed = assertAllowedUrl(targetUrl)
   const mode = options?.crawlMode || "SINGLE_PAGE"
   const maxPages = Math.min(
     options?.maxPages || MAX_PAGES_LIMIT,
@@ -497,10 +540,19 @@ export async function crawlUrl(
     MAX_DEPTH_LIMIT
   )
   const timeoutMs = options?.timeoutMs || DEFAULT_TIMEOUT_MS
+  const delayMs = options?.delayMs ?? DEFAULT_POLITE_DELAY_MS
   const fetchFn = options?.fetchFn || fetch
+  const dnsLookupFn = options?.dnsLookupFn
+
+  const parsed = await assertAllowedUrlAsync(targetUrl, dnsLookupFn)
 
   if (mode === "SINGLE_PAGE") {
-    const rawHtml = await fetchHtml(targetUrl, timeoutMs, fetchFn)
+    const rawHtml = await fetchHtml(
+      targetUrl,
+      timeoutMs,
+      fetchFn,
+      dnsLookupFn
+    )
     const { title, cleanedHtml } = stripHtmlBoilerplate(rawHtml)
     const contentMarkdown = cleanedHtml
     const contentHash = computeContentHash(contentMarkdown)
@@ -521,7 +573,7 @@ export async function crawlUrl(
     }
   }
 
-  // SUBPATH_RECURSIVE mode
+  // SUBPATH_RECURSIVE mode (respectful crawling with polite delay)
   const visited = new Set<string>()
   const queue: Array<{ url: string; depth: number }> = [
     { url: parsed.toString(), depth: 0 },
@@ -536,7 +588,12 @@ export async function crawlUrl(
     if (!current) break
 
     try {
-      const rawHtml = await fetchHtml(current.url, timeoutMs, fetchFn)
+      const rawHtml = await fetchHtml(
+        current.url,
+        timeoutMs,
+        fetchFn,
+        dnsLookupFn
+      )
       const { title, cleanedHtml } = stripHtmlBoilerplate(rawHtml)
       const contentMarkdown = cleanedHtml
       const contentHash = computeContentHash(contentMarkdown)
@@ -564,8 +621,15 @@ export async function crawlUrl(
           }
         }
       }
-    } catch {
-      // Continue crawling other pages if one page fails
+    } catch (err) {
+      console.warn(
+        `[web-crawler] Failed to crawl ${current.url}:`,
+        err instanceof Error ? err.message : err
+      )
+    }
+
+    if (delayMs > 0 && queue.length > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
   }
 
@@ -598,6 +662,7 @@ export async function crawlUrl(
 
 export const webCrawlerService = {
   assertAllowedUrl,
+  assertAllowedUrlAsync,
   isPrivateOrReservedHost,
   computeContentHash,
   shouldUpdateDocument,

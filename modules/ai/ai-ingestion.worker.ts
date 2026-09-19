@@ -130,7 +130,7 @@ export async function removePeriodicCrawlerSync(
 
   let removed = false
   for (const job of repeatableJobs) {
-    if (job.id === targetPrefix || job.key.includes(targetPrefix)) {
+    if (job.id === targetPrefix || job.key.startsWith(`${targetPrefix}:::`)) {
       await queue.removeRepeatableByKey(job.key)
       removed = true
     }

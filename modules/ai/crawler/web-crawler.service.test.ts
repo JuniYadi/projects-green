@@ -59,6 +59,18 @@ describe("webCrawlerService", () => {
       expect(url.hostname).toBe("example.com")
       expect(url.pathname).toBe("/docs/faq")
     })
+
+    it("blocks DNS rebinding when domain resolves to private IP", async () => {
+      const mockDnsLookup = mock(async () => ({ address: "127.0.0.1" }))
+      expect(
+        webCrawlerService.assertAllowedUrlAsync(
+          "https://rebind.attacker.com/evil",
+          mockDnsLookup as unknown as (
+            host: string
+          ) => Promise<{ address: string }>
+        )
+      ).rejects.toThrow("SSRF_BLOCKED")
+    })
   })
 
   describe("Boilerplate stripping", () => {
@@ -223,6 +235,22 @@ describe("webCrawlerService", () => {
       expect(res.contentMarkdown).toBe("Content")
       expect(res.pages.length).toBe(1)
       expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it("rejects non-HTML responses like application/json", async () => {
+      const mockFetch = mock(async () => {
+        return new Response('{"status": "ok"}', {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      })
+
+      expect(
+        webCrawlerService.crawlUrl("https://example.com/api/v1", {
+          crawlMode: "SINGLE_PAGE",
+          fetchFn: mockFetch as unknown as typeof fetch,
+        })
+      ).rejects.toThrow("INVALID_CONTENT_TYPE")
     })
 
     it("crawls SUBPATH_RECURSIVE up to maxPages and depth", async () => {
