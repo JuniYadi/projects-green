@@ -107,4 +107,22 @@ describe("AiAgentsPageClient", () => {
       expect(preview.className).toContain("opacity-100")
     }
   )
+
+  it(
+    "renders embed website tab and button, navigating to customizer",
+    async () => {
+      const { findAllByText, findByText } = render(<AiAgentsPageClient />)
+      await findByText("Tanya CS")
+      const embedButtons = await findAllByText("Embed Website")
+      expect(embedButtons.length).toBeGreaterThanOrEqual(2)
+
+      // Click the card button (second match)
+      fireEvent.click(embedButtons[1])
+
+      expect(await findByText("Pengaturan Widget Chat Website")).toBeDefined()
+      expect(
+        await findByText("Kustomisasi Tampilan Widget")
+      ).toBeDefined()
+    }
+  )
 })

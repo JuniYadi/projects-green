@@ -6435,6 +6435,7 @@ export const enMessages: AppMessages = {
         manageNumbersButton: "Manage Numbers",
         openCanvasButton: "Open in Canvas",
         editButton: "Edit Settings",
+        embedWebsiteButton: "Embed Website",
       },
       bindingModal: {
         title: "Manage Assistant's WhatsApp Numbers",
@@ -6557,6 +6558,57 @@ export const enMessages: AppMessages = {
             "Are you sure you want to delete this Action Intent?",
           loadError: "Failed to load Action Intents.",
         },
+      },
+      widgetEmbed: {
+        tabTitle: "Embed Website",
+        title: "Website Chat Widget Settings",
+        subtitle:
+          "Customize launcher appearance and get 1-click embed code" +
+          " snippets for your website.",
+        customizerCardTitle: "Customize Widget Appearance",
+        customizerCardDesc:
+          "Customize color, launcher button position, and initial greeting" +
+          " message for customers.",
+        agentSelectLabel: "Select AI Agent",
+        agentSelectPlaceholder: "Select an assistant...",
+        noAgentSelected: "No AI agent selected or available.",
+        colorLabel: "Primary Theme Color",
+        colorPresetEmerald: "Emerald",
+        colorPresetBlue: "Blue",
+        colorPresetViolet: "Violet",
+        colorPresetAmber: "Amber",
+        colorPresetDark: "Dark",
+        positionLabel: "Launcher Position",
+        positionBottomRight: "Bottom Right",
+        positionBottomLeft: "Bottom Left",
+        welcomeMessageLabel: "Welcome Message",
+        welcomeMessagePlaceholder: "Hello! How can we help you today?",
+        allowedDomainsLabel: "Allowed Domains (Whitelist)",
+        allowedDomainsPlaceholder:
+          "*.myshop.com, clinic.com (separated by comma or newline)",
+        allowedDomainsHint:
+          "Only websites from these domains can load the AI chat widget.",
+        invalidDomainError: "Invalid domain format:",
+        saveButton: "Save Widget Settings",
+        savingButton: "Saving...",
+        saveSuccess: "Widget settings saved successfully.",
+        saveError: "Failed to save widget settings.",
+        previewTitle: "Live Website Preview",
+        previewMockSite: "Customer Store / Clinic Website",
+        previewMockSub: "Simulated widget view on your website",
+        snippetTitle: "1-Click Embed Snippet",
+        snippetSubtitle:
+          "Copy and paste this code before the closing </body> tag on " +
+          "your website",
+        tabHtml: "HTML Script",
+        tabNextjs: "React / Next.js",
+        tabShareLink: "Standalone Link",
+        copyButton: "Copy Code",
+        copiedButton: "Copied!",
+        copyFailed: "Failed to copy code.",
+        copyLinkButton: "Copy Link",
+        copiedLinkButton: "Link Copied!",
+        openLinkButton: "Open",
       },
     },
     aiSessions: {

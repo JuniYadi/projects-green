@@ -47,6 +47,10 @@ export function createConsoleAiAgentsRoutes() {
           enableProfanityFilter: a.enableProfanityFilter,
           customBlockedWords: a.customBlockedWords,
           allowInteractiveReplies: a.allowInteractiveReplies,
+          allowedDomains: a.allowedDomains,
+          widgetColor: a.widgetColor,
+          widgetPosition: a.widgetPosition,
+          welcomeMessage: a.welcomeMessage,
           isActive: a.isActive,
           channelsCount: a.channelBindings.length,
           channelBindings: a.channelBindings,
@@ -69,10 +73,15 @@ export function createConsoleAiAgentsRoutes() {
           name,
           description,
           systemPrompt = "Anda adalah asisten AI toko resmi.",
-          fallbackMessage = "Maaf, pertanyaan Anda akan kami teruskan ke tim CS kami.",
+          fallbackMessage =
+            "Maaf, pertanyaan Anda akan kami teruskan ke tim CS kami.",
           dailyUserLimit = 20,
           enableProfanityFilter = true,
           allowInteractiveReplies = true,
+          allowedDomains = [],
+          widgetColor = "#10B981",
+          widgetPosition = "bottom-right",
+          welcomeMessage = "Halo! Ada yang bisa kami bantu?",
         } = body
 
         if (!name?.trim()) {
@@ -94,6 +103,10 @@ export function createConsoleAiAgentsRoutes() {
             dailyUserLimit,
             enableProfanityFilter,
             allowInteractiveReplies,
+            allowedDomains,
+            widgetColor,
+            widgetPosition,
+            welcomeMessage,
             isActive: true,
           },
         })
@@ -112,6 +125,14 @@ export function createConsoleAiAgentsRoutes() {
           dailyUserLimit: t.Optional(t.Number()),
           enableProfanityFilter: t.Optional(t.Boolean()),
           allowInteractiveReplies: t.Optional(t.Boolean()),
+          allowedDomains: t.Optional(t.Array(t.String())),
+          widgetColor: t.Optional(
+            t.String({ pattern: "^#[0-9a-fA-F]{3,8}$" })
+          ),
+          widgetPosition: t.Optional(
+            t.Union([t.Literal("bottom-right"), t.Literal("bottom-left")])
+          ),
+          welcomeMessage: t.Optional(t.String()),
         }),
       }
     )
@@ -157,6 +178,18 @@ export function createConsoleAiAgentsRoutes() {
                   allowInteractiveReplies: body.allowInteractiveReplies,
                 }
               : {}),
+            ...(body.allowedDomains !== undefined
+              ? { allowedDomains: body.allowedDomains }
+              : {}),
+            ...(body.widgetColor !== undefined
+              ? { widgetColor: body.widgetColor }
+              : {}),
+            ...(body.widgetPosition !== undefined
+              ? { widgetPosition: body.widgetPosition }
+              : {}),
+            ...(body.welcomeMessage !== undefined
+              ? { welcomeMessage: body.welcomeMessage }
+              : {}),
             ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
           },
         })
@@ -175,6 +208,14 @@ export function createConsoleAiAgentsRoutes() {
           dailyUserLimit: t.Optional(t.Number()),
           enableProfanityFilter: t.Optional(t.Boolean()),
           allowInteractiveReplies: t.Optional(t.Boolean()),
+          allowedDomains: t.Optional(t.Array(t.String())),
+          widgetColor: t.Optional(
+            t.String({ pattern: "^#[0-9a-fA-F]{3,8}$" })
+          ),
+          widgetPosition: t.Optional(
+            t.Union([t.Literal("bottom-right"), t.Literal("bottom-left")])
+          ),
+          welcomeMessage: t.Optional(t.String()),
           isActive: t.Optional(t.Boolean()),
         }),
       }

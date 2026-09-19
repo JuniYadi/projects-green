@@ -6494,6 +6494,7 @@ export const idMessages: AppMessages = {
         manageNumbersButton: "Kelola Nomor",
         openCanvasButton: "Buka di Canvas",
         editButton: "Edit Pengaturan",
+        embedWebsiteButton: "Embed Website",
       },
       bindingModal: {
         title: "Kelola Nomor WhatsApp Asisten",
@@ -6618,6 +6619,57 @@ export const idMessages: AppMessages = {
             "Apakah Anda yakin ingin menghapus Action Intent ini?",
           loadError: "Gagal memuat daftar Action Intent.",
         },
+      },
+      widgetEmbed: {
+        tabTitle: "Embed Website",
+        title: "Pengaturan Widget Chat Website",
+        subtitle:
+          "Kustomisasi tampilan launcher dan dapatkan kode snippet" +
+          " 1-klik untuk website Anda.",
+        customizerCardTitle: "Kustomisasi Tampilan Widget",
+        customizerCardDesc:
+          "Sesuaikan warna, posisi tombol launcher, dan sapaan pesan" +
+          " pertama pelanggan.",
+        agentSelectLabel: "Pilih Asisten AI",
+        agentSelectPlaceholder: "Pilih asisten...",
+        noAgentSelected: "Belum ada asisten AI yang dipilih atau tersedia.",
+        colorLabel: "Warna Tema Utama",
+        colorPresetEmerald: "Emerald",
+        colorPresetBlue: "Biru",
+        colorPresetViolet: "Violet",
+        colorPresetAmber: "Amber",
+        colorPresetDark: "Gelap",
+        positionLabel: "Posisi Launcher",
+        positionBottomRight: "Kanan Bawah",
+        positionBottomLeft: "Kiri Bawah",
+        welcomeMessageLabel: "Pesan Sambutan",
+        welcomeMessagePlaceholder: "Halo! Mau tanya produk apa kak?",
+        allowedDomainsLabel: "Domain yang Diizinkan (Whitelist)",
+        allowedDomainsPlaceholder:
+          "*.toko.co.id, klinik.com (pisahkan dengan koma atau baris baru)",
+        allowedDomainsHint:
+          "Hanya website dari domain ini yang dapat memuat widget AI chat.",
+        invalidDomainError: "Format domain tidak valid:",
+        saveButton: "Simpan Pengaturan Widget",
+        savingButton: "Menyimpan...",
+        saveSuccess: "Pengaturan widget berhasil disimpan.",
+        saveError: "Gagal menyimpan pengaturan widget.",
+        previewTitle: "Pratinjau Langsung Website",
+        previewMockSite: "Website Toko / Klinik Customer",
+        previewMockSub: "Simulasi tampilan widget di website Anda",
+        snippetTitle: "Kode Embed 1-Klik",
+        snippetSubtitle:
+          "Salin dan pasang kode ini sebelum tag penutup </body> di " +
+          "website Anda",
+        tabHtml: "HTML Script",
+        tabNextjs: "React / Next.js",
+        tabShareLink: "Link Mandiri",
+        copyButton: "Salin Kode",
+        copiedButton: "Tersalin!",
+        copyFailed: "Gagal menyalin kode.",
+        copyLinkButton: "Salin Link",
+        copiedLinkButton: "Link Tersalin!",
+        openLinkButton: "Buka",
       },
     },
     aiSessions: {
