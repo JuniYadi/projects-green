@@ -31,10 +31,14 @@ import { analyticsRoutes } from "@/modules/whatsapp/analytics/api/analytics.rout
 import { consoleOrganizationApiKeyRoutes } from "@/modules/whatsapp/organization-api-keys/api/organization-api-keys-console.route"
 import { onboardingRoutes } from "@/modules/whatsapp/onboarding/api/onboarding.route"
 import { whatsappWorkflowRoutes } from "@/modules/whatsapp/workflow/workflow.routes"
+import {
+  agentSimulateRoutes,
+} from "@/modules/whatsapp/agent/api/agent-simulate.route"
 
 export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(whatsappRateLimitPlugin)
   .use(whatsappWorkflowRoutes)
+  .use(agentSimulateRoutes)
   .use(devicesRoutes)
   .use(businessProfileRoutes)
   .use(catalogsRoutes)
