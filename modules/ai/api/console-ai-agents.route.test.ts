@@ -68,6 +68,10 @@ describe("Console AI Agents Route", () => {
         enableProfanityFilter: true,
         customBlockedWords: [],
         allowInteractiveReplies: true,
+        allowedDomains: ["toko.co.id", "*.klinik.com"],
+        widgetColor: "#2563EB",
+        widgetPosition: "bottom-left",
+        welcomeMessage: "Halo, ada yang bisa dibantu?",
         isActive: true,
         providerConfigId: null,
         providerConfig: null,
@@ -93,12 +97,23 @@ describe("Console AI Agents Route", () => {
     expect(res.status).toBe(200)
     const json = (await res.json()) as {
       ok: boolean
-      data: { channelsCount: number; allowInteractiveReplies: boolean }[]
+      data: {
+        channelsCount: number
+        allowInteractiveReplies: boolean
+        allowedDomains: string[]
+        widgetColor: string
+        widgetPosition: string
+        welcomeMessage: string
+      }[]
     }
     expect(json.ok).toBe(true)
     expect(json.data.length).toBe(1)
     expect(json.data[0].channelsCount).toBe(1)
     expect(json.data[0].allowInteractiveReplies).toBe(true)
+    expect(json.data[0].allowedDomains).toEqual(["toko.co.id", "*.klinik.com"])
+    expect(json.data[0].widgetColor).toBe("#2563EB")
+    expect(json.data[0].widgetPosition).toBe("bottom-left")
+    expect(json.data[0].welcomeMessage).toBe("Halo, ada yang bisa dibantu?")
   })
 
   it("creates agent profile", async () => {
@@ -124,6 +139,10 @@ describe("Console AI Agents Route", () => {
           description: "Membantu penjualan",
           systemPrompt: "Jual produk katalog",
           allowInteractiveReplies: false,
+          allowedDomains: ["shop.com"],
+          widgetColor: "#7C3AED",
+          widgetPosition: "bottom-right",
+          welcomeMessage: "Halo kak!",
         }),
       })
     )
@@ -135,6 +154,10 @@ describe("Console AI Agents Route", () => {
     expect(mockPrisma.aiAgentProfile.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         allowInteractiveReplies: false,
+        allowedDomains: ["shop.com"],
+        widgetColor: "#7C3AED",
+        widgetPosition: "bottom-right",
+        welcomeMessage: "Halo kak!",
       }),
     })
   })
@@ -148,6 +171,10 @@ describe("Console AI Agents Route", () => {
       id: "agent_1",
       name: "Updated Agent",
       allowInteractiveReplies: false,
+      allowedDomains: ["*.example.com"],
+      widgetColor: "#10B981",
+      widgetPosition: "bottom-left",
+      welcomeMessage: "Selamat datang!",
     })
 
     const res = await app.handle(
@@ -157,6 +184,10 @@ describe("Console AI Agents Route", () => {
         body: JSON.stringify({
           name: "Updated Agent",
           allowInteractiveReplies: false,
+          allowedDomains: ["*.example.com"],
+          widgetColor: "#10B981",
+          widgetPosition: "bottom-left",
+          welcomeMessage: "Selamat datang!",
         }),
       })
     )
@@ -169,6 +200,10 @@ describe("Console AI Agents Route", () => {
       data: expect.objectContaining({
         name: "Updated Agent",
         allowInteractiveReplies: false,
+        allowedDomains: ["*.example.com"],
+        widgetColor: "#10B981",
+        widgetPosition: "bottom-left",
+        welcomeMessage: "Selamat datang!",
       }),
     })
   })

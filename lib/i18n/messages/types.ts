@@ -5875,6 +5875,7 @@ export type AppMessages = {
         manageNumbersButton: string
         openCanvasButton: string
         editButton: string
+        embedWebsiteButton: string
       }
       bindingModal: {
         title: string
@@ -5971,6 +5972,45 @@ export type AppMessages = {
           deleteConfirm: string
           loadError: string
         }
+      }
+      widgetEmbed: {
+        tabTitle: string
+        title: string
+        subtitle: string
+        agentSelectLabel: string
+        agentSelectPlaceholder: string
+        noAgentSelected: string
+        colorLabel: string
+        colorPresetEmerald: string
+        colorPresetBlue: string
+        colorPresetViolet: string
+        colorPresetAmber: string
+        colorPresetDark: string
+        positionLabel: string
+        positionBottomRight: string
+        positionBottomLeft: string
+        welcomeMessageLabel: string
+        welcomeMessagePlaceholder: string
+        allowedDomainsLabel: string
+        allowedDomainsPlaceholder: string
+        allowedDomainsHint: string
+        invalidDomainError: string
+        saveButton: string
+        savingButton: string
+        saveSuccess: string
+        saveError: string
+        previewTitle: string
+        previewMockSite: string
+        previewMockSub: string
+        snippetTitle: string
+        snippetSubtitle: string
+        tabHtml: string
+        tabNextjs: string
+        tabShareLink: string
+        copyButton: string
+        copiedButton: string
+        copyLinkButton: string
+        copiedLinkButton: string
       }
     }
     aiSessions: {

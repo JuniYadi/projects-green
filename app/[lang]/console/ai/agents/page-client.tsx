@@ -16,6 +16,7 @@ import {
   Lightning,
   ArrowsClockwise,
   PencilSimple,
+  Globe,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
@@ -45,6 +46,8 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ActionIntentBuilder from "@/modules/ai/agents/ui/action-intent-builder"
+import WidgetEmbedCustomizer from
+  "@/modules/ai/widget/ui/widget-embed-customizer"
 
 export type AgentProfile = {
   id: string
@@ -55,6 +58,10 @@ export type AgentProfile = {
   dailyUserLimit: number
   enableProfanityFilter: boolean
   allowInteractiveReplies?: boolean
+  allowedDomains?: string[]
+  widgetColor?: string | null
+  widgetPosition?: string | null
+  welcomeMessage?: string | null
   channelsCount: number
   isActive: boolean
   channelBindings?: {
@@ -88,6 +95,9 @@ export default function AiAgentsPage() {
   const [agents, setAgents] = useState<AgentProfile[]>([])
   const [activeMainTab, setActiveMainTab] = useState("agents")
   const [selectedAgentForActions, setSelectedAgentForActions] = useState<
+    string | null
+  >(null)
+  const [selectedAgentForWidget, setSelectedAgentForWidget] = useState<
     string | null
   >(null)
   const [isOpen, setIsOpen] = useState(false)
@@ -517,6 +527,10 @@ export default function AiAgentsPage() {
                 className="text-emerald-500"
               />
               <span>{messages.actionIntents.tabTitle}</span>
+            </TabsTrigger>
+            <TabsTrigger value="widget-embed" className="gap-2 text-xs">
+              <Globe size={15} className="text-emerald-500" />
+              <span>{messages.widgetEmbed.tabTitle}</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -949,6 +963,21 @@ export default function AiAgentsPage() {
                         size="sm"
                         className="h-8 gap-1 text-xs"
                         onClick={() => {
+                          setSelectedAgentForWidget(agent.id)
+                          setActiveMainTab("widget-embed")
+                        }}
+                      >
+                        <Globe
+                          size={13}
+                          className="text-emerald-500"
+                        />
+                        <span>{messages.card.embedWebsiteButton}</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1 text-xs"
+                        onClick={() => {
                           setSelectedAgentForActions(agent.id)
                           setActiveMainTab("action-intents")
                         }}
@@ -1247,6 +1276,22 @@ export default function AiAgentsPage() {
         key={selectedAgentForActions || "all"}
         initialAgentProfileId={selectedAgentForActions || undefined}
         agents={agents.map((a) => ({ id: a.id, name: a.name }))}
+        lang={lang}
+      />
+    </TabsContent>
+
+    <TabsContent value="widget-embed" className="mt-0">
+      <WidgetEmbedCustomizer
+        agents={agents}
+        selectedAgentId={selectedAgentForWidget}
+        onAgentChange={setSelectedAgentForWidget}
+        onAgentUpdated={(updated) => {
+          setAgents((prev) =>
+            prev.map((a) =>
+              a.id === updated.id ? { ...a, ...updated } : a
+            )
+          )
+        }}
         lang={lang}
       />
     </TabsContent>
