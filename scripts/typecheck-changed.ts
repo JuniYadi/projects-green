@@ -1,4 +1,4 @@
-import { existsSync, unlinkSync, writeFileSync } from "node:fs"
+import { existsSync, readdirSync, unlinkSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { collectChangedFiles } from "./changed-files"
 
@@ -33,6 +33,12 @@ export const runTypecheckChanged = (files?: readonly string[]) => {
     `.tsconfig.typecheck-changed.${Date.now()}-${process.pid}.json`
   )
 
+  const typeDeclarationFiles = existsSync("types")
+    ? readdirSync("types")
+        .filter((file) => file.endsWith(".d.ts"))
+        .map((file) => `types/${file}`)
+    : []
+
   const tempConfig = {
     extends: "./tsconfig.json",
     compilerOptions: {
@@ -40,7 +46,7 @@ export const runTypecheckChanged = (files?: readonly string[]) => {
     },
     files: [
       ...(existsSync("next-env.d.ts") ? ["next-env.d.ts"] : []),
-      ...(existsSync("types/matchers.d.ts") ? ["types/matchers.d.ts"] : []),
+      ...typeDeclarationFiles,
       ...tsFiles,
     ],
     include: [],
