@@ -1,4 +1,5 @@
 import { commitFileToRepo } from "@/modules/github/github.service"
+import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
 import {
   generatePhpDsl,
   generateNodeDsl,
@@ -30,6 +31,8 @@ export type JenkinsSyncInput = {
   gitCredentialId?: string
   /** Explicit Git repository URL (defaults to https://github.com/${owner}/${repo}) */
   gitRepoUrl?: string
+  /** Optional GitOps PAT for direct repository commits */
+  gitopsPat?: string
 }
 
 export type JenkinsSyncResult = {
@@ -89,7 +92,7 @@ function resolvePipelineType(framework: string): PipelineType {
 // ─── DSL File Path ────────────────────────────────────────────────────────────
 
 function buildDslFilePath(slug: string): string {
-  return `jobs/pfnapp/${slug}.groovy`
+  return `jobs/pfnapp/${slug.replace(/-/g, "_")}.groovy`
 }
 
 // ─── Main Sync Function ──────────────────────────────────────────────────────
@@ -100,7 +103,7 @@ function buildDslFilePath(slug: string): string {
  * Flow:
  * 1. Map framework → pipeline type
  * 2. Generate DSL content using existing generators
- * 3. Commit to pfnapp/Jenkins via GitHub API
+ * 3. Commit to pfnapp/Jenkins via GitHub API or GitOps PAT
  *
  * The existing GitHub workflow in pfnapp/Jenkins auto-triggers the seed job
  * when files in jobs/** are pushed, so no manual Jenkins API call is needed.
@@ -119,6 +122,7 @@ export async function syncJenkinsPipeline(
     jenkinsOwner = owner,
     jenkinsRepo = "Jenkins",
     gitCredentialId = "github-token",
+    gitopsPat,
   } = input
 
   // 1. Resolve pipeline type from framework
@@ -154,8 +158,26 @@ export async function syncJenkinsPipeline(
       break
   }
 
-  // 4. Commit to Jenkins repo via GitHub API
+  // 4. Commit to Jenkins repo via GitOps PAT if available, or GitHub App
   const commitMessage = `feat: add Jenkins pipeline for ${slug}`
+
+  if (gitopsPat) {
+    const gitops = new GitOpsRepositoryService({
+      pat: gitopsPat,
+      branch: "main",
+    })
+    const commitResult = await gitops.commitFiles(
+      `${jenkinsOwner}/${jenkinsRepo}`,
+      commitMessage,
+      [{ path: filePath, content: dslContent }]
+    )
+    return {
+      action: "created",
+      filePath,
+      commitSha: commitResult.sha,
+      pipelineType,
+    }
+  }
 
   const result = await commitFileToRepo({
     installationId,

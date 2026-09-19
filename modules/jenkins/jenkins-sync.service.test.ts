@@ -15,7 +15,7 @@ type CommitFileInput = {
 const mockCommitFileToRepo = mock((): Promise<CommitFileResult> =>
   Promise.resolve({
     commitSha: "abc123",
-    filePath: "jobs/pfnapp/app-test-dev.groovy",
+    filePath: "jobs/pfnapp/app_test_dev.groovy",
     action: "created" as const,
   })
 )
@@ -38,7 +38,7 @@ describe("syncJenkinsPipeline", () => {
     mockCommitFileToRepo.mockImplementation(() =>
       Promise.resolve({
         commitSha: "abc123",
-        filePath: "jobs/pfnapp/app-test-dev.groovy",
+        filePath: "jobs/pfnapp/app_test_dev.groovy",
         action: "created" as const,
       })
     )
@@ -66,7 +66,7 @@ describe("syncJenkinsPipeline", () => {
     const call = getMockCall()
     expect(call.owner).toBe("pfnapp")
     expect(call.repo).toBe("Jenkins")
-    expect(call.filePath).toBe("jobs/pfnapp/app-test-dev.groovy")
+    expect(call.filePath).toBe("jobs/pfnapp/app_test_dev.groovy")
     expect(call.message).toBe("feat: add Jenkins pipeline for app-test-dev")
     expect(call.content).toContain("laravelPipelineV2([")
     expect(call.content).toContain("app-test-dev")
@@ -214,7 +214,7 @@ describe("syncJenkinsPipeline", () => {
     })
 
     const call = getMockCall()
-    expect(call.filePath).toBe("jobs/pfnapp/app-my-cool-app-prod.groovy")
+    expect(call.filePath).toBe("jobs/pfnapp/app_my_cool_app_prod.groovy")
   })
 
   test("includes repo URL in DSL content", async () => {

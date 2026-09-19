@@ -35,6 +35,7 @@ const txQueryRaw = mock(
 const txUpsert = mock(async (..._args: unknown[]) => ({ id: "event-1" }))
 const mockTx = {
   $queryRaw: txQueryRaw,
+  $executeRaw: txQueryRaw,
   applicationDeployment: {
     update: mock(async () => ({ id: "deploy-1", status: "DEPLOYING" })),
     findUnique: mock(async () => defaultDeployment),
