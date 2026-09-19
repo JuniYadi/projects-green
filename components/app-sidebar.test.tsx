@@ -150,6 +150,7 @@ describe("resolveSidebarMenu", () => {
       "AI Agents",
       "Knowledge Base",
       "BYOK Providers",
+      "API Connections",
     ])
     expect(navMain[0]?.isActive).toBe(true)
   })

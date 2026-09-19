@@ -6489,6 +6489,83 @@ export type AppMessages = {
     previousButton: string
     nextButton: string
   }
+  pConsoleAiConnectionsPageClient: {
+    pageTitle: string
+    pageDescription: string
+    addConnectionButton: string
+    filterPlaceholder: string
+    loadingConnections: string
+    noConnectionsTitle: string
+    noMatchingTitle: string
+    emptyStateDescription: string
+    noMatchingDescription: string
+    configuredConnectionsTitle: string
+    configuredConnectionsDescription: string
+    columnConnection: string
+    columnBaseUrl: string
+    columnAuthType: string
+    columnMaskedHeaders: string
+    columnPingStatus: string
+    columnActions: string
+    badgeInactive: string
+    badgeNone: string
+    badgeUntested: string
+    badgeTesting: string
+    badgeFailed: string
+    testButtonTooltip: string
+    testButtonLabel: string
+    editButtonTooltip: string
+    deleteButtonTooltip: string
+    createDialogTitle: string
+    editDialogTitle: string
+    dialogDescription: string
+    nameLabel: string
+    namePlaceholder: string
+    descriptionLabel: string
+    descriptionPlaceholder: string
+    baseUrlLabel: string
+    baseUrlPlaceholder: string
+    authTypeLabel: string
+    authTypePlaceholder: string
+    authTypeNone: string
+    authTypeBearer: string
+    authTypeApiKey: string
+    authTypeCustom: string
+    activeLabel: string
+    activeDescription: string
+    headersSectionTitle: string
+    headersSectionDescription: string
+    addHeaderButton: string
+    noHeadersConfigured: string
+    headerKeyColumn: string
+    headerValueColumn: string
+    headerKeyPlaceholder: string
+    headerValuePlaceholder: string
+    revealSecretAria: string
+    maskSecretAria: string
+    cancelButton: string
+    saveChangesButton: string
+    createConnectionButton: string
+    savingButton: string
+    deleteDialogTitle: string
+    deleteDialogDescription: string
+    deleteDialogCancel: string
+    deleteDialogConfirm: string
+    deleteDialogDeleting: string
+    toastLoadError: string
+    toastNameRequired: string
+    toastUpdateSuccess: string
+    toastUpdateError: string
+    toastCreateSuccess: string
+    toastCreateError: string
+    toastSaveError: string
+    toastDeleteSuccess: string
+    toastDeleteError: string
+    toastTestResponded: string
+    toastTestFailed: string
+    toastPingFailed: string
+    toastNetworkError: string
+  }
   pConsoleAiProvidersPageClient: {
     pageTitle: string
     pageDescription: string
