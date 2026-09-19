@@ -7,6 +7,8 @@ import type {
 } from "@/modules/deploy/telemetry.types"
 
 const t = {
+  deploying: "deploying",
+  deployingDetail: "deployingDetail",
   running: "running",
   runningDetail: "runningDetail",
   restarting: "restarting",
@@ -125,5 +127,25 @@ describe("resolveHealthVerdict", () => {
       t
     )
     expect(v.tone).toBe("down")
+  })
+
+  it("reports deploying when stack status is BUILDING, QUEUED, or DEPLOYING", () => {
+    for (const status of [
+      "BUILDING",
+      "building",
+      "QUEUED",
+      "queued",
+      "DEPLOYING",
+      "deploying",
+    ]) {
+      const v = resolveHealthVerdict(
+        summary([pod()], { healthyServers: 1 }),
+        t,
+        status
+      )
+      expect(v.tone).toBe("deploying")
+      expect(v.headline).toBe("deploying")
+      expect(v.detail).toBe("deployingDetail")
+    }
   })
 })
