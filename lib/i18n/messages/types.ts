@@ -5816,6 +5816,9 @@ export type AppMessages = {
         cancelButton: string
         saveProfileOnlyButton: string
         saveAndOpenCanvasButton: string
+        editTitle: string
+        editDescription: string
+        saveChangesButton: string
       }
       tabs: {
         aiAssistant: string
@@ -5843,6 +5846,19 @@ export type AppMessages = {
         dailyLimitLabel: string
         profanityFilterLabel: string
       }
+      interactiveReplies: {
+        title: string
+        description: string
+        badgeEnabled: string
+        badgeDisabled: string
+        previewTitle: string
+        previewSubtitle: string
+        mockMessage: string
+        buttonAskProduct: string
+        buttonCheckOrder: string
+        buttonVisitWebsite: string
+        disabledHint: string
+      }
       emptyState: {
         title: string
         description: string
@@ -5857,6 +5873,7 @@ export type AppMessages = {
         channelsConnectedLabel: string
         manageNumbersButton: string
         openCanvasButton: string
+        editButton: string
       }
       bindingModal: {
         title: string

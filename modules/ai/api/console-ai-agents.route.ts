@@ -46,6 +46,7 @@ export function createConsoleAiAgentsRoutes() {
           maxCharLength: a.maxCharLength,
           enableProfanityFilter: a.enableProfanityFilter,
           customBlockedWords: a.customBlockedWords,
+          allowInteractiveReplies: a.allowInteractiveReplies,
           isActive: a.isActive,
           channelsCount: a.channelBindings.length,
           channelBindings: a.channelBindings,
@@ -71,6 +72,7 @@ export function createConsoleAiAgentsRoutes() {
           fallbackMessage = "Maaf, pertanyaan Anda akan kami teruskan ke tim CS kami.",
           dailyUserLimit = 20,
           enableProfanityFilter = true,
+          allowInteractiveReplies = true,
         } = body
 
         if (!name?.trim()) {
@@ -91,6 +93,7 @@ export function createConsoleAiAgentsRoutes() {
             fallbackMessage: fallbackMessage.trim(),
             dailyUserLimit,
             enableProfanityFilter,
+            allowInteractiveReplies,
             isActive: true,
           },
         })
@@ -108,6 +111,7 @@ export function createConsoleAiAgentsRoutes() {
           fallbackMessage: t.Optional(t.String()),
           dailyUserLimit: t.Optional(t.Number()),
           enableProfanityFilter: t.Optional(t.Boolean()),
+          allowInteractiveReplies: t.Optional(t.Boolean()),
         }),
       }
     )
@@ -148,6 +152,11 @@ export function createConsoleAiAgentsRoutes() {
             ...(body.enableProfanityFilter !== undefined
               ? { enableProfanityFilter: body.enableProfanityFilter }
               : {}),
+            ...(body.allowInteractiveReplies !== undefined
+              ? {
+                  allowInteractiveReplies: body.allowInteractiveReplies,
+                }
+              : {}),
             ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
           },
         })
@@ -165,6 +174,7 @@ export function createConsoleAiAgentsRoutes() {
           fallbackMessage: t.Optional(t.String()),
           dailyUserLimit: t.Optional(t.Number()),
           enableProfanityFilter: t.Optional(t.Boolean()),
+          allowInteractiveReplies: t.Optional(t.Boolean()),
           isActive: t.Optional(t.Boolean()),
         }),
       }
