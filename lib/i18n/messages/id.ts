@@ -6421,6 +6421,12 @@ export const idMessages: AppMessages = {
         cancelButton: "Batal",
         saveProfileOnlyButton: "Simpan Profil Saja",
         saveAndOpenCanvasButton: "Simpan & Buka di WhatsApp Canvas",
+        editTitle: "Edit Profil Asisten AI",
+        editDescription:
+          "Perbarui pengaturan dan perilaku channel WhatsApp " +
+          "untuk asisten ini.",
+        saveChangesButton: "Simpan Perubahan",
+        savingButton: "Menyimpan...",
       },
       tabs: {
         aiAssistant: "Bantuan AI (Auto-Generate)",
@@ -6447,9 +6453,30 @@ export const idMessages: AppMessages = {
           "Misal: Menangani chat masuk WhatsApp pelanggan",
         systemPromptLabel: "Petunjuk & Aturan Jawaban Bot (System Prompt)",
         systemPromptPlaceholder:
-          "Misal: Anda adalah asisten resmi toko. Jawab dengan ramah dan ringkas...",
+          "Misal: Anda adalah asisten resmi toko. " +
+          "Jawab dengan ramah dan ringkas...",
         dailyLimitLabel: "Batas Pertanyaan / User / Hari",
         profanityFilterLabel: "Filter Kata Kasar & Spam",
+      },
+      interactiveReplies: {
+        title:
+          "Izinkan Tombol Interaktif WhatsApp (Quick Replies & URL Links)",
+        description:
+          "Izinkan asisten AI mengirim balasan dengan tombol interaktif " +
+          "WhatsApp seperti Quick Replies dan link tombol URL CTA.",
+        badgeEnabled: "Aktif",
+        badgeDisabled: "Nonaktif",
+        previewTitle: "Pratinjau Balasan Interaktif",
+        previewSubtitle: "Tampilan pesan tombol di WhatsApp",
+        mockMessage:
+          "Halo kak! Terima kasih sudah menghubungi kami. " +
+          "Silakan pilih layanan:",
+        buttonAskProduct: "💬 Tanya Produk",
+        buttonCheckOrder: "📦 Cek Pesanan",
+        buttonVisitWebsite: "🌐 Kunjungi Website",
+        disabledHint:
+          "Pesan tombol interaktif dinonaktifkan. " +
+          "Asisten hanya akan mengirimkan balasan teks biasa.",
       },
       emptyState: {
         title: "Belum ada alur / asisten AI dibuat",
@@ -6466,6 +6493,7 @@ export const idMessages: AppMessages = {
         channelsConnectedLabel: "Channel Terhubung",
         manageNumbersButton: "Kelola Nomor",
         openCanvasButton: "Buka di Canvas",
+        editButton: "Edit Pengaturan",
       },
       bindingModal: {
         title: "Kelola Nomor WhatsApp Asisten",

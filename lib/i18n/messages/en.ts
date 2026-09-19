@@ -6364,6 +6364,11 @@ export const enMessages: AppMessages = {
         cancelButton: "Cancel",
         saveProfileOnlyButton: "Save Profile Only",
         saveAndOpenCanvasButton: "Save & Open in WhatsApp Canvas",
+        editTitle: "Edit AI Assistant Profile",
+        editDescription:
+          "Update settings and WhatsApp channel behavior for this assistant.",
+        saveChangesButton: "Save Changes",
+        savingButton: "Saving...",
       },
       tabs: {
         aiAssistant: "AI Assistance (Auto-Generate)",
@@ -6394,6 +6399,26 @@ export const enMessages: AppMessages = {
         dailyLimitLabel: "Question Limit / User / Day",
         profanityFilterLabel: "Profanity & Spam Filter",
       },
+      interactiveReplies: {
+        title:
+          "Allow WhatsApp Interactive Replies (Quick Replies & URL Links)",
+        description:
+          "Allow the AI assistant to send replies with WhatsApp interactive " +
+          "buttons such as Quick Replies and URL CTA buttons.",
+        badgeEnabled: "Enabled",
+        badgeDisabled: "Disabled",
+        previewTitle: "Interactive Reply Preview",
+        previewSubtitle: "How button messages appear on WhatsApp",
+        mockMessage:
+          "Hi! Thank you for contacting us. " +
+          "Please choose a service:",
+        buttonAskProduct: "💬 Ask Product",
+        buttonCheckOrder: "📦 Check Order",
+        buttonVisitWebsite: "🌐 Visit Website",
+        disabledHint:
+          "Interactive button messages are disabled. " +
+          "The assistant will send plain text replies only.",
+      },
       emptyState: {
         title: "No flows / AI assistants created yet",
         description:
@@ -6409,6 +6434,7 @@ export const enMessages: AppMessages = {
         channelsConnectedLabel: "Channel Connected",
         manageNumbersButton: "Manage Numbers",
         openCanvasButton: "Open in Canvas",
+        editButton: "Edit Settings",
       },
       bindingModal: {
         title: "Manage Assistant's WhatsApp Numbers",

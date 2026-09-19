@@ -1,5 +1,5 @@
-import { describe, expect, it, mock } from "bun:test"
-import { renderToString } from "react-dom/server"
+import { afterEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, fireEvent, render } from "@testing-library/react"
 
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "id" }),
@@ -14,13 +14,97 @@ mock.module("sonner", () => ({
   },
 }))
 
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      console: {
+        ai: {
+          agents: {
+            get: mock(() =>
+              Promise.resolve({
+                data: {
+                  ok: true,
+                  data: [
+                    {
+                      id: "agent_1",
+                      name: "Tanya CS",
+                      description: "CS otomatis",
+                      systemPrompt: "Bantu pelanggan",
+                      dailyUserLimit: 20,
+                      enableProfanityFilter: true,
+                      allowInteractiveReplies: true,
+                      channelsCount: 1,
+                      isActive: true,
+                      channelBindings: [],
+                    },
+                  ],
+                },
+              })
+            ),
+            post: mock(() =>
+              Promise.resolve({
+                data: { ok: true, data: { id: "agent_2", name: "New Agent" } },
+              })
+            ),
+          },
+        },
+      },
+      whatsapp: {
+        devices: {
+          get: mock(() => Promise.resolve({ data: { devices: [] } })),
+        },
+      },
+    },
+  },
+}))
+
 import AiAgentsPageClient from "./page-client"
 
 describe("AiAgentsPageClient", () => {
-  it("renders tabs for agents and action intents", () => {
-    const html = renderToString(<AiAgentsPageClient />)
-    expect(html).toContain("AI Studio &amp; Asisten WhatsApp")
-    expect(html).toContain("Action Intents &amp; Tools")
-    expect(html).toContain("Buat Alur / Asisten AI Baru")
+  afterEach(() => {
+    cleanup()
   })
+
+  it("renders tabs for agents and action intents", () => {
+    const { getAllByText, getByText } = render(<AiAgentsPageClient />)
+    expect(getAllByText("AI Studio & Asisten WhatsApp").length).toBeGreaterThan(
+      0
+    )
+    expect(getByText("Action Intents & Tools")).toBeDefined()
+    expect(getByText("Buat Alur / Asisten AI Baru")).toBeDefined()
+  })
+
+  it(
+    "renders agent cards with interactive replies status and edit button",
+    async () => {
+      const { findByText } = render(<AiAgentsPageClient />)
+      expect(await findByText("Tanya CS")).toBeDefined()
+      expect(await findByText("Edit Pengaturan")).toBeDefined()
+      expect(
+        await findByText(
+          "Izinkan Tombol Interaktif WhatsApp (Quick Replies & URL Links)"
+        )
+      ).toBeDefined()
+    }
+  )
+
+  it(
+    "opens edit modal and displays interactive replies toggle and preview",
+    async () => {
+      const { findByText, getByText, getByTestId } = render(
+        <AiAgentsPageClient />
+      )
+      const editBtn = await findByText("Edit Pengaturan")
+      fireEvent.click(editBtn)
+
+      expect(await findByText("Edit Profil Asisten AI")).toBeDefined()
+      expect(getByText("Pratinjau Balasan Interaktif")).toBeDefined()
+      expect(getByText("💬 Tanya Produk")).toBeDefined()
+      expect(getByText("📦 Cek Pesanan")).toBeDefined()
+      expect(getByText("🌐 Kunjungi Website")).toBeDefined()
+
+      const preview = getByTestId("interactive-replies-preview")
+      expect(preview.className).toContain("opacity-100")
+    }
+  )
 })

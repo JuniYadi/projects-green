@@ -67,6 +67,7 @@ describe("Console AI Agents Route", () => {
         maxCharLength: 800,
         enableProfanityFilter: true,
         customBlockedWords: [],
+        allowInteractiveReplies: true,
         isActive: true,
         providerConfigId: null,
         providerConfig: null,
@@ -92,11 +93,12 @@ describe("Console AI Agents Route", () => {
     expect(res.status).toBe(200)
     const json = (await res.json()) as {
       ok: boolean
-      data: { channelsCount: number }[]
+      data: { channelsCount: number; allowInteractiveReplies: boolean }[]
     }
     expect(json.ok).toBe(true)
     expect(json.data.length).toBe(1)
     expect(json.data[0].channelsCount).toBe(1)
+    expect(json.data[0].allowInteractiveReplies).toBe(true)
   })
 
   it("creates agent profile", async () => {
@@ -108,6 +110,7 @@ describe("Console AI Agents Route", () => {
       fallbackMessage: "Hubungi sales kami",
       dailyUserLimit: 30,
       enableProfanityFilter: true,
+      allowInteractiveReplies: false,
       providerConfigId: null,
       isActive: true,
     })
@@ -120,6 +123,7 @@ describe("Console AI Agents Route", () => {
           name: "Sales Assistant",
           description: "Membantu penjualan",
           systemPrompt: "Jual produk katalog",
+          allowInteractiveReplies: false,
         }),
       })
     )
@@ -128,7 +132,45 @@ describe("Console AI Agents Route", () => {
     const json = (await res.json()) as { ok: boolean; data: { id: string } }
     expect(json.ok).toBe(true)
     expect(json.data.id).toBe("agent_new")
-    expect(mockPrisma.aiAgentProfile.create).toHaveBeenCalled()
+    expect(mockPrisma.aiAgentProfile.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        allowInteractiveReplies: false,
+      }),
+    })
+  })
+
+  it("updates agent profile including allowInteractiveReplies", async () => {
+    mockPrisma.aiAgentProfile.findFirst.mockResolvedValue({
+      id: "agent_1",
+      organizationId: "org_1",
+    })
+    mockPrisma.aiAgentProfile.update.mockResolvedValue({
+      id: "agent_1",
+      name: "Updated Agent",
+      allowInteractiveReplies: false,
+    })
+
+    const res = await app.handle(
+      new Request("http://localhost/console/ai/agents/agent_1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Updated Agent",
+          allowInteractiveReplies: false,
+        }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as { ok: boolean; data: { id: string } }
+    expect(json.ok).toBe(true)
+    expect(mockPrisma.aiAgentProfile.update).toHaveBeenCalledWith({
+      where: { id: "agent_1" },
+      data: expect.objectContaining({
+        name: "Updated Agent",
+        allowInteractiveReplies: false,
+      }),
+    })
   })
 
   it("binds agent to a channel", async () => {

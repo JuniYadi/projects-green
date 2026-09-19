@@ -15,9 +15,12 @@ import {
   CheckCircle,
   Lightning,
   ArrowsClockwise,
+  PencilSimple,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
+import InteractiveRepliesToggle from
+  "@/modules/ai/agents/ui/interactive-replies-toggle"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -51,6 +54,7 @@ export type AgentProfile = {
   fallbackMessage?: string | null
   dailyUserLimit: number
   enableProfanityFilter: boolean
+  allowInteractiveReplies?: boolean
   channelsCount: number
   isActive: boolean
   channelBindings?: {
@@ -92,7 +96,20 @@ export default function AiAgentsPage() {
   const [systemPrompt, setSystemPrompt] = useState("")
   const [dailyLimit, setDailyLimit] = useState(20)
   const [enableProfanity, setEnableProfanity] = useState(true)
+  const [allowInteractiveReplies, setAllowInteractiveReplies] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  // Edit Agent Profile States
+  const [editingAgent, setEditingAgent] = useState<AgentProfile | null>(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editName, setEditName] = useState("")
+  const [editDescription, setEditDescription] = useState("")
+  const [editSystemPrompt, setEditSystemPrompt] = useState("")
+  const [editDailyLimit, setEditDailyLimit] = useState(20)
+  const [editEnableProfanity, setEditEnableProfanity] = useState(true)
+  const [editAllowInteractiveReplies, setEditAllowInteractiveReplies] =
+    useState(true)
+  const [savingEdit, setSavingEdit] = useState(false)
 
   // AI Workflow Assistant Builder States
   const [assistantPrompt, setAssistantPrompt] = useState("")
@@ -281,6 +298,7 @@ export default function AiAgentsPage() {
         systemPrompt: systemPrompt.trim() || undefined,
         dailyUserLimit: dailyLimit,
         enableProfanityFilter: enableProfanity,
+        allowInteractiveReplies,
       })
 
       if (res.data && res.data.ok) {
@@ -311,6 +329,7 @@ export default function AiAgentsPage() {
         setName("")
         setDescription("")
         setSystemPrompt("")
+        setAllowInteractiveReplies(true)
         setWorkflowSteps([])
         setWorkflowSummary("")
         setSimVariables({})
@@ -323,6 +342,51 @@ export default function AiAgentsPage() {
       toast.error("Terjadi kesalahan saat menyimpan asisten.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleOpenEditModal = (agent: AgentProfile) => {
+    setEditingAgent(agent)
+    setEditName(agent.name)
+    setEditDescription(agent.description || "")
+    setEditSystemPrompt(agent.systemPrompt || "")
+    setEditDailyLimit(agent.dailyUserLimit || 20)
+    setEditEnableProfanity(agent.enableProfanityFilter ?? true)
+    setEditAllowInteractiveReplies(agent.allowInteractiveReplies ?? true)
+    setEditModalOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingAgent) return
+    if (!editName.trim()) {
+      toast.error("Nama asisten wajib diisi.")
+      return
+    }
+
+    setSavingEdit(true)
+    try {
+      const res = await eden.api.console.ai.agents[editingAgent.id].put({
+        name: editName.trim(),
+        description: editDescription.trim() || undefined,
+        systemPrompt: editSystemPrompt.trim() || undefined,
+        dailyUserLimit: editDailyLimit,
+        enableProfanityFilter: editEnableProfanity,
+        allowInteractiveReplies: editAllowInteractiveReplies,
+      })
+
+      if (res.data && res.data.ok) {
+        toast.success("Profil asisten berhasil diperbarui.")
+        await loadAgents()
+        setEditModalOpen(false)
+        setEditingAgent(null)
+      } else {
+        toast.error("Gagal memperbarui profil asisten.")
+      }
+    } catch (err) {
+      console.error("[ai-agents] edit error:", err)
+      toast.error("Terjadi kesalahan saat memperbarui asisten.")
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -475,7 +539,7 @@ export default function AiAgentsPage() {
               <span>{messages.createButton}</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Sparkle className="text-emerald-500" size={20} weight="fill" />
@@ -732,6 +796,12 @@ export default function AiAgentsPage() {
                       </div>
                     </div>
                   </div>
+
+                  <InteractiveRepliesToggle
+                    checked={allowInteractiveReplies}
+                    onCheckedChange={setAllowInteractiveReplies}
+                    lang={lang}
+                  />
                 </div>
               </TabsContent>
             </Tabs>
@@ -835,6 +905,35 @@ export default function AiAgentsPage() {
                   </div>
                 </div>
 
+                <div
+                  className={
+                    "flex items-center justify-between rounded-md border " +
+                    "border-border/60 bg-muted/40 px-2.5 py-1.5 text-[11px]"
+                  }
+                >
+                  <span className="text-muted-foreground">
+                    {messages.interactiveReplies.title}
+                  </span>
+                  <Badge
+                    variant={
+                      agent.allowInteractiveReplies !== false
+                        ? "secondary"
+                        : "outline"
+                    }
+                    className={
+                      agent.allowInteractiveReplies !== false
+                        ? "border-emerald-500/20 bg-emerald-500/10 " +
+                          "text-[10px] text-emerald-600 " +
+                          "dark:text-emerald-400"
+                        : "text-[10px] text-muted-foreground"
+                    }
+                  >
+                    {agent.allowInteractiveReplies !== false
+                      ? messages.interactiveReplies.badgeEnabled
+                      : messages.interactiveReplies.badgeDisabled}
+                  </Badge>
+                </div>
+
                 <div className="flex flex-col gap-2.5 border-t border-border pt-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -860,6 +959,15 @@ export default function AiAgentsPage() {
                           weight="fill"
                         />
                         <span>Actions</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1 text-xs"
+                        onClick={() => handleOpenEditModal(agent)}
+                      >
+                        <PencilSimple size={13} />
+                        <span>{messages.card.editButton}</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -1029,6 +1137,105 @@ export default function AiAgentsPage() {
               onClick={() => setBindingModalOpen(false)}
             >
               {messages.bindingModal.doneButton}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Edit Profil Asisten AI */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent
+          className="max-h-[90vh] max-w-3xl overflow-y-auto"
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PencilSimple
+                className="text-emerald-500"
+                size={20}
+                weight="bold"
+              />
+              <span>{messages.dialog.editTitle}</span>
+            </DialogTitle>
+            <DialogDescription>
+              {messages.dialog.editDescription}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>{messages.manual.nameLabel}</Label>
+              <Input
+                placeholder={messages.manual.namePlaceholder}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{messages.manual.descriptionLabel}</Label>
+              <Input
+                placeholder={messages.manual.descriptionPlaceholder}
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{messages.manual.systemPromptLabel}</Label>
+              <Textarea
+                rows={3}
+                placeholder={messages.manual.systemPromptPlaceholder}
+                value={editSystemPrompt}
+                onChange={(e) => setEditSystemPrompt(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{messages.manual.dailyLimitLabel}</Label>
+                <Input
+                  type="number"
+                  value={editDailyLimit}
+                  onChange={(e) =>
+                    setEditDailyLimit(Number(e.target.value) || 1)
+                  }
+                />
+              </div>
+              <div className="flex flex-col justify-end space-y-2 pb-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">
+                    {messages.manual.profanityFilterLabel}
+                  </Label>
+                  <Switch
+                    checked={editEnableProfanity}
+                    onCheckedChange={setEditEnableProfanity}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <InteractiveRepliesToggle
+              checked={editAllowInteractiveReplies}
+              onCheckedChange={setEditAllowInteractiveReplies}
+              lang={lang}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="ghost"
+              onClick={() => setEditModalOpen(false)}
+            >
+              {messages.dialog.cancelButton}
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={!editName.trim() || savingEdit}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {savingEdit
+                ? messages.dialog.savingButton
+                : messages.dialog.saveChangesButton}
             </Button>
           </DialogFooter>
         </DialogContent>

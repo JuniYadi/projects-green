@@ -23,7 +23,12 @@ mock.module("@/modules/ai/ai-rag.service", () => ({
   searchHybridKnowledge: mockSearchHybridKnowledge,
 }))
 
+const actualConnectionService = await import(
+  "@/modules/ai/connections/connection.service"
+)
+
 mock.module("@/modules/ai/connections/connection.service", () => ({
+  ...actualConnectionService,
   invokeConnection: mockInvokeConnection,
 }))
 
