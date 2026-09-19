@@ -28,6 +28,7 @@ export type DeploymentStatusDTO = {
   manifestPushed: boolean
   argocdSynced: boolean
   failureReason: string | null
+  commitSha?: string | null
   startedAt: string | null
   completedAt: string | null
 }
@@ -78,65 +79,41 @@ const normalizeLogStatus = (status: string): Exclude<DeployStatus, "idle"> => {
 }
 
 /**
- * Canonical, ordered deploy phases. The timeline component derives
- * completion from the live status, so the labels stay fixed while
- * progress reflects real backend state.
+ * Canonical, ordered deploy phases. Truthful 6-step lifecycle grounded in
+ * authentic database events (ApplicationDeployEvent / ApplicationDeployment).
  */
 export const buildDeployTimelineItems = (): DeployTimelineItem[] => {
   return [
-    { id: "queued", label: "Queued", status: "queued" },
     {
-      id: "monitor-wait",
-      label: "Waiting in queue",
+      id: "queued-init",
+      label: "Queued & Init",
       status: "queued",
     },
     {
-      id: "monitor-picked-up",
-      label: "Preparing build",
+      id: "jenkins-build",
+      label: "Jenkins Build & Scan",
       status: "building",
     },
     {
-      id: "jenkins-triggered",
-      label: "Build initialized",
+      id: "artifacts-scan",
+      label: "Artifacts & Scan Ingest",
       status: "building",
     },
     {
-      id: "jenkins-queued",
-      label: "Build queued",
-      status: "building",
-    },
-    {
-      id: "jenkins-running",
-      label: "Building application",
-      status: "building",
-    },
-    {
-      id: "image-pushed",
-      label: "Application packaged",
-      status: "building",
-    },
-    {
-      id: "image-tag-received",
-      label: "Release ready",
+      id: "gitops-config",
+      label: "GitOps Configuration",
       status: "deploying",
     },
     {
-      id: "gitops-committed",
-      label: "Configuration applied",
+      id: "cloud-rollout",
+      label: "Rollout Cluster & Pod Ready",
       status: "deploying",
     },
     {
-      id: "argocd-sync-started",
-      label: "Deploying to cloud",
-      status: "deploying",
+      id: "live-serving",
+      label: "Live & Serving",
+      status: "running",
     },
-    {
-      id: "argocd-synced",
-      label: "Deployment verified",
-      status: "deploying",
-    },
-    { id: "pods-ready", label: "Application healthy", status: "running" },
-    { id: "live", label: "Live", status: "running" },
   ]
 }
 
@@ -153,6 +130,7 @@ export const toDeploymentStatusDTO = (
     | "manifestPushed"
     | "argocdSynced"
     | "failureReason"
+    | "commitSha"
     | "startedAt"
     | "completedAt"
   >
@@ -164,6 +142,7 @@ export const toDeploymentStatusDTO = (
     manifestPushed: deployment.manifestPushed,
     argocdSynced: deployment.argocdSynced,
     failureReason: deployment.failureReason ?? null,
+    commitSha: deployment.commitSha ?? null,
     startedAt: deployment.startedAt ? deployment.startedAt.toISOString() : null,
     completedAt: deployment.completedAt
       ? deployment.completedAt.toISOString()
@@ -214,18 +193,18 @@ export const DEPLOY_EVENT_LABELS: Record<string, string> = {
 
 export const DEPLOY_EVENT_STEP_INDEX: Record<string, number> = {
   QUEUED: 0,
-  BUILD_STARTED: 2,
-  JENKINS_JOB_TRIGGERED: 3,
-  JENKINS_BUILD_QUEUED: 4,
-  JENKINS_BUILD_RUNNING: 5,
-  JENKINS_BUILD_COMPLETED: 6,
-  IMAGE_TAG_RECEIVED: 7,
-  GITOPS_COMMIT_CREATED: 8,
-  MANIFEST_PUSHED: 6,
-  ARGOCD_SYNC_STARTED: 9,
-  ARGOCD_SYNCED: 10,
-  POD_READY: 11,
-  DEPLOY_COMPLETED: 12,
+  BUILD_STARTED: 0,
+  JENKINS_JOB_TRIGGERED: 1,
+  JENKINS_BUILD_QUEUED: 1,
+  JENKINS_BUILD_RUNNING: 1,
+  JENKINS_BUILD_COMPLETED: 1,
+  IMAGE_TAG_RECEIVED: 2,
+  GITOPS_COMMIT_CREATED: 3,
+  MANIFEST_PUSHED: 3,
+  ARGOCD_SYNC_STARTED: 4,
+  ARGOCD_SYNCED: 4,
+  POD_READY: 4,
+  DEPLOY_COMPLETED: 5,
 }
 
 export type CurrentDeployStepDTO = {

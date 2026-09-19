@@ -58,14 +58,14 @@ describe("DeployStepTimeline", () => {
     globalThis.fetch = originalFetch
   })
 
-  it("renders 13 steps from canonical timeline items", () => {
+  it("renders 6 steps from canonical timeline items", () => {
     globalThis.fetch = mockFetch()
 
     const view = render(
       <DeployStepTimeline deployId="deploy-1" status="queued" />
     )
     const items = view.getAllByRole("listitem")
-    expect(items.length).toBe(13)
+    expect(items.length).toBe(6)
   })
 
   it("marks each step with status text (not color-only)", () => {
@@ -80,7 +80,7 @@ describe("DeployStepTimeline", () => {
       ...view.queryAllByText("In progress"),
       ...view.queryAllByText("Pending"),
     ]
-    expect(allStatusTexts.length).toBe(13)
+    expect(allStatusTexts.length).toBe(6)
   })
 
   it("sets aria-current=step on the active step", () => {
@@ -134,8 +134,8 @@ describe("DeployStepTimeline", () => {
       expect(view.getAllByText("Failed").length).toBeGreaterThanOrEqual(1)
     })
     const items = view.getAllByRole("listitem")
-    expect(items[2]).toHaveTextContent("Failed")
-    expect(items[6]).toHaveTextContent("Skipped")
+    expect(items[0]).toHaveTextContent("Failed")
+    expect(items[1]).toHaveTextContent("Skipped")
   })
 
   it("infers runtime-only attempts from raw events", async () => {
@@ -149,7 +149,7 @@ describe("DeployStepTimeline", () => {
         }
       }
       return {
-        data: [{ id: "queued" }],
+        data: [{ id: "queued-init" }],
         events: [
           {
             id: "evt-1",
@@ -167,11 +167,11 @@ describe("DeployStepTimeline", () => {
     )
 
     await waitFor(() => {
-      expect(view.getAllByText("Skipped").length).toBe(8)
+      expect(view.getAllByText("Skipped").length).toBe(2)
     })
   })
 
-  it("shows degraded readiness notes on steps 10 through 12", async () => {
+  it("shows degraded readiness notes on step 4", async () => {
     globalThis.fetch = mockFetch((url) => {
       if (url.includes("/status/")) {
         return {
@@ -181,23 +181,20 @@ describe("DeployStepTimeline", () => {
           completedAt: null,
         }
       }
-      return { data: [{ id: "queued" }], events: [] }
+      return { data: [{ id: "queued-init" }], events: [] }
     })
 
     const view = render(
       <DeployStepTimeline deployId="deploy-1" status="running" />
     )
 
-    for (const index of [9, 10, 11]) {
-      const trigger = view.getAllByRole("button")[index]
-      fireEvent.click(trigger!)
-      await waitFor(() => {
-        expect(
-          view.getByText("Health verification in progress")
-        ).toBeInTheDocument()
-      })
-      fireEvent.click(trigger!)
-    }
+    const trigger = view.getAllByRole("button")[4]
+    fireEvent.click(trigger!)
+    await waitFor(() => {
+      expect(
+        view.getByText("Health verification in progress")
+      ).toBeInTheDocument()
+    })
   })
 
   it("does not show live URL before DEPLOY_COMPLETED", async () => {
@@ -211,7 +208,7 @@ describe("DeployStepTimeline", () => {
         }
       }
       return {
-        data: [{ id: "queued" }],
+        data: [{ id: "queued-init" }],
         events: [
           {
             id: "evt-1",
@@ -232,7 +229,7 @@ describe("DeployStepTimeline", () => {
       />
     )
 
-    await waitFor(() => expect(view.getAllByRole("listitem")).toHaveLength(13))
+    await waitFor(() => expect(view.getAllByRole("listitem")).toHaveLength(6))
     expect(view.queryByText("Open live deployment →")).not.toBeInTheDocument()
   })
 
@@ -543,10 +540,9 @@ describe("DeployStepTimeline", () => {
     )
 
     expect(view.getByText("Template ready")).toBeInTheDocument()
-    expect(view.getByText("Configuration applied")).toBeInTheDocument()
-    expect(view.queryByText("Jenkins building")).not.toBeInTheDocument()
-    expect(view.queryByText("Waiting for monitor")).not.toBeInTheDocument()
-    // 1 synthetic Base Image Ready + 5 post-build steps = 6 items
-    expect(view.getAllByRole("listitem").length).toBe(6)
+    expect(view.getByText("GitOps Configuration")).toBeInTheDocument()
+    expect(view.queryByText("Jenkins Build & Scan")).not.toBeInTheDocument()
+    // 1 Queued + 1 synthetic Template Ready + 3 post-build steps = 5 items
+    expect(view.getAllByRole("listitem").length).toBe(5)
   })
 })

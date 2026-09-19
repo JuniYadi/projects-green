@@ -30,8 +30,7 @@ import type {
   StackSummaryDTO,
 } from "@/modules/deploy/deploy-monitor.dto"
 import type { DeployLogScope } from "@/modules/deploy/deploy.types"
-import { DeployStepTimeline } from "@/modules/deploy/ui/deploy-timeline"
-import { LogsPanel } from "@/modules/deploy/ui/logs-panel"
+import { DeploymentSplitWorkspace } from "./deployment-split-workspace"
 
 type AppMonitorProps = {
   stack: StackSummaryDTO
@@ -324,36 +323,17 @@ export function AppMonitor({
         </Card>
       )}
       {deployId ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{tMonitor.statusTitle}</CardTitle>
-            <CardDescription>{tMonitor.statusDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <section className="space-y-2">
-              <h3 className="text-sm font-medium">{tMonitor.timelineTitle}</h3>
-              <DeployStepTimeline
-                deployId={deployId}
-                status={status}
-                liveDomain={targetDomain ?? undefined}
-                skipBuildSteps={stack.sourceType === "TEMPLATE"}
-                onRetry={status === "failed" ? onRetry : undefined}
-                locale={locale}
-              />
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="text-sm font-medium">{tMonitor.logsTitle}</h3>
-              <LogsPanel
-                deployId={deployId}
-                status={status}
-                scope={logScope}
-                attempt={deployment ? deployment.attempt : 1}
-                onScopeChange={onLogScopeChange}
-              />
-            </section>
-          </CardContent>
-        </Card>
+        <DeploymentSplitWorkspace
+          stack={stack}
+          deployment={deployment}
+          deployId={deployId}
+          status={status}
+          logScope={logScope}
+          onLogScopeChange={onLogScopeChange}
+          onRetry={onRetry}
+          liveDomain={targetDomain ?? undefined}
+          locale={locale}
+        />
       ) : (
         <Card>
           <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">

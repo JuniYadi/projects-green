@@ -115,19 +115,12 @@ describe("monitoringRoutes", () => {
     }
     expect(body.ok).toBe(true)
     expect(body.data.map((item) => item.id)).toEqual([
-      "queued",
-      "monitor-wait",
-      "monitor-picked-up",
-      "jenkins-triggered",
-      "jenkins-queued",
-      "jenkins-running",
-      "image-pushed",
-      "image-tag-received",
-      "gitops-committed",
-      "argocd-sync-started",
-      "argocd-synced",
-      "pods-ready",
-      "live",
+      "queued-init",
+      "jenkins-build",
+      "artifacts-scan",
+      "gitops-config",
+      "cloud-rollout",
+      "live-serving",
     ])
     expect(Array.isArray(body.events)).toBe(true)
   })
