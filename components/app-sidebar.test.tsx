@@ -148,25 +148,34 @@ describe("resolveSidebarMenu", () => {
     expect(projects[0]?.name).toBe("Back to Console")
     expect(navMain.map((item) => item.title)).toEqual([
       "AI Agents",
+      "Workflow Canvas",
       "Knowledge Base",
       "BYOK Providers",
       "API Connections",
     ])
-    expect(navMain[0]?.isActive).toBe(true)
+    expect(navMain.find((item) => item.title === "AI Agents")?.isActive).toBe(
+      true
+    )
+    expect(
+      navMain.find((item) => item.title === "Workflow Canvas")?.isActive
+    ).toBe(false)
   })
 
   it("returns AI Studio context for /console/ai/agents/[id]/canvas", () => {
     const { navMain, projects, navMainLabel } = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/ai/agents/wf-123/canvas",
+      pathname: "/console/ai/agents/wf_123/canvas",
       locale: "en",
     })
 
     expect(navMainLabel).toBe("AI Studio")
     expect(projects[0]?.name).toBe("Back to Console")
     expect(
-      navMain.find((item) => item.title === "AI Agents")?.isActive
+      navMain.find((item) => item.title === "Workflow Canvas")?.isActive
     ).toBe(true)
+    expect(navMain.find((item) => item.title === "AI Agents")?.isActive).toBe(
+      false
+    )
   })
 
   it("includes Events link in app-hosting context", () => {
@@ -510,7 +519,7 @@ describe("resolveSidebarMenu", () => {
     )
     expect(
       navMain.find((item) => item.title === "AI & Bot Builder")?.url
-    ).toContain("/console/whatsapp/workflows")
+    ).toContain("/console/ai/agents/new/canvas")
     expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
   })
   it("marks pricing active for its routes", () => {

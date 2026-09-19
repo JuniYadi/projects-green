@@ -50,6 +50,7 @@ import {
   Users as UsersIcon,
   EnvelopeSimple as EnvelopeSimpleIcon,
   PlugsConnected as PlugsConnectedIcon,
+  TreeStructure as TreeStructureIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 import { useWhatsAppOnboardingStore } from "@/modules/whatsapp/onboarding/whatsapp-onboarding.store"
@@ -901,7 +902,7 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         {
           title: "AI & Bot Builder",
           url: localizePathname({
-            pathname: "/console/whatsapp/workflows",
+            pathname: "/console/ai/agents/new/canvas",
             locale,
           }),
           icon: <RobotIcon />,
@@ -1011,7 +1012,20 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
           locale,
         }),
         icon: <RobotIcon />,
-        isActive: startsWithRoute(path, "/console/ai/agents"),
+        isActive:
+          startsWithRoute(path, "/console/ai/agents") &&
+          !path.includes("/canvas"),
+      },
+      {
+        title: "Workflow Canvas",
+        url: localizePathname({
+          pathname: "/console/ai/agents/new/canvas",
+          locale,
+        }),
+        icon: <TreeStructureIcon />,
+        isActive:
+          startsWithRoute(path, "/console/ai/agents") &&
+          path.includes("/canvas"),
       },
       {
         title: "Knowledge Base",
