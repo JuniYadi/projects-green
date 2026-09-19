@@ -1,7 +1,11 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { releaseManagedStock } from "@/modules/deploy/app-managed-stock.service"
-import { resolvePlatformContract } from "@/modules/framework-detection/platform-runtime-contract"
+import {
+  PLATFORM_RUNTIME_CONTRACTS,
+  resolvePlatformContract,
+} from "@/modules/framework-detection/platform-runtime-contract"
+import { generateRandomLaravelAppKey } from "@/modules/deploy/environment-vars"
 import { resolveDefaultAppHostingClusterId } from "@/modules/deploy/cluster-integration.service"
 import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
 import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
@@ -132,28 +136,81 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       ? null
       : new Prisma.Decimal(String(input.hourlyCost))
 
-  const sanitizedInitialEnvVars = Array.isArray(input.envVars)
-    ? input.envVars.map((item) => {
-        if (typeof item === "object" && item !== null && "key" in item) {
-          const entry = item as Record<string, unknown>
-          if (
-            entry.type === "secret_ref" ||
-            entry.type === "secret_shared_ref"
-          ) {
-            return entry
-          }
-          const { value: _value, ...rest } = entry
-          return {
-            ...rest,
-            value: "",
-            type: entry.type ?? "secret_ref",
-            isStoredSecret: true,
-            masked: true,
-          }
-        }
-        return item
-      })
+  const isLaravel =
+    (input.framework ?? "").toLowerCase().includes("laravel") ||
+    (input.framework ?? "").toLowerCase().includes("php")
+
+  // Collect input envVars and seed missing platform contract tunables / defaults
+  const mergedInputEnvVars: Array<Record<string, unknown>> = Array.isArray(
+    input.envVars
+  )
+    ? (input.envVars as Array<Record<string, unknown>>)
     : []
+
+  const providedKeys = new Set(
+    mergedInputEnvVars
+      .map((item) => (typeof item?.key === "string" ? item.key.trim() : ""))
+      .filter(Boolean)
+  )
+
+  // Seed contract tunables for frameworks like Laravel
+  if (isLaravel) {
+    const contract = resolvePlatformContract(input.framework)
+    for (const tunable of contract.tunables) {
+      if (!providedKeys.has(tunable.key)) {
+        mergedInputEnvVars.push({
+          key: tunable.key,
+          value: String(tunable.default),
+          type: "plain",
+        })
+        providedKeys.add(tunable.key)
+      }
+    }
+
+    // Seed Laravel essentials if missing
+    if (!providedKeys.has("APP_ENV")) {
+      mergedInputEnvVars.push({
+        key: "APP_ENV",
+        value: "production",
+        type: "plain",
+      })
+      providedKeys.add("APP_ENV")
+    }
+    if (!providedKeys.has("APP_DEBUG")) {
+      mergedInputEnvVars.push({
+        key: "APP_DEBUG",
+        value: "false",
+        type: "plain",
+      })
+      providedKeys.add("APP_DEBUG")
+    }
+    if (!providedKeys.has("APP_KEY")) {
+      mergedInputEnvVars.push({
+        key: "APP_KEY",
+        value: generateRandomLaravelAppKey(),
+        type: "secret",
+      })
+      providedKeys.add("APP_KEY")
+    }
+  }
+
+  const sanitizedInitialEnvVars = mergedInputEnvVars.map((item) => {
+    if (typeof item === "object" && item !== null && "key" in item) {
+      const entry = item as Record<string, unknown>
+      if (entry.type === "secret_ref" || entry.type === "secret_shared_ref") {
+        return entry
+      }
+      const { value: _value, ...rest } = entry
+      return {
+        ...rest,
+        value: "",
+        type: entry.type ?? "secret_ref",
+        isStoredSecret: true,
+        masked: true,
+      }
+    }
+    return item
+  })
 
   const envVarsJson = sanitizedInitialEnvVars as Prisma.InputJsonValue
 
@@ -270,22 +327,19 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
   // Determine env from input or slug:
   // - Suffix "-staging" -> "staging"
   // - Suffix "-dev" -> "dev"
-  // - Suffix "-prod" or Marketplace TEMPLATE -> "prod"
-  // - Other non-suffixed source repos -> "dev" default
+  // - Suffix "-prod", Marketplace TEMPLATE, or default non-suffixed -> "prod"
   const env =
     input.environment ??
     (stack.slug.endsWith("-staging")
       ? "staging"
       : stack.slug.endsWith("-dev")
         ? "dev"
-        : stack.slug.endsWith("-prod") || input.sourceType === "TEMPLATE"
-          ? "prod"
-          : "dev")
+        : "prod")
 
   // If envVars contains plain key-value pairs (or unreferenced secrets), write them into HashiCorp Vault
-  if (Array.isArray(input.envVars) && input.envVars.length > 0) {
+  if (mergedInputEnvVars.length > 0) {
     const plainSecrets: Record<string, string> = {}
-    for (const item of input.envVars) {
+    for (const item of mergedInputEnvVars) {
       if (
         typeof item === "object" &&
         item !== null &&
