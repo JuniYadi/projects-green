@@ -22,64 +22,42 @@ const agentSimulateBodySchema = t.Object({
   mediaType: t.Optional(t.String()),
 })
 
+const handleSimulate = async ({
+  body,
+  set,
+}: {
+  body: AgentSimulateInput
+  set: { status?: number | string }
+}) => {
+  const auth = await requireConsoleOrgAuth()
+  if ("error" in auth) {
+    set.status = auth.status
+    return { ok: false, error: auth.error }
+  }
+
+  const result = await simulateAgentInference(body, {
+    orgId: auth.orgId,
+    userId: auth.userId,
+  })
+
+  if (!result.ok) {
+    set.status = result.status
+    return {
+      ok: false,
+      error: result.error,
+      message: result.message,
+    }
+  }
+
+  return result
+}
+
 export function createConsoleAiSimulateRoutes() {
   return new Elysia({ prefix: "/console/ai/simulate" })
-    .post(
-      "/",
-      async ({ body, set }) => {
-        const auth = await requireConsoleOrgAuth()
-        if ("error" in auth) {
-          set.status = auth.status
-          return { ok: false, error: auth.error }
-        }
-
-        const result = await simulateAgentInference(
-          body as AgentSimulateInput,
-          { orgId: auth.orgId, userId: auth.userId }
-        )
-
-        if (!result.ok) {
-          set.status = result.status
-          return {
-            ok: false,
-            error: result.error,
-            message: result.message,
-          }
-        }
-
-        return result
-      },
-      {
-        body: agentSimulateBodySchema,
-      }
-    )
-    .post(
-      "",
-      async ({ body, set }) => {
-        const auth = await requireConsoleOrgAuth()
-        if ("error" in auth) {
-          set.status = auth.status
-          return { ok: false, error: auth.error }
-        }
-
-        const result = await simulateAgentInference(
-          body as AgentSimulateInput,
-          { orgId: auth.orgId, userId: auth.userId }
-        )
-
-        if (!result.ok) {
-          set.status = result.status
-          return {
-            ok: false,
-            error: result.error,
-            message: result.message,
-          }
-        }
-
-        return result
-      },
-      {
-        body: agentSimulateBodySchema,
-      }
-    )
+    .post("/", handleSimulate, {
+      body: agentSimulateBodySchema,
+    })
+    .post("", handleSimulate, {
+      body: agentSimulateBodySchema,
+    })
 }

@@ -95,7 +95,47 @@ describe("Console AI Simulate Route (/console/ai/simulate)", () => {
     app = createConsoleAiSimulateRoutes()
   })
 
-  it("handles POST /console/ai/simulate successfully", async () => {
+  it("handles unauthenticated requests", async () => {
+    mockAuth.mockResolvedValueOnce({
+      user: null as never,
+      organizationId: null as never,
+    })
+
+    const res = await app.handle(
+      new Request("http://localhost/console/ai/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentProfileId: "agent_cs",
+          message: "Halo",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(401)
+  })
+
+  it("handles agent not found error", async () => {
+    mockPrisma.aiAgentProfile.findFirst.mockResolvedValueOnce(null)
+
+    const res = await app.handle(
+      new Request("http://localhost/console/ai/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentProfileId: "agent_missing",
+          message: "Halo",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(404)
+    const json = (await res.json()) as { ok: boolean; error: string }
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("NOT_FOUND")
+  })
+
+  it("handles POST /console/ai/simulate with trailing slash", async () => {
     mockPrisma.aiAgentProfile.findFirst.mockResolvedValueOnce({
       id: "agent_cs",
       organizationId: "org_console",
@@ -107,7 +147,7 @@ describe("Console AI Simulate Route (/console/ai/simulate)", () => {
     })
 
     const res = await app.handle(
-      new Request("http://localhost/console/ai/simulate", {
+      new Request("http://localhost/console/ai/simulate/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

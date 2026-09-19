@@ -140,7 +140,7 @@ describe("agent-simulation.service", () => {
           isActive: true,
         })),
         resolveProvider: mock(async () => ({
-          providerType: "MANAGED",
+          providerType: "MANAGED" as const,
           baseUrl: null,
           defaultModel: "gpt-4o",
           apiKey: "key",
@@ -177,7 +177,7 @@ describe("agent-simulation.service", () => {
           isActive: true,
         })),
         resolveProvider: mock(async () => ({
-          providerType: "MANAGED",
+          providerType: "MANAGED" as const,
           baseUrl: null,
           defaultModel: "gpt-4o",
           apiKey: "key",

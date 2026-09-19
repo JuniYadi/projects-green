@@ -67,7 +67,7 @@ const { resetSimulationRateLimit } = await import(
 )
 
 describe("Universal AI Agent Simulation API (agent-simulate.route)", () => {
-  let app: Elysia
+  let app: { handle: (req: Request) => Promise<Response> }
 
   beforeEach(() => {
     mockAuth.mockReset()
@@ -115,8 +115,8 @@ describe("Universal AI Agent Simulation API (agent-simulate.route)", () => {
 
   it("rejects unauthenticated requests", async () => {
     mockAuth.mockResolvedValueOnce({
-      user: null,
-      organizationId: null,
+      user: null as never,
+      organizationId: null as never,
     })
 
     const res = await app.handle(
