@@ -12,8 +12,13 @@ import {
   Lightning,
   Trash,
   Robot,
+  ArrowSquareOut,
+  Headset,
+  CreditCard,
 } from "@phosphor-icons/react"
-import type { WorkflowNodeType } from "@/modules/whatsapp/workflow/workflow.schema"
+import type {
+  WorkflowNodeType,
+} from "@/modules/whatsapp/workflow/workflow.schema"
 
 export type WorkflowCustomNodeData = {
   id: string
@@ -30,6 +35,7 @@ const nodeTypeDetails: Record<
     label: string
     color: string
     badgeClass: string
+    subBadge?: string
   }
 > = {
   trigger: {
@@ -37,6 +43,27 @@ const nodeTypeDetails: Record<
     label: "Trigger",
     color: "border-amber-500/50 bg-amber-500/10 text-amber-500",
     badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  },
+  channel_redirect: {
+    icon: ArrowSquareOut,
+    label: "Pengalihan Web/Chat",
+    color: "border-emerald-500/50 bg-emerald-500/10 text-emerald-400",
+    badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    subBadge: "Cost-Saving Offload",
+  },
+  cs_ticket_escalate: {
+    icon: Headset,
+    label: "Eskalasi Tiket & Telegram",
+    color: "border-orange-500/50 bg-orange-500/10 text-orange-400",
+    badgeClass: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+    subBadge: "Human Handover",
+  },
+  payment_link_dispatch: {
+    icon: CreditCard,
+    label: "Kirim Link Pembayaran",
+    color: "border-teal-500/50 bg-teal-500/10 text-teal-400",
+    badgeClass: "bg-teal-500/20 text-teal-300 border-teal-500/30",
+    subBadge: "Single Utility",
   },
   send_message: {
     icon: ChatCircleText,
@@ -47,8 +74,9 @@ const nodeTypeDetails: Record<
   prompt_input: {
     icon: Question,
     label: "Tanya Input",
-    color: "border-emerald-500/50 bg-emerald-500/10 text-emerald-400",
-    badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    color: "border-zinc-500/50 bg-zinc-500/10 text-zinc-400",
+    badgeClass: "bg-zinc-500/20 text-zinc-300 border-zinc-500/30",
+    subBadge: "Deprecated",
   },
   ai_generate: {
     icon: Brain,
@@ -89,6 +117,18 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
   let previewText = ""
   if (type === "send_message") {
     previewText = (nodeData.config?.text as string) || "Pesan WhatsApp..."
+  } else if (type === "channel_redirect") {
+    const ch = (nodeData.config?.targetChannel as string) || "WEB_LIVECHAT"
+    const url = (nodeData.config?.redirectUrl as string) || "https://..."
+    previewText = `Offload -> ${ch} (${url})`
+  } else if (type === "cs_ticket_escalate") {
+    const dept = (nodeData.config?.department as string) || "SUPPORT"
+    const subj = (nodeData.config?.subject as string) || "Kendala Pengguna"
+    previewText = `Tiket ${dept}: ${subj}`
+  } else if (type === "payment_link_dispatch") {
+    const gw = (nodeData.config?.gateway as string) || "MANUAL"
+    const amtVar = (nodeData.config?.amountVariable as string) || "amount"
+    previewText = `Bayar via ${gw} (var: ${amtVar})`
   } else if (type === "prompt_input") {
     previewText = (nodeData.config?.question as string) || "Pertanyaan..."
   } else if (type === "ai_generate") {
@@ -99,7 +139,9 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
     const right = (nodeData.config?.rightOperand as string) || "val"
     previewText = `IF ${left} ${op} ${right}`
   } else if (type === "http_request") {
-    previewText = `${(nodeData.config?.method as string) || "GET"} ${(nodeData.config?.url as string) || "https://api..."}`
+    const m = (nodeData.config?.method as string) || "GET"
+    const u = (nodeData.config?.url as string) || "https://api..."
+    previewText = `${m} ${u}`
   } else if (type === "send_interactive") {
     previewText = (nodeData.config?.bodyText as string) || "Pilihan tombol..."
   }
@@ -142,7 +184,7 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
             <span
               className={`py-0.2 inline-block rounded border px-1 text-[9px] font-medium tracking-wider uppercase ${details.badgeClass}`}
             >
-              {details.label}
+              {details.subBadge || details.label}
             </span>
           </div>
         </div>

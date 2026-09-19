@@ -8917,6 +8917,78 @@ export const enMessages: AppMessages = {
     settings: "Settings",
     triggerSettings: "Trigger Settings",
     whatsappDevice: "WhatsApp Device",
+    costSavingNoticeTitle: "Cost-Saving Handover",
+    costSavingNoticeDescription:
+      "Save Meta WhatsApp fees by offloading long forms to Web LiveChat " +
+      "or CS.",
+    costSavingOffloadBadge: "Cost-Saving Offload",
+    humanHandoverBadge: "Human Handover",
+    singleUtilityBadge: "Single Utility",
+    channelRedirectTitle: "Web/Chat Redirect",
+    channelRedirectOffloadNote:
+      "Cost-Saving Offload: Redirect customers to quota-free Web LiveChat " +
+      "or Form to avoid Meta conversation charges.",
+    channelRedirectTargetChannelLabel: "Target Channel",
+    channelRedirectTargetChannelPlaceholder: "Select Channel",
+    channelRedirectWebLiveChat: "Web LiveChat (Zero Meta Fee)",
+    channelRedirectWebForm: "Web Form (Online Form)",
+    channelRedirectTelegram: "Telegram Bot / Channel",
+    channelRedirectUrlLabel: "Redirect URL",
+    channelRedirectUrlPlaceholder: "https://chat.example.com/live",
+    channelRedirectMessageLabel: "Intro Message",
+    channelRedirectMessagePlaceholder:
+      "Please continue at our web link below...",
+    channelRedirectButtonTextLabel: "CTA Button Text",
+    channelRedirectButtonTextPlaceholder: "Continue on Web",
+    channelRedirectIncludeContextLabel: "Include Phone & Session Context",
+    channelRedirectIncludeContextHint: "Appends ?phone=...&sessionId=...",
+    csTicketEscalateTitle: "CS Ticket & Telegram Alert",
+    csTicketEscalateHandoverNote:
+      "Human Handover: Creates support ticket in console and alerts CS " +
+      "via Telegram.",
+    csTicketDepartmentLabel: "Department",
+    csTicketDepartmentPlaceholder: "SUPPORT",
+    csTicketPriorityLabel: "Priority",
+    csTicketPriorityPlaceholder: "Select Priority",
+    csTicketPriorityLow: "Low",
+    csTicketPriorityNormal: "Normal",
+    csTicketPriorityHigh: "High",
+    csTicketPriorityUrgent: "Urgent",
+    csTicketSubjectLabel: "Ticket Subject",
+    csTicketSubjectPlaceholder: "Payment issue {{variables.order_id}}",
+    csTicketDescriptionLabel: "Issue Description",
+    csTicketDescriptionPlaceholder: "Customer inquiry details...",
+    csTicketTelegramNotifyLabel: "Telegram CS Alert",
+    csTicketTelegramNotifyHint: "Send alert to CS Telegram admin group",
+    csTicketTelegramChatIdLabel: "Telegram Chat ID (Optional)",
+    csTicketTelegramChatIdPlaceholder: "@cs_group or -100123456",
+    csTicketAutoReplyLabel: "Auto-Reply Message",
+    csTicketAutoReplyPlaceholder:
+      "Support ticket #{{variables.ticketNumber}} created...",
+    paymentLinkDispatchTitle: "Send Payment Link",
+    paymentLinkDispatchUtilityNote:
+      "Single Utility: Sends a single utility payment link button.",
+    paymentLinkGatewayLabel: "Payment Gateway",
+    paymentLinkGatewayPlaceholder: "Select Gateway",
+    paymentLinkGatewayMidtrans: "Midtrans Snap",
+    paymentLinkGatewayXendit: "Xendit Invoice",
+    paymentLinkGatewayManual: "Manual / Custom",
+    paymentLinkAmountVariableLabel: "Amount Variable",
+    paymentLinkAmountVariablePlaceholder: "total_amount",
+    paymentLinkOrderIdVariableLabel: "Order ID Variable",
+    paymentLinkOrderIdVariablePlaceholder: "order_id",
+    paymentLinkPaymentUrlLabel: "Custom Payment URL (Optional)",
+    paymentLinkPaymentUrlPlaceholder:
+      "https://pay.example.com/checkout?orderId={{variables.order_id}}",
+    paymentLinkButtonTitleLabel: "CTA Button Title",
+    paymentLinkButtonTitlePlaceholder: "Pay Now",
+    paymentLinkFallbackTextLabel: "Payment Message Text",
+    paymentLinkFallbackTextPlaceholder:
+      "Please complete your payment via the link below...",
+    promptInputDeprecatedBadge: "(Deprecated)",
+    promptInputDeprecatedWarning:
+      "This node is deprecated: Repeated inputs inside WhatsApp trigger " +
+      "Meta fees. Consider switching to Web/Chat Redirect.",
   },
   pDeployGitDeployAiAgentSummaryCard: {
     balanceAvailable: "available",

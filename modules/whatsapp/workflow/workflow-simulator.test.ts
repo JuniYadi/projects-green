@@ -299,4 +299,62 @@ describe("workflow simulator", () => {
     expect(session.currentNodeId).toBeNull()
     expect(session.history.at(-1)?.sender).toBe("system")
   })
+
+  it(
+    "simulates channel_redirect, cs_ticket_escalate, and payment_link",
+    () => {
+      const workflow = makeWorkflow(
+        [
+          node("redir", "channel_redirect", {
+            targetChannel: "WEB_LIVECHAT",
+            redirectUrl: "https://chat.example.com",
+            message: "Lanjut di web",
+            buttonText: "Buka",
+          }),
+          node("ticket", "cs_ticket_escalate", {
+            department: "SUPPORT",
+            priority: "HIGH",
+            subject: "Kendala",
+            notifyTelegram: true,
+            autoReplyMessage: "Tiket #{{variables.ticketNumber}} dibuat",
+          }),
+          node("pay", "payment_link_dispatch", {
+            gateway: "MIDTRANS",
+            amountVariable: "total",
+            orderIdVariable: "orderId",
+            fallbackText: "Bayar Rp {{variables.total}}",
+            buttonTitle: "Bayar",
+          }),
+        ],
+        [
+          edge("redir-ticket", "redir", "ticket"),
+          edge("ticket-pay", "ticket", "pay"),
+        ]
+      )
+
+      const initial = createSimulatorSession(workflow)
+      initial.variables = { total: "150000", orderId: "ORD-123" }
+
+      const session = stepSimulatorSession(initial, workflow)
+
+      const redirOutput = session.stepOutputs["redir"] as
+        | { offloaded?: boolean }
+        | undefined
+      expect(redirOutput?.offloaded).toBe(true)
+      expect(session.variables["ticketNumber"]).toMatch(/^TCK-SIM-/)
+      expect(session.variables["paymentUrl"]).toContain("ORD-123")
+      expect(
+        session.history.some((m) =>
+          m.text.includes("[Offload ke WEB_LIVECHAT]")
+        )
+      ).toBe(true)
+      expect(
+        session.history.some((m) => m.text.includes("Tiket #TCK-SIM-"))
+      ).toBe(true)
+      expect(
+        session.history.some((m) => m.text.includes("Bayar Rp 150000"))
+      ).toBe(true)
+      expect(session.isCompleted).toBe(true)
+    }
+  )
 })

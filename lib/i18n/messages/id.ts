@@ -9005,6 +9005,80 @@ export const idMessages: AppMessages = {
     settings: "Pengaturan",
     triggerSettings: "Pengaturan Pemicu",
     whatsappDevice: "Perangkat WhatsApp",
+    costSavingNoticeTitle: "Cost-Saving Handover",
+    costSavingNoticeDescription:
+      "Hemat biaya WhatsApp Meta dengan mengalihkan form panjang ke Web " +
+      "LiveChat atau CS.",
+    costSavingOffloadBadge: "Cost-Saving Offload",
+    humanHandoverBadge: "Human Handover",
+    singleUtilityBadge: "Single Utility",
+    channelRedirectTitle: "Pengalihan Web/Chat",
+    channelRedirectOffloadNote:
+      "Cost-Saving Offload: Alihkan pelanggan ke Web LiveChat atau Form " +
+      "bebas kuota untuk hemat biaya Meta.",
+    channelRedirectTargetChannelLabel: "Saluran Tujuan",
+    channelRedirectTargetChannelPlaceholder: "Pilih Saluran",
+    channelRedirectWebLiveChat: "Web LiveChat (Bebas Biaya Meta)",
+    channelRedirectWebForm: "Web Form (Formulir Web)",
+    channelRedirectTelegram: "Telegram Bot / Channel",
+    channelRedirectUrlLabel: "URL Pengalihan",
+    channelRedirectUrlPlaceholder: "https://chat.example.com/live",
+    channelRedirectMessageLabel: "Pesan Pengantar",
+    channelRedirectMessagePlaceholder:
+      "Silakan lanjutkan di tautan web kami berikut...",
+    channelRedirectButtonTextLabel: "Teks Tombol CTA",
+    channelRedirectButtonTextPlaceholder: "Lanjutkan di Web",
+    channelRedirectIncludeContextLabel: "Sertakan Konteks Telepon & Sesi",
+    channelRedirectIncludeContextHint:
+      "Tambahkan parameter ?phone=...&sessionId=...",
+    csTicketEscalateTitle: "Eskalasi Tiket & Telegram",
+    csTicketEscalateHandoverNote:
+      "Human Handover: Buat tiket bantuan di console dan kirim alert ke " +
+      "Telegram CS.",
+    csTicketDepartmentLabel: "Departemen",
+    csTicketDepartmentPlaceholder: "SUPPORT",
+    csTicketPriorityLabel: "Prioritas",
+    csTicketPriorityPlaceholder: "Pilih Prioritas",
+    csTicketPriorityLow: "Rendah",
+    csTicketPriorityNormal: "Normal",
+    csTicketPriorityHigh: "Tinggi",
+    csTicketPriorityUrgent: "Mendesak",
+    csTicketSubjectLabel: "Subjek Tiket",
+    csTicketSubjectPlaceholder: "Kendala Pembayaran {{variables.order_id}}",
+    csTicketDescriptionLabel: "Deskripsi Kendala",
+    csTicketDescriptionPlaceholder: "Rincian kendala pelanggan...",
+    csTicketTelegramNotifyLabel: "Notifikasi Telegram Admin",
+    csTicketTelegramNotifyHint: "Kirim alert instan ke grup Telegram tim CS",
+    csTicketTelegramChatIdLabel: "Telegram Chat ID (Opsional)",
+    csTicketTelegramChatIdPlaceholder: "@grup_cs atau -100123456",
+    csTicketAutoReplyLabel: "Pesan Balasan Otomatis",
+    csTicketAutoReplyPlaceholder:
+      "Tiket bantuan #{{variables.ticketNumber}} telah dibuat...",
+    paymentLinkDispatchTitle: "Kirim Link Pembayaran",
+    paymentLinkDispatchUtilityNote:
+      "Single Utility: Mengirim link pembayaran tunggal berbiaya utilitas " +
+      "rendah Meta.",
+    paymentLinkGatewayLabel: "Payment Gateway",
+    paymentLinkGatewayPlaceholder: "Pilih Gateway",
+    paymentLinkGatewayMidtrans: "Midtrans Snap",
+    paymentLinkGatewayXendit: "Xendit Invoice",
+    paymentLinkGatewayManual: "Manual / Kustom",
+    paymentLinkAmountVariableLabel: "Variabel Nominal",
+    paymentLinkAmountVariablePlaceholder: "total_amount",
+    paymentLinkOrderIdVariableLabel: "Variabel Order ID",
+    paymentLinkOrderIdVariablePlaceholder: "order_id",
+    paymentLinkPaymentUrlLabel: "URL Pembayaran Kustom (Opsional)",
+    paymentLinkPaymentUrlPlaceholder:
+      "https://pay.example.com/checkout?orderId={{variables.order_id}}",
+    paymentLinkButtonTitleLabel: "Judul Tombol CTA",
+    paymentLinkButtonTitlePlaceholder: "Bayar Sekarang",
+    paymentLinkFallbackTextLabel: "Teks Pesan Pembayaran",
+    paymentLinkFallbackTextPlaceholder:
+      "Silakan selesaikan pembayaran via tautan berikut...",
+    promptInputDeprecatedBadge: "(Deprecated)",
+    promptInputDeprecatedWarning:
+      "Node ini deprecated: Pertanyaan berulang dalam WhatsApp memicu " +
+      "biaya percakapan Meta. Disarankan beralih ke Pengalihan Web/Chat.",
   },
   pDeployGitDeployAiAgentSummaryCard: {
     balanceAvailable: "tersedia",

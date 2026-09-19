@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-// ─── Trigger Schemas ──────────────────────────────────────────────────────────
+// ─── Trigger Schemas ────────────────────────────────────────────────────────
 
 export const WorkflowTriggerTypeSchema = z.enum([
   "whatsapp_inbound",
@@ -18,7 +18,7 @@ export const WorkflowTriggerSchema = z.object({
 })
 export type WorkflowTrigger = z.infer<typeof WorkflowTriggerSchema>
 
-// ─── Node Config Schemas ──────────────────────────────────────────────────────
+// ─── Node Config Schemas ────────────────────────────────────────────────────
 
 export const PromptInputNodeConfigSchema = z.object({
   question: z.string(),
@@ -111,7 +111,43 @@ export const ConditionNodeConfigSchema = z.object({
 })
 export type ConditionNodeConfig = z.infer<typeof ConditionNodeConfigSchema>
 
-// ─── Node & Edge Definitions ──────────────────────────────────────────────────
+export const ChannelRedirectNodeConfigSchema = z.object({
+  targetChannel: z.enum(["WEB_LIVECHAT", "WEB_FORM", "TELEGRAM"]),
+  redirectUrl: z.string(),
+  message: z.string(),
+  buttonText: z.string().default("Lanjutkan di Web"),
+  includeContext: z.boolean().default(true),
+})
+export type ChannelRedirectNodeConfig = z.infer<
+  typeof ChannelRedirectNodeConfigSchema
+>
+
+export const CsTicketEscalateNodeConfigSchema = z.object({
+  department: z.string().default("SUPPORT"),
+  priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("HIGH"),
+  subject: z.string(),
+  description: z.string(),
+  notifyTelegram: z.boolean().default(true),
+  telegramChatId: z.string().optional(),
+  autoReplyMessage: z.string().optional(),
+})
+export type CsTicketEscalateNodeConfig = z.infer<
+  typeof CsTicketEscalateNodeConfigSchema
+>
+
+export const PaymentLinkDispatchNodeConfigSchema = z.object({
+  gateway: z.enum(["MIDTRANS", "XENDIT", "MANUAL"]).default("MANUAL"),
+  amountVariable: z.string(),
+  orderIdVariable: z.string(),
+  paymentUrl: z.string().optional(),
+  buttonTitle: z.string().default("Bayar Sekarang"),
+  fallbackText: z.string(),
+})
+export type PaymentLinkDispatchNodeConfig = z.infer<
+  typeof PaymentLinkDispatchNodeConfigSchema
+>
+
+// ─── Node & Edge Definitions ────────────────────────────────────────────────
 
 export const WorkflowNodeTypeSchema = z.enum([
   "prompt_input",
@@ -120,8 +156,92 @@ export const WorkflowNodeTypeSchema = z.enum([
   "http_request",
   "ai_generate",
   "condition",
+  "channel_redirect",
+  "cs_ticket_escalate",
+  "payment_link_dispatch",
 ])
 export type WorkflowNodeType = z.infer<typeof WorkflowNodeTypeSchema>
+
+export type WorkflowNodeMeta = {
+  type: WorkflowNodeType
+  label: string
+  description: string
+  category: "message" | "logic" | "action_handover" | "integration"
+  deprecated?: boolean
+  deprecationNotice?: string
+  badgeText?: string
+}
+
+export const WORKFLOW_NODE_CATALOG: Record<
+  WorkflowNodeType,
+  WorkflowNodeMeta
+> = {
+  channel_redirect: {
+    type: "channel_redirect",
+    label: "Pengalihan Web/Chat",
+    description:
+      "Arahkan ke Web LiveChat/Form untuk hemat biaya percakapan Meta",
+    category: "action_handover",
+    badgeText: "Cost-Saving Offload",
+  },
+  cs_ticket_escalate: {
+    type: "cs_ticket_escalate",
+    label: "Eskalasi Tiket & Telegram",
+    description:
+      "Buat tiket CS internal di console dan kirim notifikasi Telegram",
+    category: "action_handover",
+    badgeText: "Human Handover",
+  },
+  payment_link_dispatch: {
+    type: "payment_link_dispatch",
+    label: "Kirim Link Pembayaran",
+    description:
+      "Kirim tombol link pembayaran tunggal berbiaya utilitas rendah",
+    category: "action_handover",
+    badgeText: "Single Utility",
+  },
+  send_message: {
+    type: "send_message",
+    label: "Kirim Pesan",
+    description: "Kirim pesan teks atau media WhatsApp standar",
+    category: "message",
+  },
+  prompt_input: {
+    type: "prompt_input",
+    label: "Tanya Input (Deprecated)",
+    description:
+      "Minta input teks pengguna (disarankan pakai channel_redirect)",
+    category: "message",
+    deprecated: true,
+    deprecationNotice:
+      "Input berulang di WhatsApp menaikkan biaya percakapan Meta. " +
+      "Disarankan alihkan form panjang ke Web LiveChat via channel_redirect.",
+  },
+  send_interactive: {
+    type: "send_interactive",
+    label: "Tombol Interaktif",
+    description: "Kirim tombol pilihan atau menu opsi cepat",
+    category: "message",
+  },
+  condition: {
+    type: "condition",
+    label: "Kondisi / If-Else",
+    description: "Percabangan alur logika percakapan",
+    category: "logic",
+  },
+  ai_generate: {
+    type: "ai_generate",
+    label: "AI Generate",
+    description: "Respons cerdas menggunakan model AI atau Knowledge Agent",
+    category: "integration",
+  },
+  http_request: {
+    type: "http_request",
+    label: "HTTP Webhook / API",
+    description: "Kirim atau ambil data dari webhook/API eksternal",
+    category: "integration",
+  },
+}
 
 export const WorkflowNodePositionSchema = z.object({
   x: z.number(),
@@ -149,7 +269,7 @@ export const WorkflowEdgeSchema = z.object({
 })
 export type WorkflowEdge = z.infer<typeof WorkflowEdgeSchema>
 
-// ─── Full Workflow Definition Schema ──────────────────────────────────────────
+// ─── Full Workflow Definition Schema ────────────────────────────────────────
 
 export const WorkflowDefinitionSchema = z.object({
   id: z.string(),
@@ -167,7 +287,7 @@ export const WorkflowDefinitionSchema = z.object({
 })
 export type WorkflowDefinition = z.infer<typeof WorkflowDefinitionSchema>
 
-// ─── Session State & Context ──────────────────────────────────────────────────
+// ─── Session State & Context ────────────────────────────────────────────────
 
 export const WorkflowSessionStateSchema = z.object({
   sessionId: z.string(),
