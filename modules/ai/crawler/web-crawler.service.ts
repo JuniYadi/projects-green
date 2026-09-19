@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto"
+import { parseDocument } from "htmlparser2"
+import type { Element, Node, DataNode, ChildNode } from "domhandler"
 
 export type CrawlMode = "SINGLE_PAGE" | "SUBPATH_RECURSIVE"
 
@@ -121,103 +123,176 @@ export function shouldUpdateDocument(
   return existingHash !== newHash
 }
 
-/**
- * Strips HTML boilerplate and extracts semantic content.
- */
-export function stripHtmlBoilerplate(html: string): {
-  title: string
-  cleanedHtml: string
-} {
-  // Extract <title> if present
-  let title = ""
-  const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)
-  if (titleMatch && titleMatch[1]) {
-    title = titleMatch[1].replace(/<[^>]+>/g, "").trim()
+function isElement(node: Node): node is Element {
+  return node.type === "tag" || node.type === "script" || node.type === "style"
+}
+
+function isText(node: Node): node is DataNode {
+  return node.type === "text"
+}
+
+function getNodeText(node: Node): string {
+  if (isText(node)) return node.data
+  if ("children" in node && Array.isArray(node.children)) {
+    return node.children.map(getNodeText).join("")
   }
+  return ""
+}
 
-  // 1. Remove non-content tags completely
-  let text = html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-    .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, "")
-    .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, "")
-    .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, "")
-    .replace(/<aside\b[^<]*(?:(?!<\/aside>)<[^<]*)*<\/aside>/gi, "")
-    .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, "")
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
-
-  // 2. Remove cookie banners & consent notices
-  text = text.replace(
-    new RegExp(
-      '<div[^>]*class="[^"]*(cookie|consent|banner)[^"]*"[^>]*>' +
-        "[\\s\\S]*?<\\/div>",
-      "gi"
-    ),
-    ""
-  )
-
-  // 3. Target semantic containers (<main>, <article>, <body>)
-  const mainMatch = text.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)
-  const articleMatch = text.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)
-  const bodyMatch = text.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)
-
-  const containerContent =
-    mainMatch?.[1] || articleMatch?.[1] || bodyMatch?.[1] || text
-
-  // If title was not found in <title>, fallback to first <h1>
-  if (!title) {
-    const h1Match = containerContent.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)
-    if (h1Match && h1Match[1]) {
-      title = h1Match[1].replace(/<[^>]+>/g, "").trim()
+function findElement(
+  node: Node,
+  predicate: (el: Element) => boolean
+): Element | null {
+  if (isElement(node) && predicate(node)) return node
+  if ("children" in node && Array.isArray(node.children)) {
+    for (const child of node.children) {
+      const found = findElement(child, predicate)
+      if (found) return found
     }
   }
+  return null
+}
 
-  return {
-    title: title || "Web Page",
-    cleanedHtml: containerContent,
+function filterBoilerplateNodes(nodes: ChildNode[]): ChildNode[] {
+  const droppedTags = new Set([
+    "script",
+    "style",
+    "nav",
+    "header",
+    "footer",
+    "aside",
+    "noscript",
+    "iframe",
+  ])
+
+  return nodes.filter((node) => {
+    if (!isElement(node)) return true
+    const tagName = node.name.toLowerCase()
+    if (droppedTags.has(tagName)) return false
+
+    const className = (node.attribs["class"] || "").toLowerCase()
+    const id = (node.attribs["id"] || "").toLowerCase()
+    if (
+      className.includes("cookie") ||
+      className.includes("consent") ||
+      className.includes("banner") ||
+      id.includes("cookie") ||
+      id.includes("consent")
+    ) {
+      return false
+    }
+
+    if (node.children && Array.isArray(node.children)) {
+      node.children = filterBoilerplateNodes(node.children)
+    }
+    return true
+  })
+}
+
+function renderNodeToMarkdown(node: Node): string {
+  if (isText(node)) {
+    return node.data
   }
-}
+  if (node.type === "root") {
+    if ("children" in node && Array.isArray(node.children)) {
+      return node.children.map(renderNodeToMarkdown).join("")
+    }
+    return ""
+  }
+  if (!isElement(node)) {
+    return ""
+  }
 
-/**
- * Decodes standard HTML entities.
- */
-function decodeHtmlEntities(str: string): string {
-  return str
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-}
+  const tagName = node.name.toLowerCase()
+  const renderChildren = () =>
+    (node.children || []).map(renderNodeToMarkdown).join("")
 
-/**
- * Converts sanitized HTML content into structured Markdown.
- */
-export function htmlToMarkdown(html: string): string {
-  let md = html
-
-  // Tables
-  md = md.replace(
-    /<table\b[^>]*>([\s\S]*?)<\/table>/gi,
-    (_tableMatch, tableContent: string) => {
-      const rows: string[][] = []
-      const trRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi
-      let trMatch: RegExpExecArray | null
-
-      while ((trMatch = trRegex.exec(tableContent)) !== null) {
-        const rowCells: string[] = []
-        const cellRegex = /<(?:th|td)\b[^>]*>([\s\S]*?)<\/(?:th|td)>/gi
-        let cellMatch: RegExpExecArray | null
-        while ((cellMatch = cellRegex.exec(trMatch[1])) !== null) {
-          const text = cellMatch[1].replace(/<[^>]+>/g, "").trim()
-          rowCells.push(text)
-        }
-        if (rowCells.length > 0) {
-          rows.push(rowCells)
+  switch (tagName) {
+    case "h1":
+      return `\n# ${renderChildren().trim()}\n\n`
+    case "h2":
+      return `\n## ${renderChildren().trim()}\n\n`
+    case "h3":
+      return `\n### ${renderChildren().trim()}\n\n`
+    case "h4":
+      return `\n#### ${renderChildren().trim()}\n\n`
+    case "h5":
+      return `\n##### ${renderChildren().trim()}\n\n`
+    case "h6":
+      return `\n###### ${renderChildren().trim()}\n\n`
+    case "p":
+      return `\n\n${renderChildren().trim()}\n\n`
+    case "br":
+      return "\n"
+    case "hr":
+      return "\n\n---\n\n"
+    case "strong":
+    case "b":
+      return `**${renderChildren()}**`
+    case "em":
+    case "i":
+      return `*${renderChildren()}*`
+    case "blockquote":
+      return `\n> ${renderChildren().trim()}\n\n`
+    case "code":
+      return `\`${renderChildren()}\``
+    case "pre":
+      return `\n\`\`\`\n${getNodeText(node).trim()}\n\`\`\`\n\n`
+    case "a": {
+      const href = node.attribs["href"] || ""
+      const text = renderChildren().trim()
+      if (!text) return ""
+      return href ? `[${text}](${href})` : text
+    }
+    case "ul": {
+      const items: string[] = []
+      for (const child of node.children || []) {
+        if (isElement(child) && child.name.toLowerCase() === "li") {
+          const t = (child.children || [])
+            .map(renderNodeToMarkdown)
+            .join("")
+            .trim()
+          if (t) items.push(`- ${t}`)
         }
       }
-
+      return `\n${items.join("\n")}\n\n`
+    }
+    case "ol": {
+      const items: string[] = []
+      let idx = 1
+      for (const child of node.children || []) {
+        if (isElement(child) && child.name.toLowerCase() === "li") {
+          const t = (child.children || [])
+            .map(renderNodeToMarkdown)
+            .join("")
+            .trim()
+          if (t) items.push(`${idx++}. ${t}`)
+        }
+      }
+      return `\n${items.join("\n")}\n\n`
+    }
+    case "table": {
+      const rows: string[][] = []
+      const collectRows = (n: Node) => {
+        if (isElement(n)) {
+          if (n.name.toLowerCase() === "tr") {
+            const cells: string[] = []
+            for (const cell of n.children || []) {
+              if (
+                isElement(cell) &&
+                (cell.name.toLowerCase() === "th" ||
+                  cell.name.toLowerCase() === "td")
+              ) {
+                cells.push(getNodeText(cell).trim())
+              }
+            }
+            if (cells.length > 0) rows.push(cells)
+          } else {
+            for (const child of n.children || []) collectRows(child)
+          }
+        }
+      }
+      collectRows(node)
       if (rows.length === 0) return ""
 
       const colCount = Math.max(...rows.map((r) => r.length))
@@ -230,130 +305,24 @@ export function htmlToMarkdown(html: string): string {
         " |"
       const separatorLine =
         "| " + Array.from({ length: colCount }, () => "---").join(" | ") + " |"
-
-      const dataLines = rows.slice(1).map((row) => {
-        return (
-          "| " +
-          Array.from({ length: colCount }, (_, i) => row[i] || "").join(
-            " | "
-          ) +
-          " |"
+      const dataLines = rows
+        .slice(1)
+        .map(
+          (row) =>
+            "| " +
+            Array.from({ length: colCount }, (_, i) => row[i] || "").join(
+              " | "
+            ) +
+            " |"
         )
-      })
-
       return [headerLine, separatorLine, ...dataLines].join("\n") + "\n\n"
     }
-  )
+    default:
+      return renderChildren()
+  }
+}
 
-  // Code blocks: <pre><code>...</code></pre>
-  md = md.replace(
-    /<pre\b[^>]*><code\b[^>]*>([\s\S]*?)<\/code><\/pre>/gi,
-    (_m, code: string) => {
-      return "\n```\n" + decodeHtmlEntities(code).trim() + "\n```\n\n"
-    }
-  )
-  md = md.replace(
-    /<pre\b[^>]*>([\s\S]*?)<\/pre>/gi,
-    (_m, code: string) => {
-      return "\n```\n" + decodeHtmlEntities(code).trim() + "\n```\n\n"
-    }
-  )
-  md = md.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_m, code: string) => {
-    return "`" + decodeHtmlEntities(code).trim() + "`"
-  })
-
-  // Headings
-  md = md.replace(
-    /<h1\b[^>]*>([\s\S]*?)<\/h1>/gi,
-    (_m, c: string) => `\n# ${c.trim()}\n\n`
-  )
-  md = md.replace(
-    /<h2\b[^>]*>([\s\S]*?)<\/h2>/gi,
-    (_m, c: string) => `\n## ${c.trim()}\n\n`
-  )
-  md = md.replace(
-    /<h3\b[^>]*>([\s\S]*?)<\/h3>/gi,
-    (_m, c: string) => `\n### ${c.trim()}\n\n`
-  )
-  md = md.replace(
-    /<h4\b[^>]*>([\s\S]*?)<\/h4>/gi,
-    (_m, c: string) => `\n#### ${c.trim()}\n\n`
-  )
-  md = md.replace(
-    /<h5\b[^>]*>([\s\S]*?)<\/h5>/gi,
-    (_m, c: string) => `\n##### ${c.trim()}\n\n`
-  )
-  md = md.replace(
-    /<h6\b[^>]*>([\s\S]*?)<\/h6>/gi,
-    (_m, c: string) => `\n###### ${c.trim()}\n\n`
-  )
-
-  // Blockquotes
-  md = md.replace(
-    /<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi,
-    (_m, c: string) => {
-      const text = c.replace(/<[^>]+>/g, "").trim()
-      return `\n> ${text}\n\n`
-    }
-  )
-
-  // Unordered lists
-  md = md.replace(
-    /<ul\b[^>]*>([\s\S]*?)<\/ul>/gi,
-    (_m, listContent: string) => {
-      const items: string[] = []
-      const liRegex = /<li\b[^>]*>([\s\S]*?)<\/li>/gi
-      let liMatch: RegExpExecArray | null
-      while ((liMatch = liRegex.exec(listContent)) !== null) {
-        const itemText = liMatch[1].replace(/<[^>]+>/g, "").trim()
-        if (itemText) items.push(`- ${itemText}`)
-      }
-      return "\n" + items.join("\n") + "\n\n"
-    }
-  )
-
-  // Ordered lists
-  md = md.replace(
-    /<ol\b[^>]*>([\s\S]*?)<\/ol>/gi,
-    (_m, listContent: string) => {
-      const items: string[] = []
-      const liRegex = /<li\b[^>]*>([\s\S]*?)<\/li>/gi
-      let liMatch: RegExpExecArray | null
-      let idx = 1
-      while ((liMatch = liRegex.exec(listContent)) !== null) {
-        const itemText = liMatch[1].replace(/<[^>]+>/g, "").trim()
-        if (itemText) items.push(`${idx++}. ${itemText}`)
-      }
-      return "\n" + items.join("\n") + "\n\n"
-    }
-  )
-
-  // Links: <a href="...">...</a>
-  md = md.replace(
-    /<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi,
-    (_m, href: string, text: string) => {
-      const cleanText = text.replace(/<[^>]+>/g, "").trim()
-      if (!cleanText) return ""
-      return `[${cleanText}](${href})`
-    }
-  )
-
-  // Formatting: bold & italic
-  md = md.replace(/<(?:strong|b)\b[^>]*>([\s\S]*?)<\/(?:strong|b)>/gi, "**$1**")
-  md = md.replace(/<(?:em|i)\b[^>]*>([\s\S]*?)<\/(?:em|i)>/gi, "*$1*")
-
-  // Paragraphs & breaks
-  md = md.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, "\n\n$1\n\n")
-  md = md.replace(/<br\s*\/?>/gi, "\n")
-  md = md.replace(/<hr\s*\/?>/gi, "\n\n---\n\n")
-
-  // Remove all other tags
-  md = md.replace(/<[^>]+>/g, "")
-
-  // Decode entities
-  md = decodeHtmlEntities(md)
-
-  // Normalize newlines and whitespace
+function cleanWhitespace(md: string): string {
   return md
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+/g, " ")
@@ -362,6 +331,60 @@ export function htmlToMarkdown(html: string): string {
     .map((line) => line.trim())
     .join("\n")
     .trim()
+}
+
+/**
+ * Strips HTML boilerplate and extracts semantic content.
+ */
+export function stripHtmlBoilerplate(html: string): {
+  title: string
+  cleanedHtml: string
+} {
+  const doc = parseDocument(html)
+
+  // Extract <title> if present
+  let title = ""
+  const titleEl = findElement(doc, (el) => el.name.toLowerCase() === "title")
+  if (titleEl) {
+    title = getNodeText(titleEl).trim()
+  }
+
+  // Filter boilerplate tags
+  doc.children = filterBoilerplateNodes(doc.children)
+
+  // Target semantic containers (<main>, <article>, <body>)
+  const mainEl = findElement(doc, (el) => el.name.toLowerCase() === "main")
+  const articleEl = findElement(
+    doc,
+    (el) => el.name.toLowerCase() === "article"
+  )
+  const bodyEl = findElement(doc, (el) => el.name.toLowerCase() === "body")
+
+  const targetNode = mainEl || articleEl || bodyEl || doc
+
+  if (!title) {
+    const h1El = findElement(targetNode, (el) => el.name.toLowerCase() === "h1")
+    if (h1El) {
+      title = getNodeText(h1El).trim()
+    }
+  }
+
+  // Render markdown directly from target DOM node
+  const rendered = cleanWhitespace(renderNodeToMarkdown(targetNode))
+
+  return {
+    title: title || "Web Page",
+    cleanedHtml: rendered,
+  }
+}
+
+/**
+ * Converts HTML content into structured Markdown.
+ */
+export function htmlToMarkdown(html: string): string {
+  const doc = parseDocument(html)
+  doc.children = filterBoilerplateNodes(doc.children)
+  return cleanWhitespace(renderNodeToMarkdown(doc))
 }
 
 /**
@@ -419,39 +442,40 @@ export function discoverSubpathLinks(
     ? subpathPrefix
     : `/${subpathPrefix}`
 
+  const doc = parseDocument(html)
   const links: Set<string> = new Set()
-  const aRegex = /<a\b[^>]*href="([^"#\s]+)"/gi
-  let match: RegExpExecArray | null
 
-  while ((match = aRegex.exec(html)) !== null) {
-    const rawHref = match[1]
-    try {
-      const resolved = new URL(rawHref, baseUrl)
-      // Must match origin
-      if (resolved.origin !== base.origin) continue
-      // Must be http(s)
-      if (resolved.protocol !== "http:" && resolved.protocol !== "https:") {
-        continue
+  const collectLinks = (node: Node) => {
+    if (isElement(node) && node.name.toLowerCase() === "a") {
+      const rawHref = (node.attribs["href"] || "").trim()
+      if (rawHref && !rawHref.startsWith("#")) {
+        try {
+          const resolved = new URL(rawHref, baseUrl)
+          if (
+            resolved.origin === base.origin &&
+            (resolved.protocol === "http:" ||
+              resolved.protocol === "https:") &&
+            !isPrivateOrReservedHost(resolved.hostname) &&
+            (resolved.pathname.startsWith(cleanPrefix) ||
+              resolved.pathname === cleanPrefix.replace(/\/$/, ""))
+          ) {
+            resolved.hash = ""
+            resolved.search = ""
+            links.add(resolved.toString())
+          }
+        } catch {
+          // Ignore malformed hrefs
+        }
       }
-      // Must not be private
-      if (isPrivateOrReservedHost(resolved.hostname)) continue
-      // Must start with subpathPrefix
-      if (
-        !resolved.pathname.startsWith(cleanPrefix) &&
-        resolved.pathname !== cleanPrefix.replace(/\/$/, "")
-      ) {
-        continue
+    }
+    if ("children" in node && Array.isArray(node.children)) {
+      for (const child of node.children) {
+        collectLinks(child)
       }
-
-      // Remove search & hash
-      resolved.hash = ""
-      resolved.search = ""
-      links.add(resolved.toString())
-    } catch {
-      // Ignore unparseable hrefs
     }
   }
 
+  collectLinks(doc)
   return Array.from(links)
 }
 
@@ -478,7 +502,7 @@ export async function crawlUrl(
   if (mode === "SINGLE_PAGE") {
     const rawHtml = await fetchHtml(targetUrl, timeoutMs, fetchFn)
     const { title, cleanedHtml } = stripHtmlBoilerplate(rawHtml)
-    const contentMarkdown = htmlToMarkdown(cleanedHtml)
+    const contentMarkdown = cleanedHtml
     const contentHash = computeContentHash(contentMarkdown)
 
     return {
@@ -514,7 +538,7 @@ export async function crawlUrl(
     try {
       const rawHtml = await fetchHtml(current.url, timeoutMs, fetchFn)
       const { title, cleanedHtml } = stripHtmlBoilerplate(rawHtml)
-      const contentMarkdown = htmlToMarkdown(cleanedHtml)
+      const contentMarkdown = cleanedHtml
       const contentHash = computeContentHash(contentMarkdown)
 
       crawledPages.push({
