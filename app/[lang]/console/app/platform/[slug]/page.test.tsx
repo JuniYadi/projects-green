@@ -8,6 +8,7 @@ mock.module("next/navigation", () => ({
     get: (key: string) => mockSearchParams[key] ?? null,
   }),
   useRouter: () => ({ push: () => {}, replace: () => {} }),
+  usePathname: () => "/en/console/app/platform/hermes-vibrant-comet",
 }))
 
 const mockStack = {

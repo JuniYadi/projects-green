@@ -292,6 +292,8 @@ function CopyableRow({
 export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
   const router = useRouter()
   const [reinstallOpen, setReinstallOpen] = useState(false)
+  const isTemplate =
+    stack.sourceType === "TEMPLATE" || Boolean(stack.templateId)
   const t = COPY[locale.startsWith("id") ? "id" : "en"]
   const targetDomain = stack.customDomain || stack.subdomain
 
@@ -586,7 +588,11 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
             <CardContent className="space-y-2 px-4 pt-0 pb-3.5 text-xs">
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
                 <span className="text-muted-foreground">
-                  {t.templateEngine}
+                  {isTemplate
+                    ? t.templateEngine
+                    : locale.startsWith("id")
+                      ? "Framework"
+                      : "Framework"}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-foreground">
@@ -595,25 +601,27 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                       stack.templateId ??
                       "Custom Container"}
                   </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setReinstallOpen(true)}
-                    className="h-6 gap-1 px-1.5 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
-                    title={
-                      locale.startsWith("id")
-                        ? "Ganti Template / Reinstall"
-                        : "Change Template / Reinstall"
-                    }
-                  >
-                    <ArrowsClockwise size={12} />
-                    <span>
-                      {locale.startsWith("id")
-                        ? "Ganti Template"
-                        : "Change Template"}
-                    </span>
-                  </Button>
+                  {isTemplate && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setReinstallOpen(true)}
+                      className="h-6 gap-1 px-1.5 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
+                      title={
+                        locale.startsWith("id")
+                          ? "Ganti Template / Reinstall"
+                          : "Change Template / Reinstall"
+                      }
+                    >
+                      <ArrowsClockwise size={12} />
+                      <span>
+                        {locale.startsWith("id")
+                          ? "Ganti Template"
+                          : "Change Template"}
+                      </span>
+                    </Button>
+                  )}
                 </div>
               </div>
               <div className="flex items-center justify-between border-b border-border/50 pb-2">
@@ -674,15 +682,17 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
         </div>
       </div>
 
-      <ReinstallTemplateDialog
-        stack={stack}
-        open={reinstallOpen}
-        onOpenChange={setReinstallOpen}
-        onSuccess={() => {
-          router.refresh()
-        }}
-        locale={locale}
-      />
+      {isTemplate && (
+        <ReinstallTemplateDialog
+          stack={stack}
+          open={reinstallOpen}
+          onOpenChange={setReinstallOpen}
+          onSuccess={() => {
+            router.refresh()
+          }}
+          locale={locale}
+        />
+      )}
     </div>
   )
 }

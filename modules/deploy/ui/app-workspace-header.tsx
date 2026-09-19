@@ -54,6 +54,8 @@ export type AppWorkspaceHeaderProps = {
   locale?: string
   onSync?: () => void
   isSyncing?: boolean
+  onDeploy?: () => void
+  isDeploying?: boolean
   isTerminalActive?: boolean
   onReinstallSuccess?: () => void
 }
@@ -65,6 +67,8 @@ export function AppWorkspaceHeader({
   locale: localeProp,
   onSync,
   isSyncing = false,
+  onDeploy,
+  isDeploying = false,
   isTerminalActive = false,
   onReinstallSuccess,
 }: AppWorkspaceHeaderProps) {
@@ -72,6 +76,8 @@ export function AppWorkspaceHeader({
   const params = useParams<{ lang?: string }>()
   const router = useRouter()
   const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
+  const isTemplate =
+    selectedApp.sourceType === "TEMPLATE" || Boolean(selectedApp.templateId)
 
   const targetDomain = selectedApp.customDomain || selectedApp.subdomain
   const tone = STATUS_TONE[selectedApp.status] ?? STATUS_TONE.idle
@@ -250,17 +256,55 @@ export function AppWorkspaceHeader({
 
         {/* Action Controls (Right-aligned CTA) */}
         <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setReinstallOpen(true)}
-            className="h-8 gap-1.5 px-3 text-xs"
-            title="Reinstall or change application template"
-          >
-            <ArrowsClockwise size={14} />
-            <span>Reinstall Template</span>
-          </Button>
+          {isTemplate ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setReinstallOpen(true)}
+              className="h-8 gap-1.5 px-3 text-xs"
+              title={
+                locale.startsWith("id")
+                  ? "Ganti atau install ulang template aplikasi"
+                  : "Reinstall or change application template"
+              }
+            >
+              <ArrowsClockwise size={14} />
+              <span>
+                {locale.startsWith("id")
+                  ? "Ganti Template"
+                  : "Reinstall Template"}
+              </span>
+            </Button>
+          ) : onDeploy ? (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={onDeploy}
+              disabled={isDeploying}
+              className="h-8 gap-1.5 px-3 text-xs font-medium"
+              title={
+                locale.startsWith("id")
+                  ? "Deploy pembaruan terbaru dari codebase Git"
+                  : "Deploy latest updates from Git codebase"
+              }
+            >
+              <RocketLaunch
+                size={14}
+                className={isDeploying ? "animate-pulse" : ""}
+              />
+              <span>
+                {isDeploying
+                  ? locale.startsWith("id")
+                    ? "Mendeploy..."
+                    : "Deploying..."
+                  : locale.startsWith("id")
+                    ? "Deploy Update"
+                    : "Deploy Update"}
+              </span>
+            </Button>
+          ) : null}
           {onSync && (
             <Button
               type="button"
@@ -331,15 +375,17 @@ export function AppWorkspaceHeader({
         </nav>
       </div>
 
-      <ReinstallTemplateDialog
-        stack={selectedApp}
-        open={reinstallOpen}
-        onOpenChange={setReinstallOpen}
-        onSuccess={() => {
-          setReinstallOpen(false)
-          onReinstallSuccess?.()
-        }}
-      />
+      {isTemplate && (
+        <ReinstallTemplateDialog
+          stack={selectedApp}
+          open={reinstallOpen}
+          onOpenChange={setReinstallOpen}
+          onSuccess={() => {
+            setReinstallOpen(false)
+            onReinstallSuccess?.()
+          }}
+        />
+      )}
     </div>
   )
 }

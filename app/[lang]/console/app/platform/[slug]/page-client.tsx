@@ -8,6 +8,7 @@ import {
   Globe,
   HardDrive,
   Key,
+  RocketLaunch,
   WarningOctagon,
   Wrench,
 } from "@phosphor-icons/react"
@@ -566,6 +567,54 @@ export default function PlatformInstanceWorkspacePage() {
     }
   }, [slug, overview])
 
+  const [deploying, setDeploying] = useState(false)
+
+  const handleDeploy = async (force = false) => {
+    if (!overview?.stack?.id) return
+    setDeploying(true)
+    try {
+      const { data: payload } = await eden.api.deploy.trigger[
+        overview.stack.id
+      ].post({ force })
+      if (!payload || !payload.ok) {
+        if (
+          !force &&
+          (payload?.error === "STACK_DEPLOY_IN_PROGRESS" ||
+            payload?.message?.includes("already in progress"))
+        ) {
+          const confirmForce = window.confirm(
+            locale === "id"
+              ? "Deployment sedang berlangsung untuk stack ini. Apakah Anda ingin membatalkannya dan memulai deploy baru?"
+              : "A deployment is currently in progress for this stack. Do you want to cancel it and force start a new deployment?"
+          )
+          if (confirmForce) {
+            await handleDeploy(true)
+            return
+          }
+        }
+        throw new Error(payload?.message ?? "Unable to trigger deployment.")
+      }
+      toast.success(
+        locale === "id"
+          ? "Deployment berhasil dipicu!"
+          : "Deployment triggered successfully!"
+      )
+      const deploymentId = payload.data?.deploymentId
+      if (typeof deploymentId === "string") {
+        setSelectedDeploymentId(deploymentId)
+      }
+      const { data: freshOverview } = await eden.api.deploy.apps[slug].get()
+      if (freshOverview?.ok && freshOverview.data) {
+        setOverview(freshOverview.data)
+      }
+      setActiveWorkspaceTab("deployments")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Deploy failed.")
+    } finally {
+      setDeploying(false)
+    }
+  }
+
   const handleSync = async () => {
     if (!slug) return
     setSyncing(true)
@@ -805,6 +854,8 @@ export default function PlatformInstanceWorkspacePage() {
             locale={locale}
             onSync={handleSync}
             isSyncing={syncing}
+            onDeploy={handleDeploy}
+            isDeploying={deploying}
             isTerminalActive={isTerminalInitiated}
           />
 
@@ -894,18 +945,44 @@ export default function PlatformInstanceWorkspacePage() {
           {activeWorkspaceTab === "deployments" && (
             <div className="space-y-6">
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold">
-                    {tDeployments.historyTitle}
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    {historyMeta
-                      ? tPage.recordedReleases.replace(
-                          "{count}",
-                          String(historyMeta.total)
-                        )
-                      : tDeployments.historyDescription}
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                  <div>
+                    <CardTitle className="text-base font-semibold">
+                      {tDeployments.historyTitle}
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      {historyMeta
+                        ? tPage.recordedReleases.replace(
+                            "{count}",
+                            String(historyMeta.total)
+                          )
+                        : tDeployments.historyDescription}
+                    </CardDescription>
+                  </div>
+                  {overview.stack.sourceType !== "TEMPLATE" &&
+                    !overview.stack.templateId && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void handleDeploy()}
+                        disabled={deploying}
+                        className="h-8 gap-1.5 px-3 text-xs"
+                      >
+                        <RocketLaunch
+                          size={14}
+                          className={deploying ? "animate-pulse" : ""}
+                        />
+                        <span>
+                          {deploying
+                            ? locale === "id"
+                              ? "Mendeploy..."
+                              : "Deploying..."
+                            : locale === "id"
+                              ? "Deploy Update"
+                              : "Deploy Update"}
+                        </span>
+                      </Button>
+                    )}
                 </CardHeader>
                 <CardContent>
                   {historyLoading ? (
