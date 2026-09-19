@@ -42,8 +42,7 @@ import {
   createJenkinsWebhookHeaders,
 } from "../../jenkins-webhook-auth"
 
-const { deployJenkinsWebhookRoutes } =
-  await import("./jenkins-webhook.route")
+const { deployJenkinsWebhookRoutes } = await import("./jenkins-webhook.route")
 
 describe("deploy jenkins-webhook.route", () => {
   let app: { handle: (req: Request) => Promise<Response> }
@@ -326,5 +325,41 @@ describe("deploy jenkins-webhook.route", () => {
     expect(res.status).toBe(401)
     const body = await res.json()
     expect(body).toEqual({ ok: false, error: "UNAUTHORIZED" })
+  })
+
+  it("verifies exact raw body HMAC with formatted JSON and legacy token", async () => {
+    mockStackFindFirst.mockResolvedValueOnce({
+      id: "stack-1",
+    } as unknown as never)
+    mockDeploymentFindFirst.mockResolvedValueOnce({
+      id: "dep-1",
+      status: "BUILDING",
+      attempt: 1,
+    } as unknown as never)
+
+    const rawFormattedBody = JSON.stringify(
+      {
+        slug: "my-app",
+        buildStatus: "SUCCESS",
+        token: "legacy-token",
+        extraField: "ignored",
+      },
+      null,
+      2
+    )
+    const headers = createJenkinsWebhookHeaders(
+      rawFormattedBody,
+      "cluster-token"
+    )
+
+    const res = await post({}, headers, rawFormattedBody)
+
+    expect(res.status).toBe(200)
+    expect(mockRecordDeployEventOnce).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deploymentId: "dep-1",
+        type: "JENKINS_BUILD_COMPLETED",
+      })
+    )
   })
 })

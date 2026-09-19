@@ -18,239 +18,249 @@ import { verifyJenkinsHmacSignature } from "../../jenkins-webhook-auth"
  */
 export const deployJenkinsWebhookRoutes = new Elysia({
   prefix: "/deploy",
-}).post(
-  "/jenkins-webhook",
-  async ({ body, request, set }) => {
-    const envToken = process.env.JENKINS_WEBHOOK_TOKEN
-
-    const stack = await prisma.applicationStack.findFirst({
-      where: { slug: body.slug },
-    })
-
-    let expectedToken: string | null = envToken ?? null
-    if (stack) {
+})
+  .onParse(async ({ request }, contentType) => {
+    if (contentType.includes("application/json")) {
+      const text = await request.text()
       try {
-        const jenkinsConfig = await resolveClusterIntegration(
-          stack.id,
-          "JENKINS"
-        )
-        expectedToken = jenkinsConfig.webhookToken
-      } catch {
-        expectedToken = envToken ?? null
-      }
+        const parsed = JSON.parse(text)
+        if (parsed && typeof parsed === "object") {
+          return Object.assign(parsed, { __rawBody: text })
+        }
+      } catch {}
+      return text
     }
+  })
+  .post(
+    "/jenkins-webhook",
+    async ({ body, request, set }) => {
+      const envToken = process.env.JENKINS_WEBHOOK_TOKEN
 
-    if (!expectedToken) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED" }
-    }
+      const stack = await prisma.applicationStack.findFirst({
+        where: { slug: body.slug },
+      })
 
-    let rawBody = ""
-    try {
-      rawBody = await request.clone().text()
-    } catch {
-      rawBody = ""
-    }
-    if (!rawBody) {
-      rawBody = JSON.stringify(body)
-    }
-
-    const isValid = verifyJenkinsHmacSignature(
-      rawBody,
-      request.headers,
-      expectedToken
-    )
-
-    if (!isValid) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED" }
-    }
-
-    const {
-      slug,
-      buildStatus,
-      commitSha,
-      buildNumber,
-      durationMs,
-      imageTag,
-      phase,
-    } = body
-
-    if (phase) {
+      let expectedToken: string | null = envToken ?? null
       if (stack) {
-        const deployment = await prisma.applicationDeployment.findFirst({
-          where: {
-            stackId: stack.id,
-            status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
-            ...(commitSha ? { commitSha } : {}),
-          },
-          orderBy: { createdAt: "desc" },
-        })
-
-        if (deployment) {
-          if (phase === "QUEUED") {
-            await recordDeployEventOnce({
-              deploymentId: deployment.id,
-              type: "JENKINS_BUILD_QUEUED",
-              message: `Jenkins build queued for ${slug}`,
-              metadata: buildNumber !== undefined ? { buildNumber } : {},
-            })
-          } else if (phase === "RUNNING") {
-            if (deployment.status === "QUEUED") {
-              await prisma.applicationDeployment.update({
-                where: { id: deployment.id },
-                data: { status: "BUILDING" },
-              })
-            }
-            await recordDeployEventOnce({
-              deploymentId: deployment.id,
-              type: "JENKINS_BUILD_RUNNING",
-              message: `Jenkins build running for ${slug}`,
-              metadata: buildNumber !== undefined ? { buildNumber } : {},
-            })
-          } else if (phase === "COMPLETED") {
-            await recordDeployEventOnce({
-              deploymentId: deployment.id,
-              type: "JENKINS_BUILD_COMPLETED",
-              message: `Jenkins build completed for ${slug}`,
-              metadata: {
-                ...(buildNumber !== undefined ? { buildNumber } : {}),
-                ...(durationMs !== undefined ? { durationMs } : {}),
-                imageTag: imageTag ?? null,
-                commitSha: commitSha ?? null,
-              },
-            })
-          }
+        try {
+          const jenkinsConfig = await resolveClusterIntegration(
+            stack.id,
+            "JENKINS"
+          )
+          expectedToken = jenkinsConfig.webhookToken
+        } catch {
+          expectedToken = envToken ?? null
         }
       }
-      return { ok: true, message: `Recorded phase ${phase}` }
-    }
 
-    if (!stack) {
-      set.status = 404
-      return {
-        ok: false,
-        error: "NOT_FOUND",
-        message: `Stack ${slug} not found`,
+      if (!expectedToken) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED" }
       }
-    }
 
-    // Find the latest active deployment for this stack
-    const deployment = await prisma.applicationDeployment.findFirst({
-      where: {
-        stackId: stack.id,
-        status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
-        ...(commitSha ? { commitSha } : {}),
-      },
-      orderBy: { createdAt: "desc" },
-    })
+      const rawBody = (body as any)?.__rawBody || JSON.stringify(body)
 
-    if (!deployment) {
-      return { ok: true, message: "No active deployment to update" }
-    }
+      const isValid = verifyJenkinsHmacSignature(
+        rawBody,
+        request.headers,
+        expectedToken
+      )
 
-    // Idempotency check — skip if already completed successfully
-    if (deployment.status === "RUNNING") {
-      return { ok: true, message: "Deployment already completed" }
-    }
+      if (!isValid) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED" }
+      }
 
-    if (buildStatus === "SUCCESS") {
-      // Do NOT mark RUNNING here. ArgoCD owns the RUNNING transition after
-      // the image-ready webhook commits Helm values and sync completes.
-      await recordDeployEventOnce({
-        deploymentId: deployment.id,
-        type: "JENKINS_BUILD_COMPLETED",
-        message: `Jenkins build succeeded for ${slug}`,
-        metadata: {
-          ...(buildNumber !== undefined ? { buildNumber } : {}),
-          ...(durationMs !== undefined ? { durationMs } : {}),
-          imageTag: imageTag ?? null,
-          commitSha: commitSha ?? null,
+      const {
+        slug,
+        buildStatus,
+        commitSha,
+        buildNumber,
+        durationMs,
+        imageTag,
+        phase,
+      } = body
+
+      if (phase) {
+        if (stack) {
+          const deployment = await prisma.applicationDeployment.findFirst({
+            where: {
+              stackId: stack.id,
+              status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
+              ...(commitSha ? { commitSha } : {}),
+            },
+            orderBy: { createdAt: "desc" },
+          })
+
+          if (deployment) {
+            if (phase === "QUEUED") {
+              await recordDeployEventOnce({
+                deploymentId: deployment.id,
+                type: "JENKINS_BUILD_QUEUED",
+                message: `Jenkins build queued for ${slug}`,
+                metadata: buildNumber !== undefined ? { buildNumber } : {},
+              })
+            } else if (phase === "RUNNING") {
+              if (deployment.status === "QUEUED") {
+                await prisma.applicationDeployment.update({
+                  where: { id: deployment.id },
+                  data: { status: "BUILDING" },
+                })
+              }
+              await recordDeployEventOnce({
+                deploymentId: deployment.id,
+                type: "JENKINS_BUILD_RUNNING",
+                message: `Jenkins build running for ${slug}`,
+                metadata: buildNumber !== undefined ? { buildNumber } : {},
+              })
+            } else if (phase === "COMPLETED") {
+              await recordDeployEventOnce({
+                deploymentId: deployment.id,
+                type: "JENKINS_BUILD_COMPLETED",
+                message: `Jenkins build completed for ${slug}`,
+                metadata: {
+                  ...(buildNumber !== undefined ? { buildNumber } : {}),
+                  ...(durationMs !== undefined ? { durationMs } : {}),
+                  imageTag: imageTag ?? null,
+                  commitSha: commitSha ?? null,
+                },
+              })
+            }
+          }
+        }
+        return { ok: true, message: `Recorded phase ${phase}` }
+      }
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: `Stack ${slug} not found`,
+        }
+      }
+
+      // Find the latest active deployment for this stack
+      const deployment = await prisma.applicationDeployment.findFirst({
+        where: {
+          stackId: stack.id,
+          status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
+          ...(commitSha ? { commitSha } : {}),
         },
+        orderBy: { createdAt: "desc" },
       })
-      await recordDeployLog({
-        deploymentId: deployment.id,
-        scope: "build",
-        status: "BUILD_SUCCESS",
-        message:
-          "Jenkins build completed successfully. Awaiting image-ready webhook.",
-      })
-    } else {
-      const attempt = deployment.attempt ?? 1
-      if (attempt < 3) {
-        // Retry: re-queue with incremented attempt
-        const newAttempt = attempt + 1
-        await prisma.applicationDeployment.update({
-          where: { id: deployment.id },
-          data: {
-            status: "QUEUED",
-            attempt: newAttempt,
-          },
-        })
+
+      if (!deployment) {
+        return { ok: true, message: "No active deployment to update" }
+      }
+
+      // Idempotency check — skip if already completed successfully
+      if (deployment.status === "RUNNING") {
+        return { ok: true, message: "Deployment already completed" }
+      }
+
+      if (buildStatus === "SUCCESS") {
+        // Do NOT mark RUNNING here. ArgoCD owns the RUNNING transition after
+        // the image-ready webhook commits Helm values and sync completes.
         await recordDeployEventOnce({
           deploymentId: deployment.id,
           type: "JENKINS_BUILD_COMPLETED",
-          message: `Jenkins build failed for ${slug} (attempt ${attempt}/3)`,
+          message: `Jenkins build succeeded for ${slug}`,
           metadata: {
             ...(buildNumber !== undefined ? { buildNumber } : {}),
+            ...(durationMs !== undefined ? { durationMs } : {}),
+            imageTag: imageTag ?? null,
             commitSha: commitSha ?? null,
-            outcome: "FAILURE",
           },
         })
         await recordDeployLog({
           deploymentId: deployment.id,
           scope: "build",
-          status: "RETRYING",
-          message: `Build failed (attempt ${attempt}/3), re-queued for retry.`,
+          status: "BUILD_SUCCESS",
+          message:
+            "Jenkins build completed successfully. Awaiting image-ready webhook.",
         })
       } else {
-        // Max retries exhausted
-        await prisma.applicationDeployment.update({
-          where: { id: deployment.id },
-          data: {
+        const attempt = deployment.attempt ?? 1
+        if (attempt < 3) {
+          // Retry: re-queue with incremented attempt
+          const newAttempt = attempt + 1
+          await prisma.applicationDeployment.update({
+            where: { id: deployment.id },
+            data: {
+              status: "QUEUED",
+              attempt: newAttempt,
+            },
+          })
+          await recordDeployEventOnce({
+            deploymentId: deployment.id,
+            type: "JENKINS_BUILD_COMPLETED",
+            message: `Jenkins build failed for ${slug} (attempt ${attempt}/3)`,
+            metadata: {
+              ...(buildNumber !== undefined ? { buildNumber } : {}),
+              commitSha: commitSha ?? null,
+              outcome: "FAILURE",
+            },
+          })
+          await recordDeployLog({
+            deploymentId: deployment.id,
+            scope: "build",
+            status: "RETRYING",
+            message: `Build failed (attempt ${attempt}/3), re-queued for retry.`,
+          })
+        } else {
+          // Max retries exhausted
+          await prisma.applicationDeployment.update({
+            where: { id: deployment.id },
+            data: {
+              status: "FAILED",
+              failureReason: `Jenkins build failed after ${attempt} attempts`,
+              completedAt: new Date(),
+            },
+          })
+          await prisma.applicationStack.update({
+            where: { id: stack.id },
+            data: { lastDeployStatus: "FAILED" },
+          })
+          await recordDeployEventOnce({
+            deploymentId: deployment.id,
+            type: "DEPLOY_FAILED",
+            message: `Build failed after ${attempt} attempts`,
+          })
+          await recordDeployLog({
+            deploymentId: deployment.id,
+            scope: "build",
             status: "FAILED",
-            failureReason: `Jenkins build failed after ${attempt} attempts`,
-            completedAt: new Date(),
-          },
-        })
-        await prisma.applicationStack.update({
-          where: { id: stack.id },
-          data: { lastDeployStatus: "FAILED" },
-        })
-        await recordDeployEventOnce({
-          deploymentId: deployment.id,
-          type: "DEPLOY_FAILED",
-          message: `Build failed after ${attempt} attempts`,
-        })
-        await recordDeployLog({
-          deploymentId: deployment.id,
-          scope: "build",
-          status: "FAILED",
-          message: `Jenkins build failed after ${attempt} attempts.`,
-        })
+            message: `Jenkins build failed after ${attempt} attempts.`,
+          })
+        }
       }
-    }
 
-    return { ok: true }
-  },
-  {
-    body: t.Object({
-      slug: t.String(),
-      buildStatus: t.Optional(
-        t.Union([t.Literal("SUCCESS"), t.Literal("FAILURE")])
+      return { ok: true }
+    },
+    {
+      body: t.Object(
+        {
+          slug: t.String(),
+          token: t.Optional(t.String()),
+          buildStatus: t.Optional(
+            t.Union([t.Literal("SUCCESS"), t.Literal("FAILURE")])
+          ),
+          commitSha: t.Optional(t.String()),
+          buildNumber: t.Optional(t.Number()),
+          durationMs: t.Optional(t.Number()),
+          imageTag: t.Optional(t.String()),
+          phase: t.Optional(
+            t.Union([
+              t.Literal("QUEUED"),
+              t.Literal("RUNNING"),
+              t.Literal("COMPLETED"),
+            ])
+          ),
+          errorMessage: t.Optional(t.String()),
+          __rawBody: t.Optional(t.String()),
+        },
+        { additionalProperties: true }
       ),
-      commitSha: t.Optional(t.String()),
-      buildNumber: t.Optional(t.Number()),
-      durationMs: t.Optional(t.Number()),
-      imageTag: t.Optional(t.String()),
-      phase: t.Optional(
-        t.Union([
-          t.Literal("QUEUED"),
-          t.Literal("RUNNING"),
-          t.Literal("COMPLETED"),
-        ])
-      ),
-      errorMessage: t.Optional(t.String()),
-    }),
-  }
-)
+    }
+  )

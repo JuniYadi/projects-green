@@ -216,4 +216,28 @@ describe("POST /deploy/jenkins-image-ready", () => {
     expect(body).toEqual({ ok: false, error: "UNAUTHORIZED" })
     expect(mockHandle).not.toHaveBeenCalled()
   })
+
+  it("verifies exact raw body HMAC with custom whitespace and extra properties", async () => {
+    const rawFormattedBody = JSON.stringify(
+      {
+        slug: "app-metacard-prod",
+        imageTag: "187",
+        token: "legacy-token",
+        extraField: "ignored-by-schema",
+      },
+      null,
+      2
+    )
+    const headers = createJenkinsWebhookHeaders(
+      rawFormattedBody,
+      "expected-token"
+    )
+
+    const res = await post({}, headers, rawFormattedBody)
+    expect(res.status).toBe(200)
+    expect(mockHandle).toHaveBeenCalledTimes(1)
+    const calledWith = mockHandle.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(calledWith?.slug).toBe("app-metacard-prod")
+    expect(calledWith?.imageTag).toBe("187")
+  })
 })
