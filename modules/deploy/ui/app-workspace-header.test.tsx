@@ -100,4 +100,33 @@ describe("AppWorkspaceHeader", () => {
     expect(view.getByText("Indonesia")).toBeDefined()
     expect(view.getByText("(jkt)")).toBeDefined()
   })
+
+  it("renders 'Deploy Update' and hides 'Reinstall Template' for git apps", () => {
+    const onDeployMock = mock(() => {})
+    const view = render(
+      <AppWorkspaceHeader
+        selectedApp={sampleGitApp}
+        activeTab="overview"
+        onDeploy={onDeployMock}
+      />
+    )
+
+    expect(view.getByText("Deploy Update")).toBeDefined()
+    expect(view.queryByText("Reinstall Template")).toBeNull()
+    expect(view.queryByText("Ganti Template")).toBeNull()
+  })
+
+  it("renders 'Reinstall Template' / 'Ganti Template' and hides 'Deploy Update' for template apps", () => {
+    const onDeployMock = mock(() => {})
+    const view = render(
+      <AppWorkspaceHeader
+        selectedApp={sampleTemplateApp}
+        activeTab="overview"
+        onDeploy={onDeployMock}
+      />
+    )
+
+    expect(view.getByText("Ganti Template")).toBeDefined()
+    expect(view.queryByText("Deploy Update")).toBeNull()
+  })
 })
