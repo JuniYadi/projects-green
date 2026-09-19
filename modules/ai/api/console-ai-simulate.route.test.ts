@@ -135,7 +135,7 @@ describe("Console AI Simulate Route (/console/ai/simulate)", () => {
     expect(json.error).toBe("NOT_FOUND")
   })
 
-  it("handles POST /console/ai/simulate with trailing slash", async () => {
+  it("handles POST /console/ai/simulate successfully", async () => {
     mockPrisma.aiAgentProfile.findFirst.mockResolvedValueOnce({
       id: "agent_cs",
       organizationId: "org_console",
@@ -147,7 +147,7 @@ describe("Console AI Simulate Route (/console/ai/simulate)", () => {
     })
 
     const res = await app.handle(
-      new Request("http://localhost/console/ai/simulate/", {
+      new Request("http://localhost/console/ai/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

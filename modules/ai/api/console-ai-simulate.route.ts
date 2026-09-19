@@ -1,26 +1,12 @@
-import { Elysia, t } from "elysia"
+import { Elysia } from "elysia"
 import {
   requireConsoleOrgAuth,
 } from "@/modules/ai/api/console-ai-providers.route"
 import {
   simulateAgentInference,
+  agentSimulateBodySchema,
   type AgentSimulateInput,
 } from "@/modules/whatsapp/agent/agent-simulation.service"
-
-const agentSimulateBodySchema = t.Object({
-  agentProfileId: t.String(),
-  message: t.String(),
-  conversationHistory: t.Optional(
-    t.Array(
-      t.Object({
-        role: t.Union([t.Literal("user"), t.Literal("assistant")]),
-        content: t.String(),
-      })
-    )
-  ),
-  mediaUrl: t.Optional(t.String()),
-  mediaType: t.Optional(t.String()),
-})
 
 const handleSimulate = async ({
   body,
@@ -53,11 +39,11 @@ const handleSimulate = async ({
 }
 
 export function createConsoleAiSimulateRoutes() {
-  return new Elysia({ prefix: "/console/ai/simulate" })
-    .post("/", handleSimulate, {
+  return new Elysia({ prefix: "/console/ai/simulate" }).post(
+    "/",
+    handleSimulate,
+    {
       body: agentSimulateBodySchema,
-    })
-    .post("", handleSimulate, {
-      body: agentSimulateBodySchema,
-    })
+    }
+  )
 }

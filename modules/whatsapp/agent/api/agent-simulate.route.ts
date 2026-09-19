@@ -1,26 +1,12 @@
-import { Elysia, t } from "elysia"
+import { Elysia } from "elysia"
 import {
   requireConsoleOrgAuth,
 } from "@/modules/ai/api/console-ai-providers.route"
 import {
   simulateAgentInference,
+  agentSimulateBodySchema,
   type AgentSimulateInput,
 } from "../agent-simulation.service"
-
-const agentSimulateBodySchema = t.Object({
-  agentProfileId: t.String(),
-  message: t.String(),
-  conversationHistory: t.Optional(
-    t.Array(
-      t.Object({
-        role: t.Union([t.Literal("user"), t.Literal("assistant")]),
-        content: t.String(),
-      })
-    )
-  ),
-  mediaUrl: t.Optional(t.String()),
-  mediaType: t.Optional(t.String()),
-})
 
 export const agentSimulateRoutes = new Elysia({ prefix: "/agent" }).post(
   "/simulate",

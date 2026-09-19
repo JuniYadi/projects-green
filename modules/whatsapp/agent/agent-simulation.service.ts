@@ -1,4 +1,5 @@
 import { generateText, stepCountIs, type ModelMessage, type Tool } from "ai"
+import { t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import {
   resolveAiProviderConfig,
@@ -8,6 +9,21 @@ import { buildAgentTools } from "@/modules/ai/agents/ai-agent-tools"
 import {
   parseInteractiveButtons,
 } from "@/modules/whatsapp/ai/ai-interactive-parser"
+
+export const agentSimulateBodySchema = t.Object({
+  agentProfileId: t.String(),
+  message: t.String(),
+  conversationHistory: t.Optional(
+    t.Array(
+      t.Object({
+        role: t.Union([t.Literal("user"), t.Literal("assistant")]),
+        content: t.String(),
+      })
+    )
+  ),
+  mediaUrl: t.Optional(t.String()),
+  mediaType: t.Optional(t.String()),
+})
 
 export type ConversationMessage = {
   role: "user" | "assistant"
@@ -96,6 +112,16 @@ export function checkSimulationRateLimit(
   windowMs = 60_000
 ): { allowed: boolean; retryAfterSec?: number } {
   const now = Date.now()
+
+  // Evict expired entries when map grows to avoid memory leaks
+  if (simulationRateLimits.size > 50) {
+    for (const [id, record] of simulationRateLimits.entries()) {
+      if (now > record.resetAt) {
+        simulationRateLimits.delete(id)
+      }
+    }
+  }
+
   const entry = simulationRateLimits.get(orgId)
   if (!entry || now > entry.resetAt) {
     simulationRateLimits.set(orgId, { count: 1, resetAt: now + windowMs })

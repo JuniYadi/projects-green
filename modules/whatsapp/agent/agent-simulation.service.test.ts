@@ -27,6 +27,16 @@ describe("agent-simulation.service", () => {
       const allowedAfterReset = checkSimulationRateLimit(orgId, 5, 60_000)
       expect(allowedAfterReset.allowed).toBe(true)
     })
+
+    it("evicts expired rate limit entries when map grows", () => {
+      // Seed 55 expired entries
+      for (let i = 0; i < 55; i++) {
+        checkSimulationRateLimit(`expired_org_${i}`, 5, -1000)
+      }
+      // Next call triggers eviction of expired entries
+      const check = checkSimulationRateLimit("active_org", 5, 60_000)
+      expect(check.allowed).toBe(true)
+    })
   })
 
   describe("simulateAgentInference", () => {
