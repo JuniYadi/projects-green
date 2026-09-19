@@ -195,58 +195,70 @@ export async function processInboundMessage(
   // Fire-and-forget: download media from Meta if this is a media message
   // ponytail: background download, don't block the webhook response
   const mediaId = extractMediaMetaId(payload)
-  if (mediaId) {
-    downloadAndSave(deviceId, organizationId, mediaId)
-      .then((record) => {
-        const hasCdn = Boolean(process.env.S3_CDN_URL)
-        const ext = getExtensionFromMime(record.mimeType)
-        const s3Key = buildWhatsAppMediaS3Key(
-          record.organizationId,
-          record.metaMediaId,
-          ext,
-          record.createdAt
-        )
+  const mediaType = payload.image
+    ? "image"
+    : payload.document
+      ? payload.document.mime_type || "application/pdf"
+      : payload.type
 
-        const existingMeta =
-          (whatsappMessage.metadata as Record<string, unknown>) ?? {}
-        existingMeta.whatsappMediaId = record.id
-        existingMeta.mediaDownloaded = true
-
-        let targetMediaUrl = `__stored:${record.id}`
-        if (hasCdn) {
-          const cdnUrl = getWhatsAppMediaCdnUrl(s3Key)
-          existingMeta.s3Key = s3Key
-          existingMeta.cdnUrl = cdnUrl
-          targetMediaUrl = cdnUrl
-        }
-
-        prisma.whatsappMessage
-          .update({
-            where: { id: whatsappMessage.id },
-            data: {
-              metadata: existingMeta as Prisma.InputJsonValue,
-              mediaUrl: targetMediaUrl,
-            },
-          })
-          .catch((err: unknown) =>
-            console.error(
-              `[webhooks] failed to update message with media ref: ${whatsappMessage.id}`,
-              err
-            )
+  const mediaDownloadPromise = mediaId
+    ? downloadAndSave(deviceId, organizationId, mediaId)
+        .then((record) => {
+          const hasCdn = Boolean(process.env.S3_CDN_URL)
+          const ext = getExtensionFromMime(record.mimeType)
+          const s3Key = buildWhatsAppMediaS3Key(
+            record.organizationId,
+            record.metaMediaId,
+            ext,
+            record.createdAt
           )
 
-        return record
-      })
-      .catch((err: unknown) =>
-        console.error(
-          `[webhooks] background media download failed device=${deviceId} mediaId=${mediaId}`,
-          err
-        )
-      )
-  }
-  // Fire-and-forget: Automated bot evaluation (Workflow Engine first -> AI Bot fallback)
-  // DEBT: Inbound bot pipeline uses async dynamic imports | Fix when: Unified bot event dispatcher queue is extracted
-  if (body || payload.interactive) {
+          const existingMeta =
+            (whatsappMessage.metadata as Record<string, unknown>) ?? {}
+          existingMeta.whatsappMediaId = record.id
+          existingMeta.mediaDownloaded = true
+
+          let targetMediaUrl = `__stored:${record.id}`
+          if (hasCdn) {
+            const cdnUrl = getWhatsAppMediaCdnUrl(s3Key)
+            existingMeta.s3Key = s3Key
+            existingMeta.cdnUrl = cdnUrl
+            targetMediaUrl = cdnUrl
+          }
+
+          prisma.whatsappMessage
+            .update({
+              where: { id: whatsappMessage.id },
+              data: {
+                metadata: existingMeta as Prisma.InputJsonValue,
+                mediaUrl: targetMediaUrl,
+              },
+            })
+            .catch((err: unknown) =>
+              console.error(
+                `[webhooks] failed to update message with media ref: ` +
+                  `${whatsappMessage.id}`,
+                err
+              )
+            )
+
+          return { record, targetMediaUrl }
+        })
+        .catch((err: unknown) => {
+          console.error(
+            `[webhooks] background media download failed ` +
+              `device=${deviceId} mediaId=${mediaId}`,
+            err
+          )
+          return null
+        })
+    : Promise.resolve(null)
+
+  // Fire-and-forget: Automated bot evaluation
+  // (Workflow Engine first -> AI Bot fallback)
+  // DEBT: Inbound bot pipeline uses async dynamic imports | Fix when:
+  // Unified bot event dispatcher queue is extracted
+  if (body || payload.interactive || mediaUrl || mediaId) {
     const interactiveObj = payload.interactive as
       | { button_reply?: { id?: string }; list_reply?: { id?: string } }
       | undefined
@@ -266,22 +278,30 @@ export async function processInboundMessage(
         })
 
         // Only fallback to AI Agent if Workflow didn't handle the message
-        if (!wfResult.handled && body) {
+        if (!wfResult.handled && (body || mediaUrl || mediaId)) {
+          // If media was downloaded, use the resolved CDN/stored URL
+          const mediaResult = await mediaDownloadPromise
+          const effectiveMediaUrl =
+            mediaResult?.targetMediaUrl || mediaUrl || undefined
+
           const { processWhatsappAiBotInbound } =
             await import("@/modules/whatsapp/ai-bot-consumer.service")
           await processWhatsappAiBotInbound({
             organizationId,
             deviceId,
             contactPhone: normalizedPhone,
-            inboundMessageText: body,
+            inboundMessageText: body || "",
             conversationId: conversation.id,
             inboundMessageId: whatsappMessage.id,
+            mediaUrl: effectiveMediaUrl,
+            mediaType: mediaType ?? undefined,
           })
         }
       })
       .catch((err: unknown) =>
         console.error(
-          `[webhooks] bot dispatch error device=${deviceId} org=${organizationId}`,
+          `[webhooks] bot dispatch error device=${deviceId} ` +
+            `org=${organizationId}`,
           err
         )
       )
