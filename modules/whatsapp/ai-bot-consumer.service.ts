@@ -324,11 +324,40 @@ export async function processWhatsappAiBotInbound(
       },
     })
 
-    const messages: ModelMessage[] = history.map((msg) => ({
-      role: msg.role as "user" | "assistant",
-      content: msg.content,
-    }))
-    messages.push({ role: "user", content: userMessageContent } as ModelMessage)
+    const messages: ModelMessage[] = history.map((msg) => {
+      if (typeof msg.content === "string" && msg.role === "user") {
+        try {
+          const parsed = JSON.parse(msg.content)
+          if (Array.isArray(parsed) && parsed[0]?.type) {
+            const restored = parsed.map((part: Record<string, unknown>) => {
+              if (part.type === "image" && part.image) {
+                return {
+                  type: "image" as const,
+                  image: new URL(part.image as string),
+                }
+              }
+              if (part.type === "text" && typeof part.text === "string") {
+                return { type: "text" as const, text: part.text }
+              }
+              return part
+            })
+            return {
+              role: "user" as const,
+              content: restored,
+            } as unknown as ModelMessage
+          }
+        } catch {
+          // not serialized multimodal JSON, proceed as plain string
+        }
+      }
+      return {
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      }
+    })
+    messages.push(
+      { role: "user", content: userMessageContent } as unknown as ModelMessage
+    )
 
     // 6. In-Database Hybrid RAG (pgvector + BM25 ts_rank)
     const knowledgeChunks = await searchHybridKnowledge({
