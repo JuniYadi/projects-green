@@ -66,7 +66,7 @@ docs/
 !app/\[lang\]/docs/
 !app/\[lang\]/docs/**
 .mavis/
-.opencode/
+/.opencode/
 .superpowers/
 .worktree/
 
@@ -111,6 +111,36 @@ temp/
 
 # Graphify
 graphify-out/
-.mcp.json
+/.mcp.json
 screenshot/
 screenshots/
+
+# Autopus-ADK generated files
+.autopus/
+.omp/commands/
+.omp/skills/
+autopus.yaml
+DESIGN.md
+
+.claude/agents/
+.claude/hooks/
+.claude/rules/
+.claude/skills/
+.claude/workflows/
+.claude/statusline*
+.codex/agents/
+.codex/hooks/
+.codex/skills/
+
+/.claude.json
+/.gemini/
+.agents/skills/
+.agents/plugins/
+.agents/commands/
+.agents/hooks.json
+.omp/rules/
+.omp/agents/
+.omp/config.yml
+.omp/extensions/
+.symphony/artifacts/
+/config.toml

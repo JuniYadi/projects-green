@@ -1,6 +1,12 @@
 # Mirrors .mcp.json.example's user/admin split: attach to a Chrome you've
 # already logged into as that role (chrome --remote-debugging-port=9222/9223),
 # so codex reuses the real session instead of re-running WorkOS OAuth.
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+project_doc_max_bytes = 262144
 [mcp_servers.user_browser]
 command = "bunx"
 args = ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--browser-url", "http://localhost:9222"]
@@ -14,3 +20,22 @@ args = ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--browser-
 [mcp_servers.public_browser]
 command = "bunx"
 args = ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--isolated=true", "--headless=true"]
+
+[features]
+goals = true
+hooks = true
+shell_tool = true
+unified_exec = true
+
+[features.multi_agent_v2]
+enabled = true
+
+[agents]
+max_concurrent_threads_per_session = 4
+
+[plugins."browser@openai-bundled"]
+enabled = true
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp@latest"]
