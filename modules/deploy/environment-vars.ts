@@ -162,6 +162,9 @@ export function generateRandomLaravelAppKey(): string {
   ) {
     const bytes = new Uint8Array(32)
     crypto.getRandomValues(bytes)
+    if (typeof Buffer !== "undefined") {
+      return `base64:${Buffer.from(bytes).toString("base64")}`
+    }
     const binStr = Array.from(bytes, (byte) => String.fromCharCode(byte)).join(
       ""
     )
@@ -169,19 +172,10 @@ export function generateRandomLaravelAppKey(): string {
       return `base64:${btoa(binStr)}`
     }
   }
-  // Node / fallback environment
-  const bytes = new Uint8Array(32)
-  for (let i = 0; i < 32; i++) {
-    bytes[i] = Math.floor(Math.random() * 256)
-  }
-  const binStr = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("")
-  const base64 =
-    typeof Buffer !== "undefined"
-      ? Buffer.from(bytes).toString("base64")
-      : typeof btoa === "function"
-        ? btoa(binStr)
-        : ""
-  return `base64:${base64}`
+
+  throw new Error(
+    "Cryptographically secure PRNG is unavailable for generating Laravel APP_KEY."
+  )
 }
 
 export type SeedEnvVar = {

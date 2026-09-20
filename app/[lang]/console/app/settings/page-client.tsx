@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -433,9 +434,7 @@ export default function SettingsPage() {
                     {
                       settings: {
                         env: {
-                          patch: (
-                            body: unknown
-                          ) => Promise<{
+                          patch: (body: unknown) => Promise<{
                             data?: { ok?: boolean; message?: string }
                           }>
                         }
@@ -468,8 +467,18 @@ export default function SettingsPage() {
                     payload?.message ?? "Unable to save environment variables."
                   )
                 }
+                toast.success(
+                  locale === "id"
+                    ? "Variabel lingkungan berhasil disimpan!"
+                    : "Environment variables saved successfully!"
+                )
               } catch (error) {
                 console.error("[SettingsPage] persistEnvVars failed:", error)
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to save environment variables"
+                )
               }
             }}
           />
