@@ -13,6 +13,7 @@ mock.module("next/navigation", () => ({
     push: () => {},
   }),
   usePathname: () => "/en/console",
+  useParams: () => ({ lang: "en" }),
 }))
 
 mock.module("@workos-inc/authkit-nextjs/components", () => ({
