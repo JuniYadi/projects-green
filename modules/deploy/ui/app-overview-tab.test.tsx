@@ -158,7 +158,7 @@ describe("resolveHealthVerdict", () => {
     }
   })
 
-  it("renders AppOverviewTab with enterprise hero card and vital gauges", () => {
+  it("renders AppOverviewTab with vital gauges and technical collapsible (no duplicate hero card)", () => {
     const mockStack: StackSummaryDTO = {
       id: "stack-123",
       name: "Phoenix Production",
@@ -195,25 +195,23 @@ describe("resolveHealthVerdict", () => {
       </QueryClientProvider>
     )
 
-    // Hero title & domain
-    expect(view.getByText("Phoenix Production")).toBeDefined()
-    expect(view.getByText("https://phoenix.my.id")).toBeDefined()
+    // Hero card removed — app name, URL, plan, and price are shown only in the
+    // persistent AppWorkspaceHeader above. Overview opens directly with gauges.
+    expect(view.queryByText("Phoenix Production")).toBeNull()
+    expect(view.queryByText("https://phoenix.my.id")).toBeNull()
+    expect(view.queryByText("Medium Plan")).toBeNull()
+    expect(view.queryByText(/\(Rp 40\.000 \/ bulan\)/i)).toBeNull()
 
-    // Hero plan & status
-    expect(view.getByText("Medium Plan")).toBeDefined()
-    expect(view.getByText(/\(Rp 40\.000 \/ bulan\)/i)).toBeDefined()
-
-    // Vital gauges
+    // Vital gauges still present
     expect(view.getByText("Penggunaan CPU")).toBeDefined()
     expect(view.getByText("Penggunaan Memori (RAM)")).toBeDefined()
     expect(view.getByText("Throughput Jaringan")).toBeDefined()
 
-    // Technical collapsible section
+    // Technical collapsible section still present
     expect(
       view.getByText("Spesifikasi Teknis & Jaringan Internal")
     ).toBeDefined()
     expect(view.getByText("Lihat Rincian")).toBeDefined()
-    expect(view.getByText("Salin URL")).toBeDefined()
   })
 
   it("renders AppOverviewTab with English copy when locale is en", () => {
@@ -257,6 +255,5 @@ describe("resolveHealthVerdict", () => {
       view.getByText("Technical Specs & Internal Networking")
     ).toBeDefined()
     expect(view.getByText("View Details")).toBeDefined()
-    expect(view.getByText("Copy URL")).toBeDefined()
   })
 })
