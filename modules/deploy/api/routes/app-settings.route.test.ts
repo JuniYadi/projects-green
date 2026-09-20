@@ -17,11 +17,13 @@ let mockPlatformRole: "none" | "super_admin" = "super_admin"
 const stack: {
   id: string
   organizationId: string
+  slug: string
   envVarsJson: unknown
   metadataJson: unknown
 } = {
   id: "stack-1",
   organizationId: "org-1",
+  slug: "demo",
   envVarsJson: [
     {
       key: "PUBLIC_URL",
@@ -66,6 +68,7 @@ const mockUpdate = mock(async ({ data }: { data: Record<string, unknown> }) => {
   return {
     ...stack,
     ...data,
+    slug: stack.slug,
     envVarsJson: stack.envVarsJson,
     metadataJson: stack.metadataJson,
   }
@@ -103,6 +106,16 @@ const { VaultSecretsService } =
   await import("@/modules/secrets/vault-secrets.service")
 VaultSecretsService.prototype.writeSecrets = mockVaultWriteSecrets
 
+const mockSyncStackConfiguration = mock(async () => ({
+  success: true,
+  action: "updated" as const,
+  commitSha: "sha-sync-1",
+  filePath: "helm/values.yaml",
+}))
+mock.module("@/modules/deploy/sync-stack.service", () => ({
+  syncStackConfiguration: mockSyncStackConfiguration,
+}))
+
 const { appSettingsRoutes } = await import("./app-settings.route")
 
 function request(path: string, init?: RequestInit) {
@@ -120,6 +133,7 @@ function json(path: string, method: string, body: unknown) {
 
 describe("appSettingsRoutes", () => {
   beforeEach(() => {
+    mockSyncStackConfiguration.mockClear()
     authState.user = { id: "user-1" }
     authState.organizationId = "org-1"
     authState.role = null
@@ -313,6 +327,10 @@ describe("appSettingsRoutes", () => {
         secrets: { NEW_API_KEY: "secret-token-value" },
       })
     )
+    expect(mockSyncStackConfiguration).toHaveBeenCalledWith({
+      slug: "demo",
+      organizationId: "org-1",
+    })
   })
 
   it("merges mount metadata, encrypts content, and omits content from summaries", async () => {

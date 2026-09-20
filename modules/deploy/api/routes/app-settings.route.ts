@@ -16,6 +16,7 @@ import {
   resolveTenantRoleFromClaims,
 } from "@/modules/tenants/tenant-policy"
 import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
+import { syncStackConfiguration } from "@/modules/deploy/sync-stack.service"
 
 const environments = ["dev", "staging", "prod"] as const
 type EnvironmentId = (typeof environments)[number]
@@ -426,6 +427,19 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
         data: { envVarsJson: variables as Prisma.InputJsonValue },
         select: { envVarsJson: true, metadataJson: true },
       })
+
+      // Non-blocking: automatically trigger GitOps sync so plain env changes are committed to GitOps repo
+      // and ArgoCD/Kubernetes can update the pod without manual "Sync Config" intervention.
+      syncStackConfiguration({
+        slug: stack.slug,
+        organizationId: auth.organizationId,
+      }).catch((syncErr) => {
+        console.warn(
+          `[app-settings] Background syncStackConfiguration for ${stack.slug} failed:`,
+          syncErr
+        )
+      })
+
       return {
         ok: true,
         data: { envVars: parseArray(updated.envVarsJson).map(safeEnvVar) },
