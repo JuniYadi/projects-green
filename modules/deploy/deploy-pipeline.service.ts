@@ -1,14 +1,14 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { releaseManagedStock } from "@/modules/deploy/app-managed-stock.service"
-import {
-  PLATFORM_RUNTIME_CONTRACTS,
-  resolvePlatformContract,
-} from "@/modules/framework-detection/platform-runtime-contract"
+import { resolvePlatformContract } from "@/modules/framework-detection/platform-runtime-contract"
 import { generateRandomLaravelAppKey } from "@/modules/deploy/environment-vars"
 import { resolveDefaultAppHostingClusterId } from "@/modules/deploy/cluster-integration.service"
 import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
-import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
+import {
+  buildVaultSecretPath,
+  VaultSecretsService,
+} from "@/modules/secrets/vault-secrets.service"
 import { enqueueDeployment } from "@/lib/queue/deploy-pipeline"
 /**
  * PGREEN-070 — Deployment Orchestration
@@ -374,6 +374,40 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
         environment: env,
         secrets: plainSecrets,
       })
+    } else {
+      // Ensure existing secret entries have vaultPath populated so Helm values can resolve externalSecretVaultPath
+      const currentVaultPath = buildVaultSecretPath({
+        organizationId: stack.organizationId,
+        stackId: stack.id,
+        environment: env,
+      })
+      const currentEnvs = Array.isArray(stack.envVarsJson)
+        ? (stack.envVarsJson as Array<Record<string, unknown>>)
+        : []
+      let needsVaultPathFix = false
+      const updatedEnvs = currentEnvs.map((entry) => {
+        const isSecret =
+          entry.type === "secret" ||
+          entry.type === "secret_ref" ||
+          entry.isStoredSecret === true ||
+          entry.masked === true
+        if (isSecret && !entry.vaultPath) {
+          needsVaultPathFix = true
+          return {
+            ...entry,
+            vaultPath: currentVaultPath,
+            vaultKey: entry.vaultKey ?? entry.key,
+          }
+        }
+        return entry
+      })
+
+      if (needsVaultPathFix) {
+        await prisma.applicationStack.update({
+          where: { id: stack.id },
+          data: { envVarsJson: updatedEnvs as Prisma.InputJsonValue },
+        })
+      }
     }
   }
 
