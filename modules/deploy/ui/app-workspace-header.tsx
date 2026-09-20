@@ -9,7 +9,6 @@ import {
   CaretUpDown,
   CheckCircle,
   Gauge,
-  ListMagnifyingGlass,
   ChartLine,
   ChartBar,
   GearSix,
@@ -19,6 +18,9 @@ import {
   Cube,
   GlobeHemisphereWest,
   ShieldCheck,
+  Scroll,
+  Copy,
+  Check,
 } from "@phosphor-icons/react"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getMessages } from "@/lib/i18n/messages"
@@ -74,6 +76,7 @@ export function AppWorkspaceHeader({
   onReinstallSuccess,
 }: AppWorkspaceHeaderProps) {
   const [reinstallOpen, setReinstallOpen] = useState(false)
+  const [copiedDomain, setCopiedDomain] = useState(false)
   const params = useParams<{ lang?: string }>()
   const router = useRouter()
   const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
@@ -85,6 +88,26 @@ export function AppWorkspaceHeader({
   const statusLabel =
     DEPLOY_STATUS_LABELS[selectedApp.status] ?? selectedApp.status
   const messages = getMessages(locale).pAppWorkspaceHeader
+
+  const effectiveTone = isDeploying
+    ? "border-sky-500/20 bg-sky-500/10 text-sky-400"
+    : tone
+  const effectiveStatusLabel = isDeploying
+    ? locale.startsWith("id")
+      ? "Sedang Deploy"
+      : "Deploying"
+    : statusLabel
+
+  const handleCopyDomain = async () => {
+    if (!targetDomain) return
+    try {
+      await navigator.clipboard.writeText(`https://${targetDomain}`)
+      setCopiedDomain(true)
+      setTimeout(() => setCopiedDomain(false), 2000)
+    } catch {
+      // Ignore clipboard error
+    }
+  }
 
   const getTabUrl = (tab: WorkspaceTabKey, slug = selectedApp.slug) => {
     return `/${locale}/console/app/platform/${slug}?tab=${tab}`
@@ -99,14 +122,14 @@ export function AppWorkspaceHeader({
     {
       key: "deployments",
       label: "Deployments",
-      icon: <ListMagnifyingGlass size={15} />,
+      icon: <RocketLaunch size={15} />,
     },
     {
       key: "security-artifacts",
       label: "Security & Artifacts",
       icon: <ShieldCheck size={15} />,
     },
-    { key: "logs", label: "Logs", icon: <ListMagnifyingGlass size={15} /> },
+    { key: "logs", label: "Logs", icon: <Scroll size={15} /> },
     {
       key: "terminal",
       label: "Terminal",
@@ -173,10 +196,14 @@ export function AppWorkspaceHeader({
               )}
 
               <span
-                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${tone}`}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${effectiveTone}`}
               >
-                <span className="size-1.5 rounded-full bg-current" />
-                <span>{statusLabel}</span>
+                <span
+                  className={`size-1.5 rounded-full bg-current ${
+                    isDeploying ? "animate-pulse" : ""
+                  }`}
+                />
+                <span>{effectiveStatusLabel}</span>
               </span>
             </div>
 
@@ -325,21 +352,39 @@ export function AppWorkspaceHeader({
             </Button>
           )}
           {targetDomain ? (
-            <Button
-              asChild
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1.5 px-3 text-xs"
-            >
-              <a
-                href={`https://${targetDomain}`}
-                target="_blank"
-                rel="noreferrer"
+            <div className="inline-flex items-center rounded-md border border-border bg-background shadow-xs">
+              <Button
+                asChild
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1.5 rounded-r-none px-3 text-xs font-medium hover:bg-muted/50"
               >
-                <span>{targetDomain}</span>
-                <ArrowSquareOut size={13} />
-              </a>
-            </Button>
+                <a
+                  href={`https://${targetDomain}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span>{targetDomain}</span>
+                  <ArrowSquareOut size={13} />
+                </a>
+              </Button>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center border-l border-border/80 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                onClick={handleCopyDomain}
+                title={
+                  locale.startsWith("id")
+                    ? "Salin alamat URL"
+                    : "Copy public URL"
+                }
+              >
+                {copiedDomain ? (
+                  <Check size={13} className="text-emerald-500" />
+                ) : (
+                  <Copy size={13} />
+                )}
+              </button>
+            </div>
           ) : null}
         </div>
       </div>

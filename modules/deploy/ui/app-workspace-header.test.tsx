@@ -161,4 +161,17 @@ describe("AppWorkspaceHeader", () => {
     expect(button).toBeDefined()
     expect((button as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it("renders public domain link with quick copy button", () => {
+    const view = render(
+      <AppWorkspaceHeader
+        selectedApp={sampleTemplateApp}
+        activeTab="overview"
+      />
+    )
+
+    expect(view.getByText("9router.custom.id")).toBeDefined()
+    const copyBtn = view.getByTitle(/Salin alamat URL|Copy public URL/i)
+    expect(copyBtn).toBeDefined()
+  })
 })

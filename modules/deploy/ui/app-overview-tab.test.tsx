@@ -1,10 +1,19 @@
-import { describe, expect, it } from "bun:test"
-import { resolveHealthVerdict } from "./app-overview-tab"
+import { describe, expect, it, mock, afterEach } from "bun:test"
+import { cleanup, render } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { AppOverviewTab, resolveHealthVerdict } from "./app-overview-tab"
+import type { StackSummaryDTO } from "../deploy-monitor.dto"
 import type {
   ClusterTelemetrySummary,
   PodMetricSummary,
   PodStatusState,
 } from "@/modules/deploy/telemetry.types"
+
+afterEach(cleanup)
+
+mock.module("next/navigation", () => ({
+  useRouter: () => ({ refresh: () => {} }),
+}))
 
 const t = {
   deploying: "deploying",
@@ -147,5 +156,61 @@ describe("resolveHealthVerdict", () => {
       expect(v.headline).toBe("deploying")
       expect(v.detail).toBe("deployingDetail")
     }
+  })
+
+  it("renders AppOverviewTab with enterprise hero card and vital gauges", () => {
+    const mockStack: StackSummaryDTO = {
+      id: "stack-123",
+      name: "Phoenix Production",
+      slug: "phoenix-prod",
+      status: "running",
+      framework: "Laravel 13.x",
+      branchName: "main",
+      subdomain: "phoenix-prod.sg.pfnapp.dev",
+      customDomain: "phoenix.my.id",
+      resourcePlanId: "medium",
+      billingMode: "PAYG",
+      billingState: "ACTIVE",
+      catalogPlanName: "Medium Plan",
+      catalogPlanPrice: "40000",
+      catalogPlanCurrency: "IDR",
+      cpu: 1,
+      memory: 2048,
+      envCount: 5,
+      port: 8080,
+      lastDeployedAt: new Date().toISOString(),
+      latestDeploymentId: "dep-1",
+      currentStepLabel: "Live",
+      currentStepIndex: 4,
+      currentStepStartedAt: new Date().toISOString(),
+    }
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <AppOverviewTab stack={mockStack} locale="id" />
+      </QueryClientProvider>
+    )
+
+    // Hero title & domain
+    expect(view.getByText("Phoenix Production")).toBeDefined()
+    expect(view.getByText("https://phoenix.my.id")).toBeDefined()
+
+    // Hero plan & status
+    expect(view.getByText("Medium Plan")).toBeDefined()
+    expect(view.getByText(/\(Rp 40\.000 \/ bulan\)/i)).toBeDefined()
+
+    // Vital gauges
+    expect(view.getByText("Penggunaan CPU")).toBeDefined()
+    expect(view.getByText("Penggunaan Memori (RAM)")).toBeDefined()
+    expect(view.getByText("Throughput Jaringan")).toBeDefined()
+
+    // Technical collapsible section
+    expect(
+      view.getByText("Spesifikasi Teknis & Jaringan Internal")
+    ).toBeDefined()
   })
 })

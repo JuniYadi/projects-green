@@ -484,6 +484,17 @@ export function JenkinsLiveTerminal({
                   💡 {t.timeoutFailedTip}
                 </p>
               )}
+              {!authFailed &&
+                effectiveFailureReason
+                  .toLowerCase()
+                  .includes("health check") && (
+                  <p className="pt-0.5 text-muted-foreground">
+                    💡{" "}
+                    {locale.startsWith("id")
+                      ? "Aplikasi gagal merespons health check pada port target. Pastikan server web mendengarkan pada port yang sesuai dan rute root (/) merespons dengan status 200 OK."
+                      : "The application failed the readiness health check on the target port. Ensure your web server listens on the configured port and the root route (/) returns a 200 OK status."}
+                  </p>
+                )}
             </div>
             {onRetry && (
               <Button
@@ -516,16 +527,25 @@ export function JenkinsLiveTerminal({
         )}
 
         {filteredLines.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-zinc-500">
-            {activeTab === "jenkins"
-              ? isStreaming
-                ? t.waitingJenkins
-                : t.noLogs
-              : activeTab === "app"
-                ? status !== "running"
-                  ? t.waitingRuntime
+          <div className="flex h-full flex-col items-center justify-center gap-1.5 text-zinc-500">
+            <p>
+              {activeTab === "jenkins"
+                ? isStreaming
+                  ? t.waitingJenkins
                   : t.noLogs
-                : t.noLogs}
+                : activeTab === "app"
+                  ? status !== "running"
+                    ? t.waitingRuntime
+                    : t.noLogs
+                  : t.noLogs}
+            </p>
+            {isFailed && activeTab === "jenkins" && (
+              <p className="text-[11px] text-zinc-400">
+                {locale.startsWith("id")
+                  ? "Coba periksa tab Log Rilis & GitOps atau Log Aplikasi untuk melihat rincian error."
+                  : "Try checking the Release & GitOps or Application Log tabs for failure details."}
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-0.5 leading-relaxed">

@@ -204,13 +204,40 @@ describe("TabMetrics", () => {
         ],
       }
     )
+
+    const resolvedTz =
+      typeof Intl !== "undefined"
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : "UTC"
+
+    client.setQueryData(
+      [
+        "deploy",
+        "pod-telemetry",
+        "all",
+        { type: "preset", preset: "1h" },
+        "sgp",
+        resolvedTz,
+        "hermes-vibrant-comet",
+      ],
+      client.getQueryData([
+        "deploy",
+        "pod-telemetry",
+        "all",
+        { type: "preset", preset: "1h" },
+        "sgp",
+        "UTC",
+        "hermes-vibrant-comet",
+      ])
+    )
+
     const view = render(
       <QueryClientProvider client={client}>
         <TabMetrics appSlug="hermes-vibrant-comet" />
       </QueryClientProvider>
     )
 
-    const allBtn = view.getByRole("button", { name: /All \(2\)/i })
+    const allBtn = view.getByRole("button", { name: /All \(2\)|Semua \(2\)/i })
     expect(allBtn).toBeDefined()
     expect(allBtn.className).toContain("bg-primary")
 

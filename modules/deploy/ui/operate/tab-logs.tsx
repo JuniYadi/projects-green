@@ -314,6 +314,10 @@ export function TabLogs({
   }, [appSlug, isLiveTailing, diagnosticMode, updateLogs])
 
   // Filter logs by query, level, and source
+  const errorCount = useMemo(() => {
+    return activeLogs.filter((l) => l.level === "ERROR").length
+  }, [activeLogs])
+
   const filteredLogs = useMemo(() => {
     return activeLogs.filter((log) => {
       const matchQuery =
@@ -644,6 +648,7 @@ export function TabLogs({
                   <Button
                     key={lvl}
                     type="button"
+                    aria-label={lvl}
                     onClick={() => {
                       setLogFilterLevel(lvl)
                       setCurrentPage(1)
@@ -653,7 +658,12 @@ export function TabLogs({
                     className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition-all"
                   >
                     <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
-                    {lvl}
+                    <span>{lvl}</span>
+                    {lvl === "ERROR" && errorCount > 0 && (
+                      <span className="py-0.2 ml-0.5 rounded-full bg-red-500/20 px-1.5 text-[10px] font-bold text-red-500 dark:text-red-400">
+                        {errorCount}
+                      </span>
+                    )}
                   </Button>
                 )
               })}

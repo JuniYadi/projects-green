@@ -1126,12 +1126,12 @@ export const enMessages: AppMessages = {
         liveRates: "Live Rates",
         statusCodeBreakdown: "Status Code Breakdown (req/s)",
         statusCodeBreakdownDesc:
-          "2xx Success (Green), 3xx Redirect (Sky), 4xx Client (Amber), 5xx Server (Rose)",
+          "HTTP status code distribution: 2xx Success, 3xx Redirect, 4xx Client Error, 5xx Server Error",
         latencyBreakdown: "Latency Breakdown",
         latencyBreakdownBadge: "Queue vs Connect vs App",
         responseTimeComponents: "Response Time Components (ms)",
         responseTimeComponentsDesc:
-          "Total (Teal), App Response (Indigo), Connect (Amber), Queue Time (Purple)",
+          "Latency decomposition: Total round-trip, backend application, connection, and queue",
         cpuUsagePerPod: "CPU Usage per Pod",
         ramWorkingSetPerPod: "RAM Working Set per Pod",
         networkIngressPerPod: "Network Ingress per Pod",
@@ -5204,11 +5204,11 @@ export const enMessages: AppMessages = {
       },
       timeline: {
         steps: {
-          queuedInit: "Queued & Init",
-          jenkinsBuild: "Jenkins Build & Scan",
-          artifactsScan: "Artifacts & Scan Ingest",
+          queuedInit: "Queue & Environment Setup",
+          jenkinsBuild: "Container Build & Security Scan",
+          artifactsScan: "Release Image Verification",
           gitopsConfig: "GitOps Configuration",
-          cloudRollout: "Rollout Cluster & Pod Ready",
+          cloudRollout: "Server Rollout & Pod Ready",
           liveServing: "Live & Serving",
           queued: "Queued",
           monitorWait: "Waiting in queue",
@@ -9201,8 +9201,7 @@ export const enMessages: AppMessages = {
     visitedPathsTab: "Visited Paths",
   },
   pDeployOperateTrafficLiveStreamTable: {
-    description:
-      "Sample of 25 latest requests per 3 seconds (TanStack Query Buffer)",
+    description: "Sample of latest ingress requests updated in real time",
     fetchError: "Failed to fetch live logs",
     listeningLive: "Listening to request traffic in real time...",
     pauseStream: "Pause Stream",
@@ -9242,7 +9241,7 @@ export const enMessages: AppMessages = {
     successRate: "Success Rate",
     totalRequests: "Total Requests",
     totalVisits: "Total Visits",
-    uniqueIpCardinality: "Unique IP cardinality ({period})",
+    uniqueIpCardinality: "Unique visitors ({period})",
   },
   pDeployOperateTrafficTopPagesCard: {
     allLinksCleanDescription:

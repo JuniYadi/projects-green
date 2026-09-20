@@ -124,6 +124,27 @@ describe("SecurityArtifactsTab", () => {
     expect(view.getByText("Rollback")).toBeDefined()
   })
 
+  it("renders dynamic plan retention policy for paid plans", () => {
+    const view = render(
+      <SecurityArtifactsTab
+        stackSlug="my-laravel-app"
+        images={sampleImages}
+        activeScan={sampleImages[0].securityScan}
+        findings={sampleFindings}
+        totalFindings={2}
+        planTier="medium"
+        locale="en"
+      />
+    )
+
+    expect(
+      view.getByText(/Release Snapshot Retention Policy \(MEDIUM Plan\)/i)
+    ).toBeDefined()
+    expect(
+      view.getByText(/MEDIUM plan retains up to 5 release snapshot images/i)
+    ).toBeDefined()
+  })
+
   it("switches to Vulnerability Explorer view and displays severity counters and findings", () => {
     const view = render(
       <SecurityArtifactsTab
@@ -141,7 +162,9 @@ describe("SecurityArtifactsTab", () => {
     fireEvent.click(vulnTabBtn)
 
     // Posture status
-    expect(view.getByText(/WARNING \(Actionable Fixes Available\)/i)).toBeDefined()
+    expect(
+      view.getByText(/WARNING \(Actionable Fixes Available\)/i)
+    ).toBeDefined()
 
     // Severity counter
     expect(view.getByText("CRITICAL")).toBeDefined()

@@ -8,12 +8,22 @@ import type {
   SecurityScanFindingDTO,
 } from "@/modules/deploy/security-artifacts.dto"
 
-export function SecurityArtifactsTabSection({ slug }: { slug: string }) {
+export function SecurityArtifactsTabSection({
+  slug,
+  planTier,
+}: {
+  slug: string
+  planTier?: string | null
+}) {
   const [images, setImages] = useState<ContainerImageDTO[]>([])
-  const [activeScan, setActiveScan] = useState<SecurityScanSummaryDTO | null>(null)
+  const [activeScan, setActiveScan] = useState<SecurityScanSummaryDTO | null>(
+    null
+  )
   const [findings, setFindings] = useState<SecurityScanFindingDTO[]>([])
   const [totalFindings, setTotalFindings] = useState(0)
-  const [registryRepository, setRegistryRepository] = useState<string | undefined>()
+  const [registryRepository, setRegistryRepository] = useState<
+    string | undefined
+  >()
   const [loading, setLoading] = useState(true)
   const [isRollingBack, setIsRollingBack] = useState(false)
   const [reloadTrigger, setReloadTrigger] = useState(0)
@@ -149,6 +159,7 @@ export function SecurityArtifactsTabSection({ slug }: { slug: string }) {
       onRollback={handleRollback}
       onDownloadReport={activeScan ? handleDownloadReport : undefined}
       isRollingBack={isRollingBack}
+      planTier={planTier}
     />
   )
 }

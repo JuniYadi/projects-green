@@ -1,12 +1,21 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { Spinner } from "@phosphor-icons/react"
 
 // xterm touches `window` at import time, so keep it off the server render.
 const StackTerminal = dynamic(
   () =>
     import("@/modules/deploy/ui/stack-terminal").then((m) => m.StackTerminal),
-  { ssr: false }
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[440px] w-full flex-col items-center justify-center rounded-xl border border-zinc-800 bg-[#09090b] text-zinc-400">
+        <Spinner size={24} className="animate-spin text-emerald-500" />
+        <p className="mt-2 font-mono text-xs">Loading terminal session...</p>
+      </div>
+    ),
+  }
 )
 
 export type TabTerminalProps = {
