@@ -5896,6 +5896,7 @@ export type AppMessages = {
         active: string
       }
       card: {
+        roleLabel: string
         dailyLimitLabel: string
         reqPerUser: string
         antiSpamProtection: string

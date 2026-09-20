@@ -6462,6 +6462,7 @@ export const enMessages: AppMessages = {
         active: "Active",
       },
       card: {
+        roleLabel: "Assistant Role:",
         dailyLimitLabel: "Daily Limit:",
         reqPerUser: "req/user",
         antiSpamProtection: "Anti-Spam Protection",

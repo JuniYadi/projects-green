@@ -6522,6 +6522,7 @@ export const idMessages: AppMessages = {
         active: "Aktif",
       },
       card: {
+        roleLabel: "Peran Asisten:",
         dailyLimitLabel: "Batas Harian:",
         reqPerUser: "req/user",
         antiSpamProtection: "Proteksi Anti-Spam",
