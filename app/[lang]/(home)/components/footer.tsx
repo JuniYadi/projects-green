@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import {
-  Lightning,
   GithubLogo,
   TwitterLogo,
   DiscordLogo,
@@ -10,6 +9,7 @@ import {
 } from "@phosphor-icons/react"
 
 import { useParams } from "next/navigation"
+import { BrandLogo } from "@/components/brand-logo"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
@@ -45,19 +45,21 @@ export function CTASection() {
 
         <div className="flex flex-col justify-center gap-4 sm:flex-row">
           <Link
-            href="/login/start?intent=signup"
-            id="cta-final-signup"
-            className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-2xl shadow-primary/30 transition-all hover:scale-105 hover:bg-primary/90 hover:shadow-primary/50"
+            href={`/${locale}/products/whatsapp-official`}
+            id="cta-final-whatsapp"
+            className="group inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-emerald-500"
           >
-            {t.ctaStartBuilding}
+            {locale === "id"
+              ? "Mulai Solusi WhatsApp"
+              : "Get Started with WhatsApp"}
             <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Link>
           <Link
-            href="#contact"
-            id="cta-final-sales"
+            href={`/${locale}/login`}
+            id="cta-final-login"
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-8 py-4 text-base font-semibold text-foreground transition-all hover:bg-accent"
           >
-            {t.ctaTalkToSales}
+            {locale === "id" ? "Masuk ke Konsol" : "Enter Console"}
           </Link>
         </div>
 
@@ -121,15 +123,7 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2">
             <Link href="/" className="group mb-4 flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-lg shadow-primary/30">
-                <Lightning
-                  weight="fill"
-                  className="h-4 w-4 text-primary-foreground"
-                />
-              </div>
-              <span className="text-lg font-bold tracking-tight text-foreground">
-                PFN<span className="text-primary">App</span>
-              </span>
+              <BrandLogo size="md" />
             </Link>
             <p className="mb-5 max-w-[220px] text-sm leading-relaxed text-muted-foreground">
               {t.brandDescription}

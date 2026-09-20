@@ -110,16 +110,20 @@ export function HeroSection() {
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
 
+  const isId = locale === "id"
+
   const stats = [
-    { value: "99.99%", label: messages.pHomeHero.statUptimeLabel },
-    { value: "42", label: messages.pHomeHero.statRegionsLabel },
-    { value: "<50ms", label: messages.pHomeHero.statLatencyLabel },
-    { value: "10K+", label: messages.pHomeHero.statDevelopersLabel },
+    { value: "99.9%", label: messages.pHomeHero.statUptimeLabel },
+    { value: "< 2s", label: isId ? "Latensi Kirim Pesan" : "Delivery Latency" },
+    { value: "24/7", label: isId ? "Dukungan Teknis" : "Engineering Support" },
+    { value: "100%", label: isId ? "API Resmi Meta" : "Official Meta API" },
   ]
 
   const badges = [
-    // Certification name — a proper noun, not localized.
-    { icon: CheckCircle, label: "SOC 2 Type II" },
+    {
+      icon: CheckCircle,
+      label: isId ? "Infrastruktur Terkelola" : "Managed Cloud Infra",
+    },
     { icon: GitBranch, label: messages.pHomeHero.badgeGitNative },
     { icon: Play, label: messages.pHomeHero.badgeRollbacks },
   ]
@@ -186,20 +190,19 @@ export function HeroSection() {
           {/* CTA buttons */}
           <div className="mb-16 flex flex-col gap-4 sm:flex-row">
             <Link
-              href="/login/start?intent=signup"
-              id="hero-cta-signup"
-              className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-7 py-3.5 font-semibold text-white shadow-xl shadow-emerald-500/25 transition-all hover:scale-105 hover:from-emerald-400 hover:to-cyan-400 hover:shadow-emerald-500/40"
+              href={`/${locale}/products/whatsapp-official`}
+              id="hero-cta-whatsapp"
+              className="group inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-7 py-3.5 font-semibold text-white shadow-lg shadow-emerald-950/20 transition-all hover:bg-emerald-500"
             >
-              {messages.pHomeHero.ctaStartBuilding}
+              {isId ? "Lihat Solusi WhatsApp" : "Explore WhatsApp Platform"}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
-              href="#demo"
-              id="hero-cta-demo"
+              href={`/${locale}/login`}
+              id="hero-cta-signup"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-7 py-3.5 font-semibold text-white transition-all hover:bg-white/10"
             >
-              <Play weight="fill" className="h-4 w-4 text-emerald-400" />
-              {messages.pHomeHero.ctaWatchDemo}
+              {isId ? "Buka Konsol" : "Open Console"}
             </Link>
           </div>
 

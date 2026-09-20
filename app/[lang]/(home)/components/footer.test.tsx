@@ -39,10 +39,10 @@ describe("Public Footer Component", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
     const view = render(<Footer />)
 
-    const termsLink = view.getByRole("link", { name: "Terms of Service" })
-    const privacyLink = view.getByRole("link", { name: "Privacy Policy" })
+    const termsLink = view.getByRole("link", { name: "Ketentuan Layanan" })
+    const privacyLink = view.getByRole("link", { name: "Kebijakan Privasi" })
     const aupLink = view.getByRole("link", {
-      name: "Acceptable Use Policy",
+      name: "Kebijakan Penggunaan Wajar",
     })
 
     expect(termsLink.getAttribute("href")).toBe("/id/terms")

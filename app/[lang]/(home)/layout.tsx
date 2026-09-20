@@ -3,5 +3,5 @@ export default function HomeLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <div style={{ fontFamily: "var(--font-display)" }}>{children}</div>
+  return <div className="font-sans antialiased">{children}</div>
 }

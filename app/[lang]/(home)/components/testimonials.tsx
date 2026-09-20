@@ -1,138 +1,145 @@
 "use client"
 
-import { Quotes, Star } from "@phosphor-icons/react"
-
-const testimonials = [
-  {
-    id: 1,
-    name: "Sarah Chen",
-    role: "CTO",
-    company: "Nexus Labs",
-    avatar: "SC",
-    avatarBg: "bg-chart-5",
-    rating: 5,
-    quote:
-      "PFNApp replaced four separate vendors for us. Hosting, email, storage, and auth — all in one dashboard. Our DevOps overhead dropped by 60%.",
-  },
-  {
-    id: 2,
-    name: "Marcus Rivera",
-    role: "Lead Engineer",
-    company: "FinTrack",
-    avatar: "MR",
-    avatarBg: "bg-primary",
-    rating: 5,
-    quote:
-      "The developer experience is unmatched. Git push, it deploys. S3 storage just works. The CLI is clean and fast. Exactly what I wanted.",
-  },
-  {
-    id: 3,
-    name: "Aiko Tanaka",
-    role: "Founder",
-    company: "Kura AI",
-    avatar: "AT",
-    avatarBg: "bg-chart-1",
-    rating: 5,
-    quote:
-      "We went from zero to production in 2 hours. The AI services integration is seamless — embeddings and completions with one API key.",
-  },
-  {
-    id: 4,
-    name: "David Okafor",
-    role: "Backend Dev",
-    company: "ShipStack",
-    avatar: "DO",
-    avatarBg: "bg-chart-3",
-    rating: 5,
-    quote:
-      "Transactional emails used to be a nightmare. PFNApp's communication service just works — 99.8% deliverability and webhooks out of the box.",
-  },
-  {
-    id: 5,
-    name: "Priya Nair",
-    role: "Product Manager",
-    company: "Waverly",
-    avatar: "PN",
-    avatarBg: "bg-chart-4",
-    rating: 5,
-    quote:
-      "The billing is transparent and the free tier is genuinely useful. We validated our MVP before spending a single dollar.",
-  },
-  {
-    id: 6,
-    name: "Tom Brennan",
-    role: "Solo Developer",
-    company: "indie",
-    avatar: "TB",
-    avatarBg: "bg-muted",
-    rating: 5,
-    quote:
-      "As a solo dev, I don't have time to set up infrastructure. PFNApp handles all of that so I can focus on shipping features.",
-  },
-]
+import { useParams } from "next/navigation"
+import {
+  ShieldCheck,
+  Cpu,
+  Clock,
+  ArrowsLeftRight,
+  Database,
+  LockKey,
+} from "@phosphor-icons/react"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export function TestimonialsSection() {
-  return (
-    <section className="relative overflow-hidden bg-background py-28">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,color-mix(in_oklch,var(--chart-5)_6%,transparent),transparent)]" />
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const isId = locale === "id"
 
+  const highlights = [
+    {
+      icon: Clock,
+      title: isId ? "99.9% Uptime & SLA" : "99.9% Uptime SLA",
+      description: isId
+        ? "Infrastruktur cloud berkinerja tinggi dengan pemantauan otomatis dan pemulihan cepat untuk menjaga layanan tetap aktif."
+        : "High-performance cloud infrastructure backed by continuous health checks and automated failover.",
+      metric: "99.9%",
+      metricLabel: isId ? "Ketersediaan Layanan" : "Service Availability",
+    },
+    {
+      icon: ArrowsLeftRight,
+      title: isId ? "Integrasi WhatsApp Resmi" : "Official WhatsApp Platform",
+      description: isId
+        ? "Kirim notifikasi OTP, transactional alert, dan live chat customer service dengan throughput pesan teruji."
+        : "Send transactional alerts, OTPs, and customer conversations via official Meta Cloud API with high message throughput.",
+      metric: "< 2s",
+      metricLabel: isId ? "Pengiriman Notifikasi" : "Delivery Latency",
+    },
+    {
+      icon: LockKey,
+      title: isId ? "Keamanan Data & Privasi" : "Enterprise-Grade Security",
+      description: isId
+        ? "Enkripsi end-to-end data in-transit & at-rest, isolasi multi-tenant yang ketat, dan kebijakan kepatuhan privasi."
+        : "End-to-end TLS encryption, strict multi-tenant boundary isolation, and compliance-ready data handling.",
+      metric: "AES-256",
+      metricLabel: isId ? "Enkripsi Standar Industri" : "Industry Encryption",
+    },
+    {
+      icon: Cpu,
+      title: isId ? "App Hosting Terkelola" : "Managed Cloud Runtimes",
+      description: isId
+        ? "Jalankan kontainer dan framework web modern (Next.js, Node, Laravel) dengan routing otomatis dan sertifikat SSL gratis."
+        : "Run modern web frameworks and containers with automated reverse proxying and zero-touch SSL generation.",
+      metric: "Auto",
+      metricLabel: isId ? "SSL & Load Balancer" : "SSL & Load Balancing",
+    },
+    {
+      icon: Database,
+      title: isId
+        ? "Deposit & Penagihan Transparan"
+        : "Transparent Billing & Top-Up",
+      description: isId
+        ? "Sistem saldo deposit prabayar dengan dukungan QRIS, Virtual Account, dan riwayat faktur pajak resmi yang dapat diunduh."
+        : "Prepaid wallet balances with instant QRIS/VA top-ups and downloadable invoice records for tax compliance.",
+      metric: "QRIS",
+      metricLabel: isId ? "Instan & Tanpa Biaya Tersembunyi" : "Instant Top-Up",
+    },
+    {
+      icon: ShieldCheck,
+      title: isId ? "Dukungan Teknis Langsung" : "Direct Engineering Support",
+      description: isId
+        ? "Tiket bantuan ditangani langsung oleh tim engineering untuk penyelesaian kendala integrasi tanpa birokrasi berbelit."
+        : "Dedicated ticket portal directly monitored by engineers for rapid API and integration troubleshooting.",
+      metric: "24/7",
+      metricLabel: isId ? "Monitoring & Tiket Bantuan" : "Support & Monitoring",
+    },
+  ]
+
+  return (
+    <section className="relative overflow-hidden border-t border-border/40 bg-background py-24 sm:py-28">
       <div className="relative mx-auto max-w-7xl px-6">
         {/* Header */}
         <div className="mb-16 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-4 py-1.5">
-            <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-              Testimonials
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/60 px-3.5 py-1">
+            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-semibold tracking-wide text-foreground uppercase">
+              {isId
+                ? "Standar Keandalan Platform"
+                : "Platform Reliability Standards"}
             </span>
           </div>
-          <h2 className="mb-5 text-4xl font-bold tracking-tight text-foreground lg:text-5xl">
-            Loved by{" "}
-            <span className="bg-gradient-to-r from-chart-5 to-chart-3 bg-clip-text text-transparent">
-              developers worldwide
-            </span>
+          <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+            {isId ? (
+              <>
+                Infrastruktur yang dibangun untuk{" "}
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  keberlanjutan bisnis
+                </span>
+              </>
+            ) : (
+              <>
+                Infrastructure engineered for{" "}
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  mission-critical workloads
+                </span>
+              </>
+            )}
           </h2>
-          <p className="mx-auto max-w-xl text-lg text-muted-foreground">
-            Join 10,000+ developers who ship faster with PFNApp.
+          <p className="mx-auto max-w-2xl text-base text-muted-foreground sm:text-lg">
+            {isId
+              ? "Dari pengiriman notifikasi skala besar hingga aplikasi web terkelola, PFNApp menjamin keandalan dan kepatuhan hukum bisnis Anda."
+              : "From high-volume messaging to containerized app workloads, PFNApp provides the operational rigor modern businesses demand."}
           </p>
         </div>
 
-        {/* Masonry grid */}
-        <div className="columns-1 gap-5 space-y-5 sm:columns-2 lg:columns-3">
-          {testimonials.map((t) => (
+        {/* Pillars Grid */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {highlights.map((item, idx) => (
             <div
-              key={t.id}
-              className="group break-inside-avoid rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary/20"
+              key={idx}
+              className="flex flex-col justify-between rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:border-emerald-500/30 hover:shadow-md"
             >
-              <Quotes weight="fill" className="mb-4 h-6 w-6 text-border" />
-
-              {/* Stars */}
-              <div className="mb-3 flex gap-1">
-                {Array.from({ length: t.rating }).map((_, i) => (
-                  <Star
-                    key={i}
-                    weight="fill"
-                    className="h-3.5 w-3.5 text-chart-1"
-                  />
-                ))}
-              </div>
-
-              <p className="mb-6 text-sm leading-relaxed text-muted-foreground transition-colors group-hover:text-foreground/75">
-                &ldquo;{t.quote}&rdquo;
-              </p>
-
-              <div className="flex items-center gap-3">
-                <div
-                  className={`h-9 w-9 rounded-full ${t.avatarBg} flex flex-shrink-0 items-center justify-center text-xs font-bold text-primary-foreground`}
-                >
-                  {t.avatar}
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-foreground">
-                    {t.name}
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <item.icon size={22} weight="duotone" />
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {t.role} · {t.company}
+                  <div className="text-right">
+                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                      {item.metric}
+                    </span>
+                    <p className="text-[11px] text-muted-foreground">
+                      {item.metricLabel}
+                    </p>
                   </div>
                 </div>
+
+                <h3 className="mb-2 text-lg font-semibold text-foreground">
+                  {item.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {item.description}
+                </p>
               </div>
             </div>
           ))}

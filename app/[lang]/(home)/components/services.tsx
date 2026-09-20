@@ -1,151 +1,234 @@
 "use client"
 
+import { useParams } from "next/navigation"
 import {
   Cloud,
-  Envelope,
   HardDrive,
   Robot,
   ShieldCheck,
   ChartLineUp,
   ArrowRight,
+  WhatsappLogo,
 } from "@phosphor-icons/react"
-
-const services = [
-  {
-    id: "hosting",
-    icon: Cloud,
-    gradient: "from-emerald-500 to-teal-500",
-    glow: "shadow-emerald-500/20",
-    bgGlow: "bg-emerald-500/5",
-    borderHover: "hover:border-emerald-500/30",
-    title: "App Hosting",
-    subtitle: "Deploy anything, anywhere",
-    description:
-      "Zero-config deployment for Next.js, React, Node.js, and more. Git-push to deploy with automatic SSL, CDN, and scaling.",
-    features: [
-      "Auto-scaling",
-      "Preview environments",
-      "Zero downtime deploys",
-      "Edge network",
-    ],
-    badge: "Most popular",
-    badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  },
-  {
-    id: "communication",
-    icon: Envelope,
-    gradient: "from-violet-500 to-purple-500",
-    glow: "shadow-violet-500/20",
-    bgGlow: "bg-violet-500/5",
-    borderHover: "hover:border-violet-500/30",
-    title: "Communication",
-    subtitle: "Email · SMS · Push · Voice",
-    description:
-      "Unified messaging API to reach your users anywhere. High deliverability with real-time analytics and smart routing.",
-    features: ["99.5% deliverability", "SMTP relay", "SMS gateway", "Webhooks"],
-    badge: null,
-    badgeColor: "",
-  },
-  {
-    id: "storage",
-    icon: HardDrive,
-    gradient: "from-blue-500 to-cyan-500",
-    glow: "shadow-blue-500/20",
-    bgGlow: "bg-blue-500/5",
-    borderHover: "hover:border-blue-500/30",
-    title: "Storage S3",
-    subtitle: "S3-compatible object storage",
-    description:
-      "Fully compatible S3 API to store any file at any scale. Built-in CDN delivery, lifecycle policies, and access controls.",
-    features: [
-      "S3-compatible API",
-      "Global CDN",
-      "Versioning",
-      "Lifecycle rules",
-    ],
-    badge: null,
-    badgeColor: "",
-  },
-  {
-    id: "ai",
-    icon: Robot,
-    gradient: "from-amber-500 to-orange-500",
-    glow: "shadow-amber-500/20",
-    bgGlow: "bg-amber-500/5",
-    borderHover: "hover:border-amber-500/30",
-    title: "AI Services",
-    subtitle: "LLM inference & embeddings",
-    description:
-      "Run AI models at scale with a single API. Embeddings, completions, and vision — all with token-level billing.",
-    features: [
-      "OpenAI-compatible",
-      "Low-latency inference",
-      "Streaming",
-      "Vector search",
-    ],
-    badge: "New",
-    badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  },
-  {
-    id: "security",
-    icon: ShieldCheck,
-    gradient: "from-red-500 to-rose-500",
-    glow: "shadow-red-500/20",
-    bgGlow: "bg-red-500/5",
-    borderHover: "hover:border-red-500/30",
-    title: "Security & Auth",
-    subtitle: "Identity & access management",
-    description:
-      "Enterprise-grade authentication with SSO, MFA, and fine-grained RBAC. SOC 2 certified with audit logs.",
-    features: ["SSO / SAML", "MFA", "RBAC", "Audit logs"],
-    badge: null,
-    badgeColor: "",
-  },
-  {
-    id: "analytics",
-    icon: ChartLineUp,
-    gradient: "from-pink-500 to-fuchsia-500",
-    glow: "shadow-pink-500/20",
-    bgGlow: "bg-pink-500/5",
-    borderHover: "hover:border-pink-500/30",
-    title: "Analytics",
-    subtitle: "Real-time insights",
-    description:
-      "Understand your users and infrastructure at a glance. Custom dashboards, alerts, and API usage metrics.",
-    features: [
-      "Real-time metrics",
-      "Custom dashboards",
-      "Alerting",
-      "Log aggregation",
-    ],
-    badge: "Coming soon",
-    badgeColor: "bg-pink-500/20 text-pink-400 border-pink-500/30",
-  },
-]
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export function ServicesSection() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const isId = locale === "id"
+
+  const services = [
+    {
+      id: "hosting",
+      icon: Cloud,
+      gradient: "from-emerald-500 to-teal-500",
+      glow: "shadow-emerald-500/20",
+      bgGlow: "bg-emerald-500/5",
+      borderHover: "hover:border-emerald-500/30",
+      title: isId ? "Hosting Aplikasi" : "App Hosting",
+      subtitle: isId
+        ? "Deploy cepat, otomatis & andal"
+        : "Deploy anything, anywhere",
+      description: isId
+        ? "Deployment terisolasi untuk Next.js, Node.js, Laravel, dan container. Dilengkapi SSL otomatis, reverse proxy edge, dan pemantauan metrik."
+        : "Zero-config deployment for Next.js, React, Node.js, and more. Git-push to deploy with automatic SSL, CDN, and scaling.",
+      features: isId
+        ? [
+            "Skalabilitas otomatis",
+            "Lingkungan pratinjau",
+            "Zero downtime deploy",
+            "Jaringan edge",
+          ]
+        : [
+            "Auto-scaling",
+            "Preview environments",
+            "Zero downtime deploys",
+            "Edge network",
+          ],
+      badge: isId ? "Populer" : "Most popular",
+      badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    },
+    {
+      id: "whatsapp",
+      icon: WhatsappLogo,
+      gradient: "from-emerald-600 to-green-500",
+      glow: "shadow-emerald-500/20",
+      bgGlow: "bg-emerald-500/5",
+      borderHover: "hover:border-emerald-500/30",
+      title: isId ? "WhatsApp Official API" : "WhatsApp Official API",
+      subtitle: isId
+        ? "Pesan Bisnis Resmi & Webhook"
+        : "Official Business Messaging",
+      description: isId
+        ? "Platform Cloud API resmi Meta untuk pengiriman notifikasi transaksi, OTP, broadcast, dan integrasi webhook bot interaktif."
+        : "Official Meta Cloud API platform for transactional alerts, OTP verification, broadcasts, and interactive bot webhooks.",
+      features: isId
+        ? [
+            "Katalog paket resmi",
+            "Manajemen template Meta",
+            "Webhook & audit log",
+            "Dukungan QRIS & Saldo",
+          ]
+        : [
+            "Official catalog plans",
+            "Meta template sync",
+            "Webhooks & audit logs",
+            "QRIS wallet balance",
+          ],
+      badge: isId ? "Siap Pakai" : "Production Ready",
+      badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    },
+    {
+      id: "vpn",
+      icon: ShieldCheck,
+      gradient: "from-teal-500 to-cyan-500",
+      glow: "shadow-teal-500/20",
+      bgGlow: "bg-teal-500/5",
+      borderHover: "hover:border-teal-500/30",
+      title: isId ? "Secure WireGuard VPN" : "Secure WireGuard VPN",
+      subtitle: isId
+        ? "Tunnel Jaringan Terisolasi"
+        : "Isolated Network Tunnels",
+      description: isId
+        ? "Akses infrastruktur internal dengan aman menggunakan protokol WireGuard modern berkecepatan tinggi dan latency rendah."
+        : "High-speed, low-latency secure network tunneling to access private cloud services and databases safely.",
+      features: isId
+        ? [
+            "Enkripsi WireGuard",
+            "Multi-region endpoint",
+            "Konfigurasi instan",
+            "Manajemen perangkat",
+          ]
+        : [
+            "WireGuard encryption",
+            "Multi-region endpoints",
+            "Instant profiles",
+            "Device management",
+          ],
+      badge: isId ? "Tersedia" : "Available",
+      badgeColor: "bg-teal-500/20 text-teal-400 border-teal-500/30",
+    },
+    {
+      id: "storage",
+      icon: HardDrive,
+      gradient: "from-blue-500 to-cyan-500",
+      glow: "shadow-blue-500/20",
+      bgGlow: "bg-blue-500/5",
+      borderHover: "hover:border-blue-500/30",
+      title: isId ? "Penyimpanan Objek S3" : "Storage S3",
+      subtitle: isId
+        ? "Object storage kompatibel S3"
+        : "S3-compatible object storage",
+      description: isId
+        ? "API penyimpanan kompatibel S3 standar industri untuk media, backup, dan aset statis dengan bandwidth optimal."
+        : "Fully compatible S3 API to store any file at any scale. Built-in CDN delivery, lifecycle policies, and access controls.",
+      features: isId
+        ? [
+            "API S3-kompatibel",
+            "CDN global",
+            "Versioning aset",
+            "Kontrol akses IAM",
+          ]
+        : ["S3-compatible API", "Global CDN", "Versioning", "Lifecycle rules"],
+      badge: null,
+      badgeColor: "",
+    },
+    {
+      id: "ai",
+      icon: Robot,
+      gradient: "from-amber-500 to-orange-500",
+      glow: "shadow-amber-500/20",
+      bgGlow: "bg-amber-500/5",
+      borderHover: "hover:border-amber-500/30",
+      title: isId ? "AI Studio & Agents" : "AI Studio & Agents",
+      subtitle: isId
+        ? "Visual workflow & provider LLM"
+        : "LLM inference & embeddings",
+      description: isId
+        ? "Rancang visual agent dan alur kerja bot cerdas dengan integrasi multi-provider model LLM dan eksekusi real-time."
+        : "Run AI models at scale with a single API. Embeddings, completions, and vision — all with token-level billing.",
+      features: isId
+        ? [
+            "Canvas visual workflow",
+            "Koneksi multi-provider",
+            "Knowledge retrieval",
+            "Simulator interaktif",
+          ]
+        : [
+            "Visual canvas workflow",
+            "Multi-provider LLM",
+            "Knowledge base",
+            "Interactive simulator",
+          ],
+      badge: "Beta",
+      badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+    },
+    {
+      id: "analytics",
+      icon: ChartLineUp,
+      gradient: "from-pink-500 to-fuchsia-500",
+      glow: "shadow-pink-500/20",
+      bgGlow: "bg-pink-500/5",
+      borderHover: "hover:border-pink-500/30",
+      title: isId ? "Analitik & Penagihan Terpadu" : "Analytics & Invoicing",
+      subtitle: isId ? "Visibilitas pemakaian & saldo" : "Real-time insights",
+      description: isId
+        ? "Dasbor pemakaian sumber daya transparan, peringatan saldo, dan pelaporan faktur pajak untuk kemudahan audit keuangan."
+        : "Understand your users and infrastructure at a glance. Custom dashboards, alerts, and API usage metrics.",
+      features: isId
+        ? [
+            "Metrik real-time",
+            "Riwayat mutasi saldo",
+            "Peringatan kuota",
+            "Faktur resmi PDF",
+          ]
+        : [
+            "Real-time metrics",
+            "Prepaid balance ledger",
+            "Quota alerts",
+            "PDF invoices",
+          ],
+      badge: null,
+      badgeColor: "",
+    },
+  ]
+
   return (
-    <section id="services" className="relative bg-[#060b18] py-28">
+    <section id="services" className="relative bg-[#060b18] py-24 sm:py-28">
       {/* Section glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_50%,rgba(16,185,129,0.06),transparent)]" />
 
       <div className="relative mx-auto max-w-7xl px-6">
         {/* Header */}
         <div className="mb-16 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5">
-            <span className="text-xs font-semibold tracking-widest text-white/50 uppercase">
-              Platform Services
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5">
+            <span className="text-xs font-semibold tracking-widest text-emerald-400 uppercase">
+              {isId
+                ? "Katalog Solusi Terintegrasi"
+                : "Integrated Cloud Solutions"}
             </span>
           </div>
-          <h2 className="mb-5 text-4xl font-bold tracking-tight text-white lg:text-5xl">
-            Everything you need to{" "}
-            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-              ship & scale
-            </span>
+          <h2 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+            {isId ? (
+              <>
+                Semua yang Anda butuhkan untuk{" "}
+                <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                  tumbuh & berkembang
+                </span>
+              </>
+            ) : (
+              <>
+                Everything you need to{" "}
+                <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                  ship & scale
+                </span>
+              </>
+            )}
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-white/40">
-            One platform, six powerful services. Build your entire product stack
-            without juggling multiple vendors.
+          <p className="mx-auto max-w-2xl text-base text-white/50 sm:text-lg">
+            {isId
+              ? "Satu akun konsol, ragam layanan cloud produksi. Bangun dan jalankan operasional digital tanpa ribet mengelola banyak vendor."
+              : "One console, enterprise-grade cloud capabilities. Build and run your digital business without vendor fragmentation."}
           </p>
         </div>
 
