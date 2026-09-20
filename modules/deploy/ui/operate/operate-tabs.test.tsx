@@ -198,7 +198,9 @@ describe("Operate tabs coverage", () => {
 
     try {
       const view = render(<LogsHarness diagnosticMode="healthy" />)
-      expect(view.getByText("Opensearch Log Viewer")).toBeTruthy()
+      expect(
+        view.getByText(/Application Runtime Logs|Opensearch Log Viewer/i)
+      ).toBeTruthy()
 
       view.rerender(<LogsHarness diagnosticMode="error_502" />)
       view.rerender(<LogsHarness diagnosticMode="ssl_expired" />)

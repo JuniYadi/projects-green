@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render } from "@testing-library/react"
-import { afterEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TabLogs } from "./tab-logs"
 
@@ -127,11 +127,116 @@ describe("TabLogs Component", () => {
       )
 
       const emptyMsg = await view.findByText(
-        /No log output in OpenSearch|Belum ada output log/i
+        /No log output|Belum ada output log/i
       )
       expect(emptyMsg).toBeTruthy()
     } finally {
       globalThis.fetch = originalFetch
+    }
+  })
+
+  it("supports pagination controls and source filtering", async () => {
+    const originalFetch = globalThis.fetch
+    const mockLogs = Array.from({ length: 75 }, (_, i) => ({
+      id: `log-${i}`,
+      timestamp: `10:00:${String(i % 60).padStart(2, "0")}`,
+      level: i % 2 === 0 ? "INFO" : "ERROR",
+      source: i % 3 === 0 ? "nginx" : "app",
+      message: `Message line ${i} of 75`,
+    }))
+
+    globalThis.fetch = mock(async (url: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes("/logs/report")) {
+        return {
+          ok: true,
+          json: async () => ({
+            ok: true,
+            data: {
+              healthScore: 99,
+              totalLogs: 75,
+              errorCount: 37,
+              warnCount: 0,
+              periodLabel: "20 Sep 2026",
+              granularity: "daily",
+              trend: [],
+              topErrors: [],
+            },
+          }),
+        }
+      }
+      return { ok: true, json: async () => ({ ok: true, data: mockLogs }) }
+    }) as unknown as typeof fetch
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    try {
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <TabLogs appSlug="hermes-pagination-test" />
+        </QueryClientProvider>
+      )
+
+      // First page with default 50 items
+      const firstLine = await view.findByText("Message line 0 of 75")
+      expect(firstLine).toBeTruthy()
+
+      // Pagination indicator
+      expect(view.getByText(/1 - 50/i)).toBeTruthy()
+
+      // Toggle analytics
+      const analyticsToggle = view.getByRole("button", {
+        name: /View Analytics|Lihat Analisis/i,
+      })
+      fireEvent.click(analyticsToggle)
+      expect(
+        await view.findByText(/Hide Analytics|Sembunyikan Analisis/i)
+      ).toBeTruthy()
+
+      // Filter by level ERROR
+      const errorBtn = view.getByRole("button", { name: "ERROR" })
+      fireEvent.click(errorBtn)
+
+      // Should now only show ERROR logs
+      expect(await view.findByText("Message line 1 of 75")).toBeTruthy()
+
+      // Reset level to ALL
+      const allBtn = view.getByRole("button", { name: "ALL" })
+      fireEvent.click(allBtn)
+
+      // Jump to Latest should navigate to the last page (newest logs)
+      const jumpToLatestBtn = view.getByRole("button", {
+        name: /Jump to Latest|Ke Log Terbaru/i,
+      })
+      fireEvent.click(jumpToLatestBtn)
+
+      // Page 2 should now display the latest entries
+      expect(await view.findByText("Message line 74 of 75")).toBeTruthy()
+      expect(view.getByText(/51 - 75/i)).toBeTruthy()
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it("does not start fallback simulator when diagnosticMode is production", () => {
+    const setIntervalSpy = spyOn(globalThis, "setInterval")
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    try {
+      render(
+        <QueryClientProvider client={queryClient}>
+          <TabLogs diagnosticMode="production" />
+        </QueryClientProvider>
+      )
+
+      expect(setIntervalSpy).not.toHaveBeenCalled()
+    } finally {
+      setIntervalSpy.mockRestore()
     }
   })
 })

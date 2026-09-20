@@ -48,11 +48,6 @@ function resolveLevel(
     return "INFO"
   }
 
-  // Infer from stream
-  if (src.stream === "stderr") {
-    return "ERROR"
-  }
-
   // Fastify/Pino res.statusCode or status
   const rawStatus =
     (src.res &&
@@ -78,6 +73,17 @@ function resolveLevel(
   if (/(?:\[|\b)(?:WARN|WARNING)(?:\]|\b)/i.test(cleanMessage)) {
     return "WARN"
   }
+
+  // Informational or notice keywords should never be treated as error even if routed to stderr
+  if (/(?:\[|\b)(?:NOTICE|INFO|DEBUG)(?:\]|\b)/i.test(cleanMessage)) {
+    return "INFO"
+  }
+
+  // Infer from stream (fallback for stderr without notice/info keywords)
+  if (src.stream === "stderr") {
+    return "ERROR"
+  }
+
   return "INFO"
 }
 
