@@ -82,6 +82,7 @@ describe("buildHelmValues", () => {
       enabled: true,
       secretStoreRef: { kind: "ClusterSecretStore", name: "vault-backend" },
       dataFrom: [{ extract: { key: "tenants/org/stacks/stack/prod/app-env" } }],
+      refreshInterval: "1h",
     })
     expect(out.secrets).toBeUndefined()
     expect(out.secret).toBeUndefined()
@@ -262,9 +263,7 @@ describe("buildHelmValues", () => {
       port: 8080,
       targetPort: 8080,
     })
-    expect(out.containerPorts).toEqual([
-      { containerPort: 8080, name: "http" },
-    ])
+    expect(out.containerPorts).toEqual([{ containerPort: 8080, name: "http" }])
   })
 
   it("renders livenessProbe and readinessProbe targeting port 8080", () => {

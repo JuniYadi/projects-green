@@ -241,11 +241,9 @@ export class HelmValuesBuilder {
         name: params.secretStore ?? "vault-backend",
       },
       dataFrom: [{ extract: { key: params.vaultPath } }],
+      refreshInterval: params.refreshInterval ?? "1h",
       ...(params.autoEnvFrom !== undefined
         ? { autoEnvFrom: params.autoEnvFrom }
-        : {}),
-      ...(params.refreshInterval
-        ? { refreshInterval: params.refreshInterval }
         : {}),
       ...(params.target ? { target: params.target } : {}),
     }

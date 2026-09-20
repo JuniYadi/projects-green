@@ -25,7 +25,9 @@ const createDependencies = (envVarsJson: unknown = []) => {
   }
   const client = {
     writeKV: mock(async () => ({ version: 4 })),
-    readKV: mock(async () => ({ DATABASE_URL: "postgres://secret" })),
+    readKV: mock<() => Promise<Record<string, string>>>(async () => ({
+      DATABASE_URL: "postgres://secret",
+    })),
     deleteKV: mock(async () => undefined),
     getKVMetadata: mock(async () => ({ currentVersion: 4 })),
     listKV: mock(async () => []),
@@ -88,6 +90,45 @@ describe("VaultSecretsService", () => {
     expect(stored).not.toContain("old-secret")
     expect(stored).not.toContain("old-dev-secret")
     expect(stored).not.toContain("postgres://new-secret")
+  })
+
+  it("preserves existing secrets when incrementally writing new secrets", async () => {
+    const dependencies = createDependencies([
+      {
+        id: "env-id-1",
+        key: "EXISTING_KEY",
+        type: "secret_ref",
+        environment: "prod",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "EXISTING_KEY",
+        version: 1,
+        updatedAt: "2026-08-17T12:00:00.000Z",
+        scope: "runtime",
+      },
+    ])
+    dependencies.client.readKV = mock(async () => ({
+      EXISTING_KEY: "existing-value",
+    }))
+
+    const service = new VaultSecretsService({
+      ...dependencies,
+      now: () => new Date("2026-08-18T12:00:00.000Z"),
+    } as never)
+
+    await service.writeSecrets({
+      organizationId: "org-1",
+      stackId: "stack-1",
+      environment: "prod",
+      secrets: { NEW_KEY: "new-value" },
+    })
+
+    expect(dependencies.client.writeKV).toHaveBeenCalledWith(
+      "tenants/org-1/stacks/stack-1/prod/app-env",
+      {
+        EXISTING_KEY: "existing-value",
+        NEW_KEY: "new-value",
+      }
+    )
   })
 
   it("preserves scope and id when updating existing secret references", async () => {
