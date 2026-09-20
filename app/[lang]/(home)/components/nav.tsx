@@ -43,7 +43,7 @@ export function HomeNav() {
         },
         {
           label: isId ? "Secure VPN" : "Secure VPN",
-          href: `/${locale}/console/vpn`,
+          href: "#vpn",
           desc: isId
             ? "Akses jaringan pribadi & tunnel"
             : "Private network access & tunnels",
