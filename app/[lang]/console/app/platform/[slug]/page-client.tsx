@@ -490,11 +490,15 @@ export default function PlatformInstanceWorkspacePage() {
       setHistoryLoading(true)
       try {
         const { data: payload } = await eden.api.deploy.apps[slug].history.get({
-          $query: { page: historyPage, pageSize: 20 },
+          $query: { page: historyPage, pageSize: 5 },
         })
         if (payload?.ok && Array.isArray(payload.data) && !cancelled) {
           setHistory(payload.data)
           if (payload.meta) setHistoryMeta(payload.meta)
+          // Auto-select the first (latest) deployment on initial load
+          if (historyPage === 1 && payload.data.length > 0) {
+            setSelectedDeploymentId((prev) => prev ?? payload.data[0].id)
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -1018,10 +1022,12 @@ export default function PlatformInstanceWorkspacePage() {
                         <TableHeader>
                           <TableRow className="text-xs">
                             <TableHead>{tDeployments.table.status}</TableHead>
-                            <TableHead>{tDeployments.table.attempt}</TableHead>
+                            <TableHead className="w-10">#</TableHead>
                             <TableHead>{tDeployments.table.duration}</TableHead>
                             <TableHead>{tDeployments.table.commit}</TableHead>
-                            <TableHead>{tDeployments.table.failure}</TableHead>
+                            <TableHead>
+                              {locale === "id" ? "Keterangan" : "Note"}
+                            </TableHead>
                             <TableHead>{tDeployments.table.started}</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1030,7 +1036,11 @@ export default function PlatformInstanceWorkspacePage() {
                             <TableRow
                               key={d.id}
                               onClick={() => setSelectedDeploymentId(d.id)}
-                              className="cursor-pointer hover:bg-muted/30"
+                              className={`cursor-pointer hover:bg-muted/30 transition-colors${
+                                d.id === selectedDeploymentId
+                                  ? "border-l-2 border-l-primary bg-muted/20"
+                                  : ""
+                              }`}
                               data-state={
                                 d.id === selectedDeploymentId
                                   ? "selected"
@@ -1055,8 +1065,17 @@ export default function PlatformInstanceWorkspacePage() {
                               <TableCell className="font-mono text-xs">
                                 {d.commitSha ? d.commitSha.slice(0, 7) : "—"}
                               </TableCell>
-                              <TableCell className="text-xs text-muted-foreground">
-                                {d.failureReason ?? "—"}
+                              <TableCell className="max-w-[200px] text-xs text-muted-foreground">
+                                {d.failureReason ? (
+                                  <span
+                                    title={d.failureReason}
+                                    className="block truncate"
+                                  >
+                                    {d.failureReason}
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground">
                                 {d.startedAt
@@ -1067,7 +1086,12 @@ export default function PlatformInstanceWorkspacePage() {
                           ))}
                         </TableBody>
                       </Table>
-                      {(historyMeta?.totalPages ?? 0) > 1 && (
+                      <p className="mt-2 text-[11px] text-muted-foreground/70">
+                        {locale === "id"
+                          ? "↑ Klik baris untuk melihat detail dan log deployment"
+                          : "↑ Click a row to view deployment detail and logs"}
+                      </p>
+                      {(historyMeta?.totalPages ?? 0) >= 1 && (
                         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                           <span>
                             {tDeployments.pageOf
@@ -1112,6 +1136,35 @@ export default function PlatformInstanceWorkspacePage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Section header: shows which deployment is currently detailed below */}
+              {selectedStatus && (
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <span>
+                      {locale === "id"
+                        ? "Detail Deployment"
+                        : "Deployment Detail"}{" "}
+                      <span className="font-mono font-semibold text-foreground">
+                        #{selectedStatus.attempt}
+                      </span>
+                    </span>
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                        STATUS_TONE[selectedStatus.status] ?? STATUS_TONE.idle
+                      }`}
+                    >
+                      {DEPLOY_STATUS_LABELS[selectedStatus.status] ??
+                        selectedStatus.status}
+                    </span>
+                    {locale === "id"
+                      ? "— klik baris lain di atas untuk berpindah"
+                      : "— click another row above to switch"}
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+              )}
 
               <AppMonitor
                 stack={overview.stack}

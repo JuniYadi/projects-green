@@ -173,9 +173,14 @@ export function DeploymentSplitWorkspace({
 
           <CardContent className="space-y-3 pt-0">
             <div className="border-t border-border pt-3">
-              <h4 className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              <h4 className="mb-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 {tMonitor.timelineTitle}
               </h4>
+              <p className="mb-3 text-[11px] text-muted-foreground/70">
+                {locale === "id"
+                  ? "Tahapan proses deployment yang dipilih"
+                  : "Steps for the selected deployment"}
+              </p>
               <DeployStepTimeline
                 deployId={deployId}
                 status={status}
