@@ -1,10 +1,7 @@
 import Link from "next/link"
 import { CountryFlag } from "@/components/ui/country-flag"
-import {
-  Lightning,
-  ArrowLeft,
-  ShieldCheck,
-} from "@phosphor-icons/react/dist/ssr"
+import { BrandLogo } from "@/components/brand-logo"
+import { ArrowLeft, ShieldCheck } from "@phosphor-icons/react/dist/ssr"
 import { locales, type AppLocale } from "@/lib/i18n/config"
 import { getMessages } from "@/lib/i18n/messages"
 import { Footer } from "@/app/[lang]/(home)/components/footer"
@@ -65,12 +62,7 @@ export function LegalPageLayout({
               href={`/${locale}`}
               className="group flex items-center gap-2.5 transition-transform hover:scale-105"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 shadow-md shadow-emerald-500/20">
-                <Lightning weight="fill" className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-lg font-bold tracking-tight text-foreground">
-                PFN<span className="text-emerald-500">App</span>
-              </span>
+              <BrandLogo size="md" />
             </Link>
             <div className="h-4 w-px bg-border" />
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -1,10 +1,6 @@
 import Link from "next/link"
-import {
-  Lightning,
-  BookOpen,
-  Code,
-  TerminalWindow,
-} from "@phosphor-icons/react/dist/ssr"
+import { BrandLogo } from "@/components/brand-logo"
+import { BookOpen, Code, TerminalWindow } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
 import { DocsSidebar } from "./components/docs-sidebar"
 import { LanguageFlags } from "./components/language-flags"
@@ -80,12 +76,7 @@ export default async function PublicDocsLayout({ children, params }: Props) {
               href={`/${lang}`}
               className="flex items-center gap-2.5 transition-opacity hover:opacity-85"
             >
-              <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 shadow-sm shadow-emerald-500/20">
-                <Lightning size={20} weight="fill" className="text-white" />
-              </div>
-              <span className="text-lg font-bold tracking-tight text-foreground">
-                PFNApp
-              </span>
+              <BrandLogo size="md" />
             </Link>
             <div className="h-5 w-px bg-border/60" />
             <Link

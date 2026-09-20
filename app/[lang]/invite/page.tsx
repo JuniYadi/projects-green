@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { withAuth } from "@workos-inc/authkit-nextjs"
+import { BrandLogo } from "@/components/brand-logo"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -128,12 +129,7 @@ export default async function InvitePage({
           href={localizePathname({ pathname: "/", locale })}
           className="flex items-center justify-center gap-2.5 self-center font-medium"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 text-sm font-bold text-white shadow-lg shadow-emerald-500/30">
-            P
-          </span>
-          <span className="text-lg font-bold tracking-tight text-foreground">
-            {APP_NAME}
-          </span>
+          <BrandLogo size="md" />
         </a>
 
         {!invitation ? (
@@ -145,7 +141,10 @@ export default async function InvitePage({
             <div className="space-y-2 text-center">
               <h1 className="text-xl font-semibold">
                 {invitation.organizationName
-                  ? messages.invitedToJoin.replace("{org}", invitation.organizationName)
+                  ? messages.invitedToJoin.replace(
+                      "{org}",
+                      invitation.organizationName
+                    )
                   : messages.youveBeenInvited}
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -223,7 +222,9 @@ function InviteInactive({
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6 text-center shadow-sm">
-      <h1 className="text-xl font-semibold">{messages.invitationUnavailable}</h1>
+      <h1 className="text-xl font-semibold">
+        {messages.invitationUnavailable}
+      </h1>
       <p className="text-sm text-muted-foreground">{reason}</p>
       <Button asChild variant="outline" className="w-full">
         <a href={localizePathname({ pathname: "/login", locale })}>

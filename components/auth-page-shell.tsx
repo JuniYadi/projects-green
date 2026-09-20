@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
 
+import { BrandLogo } from "@/components/brand-logo"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
@@ -98,12 +99,7 @@ export function AuthPageShell({
                 href="/"
                 className="mb-8 flex items-center justify-center gap-2.5"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 text-sm font-bold text-white shadow-lg shadow-emerald-500/30">
-                  P
-                </span>
-                <span className="text-lg font-bold tracking-tight text-foreground">
-                  PFN<span className="text-emerald-500">App</span>
-                </span>
+                <BrandLogo size="md" />
               </Link>
               <div className="mb-6 text-center">
                 <p className="text-xs font-semibold tracking-widest text-emerald-600 uppercase">

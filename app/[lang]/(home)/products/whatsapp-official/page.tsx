@@ -9,6 +9,7 @@ import {
   WhatsappLogo,
 } from "@phosphor-icons/react/dist/ssr"
 
+import { BrandLogo } from "@/components/brand-logo"
 import { CatalogService } from "@/modules/billing/catalog/catalog.service"
 import type {
   CatalogOfferDTO,
@@ -185,12 +186,7 @@ export default async function WhatsAppOfficialPage({
       <header className="border-b border-white/8 bg-[#060b18]/90 backdrop-blur-xl">
         <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 shadow-lg shadow-emerald-500/25">
-              <WhatsappLogo className="h-4 w-4 text-white" weight="fill" />
-            </span>
-            <span className="text-lg font-bold tracking-tight text-white">
-              PFN<span className="text-emerald-400">App</span>
-            </span>
+            <BrandLogo size="md" textColor="text-white" />
           </Link>
           <div className="flex items-center gap-3">
             <Link
