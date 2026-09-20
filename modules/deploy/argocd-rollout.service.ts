@@ -290,7 +290,7 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
       })
       await tx.applicationStack.update({
         where: { id: deployment.stackId },
-        data: { lastDeployStatus: "FAILED" },
+        data: { status: "FAILED", lastDeployStatus: "FAILED" },
       })
       await recordDeployEventOnce(
         {

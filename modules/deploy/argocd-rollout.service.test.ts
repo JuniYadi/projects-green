@@ -239,6 +239,14 @@ describe("argocd-rollout.service", () => {
         (c[0] as any as { type?: string }).type
     )
     expect(types).toContain("DEPLOY_FAILED")
+    expect(mockTx.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "FAILED",
+          lastDeployStatus: "FAILED",
+        }),
+      })
+    )
     restoreFetch()
   })
 
