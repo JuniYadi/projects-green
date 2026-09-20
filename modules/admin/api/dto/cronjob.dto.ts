@@ -27,6 +27,8 @@ export interface CronJobDefinitionDTO {
 export interface CronJobExecutionDTO {
   id: string
   cronJobId: string
+  jobCode: string | null
+  jobName: string | null
   status: CronExecutionStatus
   triggerType: CronTriggerType
   triggeredBy: string | null
@@ -70,10 +72,14 @@ export const toCronJobDefinitionDTO = (
 })
 
 export const toCronJobExecutionDTO = (
-  entity: CronJobExecution
+  entity: CronJobExecution & {
+    cronJob?: Pick<CronJobDefinition, "name" | "code"> | null
+  }
 ): CronJobExecutionDTO => ({
   id: entity.id,
   cronJobId: entity.cronJobId,
+  jobCode: entity.cronJob?.code ?? null,
+  jobName: entity.cronJob?.name ?? null,
   status: entity.status,
   triggerType: entity.triggerType,
   triggeredBy: entity.triggeredBy,

@@ -4123,6 +4123,7 @@ export const idMessages: AppMessages = {
         searchPlaceholder: "Cari cronjob...",
         allCategories: "Semua Kategori",
         allStatuses: "Semua Status",
+        allJobs: "Semua Pekerjaan",
         statusSuccess: "Berhasil",
         statusFailed: "Gagal",
         statusRunning: "Berjalan",

@@ -235,6 +235,10 @@ describe("CronAdminService", () => {
       const sampleExecution = {
         id: "exec-1",
         cronJobId: "job-1",
+        cronJob: {
+          name: "Deploy Monitor",
+          code: "deploy-monitor",
+        },
         status: "SUCCESS" as CronExecutionStatus,
         triggerType: "MANUAL_PORTAL",
         triggeredBy: "admin@example.com",
@@ -272,6 +276,14 @@ describe("CronAdminService", () => {
           cronJob: { code: "deploy-monitor" },
           status: "SUCCESS",
         },
+        include: {
+          cronJob: {
+            select: {
+              name: true,
+              code: true,
+            },
+          },
+        },
         orderBy: { startedAt: "desc" },
         skip: 10,
         take: 10,
@@ -282,6 +294,8 @@ describe("CronAdminService", () => {
       expect(result.limit).toBe(10)
       expect(result.executions).toHaveLength(1)
       expect(result.executions[0].id).toBe("exec-1")
+      expect(result.executions[0].jobName).toBe("Deploy Monitor")
+      expect(result.executions[0].jobCode).toBe("deploy-monitor")
       expect(result.executions[0].summary).toEqual({ processed: 42 })
     })
 
@@ -300,6 +314,20 @@ describe("CronAdminService", () => {
       expect(mockCountCronJobExecution).toHaveBeenCalledWith({
         where: {},
       })
+      expect(mockFindManyCronJobExecution).toHaveBeenCalledWith({
+        where: {},
+        include: {
+          cronJob: {
+            select: {
+              name: true,
+              code: true,
+            },
+          },
+        },
+        orderBy: { startedAt: "desc" },
+        skip: 0,
+        take: 100,
+      })
     })
   })
 
@@ -312,6 +340,14 @@ describe("CronAdminService", () => {
       expect(result).toBeNull()
       expect(mockFindUniqueCronJobExecution).toHaveBeenCalledWith({
         where: { id: "exec-999" },
+        include: {
+          cronJob: {
+            select: {
+              name: true,
+              code: true,
+            },
+          },
+        },
       })
     })
 
@@ -319,6 +355,10 @@ describe("CronAdminService", () => {
       mockFindUniqueCronJobExecution.mockResolvedValueOnce({
         id: "exec-100",
         cronJobId: "job-1",
+        cronJob: {
+          name: "Deploy Monitor",
+          code: "deploy-monitor",
+        },
         status: "FAILED",
         triggerType: "SCHEDULED_K8S",
         triggeredBy: null,
@@ -338,6 +378,8 @@ describe("CronAdminService", () => {
 
       expect(result).not.toBeNull()
       expect(result?.id).toBe("exec-100")
+      expect(result?.jobName).toBe("Deploy Monitor")
+      expect(result?.jobCode).toBe("deploy-monitor")
       expect(result?.status).toBe("FAILED")
       expect(result?.summary).toBeNull()
       expect(result?.finishedAt).toBeNull()

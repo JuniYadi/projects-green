@@ -3732,6 +3732,7 @@ export type AppMessages = {
         searchPlaceholder: string
         allCategories: string
         allStatuses: string
+        allJobs: string
         statusSuccess: string
         statusFailed: string
         statusRunning: string

@@ -72,6 +72,7 @@ export function CronJobsManagementView({
   const [search, setSearch] = React.useState("")
   const [categoryFilter, setCategoryFilter] = React.useState<string>("ALL")
   const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
+  const [jobFilter, setJobFilter] = React.useState<string>("ALL")
   const [page, setPage] = React.useState(1)
   const [totalExecutions, setTotalExecutions] = React.useState(0)
 
@@ -105,8 +106,18 @@ export function CronJobsManagementView({
             setMetrics(data.metrics || null)
           }
         } else if (activeTab === "history") {
+          if (jobs.length === 0) {
+            void fetch("/api/admin/cronjobs")
+              .then((res) => (res.ok ? res.json() : null))
+              .then((data) => {
+                if (data?.jobs && !ignore) setJobs(data.jobs)
+              })
+              .catch(() => {})
+          }
+
           const query = new URLSearchParams()
           if (statusFilter !== "ALL") query.set("status", statusFilter)
+          if (jobFilter !== "ALL") query.set("jobCode", jobFilter)
           query.set("page", String(page))
           query.set("limit", "15")
 
@@ -141,7 +152,7 @@ export function CronJobsManagementView({
     return () => {
       ignore = true
     }
-  }, [activeTab, statusFilter, page, messages.messages.loadFailed])
+  }, [activeTab, statusFilter, jobFilter, page, messages.messages.loadFailed, jobs.length])
 
   const refreshData = () => {
     if (activeTab === "overview") {
@@ -165,6 +176,7 @@ export function CronJobsManagementView({
     } else {
       const query = new URLSearchParams()
       if (statusFilter !== "ALL") query.set("status", statusFilter)
+      if (jobFilter !== "ALL") query.set("jobCode", jobFilter)
       query.set("page", String(page))
       query.set("limit", "15")
       void fetch(`/api/admin/cronjobs/executions?${query.toString()}`)
@@ -484,7 +496,24 @@ export function CronJobsManagementView({
 
         {/* Tab 2: Execution History */}
         <TabsContent value="history" className="space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="Filter by cron job"
+              className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+              value={jobFilter}
+              onChange={(e) => {
+                setJobFilter(e.target.value)
+                setPage(1)
+              }}
+            >
+              <option value="ALL">{messages.filters.allJobs}</option>
+              {jobs.map((j) => (
+                <option key={j.id} value={j.code}>
+                  {j.name} ({j.code})
+                </option>
+              ))}
+            </select>
+
             <select
               aria-label="Filter by execution status"
               className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
@@ -506,6 +535,7 @@ export function CronJobsManagementView({
               <TableHeader>
                 <TableRow>
                   <TableHead>{messages.table.executionId}</TableHead>
+                  <TableHead>{messages.table.jobName}</TableHead>
                   <TableHead>{messages.table.triggerType}</TableHead>
                   <TableHead>{messages.table.target}</TableHead>
                   <TableHead>{messages.table.startTime}</TableHead>
@@ -520,7 +550,7 @@ export function CronJobsManagementView({
                 {executions.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="py-8 text-center text-muted-foreground"
                     >
                       {messages.table.noExecutions}
@@ -533,11 +563,24 @@ export function CronJobsManagementView({
                         {exec.id.slice(0, 12)}
                       </TableCell>
                       <TableCell>
+                        <div className="font-medium text-sm">
+                          {exec.jobName || exec.jobCode || "-"}
+                        </div>
+                        {exec.jobCode && (
+                          <div className="font-mono text-xs text-muted-foreground">
+                            {exec.jobCode}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="outline" className="text-xs">
                           {exec.triggerType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
+                      <TableCell
+                        className="font-mono text-xs text-muted-foreground max-w-[200px] truncate"
+                        title={exec.podName || "unknown-pod"}
+                      >
                         {exec.podName || "unknown-pod"}
                       </TableCell>
                       <TableCell className="text-sm">
@@ -661,6 +704,11 @@ export function CronJobsManagementView({
               {messages.drawer.title}
             </SheetTitle>
             <SheetDescription>
+              {selectedExecution?.jobName ? (
+                <span className="mr-2 font-medium text-foreground">
+                  {selectedExecution.jobName}
+                </span>
+              ) : null}
               {messages.table.executionId}:{" "}
               <span className="font-mono">{selectedExecution?.id}</span>
             </SheetDescription>
@@ -671,10 +719,23 @@ export function CronJobsManagementView({
             <div className="grid grid-cols-2 gap-3 rounded-md bg-muted/50 p-3 text-sm">
               <div>
                 <span className="text-muted-foreground">
+                  {messages.table.jobName}:
+                </span>{" "}
+                <span className="font-medium">
+                  {selectedExecution?.jobName || selectedExecution?.jobCode || "-"}
+                </span>
+                {selectedExecution?.jobCode && (
+                  <div className="font-mono text-xs text-muted-foreground">
+                    {selectedExecution.jobCode}
+                  </div>
+                )}
+              </div>
+              <div>
+                <span className="text-muted-foreground">
                   {messages.table.target}:
                 </span>{" "}
-                <span className="font-mono font-medium">
-                  {selectedExecution?.podName}
+                <span className="font-mono font-medium text-xs break-all">
+                  {selectedExecution?.podName || "unknown-pod"}
                 </span>
               </div>
               <div>
