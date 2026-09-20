@@ -61,6 +61,9 @@ export function LogInspectorDrawer({
   const t = messages.pDeployOperateLogInspectorDrawer
   const [attributeSearch, setAttributeSearch] = useState("")
   const [activeTab, setActiveTab] = useState("attributes")
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "app" | "infra">(
+    "all"
+  )
   const [copiedRaw, setCopiedRaw] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
@@ -77,15 +80,64 @@ export function LogInspectorDrawer({
     }))
   }, [rawData])
 
+  // Extract key quick insights (HTTP, latency, IP)
+  const quickInsights = useMemo(() => {
+    if (!flattenedAttributes.length) return null
+    const findVal = (prefixes: string[]) => {
+      for (const prefix of prefixes) {
+        const match = flattenedAttributes.find(
+          (a) => a.key.toLowerCase() === prefix.toLowerCase()
+        )
+        if (match) return match.value
+      }
+      return null
+    }
+
+    const method = findVal(["req.method", "http.method", "method"])
+    const status = findVal([
+      "res.statusCode",
+      "http.status_code",
+      "statusCode",
+      "status",
+    ])
+    const url = findVal(["req.url", "http.url", "url", "path"])
+    const clientIp = findVal([
+      "req.ip",
+      "http.client_ip",
+      "client_ip",
+      "clientip",
+      "ip",
+    ])
+    const responseTime = findVal([
+      "responseTime",
+      "latency",
+      "duration",
+      "elapsed",
+    ])
+
+    if (!method && !status && !url && !clientIp && !responseTime) return null
+    return { method, status, url, clientIp, responseTime }
+  }, [flattenedAttributes])
+
   const filteredAttributes = useMemo(() => {
-    if (!attributeSearch.trim()) return flattenedAttributes
-    const q = attributeSearch.toLowerCase().trim()
-    return flattenedAttributes.filter(
-      (attr) =>
+    return flattenedAttributes.filter((attr) => {
+      // Category filter
+      if (categoryFilter === "app" && attr.key.startsWith("kubernetes.")) {
+        return false
+      }
+      if (categoryFilter === "infra" && !attr.key.startsWith("kubernetes.")) {
+        return false
+      }
+
+      // Search query
+      if (!attributeSearch.trim()) return true
+      const q = attributeSearch.toLowerCase().trim()
+      return (
         attr.key.toLowerCase().includes(q) ||
         attr.value.toLowerCase().includes(q)
-    )
-  }, [flattenedAttributes, attributeSearch])
+      )
+    })
+  }, [flattenedAttributes, attributeSearch, categoryFilter])
 
   const rawJsonString = useMemo(() => {
     if (!log) return ""
@@ -139,8 +191,8 @@ export function LogInspectorDrawer({
             </span>
           </div>
 
-          <SheetTitle className="line-clamp-2 pt-2 text-left text-sm font-semibold text-foreground">
-            {log.message || t.logEventDetails}
+          <SheetTitle className="pt-2 text-left text-sm font-semibold text-foreground">
+            {t.logEventDetails}
           </SheetTitle>
           <SheetDescription className="sr-only">
             {t.drawerDescription}
@@ -181,13 +233,61 @@ export function LogInspectorDrawer({
           </div>
         </SheetHeader>
 
+        {/* Full message section & quick insights */}
+        <div className="space-y-2.5 border-b border-border bg-muted/10 p-4">
+          <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+            <span>{t.fullMessageLabel}</span>
+          </div>
+          <div className="max-h-36 overflow-auto rounded-lg border border-border bg-background p-3 font-mono text-xs leading-relaxed text-foreground select-text">
+            {log.message || "-"}
+          </div>
+
+          {quickInsights && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px]">
+              {quickInsights.method && (
+                <span className="rounded bg-muted px-2 py-0.5 font-mono font-semibold text-foreground">
+                  {quickInsights.method}
+                </span>
+              )}
+              {quickInsights.status && (
+                <span
+                  className={`rounded px-2 py-0.5 font-mono font-semibold ${
+                    Number(quickInsights.status) >= 500
+                      ? "bg-red-500/15 text-red-700 dark:text-red-400"
+                      : Number(quickInsights.status) >= 400
+                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                        : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                  }`}
+                >
+                  {quickInsights.status}
+                </span>
+              )}
+              {quickInsights.url && (
+                <span className="max-w-[200px] truncate rounded bg-muted/60 px-2 py-0.5 font-mono text-muted-foreground">
+                  {quickInsights.url}
+                </span>
+              )}
+              {quickInsights.responseTime && (
+                <span className="rounded bg-muted/60 px-2 py-0.5 font-mono text-muted-foreground">
+                  {quickInsights.responseTime}
+                </span>
+              )}
+              {quickInsights.clientIp && (
+                <span className="rounded bg-muted/60 px-2 py-0.5 font-mono text-muted-foreground">
+                  {quickInsights.clientIp}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-1 flex-col overflow-hidden p-4">
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
             className="flex flex-1 flex-col"
           >
-            <div className="flex items-center justify-between pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
               <TabsList className="h-8">
                 <TabsTrigger
                   value="attributes"
@@ -197,7 +297,7 @@ export function LogInspectorDrawer({
                   <span>
                     {t.attributesTab.replace(
                       "{count}",
-                      String(flattenedAttributes.length)
+                      String(filteredAttributes.length)
                     )}
                   </span>
                 </TabsTrigger>
@@ -210,18 +310,58 @@ export function LogInspectorDrawer({
                 </TabsTrigger>
               </TabsList>
 
-              <div className="relative w-48">
-                <MagnifyingGlass
-                  size={13}
-                  className="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
-                  type="text"
-                  placeholder={t.searchPlaceholder}
-                  value={attributeSearch}
-                  onChange={(e) => setAttributeSearch(e.target.value)}
-                  className="h-7 rounded-lg pl-7 text-[11px]"
-                />
+              <div className="flex items-center gap-2">
+                {activeTab === "attributes" && (
+                  <div className="flex rounded-md border border-border bg-muted/30 p-0.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFilter("all")}
+                      className={`rounded px-2 py-1 font-medium transition-colors ${
+                        categoryFilter === "all"
+                          ? "bg-background text-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {t.allAttributesChip}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFilter("app")}
+                      className={`rounded px-2 py-1 font-medium transition-colors ${
+                        categoryFilter === "app"
+                          ? "bg-background text-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {t.appAttributesChip}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFilter("infra")}
+                      className={`rounded px-2 py-1 font-medium transition-colors ${
+                        categoryFilter === "infra"
+                          ? "bg-background text-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {t.infraAttributesChip}
+                    </button>
+                  </div>
+                )}
+
+                <div className="relative w-36 sm:w-44">
+                  <MagnifyingGlass
+                    size={13}
+                    className="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    type="text"
+                    placeholder={t.searchPlaceholder}
+                    value={attributeSearch}
+                    onChange={(e) => setAttributeSearch(e.target.value)}
+                    className="h-7 rounded-lg pl-7 text-[11px]"
+                  />
+                </div>
               </div>
             </div>
 

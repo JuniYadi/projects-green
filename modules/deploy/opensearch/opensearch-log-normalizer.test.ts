@@ -110,6 +110,31 @@ describe("opensearch-log-normalizer", () => {
     expect(result.level).toBe("ERROR")
   })
 
+  it("normalizes stderr stream as INFO if message contains NOTICE or INFO keywords", () => {
+    const phpFpmNoticeHit = {
+      _id: "doc-fpm-notice",
+      _source: {
+        "@timestamp": "2026-09-08T22:19:40.447Z",
+        stream: "stderr",
+        message: "[19-Sep-2026 08:35:45] NOTICE: ready to handle connections",
+      },
+    }
+    const res1 = normalizeOpenSearchLogDoc(phpFpmNoticeHit)
+    expect(res1.level).toBe("INFO")
+
+    const supervisorInfoHit = {
+      _id: "doc-supervisord-info",
+      _source: {
+        "@timestamp": "2026-09-08T22:19:40.447Z",
+        stream: "stderr",
+        message:
+          '2026-09-19 08:35:44,727 INFO Included extra file "/etc/supervisor/conf.d/nginx.conf" during parsing',
+      },
+    }
+    const res2 = normalizeOpenSearchLogDoc(supervisorInfoHit)
+    expect(res2.level).toBe("INFO")
+  })
+
   it("stringifies object message safely", () => {
     const hit = {
       _id: "doc-6",

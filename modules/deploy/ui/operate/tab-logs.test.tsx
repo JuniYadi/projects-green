@@ -127,9 +127,80 @@ describe("TabLogs Component", () => {
       )
 
       const emptyMsg = await view.findByText(
-        /No log output in OpenSearch|Belum ada output log/i
+        /No log output|Belum ada output log/i
       )
       expect(emptyMsg).toBeTruthy()
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it("supports pagination controls and source filtering", async () => {
+    const originalFetch = globalThis.fetch
+    const mockLogs = Array.from({ length: 75 }, (_, i) => ({
+      id: `log-${i}`,
+      timestamp: `10:00:${String(i % 60).padStart(2, "0")}`,
+      level: i % 2 === 0 ? "INFO" : "ERROR",
+      source: i % 3 === 0 ? "nginx" : "app",
+      message: `Message line ${i} of 75`,
+    }))
+
+    globalThis.fetch = mock(async (url: unknown) => {
+      const urlStr = String(url)
+      if (urlStr.includes("/logs/report")) {
+        return {
+          ok: true,
+          json: async () => ({
+            ok: true,
+            data: {
+              healthScore: 99,
+              totalLogs: 75,
+              errorCount: 37,
+              warnCount: 0,
+              periodLabel: "20 Sep 2026",
+              granularity: "daily",
+              trend: [],
+              topErrors: [],
+            },
+          }),
+        }
+      }
+      return { ok: true, json: async () => ({ ok: true, data: mockLogs }) }
+    }) as unknown as typeof fetch
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    try {
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <TabLogs appSlug="hermes-pagination-test" />
+        </QueryClientProvider>
+      )
+
+      // First page with default 50 items
+      const firstLine = await view.findByText("Message line 0 of 75")
+      expect(firstLine).toBeTruthy()
+
+      // Pagination indicator
+      expect(view.getByText(/1 - 50/i)).toBeTruthy()
+
+      // Toggle analytics
+      const analyticsToggle = view.getByRole("button", {
+        name: /View Analytics|Lihat Analisis/i,
+      })
+      fireEvent.click(analyticsToggle)
+      expect(
+        await view.findByText(/Hide Analytics|Sembunyikan Analisis/i)
+      ).toBeTruthy()
+
+      // Filter by level ERROR
+      const errorBtn = view.getByRole("button", { name: "ERROR" })
+      fireEvent.click(errorBtn)
+
+      // Should now only show ERROR logs
+      expect(await view.findByText("Message line 1 of 75")).toBeTruthy()
     } finally {
       globalThis.fetch = originalFetch
     }

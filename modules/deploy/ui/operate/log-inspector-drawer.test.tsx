@@ -1,5 +1,10 @@
 import { cleanup, fireEvent, render } from "@testing-library/react"
 import { afterEach, describe, expect, it, mock } from "bun:test"
+
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "id" }),
+}))
+
 import { LogInspectorDrawer } from "./log-inspector-drawer"
 
 describe("LogInspectorDrawer", () => {
@@ -29,7 +34,7 @@ describe("LogInspectorDrawer", () => {
   it("renders log details and attributes table when open", () => {
     const handleOpenChange = mock()
 
-    const { getByText } = render(
+    const { getByText, getAllByText } = render(
       <LogInspectorDrawer
         log={mockLog}
         open={true}
@@ -41,7 +46,7 @@ describe("LogInspectorDrawer", () => {
     expect(getByText("ERROR")).toBeTruthy()
     expect(getByText("api-gw")).toBeTruthy()
     expect(getByText("http.status_code")).toBeTruthy()
-    expect(getByText("502")).toBeTruthy()
+    expect(getAllByText("502").length).toBeGreaterThanOrEqual(1)
     expect(getByText("duration_ms")).toBeTruthy()
     expect(getByText("15002")).toBeTruthy()
   })

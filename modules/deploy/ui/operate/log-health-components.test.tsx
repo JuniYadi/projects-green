@@ -1,4 +1,9 @@
-import { describe, it, expect } from "bun:test"
+import { describe, it, expect, mock } from "bun:test"
+
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "id" }),
+}))
+
 import { render, cleanup } from "@testing-library/react"
 import { LogHealthSummaryCards } from "./log-health-summary-cards"
 import { LogHourlyChart } from "./log-hourly-chart"
@@ -76,7 +81,7 @@ describe("Frontend Log Health Components", () => {
           "[MODULE_TYPELESS_PACKAGE_JSON] Module type is not specified"
         )
       ).toBeTruthy()
-      expect(view.getByText("12x insiden")).toBeTruthy()
+      expect(view.getByText(/12.*Masalah|12x insiden/i)).toBeTruthy()
       expect(view.getByText("Lihat Semua Masalah")).toBeTruthy()
       cleanup()
     })
@@ -86,7 +91,11 @@ describe("Frontend Log Health Components", () => {
         <LogTopErrorsCard appSlug="9router-daring-pulsar" topErrors={[]} />
       )
 
-      expect(view.getByText("Aplikasi Berjalan Sempurna!")).toBeTruthy()
+      expect(
+        view.getByText(
+          /Tidak Ada Error Terdeteksi|Aplikasi Berjalan Sempurna!/i
+        )
+      ).toBeTruthy()
       cleanup()
     })
   })

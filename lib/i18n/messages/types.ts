@@ -6870,6 +6870,20 @@ export type AppMessages = {
     emptyLogsTitle: string
     emptyLogsSubtitle: string
     recheckButton: string
+    toggleAnalyticsShow: string
+    toggleAnalyticsHide: string
+    fullscreenEnter: string
+    fullscreenExit: string
+    sourceFilterAll: string
+    sourceFilterLabel: string
+    paginationShowing: string
+    paginationPageOf: string
+    paginationPrev: string
+    paginationNext: string
+    paginationRowsPerPage: string
+    jumpToLatest: string
+    stabilityStatusLabel: string
+    errorsTodayLabel: string
   }
   pPortalAiPageClient: {
     pageTitle: string
@@ -8346,6 +8360,18 @@ export type AppMessages = {
     tableHeaderAction: string
     tableHeaderField: string
     tableHeaderValue: string
+    tabOverview: string
+    tabAttributes: string
+    fullMessageLabel: string
+    httpDetailsLabel: string
+    statusCodeLabel: string
+    clientIpLabel: string
+    requestUriLabel: string
+    methodLabel: string
+    executionTimeLabel: string
+    allAttributesChip: string
+    appAttributesChip: string
+    infraAttributesChip: string
   }
   pDeployOperateTabTraffic: {
     chartMode: string
