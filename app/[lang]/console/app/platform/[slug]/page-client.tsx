@@ -568,19 +568,38 @@ export default function PlatformInstanceWorkspacePage() {
   }, [slug, overview])
 
   const [deploying, setDeploying] = useState(false)
+  const stackStatusUpper = overview?.stack?.status?.toUpperCase()
+  const isStackDeploying =
+    stackStatusUpper === "BUILDING" ||
+    stackStatusUpper === "QUEUED" ||
+    stackStatusUpper === "DEPLOYING"
+  const isDeploying = deploying || Boolean(isStackDeploying)
 
-  const handleDeploy = async (force = false) => {
+  const handleDeploy = async (force: unknown = false) => {
+    const isForce = typeof force === "boolean" ? force : false
     if (!overview?.stack?.id) return
     setDeploying(true)
     try {
-      const { data: payload } = await eden.api.deploy.trigger[
+      const { data: payload, error } = await eden.api.deploy.trigger[
         overview.stack.id
-      ].post({ force })
-      if (!payload || !payload.ok) {
+      ].post({ force: isForce })
+      const res =
+        payload ??
+        (
+          error as unknown as {
+            value?: {
+              ok?: boolean
+              error?: string
+              message?: string
+              data?: { deploymentId?: string }
+            }
+          }
+        )?.value
+      if (!res || !res.ok) {
         if (
-          !force &&
-          (payload?.error === "STACK_DEPLOY_IN_PROGRESS" ||
-            payload?.message?.includes("already in progress"))
+          !isForce &&
+          (res?.error === "STACK_DEPLOY_IN_PROGRESS" ||
+            res?.message?.includes("already in progress"))
         ) {
           const confirmForce = window.confirm(
             locale === "id"
@@ -592,14 +611,14 @@ export default function PlatformInstanceWorkspacePage() {
             return
           }
         }
-        throw new Error(payload?.message ?? "Unable to trigger deployment.")
+        throw new Error(res?.message ?? "Unable to trigger deployment.")
       }
       toast.success(
         locale === "id"
           ? "Deployment berhasil dipicu!"
           : "Deployment triggered successfully!"
       )
-      const deploymentId = payload.data?.deploymentId
+      const deploymentId = res.data?.deploymentId
       if (typeof deploymentId === "string") {
         setSelectedDeploymentId(deploymentId)
       }
@@ -854,8 +873,8 @@ export default function PlatformInstanceWorkspacePage() {
             locale={locale}
             onSync={handleSync}
             isSyncing={syncing}
-            onDeploy={handleDeploy}
-            isDeploying={deploying}
+            onDeploy={() => void handleDeploy(false)}
+            isDeploying={isDeploying}
             isTerminalActive={isTerminalInitiated}
           />
 
@@ -964,18 +983,18 @@ export default function PlatformInstanceWorkspacePage() {
                       <Button
                         type="button"
                         size="sm"
-                        onClick={() => void handleDeploy()}
-                        disabled={deploying}
+                        onClick={() => void handleDeploy(false)}
+                        disabled={isDeploying}
                         className="h-8 gap-1.5 px-3 text-xs"
                       >
                         <RocketLaunch
                           size={14}
-                          className={deploying ? "animate-pulse" : ""}
+                          className={isDeploying ? "animate-pulse" : ""}
                         />
                         <span>
-                          {deploying
+                          {isDeploying
                             ? locale === "id"
-                              ? "Mendeploy..."
+                              ? "Sedang Deploy..."
                               : "Deploying..."
                             : locale === "id"
                               ? "Deploy Update"

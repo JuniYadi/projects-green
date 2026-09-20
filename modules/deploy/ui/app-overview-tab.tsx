@@ -10,10 +10,8 @@ import {
   CaretDown,
   CheckCircle,
   Copy,
-  ListMagnifyingGlass,
   Question,
   Spinner,
-  TerminalWindow,
   Warning,
   WarningCircle,
 } from "@phosphor-icons/react"
@@ -43,7 +41,7 @@ type AppOverviewTabProps = {
 }
 
 type HealthVerdict = {
-  tone: "healthy" | "warning" | "down" | "unknown"
+  tone: "healthy" | "warning" | "down" | "unknown" | "deploying"
   headline: string
   detail: string
 }
@@ -51,6 +49,9 @@ type HealthVerdict = {
 const COPY: Record<"id" | "en", Record<string, string>> = {
   id: {
     statusTitle: "Status aplikasi",
+    deploying: "Deployment sedang berlangsung",
+    deployingDetail:
+      "Versi terbaru sedang dibangun atau diterapkan ke cluster.",
     running: "Aplikasi kamu jalan normal",
     runningDetail: "Pod aktif dan siap menerima permintaan.",
     restarting: "Aplikasi jalan, tapi sempat restart",
@@ -109,6 +110,9 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
   },
   en: {
     statusTitle: "Application status",
+    deploying: "Deployment in progress",
+    deployingDetail:
+      "A new version is building or being deployed to the cluster.",
     running: "Your app is running normally",
     runningDetail: "The pod is active and ready to serve requests.",
     restarting: "Running, but it restarted recently",
@@ -182,6 +186,10 @@ const TONE_STYLES: Record<
     wrap: "border-destructive/30 bg-destructive/5",
     icon: "text-destructive",
   },
+  deploying: {
+    wrap: "border-sky-500/30 bg-sky-500/5",
+    icon: "text-sky-500",
+  },
   unknown: { wrap: "border-border bg-card", icon: "text-muted-foreground" },
 }
 
@@ -192,8 +200,22 @@ const TONE_STYLES: Record<
  */
 export function resolveHealthVerdict(
   telemetry: ClusterTelemetrySummary | undefined,
-  t: Record<string, string>
+  t: Record<string, string>,
+  stackStatus?: string
 ): HealthVerdict {
+  const normalizedStatus = stackStatus?.toUpperCase()
+  if (
+    normalizedStatus === "BUILDING" ||
+    normalizedStatus === "QUEUED" ||
+    normalizedStatus === "DEPLOYING"
+  ) {
+    return {
+      tone: "deploying",
+      headline: t.deploying,
+      detail: t.deployingDetail,
+    }
+  }
+
   const pod = telemetry?.pods?.[0]
   if (!telemetry || !pod) {
     return { tone: "unknown", headline: t.unknown, detail: t.unknownDetail }
@@ -313,7 +335,7 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
     })
 
   const pod = telemetry?.pods?.[0]
-  const verdict = resolveHealthVerdict(telemetry, t)
+  const verdict = resolveHealthVerdict(telemetry, t, stack.status)
   const tone = TONE_STYLES[verdict.tone]
   const VerdictIcon =
     verdict.tone === "healthy"
@@ -322,7 +344,9 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
         ? WarningCircle
         : verdict.tone === "warning"
           ? Warning
-          : Question
+          : verdict.tone === "deploying"
+            ? Spinner
+            : Question
 
   const responseMs = telemetry?.ingress
     ? `${Math.round(telemetry.ingress.avgResponseTimeSeconds * 1000)} ms`
@@ -361,82 +385,55 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
       {/* Answer block: the one question every tenant opens this page to ask. */}
       <section
         className={cn(
-          "flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between",
+          "flex items-start gap-3 rounded-xl border p-4",
           tone.wrap
         )}
         aria-live="polite"
       >
-        <div className="flex items-start gap-3">
-          {healthLoading && !telemetry ? (
-            <Spinner
-              size={22}
-              className="mt-0.5 shrink-0 animate-spin text-muted-foreground"
-            />
-          ) : (
-            <VerdictIcon
-              size={22}
-              weight="fill"
-              className={cn("mt-0.5 shrink-0", tone.icon)}
-            />
-          )}
-          <div className="space-y-1">
-            <p className="text-base font-bold text-foreground">
-              {healthLoading && !telemetry ? t.checking : verdict.headline}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {healthLoading && !telemetry ? "" : verdict.detail}
-            </p>
-            {pod ? (
-              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-[11px] text-muted-foreground">
+        {verdict.tone === "deploying" ? (
+          <Spinner
+            size={22}
+            className="mt-0.5 shrink-0 animate-spin text-sky-500"
+          />
+        ) : healthLoading && !telemetry ? (
+          <Spinner
+            size={22}
+            className="mt-0.5 shrink-0 animate-spin text-muted-foreground"
+          />
+        ) : (
+          <VerdictIcon
+            size={22}
+            weight="fill"
+            className={cn("mt-0.5 shrink-0", tone.icon)}
+          />
+        )}
+        <div className="space-y-1">
+          <p className="text-base font-bold text-foreground">
+            {verdict.tone === "deploying"
+              ? verdict.headline
+              : healthLoading && !telemetry
+                ? t.checking
+                : verdict.headline}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {verdict.tone === "deploying"
+              ? verdict.detail
+              : healthLoading && !telemetry
+                ? ""
+                : verdict.detail}
+          </p>
+          {pod && verdict.tone !== "deploying" ? (
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-[11px] text-muted-foreground">
+              <span>
+                {t.restarts}: <strong>{pod.restarts}</strong>
+              </span>
+              {responseMs ? (
                 <span>
-                  {t.restarts}: <strong>{pod.restarts}</strong>
+                  {t.responseTime}: <strong>{responseMs}</strong>
                 </span>
-                {responseMs ? (
-                  <span>
-                    {t.responseTime}: <strong>{responseMs}</strong>
-                  </span>
-                ) : null}
-              </p>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Time-to-action: logs, shell and charts are one click, not a hunt. */}
-        <div className="flex flex-wrap items-center gap-2">
-          {targetDomain ? (
-            <Button asChild size="sm" className="h-8 gap-1.5 px-3 text-xs">
-              <a
-                href={`https://${targetDomain}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <ArrowSquareOut size={14} />
-                <span>{t.openApp}</span>
-              </a>
-            </Button>
+              ) : null}
+            </p>
           ) : null}
-          <Button
-            asChild
-            size="sm"
-            variant="outline"
-            className="h-8 gap-1.5 px-3 text-xs"
-          >
-            <Link href={tabHref("logs")}>
-              <ListMagnifyingGlass size={14} />
-              <span>{t.viewLogs}</span>
-            </Link>
-          </Button>
-          <Button
-            asChild
-            size="sm"
-            variant="outline"
-            className="h-8 gap-1.5 px-3 text-xs"
-          >
-            <Link href={tabHref("terminal")}>
-              <TerminalWindow size={14} />
-              <span>{t.terminal}</span>
-            </Link>
-          </Button>
         </div>
       </section>
 
