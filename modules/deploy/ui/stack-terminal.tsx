@@ -301,6 +301,15 @@ export function StackTerminal({
     error: isId ? "Gagal" : "Error",
   }[status]
 
+  const quickCommands = ["ls -la", "pwd", "env", "df -h"]
+
+  const handleQuickCommand = (cmd: string) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "stdin", data: `${cmd}\n` }))
+      termRef.current?.focus()
+    }
+  }
+
   return (
     <div
       className={`flex w-full min-w-0 flex-col overflow-hidden bg-[#09090b] shadow-sm ${
@@ -371,6 +380,17 @@ export function StackTerminal({
               {statusText}
             </span>
           </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => termRef.current?.clear()}
+            className="h-7 gap-1 px-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+            title={isId ? "Bersihkan layar konsol" : "Clear terminal screen"}
+          >
+            <span>{isId ? "Bersihkan" : "Clear"}</span>
+          </Button>
 
           <Button
             type="button"
@@ -472,6 +492,26 @@ export function StackTerminal({
           noRunningPod ? "hidden" : ""
         }`}
       />
+
+      {/* Quick Command Shortcuts */}
+      {!fillHeight && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-zinc-800/80 bg-zinc-900/60 px-4 py-2 text-xs text-zinc-400">
+          <span className="text-[11px] font-medium text-zinc-400">
+            {isId ? "Perintah cepat:" : "Quick commands:"}
+          </span>
+          {quickCommands.map((cmd) => (
+            <button
+              key={cmd}
+              type="button"
+              disabled={status !== "connected"}
+              onClick={() => handleQuickCommand(cmd)}
+              className="rounded border border-zinc-700/60 bg-zinc-800/80 px-2 py-0.5 font-mono text-[11px] text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-700 hover:text-zinc-100 disabled:opacity-40"
+            >
+              {cmd}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

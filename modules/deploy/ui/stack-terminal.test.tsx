@@ -138,4 +138,14 @@ describe("StackTerminal", () => {
     fireEvent.click(getByTitle("Close session"))
     expect(handleClose).toHaveBeenCalledTimes(1)
   })
+
+  it("renders clear button and quick command shortcut chips", () => {
+    const { getByTitle, getByText } = render(
+      <StackTerminal stackId="stk_1" locale="en" />
+    )
+    expect(getByTitle("Clear terminal screen")).toBeDefined()
+    expect(getByText("Quick commands:")).toBeDefined()
+    expect(getByText("ls -la")).toBeDefined()
+    expect(getByText("env")).toBeDefined()
+  })
 })

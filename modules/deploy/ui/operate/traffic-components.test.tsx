@@ -1,6 +1,11 @@
-import { describe, it, expect, afterEach } from "bun:test"
+import { describe, it, expect, afterEach, mock } from "bun:test"
 import { render, cleanup } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "id" }),
+  useRouter: () => ({ push: () => {}, refresh: () => {} }),
+}))
 import { TrafficSummaryCards } from "./traffic-summary-cards"
 import { TrafficRequestQualityCard } from "./traffic-request-quality-card"
 import { TrafficHourlyChart } from "./traffic-hourly-chart"
@@ -139,12 +144,10 @@ describe("Frontend Traffic Components", () => {
         />
       )
 
-      expect(view.getByText("Estimasi Pengunjung")).toBeTruthy()
       expect(
-        view.getByText(
-          "Distribusi per jam (00:00 - 23:00 UTC) — 10 Sep 2026 (estimasi, bukan angka pasti)"
-        )
+        view.getByText(/Volume Lalu Lintas Pengunjung|Total Visitor Traffic/i)
       ).toBeTruthy()
+      expect(view.getByText(/Distribusi per jam/i)).toBeTruthy()
     })
 
     it("switches to the Requests metric showing human-like/automated legend", async () => {
@@ -157,11 +160,17 @@ describe("Frontend Traffic Components", () => {
         />
       )
 
-      await user.click(view.getByText("Requests"))
+      await user.click(
+        view.getByRole("button", { name: /Permintaan|Requests/i })
+      )
 
-      expect(view.getByText("Komposisi Permintaan")).toBeTruthy()
-      expect(view.getByText("Human-like")).toBeTruthy()
-      expect(view.getByText("Automated")).toBeTruthy()
+      expect(
+        view.getByText(/Volume Total Permintaan|Total Request Traffic/i)
+      ).toBeTruthy()
+      expect(
+        view.getByText(/Lalu Lintas Mirip Manusia|Human-like/i)
+      ).toBeTruthy()
+      expect(view.getByText(/Otomatis \/ Bot|Automated/i)).toBeTruthy()
     })
   })
 

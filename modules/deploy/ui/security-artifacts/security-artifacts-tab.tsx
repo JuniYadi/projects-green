@@ -36,6 +36,7 @@ export type SecurityArtifactsTabProps = {
   isRollingBack?: boolean
   registryRepository?: string
   locale?: AppLocale
+  planTier?: string | null
 }
 
 export function SecurityArtifactsTab({
@@ -49,15 +50,34 @@ export function SecurityArtifactsTab({
   isRollingBack = false,
   registryRepository,
   locale: propLocale,
+  planTier,
 }: SecurityArtifactsTabProps) {
   const params = useParams<{ lang?: string }>()
   const resolvedLocale = resolveLocaleOrDefault(propLocale ?? params?.lang)
   const messages = getMessages(resolvedLocale).pSecurityArtifactsTab
 
-  const [subView, setSubView] = useState<"registry" | "vulnerabilities">("registry")
-  const [sourceFilter, setSourceFilter] = useState<"all" | "lang-pkgs" | "os-pkgs">("all")
+  const [subView, setSubView] = useState<"registry" | "vulnerabilities">(
+    "registry"
+  )
+  const [sourceFilter, setSourceFilter] = useState<
+    "all" | "lang-pkgs" | "os-pkgs"
+  >("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedRollbackImage, setSelectedRollbackImage] = useState<ContainerImageDTO | null>(null)
+  const [selectedRollbackImage, setSelectedRollbackImage] =
+    useState<ContainerImageDTO | null>(null)
+
+  const isPaidPlan = Boolean(planTier && planTier.toLowerCase() !== "free")
+  const retentionHeading = isPaidPlan
+    ? resolvedLocale.startsWith("id")
+      ? `Kebijakan Retensi Snapshot Rilis (Paket ${planTier?.toUpperCase()})`
+      : `Release Snapshot Retention Policy (${planTier?.toUpperCase()} Plan)`
+    : messages.retentionTitle
+
+  const retentionDescription = isPaidPlan
+    ? resolvedLocale.startsWith("id")
+      ? `Paket ${planTier?.toUpperCase()} mempertahankan hingga 5 snapshot image rilis siap untuk instant rollback.`
+      : `${planTier?.toUpperCase()} plan retains up to 5 release snapshot images ready for instant rollback.`
+    : messages.retentionDesc
 
   const activeImage = images.find((img) => img.status === "ACTIVE") ?? images[0]
   const defaultRegistryHost =
@@ -83,7 +103,7 @@ export function SecurityArtifactsTab({
   return (
     <div className="space-y-6">
       {/* Sub-view Navigation Bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
+      <div className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -103,7 +123,12 @@ export function SecurityArtifactsTab({
             className="h-8 text-xs font-medium"
           >
             <ShieldCheck size={14} className="mr-1.5" />
-            <span>{messages.tabVulnerabilities.replace("{count}", String(totalFindings))}</span>
+            <span>
+              {messages.tabVulnerabilities.replace(
+                "{count}",
+                String(totalFindings)
+              )}
+            </span>
           </Button>
         </div>
 
@@ -121,7 +146,7 @@ export function SecurityArtifactsTab({
         )}
       </div>
 
-      {/* Free Tier Retention Notice */}
+      {/* Retention Notice */}
       <div className="rounded-xl border border-border bg-card p-4 text-xs">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -129,11 +154,9 @@ export function SecurityArtifactsTab({
           </div>
           <div className="space-y-1">
             <h4 className="font-semibold text-foreground">
-              {messages.retentionTitle}
+              {retentionHeading}
             </h4>
-            <p className="text-muted-foreground">
-              {messages.retentionDesc}
-            </p>
+            <p className="text-muted-foreground">{retentionDescription}</p>
           </div>
         </div>
       </div>
@@ -144,27 +167,35 @@ export function SecurityArtifactsTab({
           {/* Metadata Banner */}
           <div className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-3">
             <div>
-              <span className="text-xs text-muted-foreground">{messages.registryRepo}</span>
-              <p className="mt-1 font-mono text-xs font-semibold text-foreground truncate">
+              <span className="text-xs text-muted-foreground">
+                {messages.registryRepo}
+              </span>
+              <p className="mt-1 truncate font-mono text-xs font-semibold text-foreground">
                 {displayRepository}
               </p>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground">{messages.activeLiveImage}</span>
+              <span className="text-xs text-muted-foreground">
+                {messages.activeLiveImage}
+              </span>
               <p className="mt-1 text-xs font-semibold text-foreground">
                 {activeImage ? `tag: ${activeImage.imageTag}` : "None"}
               </p>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground">{messages.retainedImages}</span>
+              <span className="text-xs text-muted-foreground">
+                {messages.retainedImages}
+              </span>
               <p className="mt-1 text-xs font-semibold text-foreground">
-                {images.length} {messages.tracked} ({images.filter((i) => i.status === "READY").length} {messages.rollbackReady})
+                {images.length} {messages.tracked} (
+                {images.filter((i) => i.status === "READY").length}{" "}
+                {messages.rollbackReady})
               </p>
             </div>
           </div>
 
           {/* Retained Image History Table */}
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             <div className="border-b border-border p-4">
               <h3 className="text-sm font-semibold text-foreground">
                 {messages.tableHeading}
@@ -172,28 +203,42 @@ export function SecurityArtifactsTab({
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-muted/50 text-muted-foreground border-b border-border">
+                <thead className="border-b border-border bg-muted/50 text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-medium">{messages.colTag}</th>
-                    <th className="px-4 py-3 font-medium">{messages.colDigest}</th>
-                    <th className="px-4 py-3 font-medium">{messages.colStatus}</th>
-                    <th className="px-4 py-3 font-medium">{messages.colSecurityStatus}</th>
-                    <th className="px-4 py-3 font-medium">{messages.colPushed}</th>
-                    <th className="px-4 py-3 font-medium text-right">{messages.colAction}</th>
+                    <th className="px-4 py-3 font-medium">
+                      {messages.colDigest}
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      {messages.colStatus}
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      {messages.colSecurityStatus}
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      {messages.colPushed}
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      {messages.colAction}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {images.map((img) => {
                     const isLive = img.status === "ACTIVE"
                     const isReady = img.status === "READY"
-                    const isExpired = img.status === "EXPIRED" || img.status === "PURGED"
+                    const isExpired =
+                      img.status === "EXPIRED" || img.status === "PURGED"
 
                     return (
-                      <tr key={img.id} className="hover:bg-muted/30 transition-colors">
+                      <tr
+                        key={img.id}
+                        className="transition-colors hover:bg-muted/30"
+                      >
                         <td className="px-4 py-3 font-mono font-semibold text-foreground">
                           {img.imageTag}
                         </td>
-                        <td className="px-4 py-3 font-mono text-muted-foreground text-[11px]">
+                        <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
                           {img.digest ? `${img.digest.slice(0, 16)}...` : "—"}
                         </td>
                         <td className="px-4 py-3">
@@ -218,20 +263,28 @@ export function SecurityArtifactsTab({
                         <td className="px-4 py-3">
                           {img.securityScan ? (
                             img.securityScan.status === "PASSED" ? (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                              <span className="font-medium text-emerald-600 dark:text-emerald-400">
                                 {messages.zeroVulnerabilities}
                               </span>
                             ) : img.securityScan.status === "WARNING" ? (
-                              <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                {messages.highCves.replace("{count}", String(img.securityScan.highCount))}
+                              <span className="font-medium text-amber-600 dark:text-amber-400">
+                                {messages.highCves.replace(
+                                  "{count}",
+                                  String(img.securityScan.highCount)
+                                )}
                               </span>
                             ) : (
-                              <span className="text-rose-600 dark:text-rose-400 font-medium">
-                                {messages.criticalCves.replace("{count}", String(img.securityScan.criticalCount))}
+                              <span className="font-medium text-rose-600 dark:text-rose-400">
+                                {messages.criticalCves.replace(
+                                  "{count}",
+                                  String(img.securityScan.criticalCount)
+                                )}
                               </span>
                             )
                           ) : (
-                            <span className="text-muted-foreground">{messages.pending}</span>
+                            <span className="text-muted-foreground">
+                              {messages.pending}
+                            </span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
@@ -239,7 +292,9 @@ export function SecurityArtifactsTab({
                         </td>
                         <td className="px-4 py-3 text-right">
                           {isLive ? (
-                            <span className="text-muted-foreground text-xs font-medium">{messages.current}</span>
+                            <span className="text-xs font-medium text-muted-foreground">
+                              {messages.current}
+                            </span>
                           ) : isReady ? (
                             <Button
                               type="button"
@@ -247,7 +302,7 @@ export function SecurityArtifactsTab({
                               size="sm"
                               disabled={isRollingBack}
                               onClick={() => setSelectedRollbackImage(img)}
-                              className="h-7 px-2.5 text-xs gap-1"
+                              className="h-7 gap-1 px-2.5 text-xs"
                             >
                               <ArrowCounterClockwise size={12} />
                               <span>{messages.rollback}</span>
@@ -258,7 +313,7 @@ export function SecurityArtifactsTab({
                               variant="ghost"
                               size="sm"
                               disabled
-                              className="h-7 px-2.5 text-xs gap-1 text-muted-foreground"
+                              className="h-7 gap-1 px-2.5 text-xs text-muted-foreground"
                               title={messages.lockedTooltip}
                             >
                               <Lock size={12} />
@@ -271,7 +326,10 @@ export function SecurityArtifactsTab({
                   })}
                   {images.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                      <td
+                        colSpan={6}
+                        className="px-4 py-8 text-center text-muted-foreground"
+                      >
                         {messages.noImages}
                       </td>
                     </tr>
@@ -283,13 +341,21 @@ export function SecurityArtifactsTab({
 
           {/* Rollback Inspector Dialog / Card */}
           {selectedRollbackImage && (
-            <div className="rounded-xl border border-primary/40 bg-card p-5 space-y-3">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <div className="space-y-3 rounded-xl border border-primary/40 bg-card p-5">
+              <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <ArrowCounterClockwise size={16} className="text-primary" />
-                <span>{messages.rollbackModalTitle.replace("{tag}", selectedRollbackImage.imageTag)}</span>
+                <span>
+                  {messages.rollbackModalTitle.replace(
+                    "{tag}",
+                    selectedRollbackImage.imageTag
+                  )}
+                </span>
               </h4>
               <p className="text-xs text-muted-foreground">
-                {messages.rollbackModalDesc.replace("{tag}", selectedRollbackImage.imageTag)}
+                {messages.rollbackModalDesc.replace(
+                  "{tag}",
+                  selectedRollbackImage.imageTag
+                )}
               </p>
               <div className="flex items-center gap-2 pt-2">
                 <Button
@@ -304,8 +370,15 @@ export function SecurityArtifactsTab({
                   }}
                   className="h-8 gap-1.5 text-xs"
                 >
-                  <ArrowCounterClockwise size={13} className={isRollingBack ? "animate-spin" : ""} />
-                  <span>{isRollingBack ? messages.rollingBack : messages.confirmRollback}</span>
+                  <ArrowCounterClockwise
+                    size={13}
+                    className={isRollingBack ? "animate-spin" : ""}
+                  />
+                  <span>
+                    {isRollingBack
+                      ? messages.rollingBack
+                      : messages.confirmRollback}
+                  </span>
                 </Button>
                 <Button
                   type="button"
@@ -324,10 +397,12 @@ export function SecurityArtifactsTab({
         /* ─── View 2: Vulnerability Explorer ───────────────────────────── */
         <div className="space-y-6">
           {/* Security Posture Overview Card */}
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+          <div className="space-y-4 rounded-xl border border-border bg-card p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <span className="text-xs text-muted-foreground">{messages.securityPosture}</span>
+                <span className="text-xs text-muted-foreground">
+                  {messages.securityPosture}
+                </span>
                 <div className="mt-1 flex items-center gap-2">
                   {activeScan?.status === "PASSED" ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
@@ -350,35 +425,57 @@ export function SecurityArtifactsTab({
 
               {activeScan && (
                 <div className="text-xs text-muted-foreground sm:text-right">
-                  <span>{messages.engine} {activeScan.scannerEngine} {activeScan.scannerVersion}</span>
-                  <p>{messages.scanned} {new Date(activeScan.scannedAt).toLocaleTimeString()}</p>
+                  <span>
+                    {messages.engine} {activeScan.scannerEngine}{" "}
+                    {activeScan.scannerVersion}
+                  </span>
+                  <p>
+                    {messages.scanned}{" "}
+                    {new Date(activeScan.scannedAt).toLocaleTimeString()}
+                  </p>
                 </div>
               )}
             </div>
 
             {/* Severity Counter Tiles */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 pt-2">
+            <div className="grid grid-cols-2 gap-3 pt-2 sm:grid-cols-4">
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{messages.sevCritical}</span>
-                <p className="mt-1 text-xl font-bold text-foreground">{activeScan?.criticalCount ?? 0}</p>
+                <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
+                  {messages.sevCritical}
+                </span>
+                <p className="mt-1 text-xl font-bold text-foreground">
+                  {activeScan?.criticalCount ?? 0}
+                </p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">{messages.sevHigh}</span>
-                <p className="mt-1 text-xl font-bold text-foreground">{activeScan?.highCount ?? 0}</p>
+                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                  {messages.sevHigh}
+                </span>
+                <p className="mt-1 text-xl font-bold text-foreground">
+                  {activeScan?.highCount ?? 0}
+                </p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">{messages.sevMedium}</span>
-                <p className="mt-1 text-xl font-bold text-foreground">{activeScan?.mediumCount ?? 0}</p>
+                <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                  {messages.sevMedium}
+                </span>
+                <p className="mt-1 text-xl font-bold text-foreground">
+                  {activeScan?.mediumCount ?? 0}
+                </p>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <span className="text-[11px] font-medium text-muted-foreground">{messages.sevLow}</span>
-                <p className="mt-1 text-xl font-bold text-foreground">{activeScan?.lowCount ?? 0}</p>
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {messages.sevLow}
+                </span>
+                <p className="mt-1 text-xl font-bold text-foreground">
+                  {activeScan?.lowCount ?? 0}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Interactive Vulnerabilities Table */}
-          <div className="rounded-xl border border-border bg-card overflow-hidden space-y-4 p-4">
+          <div className="space-y-4 overflow-hidden rounded-xl border border-border bg-card p-4">
             {/* Filter Tabs & Search */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-1.5">
@@ -389,7 +486,10 @@ export function SecurityArtifactsTab({
                   onClick={() => setSourceFilter("all")}
                   className="h-7 text-xs"
                 >
-                  {messages.filterAll.replace("{count}", String(findings.length))}
+                  {messages.filterAll.replace(
+                    "{count}",
+                    String(findings.length)
+                  )}
                 </Button>
                 <Button
                   type="button"
@@ -399,7 +499,12 @@ export function SecurityArtifactsTab({
                   className="h-7 text-xs"
                 >
                   <FileCode size={13} className="mr-1" />
-                  {messages.filterLangPkgs.replace("{count}", String(findings.filter((f) => f.class === "lang-pkgs").length))}
+                  {messages.filterLangPkgs.replace(
+                    "{count}",
+                    String(
+                      findings.filter((f) => f.class === "lang-pkgs").length
+                    )
+                  )}
                 </Button>
                 <Button
                   type="button"
@@ -409,12 +514,18 @@ export function SecurityArtifactsTab({
                   className="h-7 text-xs"
                 >
                   <Cube size={13} className="mr-1" />
-                  {messages.filterOsPkgs.replace("{count}", String(findings.filter((f) => f.class === "os-pkgs").length))}
+                  {messages.filterOsPkgs.replace(
+                    "{count}",
+                    String(findings.filter((f) => f.class === "os-pkgs").length)
+                  )}
                 </Button>
               </div>
 
               <div className="relative w-full sm:w-64">
-                <MagnifyingGlass size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
+                <MagnifyingGlass
+                  size={14}
+                  className="absolute top-2.5 left-2.5 text-muted-foreground"
+                />
                 <Input
                   type="text"
                   placeholder={messages.searchPlaceholder}
@@ -428,20 +539,37 @@ export function SecurityArtifactsTab({
             {/* Findings Table */}
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-left text-xs">
-                <thead className="bg-muted/50 text-muted-foreground border-b border-border">
+                <thead className="border-b border-border bg-muted/50 text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-2.5 font-medium">{messages.colCveId}</th>
-                    <th className="px-4 py-2.5 font-medium">{messages.colSeverity}</th>
-                    <th className="px-4 py-2.5 font-medium">{messages.colPackage}</th>
-                    <th className="px-4 py-2.5 font-medium">{messages.colOriginLayer}</th>
-                    <th className="px-4 py-2.5 font-medium">{messages.colInstalled}</th>
-                    <th className="px-4 py-2.5 font-medium">{messages.colFixedIn}</th>
-                    <th className="px-4 py-2.5 font-medium">{messages.colProvenanceAction}</th>
+                    <th className="px-4 py-2.5 font-medium">
+                      {messages.colCveId}
+                    </th>
+                    <th className="px-4 py-2.5 font-medium">
+                      {messages.colSeverity}
+                    </th>
+                    <th className="px-4 py-2.5 font-medium">
+                      {messages.colPackage}
+                    </th>
+                    <th className="px-4 py-2.5 font-medium">
+                      {messages.colOriginLayer}
+                    </th>
+                    <th className="px-4 py-2.5 font-medium">
+                      {messages.colInstalled}
+                    </th>
+                    <th className="px-4 py-2.5 font-medium">
+                      {messages.colFixedIn}
+                    </th>
+                    <th className="px-4 py-2.5 font-medium">
+                      {messages.colProvenanceAction}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredFindings.map((finding) => (
-                    <tr key={finding.id} className="hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={finding.id}
+                      className="transition-colors hover:bg-muted/30"
+                    >
                       <td className="px-4 py-2.5 font-mono font-medium text-foreground">
                         {finding.vulnerability?.primaryUrl ? (
                           <a
@@ -460,22 +588,24 @@ export function SecurityArtifactsTab({
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                             finding.severity === "CRITICAL"
-                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                              ? "border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400"
                               : finding.severity === "HIGH"
-                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                ? "border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                                 : finding.severity === "MEDIUM"
-                                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
-                                  : "bg-muted text-muted-foreground border border-border"
+                                  ? "border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                  : "border border-border bg-muted text-muted-foreground"
                           }`}
                         >
                           {finding.severity}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-foreground font-medium">
+                      <td className="px-4 py-2.5 font-mono font-medium text-foreground">
                         {finding.packageName}
                       </td>
                       <td className="px-4 py-2.5 text-muted-foreground">
-                        {finding.class === "lang-pkgs" ? "App Dependency" : "Base System (OS)"}
+                        {finding.class === "lang-pkgs"
+                          ? "App Dependency"
+                          : "Base System (OS)"}
                       </td>
                       <td className="px-4 py-2.5 font-mono text-muted-foreground">
                         {finding.installedVersion}
@@ -483,7 +613,7 @@ export function SecurityArtifactsTab({
                       <td className="px-4 py-2.5 font-mono text-emerald-600 dark:text-emerald-400">
                         {finding.fixedVersion ?? "—"}
                       </td>
-                      <td className="px-4 py-2.5 text-muted-foreground max-w-xs truncate">
+                      <td className="max-w-xs truncate px-4 py-2.5 text-muted-foreground">
                         {finding.class === "lang-pkgs"
                           ? finding.introducedBy || "Direct Dependency"
                           : "Platform Managed Runtime"}
@@ -492,7 +622,10 @@ export function SecurityArtifactsTab({
                   ))}
                   {filteredFindings.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                      <td
+                        colSpan={7}
+                        className="px-4 py-8 text-center text-muted-foreground"
+                      >
                         {messages.noFindings}
                       </td>
                     </tr>

@@ -8,8 +8,12 @@ import {
   ArrowSquareOut,
   ArrowsClockwise,
   CaretDown,
+  Check,
   CheckCircle,
   Copy,
+  Cpu,
+  GlobeHemisphereWest,
+  HardDrive,
   Question,
   Spinner,
   Warning,
@@ -19,19 +23,17 @@ import { cn } from "@/lib/utils"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { ReinstallTemplateDialog } from "./reinstall-template-dialog"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { ClusterTelemetryCards } from "@/modules/deploy/ui/cluster-telemetry-cards"
+import {
+  formatBytes,
+  formatCores,
+  formatThroughput,
+} from "@/modules/deploy/telemetry.service"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
 import type { ClusterTelemetrySummary } from "@/modules/deploy/telemetry.types"
 
@@ -40,7 +42,7 @@ type AppOverviewTabProps = {
   locale: string
 }
 
-type HealthVerdict = {
+export type HealthVerdict = {
   tone: "healthy" | "warning" | "down" | "unknown" | "deploying"
   headline: string
   detail: string
@@ -66,10 +68,10 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     unknown: "Status belum bisa dibaca",
     unknownDetail: "Data monitoring belum masuk. Coba lagi sebentar lagi.",
     checking: "Mengecek status aplikasi…",
-    openApp: "Buka aplikasi",
+    openApp: "Buka web",
     viewLogs: "Lihat log",
     terminal: "Terminal",
-    metrics: "Grafik lengkap",
+    metrics: "Lihat grafik lengkap",
     accessTitle: "Alamat & akses",
     accessDesc: "Cara menghubungi aplikasi ini dari luar dan dari dalam",
     publicUrl: "Alamat publik",
@@ -83,6 +85,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     restarts: "Restart",
     responseTime: "Waktu respons",
     copy: "Salin",
+    copyUrl: "Salin URL",
     copied: "Tersalin",
     usageTitle: "Pemakaian resource",
     usageDesc: "Ringkasan 1 jam terakhir — detail ada di tab Grafik lengkap",
@@ -107,6 +110,14 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     envSecretsFallback: "Sudah dikonfigurasi",
     configStatus: "Status konfigurasi",
     configSynced: "Tersinkron",
+    technicalSpecsTitle: "Spesifikasi Teknis & Jaringan Internal",
+    technicalSpecsDesc:
+      "Detail port, DNS, endpoint privat, dan konfigurasi lingkungan",
+    technicalSpecsToggleOpen: "Tutup",
+    technicalSpecsToggleClosed: "Lihat Rincian",
+    cpuUsage: "Penggunaan CPU",
+    memoryUsage: "Penggunaan Memori (RAM)",
+    trafficThroughput: "Throughput Jaringan",
   },
   en: {
     statusTitle: "Application status",
@@ -129,7 +140,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     openApp: "Open app",
     viewLogs: "View logs",
     terminal: "Terminal",
-    metrics: "Full charts",
+    metrics: "View full charts",
     accessTitle: "Address & access",
     accessDesc: "How to reach this app from outside and from inside",
     publicUrl: "Public address",
@@ -143,6 +154,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     restarts: "Restarts",
     responseTime: "Response time",
     copy: "Copy",
+    copyUrl: "Copy URL",
     copied: "Copied",
     usageTitle: "Resource usage",
     usageDesc: "Last hour at a glance — full detail lives in Full charts",
@@ -167,30 +179,46 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     envSecretsFallback: "Already configured",
     configStatus: "Configuration status",
     configSynced: "Synced",
+    technicalSpecsTitle: "Technical Specs & Internal Networking",
+    technicalSpecsDesc:
+      "Port details, DNS, private endpoints, and environment configuration",
+    technicalSpecsToggleOpen: "Close",
+    technicalSpecsToggleClosed: "View Details",
+    cpuUsage: "CPU Utilization",
+    memoryUsage: "Memory Working Set",
+    trafficThroughput: "Network Throughput",
   },
 }
 
 const TONE_STYLES: Record<
   HealthVerdict["tone"],
-  { wrap: string; icon: string }
+  { wrap: string; icon: string; pill: string }
 > = {
   healthy: {
-    wrap: "border-emerald-500/30 bg-emerald-500/5",
+    wrap: "border-emerald-500/20 bg-emerald-500/5",
     icon: "text-emerald-500",
+    pill: "border-emerald-500/20 bg-emerald-500/10 text-emerald-500",
   },
   warning: {
-    wrap: "border-amber-500/30 bg-amber-500/5",
+    wrap: "border-amber-500/20 bg-amber-500/5",
     icon: "text-amber-500",
+    pill: "border-amber-500/20 bg-amber-500/10 text-amber-500",
   },
   down: {
-    wrap: "border-destructive/30 bg-destructive/5",
-    icon: "text-destructive",
+    wrap: "border-rose-500/20 bg-rose-500/5",
+    icon: "text-rose-500",
+    pill: "border-rose-500/20 bg-rose-500/10 text-rose-500",
   },
   deploying: {
-    wrap: "border-sky-500/30 bg-sky-500/5",
+    wrap: "border-sky-500/20 bg-sky-500/5",
     icon: "text-sky-500",
+    pill: "border-sky-500/20 bg-sky-500/10 text-sky-500",
   },
-  unknown: { wrap: "border-border bg-card", icon: "text-muted-foreground" },
+  unknown: {
+    wrap: "border-border/80 bg-card",
+    icon: "text-muted-foreground",
+    pill: "border-border bg-muted/40 text-muted-foreground",
+  },
 }
 
 /**
@@ -233,9 +261,6 @@ export function resolveHealthVerdict(
     return { tone: "warning", headline: t.notReady, detail: t.notReadyDetail }
   }
 
-  // `healthyServers` folds "metric absent" into 0, so an idle app reads as
-  // having no backend. Only call it unreachable when the ingress is actually
-  // seeing traffic it cannot serve — otherwise the ready pod is the truth.
   const ingress = telemetry.ingress
   const ingressBusy = ingress
     ? ingress.trafficRps > 0 || ingress.activeSessions > 0
@@ -275,27 +300,31 @@ function CopyableRow({
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(value)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Ignore clipboard error
+    }
   }
 
   return (
-    <div className="space-y-1 border-b border-border/50 pb-2 last:border-0 last:pb-0">
+    <div className="space-y-1 border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
       <div className="flex items-center justify-between gap-3">
-        <span className="shrink-0 text-muted-foreground">{label}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate font-mono text-[11px] text-foreground">
+          <span className="truncate font-mono text-xs text-foreground">
             {value}
           </span>
           <button
             type="button"
             onClick={handleCopy}
             aria-label={`${copyLabel} ${label}`}
-            className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             {copied ? (
-              <CheckCircle size={13} className="text-emerald-500" />
+              <Check size={13} className="text-emerald-500" />
             ) : (
               <Copy size={13} />
             )}
@@ -314,6 +343,9 @@ function CopyableRow({
 export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
   const router = useRouter()
   const [reinstallOpen, setReinstallOpen] = useState(false)
+  const [technicalOpen, setTechnicalOpen] = useState(false)
+  const [copiedDomain, setCopiedDomain] = useState(false)
+
   const isTemplate =
     stack.sourceType === "TEMPLATE" || Boolean(stack.templateId)
   const t = COPY[locale.startsWith("id") ? "id" : "en"]
@@ -380,94 +412,323 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
       })
     : t.autoRenewMonthly
 
+  // CPU metric calculations
+  const cpuCurrent = telemetry?.cpu?.currentCores ?? 0
+  const cpuLimit =
+    telemetry?.cpu?.limitCores && telemetry.cpu.limitCores > 0
+      ? telemetry.cpu.limitCores
+      : stack.cpu
+        ? stack.cpu >= 100
+          ? stack.cpu / 1000
+          : stack.cpu
+        : 1
+  const cpuPercent =
+    cpuLimit > 0
+      ? Math.min(100, Math.max(0, Math.round((cpuCurrent / cpuLimit) * 100)))
+      : 0
+
+  // Memory metric calculations
+  const memCurrentBytes = telemetry?.memory?.currentBytes ?? 0
+  const memLimitBytes =
+    telemetry?.memory?.limitBytes && telemetry.memory.limitBytes > 0
+      ? telemetry.memory.limitBytes
+      : (stack.memory ?? 512) * 1024 * 1024
+  const memPercent =
+    memLimitBytes > 0
+      ? Math.min(
+          100,
+          Math.max(0, Math.round((memCurrentBytes / memLimitBytes) * 100))
+        )
+      : 0
+
+  const handleCopyUrl = async () => {
+    if (!targetDomain) return
+    try {
+      await navigator.clipboard.writeText(`https://${targetDomain}`)
+      setCopiedDomain(true)
+      setTimeout(() => setCopiedDomain(false), 2000)
+    } catch {
+      // Ignore clipboard error
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Answer block: the one question every tenant opens this page to ask. */}
-      <section
-        className={cn(
-          "flex items-start gap-3 rounded-xl border p-4",
-          tone.wrap
-        )}
-        aria-live="polite"
-      >
-        {verdict.tone === "deploying" ? (
-          <Spinner
-            size={22}
-            className="mt-0.5 shrink-0 animate-spin text-sky-500"
-          />
-        ) : healthLoading && !telemetry ? (
-          <Spinner
-            size={22}
-            className="mt-0.5 shrink-0 animate-spin text-muted-foreground"
-          />
-        ) : (
-          <VerdictIcon
-            size={22}
-            weight="fill"
-            className={cn("mt-0.5 shrink-0", tone.icon)}
-          />
-        )}
-        <div className="space-y-1">
-          <p className="text-base font-bold text-foreground">
-            {verdict.tone === "deploying"
-              ? verdict.headline
-              : healthLoading && !telemetry
-                ? t.checking
-                : verdict.headline}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {verdict.tone === "deploying"
-              ? verdict.detail
-              : healthLoading && !telemetry
-                ? ""
-                : verdict.detail}
-          </p>
-          {pod && verdict.tone !== "deploying" ? (
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-[11px] text-muted-foreground">
-              <span>
-                {t.restarts}: <strong>{pod.restarts}</strong>
-              </span>
-              {responseMs ? (
-                <span>
-                  {t.responseTime}: <strong>{responseMs}</strong>
-                </span>
-              ) : null}
-            </p>
-          ) : null}
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Left: how to reach the app — the address questions. */}
-        <div className="space-y-4 lg:col-span-6">
-          <Card className="border-border bg-card shadow-xs">
-            <CardHeader className="px-4 pt-3.5 pb-2">
-              <CardTitle className="text-sm font-bold">
-                {t.accessTitle}
-              </CardTitle>
-              <CardDescription className="text-xs">
-                {t.accessDesc}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 px-4 pt-0 pb-3.5 text-xs">
-              {targetDomain ? (
-                <div className="flex items-center justify-between gap-3 border-b border-border/50 pb-2">
-                  <span className="shrink-0 text-muted-foreground">
-                    {t.publicUrl}
+      {/* 1. ENTERPRISE HERO CARD */}
+      <Card className="overflow-hidden border-border/80 bg-card shadow-xs">
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-xl font-bold tracking-tight text-foreground">
+                  {stack.name}
+                </h2>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                    tone.pill
+                  )}
+                >
+                  {verdict.tone === "deploying" ? (
+                    <Spinner size={12} className="animate-spin text-sky-500" />
+                  ) : healthLoading && !telemetry ? (
+                    <Spinner
+                      size={12}
+                      className="animate-spin text-muted-foreground"
+                    />
+                  ) : (
+                    <VerdictIcon size={13} weight="fill" className="shrink-0" />
+                  )}
+                  <span>
+                    {healthLoading && !telemetry
+                      ? t.checking
+                      : verdict.headline}
                   </span>
-                  <a
-                    href={`https://${targetDomain}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex min-w-0 items-center gap-1 font-mono text-[11px] text-primary hover:underline"
-                  >
-                    <span className="truncate">{targetDomain}</span>
-                    <ArrowSquareOut size={12} className="shrink-0" />
-                  </a>
+                </span>
+              </div>
+
+              {targetDomain ? (
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm text-primary">
+                    https://{targetDomain}
+                  </span>
                 </div>
               ) : null}
 
-              <div className="space-y-1 border-b border-border/50 pb-2">
+              <p className="text-xs text-muted-foreground">
+                {verdict.tone === "deploying"
+                  ? verdict.detail
+                  : healthLoading && !telemetry
+                    ? ""
+                    : verdict.detail}
+                {pod && verdict.tone !== "deploying" ? (
+                  <span className="ml-2 font-medium text-foreground">
+                    ({t.restarts}: {pod.restarts})
+                  </span>
+                ) : null}
+              </p>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              {targetDomain ? (
+                <>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="default"
+                    className="h-9 gap-1.5 px-3.5 text-xs font-medium"
+                  >
+                    <a
+                      href={`https://${targetDomain}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <span>{t.openApp}</span>
+                      <ArrowSquareOut size={13} />
+                    </a>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-9 gap-1.5 px-3 text-xs"
+                    onClick={handleCopyUrl}
+                  >
+                    {copiedDomain ? (
+                      <>
+                        <Check size={13} className="text-emerald-500" />
+                        <span>{t.copied}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>{t.copyUrl}</span>
+                      </>
+                    )}
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Sub-strip metadata: Plan & Cluster info */}
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">{t.catalogPlan}:</span>
+              <strong className="font-semibold text-foreground">
+                {stack.catalogPlanName ??
+                  (stack.resourcePlanId
+                    ? `${stack.resourcePlanId.toUpperCase()} Plan`
+                    : "Medium")}
+              </strong>
+              <span>({formattedPrice})</span>
+            </div>
+            <span>•</span>
+            <div className="flex items-center gap-1.5">
+              <span>{t.billingStatus}:</span>
+              <span className="inline-flex items-center gap-1 font-medium text-emerald-500">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                {t.billingActive}
+              </span>
+            </div>
+            <span>•</span>
+            <div className="flex items-center gap-1.5">
+              <span>{t.nextRenewal}:</span>
+              <span className="text-foreground">{formattedRenewal}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 2. VITAL HEALTH GAUGES */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-foreground">
+              {t.usageTitle}
+            </h3>
+            <p className="text-xs text-muted-foreground">{t.usageDesc}</p>
+          </div>
+          <Link
+            href={tabHref("metrics")}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            {t.metrics} →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* Card: CPU Utilization */}
+          <Card className="border-border/80 bg-card shadow-xs">
+            <CardHeader className="p-4 pb-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t.cpuUsage}
+                </span>
+                <Cpu size={16} className="text-muted-foreground" />
+              </div>
+              <CardTitle className="text-lg font-bold">{cpuPercent}%</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${cpuPercent}%` }}
+                />
+              </div>
+              <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+                {formatCores(cpuCurrent)} / {formatCores(cpuLimit)}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Card: Memory Working Set */}
+          <Card className="border-border/80 bg-card shadow-xs">
+            <CardHeader className="p-4 pb-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t.memoryUsage}
+                </span>
+                <HardDrive size={16} className="text-muted-foreground" />
+              </div>
+              <CardTitle className="text-lg font-bold">{memPercent}%</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${memPercent}%` }}
+                />
+              </div>
+              <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+                {formatBytes(memCurrentBytes)} / {formatBytes(memLimitBytes)}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Card: Network Throughput & Response Time */}
+          <Card className="border-border/80 bg-card shadow-xs">
+            <CardHeader className="p-4 pb-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t.trafficThroughput}
+                </span>
+                <GlobeHemisphereWest
+                  size={16}
+                  className="text-muted-foreground"
+                />
+              </div>
+              <CardTitle className="text-lg font-bold">
+                {responseMs ?? "—"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <p className="text-xs text-muted-foreground">
+                {t.responseTime}:{" "}
+                <strong className="text-foreground">
+                  {responseMs ?? "Normal"}
+                </strong>
+              </p>
+              <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+                Rx {formatThroughput(telemetry?.network?.currentRxBytes ?? 0)} •
+                Tx {formatThroughput(telemetry?.network?.currentTxBytes ?? 0)}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* 3. PROGRESSIVE DISCLOSURE: PLATFORM SPECS & INTERNAL NETWORKING */}
+      <Collapsible
+        open={technicalOpen}
+        onOpenChange={setTechnicalOpen}
+        className="rounded-xl border border-border/80 bg-card shadow-xs"
+      >
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/30"
+          >
+            <div>
+              <h4 className="text-sm font-bold text-foreground">
+                {t.technicalSpecsTitle}
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                {t.technicalSpecsDesc}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span>
+                {technicalOpen
+                  ? t.technicalSpecsToggleOpen
+                  : t.technicalSpecsToggleClosed}
+              </span>
+              <CaretDown
+                size={14}
+                className={cn(
+                  "transition-transform duration-200",
+                  technicalOpen && "rotate-180"
+                )}
+              />
+            </div>
+          </button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="border-t border-border/60 p-4 pt-3 text-xs">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {/* Left Column: Addressing & Networking */}
+            <div className="space-y-3">
+              <h5 className="font-semibold text-foreground">{t.accessTitle}</h5>
+
+              <CopyableRow
+                label={t.internalHost}
+                value={`${stack.slug}:${stack.port ?? 8080}`}
+                copyLabel={t.copy}
+                copiedLabel={t.copied}
+              />
+
+              <div className="space-y-1 border-b border-border/40 pb-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">{t.publicIp}</span>
                   <span className="font-medium text-foreground">
@@ -479,117 +740,34 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                 </p>
               </div>
 
-              <CopyableRow
-                label={t.internalHost}
-                value={`${stack.slug}:${stack.port ?? 80}`}
-                copyLabel={t.copy}
-                copiedLabel={t.copied}
-              />
-
-              {pod || telemetry?.namespace ? (
-                <Collapsible className="pt-1">
-                  <CollapsibleTrigger className="group flex w-full items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
-                    <CaretDown
-                      size={11}
-                      className="transition-transform group-data-[state=open]:rotate-180"
-                    />
-                    {t.developerInfo}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 pt-2">
-                    {pod ? (
-                      <CopyableRow
-                        label={t.podName}
-                        value={pod.pod}
-                        copyLabel={t.copy}
-                        copiedLabel={t.copied}
-                      />
-                    ) : null}
-
-                    {telemetry?.namespace ? (
-                      <CopyableRow
-                        label={t.namespace}
-                        value={telemetry.namespace}
-                        copyLabel={t.copy}
-                        copiedLabel={t.copied}
-                      />
-                    ) : null}
-                  </CollapsibleContent>
-                </Collapsible>
+              {pod ? (
+                <CopyableRow
+                  label={t.podName}
+                  value={pod.pod}
+                  copyLabel={t.copy}
+                  copiedLabel={t.copied}
+                />
               ) : null}
-            </CardContent>
-          </Card>
 
-          {/* Card: Subscription & Billing */}
-          <Card className="border-border bg-card shadow-xs">
-            <CardHeader className="px-4 pt-3.5 pb-2">
-              <CardTitle className="text-sm font-bold">
-                {t.subscriptionTitle}
-              </CardTitle>
-              <CardDescription className="text-xs">
-                {t.subscriptionDesc}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 px-4 pt-0 pb-3.5 text-xs">
-              <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">{t.catalogPlan}</span>
-                <span className="font-semibold text-foreground">
-                  {stack.catalogPlanName ??
-                    (stack.resourcePlanId
-                      ? `${stack.resourcePlanId.toUpperCase()} Plan`
-                      : "Small")}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">{t.priceCycle}</span>
-                <span className="font-semibold text-foreground">
-                  {formattedPrice}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">{t.billingStatus}</span>
-                <span className="inline-flex items-center gap-1.5 font-medium text-emerald-500">
-                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                  {!stack.billingState ||
-                  stack.billingState.toUpperCase() === "ACTIVE"
-                    ? t.billingActive
-                    : `${t.billingActive} (${stack.billingState})`}
-                </span>
-              </div>
-              <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">{t.orderedOn}</span>
-                <span className="font-medium text-foreground">
-                  {formattedOrdered}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-0.5">
-                <span className="text-muted-foreground">{t.nextRenewal}</span>
-                <span className="font-medium text-foreground">
-                  {formattedRenewal}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              {telemetry?.namespace ? (
+                <CopyableRow
+                  label={t.namespace}
+                  value={telemetry.namespace}
+                  copyLabel={t.copy}
+                  copiedLabel={t.copied}
+                />
+              ) : null}
+            </div>
 
-        {/* Right: what this app is made of. */}
-        <div className="space-y-4 lg:col-span-6">
-          <Card className="border-border bg-card shadow-xs">
-            <CardHeader className="px-4 pt-3.5 pb-2">
-              <CardTitle className="text-sm font-bold">
+            {/* Right Column: Platform Specifications */}
+            <div className="space-y-3">
+              <h5 className="font-semibold text-foreground">
                 {t.platformSpecTitle}
-              </CardTitle>
-              <CardDescription className="text-xs">
-                {t.platformSpecDesc}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 px-4 pt-0 pb-3.5 text-xs">
-              <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              </h5>
+
+              <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
                 <span className="text-muted-foreground">
-                  {isTemplate
-                    ? t.templateEngine
-                    : locale.startsWith("id")
-                      ? "Framework"
-                      : "Framework"}
+                  {isTemplate ? t.templateEngine : "Framework"}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-foreground">
@@ -605,11 +783,6 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                       size="sm"
                       onClick={() => setReinstallOpen(true)}
                       className="h-6 gap-1 px-1.5 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
-                      title={
-                        locale.startsWith("id")
-                          ? "Ganti Template / Reinstall"
-                          : "Change Template / Reinstall"
-                      }
                     >
                       <ArrowsClockwise size={12} />
                       <span>
@@ -621,26 +794,29 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                   )}
                 </div>
               </div>
-              <div className="flex items-center justify-between border-b border-border/50 pb-2">
+
+              <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
                 <span className="text-muted-foreground">{t.servicePort}</span>
                 <span className="font-mono font-medium text-foreground">
-                  {stack.port ? `Port ${stack.port}` : "Port 80/443"}
+                  {stack.port ? `Port ${stack.port}` : "Port 8080"}
                 </span>
               </div>
-              <div className="flex items-center justify-between border-b border-border/50 pb-2">
+
+              <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
                 <span className="text-muted-foreground">
                   {t.allocatedResources}
                 </span>
-                <span className="text-right font-medium text-foreground">
+                <span className="font-medium text-foreground">
                   {stack.cpu
                     ? stack.cpu >= 100
                       ? `${stack.cpu / 1000} vCPU`
                       : `${stack.cpu} vCPU`
-                    : "0.5 vCPU"}{" "}
-                  • {stack.memory ? `${stack.memory} MB RAM` : "512 MB RAM"}
+                    : "1 vCPU"}{" "}
+                  • {stack.memory ? `${stack.memory} MB RAM` : "2048 MB RAM"}
                 </span>
               </div>
-              <div className="flex items-center justify-between border-b border-border/50 pb-2">
+
+              <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
                 <span className="text-muted-foreground">{t.envSecrets}</span>
                 <span className="font-medium text-foreground">
                   {stack.envCount !== undefined
@@ -650,34 +826,25 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                     : t.envSecretsFallback}
                 </span>
               </div>
-              <div className="flex items-center justify-between pt-0.5">
+
+              <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
+                <span className="text-muted-foreground">{t.orderedOn}</span>
+                <span className="font-medium text-foreground">
+                  {formattedOrdered}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">{t.configStatus}</span>
                 <span className="inline-flex items-center gap-1 font-medium text-emerald-500">
                   <CheckCircle size={13} />
                   {t.configSynced}
                 </span>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Charts demoted: a glance here, the real analysis in Metrics. */}
-          <ClusterTelemetryCards
-            appSlug={stack.slug}
-            title={t.usageTitle}
-            locale={locale}
-            compact
-          />
-          <p className="px-1 text-[11px] text-muted-foreground">
-            {t.usageDesc} —{" "}
-            <Link
-              href={tabHref("metrics")}
-              className="text-primary hover:underline"
-            >
-              {t.metrics}
-            </Link>
-          </p>
-        </div>
-      </div>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {isTemplate && (
         <ReinstallTemplateDialog

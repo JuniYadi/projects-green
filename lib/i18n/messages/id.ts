@@ -1136,12 +1136,12 @@ export const idMessages: AppMessages = {
         liveRates: "Tingkat Langsung",
         statusCodeBreakdown: "Rincian Kode Status (req/s)",
         statusCodeBreakdownDesc:
-          "2xx Berhasil (Hijau), 3xx Pengalihan (Langit), 4xx Klien (Kuning), 5xx Server (Mawar)",
+          "Distribusi kode status HTTP: 2xx Berhasil, 3xx Pengalihan, 4xx Klien, 5xx Server",
         latencyBreakdown: "Rincian Latensi",
         latencyBreakdownBadge: "Antrean vs Koneksi vs Aplikasi",
         responseTimeComponents: "Komponen Waktu Respons (ms)",
         responseTimeComponentsDesc:
-          "Total (Teal), Respons Aplikasi (Nila), Koneksi (Kuning), Waktu Antrean (Ungu)",
+          "Dekomposisi latensi: Total bolak-balik, respons aplikasi backend, koneksi, dan antrean",
         cpuUsagePerPod: "Penggunaan CPU per Pod",
         ramWorkingSetPerPod: "RAM Working Set per Pod",
         networkIngressPerPod: "Ingress Jaringan per Pod",
@@ -5248,11 +5248,11 @@ export const idMessages: AppMessages = {
       },
       timeline: {
         steps: {
-          queuedInit: "Antrean & Inisialisasi",
-          jenkinsBuild: "Build & Scan di Jenkins",
-          artifactsScan: "Notifikasi Artefak & Trivy",
-          gitopsConfig: "Sinkronisasi GitOps (Helm)",
-          cloudRollout: "Rollout Cluster & Pod Ready",
+          queuedInit: "Antrean & Persiapan Lingkungan",
+          jenkinsBuild: "Membangun Kontainer & Scan Keamanan",
+          artifactsScan: "Verifikasi Gambar Rilis",
+          gitopsConfig: "Konfigurasi Server & GitOps",
+          cloudRollout: "Deployment Server & Pod Ready",
           liveServing: "Aplikasi Berjalan Aktif",
           queued: "Dalam antrean",
           monitorWait: "Menunggu di antrean",
@@ -9293,8 +9293,7 @@ export const idMessages: AppMessages = {
     visitedPathsTab: "Path Dikunjungi",
   },
   pDeployOperateTrafficLiveStreamTable: {
-    description:
-      "Sampel 25 request terbaru per 3 detik (TanStack Query Buffer)",
+    description: "Sampel request terbaru yang diperbarui secara langsung",
     fetchError: "Gagal mengambil log live",
     listeningLive: "Mendengarkan lalu lintas request secara langsung...",
     pauseStream: "Jeda Stream",
@@ -9334,7 +9333,7 @@ export const idMessages: AppMessages = {
     successRate: "Tingkat Keberhasilan",
     totalRequests: "Total Permintaan",
     totalVisits: "Total Kunjungan",
-    uniqueIpCardinality: "Kardinalitas IP unik ({period})",
+    uniqueIpCardinality: "Pengunjung unik ({period})",
   },
   pDeployOperateTrafficTopPagesCard: {
     allLinksCleanDescription:

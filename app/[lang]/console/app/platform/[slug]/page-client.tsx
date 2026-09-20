@@ -1129,7 +1129,12 @@ export default function PlatformInstanceWorkspacePage() {
 
           {/* TAB: SECURITY & ARTIFACTS */}
           {activeWorkspaceTab === "security-artifacts" && (
-            <SecurityArtifactsTabSection slug={slug} />
+            <SecurityArtifactsTabSection
+              slug={slug}
+              planTier={
+                overview.stack.resourcePlanId ?? overview.stack.catalogPlanName
+              }
+            />
           )}
 
           {/* TAB 3: LOGS */}

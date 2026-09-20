@@ -146,12 +146,6 @@ export function TabEnv({
 
   return (
     <div className="space-y-6">
-      <RuntimeQuickTuningCard
-        framework={framework}
-        envVars={editorEnvVars}
-        onApplyEnvVar={handleApplyEnvVar}
-        onApplyBatch={handleApplyBatch}
-      />
       <Card size="sm" className="border-border bg-card shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div className="flex flex-col gap-1">
@@ -176,6 +170,13 @@ export function TabEnv({
           />
         </CardContent>
       </Card>
+
+      <RuntimeQuickTuningCard
+        framework={framework}
+        envVars={editorEnvVars}
+        onApplyEnvVar={handleApplyEnvVar}
+        onApplyBatch={handleApplyBatch}
+      />
     </div>
   )
 }
