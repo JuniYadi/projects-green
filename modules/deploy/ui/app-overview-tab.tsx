@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
-  ArrowSquareOut,
   ArrowsClockwise,
   CaretDown,
   Check,
@@ -14,10 +13,6 @@ import {
   Cpu,
   GlobeHemisphereWest,
   HardDrive,
-  Question,
-  Spinner,
-  Warning,
-  WarningCircle,
 } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 import { eden } from "@/lib/eden"
@@ -190,37 +185,6 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
   },
 }
 
-const TONE_STYLES: Record<
-  HealthVerdict["tone"],
-  { wrap: string; icon: string; pill: string }
-> = {
-  healthy: {
-    wrap: "border-emerald-500/20 bg-emerald-500/5",
-    icon: "text-emerald-500",
-    pill: "border-emerald-500/20 bg-emerald-500/10 text-emerald-500",
-  },
-  warning: {
-    wrap: "border-amber-500/20 bg-amber-500/5",
-    icon: "text-amber-500",
-    pill: "border-amber-500/20 bg-amber-500/10 text-amber-500",
-  },
-  down: {
-    wrap: "border-rose-500/20 bg-rose-500/5",
-    icon: "text-rose-500",
-    pill: "border-rose-500/20 bg-rose-500/10 text-rose-500",
-  },
-  deploying: {
-    wrap: "border-sky-500/20 bg-sky-500/5",
-    icon: "text-sky-500",
-    pill: "border-sky-500/20 bg-sky-500/10 text-sky-500",
-  },
-  unknown: {
-    wrap: "border-border/80 bg-card",
-    icon: "text-muted-foreground",
-    pill: "border-border bg-muted/40 text-muted-foreground",
-  },
-}
-
 /**
  * Turn raw pod + ingress telemetry into the one sentence a tenant actually
  * asked for: "is my server up?". Ordered worst-first so a real outage is
@@ -344,41 +308,25 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
   const router = useRouter()
   const [reinstallOpen, setReinstallOpen] = useState(false)
   const [technicalOpen, setTechnicalOpen] = useState(false)
-  const [copiedDomain, setCopiedDomain] = useState(false)
-
   const isTemplate =
     stack.sourceType === "TEMPLATE" || Boolean(stack.templateId)
   const t = COPY[locale.startsWith("id") ? "id" : "en"]
-  const targetDomain = stack.customDomain || stack.subdomain
 
-  const { data: telemetry, isLoading: healthLoading } =
-    useQuery<ClusterTelemetrySummary>({
-      queryKey: ["deploy", "app-health", stack.slug],
-      queryFn: async () => {
-        const { data: payload } = await eden.api.deploy.telemetry.get({
-          $query: { range: "1h", appSlug: stack.slug },
-        })
-        if (!payload || !payload.ok || !payload.data) {
-          throw new Error(payload?.message ?? "Unable to load app health")
-        }
-        return payload.data
-      },
-      refetchInterval: 30_000,
-    })
+  const { data: telemetry } = useQuery<ClusterTelemetrySummary>({
+    queryKey: ["deploy", "app-health", stack.slug],
+    queryFn: async () => {
+      const { data: payload } = await eden.api.deploy.telemetry.get({
+        $query: { range: "1h", appSlug: stack.slug },
+      })
+      if (!payload || !payload.ok || !payload.data) {
+        throw new Error(payload?.message ?? "Unable to load app health")
+      }
+      return payload.data
+    },
+    refetchInterval: 30_000,
+  })
 
   const pod = telemetry?.pods?.[0]
-  const verdict = resolveHealthVerdict(telemetry, t, stack.status)
-  const tone = TONE_STYLES[verdict.tone]
-  const VerdictIcon =
-    verdict.tone === "healthy"
-      ? CheckCircle
-      : verdict.tone === "down"
-        ? WarningCircle
-        : verdict.tone === "warning"
-          ? Warning
-          : verdict.tone === "deploying"
-            ? Spinner
-            : Question
 
   const responseMs = telemetry?.ingress
     ? `${Math.round(telemetry.ingress.avgResponseTimeSeconds * 1000)} ms`
@@ -386,14 +334,6 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
 
   const tabHref = (tab: string) =>
     `/${locale}/console/app/platform/${stack.slug}?tab=${tab}`
-
-  const formattedPrice = stack.catalogPlanPrice
-    ? stack.catalogPlanCurrency === "IDR"
-      ? `Rp ${Number(stack.catalogPlanPrice).toLocaleString("id-ID")} / bulan`
-      : `$${stack.catalogPlanPrice} / month`
-    : stack.hourlyCost
-      ? `$${stack.hourlyCost} / hour (PAYG)`
-      : "Included with Package"
 
   const orderedDate = stack.orderedAt || stack.createdAt
   const formattedOrdered = orderedDate
@@ -403,14 +343,6 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
         day: "numeric",
       })
     : "—"
-
-  const formattedRenewal = stack.renewalAt
-    ? new Date(stack.renewalAt).toLocaleDateString(locale, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
-    : t.autoRenewMonthly
 
   // CPU metric calculations
   const cpuCurrent = telemetry?.cpu?.currentCores ?? 0
@@ -441,147 +373,9 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
         )
       : 0
 
-  const handleCopyUrl = async () => {
-    if (!targetDomain) return
-    try {
-      await navigator.clipboard.writeText(`https://${targetDomain}`)
-      setCopiedDomain(true)
-      setTimeout(() => setCopiedDomain(false), 2000)
-    } catch {
-      // Ignore clipboard error
-    }
-  }
-
   return (
     <div className="space-y-6">
-      {/* 1. ENTERPRISE HERO CARD */}
-      <Card className="overflow-hidden border-border/80 bg-card shadow-xs">
-        <CardContent className="p-5 sm:p-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="text-xl font-bold tracking-tight text-foreground">
-                  {stack.name}
-                </h2>
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                    tone.pill
-                  )}
-                >
-                  {verdict.tone === "deploying" ? (
-                    <Spinner size={12} className="animate-spin text-sky-500" />
-                  ) : healthLoading && !telemetry ? (
-                    <Spinner
-                      size={12}
-                      className="animate-spin text-muted-foreground"
-                    />
-                  ) : (
-                    <VerdictIcon size={13} weight="fill" className="shrink-0" />
-                  )}
-                  <span>
-                    {healthLoading && !telemetry
-                      ? t.checking
-                      : verdict.headline}
-                  </span>
-                </span>
-              </div>
-
-              {targetDomain ? (
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-primary">
-                    https://{targetDomain}
-                  </span>
-                </div>
-              ) : null}
-
-              <p className="text-xs text-muted-foreground">
-                {verdict.tone === "deploying"
-                  ? verdict.detail
-                  : healthLoading && !telemetry
-                    ? ""
-                    : verdict.detail}
-                {pod && verdict.tone !== "deploying" ? (
-                  <span className="ml-2 font-medium text-foreground">
-                    ({t.restarts}: {pod.restarts})
-                  </span>
-                ) : null}
-              </p>
-            </div>
-
-            {/* Quick Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
-              {targetDomain ? (
-                <>
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="default"
-                    className="h-9 gap-1.5 px-3.5 text-xs font-medium"
-                  >
-                    <a
-                      href={`https://${targetDomain}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <span>{t.openApp}</span>
-                      <ArrowSquareOut size={13} />
-                    </a>
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-9 gap-1.5 px-3 text-xs"
-                    onClick={handleCopyUrl}
-                  >
-                    {copiedDomain ? (
-                      <>
-                        <Check size={13} className="text-emerald-500" />
-                        <span>{t.copied}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={13} />
-                        <span>{t.copyUrl}</span>
-                      </>
-                    )}
-                  </Button>
-                </>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Sub-strip metadata: Plan & Cluster info */}
-          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-4 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <span className="text-muted-foreground">{t.catalogPlan}:</span>
-              <strong className="font-semibold text-foreground">
-                {stack.catalogPlanName ??
-                  (stack.resourcePlanId
-                    ? `${stack.resourcePlanId.toUpperCase()} Plan`
-                    : "Medium")}
-              </strong>
-              <span>({formattedPrice})</span>
-            </div>
-            <span>•</span>
-            <div className="flex items-center gap-1.5">
-              <span>{t.billingStatus}:</span>
-              <span className="inline-flex items-center gap-1 font-medium text-emerald-500">
-                <span className="size-1.5 rounded-full bg-emerald-500" />
-                {t.billingActive}
-              </span>
-            </div>
-            <span>•</span>
-            <div className="flex items-center gap-1.5">
-              <span>{t.nextRenewal}:</span>
-              <span className="text-foreground">{formattedRenewal}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 2. VITAL HEALTH GAUGES */}
+      {/* 1. VITAL HEALTH GAUGES */}
       <div>
         <div className="mb-3 flex items-center justify-between">
           <div>
