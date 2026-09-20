@@ -4087,6 +4087,7 @@ export const enMessages: AppMessages = {
         searchPlaceholder: "Search cronjobs...",
         allCategories: "All Categories",
         allStatuses: "All Statuses",
+        allJobs: "All Jobs",
         statusSuccess: "Success",
         statusFailed: "Failed",
         statusRunning: "Running",

@@ -1,5 +1,5 @@
 import { describe, expect, test, mock, beforeEach } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { render, waitFor, fireEvent } from "@testing-library/react"
 import { CronJobsManagementView } from "@/modules/admin/ui/portal-cronjobs-view"
 
 // Mock fetch globally
@@ -12,6 +12,8 @@ const mockFetch = mock(async (url: string) => {
           {
             id: "exec_1",
             cronJobId: "job_1",
+            jobName: "Monthly Billing Finalization",
+            jobCode: "monthly-billing-finalization",
             status: "SUCCESS",
             triggerType: "SCHEDULED_K8S",
             triggeredBy: null,
@@ -79,6 +81,18 @@ describe("CronJobsManagementView UI Component", () => {
 
     await waitFor(() => {
       expect(utils.getByText("Monthly Billing Finalization")).toBeDefined()
+    })
+  })
+
+  test("renders execution history table with job name and code in history tab", async () => {
+    const utils = render(<CronJobsManagementView />)
+
+    const historyTab = utils.getByRole("tab", { name: "Execution History" })
+    fireEvent.keyDown(historyTab, { key: "Enter", code: "Enter" })
+
+    await waitFor(() => {
+      expect(utils.getByText("pod-1")).toBeDefined()
+      expect(utils.getByText("monthly-billing-finalization")).toBeDefined()
     })
   })
 })

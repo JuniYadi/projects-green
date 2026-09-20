@@ -80,6 +80,14 @@ export class CronAdminService {
       prisma.cronJobExecution.count({ where }),
       prisma.cronJobExecution.findMany({
         where,
+        include: {
+          cronJob: {
+            select: {
+              name: true,
+              code: true,
+            },
+          },
+        },
         orderBy: { startedAt: "desc" },
         skip,
         take: limit,
@@ -97,6 +105,14 @@ export class CronAdminService {
   async getExecution(executionId: string): Promise<CronJobExecutionDTO | null> {
     const execution = await prisma.cronJobExecution.findUnique({
       where: { id: executionId },
+      include: {
+        cronJob: {
+          select: {
+            name: true,
+            code: true,
+          },
+        },
+      },
     })
     return execution ? toCronJobExecutionDTO(execution) : null
   }

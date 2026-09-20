@@ -35,6 +35,8 @@ const mockListExecutions = mock(async () => ({
     {
       id: "exec_1",
       cronJobId: "job_1",
+      jobName: "Monthly Billing Finalization",
+      jobCode: "monthly-billing-finalization",
       status: "SUCCESS",
       triggerType: "SCHEDULED_K8S",
       triggeredBy: null,
@@ -69,6 +71,8 @@ mock.module("@/modules/admin/api/services/cron-admin.service", () => ({
         ? {
             id: "exec_1",
             cronJobId: "job_1",
+            jobName: "Monthly Billing Finalization",
+            jobCode: "monthly-billing-finalization",
             status: "SUCCESS",
             triggerType: "SCHEDULED_K8S",
             triggeredBy: null,
