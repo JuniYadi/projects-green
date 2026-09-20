@@ -493,11 +493,12 @@ export default function PlatformInstanceWorkspacePage() {
           $query: { page: historyPage, pageSize: 5 },
         })
         if (payload?.ok && Array.isArray(payload.data) && !cancelled) {
-          setHistory(payload.data)
+          const deployments = payload.data
+          setHistory(deployments)
           if (payload.meta) setHistoryMeta(payload.meta)
           // Auto-select the first (latest) deployment on initial load
-          if (historyPage === 1 && payload.data.length > 0) {
-            setSelectedDeploymentId((prev) => prev ?? payload.data[0].id)
+          if (historyPage === 1 && deployments.length > 0) {
+            setSelectedDeploymentId((prev) => prev ?? deployments[0].id)
           }
         }
       } catch (error) {
