@@ -2,7 +2,9 @@ import { describe, expect, it } from "bun:test"
 
 import {
   ENV_VAR_MAX_VALUE_SIZE,
+  generateRandomLaravelAppKey,
   getEnvVarPreviewValue,
+  getSeedEnvVarsForFramework,
   inferEnvVarTypeFromKey,
   parseDotEnvImport,
 } from "@/modules/deploy/environment-vars"
@@ -12,6 +14,36 @@ describe("environment vars helpers", () => {
     expect(inferEnvVarTypeFromKey("APP_KEY")).toBe("secret_ref")
     expect(inferEnvVarTypeFromKey("DB_CREDENTIAL")).toBe("secret_ref")
     expect(inferEnvVarTypeFromKey("CACHE_STORE")).toBe("plain")
+  })
+
+  it("generates a valid random Laravel APP_KEY base64", () => {
+    const key = generateRandomLaravelAppKey()
+    expect(key.startsWith("base64:")).toBe(true)
+    const base64Part = key.slice("base64:".length)
+    expect(base64Part.length).toBeGreaterThan(20)
+  })
+
+  it("provides seed env vars for Laravel with platform tunables and APP_KEY", () => {
+    const vars = getSeedEnvVarsForFramework("Laravel")
+    const keys = vars.map((v) => v.key)
+    expect(keys).toContain("APP_KEY")
+    expect(keys).toContain("APP_ENV")
+    expect(keys).toContain("PHP_UPLOAD_MAX_FILESIZE")
+    expect(keys).toContain("PHP_POST_MAX_SIZE")
+    expect(keys).toContain("PHP_MEMORY_LIMIT")
+    expect(keys).toContain("CONTAINER_ROLE")
+
+    const appKeyVar = vars.find((v) => v.key === "APP_KEY")
+    expect(appKeyVar?.isSecret).toBe(true)
+    expect(appKeyVar?.value.startsWith("base64:")).toBe(true)
+  })
+
+  it("provides seed env vars for Bun and Node.js", () => {
+    const bunVars = getSeedEnvVarsForFramework("bun")
+    expect(bunVars.map((v) => v.key)).toContain("BUN_ENV")
+
+    const nodeVars = getSeedEnvVarsForFramework("Next.js")
+    expect(nodeVars.map((v) => v.key)).toContain("NODE_ENV")
   })
 
   it("masks secrets in previews", () => {

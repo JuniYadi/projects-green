@@ -109,6 +109,7 @@ describe("deploy-pipeline.service", () => {
     mockPrisma.applicationDeployment.count.mockClear()
     mockPrisma.$transaction.mockClear()
     mockEnqueueDeployment.mockClear()
+    mockWriteSecrets.mockClear()
     releaseManagedStock.mockClear()
     releaseManagedStock.mockResolvedValue(undefined)
     mockPrisma.applicationStack.findUnique.mockResolvedValue(mockStack)
@@ -195,7 +196,9 @@ describe("deploy-pipeline.service", () => {
     })
 
     expect(mockPrisma.applicationStack.create).toHaveBeenCalled()
-    const createCall = (mockPrisma.applicationStack.create.mock.calls as any)[0][0]
+    const createCall = (
+      mockPrisma.applicationStack.create.mock.calls as any
+    )[0][0]
     expect(createCall.data.metadataJson).toMatchObject({
       defaultPort: 8080,
       containerPort: 8080,
@@ -266,12 +269,52 @@ describe("deploy-pipeline.service", () => {
       expect.objectContaining({
         organizationId: "org-1",
         stackId: "stack-1",
-        environment: "dev",
-        secrets: {
+        environment: "prod",
+        secrets: expect.objectContaining({
           API_KEY: "secret123",
           PORT: "8080",
-        },
+        }),
       })
     )
+  })
+
+  it("seeds Laravel platform contract tunables and APP_KEY into Vault and metadata", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+
+    await createOrUpdateStack({
+      organizationId: "org-1",
+      name: "laravel-app",
+      slug: "laravel-app",
+      branchName: "main",
+      rootDirectory: "/",
+      framework: "laravel",
+      dockerfileDetected: false,
+      envVars: [],
+      sourceType: "GITHUB",
+    })
+
+    expect(mockWriteSecrets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "prod",
+        secrets: expect.objectContaining({
+          PHP_UPLOAD_MAX_FILESIZE: "64M",
+          PHP_POST_MAX_SIZE: "64M",
+          PHP_MEMORY_LIMIT: "256M",
+          CONTAINER_ROLE: "app",
+          APP_ENV: "production",
+          APP_DEBUG: "false",
+        }),
+      })
+    )
+
+    const callArgs = (
+      mockWriteSecrets.mock.calls as unknown as Array<
+        [{ secrets: Record<string, string> }]
+      >
+    )[0]?.[0]
+    expect(callArgs?.secrets.APP_KEY).toBeDefined()
+    expect(callArgs?.secrets.APP_KEY.startsWith("base64:")).toBe(true)
   })
 })

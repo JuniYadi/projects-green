@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
+import { getSeedEnvVarsForFramework } from "@/modules/deploy/environment-vars"
 import type { EnvVar, GitBuildConfig, GitSourceConfig } from "./types"
 
 type GitBuildStepProps = {
@@ -96,11 +97,18 @@ export function GitBuildStep({
                 : "Auto-detected")
 
   // Environment variables
-  const [envVars, setEnvVars] = useState<EnvVar[]>(
-    initialConfig?.envVars ?? [
-      { id: "1", key: "NODE_ENV", value: "production", isSecret: false },
-    ]
-  )
+  const [envVars, setEnvVars] = useState<EnvVar[]>(() => {
+    if (initialConfig?.envVars && initialConfig.envVars.length > 0) {
+      return initialConfig.envVars
+    }
+    const seeds = getSeedEnvVarsForFramework(detectedFramework)
+    return seeds.map((s, idx) => ({
+      id: String(idx + 1),
+      key: s.key,
+      value: s.value,
+      isSecret: s.isSecret,
+    }))
+  })
   const [revealedSecrets, setRevealedSecrets] = useState<
     Record<string, boolean>
   >({})

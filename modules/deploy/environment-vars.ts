@@ -154,3 +154,76 @@ export const parseDotEnvImport = (raw: string): ParsedEnvImportResult => {
     errors,
   }
 }
+
+export function generateRandomLaravelAppKey(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.getRandomValues === "function"
+  ) {
+    const bytes = new Uint8Array(32)
+    crypto.getRandomValues(bytes)
+    if (typeof Buffer !== "undefined") {
+      return `base64:${Buffer.from(bytes).toString("base64")}`
+    }
+    const binStr = Array.from(bytes, (byte) => String.fromCharCode(byte)).join(
+      ""
+    )
+    if (typeof btoa === "function") {
+      return `base64:${btoa(binStr)}`
+    }
+  }
+
+  throw new Error(
+    "Cryptographically secure PRNG is unavailable for generating Laravel APP_KEY."
+  )
+}
+
+export type SeedEnvVar = {
+  key: string
+  value: string
+  isSecret: boolean
+}
+
+export function getSeedEnvVarsForFramework(
+  framework?: string | null
+): SeedEnvVar[] {
+  const normalized = (framework ?? "").toLowerCase().trim()
+  if (normalized.includes("laravel") || normalized.includes("php")) {
+    return [
+      { key: "APP_ENV", value: "production", isSecret: false },
+      { key: "APP_DEBUG", value: "false", isSecret: false },
+      { key: "APP_KEY", value: generateRandomLaravelAppKey(), isSecret: true },
+      { key: "CONTAINER_ROLE", value: "app", isSecret: false },
+      { key: "PHP_UPLOAD_MAX_FILESIZE", value: "64M", isSecret: false },
+      { key: "PHP_POST_MAX_SIZE", value: "64M", isSecret: false },
+      { key: "PHP_MEMORY_LIMIT", value: "256M", isSecret: false },
+    ]
+  }
+
+  if (normalized.includes("bun")) {
+    return [
+      { key: "BUN_ENV", value: "production", isSecret: false },
+      { key: "PORT", value: "8080", isSecret: false },
+    ]
+  }
+
+  if (
+    normalized.includes("node") ||
+    normalized.includes("next") ||
+    normalized.includes("express") ||
+    normalized.includes("nest") ||
+    normalized.includes("router") ||
+    normalized.includes("js") ||
+    normalized.includes("ts")
+  ) {
+    return [
+      { key: "NODE_ENV", value: "production", isSecret: false },
+      { key: "PORT", value: "8080", isSecret: false },
+    ]
+  }
+
+  return [
+    { key: "NODE_ENV", value: "production", isSecret: false },
+    { key: "PORT", value: "8080", isSecret: false },
+  ]
+}

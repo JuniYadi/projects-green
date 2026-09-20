@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -424,6 +425,62 @@ export default function SettingsPage() {
             setEnvVars={setEnvVars}
             stackId={overview.stack.id}
             framework={overview.stack.framework}
+            templateName={overview.stack.templateName}
+            onPersist={async (rows) => {
+              try {
+                const { data: payload } = await (
+                  eden.api.deploy.apps as unknown as Record<
+                    string,
+                    {
+                      settings: {
+                        env: {
+                          patch: (body: unknown) => Promise<{
+                            data?: { ok?: boolean; message?: string }
+                          }>
+                        }
+                      }
+                    }
+                  >
+                )[overview.stack.slug].settings.env.patch({
+                  environmentId: selectedEnv,
+                  variables: rows.map((row) => ({
+                    id: row.id,
+                    key: row.key,
+                    value: row.value,
+                    type: row.type,
+                    scope: row.scope,
+                    masked: row.masked,
+                    isStoredSecret: row.isStoredSecret,
+                    ...(row.source ? { source: row.source } : {}),
+                    ...(row.serviceCredentialId
+                      ? { serviceCredentialId: row.serviceCredentialId }
+                      : {}),
+                    ...(row.vaultPath ? { vaultPath: row.vaultPath } : {}),
+                    ...(row.vaultKey ? { vaultKey: row.vaultKey } : {}),
+                    ...(row.referenceLabel
+                      ? { referenceLabel: row.referenceLabel }
+                      : {}),
+                  })),
+                })
+                if (!payload?.ok) {
+                  throw new Error(
+                    payload?.message ?? "Unable to save environment variables."
+                  )
+                }
+                toast.success(
+                  locale === "id"
+                    ? "Variabel lingkungan berhasil disimpan!"
+                    : "Environment variables saved successfully!"
+                )
+              } catch (error) {
+                console.error("[SettingsPage] persistEnvVars failed:", error)
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to save environment variables"
+                )
+              }
+            }}
           />
         )
       case "scaling":

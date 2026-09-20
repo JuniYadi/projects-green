@@ -123,6 +123,44 @@ describe("security-scan.route", () => {
       expect(data.ok).toBe(true)
       expect(data.data.uploadUrl).toBe("https://s3.example.com/upload")
     })
+
+    it("verifies exact raw body HMAC with formatted JSON and token", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "stack-1",
+        slug: "my-app",
+        organizationId: "org_test",
+      })
+      mockCluster.resolveClusterIntegration.mockResolvedValue({
+        webhookToken: secret,
+      })
+      mockSecurityScanService.createScanPresignedUploadUrl.mockResolvedValue({
+        uploadUrl: "https://s3.example.com/upload",
+        storageKey: "storage/key.json",
+      })
+
+      const rawBody = JSON.stringify(
+        { imageTag: "2", token: "legacy-tok", extraField: 123 },
+        null,
+        2
+      )
+      const headers = createJenkinsWebhookHeaders(rawBody, secret)
+
+      const res = await app.handle(
+        new Request("http://localhost/deploy/stacks/my-app/scan-presign", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...headers,
+          },
+          body: rawBody,
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.ok).toBe(true)
+      expect(data.data.uploadUrl).toBe("https://s3.example.com/upload")
+    })
   })
 
   describe("POST /deploy/stacks/:slug/scan-confirm", () => {
@@ -167,6 +205,53 @@ describe("security-scan.route", () => {
       expect(data.ok).toBe(true)
       expect(data.data.scanId).toBe("scan-123")
       expect(data.data.queued).toBe(true)
+    })
+
+    it("verifies exact raw body HMAC with formatted JSON and token on confirm", async () => {
+      mockPrisma.applicationStack.findFirst.mockResolvedValue({
+        id: "stack-1",
+        slug: "my-app",
+        organizationId: "org_test",
+      })
+      mockCluster.resolveClusterIntegration.mockResolvedValue({
+        webhookToken: secret,
+      })
+      mockSecurityScanService.confirmSecurityScan.mockResolvedValue({
+        scanId: "scan-123",
+        queued: true,
+      })
+
+      const rawBody = JSON.stringify(
+        {
+          imageTag: "2",
+          storageKey: "storage/key.json",
+          criticalCount: 0,
+          highCount: 1,
+          mediumCount: 3,
+          lowCount: 5,
+          token: "legacy-tok",
+          extraProp: "xyz",
+        },
+        null,
+        2
+      )
+      const headers = createJenkinsWebhookHeaders(rawBody, secret)
+
+      const res = await app.handle(
+        new Request("http://localhost/deploy/stacks/my-app/scan-confirm", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...headers,
+          },
+          body: rawBody,
+        })
+      )
+
+      expect(res.status).toBe(202)
+      const data = await res.json()
+      expect(data.ok).toBe(true)
+      expect(data.data.scanId).toBe("scan-123")
     })
   })
 
@@ -234,9 +319,12 @@ describe("security-scan.route", () => {
       })
 
       const res = await app.handle(
-        new Request("http://localhost/deploy/stacks/my-app/images/img-expired/rollback", {
-          method: "POST",
-        })
+        new Request(
+          "http://localhost/deploy/stacks/my-app/images/img-expired/rollback",
+          {
+            method: "POST",
+          }
+        )
       )
 
       expect(res.status).toBe(400)
@@ -265,9 +353,12 @@ describe("security-scan.route", () => {
       })
 
       const res = await app.handle(
-        new Request("http://localhost/deploy/stacks/my-app/images/img-1/rollback", {
-          method: "POST",
-        })
+        new Request(
+          "http://localhost/deploy/stacks/my-app/images/img-1/rollback",
+          {
+            method: "POST",
+          }
+        )
       )
 
       expect(res.status).toBe(200)

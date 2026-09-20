@@ -18,6 +18,18 @@ import {
 import { rollbackDeployment } from "../../deploy-rollback.service"
 
 export const securityScanRoutes = new Elysia({ prefix: "/deploy" })
+  .onParse(async ({ request }, contentType) => {
+    if (contentType.includes("application/json")) {
+      const text = await request.text()
+      try {
+        const parsed = JSON.parse(text)
+        if (parsed && typeof parsed === "object") {
+          return Object.assign(parsed, { __rawBody: text })
+        }
+      } catch {}
+      return text
+    }
+  })
   // ─── Machine Endpoints (Runner to Platform, HMAC-authenticated) ─────────────
   .post(
     "/stacks/:slug/scan-presign",
@@ -48,15 +60,7 @@ export const securityScanRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED" }
       }
 
-      let rawBody = ""
-      try {
-        rawBody = await request.clone().text()
-      } catch {
-        rawBody = ""
-      }
-      if (!rawBody) {
-        rawBody = JSON.stringify(body)
-      }
+      const rawBody = (body as any)?.__rawBody || JSON.stringify(body)
 
       const isValid = verifyJenkinsHmacSignature(
         rawBody,
@@ -82,9 +86,14 @@ export const securityScanRoutes = new Elysia({ prefix: "/deploy" })
     },
     {
       params: t.Object({ slug: t.String() }),
-      body: t.Object({
-        imageTag: t.String(),
-      }),
+      body: t.Object(
+        {
+          imageTag: t.String(),
+          token: t.Optional(t.String()),
+          __rawBody: t.Optional(t.String()),
+        },
+        { additionalProperties: true }
+      ),
     }
   )
   .post(
@@ -116,15 +125,7 @@ export const securityScanRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "UNAUTHORIZED" }
       }
 
-      let rawBody = ""
-      try {
-        rawBody = await request.clone().text()
-      } catch {
-        rawBody = ""
-      }
-      if (!rawBody) {
-        rawBody = JSON.stringify(body)
-      }
+      const rawBody = (body as any)?.__rawBody || JSON.stringify(body)
 
       const isValid = verifyJenkinsHmacSignature(
         rawBody,
@@ -159,17 +160,22 @@ export const securityScanRoutes = new Elysia({ prefix: "/deploy" })
     },
     {
       params: t.Object({ slug: t.String() }),
-      body: t.Object({
-        imageTag: t.String(),
-        storageKey: t.String(),
-        scannerEngine: t.Optional(t.String()),
-        scannerVersion: t.Optional(t.String()),
-        criticalCount: t.Number(),
-        highCount: t.Number(),
-        mediumCount: t.Number(),
-        lowCount: t.Number(),
-        unfixedCount: t.Optional(t.Number()),
-      }),
+      body: t.Object(
+        {
+          imageTag: t.String(),
+          storageKey: t.String(),
+          scannerEngine: t.Optional(t.String()),
+          scannerVersion: t.Optional(t.String()),
+          criticalCount: t.Number(),
+          highCount: t.Number(),
+          mediumCount: t.Number(),
+          lowCount: t.Number(),
+          unfixedCount: t.Optional(t.Number()),
+          token: t.Optional(t.String()),
+          __rawBody: t.Optional(t.String()),
+        },
+        { additionalProperties: true }
+      ),
     }
   )
 
