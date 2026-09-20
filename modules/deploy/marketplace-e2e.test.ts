@@ -609,6 +609,7 @@ describe("Marketplace & Auto-Provisioning End-to-End Lifecycle", () => {
       enabled: true,
       secretStoreRef: { kind: "ClusterSecretStore", name: "vault-backend" },
       dataFrom: [{ extract: { key: canonicalTenantVaultPath } }],
+      refreshInterval: "1h",
     })
     expect(helmValues.simpleIngress).toBeDefined()
 

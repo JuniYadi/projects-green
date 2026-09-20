@@ -291,7 +291,19 @@ export class VaultSecretsService {
       stackId: stack.id,
       environment,
     })
-    const result = await this.client.writeKV(vaultPath, secrets)
+    let existingSecrets: Record<string, string> = {}
+    try {
+      existingSecrets = await this.client.readKV(vaultPath)
+    } catch (error) {
+      if (!(error instanceof VaultSecretNotFoundError)) {
+        throw error
+      }
+    }
+    const mergedSecrets = {
+      ...existingSecrets,
+      ...secrets,
+    }
+    const result = await this.client.writeKV(vaultPath, mergedSecrets)
     const updatedAt = this.now().toISOString()
     const nextItems = mergeSecretReferences({
       existing: toStoredItems(stack.envVarsJson),
