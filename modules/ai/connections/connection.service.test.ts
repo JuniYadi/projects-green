@@ -140,13 +140,13 @@ describe("connection.service", () => {
     it("masks headers dictionary while preserving safe headers", () => {
       const headers = {
         Authorization: "Bearer secret-token-4f9a",
-        "X-API-Key": "my-secret-key-4f9a",
+        "X-API-Key": "fake-api-key-abcd",
         "Content-Type": "application/json",
         Accept: "application/json",
       }
       const masked = maskHeaders(headers)
       expect(masked.Authorization).toBe("Bearer ****4f9a")
-      expect(masked["X-API-Key"]).toBe("****4f9a")
+      expect(masked["X-API-Key"]).toBe("****abcd")
       expect(masked["Content-Type"]).toBe("application/json")
       expect(masked.Accept).toBe("application/json")
     })
@@ -271,7 +271,7 @@ describe("connection.service", () => {
         organizationId: "org_1",
         name: "Custom Webhook",
         baseUrl: "https://api.example.com",
-        headers: { "X-API-Key": "my-secret-key-4f9a" },
+        headers: { "X-API-Key": "fake-api-key-abcd" },
       })
 
       mockFindFirst.mockResolvedValue({
@@ -289,7 +289,7 @@ describe("connection.service", () => {
 
       const result = await getConnection("conn_2", "org_1")
       expect(result).not.toBeNull()
-      expect(result?.headers?.["X-API-Key"]).toBe("****4f9a")
+      expect(result?.headers?.["X-API-Key"]).toBe("****abcd")
     })
   })
 
