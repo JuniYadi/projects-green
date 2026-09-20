@@ -174,10 +174,51 @@ describe("RuntimeManifestService", () => {
     expect(prompt).toContain("CONTAINER_ROLE")
   })
 
-  it("creates fallback manifest correctly", () => {
-    const fallback = createFallbackManifest("nextjs")
-    expect(fallback.runtime).toBe("nextjs")
-    expect(fallback.ports.default).toBe(8080)
-    expect(fallback.security.runAsUser).toBe(10001)
+  it("creates fallback manifest with runtime-explicit base images", () => {
+    const nextFallback = createFallbackManifest("nextjs")
+    expect(nextFallback.runtime).toBe("nextjs")
+    expect(nextFallback.baseImage).toBe(
+      "ghcr.io/pfnapp/base/frameworks/nextjs:node22-alpine"
+    )
+    expect(nextFallback.ports.default).toBe(8080)
+    expect(nextFallback.security.runAsUser).toBe(10001)
+
+    const laravelFallback = createFallbackManifest("laravel")
+    expect(laravelFallback.baseImage).toBe(
+      "ghcr.io/pfnapp/base/frameworks/laravel:php8.4-alpine"
+    )
+
+    const nestFallback = createFallbackManifest("nestjs")
+    expect(nestFallback.baseImage).toBe(
+      "ghcr.io/pfnapp/base/frameworks/nestjs:node22-alpine"
+    )
+  })
+
+  it("upserts a manifest containing supportedFrameworkVersions and runtimeMatrix", async () => {
+    const manifestWithMatrix = {
+      ...validLaravelManifest,
+      version: "11",
+      supportedFrameworkVersions: ["10", "11", "12", "13"],
+      runtimeMatrix: {
+        "laravel-13": { php: ["8.2", "8.3", "8.4", "8.5"], default: "8.4" },
+        "laravel-12": { php: ["8.2", "8.3", "8.4"], default: "8.3" },
+        "laravel-11": { php: ["8.2", "8.3", "8.4"], default: "8.3" },
+        "laravel-10": { php: ["8.1", "8.2", "8.3"], default: "8.2" },
+      },
+      baseImage: "ghcr.io/pfnapp/base/frameworks/laravel:php8.4-alpine",
+    }
+
+    const record = await service.upsertManifest(manifestWithMatrix)
+    expect(record.manifest.version).toBe("11")
+    expect(record.manifest.supportedFrameworkVersions).toEqual([
+      "10",
+      "11",
+      "12",
+      "13",
+    ])
+    expect(record.manifest.runtimeMatrix?.["laravel-11"]?.default).toBe("8.3")
+    expect(record.manifest.baseImage).toBe(
+      "ghcr.io/pfnapp/base/frameworks/laravel:php8.4-alpine"
+    )
   })
 })

@@ -215,6 +215,80 @@ type RuntimeMappingSeed = {
 }
 
 const RUNTIME_MAPPINGS: RuntimeMappingSeed[] = [
+  // Laravel version-specific mappings (SSOT: matrix.json)
+  {
+    frameworkId: "laravel",
+    frameworkVersion: "13",
+    runtimeId: "php",
+    runtimeVersion: "8.4",
+    priority: 110,
+  },
+  {
+    frameworkId: "laravel",
+    frameworkVersion: "12",
+    runtimeId: "php",
+    runtimeVersion: "8.3",
+    priority: 110,
+  },
+  {
+    frameworkId: "laravel",
+    frameworkVersion: "11",
+    runtimeId: "php",
+    runtimeVersion: "8.3",
+    priority: 110,
+  },
+  {
+    frameworkId: "laravel",
+    frameworkVersion: "10",
+    runtimeId: "php",
+    runtimeVersion: "8.2",
+    priority: 110,
+  },
+  // Next.js version-specific mappings (SSOT: matrix.json)
+  {
+    frameworkId: "nextjs",
+    frameworkVersion: "16",
+    runtimeId: "node",
+    runtimeVersion: "22",
+    priority: 110,
+  },
+  {
+    frameworkId: "nextjs",
+    frameworkVersion: "15",
+    runtimeId: "node",
+    runtimeVersion: "22",
+    priority: 110,
+  },
+  {
+    frameworkId: "nextjs",
+    frameworkVersion: "14",
+    runtimeId: "node",
+    runtimeVersion: "20",
+    priority: 110,
+  },
+  // NestJS version-specific mappings (SSOT: matrix.json)
+  {
+    frameworkId: "nestjs",
+    frameworkVersion: "12",
+    runtimeId: "node",
+    runtimeVersion: "22",
+    priority: 110,
+  },
+  {
+    frameworkId: "nestjs",
+    frameworkVersion: "11",
+    runtimeId: "node",
+    runtimeVersion: "22",
+    priority: 110,
+  },
+  {
+    frameworkId: "nestjs",
+    frameworkVersion: "10",
+    runtimeId: "node",
+    runtimeVersion: "20",
+    priority: 110,
+  },
+  // Fallback wildcard entries (priority 100)
   {
     frameworkId: "laravel",
     runtimeId: "php",
@@ -335,7 +409,7 @@ const main = async () => {
       })
     }
     console.log(
-      `  - upserted runtime mapping ${mapping.frameworkId} -> ${mapping.runtimeId} ${mapping.runtimeVersion}`
+      `  - upserted runtime mapping ${mapping.frameworkId}${mapping.frameworkVersion ? ` ${mapping.frameworkVersion}` : ""} -> ${mapping.runtimeId} ${mapping.runtimeVersion}`
     )
   }
 

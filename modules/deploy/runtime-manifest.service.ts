@@ -32,6 +32,19 @@ export const RuntimeManifestSchema = z.object({
   runtime: z.string().trim().min(1),
   framework: z.string().trim().min(1),
   version: z.string().trim().min(1),
+  supportedFrameworkVersions: z.array(z.string()).optional(),
+  runtimeMatrix: z
+    .record(
+      z.string(),
+      z
+        .object({
+          php: z.array(z.string()).optional(),
+          node: z.array(z.string()).optional(),
+          default: z.string().optional(),
+        })
+        .passthrough()
+    )
+    .optional(),
   baseImage: z.string().trim().min(1),
   ports: z.object({
     default: z.number().int().positive().default(8080),
@@ -62,13 +75,26 @@ export function createFallbackManifest(
 ): RuntimeManifestDTO {
   const contract = resolvePlatformContract(frameworkId)
   const normalized = normalizeFrameworkId(frameworkId)
+  const rawId = (frameworkId ?? "").toLowerCase().trim()
+
+  const defaultBaseImage = (() => {
+    if (rawId.includes("laravel")) {
+      return "ghcr.io/pfnapp/base/frameworks/laravel:php8.4-alpine"
+    }
+    if (rawId.includes("next")) {
+      return "ghcr.io/pfnapp/base/frameworks/nextjs:node22-alpine"
+    }
+    if (rawId.includes("nest")) {
+      return "ghcr.io/pfnapp/base/frameworks/nestjs:node22-alpine"
+    }
+    return `ghcr.io/pfnapp/base/frameworks/${normalized}:latest`
+  })()
 
   return {
     runtime: normalized,
-    framework:
-      normalized.charAt(0).toUpperCase() + normalized.slice(1),
+    framework: normalized.charAt(0).toUpperCase() + normalized.slice(1),
     version: "latest",
-    baseImage: `ghcr.io/pfnapp/base/frameworks/${normalized}:latest`,
+    baseImage: defaultBaseImage,
     ports: {
       default: contract.containerPort,
       protocol: "HTTP",
@@ -180,9 +206,7 @@ export class RuntimeManifestService {
     }
   }
 
-  async formatTunablesForPrompt(
-    frameworkId?: string | null
-  ): Promise<string> {
+  async formatTunablesForPrompt(frameworkId?: string | null): Promise<string> {
     const manifest = await this.getRuntimeManifest(frameworkId)
     const lines: string[] = [
       `Platform Runtime Operational Contract for '${manifest.framework}' (${manifest.runtime}):`,

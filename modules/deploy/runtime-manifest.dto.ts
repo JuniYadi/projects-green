@@ -13,11 +13,20 @@ export type RuntimeTunableDTO = {
   presets?: string[]
 }
 
+export type RuntimeMatrixEntryDTO = {
+  php?: string[]
+  node?: string[]
+  default?: string
+  [key: string]: unknown
+}
+
 export type RuntimeManifestDTO = {
   $schema?: string
   runtime: string
   framework: string
   version: string
+  supportedFrameworkVersions?: string[]
+  runtimeMatrix?: Record<string, RuntimeMatrixEntryDTO>
   baseImage: string
   ports: {
     default: number
@@ -89,16 +98,13 @@ export function toRuntimeManifestDTO(raw: unknown): RuntimeManifestDTO {
     return {
       key: String(t.key ?? ""),
       label: String(t.label ?? t.key ?? ""),
-      type: (
-        ["bytes_string", "string", "number", "select", "boolean"].includes(
-          String(t.type)
-        )
-          ? t.type
-          : "string"
-      ) as RuntimeTunableDTO["type"],
-      default: (
-        t.default !== undefined ? (t.default as string | number | boolean) : ""
-      ),
+      type: (["bytes_string", "string", "number", "select", "boolean"].includes(
+        String(t.type)
+      )
+        ? t.type
+        : "string") as RuntimeTunableDTO["type"],
+      default:
+        t.default !== undefined ? (t.default as string | number | boolean) : "",
       category: t.category ? String(t.category) : undefined,
       description: String(t.description ?? ""),
       troubleshooting: String(t.troubleshooting ?? ""),
@@ -115,11 +121,17 @@ export function toRuntimeManifestDTO(raw: unknown): RuntimeManifestDTO {
     runtime: String(obj.runtime ?? "unknown"),
     framework: String(obj.framework ?? obj.runtime ?? "Unknown"),
     version: String(obj.version ?? "latest"),
+    supportedFrameworkVersions: Array.isArray(obj.supportedFrameworkVersions)
+      ? obj.supportedFrameworkVersions.map(String)
+      : undefined,
+    runtimeMatrix:
+      obj.runtimeMatrix && typeof obj.runtimeMatrix === "object"
+        ? (obj.runtimeMatrix as Record<string, RuntimeMatrixEntryDTO>)
+        : undefined,
     baseImage: String(obj.baseImage ?? ""),
     ports: {
       default: typeof ports.default === "number" ? ports.default : 8080,
-      protocol:
-        typeof ports.protocol === "string" ? ports.protocol : "HTTP",
+      protocol: typeof ports.protocol === "string" ? ports.protocol : "HTTP",
     },
     security: {
       runAsUser:

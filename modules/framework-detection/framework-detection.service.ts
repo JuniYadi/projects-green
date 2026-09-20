@@ -158,6 +158,7 @@ type FrameworkCandidate = {
   ecosystem: DetectedFramework["ecosystem"]
   points: number
   reasons: string[]
+  version?: string | null
 }
 
 type Inventory = {
@@ -1072,6 +1073,10 @@ const evaluateDeterministicCandidates = (inventory: Inventory) => {
   }
   candidates.sort((left, right) => right.points - left.points)
 
+  for (const candidate of candidates) {
+    candidate.version = extractFrameworkVersion(candidate.id, inventory)
+  }
+
   return candidates
 }
 
@@ -1508,16 +1513,33 @@ const enforceRuntimeMappings = async (
   suggestedRuntimes: RequiredDependency[],
   prismaClient?: GithubApiDetectorDependencies["prisma"]
 ): Promise<{ enforced: RequiredDependency[]; appliedMappings: string[] }> => {
+  const versionsToMatch: string[] = []
+  if (frameworkVersion) {
+    const trimmed = frameworkVersion.trim()
+    versionsToMatch.push(trimmed)
+    const match = trimmed.replace(/^[^\d]+/, "").match(/^(\d+)/)
+    if (match) {
+      const major = match[1]
+      if (!versionsToMatch.includes(major)) {
+        versionsToMatch.push(major)
+      }
+      const withX = `${major}.x`
+      if (!versionsToMatch.includes(withX)) {
+        versionsToMatch.push(withX)
+      }
+    }
+  }
+
   const client = prismaClient ?? (await import("@/lib/prisma")).prisma
   const mappings = await client.detectorRuntimeMapping.findMany({
     where: {
       isActive: true,
       OR: [
-        { frameworkId, frameworkVersion },
+        ...versionsToMatch.map((v) => ({ frameworkId, frameworkVersion: v })),
         { frameworkId, frameworkVersion: null }, // wildcard
       ],
     },
-    orderBy: [{ frameworkVersion: "desc" }, { priority: "desc" }],
+    orderBy: [{ priority: "desc" }, { frameworkVersion: "desc" }],
   })
 
   if (mappings.length === 0) {
@@ -1528,6 +1550,11 @@ const enforceRuntimeMappings = async (
   const enforced: RequiredDependency[] = []
 
   for (const mapping of mappings) {
+    // If this runtime has already been enforced (by a higher-priority or more specific rule), skip duplicate
+    if (enforced.some((e) => e.id === mapping.runtimeId)) {
+      continue
+    }
+
     // Check if this runtime is already in the suggested runtimes
     const existing = suggestedRuntimes.find((r) => r.id === mapping.runtimeId)
 
@@ -2090,7 +2117,7 @@ export const detectFrameworkFromGithubApi = async (
     const primaryFramework = toDetectedFramework(selected)
     const { enforced, appliedMappings } = await enforceRuntimeMappings(
       selected.id,
-      null,
+      selected.version ?? null,
       buildRequiredDependencies(selected, inventory),
       prismaClient
     )
