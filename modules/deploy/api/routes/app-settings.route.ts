@@ -409,6 +409,15 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
         if (secret) {
           row.masked = true
           row.isStoredSecret = true
+          if (!row.vaultPath && prior?.vaultPath) {
+            row.vaultPath = prior.vaultPath
+          }
+          if (!row.vaultKey && prior?.vaultKey) {
+            row.vaultKey = prior.vaultKey
+          }
+          if (!row.version && prior?.version) {
+            row.version = prior.version
+          }
         }
         return row
       })
