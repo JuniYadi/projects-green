@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render } from "@testing-library/react"
-import { afterEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, describe, expect, it, mock, spyOn } from "bun:test"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TabLogs } from "./tab-logs"
 
@@ -201,8 +201,42 @@ describe("TabLogs Component", () => {
 
       // Should now only show ERROR logs
       expect(await view.findByText("Message line 1 of 75")).toBeTruthy()
+
+      // Reset level to ALL
+      const allBtn = view.getByRole("button", { name: "ALL" })
+      fireEvent.click(allBtn)
+
+      // Jump to Latest should navigate to the last page (newest logs)
+      const jumpToLatestBtn = view.getByRole("button", {
+        name: /Jump to Latest|Ke Log Terbaru/i,
+      })
+      fireEvent.click(jumpToLatestBtn)
+
+      // Page 2 should now display the latest entries
+      expect(await view.findByText("Message line 74 of 75")).toBeTruthy()
+      expect(view.getByText(/51 - 75/i)).toBeTruthy()
     } finally {
       globalThis.fetch = originalFetch
+    }
+  })
+
+  it("does not start fallback simulator when diagnosticMode is production", () => {
+    const setIntervalSpy = spyOn(globalThis, "setInterval")
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    try {
+      render(
+        <QueryClientProvider client={queryClient}>
+          <TabLogs diagnosticMode="production" />
+        </QueryClientProvider>
+      )
+
+      expect(setIntervalSpy).not.toHaveBeenCalled()
+    } finally {
+      setIntervalSpy.mockRestore()
     }
   })
 })

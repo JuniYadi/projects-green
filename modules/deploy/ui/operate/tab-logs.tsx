@@ -272,60 +272,15 @@ export function TabLogs({
     if (!appSlug || !isLiveTailing) return
 
     const interval = setInterval(() => {
-      void (async () => {
-        try {
-          const queryParams = new URLSearchParams()
-          queryParams.set("limit", "50")
-          queryParams.set("order", "asc")
-          if (logFilterLevel !== "ALL") {
-            queryParams.set("level", logFilterLevel)
-          }
-          if (logFilterQuery.trim().length > 0) {
-            queryParams.set("q", logFilterQuery.trim())
-          }
-
-          const res = await fetch(
-            `/api/deploy/apps/${encodeURIComponent(appSlug)}/logs?${queryParams.toString()}`
-          )
-          if (res.ok) {
-            const json = await res.json()
-            if (json?.ok && Array.isArray(json.data) && json.data.length > 0) {
-              updateLogs((prev) => {
-                const existingMap = new Map<string, boolean>()
-                for (const item of prev) {
-                  const key = `${item.timestamp}|${item.level}|${item.message}`
-                  existingMap.set(key, true)
-                }
-
-                const newEntries = (json.data as LogMessage[]).filter(
-                  (item) =>
-                    !existingMap.has(
-                      `${item.timestamp}|${item.level}|${item.message}`
-                    )
-                )
-
-                if (newEntries.length === 0) return prev
-
-                const merged = [...prev, ...newEntries]
-                if (merged.length > 500) {
-                  return merged.slice(merged.length - 500)
-                }
-                return merged
-              })
-            }
-          }
-        } catch {
-          // ignore polling errors
-        }
-      })()
-    }, 5000)
+      void fetchRealLogs()
+    }, 30000)
 
     return () => clearInterval(interval)
-  }, [appSlug, isLiveTailing, logFilterLevel, logFilterQuery, updateLogs])
+  }, [appSlug, isLiveTailing, fetchRealLogs])
 
   // Polling for fallback mode
   useEffect(() => {
-    if (appSlug || !isLiveTailing || diagnosticMode !== "production") return
+    if (appSlug || !isLiveTailing || diagnosticMode === "production") return
 
     const interval = setInterval(() => {
       const now = new Date()
@@ -383,10 +338,12 @@ export function TabLogs({
   const endIndex = Math.min(safeCurrentPage * pageSize, filteredLogs.length)
 
   const handleJumpToLatest = () => {
-    setCurrentPage(1)
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = 0
-    }
+    setCurrentPage(totalPages)
+    requestAnimationFrame(() => {
+      if (logContainerRef.current) {
+        logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
+      }
+    })
   }
 
   return (
