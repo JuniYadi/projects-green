@@ -212,5 +212,51 @@ describe("resolveHealthVerdict", () => {
     expect(
       view.getByText("Spesifikasi Teknis & Jaringan Internal")
     ).toBeDefined()
+    expect(view.getByText("Lihat Rincian")).toBeDefined()
+    expect(view.getByText("Salin URL")).toBeDefined()
+  })
+
+  it("renders AppOverviewTab with English copy when locale is en", () => {
+    const mockStack: StackSummaryDTO = {
+      id: "stack-2",
+      name: "Phoenix Production",
+      slug: "phoenix-prod",
+      status: "running",
+      framework: "Laravel 13.x",
+      branchName: "main",
+      subdomain: "phoenix-prod.sg.pfnapp.dev",
+      customDomain: "phoenix.my.id",
+      resourcePlanId: "medium",
+      billingMode: "PAYG",
+      billingState: "ACTIVE",
+      catalogPlanName: "Medium Plan",
+      catalogPlanPrice: "40000",
+      catalogPlanCurrency: "IDR",
+      cpu: 1,
+      memory: 2048,
+      envCount: 5,
+      port: 8080,
+      lastDeployedAt: new Date().toISOString(),
+      latestDeploymentId: "dep-2",
+      currentStepLabel: "Live",
+      currentStepIndex: 4,
+      currentStepStartedAt: new Date().toISOString(),
+    }
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <AppOverviewTab stack={mockStack} locale="en" />
+      </QueryClientProvider>
+    )
+
+    expect(
+      view.getByText("Technical Specs & Internal Networking")
+    ).toBeDefined()
+    expect(view.getByText("View Details")).toBeDefined()
+    expect(view.getByText("Copy URL")).toBeDefined()
   })
 })

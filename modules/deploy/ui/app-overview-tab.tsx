@@ -85,6 +85,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     restarts: "Restart",
     responseTime: "Waktu respons",
     copy: "Salin",
+    copyUrl: "Salin URL",
     copied: "Tersalin",
     usageTitle: "Pemakaian resource",
     usageDesc: "Ringkasan 1 jam terakhir — detail ada di tab Grafik lengkap",
@@ -112,6 +113,8 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     technicalSpecsTitle: "Spesifikasi Teknis & Jaringan Internal",
     technicalSpecsDesc:
       "Detail port, DNS, endpoint privat, dan konfigurasi lingkungan",
+    technicalSpecsToggleOpen: "Tutup",
+    technicalSpecsToggleClosed: "Lihat Rincian",
     cpuUsage: "Penggunaan CPU",
     memoryUsage: "Penggunaan Memori (RAM)",
     trafficThroughput: "Throughput Jaringan",
@@ -151,6 +154,7 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     restarts: "Restarts",
     responseTime: "Response time",
     copy: "Copy",
+    copyUrl: "Copy URL",
     copied: "Copied",
     usageTitle: "Resource usage",
     usageDesc: "Last hour at a glance — full detail lives in Full charts",
@@ -178,6 +182,8 @@ const COPY: Record<"id" | "en", Record<string, string>> = {
     technicalSpecsTitle: "Technical Specs & Internal Networking",
     technicalSpecsDesc:
       "Port details, DNS, private endpoints, and environment configuration",
+    technicalSpecsToggleOpen: "Close",
+    technicalSpecsToggleClosed: "View Details",
     cpuUsage: "CPU Utilization",
     memoryUsage: "Memory Working Set",
     trafficThroughput: "Network Throughput",
@@ -537,7 +543,7 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                     ) : (
                       <>
                         <Copy size={13} />
-                        <span>{t.copy} URL</span>
+                        <span>{t.copyUrl}</span>
                       </>
                     )}
                   </Button>
@@ -693,7 +699,11 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
               </p>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>{technicalOpen ? "Tutup" : "Lihat Rincian"}</span>
+              <span>
+                {technicalOpen
+                  ? t.technicalSpecsToggleOpen
+                  : t.technicalSpecsToggleClosed}
+              </span>
               <CaretDown
                 size={14}
                 className={cn(
