@@ -3,6 +3,7 @@ import { z } from "zod"
 export const CATALOG_SCHEMA_VERSION = "2026-08.1"
 
 export const catalogMigrationOfferSchema = z.object({
+  regionId: z.string().optional(),
   billingPeriod: z.enum(["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"]),
   chargeUnit: z.enum(["SUBSCRIPTION", "DEVICE"]).default("SUBSCRIPTION"),
   periodPrice: z.number().nonnegative(),
