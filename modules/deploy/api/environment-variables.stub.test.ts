@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it } from "bun:test"
 import {
   __testables,
   createEnvironmentVariable,
+  importEnvironmentVariables,
+  listEnvironmentVariables,
   updateEnvironmentVariable,
 } from "@/modules/deploy/api/environment-variables.stub"
 import { ENV_VAR_MAX_VALUE_SIZE } from "@/modules/deploy/environment-vars"
@@ -100,5 +102,33 @@ describe("environment variable stub validation", () => {
         lastUpdatedAt,
       })
     }
+  })
+
+  it("updates existing variables and adds new variables during import", () => {
+    const created = createEnvironmentVariable({
+      environmentId: "staging",
+      key: "APP_ENV",
+      value: "staging",
+      type: "plain",
+    })
+    expect(created.ok).toBe(true)
+
+    const result = importEnvironmentVariables({
+      environmentId: "staging",
+      raw: "APP_ENV=production\nAPP_DEBUG=false",
+    })
+
+    expect(result.ok).toBe(true)
+    expect(listEnvironmentVariables("staging")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "APP_ENV", value: "production" }),
+        expect.objectContaining({ key: "APP_DEBUG", value: "false" }),
+      ])
+    )
+    expect(
+      listEnvironmentVariables("staging").filter(
+        (row) => row.key === "APP_ENV"
+      )
+    ).toHaveLength(1)
   })
 })

@@ -423,10 +423,6 @@ export const importEnvironmentVariables = (
       duplicateKeys.add(normalizedKey)
     }
 
-    if (hasDuplicateKey(envRows, normalizedKey)) {
-      duplicateKeys.add(normalizedKey)
-    }
-
     seen.add(normalizedKey)
   }
 
@@ -444,8 +440,13 @@ export const importEnvironmentVariables = (
     const key = entry.key.trim().toUpperCase()
     const type = entry.type
 
-    envRows.unshift({
-      id: createId(),
+    const existingIndex = envRows.findIndex(
+      (row) => row.key.trim().toUpperCase() === key
+    )
+    const current = existingIndex >= 0 ? envRows[existingIndex] : undefined
+    const next: EnvVariableRecord = {
+      ...current,
+      id: current?.id ?? createId(),
       key,
       value: isSecretEnvVarType(type) ? "" : entry.value,
       type,
@@ -453,7 +454,13 @@ export const importEnvironmentVariables = (
       masked: isSecretEnvVarType(type),
       isStoredSecret: isSecretEnvVarType(type),
       lastUpdatedAt: now,
-    })
+    }
+
+    if (existingIndex >= 0) {
+      envRows[existingIndex] = next
+    } else {
+      envRows.unshift(next)
+    }
   }
 
   return {
