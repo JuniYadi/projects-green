@@ -537,9 +537,12 @@ export function JenkinsLiveTerminal({
       {/* Terminal black canvas body */}
       <div
         ref={terminalContainerRef}
+        data-testid="terminal-scroll-viewport"
         className={cn(
-          "relative flex-1 overflow-y-auto bg-zinc-950 p-4 font-mono text-xs text-zinc-100 selection:bg-zinc-800",
-          isFullscreen ? "h-full max-h-none" : "h-[420px]"
+          "relative overflow-y-auto bg-zinc-950 p-4 font-mono text-xs text-zinc-100 selection:bg-zinc-800",
+          isFullscreen
+            ? "h-full min-h-0 max-h-none flex-1"
+            : "h-[420px] min-h-[420px] max-h-[420px] flex-none"
         )}
       >
         {fetchError && !authFailed && (
