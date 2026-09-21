@@ -159,6 +159,20 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
     return { completed: false, status: null }
   }
 
+  // Record ARGOCD_SYNC_STARTED on the first successful ArgoCD poll.
+  // This is the honest moment the timeline step "Deployment Server & Pod Ready"
+  // should activate — not when the GitOps commit is made.
+  // recordDeployEventOnce is idempotent via upsert so duplicate calls are safe.
+  await recordDeployEventOnce({
+    deploymentId: deployment.id,
+    type: "ARGOCD_SYNC_STARTED",
+    message: `ArgoCD sync started for ${deployment.stack.slug}`,
+    metadata: {
+      syncStatus: status.syncStatus,
+      healthStatus: status.healthStatus,
+    },
+  })
+
   if (status.operationPhase === "Failed" || status.operationPhase === "Error") {
     const errorMsg = extractArgoCdErrorMessage(
       status.operationMessage || status.syncError
