@@ -141,6 +141,7 @@ export function DynamicLaunchDrawer({
     ? Number(accountData.balanceIdr)
     : (initialUserBalance ?? 0)
   useEffect(() => {
+    if (!open) return
     let isMounted = true
     async function loadCatalog() {
       setCatalogLoading(true)
@@ -165,8 +166,9 @@ export function DynamicLaunchDrawer({
     loadCatalog()
     return () => {
       isMounted = false
+      setCatalogData(null)
     }
-  }, [currency])
+  }, [open, currency])
 
   const plans = useMemo(() => {
     return catalogData?.product?.plans ?? []
@@ -190,19 +192,13 @@ export function DynamicLaunchDrawer({
         }
       }
     }
-    // Default fallback if no region attached
+    // Default fallback if no region attached to any offer — show Singapore only
     if (map.size === 0) {
       map.set("SINGAPORE", {
         code: "SINGAPORE",
         name: "Singapore",
         flag: "🇸🇬",
         id: "singapore",
-      })
-      map.set("INDONESIA", {
-        code: "INDONESIA",
-        name: "Indonesia",
-        flag: "🇮🇩",
-        id: "indonesia",
       })
     }
     return Array.from(map.values())
