@@ -32,8 +32,12 @@ type JenkinsLiveTerminalProps = {
   className?: string
   initialTab?: LogSourceTab
   onTabChange?: (tab: LogSourceTab) => void
-  /** When set, overrides the active tab (controlled from parent). */
-  forceTab?: LogSourceTab
+  /**
+   * When set, overrides the active tab (controlled from parent).
+   * Wrap in an object with a seq counter so clicking the same step
+   * twice in a row still triggers the effect even when the tab didn't change.
+   */
+  forceTab?: { tab: LogSourceTab; seq: number }
 }
 
 type AnsiSpan = {
@@ -153,12 +157,16 @@ export function JenkinsLiveTerminal({
   // Respond to external tab override from the timeline step panel on the left.
   // Resets userInteractedTabRef so status-driven auto-switch can resume normally.
   // Also fires onTabChange so the parent's logScope stays in sync (same as manual clicks).
+  // forceTab is an object { tab, seq } so clicking the same step twice always
+  // produces a new reference and reliably re-fires this effect.
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!forceTab) return
     userInteractedTabRef.current = false
-    setActiveTab(forceTab)
-    onTabChange?.(forceTab)
+    setActiveTab(forceTab.tab)
+    onTabChange?.(forceTab.tab)
   }, [forceTab])
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Fetch live Jenkins build logs
   const fetchJenkinsLogs = useCallback(async () => {
