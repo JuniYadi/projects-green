@@ -1683,7 +1683,6 @@ export type AppMessages = {
         defaultBadge: string
         deleteTitle: string
         deleteDescription: string
-        detailError: string
         deleteButton: string
         deleting: string
         cancel: string
@@ -5884,6 +5883,7 @@ export type AppMessages = {
         deleteError: string
         deleteTitle: string
         deleteDescription: string
+        detailError: string
       }
       dialog: {
         title: string
