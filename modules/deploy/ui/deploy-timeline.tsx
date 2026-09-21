@@ -23,6 +23,7 @@ import type {
   DeployTimelineItem,
   DeployStep,
 } from "@/modules/deploy/deploy.types"
+import type { LogSourceTab } from "@/modules/deploy/ui/operate/jenkins-live-terminal"
 
 type DeployStepTimelineProps = {
   deployId?: string
@@ -38,6 +39,11 @@ type DeployStepTimelineProps = {
   /** Max unlocked wizard step — used for gating live URL and retry behavior. */
   maxUnlockedStep?: DeployStep
   locale?: string
+  /**
+   * Called when the user clicks a timeline step, with the log tab that best
+   * corresponds to that step so the parent can sync the terminal panel.
+   */
+  onStepFocus?: (tab: LogSourceTab) => void
 }
 
 // Timeline and LogsPanel own 3s polling; stop at running, failed, or idle.
@@ -170,6 +176,7 @@ export function DeployStepTimeline({
   skipBuildSteps,
   onRetry,
   locale: localeProp,
+  onStepFocus,
 }: DeployStepTimelineProps) {
   const [steps] = useState<DeployTimelineItem[]>(() =>
     buildDeployTimelineItems()
@@ -418,11 +425,21 @@ export function DeployStepTimeline({
     [deployId]
   )
 
-  const handleStepToggle = (stepId: string, open: boolean) => {
+  const handleStepToggle = (
+    stepId: string,
+    open: boolean,
+    stepIndex: number
+  ) => {
     if (open) {
       setOpenStep(stepId)
       setLogsError(null)
       if (!stepLogs[stepId]) void fetchStepLogs(stepId)
+      // Notify parent which terminal tab best matches this step
+      if (onStepFocus) {
+        const tab: LogSourceTab =
+          stepIndex <= 2 ? "jenkins" : stepIndex <= 4 ? "gitops" : "app"
+        onStepFocus(tab)
+      }
     } else {
       setOpenStep("")
     }
@@ -502,7 +519,9 @@ export function DeployStepTimeline({
             >
               <Collapsible
                 open={isOpen}
-                onOpenChange={(open) => handleStepToggle(step.id, open)}
+                onOpenChange={(open) =>
+                  handleStepToggle(step.id, open, originalIndex)
+                }
               >
                 <CollapsibleTrigger className="flex w-full items-center gap-3 text-left">
                   <StepIcon state={uiState} />
