@@ -234,16 +234,23 @@ export const createEnvironmentVariablesRoutes = (
       if (isVaultSecret) {
         try {
           await vault.deleteSecret({
-            organizationId,
             stackId: stack.id,
             vaultPath: entry.vaultPath as string,
             vaultKey: entry.vaultKey as string,
             variableId: params.variableId,
+            currentEnvVarsJson: stack.envVarsJson,
           })
         } catch (err) {
-          if (err instanceof VaultStackNotFoundError) {
-            // Stack not found in vault — continue with DB-only removal
-          } else {
+          // deleteSecret() threw before reaching its DB update — still clean up DB
+          const nextItems = items.filter(
+            (item) => item.id !== params.variableId
+          )
+          await db.applicationStack.update({
+            where: { id: stack.id },
+            data: { envVarsJson: nextItems as Prisma.InputJsonValue },
+          })
+
+          if (!(err instanceof VaultStackNotFoundError)) {
             console.error("[env-vars] Vault deleteSecret error:", err)
             set.status = 500
             return {

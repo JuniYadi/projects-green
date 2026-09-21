@@ -78,7 +78,7 @@ const makeFindFirst = (stack: ReturnType<typeof makeStack> | null) =>
   mock(async () => stack)
 
 const makeApp = (opts: {
-  actor?: ReturnType<typeof adminActor>
+  actor?: ReturnType<typeof adminActor> | ReturnType<typeof memberActor>
   stack?: ReturnType<typeof makeStack> | null
   deleteSecretImpl?: () => Promise<unknown>
   updateImpl?: () => Promise<unknown>
@@ -233,7 +233,6 @@ describe("environmentVariablesRoutes", () => {
       expect(vaultMock.deleteSecret).toHaveBeenCalledTimes(1)
       expect(vaultMock.deleteSecret).toHaveBeenCalledWith(
         expect.objectContaining({
-          organizationId: "org-1",
           stackId: "stack-1",
           vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
           vaultKey: "DATABASE_URL",

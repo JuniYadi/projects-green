@@ -63,11 +63,12 @@ export type VaultSecretRevealResult = {
 }
 
 export type VaultSecretDeleteInput = {
-  organizationId: string
   stackId: string
   vaultPath: string
   vaultKey: string
   variableId: string
+  /** Pre-fetched envVarsJson from the stack — avoids a redundant DB lookup */
+  currentEnvVarsJson: unknown
 }
 
 export type VaultSecretDeleteResult = {
@@ -445,8 +446,6 @@ export class VaultSecretsService {
   async deleteSecret(
     input: VaultSecretDeleteInput
   ): Promise<VaultSecretDeleteResult> {
-    const stack = await this.findStack(input.organizationId, input.stackId)
-
     // Read current KV, remove the key, write back
     let existingSecrets: Record<string, string> = {}
     try {
@@ -468,14 +467,14 @@ export class VaultSecretsService {
       await this.client.writeKV(input.vaultPath, remaining)
     }
 
-    // Remove entry from envVarsJson in DB
-    const currentItems = toStoredItems(stack.envVarsJson)
+    // Remove entry from envVarsJson in DB using pre-fetched data
+    const currentItems = toStoredItems(input.currentEnvVarsJson)
     const nextItems = currentItems.filter(
       (item) => item.id !== input.variableId
     )
 
     await this.db.applicationStack.update({
-      where: { id: stack.id },
+      where: { id: input.stackId },
       data: { envVarsJson: nextItems as Prisma.InputJsonValue },
     })
 

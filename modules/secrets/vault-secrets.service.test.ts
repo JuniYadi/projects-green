@@ -326,11 +326,11 @@ describe("VaultSecretsService", () => {
       const service = new VaultSecretsService(dependencies as never)
 
       const result = await service.deleteSecret({
-        organizationId: "org-1",
         stackId: "stack-1",
         vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
         vaultKey: "DATABASE_URL",
         variableId: "var-1",
+        currentEnvVarsJson: envVarsJson,
       })
 
       expect(result.deleted).toBe(true)
@@ -370,11 +370,11 @@ describe("VaultSecretsService", () => {
       const service = new VaultSecretsService(dependencies as never)
 
       const result = await service.deleteSecret({
-        organizationId: "org-1",
         stackId: "stack-1",
         vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
         vaultKey: "MISSING_KEY",
         variableId: "var-1",
+        currentEnvVarsJson: envVarsJson,
       })
 
       // Key was not present so deleted=false
@@ -405,11 +405,11 @@ describe("VaultSecretsService", () => {
       const service = new VaultSecretsService(dependencies as never)
 
       const result = await service.deleteSecret({
-        organizationId: "org-1",
         stackId: "stack-1",
         vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
         vaultKey: "GONE_KEY",
         variableId: "var-1",
+        currentEnvVarsJson: envVarsJson,
       })
 
       // Treat 404 from Vault as key not present
@@ -417,26 +417,6 @@ describe("VaultSecretsService", () => {
 
       // DB entry was still removed
       expect(dependencies.db.applicationStack.update).toHaveBeenCalledTimes(1)
-    })
-
-    it("throws VaultStackNotFoundError when stack does not exist", async () => {
-      const dependencies = createDependencies([])
-      dependencies.db.applicationStack.findFirst.mockResolvedValue(
-        null as never
-      )
-      const service = new VaultSecretsService(dependencies as never)
-
-      await expect(
-        service.deleteSecret({
-          organizationId: "org-2",
-          stackId: "stack-1",
-          vaultPath: "tenants/org-2/stacks/stack-1/prod/app-env",
-          vaultKey: "SOME_KEY",
-          variableId: "var-x",
-        })
-      ).rejects.toBeInstanceOf(VaultStackNotFoundError)
-
-      expect(dependencies.client.readKV).not.toHaveBeenCalled()
     })
   })
 
