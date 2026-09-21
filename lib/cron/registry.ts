@@ -211,6 +211,17 @@ export const CRON_JOB_DEFINITIONS: CronDefinitionConfig[] = [
     timeoutSeconds: 900,
     gracePeriodMins: 15,
   },
+  {
+    code: "registry-gc",
+    name: "Container Registry Garbage Collection",
+    description:
+      "Deletes orphaned blobs and expired tag manifests from the S3-backed OCI registry for images marked EXPIRED in the platform DB",
+    category: "system",
+    cronExpression: "0 3 * * *",
+    timezone: "UTC",
+    timeoutSeconds: 1800,
+    gracePeriodMins: 30,
+  },
 ]
 
 /**
