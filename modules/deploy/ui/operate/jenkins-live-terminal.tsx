@@ -152,10 +152,12 @@ export function JenkinsLiveTerminal({
 
   // Respond to external tab override from the timeline step panel on the left.
   // Resets userInteractedTabRef so status-driven auto-switch can resume normally.
+  // Also fires onTabChange so the parent's logScope stays in sync (same as manual clicks).
   useEffect(() => {
     if (!forceTab) return
     userInteractedTabRef.current = false
     setActiveTab(forceTab)
+    onTabChange?.(forceTab)
   }, [forceTab])
 
   // Fetch live Jenkins build logs
