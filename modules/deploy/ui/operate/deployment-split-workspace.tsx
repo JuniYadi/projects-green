@@ -110,8 +110,8 @@ export function DeploymentSplitWorkspace({
       data-testid="deployment-split-workspace"
       className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12"
     >
-      {/* Column 1 (Left, 50% / 6 cols): Status, Metadata & Truthful 6-Step Timeline */}
-      <div className="col-span-12 space-y-4 lg:col-span-6">
+      {/* Compact navigator on the left; logs get the larger reading surface. */}
+      <div className="col-span-12 space-y-4 lg:col-span-4">
         <Card className="shadow-xs">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -206,8 +206,7 @@ export function DeploymentSplitWorkspace({
         </Card>
       </div>
 
-      {/* Column 2 (Right, 50% / 6 cols): Live Jenkins Runner Terminal */}
-      <div className="col-span-12 lg:col-span-6">
+      <div className="col-span-12 lg:col-span-8">
         <JenkinsLiveTerminal
           slug={stack.slug}
           deployId={deployId}

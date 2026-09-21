@@ -431,15 +431,15 @@ export function DeployStepTimeline({
     stepIndex: number
   ) => {
     if (open) {
-      setOpenStep(stepId)
-      setLogsError(null)
-      if (!stepLogs[stepId]) void fetchStepLogs(stepId)
-      // Notify parent which terminal tab best matches this step
       if (onStepFocus) {
         const tab: LogSourceTab =
           stepIndex <= 2 ? "jenkins" : stepIndex <= 4 ? "gitops" : "app"
         onStepFocus(tab)
+        return
       }
+      setOpenStep(stepId)
+      setLogsError(null)
+      if (!stepLogs[stepId]) void fetchStepLogs(stepId)
     } else {
       setOpenStep("")
     }
@@ -518,7 +518,7 @@ export function DeployStepTimeline({
               aria-current={uiState === "active" ? "step" : undefined}
             >
               <Collapsible
-                open={isOpen}
+                open={onStepFocus ? false : isOpen}
                 onOpenChange={(open) =>
                   handleStepToggle(step.id, open, originalIndex)
                 }
