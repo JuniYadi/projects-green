@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import {
   ArrowClockwise,
@@ -74,9 +74,13 @@ export function DeploymentSplitWorkspace({
   const tone = STATUS_TONE[status] ?? STATUS_TONE.idle
 
   const [renderTick, setRenderTick] = useState(() => Date.now())
-  const [forcedTab, setForcedTab] = useState<LogSourceTab | undefined>(
-    undefined
-  )
+  // forceTab carries a seq counter so clicking the same timeline step twice in
+  // a row always produces a new object reference and reliably fires the effect
+  // inside JenkinsLiveTerminal even when the tab value hasn't changed.
+  const [forcedTab, setForcedTab] = useState<
+    { tab: LogSourceTab; seq: number } | undefined
+  >(undefined)
+  const forcedTabSeqRef = useRef(0)
 
   useEffect(() => {
     if (!deployment?.startedAt || deployment?.completedAt) return
@@ -192,7 +196,10 @@ export function DeploymentSplitWorkspace({
                 skipBuildSteps={stack.sourceType === "TEMPLATE"}
                 onRetry={status === "failed" ? onRetry : undefined}
                 locale={locale}
-                onStepFocus={setForcedTab}
+                onStepFocus={(tab) => {
+                  forcedTabSeqRef.current += 1
+                  setForcedTab({ tab, seq: forcedTabSeqRef.current })
+                }}
               />
             </div>
           </CardContent>
