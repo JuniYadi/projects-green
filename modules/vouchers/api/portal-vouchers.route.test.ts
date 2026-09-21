@@ -19,6 +19,8 @@ function createDefaultService(): any {
     createVoucher: () => Promise.resolve({ id: "v_1", code: "TEST1234" }),
     createPromotion: () => Promise.resolve({ id: "v_1", code: "TEST1234" }),
     updateVoucher: () => Promise.resolve({ id: "v_1" }),
+    updatePromotion: () => Promise.resolve({ id: "v_1" }),
+    publishVoucher: () => Promise.resolve({ id: "v_1", status: "ACTIVE" }),
     disableVoucher: () => Promise.resolve({ id: "v_1", status: "DISABLED" }),
     expireVoucher: () =>
       Promise.resolve({
@@ -472,6 +474,113 @@ describe("Portal Voucher Routes", () => {
     })
   })
 
+  describe("POST /vouchers/portal/:id/publish", () => {
+    it("returns 401 when unauthenticated", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: null,
+          organizationId: null,
+          role: null,
+          roles: null,
+        })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/publish", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 403 for non-admin users", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.getPlatformRole = mock(() => Promise.resolve("none" as const))
+      deps.authenticate = mock(() =>
+        Promise.resolve({
+          user: { id: "user_1", email: "user@test.com" },
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+        })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/publish", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(403)
+    })
+
+    it("publishes a voucher", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.publishVoucher = mock(() =>
+        Promise.resolve({
+          id: "v_1",
+          code: "TEST1234",
+          status: "ACTIVE",
+          prefix: null,
+          maxClaims: 10,
+          claimedCount: 0,
+          expiresAt: new Date(Date.now() + 86400000),
+          amount: { toFixed: () => "50000" },
+          currency: "IDR",
+          targetWorkosUserId: null,
+          targetOrganizationId: null,
+          createdByWorkosUserId: "user_1",
+          metadataJson: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1/publish", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.status).toBe("ACTIVE")
+      expect(deps.service.publishVoucher).toHaveBeenCalledWith("v_1")
+    })
+
+    it("returns 404 when voucher does not exist", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.publishVoucher = mock(() => {
+        throw new VoucherNotFoundError("missing")
+      })
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/missing/publish", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(404)
+    })
+
+    it("returns 422 for an invalid voucher id", async () => {
+      const res = await toApp(createDeps()).handle(
+        new Request("http://localhost/vouchers/portal/%20/publish", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(422)
+    })
+  })
+
   describe("POST /vouchers/portal/:id/expire", () => {
     it("returns 401 when unauthenticated", async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -632,6 +741,9 @@ describe("Portal Voucher Routes", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const deps = createDeps() as any
       const updateDate = new Date(Date.now() + 172800000)
+      deps.service.getVoucherById = mock(() =>
+        Promise.resolve({ id: "v_1", kind: "BALANCE_CREDIT" })
+      )
       deps.service.updateVoucher = mock(() =>
         Promise.resolve({
           id: "v_1",
@@ -674,7 +786,12 @@ describe("Portal Voucher Routes", () => {
     })
 
     it("returns 422 for invalid patch payload", async () => {
-      const res = await toApp(createDeps()).handle(
+      const deps = createDeps()
+      deps.service.getVoucherById = mock(() =>
+        Promise.resolve({ id: "v_1", kind: "BALANCE_CREDIT" })
+      )
+
+      const res = await toApp(deps).handle(
         new Request("http://localhost/vouchers/portal/v_1", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -692,6 +809,9 @@ describe("Portal Voucher Routes", () => {
 
     it("returns 500 when voucher update service throws unexpected error", async () => {
       const deps = createDeps()
+      deps.service.getVoucherById = mock(() =>
+        Promise.resolve({ id: "v_1", kind: "BALANCE_CREDIT" })
+      )
       deps.service.updateVoucher = mock(() =>
         Promise.reject(new Error("Database connection failed"))
       )
@@ -711,6 +831,68 @@ describe("Portal Voucher Routes", () => {
       expect(body.ok).toBe(false)
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
       expect(body.message).toBe("Database connection failed")
+    })
+  })
+
+  describe("PATCH product promotion /vouchers/portal/:id", () => {
+    it("updates promotion fields through the promotion service", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      const updatePromotion = mock(() =>
+        Promise.resolve({
+          id: "promo_1",
+          kind: "PRODUCT_PROMOTION",
+          code: "PROMO15",
+          prefix: null,
+          status: "DISABLED",
+          maxClaims: 10,
+          claimedCount: 0,
+          expiresAt: new Date(Date.now() + 86400000),
+          amount: { toFixed: () => "0.00" },
+          currency: "IDR",
+          discountType: "PERCENTAGE",
+          discountValue: { toString: () => "15" },
+          discountCurrency: null,
+          currencyPolicy: "MATCH_CURRENCY_ONLY",
+          firstCheckoutOnly: false,
+          allowUpgrade: false,
+          stackable: false,
+          minimumOrderAmount: null,
+          maximumDiscountAmount: null,
+          allowedPackageCodes: ["VPN"],
+          allowedPlanCodes: null,
+          allowedBillingPeriods: ["MONTHLY"],
+          targetWorkosUserId: null,
+          targetOrganizationId: null,
+          metadataJson: null,
+          createdByWorkosUserId: "user_1",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      )
+      deps.service.updatePromotion = updatePromotion
+      deps.service.getVoucherById = mock(() =>
+        Promise.resolve({ id: "promo_1", kind: "PRODUCT_PROMOTION" })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/promo_1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            discountType: "PERCENTAGE",
+            discountValue: 15,
+            allowedPackageCodes: ["VPN"],
+            allowedBillingPeriods: ["MONTHLY"],
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      expect(updatePromotion).toHaveBeenCalledWith(
+        "promo_1",
+        expect.objectContaining({ discountValue: 15 })
+      )
     })
   })
 })

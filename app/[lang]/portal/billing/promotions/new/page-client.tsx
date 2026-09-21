@@ -503,6 +503,7 @@ export default function NewVoucherPage() {
                     type="number"
                     min={1}
                     value={draft.maxClaims}
+                    onWheel={(event) => event.currentTarget.blur()}
                     onChange={(e) =>
                       updateField({ maxClaims: Number(e.target.value) })
                     }
@@ -601,7 +602,6 @@ export default function NewVoucherPage() {
           <VoucherRulesTab
             voucher={voucherPreview}
             onUpdate={handleUpdate}
-            isNew
             fieldErrors={fieldErrors}
           />
         </TabsContent>

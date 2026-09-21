@@ -14,14 +14,11 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { XIcon } from "@phosphor-icons/react"
 import {
   getCatalog,
   type CatalogProduct,
   type VoucherDetailDTO,
 } from "@/lib/billing-client"
-import type { AppMessages } from "@/lib/i18n/messages/types"
 
 const FALLBACK_BILLING_PERIODS = [
   "MONTHLY",
@@ -67,12 +64,10 @@ const currentDateTimeLocal = () => {
 export function VoucherRulesTab({
   voucher,
   onUpdate,
-  isNew = voucher.id === "new",
   fieldErrors = {},
 }: {
   voucher: VoucherDetailDTO
   onUpdate: (updates: Record<string, unknown>) => void
-  isNew?: boolean
   fieldErrors?: Record<string, string[]>
 }) {
   const params = useParams<{ lang?: string }>()
@@ -85,7 +80,7 @@ export function VoucherRulesTab({
   const [catalogError, setCatalogError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isNew || !isProductPromo) return
+    if (!isProductPromo) return
 
     let cancelled = false
     // Reset the request state before loading the catalog for a new product promotion.
@@ -113,32 +108,42 @@ export function VoucherRulesTab({
     return () => {
       cancelled = true
     }
-  }, [isNew, isProductPromo])
+  }, [isProductPromo])
 
   const allowedPackageCodes = jsonArrayToList(voucher.allowedPackageCodes)
   const allowedPlanCodes = jsonArrayToList(voucher.allowedPlanCodes)
   const allowedBillingPeriods = jsonArrayToList(voucher.allowedBillingPeriods)
 
+  const visibleCatalogProducts = useMemo(
+    () =>
+      allowedPackageCodes.length > 0
+        ? catalogProducts.filter((product) =>
+            allowedPackageCodes.includes(product.code)
+          )
+        : catalogProducts,
+    [allowedPackageCodes, catalogProducts]
+  )
+
   const planOptions = useMemo(
     () =>
-      catalogProducts.flatMap((product) =>
+      visibleCatalogProducts.flatMap((product) =>
         product.plans.map((plan) => ({
           code: plan.code,
           name: plan.name,
           productCode: product.code,
         }))
       ),
-    [catalogProducts]
+    [visibleCatalogProducts]
   )
 
   const periodOptions = useMemo(() => {
-    const periods = catalogProducts.flatMap((product) =>
+    const periods = visibleCatalogProducts.flatMap((product) =>
       product.plans.flatMap((plan) =>
-        plan.offers.map((offer) => offer.billingPeriod)
+        (plan.offers ?? []).map((offer) => offer.billingPeriod)
       )
     )
     return periods.length > 0 ? [...new Set(periods)] : FALLBACK_BILLING_PERIODS
-  }, [catalogProducts])
+  }, [visibleCatalogProducts])
 
   const renderErrors = (field: string) => {
     const errors = fieldErrors[field]
@@ -206,6 +211,7 @@ export function VoucherRulesTab({
                   min="0"
                   step="0.01"
                   value={voucher.minimumOrderAmount ?? ""}
+                  onWheel={(event) => event.currentTarget.blur()}
                   onChange={(event) =>
                     onUpdate({
                       minimumOrderAmount: event.target.value
@@ -232,6 +238,7 @@ export function VoucherRulesTab({
                   min="0"
                   step="0.01"
                   value={voucher.maximumDiscountAmount ?? ""}
+                  onWheel={(event) => event.currentTarget.blur()}
                   onChange={(event) =>
                     onUpdate({
                       maximumDiscountAmount: event.target.value
@@ -251,131 +258,121 @@ export function VoucherRulesTab({
               </div>
             </div>
 
-            {isNew ? (
-              <div className="flex flex-col gap-6">
-                <fieldset className="flex flex-col gap-3">
-                  <legend className="text-sm font-medium">
-                    {t.eligibleProductsOrPlansLegend}
-                  </legend>
-                  <p className="text-xs text-muted-foreground">
-                    {t.eligibleProductsHelperText}
+            <div className="flex flex-col gap-6">
+              <fieldset className="flex flex-col gap-3">
+                <legend className="text-sm font-medium">
+                  {t.eligibleProductsOrPlansLegend}
+                </legend>
+                <p className="text-xs text-muted-foreground">
+                  {t.eligibleProductsHelperText}
+                </p>
+                {catalogLoading && (
+                  <p className="text-sm text-muted-foreground">
+                    {t.loadingCatalogOptions}
                   </p>
-                  {catalogLoading && (
-                    <p className="text-sm text-muted-foreground">
-                      {t.loadingCatalogOptions}
-                    </p>
-                  )}
-                  {catalogError && (
-                    <p className="text-sm text-destructive" role="alert">
-                      {catalogError}
-                    </p>
-                  )}
-                  {!catalogLoading && catalogProducts.length > 0 && (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {catalogProducts.map((product) => (
-                        <label
-                          key={product.code}
-                          className="flex items-start gap-3 rounded-lg border border-border p-3"
-                        >
-                          <Checkbox
-                            checked={allowedPackageCodes.includes(product.code)}
-                            onCheckedChange={(checked) =>
-                              toggleSelection(
-                                "allowedPackageCodes",
-                                allowedPackageCodes,
-                                product.code,
-                                Boolean(checked)
-                              )
-                            }
-                          />
-                          <span className="flex flex-col gap-1">
-                            <span className="font-medium">{product.name}</span>
-                            <span className="font-mono text-xs text-muted-foreground">
-                              {product.code}
-                            </span>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                  {renderErrors("allowedPackageCodes")}
-                  {renderErrors("allowedPlanCodes")}
-                </fieldset>
-
-                {planOptions.length > 0 && (
-                  <fieldset className="flex flex-col gap-3">
-                    <legend className="text-sm font-medium">
-                      {t.eligiblePlansOptionalLegend}
-                    </legend>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {planOptions.map((plan) => (
-                        <label
-                          key={`${plan.productCode}-${plan.code}`}
-                          className="flex items-start gap-3 rounded-lg border border-border p-3"
-                        >
-                          <Checkbox
-                            checked={allowedPlanCodes.includes(plan.code)}
-                            onCheckedChange={(checked) =>
-                              toggleSelection(
-                                "allowedPlanCodes",
-                                allowedPlanCodes,
-                                plan.code,
-                                Boolean(checked)
-                              )
-                            }
-                          />
-                          <span className="flex flex-col gap-1">
-                            <span className="font-medium">{plan.name}</span>
-                            <span className="font-mono text-xs text-muted-foreground">
-                              {plan.productCode} / {plan.code}
-                            </span>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
                 )}
-
-                <fieldset className="flex flex-col gap-3">
-                  <legend className="text-sm font-medium">
-                    {t.allowedBillingPeriodsLegend}
-                  </legend>
-                  <p className="text-xs text-muted-foreground">
-                    {t.allowedBillingPeriodsHelperText}
+                {catalogError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {catalogError}
                   </p>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {periodOptions.map((period) => (
+                )}
+                {!catalogLoading && catalogProducts.length > 0 && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {visibleCatalogProducts.map((product) => (
                       <label
-                        key={period}
-                        className="flex items-center gap-3 rounded-lg border border-border p-3"
+                        key={product.code}
+                        className="flex items-start gap-3 rounded-lg border border-border p-3"
                       >
                         <Checkbox
-                          checked={allowedBillingPeriods.includes(period)}
+                          checked={allowedPackageCodes.includes(product.code)}
                           onCheckedChange={(checked) =>
                             toggleSelection(
-                              "allowedBillingPeriods",
-                              allowedBillingPeriods,
-                              period,
+                              "allowedPackageCodes",
+                              allowedPackageCodes,
+                              product.code,
                               Boolean(checked)
                             )
                           }
                         />
-                        <span>{periodLabel(period)}</span>
+                        <span className="flex flex-col gap-1">
+                          <span className="font-medium">{product.name}</span>
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {product.code}
+                          </span>
+                        </span>
                       </label>
                     ))}
                   </div>
-                  {renderErrors("allowedBillingPeriods")}
+                )}
+                {renderErrors("allowedPackageCodes")}
+                {renderErrors("allowedPlanCodes")}
+              </fieldset>
+
+              {planOptions.length > 0 && (
+                <fieldset className="flex flex-col gap-3">
+                  <legend className="text-sm font-medium">
+                    {t.eligiblePlansOptionalLegend}
+                  </legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {planOptions.map((plan) => (
+                      <label
+                        key={`${plan.productCode}-${plan.code}`}
+                        className="flex items-start gap-3 rounded-lg border border-border p-3"
+                      >
+                        <Checkbox
+                          checked={allowedPlanCodes.includes(plan.code)}
+                          onCheckedChange={(checked) =>
+                            toggleSelection(
+                              "allowedPlanCodes",
+                              allowedPlanCodes,
+                              plan.code,
+                              Boolean(checked)
+                            )
+                          }
+                        />
+                        <span className="flex flex-col gap-1">
+                          <span className="font-medium">{plan.name}</span>
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {plan.productCode} / {plan.code}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </fieldset>
-              </div>
-            ) : (
-              <LegacyEligibilityFields
-                packageCodes={allowedPackageCodes}
-                planCodes={allowedPlanCodes}
-                periods={allowedBillingPeriods}
-                onUpdate={onUpdate}
-                t={t}
-              />
-            )}
+              )}
+
+              <fieldset className="flex flex-col gap-3">
+                <legend className="text-sm font-medium">
+                  {t.allowedBillingPeriodsLegend}
+                </legend>
+                <p className="text-xs text-muted-foreground">
+                  {t.allowedBillingPeriodsHelperText}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {periodOptions.map((period) => (
+                    <label
+                      key={period}
+                      className="flex items-center gap-3 rounded-lg border border-border p-3"
+                    >
+                      <Checkbox
+                        checked={allowedBillingPeriods.includes(period)}
+                        onCheckedChange={(checked) =>
+                          toggleSelection(
+                            "allowedBillingPeriods",
+                            allowedBillingPeriods,
+                            period,
+                            Boolean(checked)
+                          )
+                        }
+                      />
+                      <span>{periodLabel(period)}</span>
+                    </label>
+                  ))}
+                </div>
+                {renderErrors("allowedBillingPeriods")}
+              </fieldset>
+            </div>
           </>
         )}
       </CardContent>
@@ -388,111 +385,4 @@ function periodLabel(period: string): string {
     .toLowerCase()
     .replaceAll("_", " ")
     .replace(/(^| )\S/g, (letter) => letter.toUpperCase())
-}
-
-function LegacyEligibilityFields({
-  packageCodes,
-  planCodes,
-  periods,
-  onUpdate,
-  t,
-}: {
-  packageCodes: string[]
-  planCodes: string[]
-  periods: string[]
-  onUpdate: (updates: Record<string, unknown>) => void
-  t: AppMessages["pBillingPromotionsIdVoucherRulesTab"]
-}) {
-  return (
-    <div className="flex flex-col gap-6">
-      <CodeListField
-        label={t.allowedPackageCodesLabel}
-        value={packageCodes}
-        placeholder={t.allowedPackageCodesPlaceholder}
-        onChange={(next) => onUpdate({ allowedPackageCodes: next })}
-        addButtonLabel={t.addButtonLabel}
-      />
-      <CodeListField
-        label={t.allowedPlanCodesLabel}
-        value={planCodes}
-        placeholder={t.allowedPlanCodesPlaceholder}
-        onChange={(next) => onUpdate({ allowedPlanCodes: next })}
-        addButtonLabel={t.addButtonLabel}
-      />
-      <CodeListField
-        label={t.allowedBillingPeriodsFieldLabel}
-        value={periods}
-        placeholder={t.allowedBillingPeriodsPlaceholder}
-        onChange={(next) => onUpdate({ allowedBillingPeriods: next })}
-        addButtonLabel={t.addButtonLabel}
-      />
-    </div>
-  )
-}
-
-function CodeListField({
-  label,
-  value,
-  placeholder,
-  onChange,
-  addButtonLabel,
-}: {
-  label: string
-  value: string[]
-  placeholder: string
-  onChange: (next: string[]) => void
-  addButtonLabel: string
-}) {
-  const [draft, setDraft] = useState("")
-
-  const addCode = () => {
-    const trimmed = draft.trim().toUpperCase()
-    if (!trimmed || value.includes(trimmed)) return
-    onChange([...value, trimmed])
-    setDraft("")
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <Label>{label}</Label>
-      <div className="flex gap-2">
-        <Input
-          type="text"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault()
-              addCode()
-            }
-          }}
-          placeholder={placeholder}
-          className="font-mono uppercase"
-        />
-        <Button type="button" variant="outline" size="sm" onClick={addCode}>
-          {addButtonLabel}
-        </Button>
-      </div>
-      {value.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {value.map((code) => (
-            <span
-              key={code}
-              className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 font-mono text-xs"
-            >
-              {code}
-              <button
-                type="button"
-                onClick={() => onChange(value.filter((item) => item !== code))}
-                className="rounded p-0.5 hover:bg-muted-foreground/20"
-                aria-label={`Remove ${code}`}
-              >
-                <XIcon className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  )
 }
