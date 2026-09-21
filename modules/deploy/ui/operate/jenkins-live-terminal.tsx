@@ -32,6 +32,8 @@ type JenkinsLiveTerminalProps = {
   className?: string
   initialTab?: LogSourceTab
   onTabChange?: (tab: LogSourceTab) => void
+  /** When set, overrides the active tab (controlled from parent). */
+  forceTab?: LogSourceTab
 }
 
 type AnsiSpan = {
@@ -100,6 +102,7 @@ export function JenkinsLiveTerminal({
   className,
   initialTab,
   onTabChange,
+  forceTab,
 }: JenkinsLiveTerminalProps) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
@@ -115,6 +118,7 @@ export function JenkinsLiveTerminal({
         : "jenkins")
 
   const [activeTab, setActiveTab] = useState<LogSourceTab>(defaultTab)
+
   const [jenkinsLogs, setJenkinsLogs] = useState<string>("")
   const [gitopsLogs, setGitopsLogs] = useState<string[]>([])
   const [appLogs, setAppLogs] = useState<string[]>([])
@@ -145,6 +149,14 @@ export function JenkinsLiveTerminal({
       }
     }
   }, [status])
+
+  // Respond to external tab override from the timeline step panel on the left.
+  // Resets userInteractedTabRef so status-driven auto-switch can resume normally.
+  useEffect(() => {
+    if (!forceTab) return
+    userInteractedTabRef.current = false
+    setActiveTab(forceTab)
+  }, [forceTab])
 
   // Fetch live Jenkins build logs
   const fetchJenkinsLogs = useCallback(async () => {

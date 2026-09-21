@@ -31,6 +31,7 @@ import type {
 } from "@/modules/deploy/deploy.types"
 import { DeployStepTimeline } from "@/modules/deploy/ui/deploy-timeline"
 import { JenkinsLiveTerminal } from "./jenkins-live-terminal"
+import type { LogSourceTab } from "./jenkins-live-terminal"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
@@ -73,6 +74,9 @@ export function DeploymentSplitWorkspace({
   const tone = STATUS_TONE[status] ?? STATUS_TONE.idle
 
   const [renderTick, setRenderTick] = useState(() => Date.now())
+  const [forcedTab, setForcedTab] = useState<LogSourceTab | undefined>(
+    undefined
+  )
 
   useEffect(() => {
     if (!deployment?.startedAt || deployment?.completedAt) return
@@ -188,6 +192,7 @@ export function DeploymentSplitWorkspace({
                 skipBuildSteps={stack.sourceType === "TEMPLATE"}
                 onRetry={status === "failed" ? onRetry : undefined}
                 locale={locale}
+                onStepFocus={setForcedTab}
               />
             </div>
           </CardContent>
@@ -208,6 +213,7 @@ export function DeploymentSplitWorkspace({
                 ? "jenkins"
                 : undefined
           }
+          forceTab={forcedTab}
           onTabChange={(tab) => {
             if (onLogScopeChange) {
               onLogScopeChange(
