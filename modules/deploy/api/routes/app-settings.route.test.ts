@@ -279,6 +279,104 @@ describe("appSettingsRoutes", () => {
     expect(body.data.envVars[0]).not.toHaveProperty("value")
   })
 
+  it("persists and returns plain values without writing them to Vault", async () => {
+    const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
+      environmentId: "prod",
+      variables: [
+        {
+          key: "APP_ENV",
+          value: "production",
+          type: "plain",
+          scope: "runtime",
+        },
+      ],
+    })
+
+    expect(response.status).toBe(200)
+    expect(mockVaultWriteSecrets).not.toHaveBeenCalled()
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          envVarsJson: [
+            expect.objectContaining({
+              key: "APP_ENV",
+              value: "production",
+              type: "plain",
+              masked: false,
+              isStoredSecret: false,
+            }),
+          ],
+        },
+      })
+    )
+    const body = await response.json()
+    expect(body.data.envVars[0]).toMatchObject({
+      key: "APP_ENV",
+      value: "production",
+      type: "plain",
+      masked: false,
+      isStoredSecret: false,
+    })
+  })
+
+  it("lets an explicit plain type recover a legacy masked row", async () => {
+    stack.envVarsJson = [
+      {
+        key: "APP_DEBUG",
+        value: "false",
+        type: "plain",
+        masked: true,
+        isStoredSecret: true,
+        source: "vault",
+        vaultPath: "legacy/path",
+      },
+    ]
+
+    const getResponse = await request("/deploy/apps/demo/settings")
+    const getBody = await getResponse.json()
+    expect(getBody.data.envVars[0]).toMatchObject({
+      key: "APP_DEBUG",
+      value: "false",
+      type: "plain",
+      masked: false,
+      isStoredSecret: false,
+    })
+
+    const patchResponse = await json(
+      "/deploy/apps/demo/settings/env",
+      "PATCH",
+      {
+        environmentId: "prod",
+        variables: [
+          {
+            key: "APP_DEBUG",
+            value: "false",
+            type: "plain",
+          },
+        ],
+      }
+    )
+    expect(patchResponse.status).toBe(200)
+    expect(mockVaultWriteSecrets).not.toHaveBeenCalled()
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          envVarsJson: [
+            expect.objectContaining({
+              key: "APP_DEBUG",
+              value: "false",
+              type: "plain",
+              masked: false,
+              isStoredSecret: false,
+              source: undefined,
+              vaultPath: undefined,
+            }),
+          ],
+        },
+      })
+    )
+  })
+
   it("fails closed with 500 when Vault write fails during settings update", async () => {
     mockVaultWriteSecrets.mockRejectedValueOnce(new Error("Vault unavailable"))
     const response = await json("/deploy/apps/demo/settings/env", "PATCH", {

@@ -117,6 +117,10 @@ function isEnvironment(value: unknown): value is EnvironmentId {
 }
 
 function isSecret(variable: StoredEnvVar): boolean {
+  if (variable.type === "plain") {
+    return false
+  }
+
   return (
     variable.type === "secret" ||
     variable.type === "secret_ref" ||
@@ -359,7 +363,11 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
       }
       const secretsToWrite: Record<string, string> = {}
       for (const variable of body.variables) {
-        if (typeof variable.value === "string" && variable.value.length > 0) {
+        if (
+          isSecret(variable) &&
+          typeof variable.value === "string" &&
+          variable.value.length > 0
+        ) {
           secretsToWrite[variable.key] = variable.value
         }
       }
@@ -405,7 +413,13 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
           ...(prior ? { ...prior } : {}),
           ...incoming,
           type: incoming.type ?? prior?.type ?? (secret ? "secret" : "plain"),
-          value: "",
+          value: secret
+            ? ""
+            : typeof incoming.value === "string"
+              ? incoming.value
+              : typeof prior?.value === "string"
+                ? prior.value
+                : "",
         }
         if (secret) {
           row.masked = true
@@ -419,6 +433,15 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
           if (!row.version && prior?.version) {
             row.version = prior.version
           }
+        } else {
+          row.masked = false
+          row.isStoredSecret = false
+          row.source = undefined
+          row.serviceCredentialId = undefined
+          row.vaultPath = undefined
+          row.vaultKey = undefined
+          row.referenceLabel = undefined
+          row.version = undefined
         }
         return row
       })
