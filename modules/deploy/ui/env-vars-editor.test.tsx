@@ -44,7 +44,6 @@ describe("EnvVarsEditor", () => {
 
     expect(view.getByText("Key")).toBeTruthy()
     expect(view.getByText("Value")).toBeTruthy()
-    expect(view.getByText("Type")).toBeTruthy()
     expect(view.getByText("Scope")).toBeTruthy()
     expect(view.getByText("Last updated")).toBeTruthy()
     expect(view.getByText("Actions")).toBeTruthy()

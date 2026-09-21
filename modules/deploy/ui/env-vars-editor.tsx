@@ -1144,12 +1144,17 @@ export function EnvVarsEditor({
         <table className="w-full border-collapse text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
-              <th className="px-3 py-2 font-medium">{messages.key}</th>
-              <th className="px-3 py-2 font-medium">{messages.value}</th>
-              <th className="px-3 py-2 font-medium">{messages.type}</th>
-              <th className="px-3 py-2 font-medium">{messages.scope}</th>
-              <th className="px-3 py-2 font-medium">{messages.lastUpdated}</th>
-              <th className="px-3 py-2 font-medium">{messages.actions}</th>
+              <th className="w-[28%] px-3 py-2 font-medium">{messages.key}</th>
+              <th className="w-[35%] px-3 py-2 font-medium">
+                {messages.value}
+              </th>
+              <th className="w-[8%] px-3 py-2 font-medium">{messages.scope}</th>
+              <th className="w-[14%] px-3 py-2 font-medium">
+                {messages.lastUpdated}
+              </th>
+              <th className="w-[8%] px-3 py-2 font-medium">
+                {messages.actions}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -1157,7 +1162,7 @@ export function EnvVarsEditor({
               <tr>
                 <td
                   className="px-3 py-8 text-center text-xs text-muted-foreground"
-                  colSpan={6}
+                  colSpan={5}
                 >
                   {messages.noVariablesFound}
                 </td>
@@ -1179,7 +1184,9 @@ export function EnvVarsEditor({
               return (
                 <tr key={row.id} className="border-t border-border">
                   <td className="px-3 py-2 font-medium">
-                    <span className="font-mono text-xs">{row.key}</span>
+                    <span className="block max-w-0 truncate font-mono text-xs">
+                      {row.key}
+                    </span>
                     {row.referenceLabel ? (
                       <span className="mt-1 block text-[11px] text-muted-foreground">
                         {row.referenceLabel}
@@ -1187,24 +1194,11 @@ export function EnvVarsEditor({
                     ) : null}
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">
-                    {shownValue || MASKED_ENV_VAR_VALUE}
+                    <span className="block max-w-0 truncate">
+                      {shownValue || MASKED_ENV_VAR_VALUE}
+                    </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <Badge
-                      variant={
-                        isSharedReference
-                          ? "outline"
-                          : isSecret
-                            ? "warning"
-                            : "secondary"
-                      }
-                    >
-                      {isSharedReference ? (
-                        <Link2 data-icon="inline-start" />
-                      ) : null}
-                      {getTypeLabel(row.type, messages)}
-                    </Badge>
-                  </td>
+
                   <td className="px-3 py-2 text-xs capitalize">
                     {row.scope === "build"
                       ? messages.scopeBuild
@@ -1216,12 +1210,30 @@ export function EnvVarsEditor({
                     {formatUpdatedAt(row.lastUpdatedAt)}
                   </td>
                   <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex items-center gap-0.5">
                       {!isSharedReference ? (
                         <Button
                           type="button"
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          title={
+                            isSecret
+                              ? isVisible
+                                ? messages.hide
+                                : messages.reveal
+                              : isVisible
+                                ? messages.hide
+                                : messages.show
+                          }
+                          aria-label={
+                            isSecret
+                              ? isVisible
+                                ? messages.hide
+                                : messages.reveal
+                              : isVisible
+                                ? messages.hide
+                                : messages.show
+                          }
                           onClick={() => {
                             if (isSecret) {
                               void revealSecret(row)
@@ -1233,24 +1245,15 @@ export function EnvVarsEditor({
                         >
                           {isSecret ? (
                             isVisible ? (
-                              <EyeOff data-icon="inline-start" />
+                              <EyeOff />
                             ) : (
-                              <Eye data-icon="inline-start" />
+                              <Eye />
                             )
                           ) : isVisible ? (
-                            <EyeOff data-icon="inline-start" />
+                            <EyeOff />
                           ) : (
-                            <Eye data-icon="inline-start" />
+                            <Eye />
                           )}
-                          {revealingById[row.id]
-                            ? messages.revealing
-                            : isSecret
-                              ? isVisible
-                                ? messages.hide
-                                : messages.reveal
-                              : isVisible
-                                ? messages.hide
-                                : messages.show}
                         </Button>
                       ) : (
                         <span className="px-2 py-1 text-[11px] text-muted-foreground">
@@ -1260,22 +1263,24 @@ export function EnvVarsEditor({
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
+                        title={messages.edit}
+                        aria-label={messages.edit}
                         onClick={() => openEditPanel(row)}
                       >
-                        <Pencil data-icon="inline-start" />
-                        {messages.edit}
+                        <Pencil />
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
+                        title={messages.delete}
+                        aria-label={messages.delete}
                         onClick={() => {
                           void deleteVariable(row)
                         }}
                       >
-                        <Trash2 data-icon="inline-start" />
-                        {messages.delete}
+                        <Trash2 />
                       </Button>
                     </div>
                   </td>
