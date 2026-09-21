@@ -19,23 +19,12 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getMessages } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import {
   DEPLOY_STATUS_LABELS,
-  DEPLOY_STATUS_TONE as STATUS_TONE,
 } from "@/modules/deploy/deploy.constants"
 import type {
   DeploymentHistoryDTO,
@@ -968,21 +957,86 @@ export default function PlatformInstanceWorkspacePage() {
           {/* TAB 2: DEPLOYMENTS */}
           {activeWorkspaceTab === "deployments" && (
             <div className="space-y-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <div>
-                    <CardTitle className="text-base font-semibold">
-                      {tDeployments.historyTitle}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      {historyMeta
-                        ? tPage.recordedReleases.replace(
-                            "{count}",
-                            String(historyMeta.total)
-                          )
-                        : tDeployments.historyDescription}
-                    </CardDescription>
-                  </div>
+              <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2 sm:flex-row sm:items-center sm:justify-between">
+                {historyLoading ? (
+                  <p className="px-2 text-xs text-muted-foreground">
+                    {tDeployments.loadingHistory}
+                  </p>
+                ) : selectedDeployment ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-auto min-w-0 justify-start gap-3 px-2 py-1.5 text-left"
+                      >
+                        <span
+                          className={`size-2 shrink-0 rounded-full ${
+                            selectedDeployment.status === "failed"
+                              ? "bg-destructive"
+                              : selectedDeployment.status === "running"
+                                ? "bg-emerald-500"
+                                : "bg-blue-500"
+                          }`}
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium">
+                            #{selectedDeployment.attempt} · {DEPLOY_STATUS_LABELS[selectedDeployment.status] ?? selectedDeployment.status} · {formatDuration(selectedDeployment.durationMs)}
+                          </span>
+                          <span className="block truncate text-[11px] text-muted-foreground">
+                            {selectedDeployment.commitSha?.slice(0, 7) ?? "head"} · {selectedDeployment.startedAt ? new Date(selectedDeployment.startedAt).toLocaleString(locale) : "—"}
+                          </span>
+                        </span>
+                        <span className="text-xs text-muted-foreground">▾</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-[min(520px,calc(100vw-2rem))] p-2">
+                      <div className="mb-2 px-2 py-1 text-xs font-semibold">
+                        {tDeployments.historyTitle}
+                      </div>
+                      <div className="max-h-80 space-y-1 overflow-y-auto">
+                        {history.map((deploymentItem) => (
+                          <button
+                            key={deploymentItem.id}
+                            type="button"
+                            onClick={() => setSelectedDeploymentId(deploymentItem.id)}
+                            className={cn(
+                              "flex w-full items-start gap-3 rounded-md border-l-2 px-3 py-2 text-left hover:bg-muted/60",
+                              deploymentItem.id === selectedDeploymentId
+                                ? "border-l-foreground bg-muted/60"
+                                : "border-l-transparent"
+                            )}
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center justify-between gap-3 text-xs font-medium">
+                                <span>#{deploymentItem.attempt} · {DEPLOY_STATUS_LABELS[deploymentItem.status] ?? deploymentItem.status} · {formatDuration(deploymentItem.durationMs)}</span>
+                                <span className="shrink-0 text-[11px] text-muted-foreground">
+                                  {deploymentItem.startedAt ? new Date(deploymentItem.startedAt).toLocaleString(locale) : "—"}
+                                </span>
+                              </span>
+                              <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                                {deploymentItem.failureReason ?? deploymentItem.commitSha?.slice(0, 7) ?? "head"}
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      {(historyMeta?.totalPages ?? 0) > 1 && (
+                        <div className="mt-2 flex items-center justify-between border-t border-border px-2 pt-2 text-xs text-muted-foreground">
+                          <span>{tDeployments.pageOf.replace("{page}", String(historyMeta?.page ?? historyPage)).replace("{total}", String(historyMeta?.totalPages ?? 1))}</span>
+                          <div className="flex gap-1">
+                            <Button variant="outline" size="xs" disabled={historyPage <= 1} onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}>{tDeployments.previous}</Button>
+                            <Button variant="outline" size="xs" disabled={historyPage >= (historyMeta?.totalPages ?? 1)} onClick={() => setHistoryPage((page) => Math.min(historyMeta?.totalPages ?? 1, page + 1))}>{tDeployments.next}</Button>
+                          </div>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <p className="px-2 text-xs text-muted-foreground">
+                    {tDeployments.noAttempts}
+                  </p>
+                )}
+                <div className="shrink-0">
                   {overview.stack.sourceType !== "TEMPLATE" &&
                     !overview.stack.templateId && (
                       <Button
@@ -1007,165 +1061,8 @@ export default function PlatformInstanceWorkspacePage() {
                         </span>
                       </Button>
                     )}
-                </CardHeader>
-                <CardContent>
-                  {historyLoading ? (
-                    <p className="p-4 text-xs text-muted-foreground">
-                      {tDeployments.loadingHistory}
-                    </p>
-                  ) : history.length === 0 ? (
-                    <p className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                      {tDeployments.noAttempts}
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="text-xs">
-                            <TableHead>{tDeployments.table.status}</TableHead>
-                            <TableHead className="w-10">#</TableHead>
-                            <TableHead>{tDeployments.table.duration}</TableHead>
-                            <TableHead>{tDeployments.table.commit}</TableHead>
-                            <TableHead>
-                              {locale === "id" ? "Keterangan" : "Note"}
-                            </TableHead>
-                            <TableHead>{tDeployments.table.started}</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {history.map((d) => (
-                            <TableRow
-                              key={d.id}
-                              onClick={() => setSelectedDeploymentId(d.id)}
-                              className={`cursor-pointer hover:bg-muted/30 transition-colors${
-                                d.id === selectedDeploymentId
-                                  ? "border-l-2 border-l-primary bg-muted/20"
-                                  : ""
-                              }`}
-                              data-state={
-                                d.id === selectedDeploymentId
-                                  ? "selected"
-                                  : undefined
-                              }
-                            >
-                              <TableCell>
-                                <span
-                                  className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                                    STATUS_TONE[d.status] ?? STATUS_TONE.idle
-                                  }`}
-                                >
-                                  {DEPLOY_STATUS_LABELS[d.status] ?? d.status}
-                                </span>
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">
-                                #{d.attempt}
-                              </TableCell>
-                              <TableCell className="text-xs text-muted-foreground">
-                                {formatDuration(d.durationMs)}
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">
-                                {d.commitSha ? d.commitSha.slice(0, 7) : "—"}
-                              </TableCell>
-                              <TableCell className="max-w-[200px] text-xs text-muted-foreground">
-                                {d.failureReason ? (
-                                  <span
-                                    title={d.failureReason}
-                                    className="block truncate"
-                                  >
-                                    {d.failureReason}
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
-                              </TableCell>
-                              <TableCell className="text-xs text-muted-foreground">
-                                {d.startedAt
-                                  ? new Date(d.startedAt).toLocaleString(locale)
-                                  : "—"}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      <p className="mt-2 text-[11px] text-muted-foreground/70">
-                        {locale === "id"
-                          ? "↑ Klik baris untuk melihat detail dan log deployment"
-                          : "↑ Click a row to view deployment detail and logs"}
-                      </p>
-                      {(historyMeta?.totalPages ?? 0) >= 1 && (
-                        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                          <span>
-                            {tDeployments.pageOf
-                              .replace(
-                                "{page}",
-                                String(historyMeta?.page ?? historyPage)
-                              )
-                              .replace(
-                                "{total}",
-                                String(historyMeta?.totalPages ?? 1)
-                              )}
-                          </span>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="xs"
-                              disabled={historyPage <= 1}
-                              onClick={() =>
-                                setHistoryPage((p) => Math.max(1, p - 1))
-                              }
-                            >
-                              {tDeployments.previous}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="xs"
-                              disabled={
-                                historyPage >= (historyMeta?.totalPages ?? 1)
-                              }
-                              onClick={() =>
-                                setHistoryPage((p) =>
-                                  Math.min(historyMeta?.totalPages ?? 1, p + 1)
-                                )
-                              }
-                            >
-                              {tDeployments.next}
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Section header: shows which deployment is currently detailed below */}
-              {selectedStatus && (
-                <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <span>
-                      {locale === "id"
-                        ? "Detail Deployment"
-                        : "Deployment Detail"}{" "}
-                      <span className="font-mono font-semibold text-foreground">
-                        #{selectedStatus.attempt}
-                      </span>
-                    </span>
-                    <span
-                      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                        STATUS_TONE[selectedStatus.status] ?? STATUS_TONE.idle
-                      }`}
-                    >
-                      {DEPLOY_STATUS_LABELS[selectedStatus.status] ??
-                        selectedStatus.status}
-                    </span>
-                    {locale === "id"
-                      ? "— klik baris lain di atas untuk berpindah"
-                      : "— click another row above to switch"}
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
                 </div>
-              )}
+              </div>
 
               <AppMonitor
                 stack={overview.stack}

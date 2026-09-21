@@ -44,6 +44,12 @@ type DeployStepTimelineProps = {
    * corresponds to that step so the parent can sync the terminal panel.
    */
   onStepFocus?: (tab: LogSourceTab) => void
+  jenkinsStages?: Array<{
+    name: string
+    status: "completed" | "running" | "failed"
+  }>
+  selectedJenkinsStage?: string | null
+  onJenkinsStageFocus?: (stage: string | null) => void
 }
 
 // Timeline and LogsPanel own 3s polling; stop at running, failed, or idle.
@@ -177,6 +183,9 @@ export function DeployStepTimeline({
   onRetry,
   locale: localeProp,
   onStepFocus,
+  jenkinsStages = [],
+  selectedJenkinsStage,
+  onJenkinsStageFocus,
 }: DeployStepTimelineProps) {
   const [steps] = useState<DeployTimelineItem[]>(() =>
     buildDeployTimelineItems()
@@ -231,6 +240,7 @@ export function DeployStepTimeline({
   const [fetchedStatus, setFetchedStatus] = useState<FetchedStatus | null>(null)
   const [events, setEvents] = useState<FetchedEvent[]>([])
   const [openStep, setOpenStep] = useState<string | null>(null)
+  const [selectedStep, setSelectedStep] = useState<string | null>(null)
   const [stepLogs, setStepLogs] = useState<Record<string, DeployLogLine[]>>({})
   const [renderTick, setRenderTick] = useState(() => Date.now())
   const [logsError, setLogsError] = useState<string | null>(null)
@@ -431,10 +441,12 @@ export function DeployStepTimeline({
     stepIndex: number
   ) => {
     if (open) {
+      setSelectedStep(stepId)
       if (onStepFocus) {
         const tab: LogSourceTab =
           stepIndex <= 2 ? "jenkins" : stepIndex <= 4 ? "gitops" : "app"
         onStepFocus(tab)
+        if (tab === "jenkins") onJenkinsStageFocus?.(null)
         return
       }
       setOpenStep(stepId)
@@ -508,6 +520,8 @@ export function DeployStepTimeline({
               key={step.id}
               className={cn(
                 "rounded-md border p-3",
+                selectedStep === step.id &&
+                  "border-foreground/30 bg-muted/60 shadow-xs",
                 uiState === "active" && "border-blue-500/40 bg-blue-500/5",
                 uiState === "failed" &&
                   "border-destructive/40 bg-destructive/5",
@@ -553,6 +567,50 @@ export function DeployStepTimeline({
                     )}
                   </div>
                 </CollapsibleTrigger>
+                {onStepFocus &&
+                  originalIndex === 1 &&
+                  selectedStep === step.id &&
+                  jenkinsStages.length > 0 && (
+                    <div className="mt-2 space-y-1 border-t border-border pt-2">
+                      <button
+                        type="button"
+                        onClick={() => onJenkinsStageFocus?.(null)}
+                        className={cn(
+                          "w-full rounded px-2 py-1 text-left text-[11px]",
+                          selectedJenkinsStage === null
+                            ? "bg-background font-medium text-foreground"
+                            : "text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        All Jenkins logs
+                      </button>
+                      {jenkinsStages.map((stage) => (
+                        <button
+                          key={stage.name}
+                          type="button"
+                          onClick={() => onJenkinsStageFocus?.(stage.name)}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[11px]",
+                            selectedJenkinsStage === stage.name
+                              ? "bg-background font-medium text-foreground shadow-xs"
+                              : "text-muted-foreground hover:bg-muted"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "size-1.5 rounded-full",
+                              stage.status === "failed"
+                                ? "bg-destructive"
+                                : stage.status === "running"
+                                  ? "bg-blue-500"
+                                  : "bg-emerald-500"
+                            )}
+                          />
+                          <span className="truncate">{stage.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 <CollapsibleContent className="mt-2 space-y-2 border-t border-border pt-2">
                   {uiState === "failed" && (
                     <div className="space-y-2">

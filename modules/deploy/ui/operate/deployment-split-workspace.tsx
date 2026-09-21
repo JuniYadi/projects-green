@@ -32,6 +32,7 @@ import type {
 import { DeployStepTimeline } from "@/modules/deploy/ui/deploy-timeline"
 import { JenkinsLiveTerminal } from "./jenkins-live-terminal"
 import type { LogSourceTab } from "./jenkins-live-terminal"
+import type { JenkinsStage } from "./jenkins-live-terminal"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
@@ -81,6 +82,10 @@ export function DeploymentSplitWorkspace({
     { tab: LogSourceTab; seq: number } | undefined
   >(undefined)
   const forcedTabSeqRef = useRef(0)
+  const [jenkinsStages, setJenkinsStages] = useState<JenkinsStage[]>([])
+  const [selectedJenkinsStage, setSelectedJenkinsStage] = useState<string | null>(
+    null
+  )
 
   useEffect(() => {
     if (!deployment?.startedAt || deployment?.completedAt) return
@@ -108,11 +113,11 @@ export function DeploymentSplitWorkspace({
   return (
     <div
       data-testid="deployment-split-workspace"
-      className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12"
+      className="grid grid-cols-1 items-start gap-6 lg:h-[min(720px,68vh)] lg:grid-cols-12 lg:items-stretch"
     >
       {/* Compact navigator on the left; logs get the larger reading surface. */}
-      <div className="col-span-12 space-y-4 lg:col-span-4">
-        <Card className="shadow-xs">
+      <div className="col-span-12 space-y-4 lg:col-span-4 lg:min-h-0">
+        <Card className="shadow-xs lg:h-full lg:overflow-y-auto">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
@@ -199,6 +204,14 @@ export function DeploymentSplitWorkspace({
                 onStepFocus={(tab) => {
                   forcedTabSeqRef.current += 1
                   setForcedTab({ tab, seq: forcedTabSeqRef.current })
+                  if (tab !== "jenkins") setSelectedJenkinsStage(null)
+                }}
+                jenkinsStages={jenkinsStages}
+                selectedJenkinsStage={selectedJenkinsStage}
+                onJenkinsStageFocus={(stage) => {
+                  setSelectedJenkinsStage(stage)
+                  forcedTabSeqRef.current += 1
+                  setForcedTab({ tab: "jenkins", seq: forcedTabSeqRef.current })
                 }}
               />
             </div>
@@ -206,7 +219,7 @@ export function DeploymentSplitWorkspace({
         </Card>
       </div>
 
-      <div className="col-span-12 lg:col-span-8">
+      <div className="col-span-12 lg:col-span-8 lg:min-h-0">
         <JenkinsLiveTerminal
           slug={stack.slug}
           deployId={deployId}
@@ -220,6 +233,8 @@ export function DeploymentSplitWorkspace({
                 : undefined
           }
           forceTab={forcedTab}
+          selectedJenkinsStage={selectedJenkinsStage}
+          onJenkinsStagesChange={setJenkinsStages}
           onTabChange={(tab) => {
             if (onLogScopeChange) {
               onLogScopeChange(

@@ -38,6 +38,8 @@ type JenkinsLiveTerminalProps = {
    * twice in a row still triggers the effect even when the tab didn't change.
    */
   forceTab?: { tab: LogSourceTab; seq: number }
+  selectedJenkinsStage?: string | null
+  onJenkinsStagesChange?: (stages: JenkinsStage[]) => void
 }
 
 type AnsiSpan = {
@@ -144,6 +146,8 @@ export function JenkinsLiveTerminal({
   initialTab,
   onTabChange,
   forceTab,
+  selectedJenkinsStage: controlledJenkinsStage,
+  onJenkinsStagesChange,
 }: JenkinsLiveTerminalProps) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
@@ -168,9 +172,7 @@ export function JenkinsLiveTerminal({
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [copied, setCopied] = useState<boolean>(false)
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false)
-  const [selectedJenkinsStage, setSelectedJenkinsStage] = useState<string | null>(
-    null
-  )
+  const selectedJenkinsStage = controlledJenkinsStage ?? null
   const [authFailed, setAuthFailed] = useState<boolean>(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
@@ -365,6 +367,10 @@ export function JenkinsLiveTerminal({
     [jenkinsLogs, isStreaming]
   )
 
+  useEffect(() => {
+    onJenkinsStagesChange?.(jenkinsStages)
+  }, [jenkinsStages, onJenkinsStagesChange])
+
   // Filtered lines with search query
   const filteredLines = useMemo(() => {
     if (!searchQuery.trim()) return currentLines
@@ -515,48 +521,6 @@ export function JenkinsLiveTerminal({
         </div>
       </div>
 
-      {activeTab === "jenkins" && jenkinsStages.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-muted/20 px-3 py-2">
-          <button
-            type="button"
-            onClick={() => setSelectedJenkinsStage(null)}
-            className={cn(
-              "shrink-0 rounded-md px-2 py-1 text-[11px] font-medium",
-              selectedJenkinsStage === null
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted"
-            )}
-          >
-            All logs
-          </button>
-          {jenkinsStages.map((stage) => (
-            <button
-              key={`${stage.name}-${stage.startLine}`}
-              type="button"
-              onClick={() => setSelectedJenkinsStage(stage.name)}
-              className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium",
-                selectedJenkinsStage === stage.name
-                  ? "border-border bg-background text-foreground shadow-2xs"
-                  : "border-transparent text-muted-foreground hover:bg-muted"
-              )}
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  stage.status === "failed"
-                    ? "bg-destructive"
-                    : stage.status === "running"
-                      ? "animate-pulse bg-blue-500"
-                      : "bg-emerald-500"
-                )}
-              />
-              {stage.name}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Filter toolbar */}
       <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3 py-1.5">
         <div className="relative w-64">
@@ -642,7 +606,7 @@ export function JenkinsLiveTerminal({
         ref={terminalContainerRef}
         data-testid="terminal-scroll-viewport"
         className={cn(
-          "relative overflow-y-auto bg-zinc-950 p-3 font-mono text-[11px] leading-4 text-zinc-100 selection:bg-zinc-800",
+          "relative overflow-auto bg-zinc-950 p-3 font-mono text-[10px] leading-[14px] text-zinc-100 selection:bg-zinc-800",
           isFullscreen
             ? "h-full min-h-0 max-h-none flex-1"
             : "h-[420px] min-h-[420px] max-h-[420px] flex-none"
@@ -687,7 +651,7 @@ export function JenkinsLiveTerminal({
                   <span className="w-9 shrink-0 pr-3 text-right text-zinc-600 select-none">
                     {idx + 1}
                   </span>
-                  <div className="flex-1 break-all whitespace-pre-wrap">
+                  <div className="min-w-max flex-1 whitespace-pre">
                     {spans.map((s, sIdx) => (
                       <span key={sIdx} className={s.className}>
                         {s.text}
