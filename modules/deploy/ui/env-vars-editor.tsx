@@ -1184,7 +1184,7 @@ export function EnvVarsEditor({
               return (
                 <tr key={row.id} className="border-t border-border">
                   <td className="px-3 py-2 font-medium">
-                    <span className="block max-w-0 truncate font-mono text-xs">
+                    <span className="block min-w-0 truncate font-mono text-xs">
                       {row.key}
                     </span>
                     {row.referenceLabel ? (
@@ -1194,7 +1194,7 @@ export function EnvVarsEditor({
                     ) : null}
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">
-                    <span className="block max-w-0 truncate">
+                    <span className="block min-w-0 truncate">
                       {shownValue || MASKED_ENV_VAR_VALUE}
                     </span>
                   </td>
