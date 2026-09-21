@@ -854,11 +854,11 @@ export function EnvVarsEditor({
     setImportRaw("")
     setFormError(null)
     setSheetOpen(false)
-    pushToast("success", `Imported ${rows.length} variables from .env.`)
+    pushToast("success", `Imported ${parsedImport.entries.length} variables from .env.`)
     pushActivity({
       id: createActivityId(),
       action: "imported",
-      message: `Imported ${rows.length} variables from .env.`,
+      message: `Imported ${parsedImport.entries.length} variables from .env.`,
       occurredAt: now,
     })
   }
