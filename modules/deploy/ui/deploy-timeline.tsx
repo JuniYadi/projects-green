@@ -43,7 +43,8 @@ type DeployStepTimelineProps = {
    * Called when the user clicks a timeline step, with the log tab that best
    * corresponds to that step so the parent can sync the terminal panel.
    */
-  onStepFocus?: (tab: LogSourceTab) => void
+  onStepFocus?: (tab: LogSourceTab, stepIndex: number) => void
+  selectedStepIndex?: number
   jenkinsStages?: Array<{
     name: string
     status: "completed" | "running" | "failed"
@@ -183,6 +184,7 @@ export function DeployStepTimeline({
   onRetry,
   locale: localeProp,
   onStepFocus,
+  selectedStepIndex,
   jenkinsStages = [],
   selectedJenkinsStage,
   onJenkinsStageFocus,
@@ -194,8 +196,7 @@ export function DeployStepTimeline({
   const locale = resolveLocaleOrDefault(localeProp ?? params?.lang)
   const t = getMessages(locale).console.app.timeline
 
-  const getStepLabel = useCallback(
-    (step: { id: string; label: string }): string => {
+  const getStepLabel = (step: { id: string; label: string }): string => {
       switch (step.id) {
         case "queued-init":
         case "queued":
@@ -234,13 +235,10 @@ export function DeployStepTimeline({
         default:
           return step.label
       }
-    },
-    [t]
-  )
+  }
   const [fetchedStatus, setFetchedStatus] = useState<FetchedStatus | null>(null)
   const [events, setEvents] = useState<FetchedEvent[]>([])
   const [openStep, setOpenStep] = useState<string | null>(null)
-  const [selectedStep, setSelectedStep] = useState<string | null>(null)
   const [stepLogs, setStepLogs] = useState<Record<string, DeployLogLine[]>>({})
   const [renderTick, setRenderTick] = useState(() => Date.now())
   const [logsError, setLogsError] = useState<string | null>(null)
@@ -441,11 +439,10 @@ export function DeployStepTimeline({
     stepIndex: number
   ) => {
     if (open) {
-      setSelectedStep(stepId)
       if (onStepFocus) {
         const tab: LogSourceTab =
           stepIndex <= 2 ? "jenkins" : stepIndex <= 4 ? "gitops" : "app"
-        onStepFocus(tab)
+        onStepFocus(tab, stepIndex)
         if (tab === "jenkins") onJenkinsStageFocus?.(null)
         return
       }
@@ -472,9 +469,9 @@ export function DeployStepTimeline({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <ol
-        className="space-y-2"
+        className="space-y-0.5"
         aria-label="Deployment step timeline"
         aria-live="polite"
       >
@@ -519,15 +516,14 @@ export function DeployStepTimeline({
             <li
               key={step.id}
               className={cn(
-                "rounded-md border p-3",
-                selectedStep === step.id &&
-                  "border-foreground/30 bg-muted/60 shadow-xs",
-                uiState === "active" && "border-blue-500/40 bg-blue-500/5",
+                "rounded-md border-l-2 border-l-transparent px-2 py-1.5",
+                selectedStepIndex === originalIndex &&
+                  "border-l-foreground bg-muted/60",
+                uiState === "active" && "bg-blue-500/5",
                 uiState === "failed" &&
-                  "border-destructive/40 bg-destructive/5",
-                uiState === "completed" && "border-border",
-                uiState === "pending" && "border-border opacity-70",
-                uiState === "skipped" && "border-border opacity-50"
+                  "border-l-destructive bg-destructive/5",
+                uiState === "pending" && "opacity-70",
+                uiState === "skipped" && "opacity-50"
               )}
               aria-current={uiState === "active" ? "step" : undefined}
             >
@@ -537,13 +533,14 @@ export function DeployStepTimeline({
                   handleStepToggle(step.id, open, originalIndex)
                 }
               >
-                <CollapsibleTrigger className="flex w-full items-center gap-3 text-left">
+                <CollapsibleTrigger className="flex w-full items-center gap-2.5 text-left">
                   <StepIcon state={uiState} />
-                  <div className="flex flex-1 flex-col">
-                    <span className="text-sm font-medium">
+                  <div className="flex flex-1 items-center gap-2">
+                    <span className="text-xs font-medium">
                       {getStepLabel(step)}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span aria-hidden="true" className="text-[10px] text-muted-foreground">·</span>
+                    <span className="text-[10px] text-muted-foreground">
                       {statusText(uiState, t)}
                       {uiState === "failed" && fetchedStatus?.failureReason && (
                         <span className="ml-1 font-normal text-destructive">
@@ -554,14 +551,14 @@ export function DeployStepTimeline({
                   </div>
                   <div className="flex items-center gap-2">
                     {lagging && (
-                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-400">
+                      <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
                         {step.id === "argocd-sync-started"
                           ? t.badges.deploying
                           : t.badges.lagging}
                       </span>
                     )}
                     {duration !== null && (
-                      <span className="rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground">
                         {formatDuration(duration)}
                       </span>
                     )}
@@ -569,20 +566,22 @@ export function DeployStepTimeline({
                 </CollapsibleTrigger>
                 {onStepFocus &&
                   originalIndex === 1 &&
-                  selectedStep === step.id &&
+                  selectedStepIndex === originalIndex &&
                   jenkinsStages.length > 0 && (
-                    <div className="mt-2 space-y-1 border-t border-border pt-2">
+                    <div className="mt-1.5 space-y-0.5 border-t border-border pt-1.5 pl-6">
                       <button
                         type="button"
                         onClick={() => onJenkinsStageFocus?.(null)}
                         className={cn(
-                          "w-full rounded px-2 py-1 text-left text-[11px]",
+                          "w-full rounded px-2 py-1 text-left text-[10px]",
                           selectedJenkinsStage === null
                             ? "bg-background font-medium text-foreground"
                             : "text-muted-foreground hover:bg-muted"
                         )}
                       >
-                        All Jenkins logs
+                        {locale.startsWith("id")
+                          ? "Semua log Jenkins"
+                          : "All Jenkins logs"}
                       </button>
                       {jenkinsStages.map((stage) => (
                         <button
@@ -590,7 +589,7 @@ export function DeployStepTimeline({
                           type="button"
                           onClick={() => onJenkinsStageFocus?.(stage.name)}
                           className={cn(
-                            "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[11px]",
+                            "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[10px]",
                             selectedJenkinsStage === stage.name
                               ? "bg-background font-medium text-foreground shadow-xs"
                               : "text-muted-foreground hover:bg-muted"

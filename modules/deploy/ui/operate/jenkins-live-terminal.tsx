@@ -168,7 +168,9 @@ export function JenkinsLiveTerminal({
   const [gitopsLogs, setGitopsLogs] = useState<string[]>([])
   const [appLogs, setAppLogs] = useState<string[]>([])
   const [isStreaming, setIsStreaming] = useState<boolean>(false)
-  const [autoScroll, setAutoScroll] = useState<boolean>(true)
+  const [autoScroll, setAutoScroll] = useState<boolean>(
+    status === "queued" || status === "building" || status === "deploying"
+  )
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [copied, setCopied] = useState<boolean>(false)
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false)
@@ -324,6 +326,14 @@ export function JenkinsLiveTerminal({
     }
   }, [jenkinsLogs, gitopsLogs, appLogs, activeTab, autoScroll])
 
+  useEffect(() => {
+    if (!terminalContainerRef.current || activeTab !== "jenkins") return
+    terminalContainerRef.current.scrollTop =
+      selectedJenkinsStage && isStreaming
+        ? terminalContainerRef.current.scrollHeight
+        : 0
+  }, [selectedJenkinsStage, activeTab, isStreaming])
+
   // Handle escape to exit fullscreen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -397,11 +407,19 @@ export function JenkinsLiveTerminal({
     (authFailed
       ? t.authFailedTip
       : messages.pDeployOperateAppMonitor.genericFailureReason)
+  const sourceLabel =
+    activeTab === "jenkins"
+      ? selectedJenkinsStage
+        ? `Jenkins / ${selectedJenkinsStage}`
+        : t.tabJenkins
+      : activeTab === "gitops"
+        ? t.tabGitOps
+        : t.tabRuntime
 
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs",
+        "flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs lg:h-full lg:min-h-0",
         isFullscreen &&
           "fixed inset-0 z-50 rounded-none border-none bg-background p-4",
         className
@@ -409,7 +427,13 @@ export function JenkinsLiveTerminal({
     >
       {/* Tab bar header */}
       <div className="flex flex-wrap items-center justify-between border-b border-border bg-muted/40 px-3 py-2">
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 items-center gap-3">
+          {selectedJenkinsStage && (
+            <span className="hidden truncate text-xs font-semibold md:block">
+              {sourceLabel}
+            </span>
+          )}
+          <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => {
@@ -462,6 +486,7 @@ export function JenkinsLiveTerminal({
           >
             <span>{t.tabRuntime}</span>
           </button>
+          </div>
         </div>
 
         {/* Right side controls */}
@@ -609,7 +634,7 @@ export function JenkinsLiveTerminal({
           "relative overflow-auto bg-zinc-950 p-3 font-mono text-[10px] leading-[14px] text-zinc-100 selection:bg-zinc-800",
           isFullscreen
             ? "h-full min-h-0 max-h-none flex-1"
-            : "h-[420px] min-h-[420px] max-h-[420px] flex-none"
+            : "h-[420px] min-h-[420px] max-h-[420px] flex-none lg:h-auto lg:min-h-0 lg:max-h-none lg:flex-1"
         )}
       >
         {fetchError && !authFailed && (
