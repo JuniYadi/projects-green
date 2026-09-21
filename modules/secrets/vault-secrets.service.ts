@@ -475,7 +475,7 @@ export class VaultSecretsService {
 
     await this.db.applicationStack.update({
       where: { id: input.stackId },
-      data: { envVarsJson: nextItems as Prisma.InputJsonValue },
+      data: { envVarsJson: nextItems as unknown as Prisma.InputJsonValue },
     })
 
     return {
