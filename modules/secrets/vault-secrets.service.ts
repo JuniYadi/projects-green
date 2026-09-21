@@ -468,7 +468,9 @@ export class VaultSecretsService {
     }
 
     // Remove entry from envVarsJson in DB using pre-fetched data
-    const currentItems = toStoredItems(input.currentEnvVarsJson)
+    const currentItems = toStoredItems(
+      input.currentEnvVarsJson as Prisma.JsonValue
+    )
     const nextItems = currentItems.filter(
       (item) => item.id !== input.variableId
     )
