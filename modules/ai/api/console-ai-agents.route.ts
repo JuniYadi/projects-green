@@ -1,10 +1,26 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { requireConsoleOrgAuth } from "./console-ai-providers.route"
+import {
+  toAiAgentDetailDTO,
+  toAiAgentListItemDTO,
+} from "@/modules/ai/agents/ai-agent.dto"
+
+const listInclude = {
+  channelBindings: {
+    select: {
+      id: true,
+      channel: true,
+      targetId: true,
+      targetName: true,
+      isActive: true,
+    },
+  },
+} as const
 
 export function createConsoleAiAgentsRoutes() {
   return new Elysia({ prefix: "/console/ai/agents" })
-    .get("/", async ({ set }) => {
+    .get("/", async ({ query, set }) => {
       const auth = await requireConsoleOrgAuth()
       if ("error" in auth) {
         set.status = auth.status
@@ -12,52 +28,19 @@ export function createConsoleAiAgentsRoutes() {
       }
 
       const agents = await prisma.aiAgentProfile.findMany({
-        where: { organizationId: auth.orgId },
-        orderBy: { createdAt: "desc" },
-        include: {
-          channelBindings: {
-            select: {
-              id: true,
-              channel: true,
-              targetId: true,
-              targetName: true,
-              isActive: true,
-            },
-          },
-          knowledgeDocuments: {
-            select: {
-              id: true,
-              title: true,
-              status: true,
-            },
-          },
+        where: {
+          organizationId: auth.orgId,
+          ...(query.includeArchived === "true"
+            ? {}
+            : { status: { not: "ARCHIVED" as const } }),
         },
+        orderBy: { createdAt: "desc" },
+        include: listInclude,
       })
 
       return {
         ok: true,
-        data: agents.map((a) => ({
-          id: a.id,
-          name: a.name,
-          description: a.description,
-          systemPrompt: a.systemPrompt,
-          fallbackMessage: a.fallbackMessage,
-          dailyUserLimit: a.dailyUserLimit,
-          maxCharLength: a.maxCharLength,
-          enableProfanityFilter: a.enableProfanityFilter,
-          customBlockedWords: a.customBlockedWords,
-          allowInteractiveReplies: a.allowInteractiveReplies,
-          allowedDomains: a.allowedDomains,
-          widgetColor: a.widgetColor,
-          widgetPosition: a.widgetPosition,
-          welcomeMessage: a.welcomeMessage,
-          isActive: a.isActive,
-          channelsCount: a.channelBindings.length,
-          channelBindings: a.channelBindings,
-          knowledgeDocs: a.knowledgeDocuments,
-          createdAt: a.createdAt,
-          updatedAt: a.updatedAt,
-        })),
+        data: agents.map(toAiAgentListItemDTO),
       }
     })
     .post(
@@ -73,8 +56,7 @@ export function createConsoleAiAgentsRoutes() {
           name,
           description,
           systemPrompt = "Anda adalah asisten AI toko resmi.",
-          fallbackMessage =
-            "Maaf, pertanyaan Anda akan kami teruskan ke tim CS kami.",
+          fallbackMessage = "Maaf, pertanyaan Anda akan kami teruskan ke tim CS kami.",
           dailyUserLimit = 20,
           enableProfanityFilter = true,
           allowInteractiveReplies = true,
@@ -107,13 +89,15 @@ export function createConsoleAiAgentsRoutes() {
             widgetColor,
             widgetPosition,
             welcomeMessage,
-            isActive: true,
+            status: "DRAFT",
+            isActive: false,
           },
+          include: listInclude,
         })
 
         return {
           ok: true,
-          data: agent,
+          data: toAiAgentListItemDTO(agent),
         }
       },
       {
@@ -126,9 +110,7 @@ export function createConsoleAiAgentsRoutes() {
           enableProfanityFilter: t.Optional(t.Boolean()),
           allowInteractiveReplies: t.Optional(t.Boolean()),
           allowedDomains: t.Optional(t.Array(t.String())),
-          widgetColor: t.Optional(
-            t.String({ pattern: "^#[0-9a-fA-F]{3,8}$" })
-          ),
+          widgetColor: t.Optional(t.String({ pattern: "^#[0-9a-fA-F]{3,8}$" })),
           widgetPosition: t.Optional(
             t.Union([t.Literal("bottom-right"), t.Literal("bottom-left")])
           ),
@@ -136,6 +118,24 @@ export function createConsoleAiAgentsRoutes() {
         }),
       }
     )
+    .get("/:id", async ({ params, set }) => {
+      const auth = await requireConsoleOrgAuth()
+      if ("error" in auth) {
+        set.status = auth.status
+        return { ok: false, error: auth.error }
+      }
+
+      const agent = await prisma.aiAgentProfile.findFirst({
+        where: { id: params.id, organizationId: auth.orgId },
+        include: listInclude,
+      })
+      if (!agent) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Agent not found" }
+      }
+
+      return { ok: true, data: toAiAgentDetailDTO(agent) }
+    })
     .put(
       "/:id",
       async ({ params, body, set }) => {
@@ -190,7 +190,6 @@ export function createConsoleAiAgentsRoutes() {
             ...(body.welcomeMessage !== undefined
               ? { welcomeMessage: body.welcomeMessage }
               : {}),
-            ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
           },
         })
 
@@ -209,14 +208,68 @@ export function createConsoleAiAgentsRoutes() {
           enableProfanityFilter: t.Optional(t.Boolean()),
           allowInteractiveReplies: t.Optional(t.Boolean()),
           allowedDomains: t.Optional(t.Array(t.String())),
-          widgetColor: t.Optional(
-            t.String({ pattern: "^#[0-9a-fA-F]{3,8}$" })
-          ),
+          widgetColor: t.Optional(t.String({ pattern: "^#[0-9a-fA-F]{3,8}$" })),
           widgetPosition: t.Optional(
             t.Union([t.Literal("bottom-right"), t.Literal("bottom-left")])
           ),
           welcomeMessage: t.Optional(t.String()),
-          isActive: t.Optional(t.Boolean()),
+        }),
+      }
+    )
+    .post(
+      "/:id/status",
+      async ({ params, body, set }) => {
+        const auth = await requireConsoleOrgAuth()
+        if ("error" in auth) {
+          set.status = auth.status
+          return { ok: false, error: auth.error }
+        }
+
+        const existing = await prisma.aiAgentProfile.findFirst({
+          where: { id: params.id, organizationId: auth.orgId },
+          include: listInclude,
+        })
+        if (!existing) {
+          set.status = 404
+          return { ok: false, error: "NOT_FOUND", message: "Agent not found" }
+        }
+
+        if (
+          body.status === "ACTIVE" &&
+          !existing.channelBindings.some((binding) => binding.isActive)
+        ) {
+          set.status = 409
+          return {
+            ok: false,
+            error: "AGENT_REQUIRES_ACTIVE_BINDING",
+            message: "Connect an active channel before activating the agent",
+          }
+        }
+
+        const status =
+          existing.status === "ARCHIVED" && body.status !== "ARCHIVED"
+            ? "DRAFT"
+            : body.status
+        const updated = await prisma.aiAgentProfile.update({
+          where: { id: existing.id },
+          data: {
+            status,
+            isActive: status === "ACTIVE",
+            archivedAt: status === "ARCHIVED" ? new Date() : null,
+          },
+          include: listInclude,
+        })
+
+        return { ok: true, data: toAiAgentListItemDTO(updated) }
+      },
+      {
+        body: t.Object({
+          status: t.Union([
+            t.Literal("ACTIVE"),
+            t.Literal("PAUSED"),
+            t.Literal("ARCHIVED"),
+            t.Literal("DRAFT"),
+          ]),
         }),
       }
     )
@@ -322,11 +375,26 @@ export function createConsoleAiAgentsRoutes() {
 
       const existing = await prisma.aiAgentProfile.findFirst({
         where: { id: params.id, organizationId: auth.orgId },
+        include: {
+          channelBindings: {
+            where: { isActive: true },
+            select: { id: true },
+          },
+        },
       })
 
       if (!existing) {
         set.status = 404
         return { ok: false, error: "NOT_FOUND", message: "Agent not found" }
+      }
+
+      if (existing.channelBindings.length > 0) {
+        set.status = 409
+        return {
+          ok: false,
+          error: "AGENT_HAS_ACTIVE_BINDINGS",
+          message: "Disconnect active channels before deleting the agent",
+        }
       }
 
       await prisma.aiAgentProfile.delete({

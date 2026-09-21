@@ -121,6 +121,8 @@ model AiAgentProfile {
   widgetPosition       String?                @default("bottom-right") // "bottom-right" | "bottom-left"
   welcomeMessage       String?                @default("Halo! Ada yang bisa kami bantu?")
   isActive             Boolean                @default(true)
+  status               AiAgentStatus          @default(DRAFT)
+  archivedAt           DateTime?
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
@@ -129,8 +131,16 @@ model AiAgentProfile {
   chatSessions         AiChatSession[]
   actionIntents        AiActionIntent[]
 
+  @@index([organizationId, status])
   @@index([organizationId, isActive])
   @@map("AiAgentProfile")
+}
+
+enum AiAgentStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
 }
 
 model AiKnowledgeDocument {
@@ -3847,4 +3857,3 @@ model AppRuntimeManifest {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
-

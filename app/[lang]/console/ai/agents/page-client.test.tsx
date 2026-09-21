@@ -29,13 +29,12 @@ mock.module("@/lib/eden", () => ({
                       id: "agent_1",
                       name: "Tanya CS",
                       description: "CS otomatis",
-                      systemPrompt: "Bantu pelanggan",
-                      dailyUserLimit: 20,
-                      enableProfanityFilter: true,
-                      allowInteractiveReplies: true,
-                      channelsCount: 1,
-                      isActive: true,
+                      status: "DRAFT",
+                      operationalStatus: "READY_TO_CONNECT",
+                      activeChannelsCount: 0,
                       channelBindings: [],
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
                     },
                   ],
                 },
@@ -65,56 +64,42 @@ describe("AiAgentsPageClient", () => {
     cleanup()
   })
 
-  it("renders tabs for agents and action intents", () => {
-    const { getAllByText, getByText } = render(<AiAgentsPageClient />)
-    expect(getAllByText("AI Studio & Asisten WhatsApp").length).toBeGreaterThan(
-      0
-    )
-    expect(getByText("Action Intents & Tools")).toBeDefined()
-    expect(getByText("Buat Alur / Asisten AI Baru")).toBeDefined()
+  it("renders the operational dashboard", () => {
+    const { getByText, getByPlaceholderText } = render(<AiAgentsPageClient />)
+    expect(getByText("AI Agents")).toBeDefined()
+    expect(getByText("Buat Agent")).toBeDefined()
+    expect(getByPlaceholderText("Cari agent")).toBeDefined()
   })
 
-  it("renders agent cards with interactive replies status and edit button", async () => {
-    const { findByText } = render(<AiAgentsPageClient />)
+  it("renders a truthful status and one primary action", async () => {
+    const { findByText, findByTestId } = render(<AiAgentsPageClient />)
     expect(await findByText("Tanya CS")).toBeDefined()
-    expect(await findByText("Peran Asisten:")).toBeDefined()
-    expect(await findByText("Kelola Nomor")).toBeDefined()
-    expect(await findByText("Buka di Canvas")).toBeDefined()
-    expect(await findByText("Edit Pengaturan")).toBeDefined()
-    expect(
-      await findByText(
-        "Izinkan Tombol Interaktif WhatsApp (Quick Replies & URL Links)"
-      )
-    ).toBeDefined()
+    expect(await findByText("Siap dihubungkan")).toBeDefined()
+    const card = await findByTestId("agent-card-agent_1")
+    expect(card.textContent).not.toContain("Bantu pelanggan")
+    expect(card.textContent).not.toContain("Aktif")
+    expect(card.querySelectorAll("button").length).toBe(2)
   })
 
-  it("opens edit modal and displays interactive replies toggle and preview", async () => {
-    const { findByText, getByText, getByTestId } = render(
+  it("filters agents by search", async () => {
+    const { findByText, getByPlaceholderText, queryByText } = render(
       <AiAgentsPageClient />
     )
-    const editBtn = await findByText("Edit Pengaturan")
-    fireEvent.click(editBtn)
-
-    expect(await findByText("Edit Profil Asisten AI")).toBeDefined()
-    expect(getByText("Pratinjau Balasan Interaktif")).toBeDefined()
-    expect(getByText("💬 Tanya Produk")).toBeDefined()
-    expect(getByText("📦 Cek Pesanan")).toBeDefined()
-    expect(getByText("🌐 Kunjungi Website")).toBeDefined()
-
-    const preview = getByTestId("interactive-replies-preview")
-    expect(preview.className).toContain("opacity-100")
+    await findByText("Tanya CS")
+    fireEvent.change(getByPlaceholderText("Cari agent"), {
+      target: { value: "tidak ada" },
+    })
+    expect(queryByText("Tanya CS")).toBeNull()
   })
 
-  it("renders embed website tab and button, navigating to customizer", async () => {
-    const { findAllByText, findByText } = render(<AiAgentsPageClient />)
-    await findByText("Tanya CS")
-    const embedButtons = await findAllByText("Embed Website")
-    expect(embedButtons.length).toBeGreaterThanOrEqual(2)
-
-    // Click the card button (second match)
-    fireEvent.click(embedButtons[1])
-
-    expect(await findByText("Pengaturan Widget Chat Website")).toBeDefined()
-    expect(await findByText("Kustomisasi Tampilan Widget")).toBeDefined()
+  it("keeps templates hidden and closes create dialog on cancel", async () => {
+    const { findByText, getByText, queryByText } = render(
+      <AiAgentsPageClient />
+    )
+    fireEvent.click(getByText("Buat Agent"))
+    expect(await findByText("Lihat template")).toBeDefined()
+    expect(queryByText("📦 Cek Status Resi")).toBeNull()
+    fireEvent.click(getByText("Batal"))
+    expect(queryByText("Rancang Asisten & Alur Otomatis")).toBeNull()
   })
 })

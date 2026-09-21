@@ -6390,10 +6390,58 @@ export const enMessages: AppMessages = {
       approveTemplate: "Approve Template",
     },
     aiAgents: {
-      heading: "AI Studio & WhatsApp Assistant",
-      subtitle:
-        "Design automated flows & smart WhatsApp assistants without coding. Just type what you want to the AI.",
-      createButton: "Create New Flow / AI Assistant",
+      heading: "AI Agents",
+      subtitle: "Create and manage agents that handle customer conversations.",
+      createButton: "Create Agent",
+      dashboard: {
+        noDescription: "No description",
+        noChannel: "No channel connected",
+        updated: "Updated",
+        searchPlaceholder: "Search agents",
+        filters: {
+          all: "All",
+          active: "Active",
+          draft: "Draft",
+          paused: "Paused",
+          archived: "Archived",
+        },
+        statuses: {
+          ACTIVE: "Active",
+          ARCHIVED: "Archived",
+          DRAFT: "Draft",
+          NEEDS_ATTENTION: "Needs attention",
+          PAUSED: "Paused",
+          READY_TO_CONNECT: "Ready to connect",
+        },
+        actions: {
+          open: "Open Agent",
+          continueSetup: "Continue Setup",
+          connect: "Connect WhatsApp",
+          repair: "Fix Agent",
+          reactivate: "Reactivate",
+          edit: "Edit Settings",
+          canvas: "Open in Canvas",
+          simulator: "Simulator",
+          embed: "Embed Website",
+          tools: "Actions & Tools",
+          pause: "Pause",
+          archive: "Archive",
+          restore: "Restore",
+          delete: "Delete",
+          more: "More agent actions",
+        },
+      },
+      lifecycle: {
+        updated: "Agent status updated.",
+        updateError: "Agent status could not be updated.",
+        deleted: "Agent deleted.",
+        deleteError:
+          "Agent cannot be deleted. Disconnect active channels first.",
+        deleteTitle: "Permanently delete this agent?",
+        deleteDescription:
+          "Related knowledge, sessions, actions, and bindings may also be deleted. This action cannot be undone.",
+        detailError: "Agent settings could not be loaded.",
+      },
       dialog: {
         title: "Design Assistant & Automated Flow",
         description:
@@ -6406,6 +6454,7 @@ export const enMessages: AppMessages = {
           "Update settings and WhatsApp channel behavior for this assistant.",
         saveChangesButton: "Save Changes",
         savingButton: "Saving...",
+        saveDraftButton: "Save as Draft",
       },
       tabs: {
         aiAssistant: "AI Assistance (Auto-Generate)",
@@ -6413,6 +6462,7 @@ export const enMessages: AppMessages = {
       },
       aiAssistant: {
         presetsLabel: "💡 Instant Flow Recommendations (Click to try):",
+        templatesButton: "View templates",
         presetTrackingLabel: "📦 Check Tracking Status",
         presetRegistrationLabel: "📝 Registration Form",
         presetGreetingLabel: "👋 Greeting Button Menu",

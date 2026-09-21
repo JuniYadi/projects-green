@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
+import { cleanup, render } from "@testing-library/react"
 
 const mockAgentsGet = mock(() =>
   Promise.resolve({
@@ -10,12 +10,20 @@ const mockAgentsGet = mock(() =>
           id: "agent-alpha",
           name: "Asisten Alpha",
           description: "Bot customer support",
-          systemPrompt: "Jawab sopan",
-          dailyUserLimit: 20,
-          enableProfanityFilter: true,
-          allowInteractiveReplies: true,
-          channelsCount: 1,
-          isActive: true,
+          status: "ACTIVE",
+          operationalStatus: "ACTIVE",
+          activeChannelsCount: 1,
+          channelBindings: [
+            {
+              id: "binding-alpha",
+              channel: "WHATSAPP",
+              targetId: "device-alpha",
+              targetName: "+628111111",
+              isActive: true,
+            },
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ],
     },
@@ -95,44 +103,23 @@ describe("AiAgentsPage with Simulator tab", () => {
     cleanup()
   })
 
-  it("renders Master Agent Profiles and Create button", async () => {
-    const { findAllByText, findByText } = render(<AiAgentsPage />)
-    const elements = await findAllByText("AI Studio & Asisten WhatsApp")
-    expect(elements.length).toBeGreaterThan(0)
-    expect(await findByText("Buat Alur / Asisten AI Baru")).toBeDefined()
+  it("renders the agents dashboard and create button", async () => {
+    const { findByText } = render(<AiAgentsPage />)
+    expect(await findByText("AI Agents")).toBeDefined()
+    expect(await findByText("Buat Agent")).toBeDefined()
   })
 
-  it("renders Simulator tab trigger alongside existing tabs", async () => {
-    const { getByRole, findByText } = render(<AiAgentsPage />)
-
-    // Wait for agents to load
+  it("does not expose advanced tools as global tabs", async () => {
+    const { queryByRole, findByText } = render(<AiAgentsPage />)
     await findByText("Asisten Alpha")
-
-    // Check simulator tab trigger exists
-    const simulatorTab = getByRole("tab", { name: /Simulator & Inspector/i })
-    expect(simulatorTab).toBeDefined()
+    expect(queryByRole("tab", { name: /Simulator & Inspector/i })).toBeNull()
   })
 
-  it(
-    "switches to simulator tab when card Simulator button is clicked",
-    async () => {
-    const { findByText, getAllByText, getByRole } = render(<AiAgentsPage />)
-
+  it("shows one primary action on an active agent", async () => {
+    const { findByText, findByTestId } = render(<AiAgentsPage />)
     await findByText("Asisten Alpha")
-
-    // Find the Simulator quick action button on the card
-    const simulatorBtns = getAllByText("Simulator")
-    expect(simulatorBtns.length).toBeGreaterThan(0)
-
-    // Click the button on the card
-    fireEvent.click(simulatorBtns[0])
-
-    // Verify simulator tab is now active
-    await waitFor(() => {
-      const simulatorTab = getByRole("tab", {
-        name: /Simulator & Inspector/i,
-      })
-      expect(simulatorTab.getAttribute("data-state")).toBe("active")
-    })
+    const card = await findByTestId("agent-card-agent-alpha")
+    expect(card.textContent).toContain("Buka Agent")
+    expect(card.querySelectorAll("button").length).toBe(2)
   })
 })

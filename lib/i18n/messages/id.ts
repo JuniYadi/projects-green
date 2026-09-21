@@ -6447,10 +6447,58 @@ export const idMessages: AppMessages = {
       approveTemplate: "Setujui Template",
     },
     aiAgents: {
-      heading: "AI Studio & Asisten WhatsApp",
-      subtitle:
-        "Rancang alur otomatis & asisten cerdas WhatsApp tanpa coding. Cukup ketik apa yang Anda inginkan ke AI.",
-      createButton: "Buat Alur / Asisten AI Baru",
+      heading: "AI Agents",
+      subtitle: "Buat dan kelola agent yang menangani percakapan pelanggan.",
+      createButton: "Buat Agent",
+      dashboard: {
+        noDescription: "Tanpa deskripsi",
+        noChannel: "Belum ada channel",
+        updated: "Diperbarui",
+        searchPlaceholder: "Cari agent",
+        filters: {
+          all: "Semua",
+          active: "Aktif",
+          draft: "Draft",
+          paused: "Dijeda",
+          archived: "Diarsipkan",
+        },
+        statuses: {
+          ACTIVE: "Aktif",
+          ARCHIVED: "Diarsipkan",
+          DRAFT: "Draft",
+          NEEDS_ATTENTION: "Perlu perhatian",
+          PAUSED: "Dijeda",
+          READY_TO_CONNECT: "Siap dihubungkan",
+        },
+        actions: {
+          open: "Buka Agent",
+          continueSetup: "Lanjutkan Setup",
+          connect: "Hubungkan WhatsApp",
+          repair: "Perbaiki Agent",
+          reactivate: "Aktifkan Kembali",
+          edit: "Edit Pengaturan",
+          canvas: "Buka di Canvas",
+          simulator: "Simulator",
+          embed: "Embed Website",
+          tools: "Actions & Tools",
+          pause: "Jeda",
+          archive: "Arsipkan",
+          restore: "Pulihkan",
+          delete: "Hapus",
+          more: "Aksi agent lainnya",
+        },
+      },
+      lifecycle: {
+        updated: "Status agent diperbarui.",
+        updateError: "Status agent gagal diperbarui.",
+        deleted: "Agent berhasil dihapus.",
+        deleteError:
+          "Agent tidak dapat dihapus. Lepaskan channel aktif terlebih dahulu.",
+        deleteTitle: "Hapus agent secara permanen?",
+        deleteDescription:
+          "Knowledge, sesi, action, dan binding terkait dapat ikut terhapus. Tindakan ini tidak dapat dibatalkan.",
+        detailError: "Pengaturan agent gagal dimuat.",
+      },
       dialog: {
         title: "Rancang Asisten & Alur Otomatis",
         description:
@@ -6464,6 +6512,7 @@ export const idMessages: AppMessages = {
           "untuk asisten ini.",
         saveChangesButton: "Simpan Perubahan",
         savingButton: "Menyimpan...",
+        saveDraftButton: "Simpan sebagai Draft",
       },
       tabs: {
         aiAssistant: "Bantuan AI (Auto-Generate)",
@@ -6471,6 +6520,7 @@ export const idMessages: AppMessages = {
       },
       aiAssistant: {
         presetsLabel: "💡 Rekomendasi Alur Instan (Klik untuk coba):",
+        templatesButton: "Lihat template",
         presetTrackingLabel: "📦 Cek Status Resi",
         presetRegistrationLabel: "📝 Formulir Pendaftaran",
         presetGreetingLabel: "👋 Menu Tombol Sapaan",

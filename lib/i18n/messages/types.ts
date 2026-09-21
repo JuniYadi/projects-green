@@ -5839,6 +5839,52 @@ export type AppMessages = {
       heading: string
       subtitle: string
       createButton: string
+      dashboard: {
+        noDescription: string
+        noChannel: string
+        updated: string
+        searchPlaceholder: string
+        filters: Record<
+          "all" | "active" | "draft" | "paused" | "archived",
+          string
+        >
+        statuses: Record<
+          | "ACTIVE"
+          | "ARCHIVED"
+          | "DRAFT"
+          | "NEEDS_ATTENTION"
+          | "PAUSED"
+          | "READY_TO_CONNECT",
+          string
+        >
+        actions: Record<
+          | "open"
+          | "continueSetup"
+          | "connect"
+          | "repair"
+          | "reactivate"
+          | "edit"
+          | "canvas"
+          | "simulator"
+          | "embed"
+          | "tools"
+          | "pause"
+          | "archive"
+          | "restore"
+          | "delete"
+          | "more",
+          string
+        >
+      }
+      lifecycle: {
+        updated: string
+        updateError: string
+        deleted: string
+        deleteError: string
+        deleteTitle: string
+        deleteDescription: string
+        detailError: string
+      }
       dialog: {
         title: string
         description: string
@@ -5849,6 +5895,7 @@ export type AppMessages = {
         editDescription: string
         saveChangesButton: string
         savingButton: string
+        saveDraftButton: string
       }
       tabs: {
         aiAssistant: string
@@ -5856,6 +5903,7 @@ export type AppMessages = {
       }
       aiAssistant: {
         presetsLabel: string
+        templatesButton: string
         presetTrackingLabel: string
         presetRegistrationLabel: string
         presetGreetingLabel: string

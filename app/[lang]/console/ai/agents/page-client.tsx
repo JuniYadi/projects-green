@@ -8,7 +8,6 @@ import {
   Robot,
   WhatsappLogo,
   Plus,
-  ShieldCheck,
   Sparkle,
   ChatCircleDots,
   PaperPlaneRight,
@@ -16,8 +15,6 @@ import {
   Lightning,
   ArrowsClockwise,
   PencilSimple,
-  Globe,
-  Flask,
 } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
@@ -28,13 +25,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -48,28 +39,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ActionIntentBuilder from "@/modules/ai/agents/ui/action-intent-builder"
 import WidgetEmbedCustomizer from "@/modules/ai/widget/ui/widget-embed-customizer"
 import AgentSimulator from "@/modules/ai/agents/ui/agent-simulator"
+import type { AiAgentListItemDTO } from "@/modules/ai/agents/ai-agent.dto"
+import { AgentListItem } from "@/modules/ai/agents/ui/agent-list-item"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
-export type AgentProfile = {
-  id: string
-  name: string
-  description?: string | null
+export type AgentProfile = AiAgentListItemDTO & {
   systemPrompt?: string | null
-  fallbackMessage?: string | null
-  dailyUserLimit: number
-  enableProfanityFilter: boolean
+  dailyUserLimit?: number
+  enableProfanityFilter?: boolean
   allowInteractiveReplies?: boolean
   allowedDomains?: string[]
   widgetColor?: string | null
   widgetPosition?: string | null
   welcomeMessage?: string | null
-  channelsCount: number
-  isActive: boolean
-  channelBindings?: {
-    id: string
-    channel: string
-    targetId: string
-    targetName: string | null
-  }[]
 }
 
 type GeneratedStep = {
@@ -94,6 +85,11 @@ export default function AiAgentsPage() {
 
   const [agents, setAgents] = useState<AgentProfile[]>([])
   const [activeMainTab, setActiveMainTab] = useState("agents")
+  const [filter, setFilter] = useState<
+    "all" | "active" | "draft" | "paused" | "archived"
+  >("all")
+  const [search, setSearch] = useState("")
+  const [agentToDelete, setAgentToDelete] = useState<AgentProfile | null>(null)
   const [selectedAgentForActions, setSelectedAgentForActions] = useState<
     string | null
   >(null)
@@ -111,6 +107,7 @@ export default function AiAgentsPage() {
   const [enableProfanity, setEnableProfanity] = useState(true)
   const [allowInteractiveReplies, setAllowInteractiveReplies] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
 
   // Edit Agent Profile States
   const [editingAgent, setEditingAgent] = useState<AgentProfile | null>(null)
@@ -150,14 +147,16 @@ export default function AiAgentsPage() {
   >(null)
   const loadAgents = useCallback(async () => {
     try {
-      const res = await eden.api.console.ai.agents.get()
+      const res = await eden.api.console.ai.agents.get({
+        $query: { includeArchived: "true" },
+      })
       if (res.data && res.data.ok && Array.isArray(res.data.data)) {
         setAgents(res.data.data as AgentProfile[])
       }
     } catch (err) {
       console.warn("[ai-agents] load error:", err)
     }
-  }, [])
+  }, [setAgents])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -358,14 +357,20 @@ export default function AiAgentsPage() {
     }
   }
 
-  const handleOpenEditModal = (agent: AgentProfile) => {
-    setEditingAgent(agent)
-    setEditName(agent.name)
-    setEditDescription(agent.description || "")
-    setEditSystemPrompt(agent.systemPrompt || "")
-    setEditDailyLimit(agent.dailyUserLimit || 20)
-    setEditEnableProfanity(agent.enableProfanityFilter ?? true)
-    setEditAllowInteractiveReplies(agent.allowInteractiveReplies ?? true)
+  const handleOpenEditModal = async (agent: AgentProfile) => {
+    const res = await eden.api.console.ai.agents[agent.id].get()
+    if (!res.data?.ok) {
+      toast.error(messages.lifecycle.detailError)
+      return
+    }
+    const detail = res.data.data as AgentProfile
+    setEditingAgent(detail)
+    setEditName(detail.name)
+    setEditDescription(detail.description || "")
+    setEditSystemPrompt(detail.systemPrompt || "")
+    setEditDailyLimit(detail.dailyUserLimit || 20)
+    setEditEnableProfanity(detail.enableProfanityFilter ?? true)
+    setEditAllowInteractiveReplies(detail.allowInteractiveReplies ?? true)
     setEditModalOpen(true)
   }
 
@@ -506,6 +511,50 @@ export default function AiAgentsPage() {
     }
   }
 
+  const filteredAgents = agents.filter((agent) => {
+    const matchesSearch = `${agent.name} ${agent.description || ""}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+    if (!matchesSearch) return false
+    if (filter === "archived") return agent.status === "ARCHIVED"
+    if (agent.status === "ARCHIVED") return false
+    if (filter === "active") return agent.operationalStatus === "ACTIVE"
+    if (filter === "paused") return agent.operationalStatus === "PAUSED"
+    if (filter === "draft") {
+      return ["DRAFT", "READY_TO_CONNECT", "NEEDS_ATTENTION"].includes(
+        agent.operationalStatus
+      )
+    }
+    return true
+  })
+
+  const handleStatusChange = async (
+    agent: AgentProfile,
+    status: "ACTIVE" | "ARCHIVED" | "DRAFT" | "PAUSED"
+  ) => {
+    const res = await eden.api.console.ai.agents[agent.id].status.post({
+      status,
+    })
+    if (res.data?.ok) {
+      toast.success(messages.lifecycle.updated)
+      await loadAgents()
+    } else {
+      toast.error(messages.lifecycle.updateError)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!agentToDelete) return
+    const res = await eden.api.console.ai.agents[agentToDelete.id].delete()
+    if (res.data?.ok) {
+      toast.success(messages.lifecycle.deleted)
+      setAgentToDelete(null)
+      await loadAgents()
+    } else {
+      toast.error(messages.lifecycle.deleteError)
+    }
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <Tabs
@@ -513,31 +562,6 @@ export default function AiAgentsPage() {
         onValueChange={setActiveMainTab}
         className="w-full space-y-6"
       >
-        <div
-          className={
-            "flex items-center justify-between border-b border-border pb-3"
-          }
-        >
-          <TabsList>
-            <TabsTrigger value="agents" className="gap-2 text-xs">
-              <Robot size={15} />
-              <span>{messages.heading}</span>
-            </TabsTrigger>
-            <TabsTrigger value="simulator" className="gap-2 text-xs">
-              <Flask size={15} className="text-emerald-500" />
-              <span>{messages.simulator.tabTitle}</span>
-            </TabsTrigger>
-            <TabsTrigger value="action-intents" className="gap-2 text-xs">
-              <Lightning size={15} weight="fill" className="text-emerald-500" />
-              <span>{messages.actionIntents.tabTitle}</span>
-            </TabsTrigger>
-            <TabsTrigger value="widget-embed" className="gap-2 text-xs">
-              <Globe size={15} className="text-emerald-500" />
-              <span>{messages.widgetEmbed.tabTitle}</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
         <TabsContent value="agents" className="mt-0 space-y-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -588,61 +612,71 @@ export default function AiAgentsPage() {
                       value="ai-assistant"
                       className="space-y-4 pt-2"
                     >
-                      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                        <Label className="text-xs font-semibold text-emerald-600">
-                          {messages.aiAssistant.presetsLabel}
-                        </Label>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => {
-                              setAssistantPrompt(
-                                "Bikinin bot untuk cek nomor resi & status pengiriman paket"
-                              )
-                              void handleGenerateWorkflow(
-                                "Bikinin bot untuk cek nomor resi & status pengiriman paket"
-                              )
-                            }}
-                          >
-                            {messages.aiAssistant.presetTrackingLabel}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => {
-                              setAssistantPrompt(
-                                "Formulir pendaftaran dan tanya kebutuhan prospek baru"
-                              )
-                              void handleGenerateWorkflow(
-                                "Formulir pendaftaran dan tanya kebutuhan prospek baru"
-                              )
-                            }}
-                          >
-                            {messages.aiAssistant.presetRegistrationLabel}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => {
-                              setAssistantPrompt(
-                                "Menu tombol selamat datang dan info kontak CS"
-                              )
-                              void handleGenerateWorkflow(
-                                "Menu tombol selamat datang dan info kontak CS"
-                              )
-                            }}
-                          >
-                            {messages.aiAssistant.presetGreetingLabel}
-                          </Button>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto px-0"
+                        onClick={() => setShowTemplates((visible) => !visible)}
+                      >
+                        {messages.aiAssistant.templatesButton}
+                      </Button>
+                      {showTemplates ? (
+                        <div className="rounded-xl border border-border bg-muted/30 p-4">
+                          <Label className="text-xs font-semibold text-emerald-600">
+                            {messages.aiAssistant.presetsLabel}
+                          </Label>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                setAssistantPrompt(
+                                  "Bikinin bot untuk cek nomor resi & status pengiriman paket"
+                                )
+                                void handleGenerateWorkflow(
+                                  "Bikinin bot untuk cek nomor resi & status pengiriman paket"
+                                )
+                              }}
+                            >
+                              {messages.aiAssistant.presetTrackingLabel}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                setAssistantPrompt(
+                                  "Formulir pendaftaran dan tanya kebutuhan prospek baru"
+                                )
+                                void handleGenerateWorkflow(
+                                  "Formulir pendaftaran dan tanya kebutuhan prospek baru"
+                                )
+                              }}
+                            >
+                              {messages.aiAssistant.presetRegistrationLabel}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                setAssistantPrompt(
+                                  "Menu tombol selamat datang dan info kontak CS"
+                                )
+                                void handleGenerateWorkflow(
+                                  "Menu tombol selamat datang dan info kontak CS"
+                                )
+                              }}
+                            >
+                              {messages.aiAssistant.presetGreetingLabel}
+                            </Button>
+                          </div>
                         </div>
-                      </div>
+                      ) : null}
 
                       <div className="space-y-2">
                         <Label>{messages.aiAssistant.promptLabel}</Label>
@@ -862,7 +896,9 @@ export default function AiAgentsPage() {
                       disabled={!name.trim() || saving}
                       className="bg-emerald-600 text-white hover:bg-emerald-700"
                     >
-                      {saving ? "Menyimpan..." : "Simpan & Aktifkan"}
+                      {saving
+                        ? messages.dialog.savingButton
+                        : messages.dialog.saveDraftButton}
                     </Button>
                   )}
                 </DialogFooter>
@@ -870,13 +906,36 @@ export default function AiAgentsPage() {
             </Dialog>
           </div>
 
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {(["all", "active", "draft", "paused", "archived"] as const).map(
+                (value) => (
+                  <Button
+                    key={value}
+                    variant={filter === value ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setFilter(value)}
+                  >
+                    {messages.dashboard.filters[value]}
+                  </Button>
+                )
+              )}
+            </div>
+            <Input
+              className="sm:max-w-xs"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={messages.dashboard.searchPlaceholder}
+              aria-label={messages.dashboard.searchPlaceholder}
+            />
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
-            {agents.length === 0 ? (
+            {filteredAgents.length === 0 ? (
               <Card className="col-span-2 flex flex-col items-center justify-center border-dashed p-8 text-center">
                 <ChatCircleDots
                   size={36}
-                  className="mb-2 text-emerald-500"
-                  weight="duotone"
+                  className="mb-2 text-muted-foreground"
                 />
                 <p className="text-sm font-medium">
                   {messages.emptyState.title}
@@ -886,208 +945,49 @@ export default function AiAgentsPage() {
                 </p>
               </Card>
             ) : (
-              agents.map((agent) => (
-                <Card key={agent.id} className="border-border">
-                  <CardHeader className="flex flex-row items-start justify-between pb-2">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-base font-semibold">
-                          {agent.name}
-                        </CardTitle>
-                        {agent.isActive && (
-                          <Badge
-                            variant="secondary"
-                            className="bg-emerald-500/10 text-emerald-500"
-                          >
-                            {messages.badge.active}
-                          </Badge>
-                        )}
-                      </div>
-                      <CardDescription className="text-xs">
-                        {agent.description || "Tanpa deskripsi"}
-                      </CardDescription>
-                    </div>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
-                      <Robot size={18} />
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs">
-                      <span className="mb-1 block text-[11px] font-medium text-muted-foreground">
-                        {messages.card.roleLabel}
-                      </span>
-                      <p className="line-clamp-2 text-foreground/90 italic">
-                        &ldquo;
-                        {agent.systemPrompt || "Alur otomatis terkonfigurasi"}
-                        &rdquo;
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className="text-muted-foreground">
-                          {messages.card.dailyLimitLabel}
-                        </span>
-                        <span className="ml-1 font-mono font-medium">
-                          {agent.dailyUserLimit} {messages.card.reqPerUser}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-emerald-500">
-                        <ShieldCheck size={14} />
-                        <span>{messages.card.antiSpamProtection}</span>
-                      </div>
-                    </div>
-
-                    <div
-                      className={
-                        "flex items-center justify-between rounded-md border " +
-                        "border-border/60 bg-muted/40 px-2.5 py-1.5 text-[11px]"
-                      }
-                    >
-                      <span className="text-muted-foreground">
-                        {messages.interactiveReplies.title}
-                      </span>
-                      <Badge
-                        variant={
-                          agent.allowInteractiveReplies !== false
-                            ? "secondary"
-                            : "outline"
-                        }
-                        className={
-                          agent.allowInteractiveReplies !== false
-                            ? "border-emerald-500/20 bg-emerald-500/10 " +
-                              "text-[10px] text-emerald-600 " +
-                              "dark:text-emerald-400"
-                            : "text-[10px] text-muted-foreground"
-                        }
-                      >
-                        {agent.allowInteractiveReplies !== false
-                          ? messages.interactiveReplies.badgeEnabled
-                          : messages.interactiveReplies.badgeDisabled}
-                      </Badge>
-                    </div>
-
-                    <div className="flex flex-col gap-2.5 border-t border-border pt-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <WhatsappLogo
-                            size={16}
-                            className="text-emerald-500"
-                          />
-                          <span>
-                            {agent.channelsCount || 0}{" "}
-                            {messages.card.channelsConnectedLabel}
-                          </span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => handleOpenBindingModal(agent)}
-                        >
-                          {messages.card.manageNumbersButton}
-                        </Button>
-                      </div>
-
-                      {agent.channelBindings &&
-                        agent.channelBindings.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {agent.channelBindings.map((b) => (
-                              <Badge
-                                key={b.id}
-                                variant="secondary"
-                                className={
-                                  "border border-emerald-500/20 bg-emerald-500/5 " +
-                                  "text-[10px] text-emerald-600 dark:text-emerald-400"
-                                }
-                              >
-                                📱 {b.targetName || b.targetId}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-2">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 gap-1 text-xs"
-                            onClick={() => {
-                              setSelectedAgentForSimulator(agent.id)
-                              setActiveMainTab("simulator")
-                            }}
-                          >
-                            <Flask size={13} className="text-emerald-500" />
-                            <span>{messages.card.simulatorButton}</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 gap-1 text-xs"
-                            onClick={() => {
-                              setSelectedAgentForWidget(agent.id)
-                              setActiveMainTab("widget-embed")
-                            }}
-                          >
-                            <Globe size={13} className="text-emerald-500" />
-                            <span>{messages.card.embedWebsiteButton}</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 gap-1 text-xs"
-                            onClick={() => {
-                              setSelectedAgentForActions(agent.id)
-                              setActiveMainTab("action-intents")
-                            }}
-                          >
-                            <Lightning
-                              size={13}
-                              className="text-emerald-500"
-                              weight="fill"
-                            />
-                            <span>Actions</span>
-                          </Button>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 gap-1 text-xs"
-                            onClick={() => handleOpenEditModal(agent)}
-                          >
-                            <PencilSimple size={13} />
-                            <span>{messages.card.editButton}</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            className={
-                              "h-8 gap-1 bg-emerald-600 text-xs font-medium " +
-                              "text-white hover:bg-emerald-700 " +
-                              "dark:hover:bg-emerald-600"
-                            }
-                            asChild
-                          >
-                            <Link
-                              href={
-                                `/${lang}/console/ai/agents/${agent.id}/canvas` +
-                                `?agentProfileId=${agent.id}&agentProfileName=` +
-                                encodeURIComponent(agent.name)
-                              }
-                              title="Buka Canvas Workflow"
-                            >
-                              <Sparkle size={13} weight="fill" />
-                              <span>{messages.card.openCanvasButton}</span>
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              filteredAgents.map((agent) => (
+                <AgentListItem
+                  key={agent.id}
+                  agent={agent}
+                  lang={lang}
+                  copy={messages.dashboard}
+                  onPrimaryAction={(selected) => {
+                    if (
+                      ["READY_TO_CONNECT", "NEEDS_ATTENTION"].includes(
+                        selected.operationalStatus
+                      )
+                    ) {
+                      void handleOpenBindingModal(selected)
+                    } else if (
+                      selected.operationalStatus === "PAUSED" &&
+                      selected.activeChannelsCount > 0
+                    ) {
+                      void handleStatusChange(selected, "ACTIVE")
+                    } else {
+                      void handleOpenEditModal(selected)
+                    }
+                  }}
+                  onEdit={(selected) => void handleOpenEditModal(selected)}
+                  onAdvancedAction={(selected, action) => {
+                    if (action === "simulator")
+                      setSelectedAgentForSimulator(selected.id)
+                    if (action === "embed")
+                      setSelectedAgentForWidget(selected.id)
+                    if (action === "tools")
+                      setSelectedAgentForActions(selected.id)
+                    setActiveMainTab(
+                      action === "tools"
+                        ? "action-intents"
+                        : action === "embed"
+                          ? "widget-embed"
+                          : "simulator"
+                    )
+                  }}
+                  onStatusChange={(selected, status) =>
+                    void handleStatusChange(selected, status)
+                  }
+                  onDelete={setAgentToDelete}
+                />
               ))
             )}
           </div>
@@ -1315,6 +1215,29 @@ export default function AiAgentsPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          <AlertDialog
+            open={Boolean(agentToDelete)}
+            onOpenChange={(open) => !open && setAgentToDelete(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {messages.lifecycle.deleteTitle}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {messages.lifecycle.deleteDescription}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>
+                  {messages.dialog.cancelButton}
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={() => void handleDelete()}>
+                  {messages.dashboard.actions.delete}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         <TabsContent value="simulator" className="mt-0">
