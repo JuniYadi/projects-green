@@ -52,6 +52,26 @@ describe("EnvVarsEditor", () => {
     expect(view.getByRole("button", { name: "Delete" })).toBeTruthy()
   })
 
+  it("shows legacy plain values even when their old masked flag is set", () => {
+    const view = render(
+      <EnvVarsEditor
+        envVars={[
+          {
+            id: "legacy-plain",
+            key: "APP_ENV",
+            value: "production",
+            type: "plain",
+            masked: true,
+          },
+        ]}
+        onChange={() => {}}
+      />
+    )
+
+    expect(view.getByText("production")).toBeTruthy()
+    expect(view.queryByText("••••••••")).toBeNull()
+  })
+
   it("creates a managed-service reference without storing a value", async () => {
     const user = userEvent.setup()
     const changes: EnvVar[][] = []
@@ -302,11 +322,26 @@ describe("EnvVarsEditor", () => {
     )
   })
 
-  it("blocks duplicate imports before writing stack-scoped Vault secrets", async () => {
+  it("updates existing keys during a stack-scoped .env import", async () => {
     const user = userEvent.setup()
+    const changes: EnvVar[][] = []
     const fetchMock = mock(async () => {
       return new Response(
-        JSON.stringify({ ok: true, data: { references: [] } }),
+        JSON.stringify({
+          ok: true,
+          data: {
+            references: [
+              {
+                key: "DATABASE_PASSWORD",
+                type: "secret_ref",
+                vaultPath: "stacks/stack-1/prod/app-env",
+                vaultKey: "DATABASE_PASSWORD",
+                version: 2,
+                updatedAt: "2026-09-22T00:00:00.000Z",
+              },
+            ],
+          },
+        }),
         { headers: { "content-type": "application/json" } }
       )
     })
@@ -326,7 +361,7 @@ describe("EnvVarsEditor", () => {
             },
           ]}
           environmentId="prod"
-          onChange={() => {}}
+          onChange={(rows) => changes.push(rows)}
           persistence="local"
           stackId="stack-1"
         />
@@ -339,10 +374,15 @@ describe("EnvVarsEditor", () => {
       )
       await user.click(view.getByRole("button", { name: "Import variables" }))
 
-      expect(view.getByRole("alert")).toHaveTextContent(
-        "Import contains duplicate keys: DATABASE_PASSWORD."
-      )
-      expect(fetchMock).not.toHaveBeenCalled()
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      expect(changes.at(-1)).toEqual([
+        expect.objectContaining({
+          id: "secret-1",
+          key: "DATABASE_PASSWORD",
+          type: "secret_ref",
+          version: 2,
+        }),
+      ])
     } finally {
       globalThis.fetch = originalFetch
     }

@@ -5,7 +5,6 @@ import {
   Eye,
   EyeOff,
   KeyRound,
-  Link2,
   Pencil,
   Plus,
   Trash2,
@@ -192,7 +191,7 @@ const normalizeRows = (rows: EnvVar[]): EnvVar[] => {
       ...row,
       type,
       scope: row.scope ?? "runtime",
-      masked: isSecretEnvVarType(type) || Boolean(row.masked),
+      masked: isSecretEnvVarType(type),
       isStoredSecret: isSecretEnvVarType(type)
         ? Boolean(row.isStoredSecret ?? true)
         : false,
@@ -761,9 +760,6 @@ export function EnvVarsEditor({
     const duplicateKeys = new Set<string>()
     const oversizedKeys = new Set<string>()
     const invalidKeys = new Set<string>()
-    const existingKeys = new Set(
-      normalizedRows.map((row) => row.key.trim().toUpperCase())
-    )
     const seenKeys = new Set<string>()
 
     for (const entry of parsedImport.entries) {
@@ -775,7 +771,7 @@ export function EnvVarsEditor({
       if (entry.value.length > ENV_VAR_MAX_VALUE_SIZE) {
         oversizedKeys.add(key)
       }
-      if (seenKeys.has(key) || existingKeys.has(key)) {
+      if (seenKeys.has(key)) {
         duplicateKeys.add(key)
       }
 
@@ -818,7 +814,31 @@ export function EnvVarsEditor({
     }
 
     const now = new Date().toISOString()
-    const rows = parsedImport.entries.map((entry) => ({
+    const importedByKey = new Map(
+      parsedImport.entries.map((entry) => [entry.key, entry])
+    )
+    const updatedRows = normalizedRows.map((row) => {
+      const entry = importedByKey.get(row.key.trim().toUpperCase())
+      if (!entry) return row
+      importedByKey.delete(entry.key)
+      return {
+        ...row,
+        value: entry.type === "plain" ? entry.value : "",
+        type: entry.type,
+        masked: entry.type === "secret_ref",
+        isStoredSecret: entry.type === "secret_ref",
+        lastUpdatedAt: now,
+        ...(entry.type === "plain"
+          ? {
+              source: undefined,
+              vaultPath: undefined,
+              vaultKey: undefined,
+              version: undefined,
+            }
+          : { source: "vault" as const }),
+      }
+    })
+    const addedRows = [...importedByKey.values()].map((entry) => ({
       id: `env-${Math.random().toString(36).slice(2, 10)}`,
       key: entry.key,
       value: entry.type === "plain" ? entry.value : "",
@@ -830,15 +850,15 @@ export function EnvVarsEditor({
       ...(entry.type === "secret_ref" ? { source: "vault" as const } : {}),
     }))
 
-    commitRows([...rows, ...normalizedRows])
+    commitRows([...addedRows, ...updatedRows])
     setImportRaw("")
     setFormError(null)
     setSheetOpen(false)
-    pushToast("success", `Imported ${rows.length} variables from .env.`)
+    pushToast("success", `Imported ${parsedImport.entries.length} variables from .env.`)
     pushActivity({
       id: createActivityId(),
       action: "imported",
-      message: `Imported ${rows.length} variables from .env.`,
+      message: `Imported ${parsedImport.entries.length} variables from .env.`,
       occurredAt: now,
     })
   }
@@ -896,10 +916,15 @@ export function EnvVarsEditor({
               references.map((reference) => [reference.key, reference])
             )
             const now = new Date().toISOString()
-            const rows = parsedImport.entries.map((entry) => {
+            const importedRows = parsedImport.entries.map((entry) => {
+              const current = normalizedRows.find(
+                (row) => row.key.trim().toUpperCase() === entry.key
+              )
               if (entry.type === "plain") {
                 return {
-                  id: `env-${Math.random().toString(36).slice(2, 10)}`,
+                  id:
+                    current?.id ??
+                    `env-${Math.random().toString(36).slice(2, 10)}`,
                   key: entry.key,
                   value: entry.value,
                   type: "plain" as const,
@@ -911,16 +936,19 @@ export function EnvVarsEditor({
               }
               const reference = referenceByKey.get(entry.key)
               return reference
-                ? createRowFromVaultReference(
+                ? {
+                    ...createRowFromVaultReference(
                     {
                       ...createEmptyForm(),
+                      id: current?.id ?? null,
                       key: entry.key,
                       value: "",
                       type: "secret_ref",
                       scope: "runtime",
                     },
                     reference
-                  )
+                    ),
+                  }
                 : toEnvVarFromForm(
                     {
                       ...createEmptyForm(),
@@ -932,15 +960,24 @@ export function EnvVarsEditor({
                     undefined
                   )
             })
-            commitRows([...rows, ...normalizedRows])
+            const importedKeys = new Set(
+              parsedImport.entries.map((entry) => entry.key)
+            )
+            const unchangedRows = normalizedRows.filter(
+              (row) => !importedKeys.has(row.key.trim().toUpperCase())
+            )
+            commitRows([...importedRows, ...unchangedRows])
             setImportRaw("")
             setFormError(null)
             setSheetOpen(false)
-            pushToast("success", `Imported ${rows.length} variables from .env.`)
+            pushToast(
+              "success",
+              `Imported ${importedRows.length} variables from .env.`
+            )
             pushActivity({
               id: createActivityId(),
               action: "imported",
-              message: `Imported ${rows.length} variables from .env into Vault.`,
+              message: `Imported ${importedRows.length} variables from .env into Vault.`,
               occurredAt: now,
             })
           } catch (error) {
