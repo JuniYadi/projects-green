@@ -36,6 +36,21 @@ const catalog: CatalogListResponse = {
         },
       ],
     },
+    {
+      code: "APP_HOSTING",
+      name: "App Hosting",
+      description: "Managed application hosting",
+      isActive: true,
+      plans: [
+        {
+          id: "plan-2",
+          code: "APP_STARTER",
+          name: "App Starter",
+          resources: {},
+          offers: [],
+        },
+      ],
+    },
   ],
 }
 
@@ -136,7 +151,6 @@ describe("promotion creation tabs", () => {
           expiresAt: "",
         })}
         onUpdate={mock()}
-        isNew
       />
     )
 
@@ -147,6 +161,40 @@ describe("promotion creation tabs", () => {
       "type",
       "datetime-local"
     )
+  })
+
+  it("filters plans and billing terms to the selected product", async () => {
+    const onUpdate = mock()
+    const view = render(
+      <VoucherRulesTab
+        voucher={createVoucher({
+          kind: "PRODUCT_PROMOTION",
+          discountType: "PERCENTAGE",
+          discountValue: "15",
+        })}
+        onUpdate={onUpdate}
+      />
+    )
+
+    await view.findByText("App Starter")
+    fireEvent.click(view.getAllByRole("checkbox")[0]!)
+
+    expect(onUpdate).toHaveBeenCalledWith({ allowedPackageCodes: ["VPN"] })
+
+    view.rerender(
+      <VoucherRulesTab
+        voucher={createVoucher({
+          kind: "PRODUCT_PROMOTION",
+          discountType: "PERCENTAGE",
+          discountValue: "15",
+          allowedPackageCodes: ["VPN"],
+        })}
+        onUpdate={onUpdate}
+      />
+    )
+
+    expect(view.getByText("VPN Pro")).toBeInTheDocument()
+    expect(view.queryByText("App Starter")).toBeNull()
   })
 
   it("blocks product publishing without eligibility, billing periods, or expiry", () => {
@@ -210,7 +258,9 @@ describe("promotion creation tabs", () => {
       />
     )
 
-    fireEvent.click(view.getByRole("radio", { name: /publish now/i }))
+    fireEvent.click(
+      view.getByRole("radio", { name: /publish immediately|publish now/i })
+    )
     expect(onUpdate).toHaveBeenCalledWith({ status: "ACTIVE" })
   })
 })

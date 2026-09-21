@@ -14,6 +14,7 @@ import {
 import { VoucherService } from "../vouchers.service"
 import {
   createPortalVoucherSchema,
+  updatePromotionSchema,
   updateVoucherSchema,
   listVouchersQuerySchema,
   voucherIdParamSchema,
@@ -361,23 +362,62 @@ export const createPortalVoucherRoutes = (
           }
         }
 
-        const bodyParsed = updateVoucherSchema.safeParse(body)
-        if (!bodyParsed.success) {
+        try {
+          const existing = await service.getVoucherById(idParsed.data.id)
+          const bodyParsed =
+            existing.kind === "PRODUCT_PROMOTION"
+              ? updatePromotionSchema.safeParse(body)
+              : updateVoucherSchema.safeParse(body)
+          if (!bodyParsed.success) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VALIDATION_ERROR" as const,
+              message: "Please fix the highlighted fields and try again.",
+              fieldErrors: fieldErrorMapFromIssues(bodyParsed.error.issues),
+            }
+          }
+
+          const voucher =
+            existing.kind === "PRODUCT_PROMOTION"
+              ? await service.updatePromotion(idParsed.data.id, bodyParsed.data)
+              : await service.updateVoucher(idParsed.data.id, bodyParsed.data)
+
+          return {
+            ok: true as const,
+            data: toVoucherDTO(voucher),
+          }
+        } catch (error) {
+          return toErrorResponse(set, error)
+        }
+      })
+
+      // POST /vouchers/portal/:id/publish — publish a disabled voucher
+      .post("/:id/publish", async ({ params, set }) => {
+        const auth = await authenticate()
+
+        if (!auth.user) {
+          return toUnauthorized(set)
+        }
+
+        const actor = await resolveActor(auth, getPlatformRole)
+        if (!isAdmin(actor)) {
+          return toForbidden(set, "Only administrators can publish vouchers.")
+        }
+
+        const parsed = voucherIdParamSchema.safeParse(params)
+        if (!parsed.success) {
           set.status = 422
           return {
             ok: false as const,
             error: "VALIDATION_ERROR" as const,
             message: "Please fix the highlighted fields and try again.",
-            fieldErrors: fieldErrorMapFromIssues(bodyParsed.error.issues),
+            fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
           }
         }
 
         try {
-          const voucher = await service.updateVoucher(
-            idParsed.data.id,
-            bodyParsed.data
-          )
-
+          const voucher = await service.publishVoucher(parsed.data.id)
           return {
             ok: true as const,
             data: toVoucherDTO(voucher),

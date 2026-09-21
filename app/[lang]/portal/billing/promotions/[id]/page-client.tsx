@@ -135,18 +135,37 @@ function VoucherEditorShell({
 
       setIsSaving(true)
       try {
-        const update = {
-          ...voucher,
-          status: draft ? "DISABLED" : "ACTIVE",
+        const update = buildVoucherUpdate(voucher, draft)
+        const response = await eden.api.vouchers.portal[voucherId].patch(
+          update as never
+        )
+        const responseData = response.data as
+          | { ok?: boolean; data?: VoucherDetailDTO; message?: string }
+          | undefined
+        if (responseData?.ok === false) {
+          throw new Error(responseData.message || t.failedToSaveVoucher)
         }
-        await eden.api.vouchers.portal[voucherId].patch(update as never)
+
+        if (!draft && voucher.status !== "ACTIVE") {
+          const publishResponse =
+            await eden.api.vouchers.portal[voucherId].publish.post()
+          const publishData = publishResponse.data as
+            | { ok?: boolean; data?: VoucherDetailDTO; message?: string }
+            | undefined
+          if (publishData?.ok === false) {
+            throw new Error(publishData.message || t.failedToSaveVoucher)
+          }
+          if (publishData?.data) setVoucher(publishData.data)
+        } else if (responseData?.data) {
+          setVoucher(responseData.data)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : t.failedToSaveVoucher)
       } finally {
         setIsSaving(false)
       }
     },
-    [voucher, voucherId]
+    [t.failedToSaveVoucher, voucher, voucherId]
   )
 
   const handleDisable = useCallback(async () => {
@@ -431,4 +450,43 @@ function validateVoucher(
   }
 
   return errors
+}
+
+function buildVoucherUpdate(
+  voucher: VoucherDetailDTO,
+  draft: boolean
+): Record<string, unknown> {
+  const update: Record<string, unknown> = {
+    maxClaims: voucher.maxClaims,
+    expiresAt: voucher.expiresAt,
+    targetWorkosUserId: voucher.targetWorkosUserId,
+    targetOrganizationId: voucher.targetOrganizationId,
+    metadataJson: voucher.metadataJson,
+  }
+
+  if (draft) update.status = "DISABLED"
+
+  if (voucher.kind === "BALANCE_CREDIT") {
+    update.amount = Number(voucher.amount)
+    update.currency = voucher.currency
+  } else {
+    update.discountType = voucher.discountType
+    update.discountValue = Number(voucher.discountValue)
+    update.discountCurrency = voucher.discountCurrency
+    update.currencyPolicy = voucher.currencyPolicy
+    update.firstCheckoutOnly = voucher.firstCheckoutOnly
+    update.allowUpgrade = voucher.allowUpgrade
+    update.stackable = voucher.stackable
+    update.minimumOrderAmount = voucher.minimumOrderAmount
+      ? Number(voucher.minimumOrderAmount)
+      : null
+    update.maximumDiscountAmount = voucher.maximumDiscountAmount
+      ? Number(voucher.maximumDiscountAmount)
+      : null
+    update.allowedPackageCodes = voucher.allowedPackageCodes
+    update.allowedPlanCodes = voucher.allowedPlanCodes
+    update.allowedBillingPeriods = voucher.allowedBillingPeriods
+  }
+
+  return update
 }

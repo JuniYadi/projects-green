@@ -117,6 +117,7 @@ export function VoucherTypeTab({
                 min="0"
                 step="0.01"
                 value={voucher.amount}
+                onWheel={(event) => event.currentTarget.blur()}
                 onChange={(event) =>
                   onUpdate({ amount: Number(event.target.value) })
                 }
@@ -195,6 +196,7 @@ export function VoucherTypeTab({
                   min="0"
                   step="0.01"
                   value={voucher.discountValue ?? ""}
+                  onWheel={(event) => event.currentTarget.blur()}
                   onChange={(event) =>
                     onUpdate({
                       discountValue: event.target.value
