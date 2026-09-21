@@ -73,6 +73,8 @@ describe("Console AI Agents Route", () => {
         widgetPosition: "bottom-left",
         welcomeMessage: "Halo, ada yang bisa dibantu?",
         isActive: true,
+        status: "ACTIVE",
+        archivedAt: null,
         providerConfigId: null,
         providerConfig: null,
         channelBindings: [
@@ -84,7 +86,6 @@ describe("Console AI Agents Route", () => {
             isActive: true,
           },
         ],
-        knowledgeDocs: [],
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -98,7 +99,8 @@ describe("Console AI Agents Route", () => {
     const json = (await res.json()) as {
       ok: boolean
       data: {
-        channelsCount: number
+        activeChannelsCount: number
+        operationalStatus: string
         allowInteractiveReplies: boolean
         allowedDomains: string[]
         widgetColor: string
@@ -108,12 +110,9 @@ describe("Console AI Agents Route", () => {
     }
     expect(json.ok).toBe(true)
     expect(json.data.length).toBe(1)
-    expect(json.data[0].channelsCount).toBe(1)
-    expect(json.data[0].allowInteractiveReplies).toBe(true)
-    expect(json.data[0].allowedDomains).toEqual(["toko.co.id", "*.klinik.com"])
-    expect(json.data[0].widgetColor).toBe("#2563EB")
-    expect(json.data[0].widgetPosition).toBe("bottom-left")
-    expect(json.data[0].welcomeMessage).toBe("Halo, ada yang bisa dibantu?")
+    expect(json.data[0].activeChannelsCount).toBe(1)
+    expect(json.data[0].operationalStatus).toBe("ACTIVE")
+    expect(json.data[0]).not.toHaveProperty("systemPrompt")
   })
 
   it("creates agent profile", async () => {
@@ -127,7 +126,12 @@ describe("Console AI Agents Route", () => {
       enableProfanityFilter: true,
       allowInteractiveReplies: false,
       providerConfigId: null,
-      isActive: true,
+      isActive: false,
+      status: "DRAFT",
+      archivedAt: null,
+      channelBindings: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
     })
 
     const res = await app.handle(
@@ -158,7 +162,10 @@ describe("Console AI Agents Route", () => {
         widgetColor: "#7C3AED",
         widgetPosition: "bottom-right",
         welcomeMessage: "Halo kak!",
+        status: "DRAFT",
+        isActive: false,
       }),
+      include: expect.any(Object),
     })
   })
 
@@ -291,5 +298,91 @@ describe("Console AI Agents Route", () => {
     expect(mockPrisma.aiChannelBinding.delete).toHaveBeenCalledWith({
       where: { id: "bind_wa" },
     })
+  })
+
+  it("rejects activation without an active channel", async () => {
+    mockPrisma.aiAgentProfile.findFirst.mockResolvedValue({
+      id: "agent_1",
+      organizationId: "org_1",
+      status: "DRAFT",
+      channelBindings: [],
+    })
+
+    const res = await app.handle(
+      new Request("http://localhost/console/ai/agents/agent_1/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ACTIVE" }),
+      })
+    )
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ error: "AGENT_REQUIRES_ACTIVE_BINDING" })
+    )
+    expect(mockPrisma.aiAgentProfile.update).not.toHaveBeenCalled()
+  })
+
+  it("pauses an agent and synchronizes runtime state", async () => {
+    const agent = {
+      id: "agent_1",
+      organizationId: "org_1",
+      name: "Support",
+      description: null,
+      systemPrompt: "Help customers",
+      status: "ACTIVE",
+      channelBindings: [
+        {
+          id: "binding_1",
+          channel: "WHATSAPP",
+          targetId: "device_1",
+          targetName: "Support",
+          isActive: true,
+        },
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    mockPrisma.aiAgentProfile.findFirst.mockResolvedValue(agent)
+    mockPrisma.aiAgentProfile.update.mockResolvedValue({
+      ...agent,
+      status: "PAUSED",
+      isActive: false,
+    })
+
+    const res = await app.handle(
+      new Request("http://localhost/console/ai/agents/agent_1/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "PAUSED" }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.aiAgentProfile.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "PAUSED", isActive: false }),
+      })
+    )
+  })
+
+  it("rejects deleting an agent with an active binding", async () => {
+    mockPrisma.aiAgentProfile.findFirst.mockResolvedValue({
+      id: "agent_1",
+      organizationId: "org_1",
+      channelBindings: [{ id: "binding_1" }],
+    })
+
+    const res = await app.handle(
+      new Request("http://localhost/console/ai/agents/agent_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ error: "AGENT_HAS_ACTIVE_BINDINGS" })
+    )
+    expect(mockPrisma.aiAgentProfile.delete).not.toHaveBeenCalled()
   })
 })
