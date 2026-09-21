@@ -70,11 +70,8 @@ describe("DeploymentSplitWorkspace", () => {
     expect(rightColumn?.className).toContain("lg:col-span-8")
 
     // Left column: metadata badges & timeline
-    expect(view.getByText("Attempt #2")).toBeInTheDocument()
-    expect(view.getByText("Building")).toBeInTheDocument()
-    expect(view.getByText("main")).toBeInTheDocument()
-    expect(view.getByText("Git Webhook")).toBeInTheDocument()
-    expect(view.getByText("Status timeline")).toBeInTheDocument()
+    expect(view.getByText("Deployment progress")).toBeInTheDocument()
+    expect(view.getByText("#2 · Status timeline")).toBeInTheDocument()
 
     // Right column: terminal with source tabs
     expect(view.getByText("Live Jenkins Log")).toBeInTheDocument()

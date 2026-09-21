@@ -161,6 +161,56 @@ describe("JenkinsLiveTerminal", () => {
     })
   })
 
+  it("keeps a completed selected stage at the top while logs update", async () => {
+    globalThis.fetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          text: [
+            "[Pipeline] { (Checkout)",
+            "Cloning repository",
+            "[Pipeline] { (Build image)",
+            "docker build .",
+          ].join("\n"),
+          isBuilding: true,
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      )
+    ) as unknown as typeof globalThis.fetch
+
+    const view = render(
+      <JenkinsLiveTerminal
+        slug="my-app"
+        deployId="deploy-1"
+        status="building"
+        locale="en"
+        selectedJenkinsStage="Checkout"
+      />
+    )
+    const terminalViewport = view.getByTestId("terminal-scroll-viewport")
+
+    await waitFor(() => {
+      expect(view.getByText("Cloning repository")).toBeInTheDocument()
+    })
+    Object.defineProperty(terminalViewport, "scrollHeight", {
+      configurable: true,
+      value: 800,
+    })
+    terminalViewport.scrollTop = 0
+
+    view.rerender(
+      <JenkinsLiveTerminal
+        slug="my-app"
+        deployId="deploy-1"
+        status="building"
+        locale="en"
+        selectedJenkinsStage="Checkout"
+      />
+    )
+
+    expect(terminalViewport.scrollTop).toBe(0)
+  })
+
   it("filters lines with search input", async () => {
     globalThis.fetch = mock(async () => {
       return new Response(

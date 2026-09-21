@@ -8,7 +8,6 @@ import {
   Globe,
   HardDrive,
   Key,
-  RocketLaunch,
   WarningOctagon,
   Wrench,
 } from "@phosphor-icons/react"
@@ -956,8 +955,8 @@ export default function PlatformInstanceWorkspacePage() {
 
           {/* TAB 2: DEPLOYMENTS */}
           {activeWorkspaceTab === "deployments" && (
-            <div className="space-y-6">
-              <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-4">
+              <div className="flex min-h-12 items-center rounded-lg border border-border bg-card px-2 py-1">
                 {historyLoading ? (
                   <p className="px-2 text-xs text-muted-foreground">
                     {tDeployments.loadingHistory}
@@ -1036,32 +1035,6 @@ export default function PlatformInstanceWorkspacePage() {
                     {tDeployments.noAttempts}
                   </p>
                 )}
-                <div className="shrink-0">
-                  {overview.stack.sourceType !== "TEMPLATE" &&
-                    !overview.stack.templateId && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => void handleDeploy(false)}
-                        disabled={isDeploying}
-                        className="h-8 gap-1.5 px-3 text-xs"
-                      >
-                        <RocketLaunch
-                          size={14}
-                          className={isDeploying ? "animate-pulse" : ""}
-                        />
-                        <span>
-                          {isDeploying
-                            ? locale === "id"
-                              ? "Sedang Deploy..."
-                              : "Deploying..."
-                            : locale === "id"
-                              ? "Deploy Update"
-                              : "Deploy Update"}
-                        </span>
-                      </Button>
-                    )}
-                </div>
               </div>
 
               <AppMonitor
