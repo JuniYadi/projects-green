@@ -66,8 +66,8 @@ describe("DeploymentSplitWorkspace", () => {
     expect(workspace.className).toContain("lg:grid-cols-12")
 
     const [leftColumn, rightColumn] = Array.from(workspace.children)
-    expect(leftColumn?.className).toContain("lg:col-span-6")
-    expect(rightColumn?.className).toContain("lg:col-span-6")
+    expect(leftColumn?.className).toContain("lg:col-span-4")
+    expect(rightColumn?.className).toContain("lg:col-span-8")
 
     // Left column: metadata badges & timeline
     expect(view.getByText("Attempt #2")).toBeInTheDocument()

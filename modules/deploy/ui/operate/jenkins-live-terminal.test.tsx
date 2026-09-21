@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import {
   JenkinsLiveTerminal,
   parseAnsiLine,
+  parseJenkinsStages,
   stripAnsi,
 } from "./jenkins-live-terminal"
 
@@ -20,6 +21,37 @@ describe("JenkinsLiveTerminal", () => {
   afterEach(() => {
     cleanup()
     globalThis.fetch = originalFetch
+  })
+
+  it("groups Jenkins console output into selectable pipeline stages", () => {
+    const stages = parseJenkinsStages(
+      [
+        "[Pipeline] Start of Pipeline",
+        "[Pipeline] { (Checkout)",
+        "Cloning repository",
+        "[Pipeline] { (Build image)",
+        "docker build .",
+        "[Pipeline] { (Security scan)",
+        "ERROR: vulnerabilities found",
+      ],
+      false
+    )
+
+    expect(stages).toEqual([
+      { name: "Checkout", startLine: 1, endLine: 3, status: "completed" },
+      {
+        name: "Build image",
+        startLine: 3,
+        endLine: 5,
+        status: "completed",
+      },
+      {
+        name: "Security scan",
+        startLine: 5,
+        endLine: 7,
+        status: "failed",
+      },
+    ])
   })
 
   describe("ANSI parser utilities", () => {

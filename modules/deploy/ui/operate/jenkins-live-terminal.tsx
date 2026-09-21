@@ -45,6 +45,43 @@ type AnsiSpan = {
   className?: string
 }
 
+export type JenkinsStage = {
+  name: string
+  startLine: number
+  endLine: number
+  status: "completed" | "running" | "failed"
+}
+
+export function parseJenkinsStages(
+  lines: string[],
+  isBuilding: boolean
+): JenkinsStage[] {
+  const starts: Array<{ name: string; startLine: number }> = []
+
+  lines.forEach((line, index) => {
+    const plainLine = stripAnsi(line)
+    const match = plainLine.match(/\[Pipeline\]\s+\{\s+\((.+)\)\s*$/)
+    if (match?.[1]) {
+      starts.push({ name: match[1].trim(), startLine: index })
+    }
+  })
+
+  return starts.map((stage, index) => {
+    const endLine = starts[index + 1]?.startLine ?? lines.length
+    const stageLines = lines.slice(stage.startLine, endLine)
+    const failed = stageLines.some((line) =>
+      /(?:error|failed|failure|exception)/i.test(stripAnsi(line))
+    )
+    const running = isBuilding && index === starts.length - 1
+
+    return {
+      ...stage,
+      endLine,
+      status: failed ? "failed" : running ? "running" : "completed",
+    }
+  })
+}
+
 export function stripAnsi(text: string): string {
   return text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "")
 }
@@ -131,6 +168,9 @@ export function JenkinsLiveTerminal({
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [copied, setCopied] = useState<boolean>(false)
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false)
+  const [selectedJenkinsStage, setSelectedJenkinsStage] = useState<string | null>(
+    null
+  )
   const [authFailed, setAuthFailed] = useState<boolean>(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
@@ -296,13 +336,34 @@ export function JenkinsLiveTerminal({
   // Current active raw lines
   const currentLines = useMemo(() => {
     if (activeTab === "jenkins") {
-      return jenkinsLogs ? jenkinsLogs.split("\n") : []
+      const lines = jenkinsLogs ? jenkinsLogs.split("\n") : []
+      if (!selectedJenkinsStage) return lines
+      const stage = parseJenkinsStages(lines, isStreaming).find(
+        (item) => item.name === selectedJenkinsStage
+      )
+      return stage ? lines.slice(stage.startLine, stage.endLine) : lines
     }
     if (activeTab === "gitops") {
       return gitopsLogs
     }
     return appLogs
-  }, [activeTab, jenkinsLogs, gitopsLogs, appLogs])
+  }, [
+    activeTab,
+    jenkinsLogs,
+    gitopsLogs,
+    appLogs,
+    selectedJenkinsStage,
+    isStreaming,
+  ])
+
+  const jenkinsStages = useMemo(
+    () =>
+      parseJenkinsStages(
+        jenkinsLogs ? jenkinsLogs.split("\n") : [],
+        isStreaming
+      ),
+    [jenkinsLogs, isStreaming]
+  )
 
   // Filtered lines with search query
   const filteredLines = useMemo(() => {
@@ -454,6 +515,48 @@ export function JenkinsLiveTerminal({
         </div>
       </div>
 
+      {activeTab === "jenkins" && jenkinsStages.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-muted/20 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setSelectedJenkinsStage(null)}
+            className={cn(
+              "shrink-0 rounded-md px-2 py-1 text-[11px] font-medium",
+              selectedJenkinsStage === null
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-muted"
+            )}
+          >
+            All logs
+          </button>
+          {jenkinsStages.map((stage) => (
+            <button
+              key={`${stage.name}-${stage.startLine}`}
+              type="button"
+              onClick={() => setSelectedJenkinsStage(stage.name)}
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium",
+                selectedJenkinsStage === stage.name
+                  ? "border-border bg-background text-foreground shadow-2xs"
+                  : "border-transparent text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  stage.status === "failed"
+                    ? "bg-destructive"
+                    : stage.status === "running"
+                      ? "animate-pulse bg-blue-500"
+                      : "bg-emerald-500"
+                )}
+              />
+              {stage.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Filter toolbar */}
       <div className="flex items-center justify-between border-b border-border bg-muted/20 px-3 py-1.5">
         <div className="relative w-64">
@@ -539,7 +642,7 @@ export function JenkinsLiveTerminal({
         ref={terminalContainerRef}
         data-testid="terminal-scroll-viewport"
         className={cn(
-          "relative overflow-y-auto bg-zinc-950 p-4 font-mono text-xs text-zinc-100 selection:bg-zinc-800",
+          "relative overflow-y-auto bg-zinc-950 p-3 font-mono text-[11px] leading-4 text-zinc-100 selection:bg-zinc-800",
           isFullscreen
             ? "h-full min-h-0 max-h-none flex-1"
             : "h-[420px] min-h-[420px] max-h-[420px] flex-none"
