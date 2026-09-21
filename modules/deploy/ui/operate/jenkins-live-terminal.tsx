@@ -320,11 +320,22 @@ export function JenkinsLiveTerminal({
 
   // Autoscroll logic
   useEffect(() => {
-    if (autoScroll && terminalContainerRef.current) {
+    if (
+      autoScroll &&
+      !selectedJenkinsStage &&
+      terminalContainerRef.current
+    ) {
       terminalContainerRef.current.scrollTop =
         terminalContainerRef.current.scrollHeight
     }
-  }, [jenkinsLogs, gitopsLogs, appLogs, activeTab, autoScroll])
+  }, [
+    jenkinsLogs,
+    gitopsLogs,
+    appLogs,
+    activeTab,
+    autoScroll,
+    selectedJenkinsStage,
+  ])
 
   useEffect(() => {
     if (!terminalContainerRef.current || activeTab !== "jenkins") return
