@@ -300,4 +300,124 @@ describe("VaultSecretsService", () => {
       })
     ).rejects.toBeInstanceOf(VaultSecretsServiceError)
   })
+  describe("deleteSecret", () => {
+    it("removes the key from Vault KV and from envVarsJson in DB", async () => {
+      const envVarsJson = [
+        {
+          id: "var-1",
+          key: "DATABASE_URL",
+          type: "secret_ref",
+          vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+          vaultKey: "DATABASE_URL",
+          environment: "prod",
+        },
+        {
+          id: "var-2",
+          key: "APP_ENV",
+          type: "plain",
+          value: "staging",
+        },
+      ]
+      const dependencies = createDependencies(envVarsJson)
+      dependencies.client.readKV = mock(async () => ({
+        DATABASE_URL: "postgres://secret",
+        ANOTHER_KEY: "other-value",
+      }))
+      const service = new VaultSecretsService(dependencies as never)
+
+      const result = await service.deleteSecret({
+        stackId: "stack-1",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "DATABASE_URL",
+        variableId: "var-1",
+        currentEnvVarsJson: envVarsJson,
+      })
+
+      expect(result.deleted).toBe(true)
+      expect(result.vaultKey).toBe("DATABASE_URL")
+
+      // Wrote remaining secrets back to Vault (without DATABASE_URL)
+      expect(dependencies.client.writeKV).toHaveBeenCalledWith(
+        "tenants/org-1/stacks/stack-1/prod/app-env",
+        { ANOTHER_KEY: "other-value" }
+      )
+
+      // DB update removed the entry with id "var-1"
+      const updateCall = dependencies.db.applicationStack.update.mock
+        .calls[0]?.[0] as { data?: { envVarsJson?: unknown } } | undefined
+      const storedItems = updateCall?.data?.envVarsJson as unknown[]
+      expect(Array.isArray(storedItems)).toBe(true)
+      expect(storedItems).toHaveLength(1)
+      const remaining = storedItems[0] as { id: string }
+      expect(remaining.id).toBe("var-2")
+    })
+
+    it("returns deleted=false when key was not in Vault KV", async () => {
+      const envVarsJson = [
+        {
+          id: "var-1",
+          key: "MISSING_KEY",
+          type: "secret_ref",
+          vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+          vaultKey: "MISSING_KEY",
+          environment: "prod",
+        },
+      ]
+      const dependencies = createDependencies(envVarsJson)
+      dependencies.client.readKV = mock(async () => ({
+        OTHER_KEY: "other-value",
+      }))
+      const service = new VaultSecretsService(dependencies as never)
+
+      const result = await service.deleteSecret({
+        stackId: "stack-1",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "MISSING_KEY",
+        variableId: "var-1",
+        currentEnvVarsJson: envVarsJson,
+      })
+
+      // Key was not present so deleted=false
+      expect(result.deleted).toBe(false)
+
+      // writeKV was NOT called since no key to remove
+      expect(dependencies.client.writeKV).not.toHaveBeenCalled()
+
+      // DB update still happened to remove the entry
+      expect(dependencies.db.applicationStack.update).toHaveBeenCalledTimes(1)
+    })
+
+    it("gracefully handles 404 from Vault (secret path not found)", async () => {
+      const envVarsJson = [
+        {
+          id: "var-1",
+          key: "GONE_KEY",
+          type: "secret_ref",
+          vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+          vaultKey: "GONE_KEY",
+          environment: "prod",
+        },
+      ]
+      const dependencies = createDependencies(envVarsJson)
+      dependencies.client.readKV = mock(async () => {
+        throw new VaultSecretNotFoundError("not found")
+      })
+      const service = new VaultSecretsService(dependencies as never)
+
+      const result = await service.deleteSecret({
+        stackId: "stack-1",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "GONE_KEY",
+        variableId: "var-1",
+        currentEnvVarsJson: envVarsJson,
+      })
+
+      // Treat 404 from Vault as key not present
+      expect(result.deleted).toBe(false)
+
+      // DB entry was still removed
+      expect(dependencies.db.applicationStack.update).toHaveBeenCalledTimes(1)
+    })
+  })
+
 })

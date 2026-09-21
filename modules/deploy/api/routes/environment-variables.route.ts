@@ -1,9 +1,9 @@
 import { Elysia } from "elysia"
 import { z } from "zod"
+import type { Prisma, PrismaClient } from "@prisma/client"
 
 import {
   createEnvironmentVariable,
-  deleteEnvironmentVariable,
   importEnvironmentVariables,
   listEnvironmentVariables,
   updateEnvironmentVariable,
@@ -15,11 +15,22 @@ import {
 } from "@/modules/tenants/api/tenants.errors"
 import { isTenantApiError } from "@/modules/tenants/contracts/tenant-api.contract"
 import { canManageTenant } from "@/modules/tenants/tenant-policy"
+import { prisma } from "@/lib/prisma"
+import {
+  VaultSecretsService,
+  VaultStackNotFoundError,
+} from "@/modules/secrets/vault-secrets.service"
+import { syncStackConfiguration } from "@/modules/deploy/sync-stack.service"
+
+type StackDb = Pick<PrismaClient, "applicationStack">
 
 type EnvironmentVariablesRouteDeps = {
   requireActor: (
     set: RouteSet
   ) => Promise<Awaited<ReturnType<typeof requireTenantActor>>>
+  db?: StackDb
+  vaultService?: VaultSecretsService
+  sync?: typeof syncStackConfiguration
 }
 
 const defaultDependencies: EnvironmentVariablesRouteDeps = {
@@ -44,6 +55,14 @@ const createRouteGuard =
 
     return null
   }
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v)
+
+const toStoredItems = (value: unknown): Record<string, unknown>[] => {
+  if (!Array.isArray(value)) return []
+  return value.filter(isRecord)
+}
 
 const createSchema = z.object({
   key: z.string(),
@@ -80,6 +99,9 @@ export const createEnvironmentVariablesRoutes = (
   input: EnvironmentVariablesRouteDeps = defaultDependencies
 ) => {
   const guard = createRouteGuard(input)
+  const db = input.db ?? prisma
+  const vault = input.vaultService ?? new VaultSecretsService({ db })
+  const doSync = input.sync ?? syncStackConfiguration
 
   return new Elysia({ prefix: "/deploy/environments/:environmentId/variables" })
     .get("/", async ({ params, set }) => {
@@ -143,15 +165,122 @@ export const createEnvironmentVariablesRoutes = (
       }
     )
     .delete("/:variableId", async ({ params, set }) => {
-      const denied = await guard(set)
-      if (denied) {
-        return denied
+      const actorResult = await input.requireActor(set)
+
+      if (isTenantApiError(actorResult)) {
+        return actorResult
       }
 
-      return deleteEnvironmentVariable({
-        environmentId: params.environmentId,
-        variableId: params.variableId,
+      if (!canManageTenant(actorResult)) {
+        return toPolicyError(
+          set,
+          "DEPLOY_ENVIRONMENT_VARIABLES_FORBIDDEN",
+          "You are not allowed to manage deploy environment variables."
+        )
+      }
+
+      const organizationId = actorResult.organizationId
+      if (!organizationId) {
+        set.status = 403
+        return {
+          ok: false as const,
+          error: "FORBIDDEN" as const,
+          message: "Organization context required.",
+        }
+      }
+
+      const stackId = params.environmentId
+
+      // Look up stack from DB, scoped to org
+      const stack = await db.applicationStack.findFirst({
+        where: { id: stackId, organizationId },
+        select: {
+          id: true,
+          slug: true,
+          organizationId: true,
+          envVarsJson: true,
+        },
       })
+
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false as const,
+          error: "NOT_FOUND" as const,
+          message: "Application stack not found.",
+        }
+      }
+
+      const items = toStoredItems(stack.envVarsJson)
+      const entry = items.find((item) => item.id === params.variableId)
+
+      if (!entry) {
+        set.status = 404
+        return {
+          ok: false as const,
+          error: "NOT_FOUND" as const,
+          message: "Environment variable not found.",
+        }
+      }
+
+      // Delete from Vault if this is a secret type with a vault path
+      const isVaultSecret =
+        (entry.type === "secret" || entry.type === "secret_ref") &&
+        typeof entry.vaultPath === "string" &&
+        entry.vaultPath.length > 0 &&
+        typeof entry.vaultKey === "string" &&
+        entry.vaultKey.length > 0
+
+      if (isVaultSecret) {
+        try {
+          await vault.deleteSecret({
+            stackId: stack.id,
+            vaultPath: entry.vaultPath as string,
+            vaultKey: entry.vaultKey as string,
+            variableId: params.variableId,
+            currentEnvVarsJson: stack.envVarsJson,
+          })
+        } catch (err) {
+          // deleteSecret() threw before reaching its DB update — still clean up DB
+          const nextItems = items.filter(
+            (item) => item.id !== params.variableId
+          )
+          await db.applicationStack.update({
+            where: { id: stack.id },
+            data: { envVarsJson: nextItems as Prisma.InputJsonValue },
+          })
+
+          if (!(err instanceof VaultStackNotFoundError)) {
+            console.error("[env-vars] Vault deleteSecret error:", err)
+            set.status = 500
+            return {
+              ok: false as const,
+              error: "VAULT_DELETE_FAILED" as const,
+              message:
+                "Failed to remove secret from Vault. Please try again.",
+            }
+          }
+        }
+      } else {
+        // Plain var: remove from DB directly
+        const nextItems = items.filter(
+          (item) => item.id !== params.variableId
+        )
+        await db.applicationStack.update({
+          where: { id: stack.id },
+          data: { envVarsJson: nextItems as Prisma.InputJsonValue },
+        })
+      }
+
+      // Non-blocking sync to K8s/GitOps
+      doSync({ slug: stack.slug, organizationId }).catch((syncErr) => {
+        console.warn(
+          `[env-vars] Background syncStackConfiguration for ${stack.slug} failed:`,
+          syncErr
+        )
+      })
+
+      return { ok: true as const, deletedId: params.variableId }
     })
     .post(
       "/import",

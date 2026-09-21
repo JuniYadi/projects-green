@@ -62,6 +62,21 @@ export type VaultSecretRevealResult = {
   vaultPath: string
 }
 
+export type VaultSecretDeleteInput = {
+  stackId: string
+  vaultPath: string
+  vaultKey: string
+  variableId: string
+  /** Pre-fetched envVarsJson from the stack — avoids a redundant DB lookup */
+  currentEnvVarsJson: unknown
+}
+
+export type VaultSecretDeleteResult = {
+  deleted: boolean
+  vaultPath: string
+  vaultKey: string
+}
+
 export class VaultSecretsServiceError extends Error {
   constructor(message: string) {
     super(message)
@@ -425,6 +440,50 @@ export class VaultSecretsService {
       value,
       version: reference.version,
       vaultPath,
+    }
+  }
+
+  async deleteSecret(
+    input: VaultSecretDeleteInput
+  ): Promise<VaultSecretDeleteResult> {
+    // Read current KV, remove the key, write back
+    let existingSecrets: Record<string, string> = {}
+    try {
+      existingSecrets = await this.client.readKV(input.vaultPath)
+    } catch (error) {
+      if (!(error instanceof VaultSecretNotFoundError)) {
+        throw error
+      }
+    }
+
+    const normalizedKey = input.vaultKey.trim().toUpperCase()
+    const keyWasPresent = Object.prototype.hasOwnProperty.call(
+      existingSecrets,
+      normalizedKey
+    )
+
+    if (keyWasPresent) {
+      const { [normalizedKey]: _removed, ...remaining } = existingSecrets
+      await this.client.writeKV(input.vaultPath, remaining)
+    }
+
+    // Remove entry from envVarsJson in DB using pre-fetched data
+    const currentItems = toStoredItems(
+      input.currentEnvVarsJson as Prisma.JsonValue
+    )
+    const nextItems = currentItems.filter(
+      (item) => item.id !== input.variableId
+    )
+
+    await this.db.applicationStack.update({
+      where: { id: input.stackId },
+      data: { envVarsJson: nextItems as unknown as Prisma.InputJsonValue },
+    })
+
+    return {
+      deleted: keyWasPresent,
+      vaultPath: input.vaultPath,
+      vaultKey: normalizedKey,
     }
   }
 
