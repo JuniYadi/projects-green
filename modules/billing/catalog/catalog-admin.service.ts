@@ -898,10 +898,7 @@ export class CatalogAdminService {
     const products: CatalogMigrationProduct[] = pkg.plans.map((plan) => {
       const offers = plan.pricings.map((pr) => ({
         billingPeriod: pr.billingPeriod as
-          | "MONTHLY"
-          | "QUARTERLY"
-          | "SEMI_ANNUAL"
-          | "ANNUAL",
+          "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL",
         chargeUnit: pr.chargeUnit as "SUBSCRIPTION" | "DEVICE",
         periodPrice: Number(pr.periodPrice ?? pr.basePriceIdr ?? 0),
         currency: pr.currency,
@@ -937,16 +934,11 @@ export class CatalogAdminService {
             name: addon.name,
             description: addon.description,
             billingMode: addon.billingMode as
-              | "RECURRING"
-              | "ONE_TIME"
-              | "USAGE",
+              "RECURRING" | "ONE_TIME" | "USAGE",
             isActive: addon.isActive,
             prices: addon.prices.map((p) => ({
               billingPeriod: p.billingPeriod as
-                | "MONTHLY"
-                | "QUARTERLY"
-                | "SEMI_ANNUAL"
-                | "ANNUAL",
+                "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL",
               amount: Number(p.amount),
               currency: p.currency,
               effectiveFrom: p.effectiveFrom
@@ -1225,7 +1217,7 @@ export class CatalogAdminService {
         })
 
         for (const offer of prod.offers) {
-          const regionId = defaultRegion?.id
+          const regionId = offer.regionId ?? defaultRegion?.id
           if (!regionId) {
             throw new CatalogRegionNotFoundError()
           }
@@ -1287,8 +1279,7 @@ export class CatalogAdminService {
               isRequired: att.isRequired,
               displayOrder: att.displayOrder,
               enabledTerms: (att.enabledTerms ?? undefined) as
-                | Record<string, unknown>
-                | undefined,
+                Record<string, unknown> | undefined,
               isActive: att.isActive,
             })
           } else {

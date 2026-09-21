@@ -71,6 +71,7 @@ const db = {
   serviceAddon: {
     findFirst: mock<MockFunction>(() => null),
     findUnique: mock<MockFunction>(() => null),
+    findMany: mock<MockFunction>(() => []),
     create: mock<MockFunction>(() => ({
       id: "addon-1",
       code: "EXTRA_IP",
@@ -136,6 +137,7 @@ describe("CatalogAdminService", () => {
     db.servicePlan.findFirst.mockReturnValue(null)
     db.servicePricing.findFirst.mockReturnValue(null)
     db.serviceAddon.findFirst.mockReturnValue(null)
+    db.serviceAddon.findMany.mockReturnValue([])
     db.serviceAddonPricing.findFirst.mockReturnValue(null)
     db.servicePlanAddon.findFirst.mockReturnValue(null)
     db.serviceRegion.findFirst.mockReturnValue({
@@ -1198,6 +1200,76 @@ describe("CatalogAdminService", () => {
       expect(result.summary.productsToUpdate).toBe(0)
       expect(result.diffs.products[0].action).toBe("create")
       expect(result.appliedAt).toBeUndefined()
+    })
+
+    it("uses offer.regionId when importing catalog, not the default region", async () => {
+      const sgRegionId = "region-sg"
+      const defaultRegionId = "region-id" // Indonesia — created first
+
+      // Override default region to Indonesia (oldest by createdAt)
+      db.serviceRegion.findFirst.mockReturnValue({
+        id: defaultRegionId,
+        code: "INDONESIA",
+        isActive: true,
+      })
+      const createdPkg = {
+        id: "pkg-1",
+        code: "APP_HOSTING",
+        name: "App Hosting",
+      }
+      db.servicePackage.create.mockReturnValue(createdPkg)
+      // findFirst: first call (in upsertPackage) returns null → triggers create,
+      // second call (in upsertPlan) returns the created pkg
+      db.servicePackage.findFirst
+        .mockReturnValueOnce(null)
+        .mockReturnValue(createdPkg)
+      db.servicePlan.create.mockReturnValue({ id: "plan-1", code: "SMALL" })
+
+      const service = createService()
+      await service.importCatalog(
+        {
+          schemaVersion: "2026-08.1",
+          catalogCode: "APP_HOSTING",
+          catalogName: "App Hosting",
+          exportedAt: new Date().toISOString(),
+          sourceEnv: "production",
+          products: [
+            {
+              code: "SMALL",
+              name: "SMALL (S)",
+              resources: {},
+              billingStrategy: "PRO_RATA",
+              stockControl: "UNLIMITED",
+              allowBackorder: false,
+              isActive: true,
+              offers: [
+                {
+                  regionId: sgRegionId, // Singapore explicitly
+                  billingPeriod: "MONTHLY",
+                  chargeUnit: "SUBSCRIPTION",
+                  periodPrice: 25000,
+                  currency: "IDR",
+                  isActive: true,
+                },
+              ],
+            },
+          ],
+          addons: [],
+        },
+        { dryRun: false }
+      )
+
+      // Must use Singapore's regionId from the offer, not Indonesia's default
+      expect(db.servicePricing.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ regionId: sgRegionId }),
+        })
+      )
+      expect(db.servicePricing.create).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ regionId: defaultRegionId }),
+        })
+      )
     })
   })
 })
