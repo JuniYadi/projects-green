@@ -369,6 +369,11 @@ const logRollupWorker = new Worker<AppHostingLogRollupJobData>(
 )
 allWorkers.push(logRollupWorker)
 
+// ── Registry GC Worker ──────────────────────────────────────────────────────
+import { RegistryGcJob } from "@/lib/queue/registry-gc"
+const registryGcWorker = RegistryGcJob.createWorker()
+allWorkers.push(registryGcWorker)
+
 // ── Quota Reconciliation Worker ─────────────────────────────────────────────
 const quotaWorker = new Worker<QuotaReconciliationJobData>(
   QUOTA_RECONCILIATION_QUEUE,

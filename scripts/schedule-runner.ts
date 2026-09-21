@@ -26,6 +26,7 @@ import {
   APP_HOSTING_LOG_ROLLUP_JOB,
   APP_HOSTING_LOG_ROLLUP_QUEUE,
 } from "@/lib/queue/app-hosting-log-rollup"
+import { RegistryGcJob } from "@/lib/queue/registry-gc"
 import { WhatsAppHealthJob } from "@/lib/queue/whatsapp-health"
 export interface ScheduledJobDefinition {
   name: string
@@ -192,6 +193,13 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     jobName: BILLING_MONTHLY_BILLING_JOB,
     expression: "0 3 1 * *",
     buildJobId: (d) => `monthly-billing-${d.toISOString().slice(0, 7)}`,
+  },
+  {
+    name: "registry-gc",
+    queueName: RegistryGcJob.queue,
+    jobName: RegistryGcJob.jobName,
+    expression: "0 3 * * *",
+    buildJobId: (d) => `registry-gc-${d.toISOString().slice(0, 10)}`,
   },
 ]
 

@@ -113,6 +113,11 @@ export type RegistryClusterConfig = {
   namespace: string | null
   pushCredentialId: string | null
   pullSecretName: string | null
+  s3Endpoint: string | null
+  s3Bucket: string | null
+  s3Region: string | null
+  s3AccessKeyId: string | null
+  s3SecretAccessKey: string | null
 }
 
 export type ArgoCdClusterConfig = {
@@ -276,6 +281,11 @@ function buildRegistryConfig(
     namespace: readString(meta, "namespace", false),
     pushCredentialId: readString(secrets, "pushCredentialId", false),
     pullSecretName: readString(meta, "pullSecretName", false),
+    s3Endpoint: readString(meta, "s3Endpoint", false),
+    s3Bucket: readString(meta, "s3Bucket", false),
+    s3Region: readString(meta, "s3Region", false),
+    s3AccessKeyId: readString(secrets, "s3AccessKeyId", false),
+    s3SecretAccessKey: readString(secrets, "s3SecretAccessKey", false),
   }
 }
 
