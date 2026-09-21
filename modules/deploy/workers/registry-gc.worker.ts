@@ -237,7 +237,7 @@ export async function gcRegistryImage(
 export async function runRegistryGc(): Promise<RegistryGcJobResult> {
   const expiredStacks = await prisma.applicationContainerImage.findMany({
     where: {
-      status: { in: ["EXPIRED", "PURGED"] },
+      status: "EXPIRED",
       purgedAt: null,
     },
     select: {

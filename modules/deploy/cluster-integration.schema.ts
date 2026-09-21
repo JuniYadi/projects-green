@@ -154,8 +154,6 @@ export const gitopsSecretsSchema = z.strictObject({
 export const registrySecretsSchema = z
   .object({
     pushCredentialId: z.string().optional(),
-    s3AccessKeyId: z.string().optional(),
-    s3SecretAccessKey: z.string().optional(),
   })
   .strict()
 
@@ -303,8 +301,6 @@ export const integrationFieldLabels: Record<string, Record<string, string>> = {
     s3Endpoint: "S3 / R2 Endpoint URL",
     s3Bucket: "S3 Bucket Name",
     s3Region: "S3 Region",
-    s3AccessKeyId: "S3 Access Key ID",
-    s3SecretAccessKey: "S3 Secret Access Key",
   },
   ARGOCD: {
     apiUrl: "API URL",
@@ -371,8 +367,6 @@ export const integrationFieldDescriptions: Record<
     s3Bucket:
       "S3 bucket storing registry images (e.g. registry-apac.pfnapp.com)",
     s3Region: "S3 region (optional, defaults to auto)",
-    s3AccessKeyId: "S3 access key ID for registry storage",
-    s3SecretAccessKey: "S3 secret access key for registry storage",
   },
   ARGOCD: {
     apiUrl: "ArgoCD API server URL",

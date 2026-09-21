@@ -1,4 +1,5 @@
 import { S3Client } from "bun"
+import { logger } from "@/lib/logger"
 
 export interface RegistryS3Config {
   endpoint?: string
@@ -55,7 +56,11 @@ export async function deleteRegistryKeyWithClient(
   try {
     await client.file(key).delete()
     return true
-  } catch {
+  } catch (err) {
+    logger.warn(
+      { err, key },
+      "[registry-s3] failed to delete key from registry bucket"
+    )
     return false
   }
 }
