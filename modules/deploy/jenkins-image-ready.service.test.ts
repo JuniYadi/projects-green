@@ -410,13 +410,13 @@ describe("handleJenkinsImageReady", () => {
     expect(txQueryRaw).toHaveBeenCalledTimes(1)
   })
 
-  it("upserts IMAGE_TAG_RECEIVED, GITOPS_COMMIT_CREATED, MANIFEST_PUSHED, ARGOCD_SYNC_STARTED in transaction", async () => {
+  it("upserts IMAGE_TAG_RECEIVED, GITOPS_COMMIT_CREATED, MANIFEST_PUSHED in transaction (ARGOCD_SYNC_STARTED is deferred to first ArgoCD poll)", async () => {
     await handleJenkinsImageReady({
       slug: "app-metacard-prod",
       deploymentId: "deploy-1",
       imageTag: "187",
     })
-    expect(txUpsert).toHaveBeenCalledTimes(4)
+    expect(txUpsert).toHaveBeenCalledTimes(3)
     const types = txUpsert.mock.calls.map(
       (c) => (c[0] as any as { create: { type: string } }).create.type
     )
@@ -424,7 +424,6 @@ describe("handleJenkinsImageReady", () => {
       "IMAGE_TAG_RECEIVED",
       "GITOPS_COMMIT_CREATED",
       "MANIFEST_PUSHED",
-      "ARGOCD_SYNC_STARTED",
     ])
   })
 

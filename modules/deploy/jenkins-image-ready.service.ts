@@ -209,15 +209,41 @@ const findActiveDeployment = async (
   input: JenkinsImageReadyInput
 ) => {
   if (input.deploymentId) {
-    return prisma.applicationDeployment.findFirst({
+    const deployment = await prisma.applicationDeployment.findFirst({
       where: {
         id: input.deploymentId,
         stackId,
         status: { in: [...ACTIVE_DEPLOYMENT_STATUSES] },
       },
     })
+    if (!deployment) return null
+
+    // Guard: reject if a newer active deployment already exists for this stack,
+    // meaning this webhook is arriving late from a superseded build.
+    const supersededBy = await prisma.applicationDeployment.findFirst({
+      where: {
+        stackId,
+        id: { not: deployment.id },
+        status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
+        createdAt: { gt: deployment.createdAt },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    })
+    if (supersededBy && supersededBy.id !== deployment.id) {
+      console.warn(
+        `[jenkins-image-ready] Ignoring stale webhook for deployment ${deployment.id}: ` +
+          `superseded by newer active deployment ${supersededBy.id}.`
+      )
+      return null
+    }
+
+    return deployment
   }
-  return prisma.applicationDeployment.findFirst({
+
+  // Without a deploymentId, pick the most recent active deployment.
+  // Then verify it is not itself superseded by an even newer one.
+  const deployment = await prisma.applicationDeployment.findFirst({
     where: {
       stackId,
       status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
@@ -225,6 +251,7 @@ const findActiveDeployment = async (
     },
     orderBy: { createdAt: "desc" },
   })
+  return deployment ?? null
 }
 export async function handleJenkinsImageReady(
   input: JenkinsImageReadyInput
@@ -612,15 +639,12 @@ export async function commitHelmValuesAndAdvanceToDeploying(params: {
     tx
   )
 
-  await recordDeployEventOnce(
-    {
-      deploymentId: deployment.id,
-      type: "ARGOCD_SYNC_STARTED" as any,
-      message: `Deploying ${stack.slug} to cloud`,
-      metadata: { imageTag },
-    },
-    tx
-  )
+  // NOTE: ARGOCD_SYNC_STARTED is intentionally NOT recorded here.
+  // It is recorded by pollDeploymentRollout() the first time ArgoCD is
+  // successfully polled, so the timeline step "Deployment Server & Pod Ready"
+  // only activates when ArgoCD actually begins syncing — not optimistically
+  // when the GitOps commit is made. This prevents the timeline from jumping
+  // ahead while Jenkins is still building.
 
   return { gitopsCommitSha: result.sha }
 }
