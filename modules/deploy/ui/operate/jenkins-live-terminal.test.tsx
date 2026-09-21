@@ -65,6 +65,9 @@ describe("JenkinsLiveTerminal", () => {
     expect(terminalViewport.className).toContain("h-[420px]")
     expect(terminalViewport.className).toContain("max-h-[420px]")
     expect(terminalViewport.className).toContain("flex-none")
+    expect(terminalViewport.className).toContain("lg:h-auto")
+    expect(terminalViewport.className).toContain("lg:max-h-none")
+    expect(terminalViewport.className).toContain("lg:flex-1")
     expect(view.getByText("Release & GitOps Log")).toBeInTheDocument()
     expect(view.getByText("Application Log (Live)")).toBeInTheDocument()
 

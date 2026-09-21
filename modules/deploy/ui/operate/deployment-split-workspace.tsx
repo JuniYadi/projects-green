@@ -108,7 +108,7 @@ export function DeploymentSplitWorkspace({
   return (
     <div
       data-testid="deployment-split-workspace"
-      className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12"
+      className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12 lg:items-stretch"
     >
       {/* Column 1 (Left, 50% / 6 cols): Status, Metadata & Truthful 6-Step Timeline */}
       <div className="col-span-12 space-y-4 lg:col-span-6">
@@ -207,7 +207,7 @@ export function DeploymentSplitWorkspace({
       </div>
 
       {/* Column 2 (Right, 50% / 6 cols): Live Jenkins Runner Terminal */}
-      <div className="col-span-12 lg:col-span-6">
+      <div className="col-span-12 lg:col-span-6 lg:h-full">
         <JenkinsLiveTerminal
           slug={stack.slug}
           deployId={deployId}

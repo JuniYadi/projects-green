@@ -334,7 +334,7 @@ export function JenkinsLiveTerminal({
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs",
+        "flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xs lg:h-full",
         isFullscreen &&
           "fixed inset-0 z-50 rounded-none border-none bg-background p-4",
         className
@@ -542,7 +542,7 @@ export function JenkinsLiveTerminal({
           "relative overflow-y-auto bg-zinc-950 p-4 font-mono text-xs text-zinc-100 selection:bg-zinc-800",
           isFullscreen
             ? "h-full min-h-0 max-h-none flex-1"
-            : "h-[420px] min-h-[420px] max-h-[420px] flex-none"
+            : "h-[420px] min-h-[420px] max-h-[420px] flex-none lg:h-auto lg:max-h-none lg:flex-1"
         )}
       >
         {fetchError && !authFailed && (
