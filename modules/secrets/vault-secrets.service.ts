@@ -62,6 +62,20 @@ export type VaultSecretRevealResult = {
   vaultPath: string
 }
 
+export type VaultSecretDeleteInput = {
+  organizationId: string
+  stackId: string
+  vaultPath: string
+  vaultKey: string
+  variableId: string
+}
+
+export type VaultSecretDeleteResult = {
+  deleted: boolean
+  vaultPath: string
+  vaultKey: string
+}
+
 export class VaultSecretsServiceError extends Error {
   constructor(message: string) {
     super(message)
@@ -425,6 +439,50 @@ export class VaultSecretsService {
       value,
       version: reference.version,
       vaultPath,
+    }
+  }
+
+  async deleteSecret(
+    input: VaultSecretDeleteInput
+  ): Promise<VaultSecretDeleteResult> {
+    const stack = await this.findStack(input.organizationId, input.stackId)
+
+    // Read current KV, remove the key, write back
+    let existingSecrets: Record<string, string> = {}
+    try {
+      existingSecrets = await this.client.readKV(input.vaultPath)
+    } catch (error) {
+      if (!(error instanceof VaultSecretNotFoundError)) {
+        throw error
+      }
+    }
+
+    const normalizedKey = input.vaultKey.trim().toUpperCase()
+    const keyWasPresent = Object.prototype.hasOwnProperty.call(
+      existingSecrets,
+      normalizedKey
+    )
+
+    if (keyWasPresent) {
+      const { [normalizedKey]: _removed, ...remaining } = existingSecrets
+      await this.client.writeKV(input.vaultPath, remaining)
+    }
+
+    // Remove entry from envVarsJson in DB
+    const currentItems = toStoredItems(stack.envVarsJson)
+    const nextItems = currentItems.filter(
+      (item) => item.id !== input.variableId
+    )
+
+    await this.db.applicationStack.update({
+      where: { id: stack.id },
+      data: { envVarsJson: nextItems as Prisma.InputJsonValue },
+    })
+
+    return {
+      deleted: keyWasPresent,
+      vaultPath: input.vaultPath,
+      vaultKey: normalizedKey,
     }
   }
 
