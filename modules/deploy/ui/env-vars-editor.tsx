@@ -1,13 +1,30 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Eye, EyeOff, KeyRound, Pencil, Plus, Trash2 } from "lucide-react"
+import {
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Sheet,
   SheetContent,
@@ -431,6 +448,9 @@ export function EnvVarsEditor({
   )
   const [toasts, setToasts] = useState<InlineToast[]>([])
   const [activities, setActivities] = useState<EnvVariableActivity[]>([])
+  const [pendingDelete, setPendingDelete] = useState<EnvVar | null>(null)
+  const [copyingById, setCopyingById] = useState<Record<string, boolean>>({})
+  const [copiedById, setCopiedById] = useState<Record<string, boolean>>({})
 
   const normalizedRows = useMemo(() => normalizeRows(envVars), [envVars])
   const parsedImport = useMemo(() => parseDotEnvImport(importRaw), [importRaw])
@@ -1142,6 +1162,29 @@ export function EnvVarsEditor({
     }
   }
 
+  const copyValue = async (row: EnvVar) => {
+    const isSecret = isSecretEnvVarType(row.type)
+    const value = isSecret ? revealedValuesById[row.id] : row.value
+    if (value === undefined || value === "") {
+      pushToast("error", isSecret ? "Reveal the secret before copying." : "Nothing to copy.")
+      return
+    }
+
+    setCopyingById((current) => ({ ...current, [row.id]: true }))
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopiedById((current) => ({ ...current, [row.id]: true }))
+      pushToast("success", `Copied ${row.key}.`)
+      window.setTimeout(() => {
+        setCopiedById((current) => ({ ...current, [row.id]: false }))
+      }, 1500)
+    } catch {
+      pushToast("error", "Unable to copy this value.")
+    } finally {
+      setCopyingById((current) => ({ ...current, [row.id]: false }))
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1239,10 +1282,15 @@ export function EnvVarsEditor({
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs">
-                    <span className="block min-w-0 truncate">
-                      {shownValue === "" ? EMPTY_ENV_VAR_VALUE : shownValue}
-                    </span>
+                  <td className="max-w-0 px-3 py-2 font-mono text-xs">
+                    <Input
+                      aria-label={`${row.key} value`}
+                      className="min-w-0 max-w-full font-mono text-xs"
+                      type={isSecret && !isVisible ? "password" : "text"}
+                      value={shownValue}
+                      readOnly
+                      placeholder={EMPTY_ENV_VAR_VALUE}
+                    />
                   </td>
 
                   <td className="px-3 py-2 text-xs capitalize">
@@ -1320,11 +1368,24 @@ export function EnvVarsEditor({
                         type="button"
                         variant="ghost"
                         size="icon"
+                        title={messages.copy}
+                        aria-label={messages.copy}
+                        disabled={
+                          Boolean(copyingById[row.id]) ||
+                          (isSecret && revealedValue === undefined) ||
+                          (!isSecret && row.value === "")
+                        }
+                        onClick={() => void copyValue(row)}
+                      >
+                        {copiedById[row.id] ? <Check /> : <Copy />}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
                         title={messages.delete}
                         aria-label={messages.delete}
-                        onClick={() => {
-                          void deleteVariable(row)
-                        }}
+                        onClick={() => setPendingDelete(row)}
                       >
                         <Trash2 />
                       </Button>
@@ -1336,6 +1397,42 @@ export function EnvVarsEditor({
           </tbody>
         </table>
       </div>
+
+      <Dialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{messages.deleteTitle}</DialogTitle>
+            <DialogDescription>
+              {messages.deleteDescription.replace(
+                "{key}",
+                pendingDelete?.key ?? ""
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingDelete(null)}>
+              {messages.cancel}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isSubmitting}
+              onClick={() => {
+                if (!pendingDelete) return
+                const row = pendingDelete
+                setPendingDelete(null)
+                void deleteVariable(row)
+              }}
+            >
+              {messages.delete}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {toasts.length > 0 ? (
         <div className="flex flex-col gap-1" aria-label={messages.toastsLabel}>
