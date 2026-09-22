@@ -31,14 +31,22 @@ const mockStackRecord = {
 
 const mockPrisma = {
   applicationStack: {
-    count: mock(async () => 1),
-    findMany: mock(async () => [mockStackRecord]),
-    findUnique: mock(async () => mockStackRecord),
-    update: mock(async () => ({
-      ...mockStackRecord,
-      metadataJson: { suspended: true },
-    })),
-    delete: mock(async () => mockStackRecord),
+     
+    count: mock(async (..._args: any[]) => 1 as number),
+     
+    findMany: mock(async (..._args: any[]) => [mockStackRecord] as any[]),
+     
+    findUnique: mock(async (..._args: any[]) => mockStackRecord as any),
+     
+    update: mock(
+      async (..._args: any[]) =>
+        ({
+          ...mockStackRecord,
+          metadataJson: { suspended: true },
+        }) as any
+    ),
+     
+    delete: mock(async (..._args: any[]) => mockStackRecord as any),
   },
 }
 
@@ -58,11 +66,17 @@ const mockReleaseManagedStock = mock(async () => undefined)
 
 // ─── Cluster integration mock ─────────────────────────────────────────────────
 
-const mockResolveClusterIntegration = mock(async () => {
+ 
+const mockResolveClusterIntegration: ReturnType<
+  typeof mock<(...args: any[]) => any>
+> = mock(async (..._args: unknown[]) => {
   throw new Error("No integration configured")
 })
 
-const mockResolveAppHostingClusterForStack = mock(async () => {
+ 
+const mockResolveAppHostingClusterForStack: ReturnType<
+  typeof mock<(...args: any[]) => any>
+> = mock(async (..._args: unknown[]) => {
   throw new Error("No cluster configured")
 })
 
