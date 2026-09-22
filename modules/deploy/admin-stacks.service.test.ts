@@ -270,11 +270,19 @@ describe("listAdminStacks", () => {
     expect(result1.data[0].suspended).toBe(false)
 
     mockPrisma.applicationStack.findMany.mockImplementation(async () => [
-      { ...mockStackRecord, metadataJson: { suspended: true } },
+      { ...mockStackRecord, metadataJson: { billingState: "PAYMENT_GRACE" } },
     ])
 
     const result2 = await listAdminStacks()
-    expect(result2.data[0].suspended).toBe(true)
+    expect(result2.data[0].billingState).toBe("PAYMENT_GRACE")
+
+    mockPrisma.applicationStack.findMany.mockImplementation(async () => [
+      { ...mockStackRecord, metadataJson: { suspended: true } },
+    ])
+
+    const result3 = await listAdminStacks()
+    expect(result3.data[0].suspended).toBe(true)
+    expect(result3.data[0].billingState).toBe("ACTIVE")
   })
 
   it("returns null lastDeployedAt when missing", async () => {
@@ -353,6 +361,68 @@ describe("adminSuspendStack", () => {
     )
     expect(result.gitopsPushed).toBe(true)
     expect(result.argocdSynced).toBe(false)
+  })
+
+  it("triggers ArgoCD sync and returns argocdSynced=true when both gitops and argocd configured", async () => {
+    const gitopsConfig = makeMockGitOpsConfig()
+    const cluster = makeMockCluster()
+    const argocdConfig = {
+      apiUrl: "https://argocd.example.com",
+      token: "argocd-token",
+      project: "default",
+      appNamespace: "argocd",
+      webhookSecret: null,
+      chartRepo: null,
+      chartVersion: null,
+    }
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "GITOPS") return gitopsConfig
+        if (type === "ARGOCD") return argocdConfig
+        throw new Error("No integration configured")
+      }
+    )
+    mockResolveAppHostingClusterForStack.mockImplementation(async () => cluster)
+
+    // Mock fetch for ArgoCD sync
+    globalThis.fetch = mock(async () => ({
+      ok: true,
+      status: 200,
+    })) as unknown as typeof fetch
+
+    const result = await adminSuspendStack("stack_1")
+
+    expect(result.gitopsPushed).toBe(true)
+    expect(result.argocdSynced).toBe(true)
+  })
+
+  it("uses TEMPLATE image reference when sourceType is TEMPLATE", async () => {
+    const gitopsConfig = makeMockGitOpsConfig()
+    const cluster = makeMockCluster()
+
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
+      ...mockStackRecord,
+      sourceType: "TEMPLATE",
+      template: {
+        blueprintJson: {},
+      },
+    }))
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "GITOPS") return gitopsConfig
+        throw new Error("No integration configured")
+      }
+    )
+    mockResolveAppHostingClusterForStack.mockImplementation(async () => cluster)
+
+    const result = await adminSuspendStack("stack_1")
+
+    // TEMPLATE path resolves imageRepository from template, not registry
+    // commitFiles should still be called with replicas=0 payload
+    expect(mockCommitFiles).toHaveBeenCalled()
+    expect(result.gitopsPushed).toBe(true)
   })
 
   it("returns gitopsPushed=false when commitFiles throws", async () => {
@@ -460,5 +530,66 @@ describe("adminDeleteStack", () => {
       expect.arrayContaining(["svc/dir"])
     )
     expect(result.gitopsDeleted).toBe(true)
+  })
+
+  it("calls ArgoCD delete and returns argocdDeleted=true when argocd configured", async () => {
+    const argocdConfig = {
+      apiUrl: "https://argocd.example.com",
+      token: "argocd-token",
+      project: "default",
+      appNamespace: "argocd",
+      webhookSecret: null,
+      chartRepo: null,
+      chartVersion: null,
+    }
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "ARGOCD") return argocdConfig
+        throw new Error("No integration configured")
+      }
+    )
+
+    // Mock fetch for ArgoCD DELETE
+    const mockFetch = mock(async () => ({ ok: true, status: 200 }))
+    globalThis.fetch = mockFetch as unknown as typeof fetch
+
+    const result = await adminDeleteStack("stack_1")
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("api/v1/applications/landing-web"),
+      expect.objectContaining({ method: "DELETE" })
+    )
+    expect(result.argocdDeleted).toBe(true)
+  })
+
+  it("returns argocdDeleted=false when ArgoCD delete returns non-200", async () => {
+    const argocdConfig = {
+      apiUrl: "https://argocd.example.com",
+      token: "argocd-token",
+      project: "default",
+      appNamespace: "argocd",
+      webhookSecret: null,
+      chartRepo: null,
+      chartVersion: null,
+    }
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "ARGOCD") return argocdConfig
+        throw new Error("No integration configured")
+      }
+    )
+
+    // Mock fetch returning 500
+    globalThis.fetch = mock(async () => ({
+      ok: false,
+      status: 500,
+      text: async () => "Internal Server Error",
+    })) as unknown as typeof fetch
+
+    const result = await adminDeleteStack("stack_1")
+
+    expect(result.argocdDeleted).toBe(false)
   })
 })

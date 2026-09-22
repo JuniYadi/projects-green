@@ -315,3 +315,52 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     expect(body.error).toBe("NOT_FOUND")
   })
 })
+
+describe("500 INTERNAL_ERROR paths", () => {
+  it("returns 500 when listStacks throws non-NOT_FOUND error", async () => {
+    mockListAdminStacks.mockRejectedValueOnce(
+      new Error("Database connection lost")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks")
+    )
+
+    expect(res.status).toBe(500)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INTERNAL_ERROR")
+  })
+
+  it("returns 500 when suspendStack throws non-NOT_FOUND error", async () => {
+    mockSuspendStack.mockRejectedValueOnce(
+      new Error("GitOps repo not accessible")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/suspend", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(500)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INTERNAL_ERROR")
+  })
+
+  it("returns 500 when deleteStack throws non-NOT_FOUND error", async () => {
+    mockDeleteStack.mockRejectedValueOnce(new Error("DB constraint violation"))
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(res.status).toBe(500)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INTERNAL_ERROR")
+  })
+})
