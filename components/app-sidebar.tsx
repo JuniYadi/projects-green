@@ -51,6 +51,7 @@ import {
   EnvelopeSimple as EnvelopeSimpleIcon,
   PlugsConnected as PlugsConnectedIcon,
   TreeStructure as TreeStructureIcon,
+  SquaresFour as SquaresFourIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 import { useWhatsAppOnboardingStore } from "@/modules/whatsapp/onboarding/whatsapp-onboarding.store"
@@ -460,6 +461,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <RocketLaunchIcon />,
         isActive: startsWithRoute(path, "/portal/app/deployments"),
+      },
+      {
+        title: "Stacks",
+        url: localizePathname({
+          pathname: "/portal/app/stacks",
+          locale,
+        }),
+        icon: <SquaresFourIcon />,
+        isActive: startsWithRoute(path, "/portal/app/stacks"),
       },
       {
         title: "Clusters",

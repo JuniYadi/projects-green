@@ -9,6 +9,7 @@ import {
   Database,
   Storefront,
   RocketLaunchIcon,
+  SquaresFour,
 } from "@/components/ui/phosphor-icons"
 export default function PortalApplicationsPage() {
   const params = useParams<{ lang?: string }>()
@@ -88,6 +89,29 @@ export default function PortalApplicationsPage() {
               >
                 <RocketLaunchIcon size={14} className="mr-1" />
                 {messages.deploymentsAction}
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-muted/20 p-4 md:col-span-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold">
+                {messages.stacksHeading}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {messages.stacksDescription}
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link
+                href={localizePathname({
+                  pathname: "/portal/app/stacks",
+                  locale,
+                })}
+              >
+                <SquaresFour size={14} className="mr-1" />
+                {messages.stacksAction}
               </Link>
             </Button>
           </div>
