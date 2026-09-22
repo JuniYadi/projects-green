@@ -4873,6 +4873,7 @@ export const idMessages: AppMessages = {
         suspend: "Suspend",
         terminate: "Terminasi",
         cancel: "Batal",
+        suspendedLabel: "SUSPENDED (di-scale ke 0)",
         suspendTitle: "Suspend App Hosting",
         suspendDescription:
           "Ini akan mengatur status {stack} menjadi STOPPED. Rekonsiliasi ArgoCD/Helm akan mematikan deployment. Data stack tetap disimpan.",

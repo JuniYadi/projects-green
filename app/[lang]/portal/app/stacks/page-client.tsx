@@ -435,6 +435,11 @@ export default function AdminStacksPage() {
                     >
                       {stack.status}
                     </Badge>
+                    {stack.suspended && (
+                      <div className="mt-0.5 text-[10px] font-semibold text-amber-500">
+                        {messages.suspendedLabel}
+                      </div>
+                    )}
                     {stack.billingState && stack.billingState !== "ACTIVE" && (
                       <div className="mt-0.5 text-[10px] text-amber-500">
                         {stack.billingState}

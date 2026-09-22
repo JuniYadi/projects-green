@@ -81,8 +81,12 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
         }
 
         try {
-          await suspendStack(params.id)
-          return { ok: true as const, message: "Stack suspended successfully" }
+          const result = await suspendStack(params.id)
+          return {
+            ok: true as const,
+            message: "Stack suspended successfully",
+            data: result,
+          }
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error)
           if (msg.startsWith("NOT_FOUND")) {
@@ -115,8 +119,12 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
         }
 
         try {
-          await deleteStack(params.id)
-          return { ok: true as const, message: "Stack terminated successfully" }
+          const result = await deleteStack(params.id)
+          return {
+            ok: true as const,
+            message: "Stack terminated successfully",
+            data: result,
+          }
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error)
           if (msg.startsWith("NOT_FOUND")) {

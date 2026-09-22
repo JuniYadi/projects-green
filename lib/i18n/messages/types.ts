@@ -4398,6 +4398,7 @@ export type AppMessages = {
         suspend: string
         terminate: string
         cancel: string
+        suspendedLabel: string
         suspendTitle: string
         suspendDescription: string
         suspendConfirm: string

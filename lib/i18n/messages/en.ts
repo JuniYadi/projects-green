@@ -4832,6 +4832,7 @@ export const enMessages: AppMessages = {
         suspend: "Suspend",
         terminate: "Terminate",
         cancel: "Cancel",
+        suspendedLabel: "SUSPENDED (scaled to 0)",
         suspendTitle: "Suspend App Hosting",
         suspendDescription:
           "This will set the status of {stack} to STOPPED. The ArgoCD/Helm reconciliation will scale down the deployment. The stack record will be kept.",
