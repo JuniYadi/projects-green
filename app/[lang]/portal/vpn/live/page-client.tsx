@@ -38,6 +38,7 @@ function SessionTable({
             <TableHead>{messages.thProtocol}</TableHead>
             <TableHead>{messages.thUsername}</TableHead>
             <TableHead>{messages.thVpnIp}</TableHead>
+            <TableHead>{messages.thEndpoint}</TableHead>
             <TableHead>{messages.wireguardStatus}</TableHead>
             <TableHead>{messages.wireguardHandshake}</TableHead>
             <TableHead>{messages.wireguardTransfer}</TableHead>
@@ -54,6 +55,9 @@ function SessionTable({
                 {session.username}
               </TableCell>
               <TableCell className="font-mono text-xs">{session.ip}</TableCell>
+              <TableCell className="font-mono text-xs">
+                {session.endpoint ?? "—"}
+              </TableCell>
               <TableCell>
                 <Badge
                   variant={

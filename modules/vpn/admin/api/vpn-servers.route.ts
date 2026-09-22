@@ -91,6 +91,7 @@ export const createAdminVpnServersRoutes = (deps: Deps = {}) => {
                     serverName: server.name,
                     username: user.clientName,
                     ip: user.virtualAddress ?? user.ipAllocation ?? "-",
+                    endpoint: user.realAddress ?? null,
                     status: "Online" as const,
                     handshake: user.connectedSince ?? "-",
                     rx: formatSessionBytes(user.bytesReceived),
@@ -399,35 +400,75 @@ function parseWireGuardList(stdout: string) {
     "serverId" | "serverName" | "protocol"
   >[] = []
   let tableStarted = false
+  let colIndex = {
+    username: 0,
+    ip: 1,
+    endpoint: -1,
+    status: 2,
+    handshake: 3,
+    rx: 4,
+    tx: 5,
+  }
 
   for (const rawLine of stdout.split("\n")) {
     const line = rawLine.trim()
     if (!line) continue
-    if (/^USERNAME\s+\|/i.test(line)) {
+    if (/^USERNAME\s*\|/i.test(line)) {
       tableStarted = true
+      const headers = line.split("|").map((h) => h.trim().toUpperCase())
+      const uIdx = headers.findIndex((h) => h.includes("USERNAME"))
+      const ipIdx = headers.findIndex((h) => h.includes("IP"))
+      const epIdx = headers.findIndex((h) => h.includes("ENDPOINT"))
+      const stIdx = headers.findIndex((h) => h.includes("STATUS"))
+      const hsIdx = headers.findIndex((h) => h.includes("HANDSHAKE"))
+      const rxIdx = headers.findIndex((h) => h === "RX" || h.includes("RX"))
+      const txIdx = headers.findIndex((h) => h === "TX" || h.includes("TX"))
+
+      colIndex = {
+        username: uIdx >= 0 ? uIdx : 0,
+        ip: ipIdx >= 0 ? ipIdx : 1,
+        endpoint: epIdx,
+        status: stIdx >= 0 ? stIdx : epIdx >= 0 ? 3 : 2,
+        handshake: hsIdx >= 0 ? hsIdx : epIdx >= 0 ? 4 : 3,
+        rx: rxIdx >= 0 ? rxIdx : epIdx >= 0 ? 5 : 4,
+        tx: txIdx >= 0 ? txIdx : epIdx >= 0 ? 6 : 5,
+      }
       continue
     }
     if (/^-+$/.test(line)) continue
-    if (/^Active:/i.test(line)) break
+    if (/^(?:Active|Total):/i.test(line)) break
     if (!tableStarted) continue
 
     const columns = line.split("|").map((value) => value.trim())
-    if (columns.length < 6 || !columns[0] || !columns[1]) continue
+    const minCols = colIndex.endpoint >= 0 ? 7 : 6
+    if (
+      columns.length < minCols ||
+      !columns[colIndex.username] ||
+      !columns[colIndex.ip]
+    ) {
+      continue
+    }
 
-    const rawStatus = columns[2]?.toLowerCase()
+    const rawStatus = columns[colIndex.status]?.toLowerCase()
     const status =
       rawStatus === "online"
         ? "Online"
         : rawStatus === "stale"
           ? "Stale"
           : "Offline"
+
+    const rawEndpoint =
+      colIndex.endpoint >= 0 ? columns[colIndex.endpoint] : null
+    const endpoint = rawEndpoint && rawEndpoint !== "-" ? rawEndpoint : null
+
     sessions.push({
-      username: columns[0],
-      ip: columns[1],
+      username: columns[colIndex.username],
+      ip: columns[colIndex.ip],
+      endpoint,
       status,
-      handshake: columns[3] ?? "-",
-      rx: columns[4] ?? "0B",
-      tx: columns[5] ?? "0B",
+      handshake: columns[colIndex.handshake] ?? "-",
+      rx: columns[colIndex.rx] ?? "0B",
+      tx: columns[colIndex.tx] ?? "0B",
     })
   }
 

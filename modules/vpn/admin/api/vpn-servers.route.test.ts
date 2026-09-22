@@ -809,6 +809,7 @@ describe("createAdminVpnServersRoutes", () => {
           protocol: "WIREGUARD",
           username: "user-1",
           ip: "10.0.0.2",
+          endpoint: null,
           status: "Online",
           handshake: "4s ago",
           rx: "2M",
@@ -911,6 +912,7 @@ describe("createAdminVpnServersRoutes", () => {
           protocol: "WIREGUARD",
           username: "wg-user-online",
           ip: "10.0.0.2",
+          endpoint: null,
           status: "Online",
           handshake: "1m ago",
           rx: "10M",
@@ -922,6 +924,7 @@ describe("createAdminVpnServersRoutes", () => {
           protocol: "OPENVPN",
           username: "ovpn-user-1",
           ip: "10.8.0.2",
+          endpoint: null,
           status: "Online",
           handshake: "10m ago",
           rx: "2.0 GB",
@@ -933,6 +936,7 @@ describe("createAdminVpnServersRoutes", () => {
           protocol: "OPENVPN",
           username: "ovpn-user-2",
           ip: "10.8.0.3",
+          endpoint: null,
           status: "Online",
           handshake: "-",
           rx: "50.0 KB",
@@ -944,6 +948,7 @@ describe("createAdminVpnServersRoutes", () => {
           protocol: "OPENVPN",
           username: "ovpn-user-3",
           ip: "-",
+          endpoint: null,
           status: "Online",
           handshake: "1m ago",
           rx: "0 B",
@@ -983,10 +988,58 @@ describe("createAdminVpnServersRoutes", () => {
           protocol: "WIREGUARD",
           username: "user-fallback",
           ip: "10.0.0.5",
+          endpoint: null,
           status: "Online",
           handshake: "10s ago",
           rx: "1M",
           tx: "1M",
+        },
+      ])
+    })
+
+    it("parses 7-column wg-list.sh output with ENDPOINT and Total footer", async () => {
+      vpnServerFindManyQueue = [
+        makeServer({
+          hasOpenVpn: false,
+          hasWireGuard: true,
+          hostname: "id02.pfnapp.id",
+          sshKey: { privateKey: "enc-key" },
+        }),
+      ]
+      sshResponses = [
+        {
+          stdout:
+            "USERNAME             | VPN IP           | ENDPOINT               | STATUS   | HANDSHAKE  | RX      | TX\n" +
+            "------------------------------------------------------------------------------------------------------------\n" +
+            "orgtmshg812-08968c   | 10.0.100.2       | 140.213.10.35:23662    | Online   | 44s ago    | 1G      | 8G\n" +
+            "hellgates22          | 10.0.100.3       | -                      | Offline  | -          | 0B      | 0B\n" +
+            "orgyxbk4x91-3908de   | 10.0.100.4       | 114.122.213.255:53022  | Stale    | 16h ago    | 153K    | 462K\n" +
+            "org3tv4f1j4-d34a9f   | 10.0.100.5       | -                      | Offline  | -          | 0B      | 0B\n" +
+            "\n" +
+            "Total: 4 peers | Online: 1 | Stale: 1 | Offline: 2\n",
+          stderr: "",
+          exitCode: 0,
+        },
+      ]
+
+      const res = await createApp().handle(
+        new Request("http://localhost/admin/vpn/wireguard-sessions")
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.data).toEqual([
+        {
+          serverId: "srv-1",
+          serverName: "ID-01",
+          protocol: "WIREGUARD",
+          username: "orgtmshg812-08968c",
+          ip: "10.0.100.2",
+          endpoint: "140.213.10.35:23662",
+          status: "Online",
+          handshake: "44s ago",
+          rx: "1G",
+          tx: "8G",
         },
       ])
     })
@@ -1115,6 +1168,7 @@ describe("createAdminVpnServersRoutes", () => {
           protocol: "WIREGUARD",
           username: "user-1",
           ip: "10.0.0.2",
+          endpoint: null,
           status: "Online",
           handshake: "4s ago",
           rx: "2M",

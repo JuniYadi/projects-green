@@ -7083,6 +7083,7 @@ export const idMessages: AppMessages = {
     thProtocol: "Protokol",
     thUsername: "Username",
     thVpnIp: "Alamat IP",
+    thEndpoint: "Endpoint",
     wireguardStatus: "Status",
     wireguardHandshake: "Handshake",
     wireguardTransfer: "Transfer",

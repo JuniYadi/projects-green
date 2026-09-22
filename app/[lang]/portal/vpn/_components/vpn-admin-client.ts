@@ -127,6 +127,7 @@ export type WireGuardSessionItem = {
   protocol: "OPENVPN" | "WIREGUARD"
   username: string
   ip: string
+  endpoint: string | null
   status: "Online" | "Offline" | "Stale"
   handshake: string
   rx: string
