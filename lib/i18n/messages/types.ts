@@ -4262,6 +4262,9 @@ export type AppMessages = {
         deploymentsHeading: string
         deploymentsDescription: string
         deploymentsAction: string
+        stacksHeading: string
+        stacksDescription: string
+        stacksAction: string
       }
       clusterInventory: {
         heading: string
@@ -4362,6 +4365,49 @@ export type AppMessages = {
         syncSuccess: string
         syncFailed: string
         loadFailed: string
+      }
+      adminStacks: {
+        heading: string
+        description: string
+        refresh: string
+        organizationId: string
+        organizationPlaceholder: string
+        search: string
+        searchPlaceholder: string
+        apply: string
+        reset: string
+        status: string
+        statusAll: string
+        statusRunning: string
+        statusBuilding: string
+        statusDeploying: string
+        statusQueued: string
+        statusFailed: string
+        statusStopped: string
+        tableOrganization: string
+        tableStack: string
+        tableStatus: string
+        tableCluster: string
+        tableResources: string
+        tableCreated: string
+        tableAction: string
+        replicas: string
+        loading: string
+        empty: string
+        loadFailed: string
+        suspend: string
+        terminate: string
+        cancel: string
+        suspendTitle: string
+        suspendDescription: string
+        suspendConfirm: string
+        suspendSuccess: string
+        suspendFailed: string
+        terminateTitle: string
+        terminateDescription: string
+        terminateConfirm: string
+        terminateSuccess: string
+        terminateFailed: string
       }
       clusters: {
         tabs: {
