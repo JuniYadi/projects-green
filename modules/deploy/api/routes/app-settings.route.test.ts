@@ -279,6 +279,96 @@ describe("appSettingsRoutes", () => {
     expect(body.data.envVars[0]).not.toHaveProperty("value")
   })
 
+  it("normalizes legacy stored Vault metadata without guessing from the key", async () => {
+    stack.envVarsJson = [
+      {
+        id: "app-key",
+        key: "APP_KEY",
+        value: "",
+        type: "plain",
+        source: "vault",
+        isStoredSecret: true,
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "APP_KEY",
+        version: 7,
+      },
+      {
+        id: "queue",
+        key: "QUEUE_CONNECTION",
+        value: "redis",
+        type: "plain",
+        isStoredSecret: false,
+      },
+      {
+        id: "role",
+        key: "CONTAINER_ROLE",
+        value: "worker",
+        type: "plain",
+      },
+    ]
+
+    const response = await request("/deploy/apps/demo/settings")
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data.envVars).toEqual([
+      expect.objectContaining({
+        id: "app-key",
+        key: "APP_KEY",
+        type: "secret_ref",
+        isStoredSecret: true,
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "APP_KEY",
+      }),
+      expect.objectContaining({
+        key: "QUEUE_CONNECTION",
+        type: "plain",
+        isStoredSecret: false,
+        value: "redis",
+      }),
+      expect.objectContaining({
+        key: "CONTAINER_ROLE",
+        type: "plain",
+        isStoredSecret: false,
+        value: "worker",
+      }),
+    ])
+
+    const patchResponse = await json(
+      "/deploy/apps/demo/settings/env",
+      "PATCH",
+      {
+        environmentId: "prod",
+        variables: [
+          {
+            key: "APP_KEY",
+            value: "",
+            type: "plain",
+            isStoredSecret: true,
+            source: "vault",
+            vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+            vaultKey: "APP_KEY",
+          },
+        ],
+      }
+    )
+    expect(patchResponse.status).toBe(200)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          envVarsJson: [
+            expect.objectContaining({
+              key: "APP_KEY",
+              type: "secret_ref",
+              value: "",
+              vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+              vaultKey: "APP_KEY",
+            }),
+          ],
+        },
+      })
+    )
+  })
+
   it("persists and returns plain values without writing them to Vault", async () => {
     const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
       environmentId: "prod",

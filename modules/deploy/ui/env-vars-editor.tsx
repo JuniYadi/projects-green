@@ -361,6 +361,11 @@ const revealVaultSecret = async (input: {
   // Explicit backward-compatibility fallback: only used if Web Crypto API is
   // unavailable in the client runtime or the server operates in legacy mode.
   if (typeof payload.data?.value === "string") {
+    if (payload.data.value.trim().length === 0) {
+      throw new Error(
+        "Vault returned an empty secret. Set a non-empty value and try again."
+      )
+    }
     return payload.data.value
   }
 
@@ -1065,6 +1070,12 @@ export function EnvVarsEditor({
       if (value === null) {
         throw new Error(
           "Vault reveal is available after this application has been saved."
+        )
+      }
+
+      if (typeof value !== "string" || value.trim().length === 0) {
+        throw new Error(
+          "Vault returned an empty secret. Set a non-empty value and try again."
         )
       }
 

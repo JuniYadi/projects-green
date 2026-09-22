@@ -306,7 +306,7 @@ describe("EnvVarsEditor", () => {
     expect(view.getByText("<empty value>")).toBeTruthy()
   })
 
-  it("shows a placeholder when a revealed Vault secret is empty", async () => {
+  it("does not display an empty Vault reveal as a successful value", async () => {
     const user = userEvent.setup()
     const reveal = mock(async () => "")
     const view = render(
@@ -328,8 +328,12 @@ describe("EnvVarsEditor", () => {
     await user.click(view.getByRole("button", { name: "Reveal" }))
 
     await waitFor(() => {
-      expect(view.getByText("<empty value>")).toBeTruthy()
+      expect(
+        view.getAllByText(/Vault returned an empty secret\./).length
+      ).toBeGreaterThan(0)
     })
+    expect(view.getByText("••••••••")).toBeTruthy()
+    expect(view.queryByText("<empty value>")).toBeNull()
   })
 
   it("blocks duplicate keys before saving", async () => {

@@ -9,7 +9,6 @@ import {
 } from "@/lib/encryption"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
-import { inferEnvVarTypeFromKey } from "@/modules/deploy/environment-vars"
 import { isValidEnvVarKey } from "@/modules/deploy/deploy.schema"
 import {
   hasScopedSuperAdminClaim,
@@ -35,6 +34,7 @@ type StoredEnvVar = {
   vaultPath?: string
   vaultKey?: string
   referenceLabel?: string
+  version?: number
   lastUpdatedAt?: string
   updatedAt?: string
   [key: string]: unknown
@@ -126,9 +126,32 @@ function isSecret(variable: StoredEnvVar): boolean {
     variable.type === "secret_ref" ||
     variable.type === "secret_shared_ref" ||
     variable.masked === true ||
-    variable.isStoredSecret === true ||
-    inferEnvVarTypeFromKey(variable.key) === "secret_ref"
+    variable.isStoredSecret === true
   )
+}
+
+const hasVaultReference = (variable: StoredEnvVar): boolean =>
+  variable.source === "vault" &&
+  typeof variable.vaultPath === "string" &&
+  variable.vaultPath.trim().length > 0 &&
+  typeof variable.vaultKey === "string" &&
+  variable.vaultKey.trim().length > 0
+
+/**
+ * Normalize legacy rows at the API boundary. A stored-secret flag plus its
+ * authoritative Vault reference wins over the legacy `plain` discriminator;
+ * key names are intentionally not used to infer secret status here.
+ */
+function normalizeStoredSecret(variable: StoredEnvVar): StoredEnvVar {
+  if (
+    variable.type === "plain" &&
+    variable.isStoredSecret === true &&
+    hasVaultReference(variable)
+  ) {
+    return { ...variable, type: "secret_ref" }
+  }
+
+  return variable
 }
 
 function parseArray(value: unknown): unknown[] {
@@ -144,9 +167,9 @@ function parseArray(value: unknown): unknown[] {
 }
 
 function safeEnvVar(value: unknown): JsonRecord {
-  const variable = (
-    value && typeof value === "object" ? value : {}
-  ) as StoredEnvVar
+  const variable = normalizeStoredSecret(
+    (value && typeof value === "object" ? value : {}) as StoredEnvVar
+  )
   const secret = isSecret(variable)
   const result: JsonRecord = {
     id: variable.id ?? variable.key,
@@ -162,8 +185,14 @@ function safeEnvVar(value: unknown): JsonRecord {
     "vaultPath",
     "vaultKey",
     "referenceLabel",
+    "version",
   ] as const) {
-    if (typeof variable[field] === "string") result[field] = variable[field]
+    if (
+      typeof variable[field] === "string" ||
+      (field === "version" && typeof variable[field] === "number")
+    ) {
+      result[field] = variable[field]
+    }
   }
   const updatedAt = variable.lastUpdatedAt ?? variable.updatedAt
   if (typeof updatedAt === "string") result.lastUpdatedAt = updatedAt
@@ -402,17 +431,17 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
       const oldByKey = new Map(existing.map((row) => [row.key, row]))
       const variables = body.variables.map((incoming) => {
         const prior = oldByKey.get(incoming.key)
+        const candidate = normalizeStoredSecret({
+          ...(prior ? { ...prior } : {}),
+          ...incoming,
+        })
         const secret =
-          incoming.type === "secret" ||
-          incoming.type === "secret_ref" ||
-          incoming.type === "secret_shared_ref" ||
-          incoming.masked === true ||
-          incoming.isStoredSecret === true ||
-          isSecret(prior ?? { key: incoming.key })
+          isSecret(candidate) || isSecret(prior ?? { key: incoming.key })
         const row: StoredEnvVar = {
           ...(prior ? { ...prior } : {}),
           ...incoming,
-          type: incoming.type ?? prior?.type ?? (secret ? "secret" : "plain"),
+          type:
+            candidate.type ?? prior?.type ?? (secret ? "secret_ref" : "plain"),
           value: secret
             ? ""
             : typeof incoming.value === "string"
