@@ -1,14 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import {
-  Eye,
-  EyeOff,
-  KeyRound,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react"
+import { Eye, EyeOff, KeyRound, Pencil, Plus, Trash2 } from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -198,6 +191,8 @@ const normalizeRows = (rows: EnvVar[]): EnvVar[] => {
     }
   })
 }
+
+const EMPTY_ENV_VAR_VALUE = "<empty value>"
 
 const toEnvVarFromForm = (
   form: EnvVarFormState,
@@ -854,7 +849,10 @@ export function EnvVarsEditor({
     setImportRaw("")
     setFormError(null)
     setSheetOpen(false)
-    pushToast("success", `Imported ${parsedImport.entries.length} variables from .env.`)
+    pushToast(
+      "success",
+      `Imported ${parsedImport.entries.length} variables from .env.`
+    )
     pushActivity({
       id: createActivityId(),
       action: "imported",
@@ -938,15 +936,15 @@ export function EnvVarsEditor({
               return reference
                 ? {
                     ...createRowFromVaultReference(
-                    {
-                      ...createEmptyForm(),
-                      id: current?.id ?? null,
-                      key: entry.key,
-                      value: "",
-                      type: "secret_ref",
-                      scope: "runtime",
-                    },
-                    reference
+                      {
+                        ...createEmptyForm(),
+                        id: current?.id ?? null,
+                        key: entry.key,
+                        value: "",
+                        type: "secret_ref",
+                        scope: "runtime",
+                      },
+                      reference
                     ),
                   }
                 : toEnvVarFromForm(
@@ -1232,7 +1230,7 @@ export function EnvVarsEditor({
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">
                     <span className="block min-w-0 truncate">
-                      {shownValue || MASKED_ENV_VAR_VALUE}
+                      {shownValue === "" ? EMPTY_ENV_VAR_VALUE : shownValue}
                     </span>
                   </td>
 

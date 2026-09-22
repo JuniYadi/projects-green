@@ -288,6 +288,50 @@ describe("EnvVarsEditor", () => {
     expect(view.getByText("••••••••")).toBeTruthy()
   })
 
+  it("shows a placeholder for an empty plain value", () => {
+    const view = render(
+      <EnvVarsEditor
+        envVars={[
+          {
+            id: "plain-empty",
+            key: "APP_ENV",
+            value: "",
+            type: "plain",
+          },
+        ]}
+        onChange={() => {}}
+      />
+    )
+
+    expect(view.getByText("<empty value>")).toBeTruthy()
+  })
+
+  it("shows a placeholder when a revealed Vault secret is empty", async () => {
+    const user = userEvent.setup()
+    const reveal = mock(async () => "")
+    const view = render(
+      <EnvVarsEditor
+        envVars={[
+          {
+            id: "secret-empty",
+            key: "EMPTY_SECRET",
+            value: "",
+            type: "secret_ref",
+            isStoredSecret: true,
+          },
+        ]}
+        onChange={() => {}}
+        onRevealSecret={reveal}
+      />
+    )
+
+    await user.click(view.getByRole("button", { name: "Reveal" }))
+
+    await waitFor(() => {
+      expect(view.getByText("<empty value>")).toBeTruthy()
+    })
+  })
+
   it("blocks duplicate keys before saving", async () => {
     const user = userEvent.setup()
     const view = render(
