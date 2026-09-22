@@ -403,12 +403,17 @@ export const parseStepQueryValue = (
 }
 
 /**
- * Container limits the Helm builder applies to a stack: same as the plan's
- * request, so a stack never bursts past what its plan pays for (Guaranteed
- * QoS). Shared so telemetry and the console report the ceiling the pod
- * actually runs with. Falls back to the builder's own defaults when a stack
- * has no plan values yet.
+ * Container limits the Helm builder applies to a stack: the plan's purchased
+ * ceiling. Requests are always fixed at the platform minimum (100m / 128Mi)
+ * regardless of plan, so the scheduler only reserves a tiny slot while the
+ * container can still burst up to the full plan limit (Burstable QoS).
+ * Falls back to sensible defaults when a stack has no plan values yet.
  */
+export const CONTAINER_REQUEST_DEFAULTS = {
+  cpuMillicores: 100,
+  memoryMi: 128,
+} as const
+
 export function resolveContainerLimits(
   cpuMillicores: number | null | undefined,
   memoryMi: number | null | undefined
