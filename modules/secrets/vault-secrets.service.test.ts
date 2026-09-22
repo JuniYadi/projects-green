@@ -231,6 +231,33 @@ describe("VaultSecretsService", () => {
     expect(dependencies.client.readKV).not.toHaveBeenCalled()
   })
 
+  it("fails an empty Vault reveal without auditing or exposing a value", async () => {
+    const dependencies = createDependencies([
+      {
+        key: "APP_KEY",
+        type: "secret_ref",
+        environment: "prod",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "APP_KEY",
+        version: 4,
+        updatedAt: "2026-08-18T12:00:00.000Z",
+      },
+    ])
+    dependencies.client.readKV = mock(async () => ({ APP_KEY: "   " }))
+    const service = new VaultSecretsService(dependencies as never)
+
+    await expect(
+      service.revealSecret({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "prod",
+        key: "APP_KEY",
+        workosUserId: "user-1",
+      })
+    ).rejects.toThrow("missing or empty in Vault")
+    expect(dependencies.auditLogger).not.toHaveBeenCalled()
+  })
+
   it("scopes stack lookup to the organization", async () => {
     const dependencies = createDependencies([])
     dependencies.db.applicationStack.findFirst.mockResolvedValue(null as never)
@@ -419,5 +446,4 @@ describe("VaultSecretsService", () => {
       expect(dependencies.db.applicationStack.update).toHaveBeenCalledTimes(1)
     })
   })
-
 })

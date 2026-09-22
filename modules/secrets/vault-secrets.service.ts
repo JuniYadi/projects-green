@@ -417,8 +417,10 @@ export class VaultSecretsService {
       }
     }
     const value = secrets[key]
-    if (value === undefined) {
-      throw new VaultSecretNotFoundError(`Secret ${key} was not found`)
+    if (typeof value !== "string" || value.trim().length === 0) {
+      throw new VaultSecretValidationError(
+        `Secret ${key} is missing or empty in Vault. Set a non-empty value and try again.`
+      )
     }
 
     try {
