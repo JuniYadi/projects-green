@@ -114,7 +114,7 @@ export const createVaultSecretsRoutes = (
     ...input,
   }
 
-  return new Elysia({ prefix: "/stacks/:stackId/secrets" })
+  return new Elysia({ prefix: "/stacks/:id/secrets" })
     .post(
       "/",
       async ({ params, body, set }) => {
@@ -126,7 +126,7 @@ export const createVaultSecretsRoutes = (
         try {
           const result = await dependencies.service.writeSecrets({
             organizationId: actor.organizationId as string,
-            stackId: params.stackId,
+            stackId: params.id,
             environment: body.environment,
             secrets: body.secrets,
           })
@@ -154,7 +154,7 @@ export const createVaultSecretsRoutes = (
         try {
           const result = await dependencies.service.getSecretMetadata({
             organizationId: actor.organizationId as string,
-            stackId: params.stackId,
+            stackId: params.id,
             environment: query.environment,
           })
 
@@ -183,7 +183,7 @@ export const createVaultSecretsRoutes = (
         try {
           const result = await dependencies.service.revealSecret({
             organizationId: actor.organizationId as string,
-            stackId: params.stackId,
+            stackId: params.id,
             environment: body.environment,
             key: body.key,
             workosUserId: actor.userId,

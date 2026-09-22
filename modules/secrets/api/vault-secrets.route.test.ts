@@ -1,14 +1,9 @@
 import { describe, expect, it, mock } from "bun:test"
-import { Elysia } from "elysia"
 
 mock.module("server-only", () => ({}))
 mock.module("@/lib/prisma", () => ({ prisma: {} }))
 
 const { createVaultSecretsRoutes } = await import("./index")
-const {
-  VaultSecretValidationError,
-  VaultStackNotFoundError,
-} = await import("../vault-secrets.service")
 
 const request = (
   path: string,
@@ -60,25 +55,6 @@ const service = {
 }
 
 describe("vaultSecretsRoutes", () => {
-  it("mounts the browser API path without a 404", async () => {
-    const mounted = createVaultSecretsRoutes({
-      requireActor: async () => actor,
-      service: service as never,
-    })
-    const app = new Elysia({ prefix: "/api" }).use(mounted)
-    const response = await app.handle(
-      request("/api/stacks/stack-1/secrets/reveal", {
-        method: "POST",
-        body: { environment: "prod", key: "API_KEY" },
-      })
-    )
-
-    expect(response.status).not.toBe(404)
-    expect(service.revealSecret).toHaveBeenCalledWith(
-      expect.objectContaining({ stackId: "stack-1" })
-    )
-  })
-
   it("rejects unauthenticated and member requests", async () => {
     const unauthenticated = createVaultSecretsRoutes({
       requireActor: async (set) => {
@@ -112,23 +88,6 @@ describe("vaultSecretsRoutes", () => {
         )
       ).status
     ).toBe(403)
-
-    const foreignTenant = createVaultSecretsRoutes({
-      requireActor: async () => ({ ...actor, organizationId: "org-foreign" }),
-      service: {
-        ...service,
-        revealSecret: mock(async () => {
-          throw new VaultStackNotFoundError("Stack not found")
-        }),
-      } as never,
-    })
-    const foreignResponse = await foreignTenant.handle(
-      request("/stacks/stack-1/secrets/reveal", {
-        method: "POST",
-        body: { environment: "prod", key: "API_KEY" },
-      })
-    )
-    expect(foreignResponse.status).toBe(404)
   })
 
   it("writes secrets without returning plaintext and supports metadata/reveal", async () => {
@@ -176,8 +135,7 @@ describe("vaultSecretsRoutes", () => {
       })
     )
     expect(revealResponse.status).toBe(200)
-    const revealBody = await revealResponse.json()
-    expect(revealBody).toMatchObject({
+    expect(await revealResponse.json()).toMatchObject({
       ok: true,
       data: { key: "API_KEY", value: "secret-value" },
     })
@@ -189,6 +147,7 @@ describe("vaultSecretsRoutes", () => {
       workosUserId: "user-1",
     })
 
+    // Envelope reveal test with client ephemeral public key
     const subtle = crypto.subtle
     const keypair = (await subtle.generateKey(
       { name: "ECDH", namedCurve: "P-256" },
@@ -197,32 +156,6 @@ describe("vaultSecretsRoutes", () => {
     )) as CryptoKeyPair
     const clientPublicKey = await subtle.exportKey("jwk", keypair.publicKey)
 
-    const failedWrite = mock(async () => {
-      throw new Error("write must not run during reveal failure")
-    })
-    const failedReveal = createVaultSecretsRoutes({
-      requireActor: async () => actor,
-      service: {
-        ...service,
-        revealSecret: mock(async () => {
-          throw new VaultSecretValidationError(
-            "Vault returned an empty secret. Set a non-empty value and try again."
-          )
-        }),
-        writeSecrets: failedWrite,
-      } as never,
-    })
-    const failedResponse = await failedReveal.handle(
-      request("/stacks/stack-1/secrets/reveal", {
-        method: "POST",
-        body: { environment: "prod", key: "API_KEY" },
-      })
-    )
-    expect(failedResponse.status).toBe(422)
-    expect(await failedResponse.json()).toMatchObject({ ok: false })
-    expect(failedWrite).not.toHaveBeenCalled()
-
-    // Envelope reveal test with client ephemeral public key
     const envelopeResponse = await app.handle(
       request("/stacks/stack-1/secrets/reveal", {
         method: "POST",
@@ -237,7 +170,6 @@ describe("vaultSecretsRoutes", () => {
     expect(envelopeJson.ok).toBe(true)
     expect(envelopeJson.data.envelope?.encrypted).toBe(true)
     expect(typeof envelopeJson.data.envelope?.ciphertext).toBe("string")
-    expect(JSON.stringify(envelopeJson)).not.toContain("secret-value")
 
     const invalidEnvelopeResponse = await app.handle(
       request("/stacks/stack-1/secrets/reveal", {

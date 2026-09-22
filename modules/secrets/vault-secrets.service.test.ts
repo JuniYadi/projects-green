@@ -215,6 +215,41 @@ describe("VaultSecretsService", () => {
     })
   })
 
+  it("reveals a legacy stored APP_KEY using its authoritative Vault metadata", async () => {
+    const dependencies = createDependencies([
+      {
+        key: "APP_KEY",
+        type: "plain",
+        value: "redacted",
+        source: "vault",
+        isStoredSecret: true,
+        environment: "prod",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "APP_KEY",
+        version: 7,
+        updatedAt: "2026-08-18T12:00:00.000Z",
+      },
+    ])
+    dependencies.client.readKV = mock(async () => ({
+      APP_KEY: "vault-app-key",
+    }))
+    const service = new VaultSecretsService(dependencies as never)
+
+    await expect(
+      service.revealSecret({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "prod",
+        key: "APP_KEY",
+        workosUserId: "user-1",
+      })
+    ).resolves.toMatchObject({ key: "APP_KEY", value: "vault-app-key" })
+    expect(dependencies.client.readKV).toHaveBeenCalledWith(
+      "tenants/org-1/stacks/stack-1/prod/app-env"
+    )
+    expect(dependencies.auditLogger).toHaveBeenCalledTimes(1)
+  })
+
   it("does not reveal an unreferenced key", async () => {
     const dependencies = createDependencies([])
     const service = new VaultSecretsService(dependencies as never)
@@ -300,6 +335,35 @@ describe("VaultSecretsService", () => {
       })
     ).rejects.toBeInstanceOf(VaultSecretValidationError)
     expect(dependencies.client.readKV).not.toHaveBeenCalled()
+  })
+
+  it("rejects a foreign-tenant legacy row before Vault access or audit", async () => {
+    const dependencies = createDependencies([
+      {
+        key: "APP_KEY",
+        type: "plain",
+        source: "vault",
+        isStoredSecret: true,
+        environment: "prod",
+        vaultPath: "tenants/foreign-org/stacks/other-stack/prod/app-env",
+        vaultKey: "APP_KEY",
+        version: 7,
+        updatedAt: "2026-08-18T12:00:00.000Z",
+      },
+    ])
+    const service = new VaultSecretsService(dependencies as never)
+
+    await expect(
+      service.revealSecret({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "prod",
+        key: "APP_KEY",
+        workosUserId: "user-1",
+      })
+    ).rejects.toBeInstanceOf(VaultSecretValidationError)
+    expect(dependencies.client.readKV).not.toHaveBeenCalled()
+    expect(dependencies.auditLogger).not.toHaveBeenCalled()
   })
 
   it("fails closed when audit logger throws", async () => {

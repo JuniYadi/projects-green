@@ -215,6 +215,28 @@ const referencesForEnvironment = (
     .map((item) => item as unknown as VaultSecretReference)
 }
 
+const normalizeRevealReference = (
+  item: Record<string, unknown>
+): Record<string, unknown> | undefined => {
+  if (item.type === "secret_ref") {
+    return item
+  }
+
+  if (
+    item.type === "plain" &&
+    item.isStoredSecret === true &&
+    item.source === "vault" &&
+    typeof item.vaultPath === "string" &&
+    item.vaultPath.trim().length > 0 &&
+    typeof item.vaultKey === "string" &&
+    item.vaultKey.trim().length > 0
+  ) {
+    return { ...item, type: "secret_ref" }
+  }
+
+  return undefined
+}
+
 const mergeSecretReferences = (input: {
   existing: Record<string, unknown>[]
   secrets: Record<string, string>
@@ -374,17 +396,20 @@ export class VaultSecretsService {
       environment,
     })
     const storedItems = toStoredItems(stack.envVarsJson)
+    const revealItems = storedItems
+      .map(normalizeRevealReference)
+      .filter((item): item is Record<string, unknown> => item !== undefined)
     // Defensive lookup: first try exact environment match, then fall back to any
     // matching secret_ref key. This handles stacks migrated from legacy environment
     // mappings (e.g. dev -> prod transition) while maintaining full tenant isolation.
     let reference = referencesForEnvironment(
-      storedItems,
+      revealItems,
       environment,
       vaultPath
     ).find((item) => item.key === key)
 
     if (!reference) {
-      reference = storedItems.find(
+      reference = revealItems.find(
         (item) =>
           item.type === "secret_ref" &&
           item.key === key &&
