@@ -4880,6 +4880,8 @@ export const idMessages: AppMessages = {
         suspendConfirm: "Suspend",
         suspendSuccess: "Stack {stack} berhasil di-suspend",
         suspendFailed: "Gagal me-suspend stack",
+        suspendPartial:
+          "Stack {stack} ditandai suspended tapi GitOps push gagal — runtime mungkin belum scale down",
         terminateTitle: "Terminasi App Stack",
         terminateDescription:
           "Ini akan menghapus permanen data stack {stack} dan melepas managed database. Chart ArgoCD/Helm akan dihapus pada rekonsiliasi berikutnya. Tindakan ini tidak dapat dibatalkan.",

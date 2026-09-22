@@ -189,12 +189,32 @@ describe("POST /admin/app-hosting/stacks/:id/suspend", () => {
     expect(res.status).toBe(200)
     const body = (await res.json()) as {
       ok: boolean
+      message: string
       data: { gitopsPushed: boolean; argocdSynced: boolean }
     }
     expect(body.ok).toBe(true)
     expect(body.data.gitopsPushed).toBe(true)
     expect(body.data.argocdSynced).toBe(true)
+    expect(body.message).toBe("Stack suspended successfully")
     expect(mockSuspendStack).toHaveBeenCalledWith("stack_1")
+  })
+
+  it("returns partial warning message when gitops push failed", async () => {
+    mockSuspendStack.mockResolvedValueOnce({
+      gitopsPushed: false,
+      argocdSynced: false,
+    })
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/suspend", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { ok: boolean; message: string }
+    expect(body.ok).toBe(true)
+    expect(body.message).toContain("GitOps push failed")
   })
 
   it("returns 404 when stack not found", async () => {
@@ -233,7 +253,7 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     expect(body.error).toBe("UNAUTHORIZED")
   })
 
-  it("terminates stack and returns result", async () => {
+  it("terminates stack and returns result with accurate flags", async () => {
     const res = await makeApp().handle(
       new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
         method: "DELETE",
@@ -254,6 +274,28 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     expect(body.data.argocdDeleted).toBe(true)
     expect(body.data.stockReleased).toBe(true)
     expect(mockDeleteStack).toHaveBeenCalledWith("stack_1")
+  })
+
+  it("returns accurate flags when argocd delete fails", async () => {
+    mockDeleteStack.mockResolvedValueOnce({
+      gitopsDeleted: true,
+      argocdDeleted: false,
+      stockReleased: true,
+    })
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data: { argocdDeleted: boolean }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data.argocdDeleted).toBe(false)
   })
 
   it("returns 404 when stack not found", async () => {

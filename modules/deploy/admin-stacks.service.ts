@@ -77,10 +77,7 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
     organizationId !== "undefined" &&
     organizationId !== "null"
   ) {
-    where.organizationId = {
-      contains: organizationId,
-      mode: "insensitive",
-    }
+    where.organizationId = organizationId
   }
 
   const status = params.status?.trim()
@@ -224,7 +221,7 @@ async function triggerArgoCdSync(
 async function deleteArgoCdApplication(
   argocdConfig: ArgoCdClusterConfig,
   appName: string
-): Promise<void> {
+): Promise<boolean> {
   const baseUrl = argocdConfig.apiUrl.replace(/\/$/, "")
   // cascade=true ensures finalizer runs (resources-finalizer.argocd.argoproj.io)
   const url = `${baseUrl}/api/v1/applications/${encodeURIComponent(appName)}?cascade=true&propagationPolicy=foreground`
@@ -236,17 +233,24 @@ async function deleteArgoCdApplication(
         Accept: "application/json",
       },
     })
-    if (!res.ok && res.status !== 404) {
+    if (res.status === 404) {
+      // Already gone — treat as success (idempotent)
+      return true
+    }
+    if (!res.ok) {
       const body = await res.text().catch(() => "")
       console.warn(
         `[admin-stacks] ArgoCD DELETE application ${appName} returned ${res.status}: ${body}`
       )
+      return false
     }
+    return true
   } catch (err) {
     console.warn(
       `[admin-stacks] ArgoCD DELETE application ${appName} failed:`,
       err
     )
+    return false
   }
 }
 
@@ -574,18 +578,20 @@ export async function adminDeleteStack(stackId: string): Promise<{
 
   // 2. Delete ArgoCD Application (cascade=true triggers resources-finalizer)
   if (argocdConfig) {
-    await deleteArgoCdApplication(argocdConfig, stack.slug)
-    argocdDeleted = true
+    argocdDeleted = await deleteArgoCdApplication(argocdConfig, stack.slug)
   }
 
   // 3. Release managed DB stock (frees Vault KV secret)
-  await releaseManagedStock(stackId).catch((err) => {
-    console.warn(
-      `[admin-stacks] releaseManagedStock failed for ${stackId}:`,
-      err
-    )
-  })
-  stockReleased = true
+  await releaseManagedStock(stackId)
+    .then(() => {
+      stockReleased = true
+    })
+    .catch((err) => {
+      console.warn(
+        `[admin-stacks] releaseManagedStock failed for ${stackId}:`,
+        err
+      )
+    })
 
   // 4. Delete stack record from DB (cascade deletes deployments, events etc.)
   await prisma.applicationStack.delete({ where: { id: stackId } })

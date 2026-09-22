@@ -82,9 +82,14 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
 
         try {
           const result = await suspendStack(params.id)
+          // If gitops was configured but push failed, surface a partial-success warning
+          const gitopsConfigured = result.gitopsPushed !== undefined
+          const partialFailure = gitopsConfigured && !result.gitopsPushed
           return {
             ok: true as const,
-            message: "Stack suspended successfully",
+            message: partialFailure
+              ? "Stack marked as suspended in DB but GitOps push failed — runtime may not scale down immediately"
+              : "Stack suspended successfully",
             data: result,
           }
         } catch (error) {

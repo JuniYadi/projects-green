@@ -4839,6 +4839,8 @@ export const enMessages: AppMessages = {
         suspendConfirm: "Suspend",
         suspendSuccess: "Stack {stack} suspended successfully",
         suspendFailed: "Failed to suspend stack",
+        suspendPartial:
+          "Stack {stack} marked as suspended but GitOps push failed — runtime may not scale down immediately",
         terminateTitle: "Terminate App Stack",
         terminateDescription:
           "This will permanently delete the stack record for {stack} and release any managed database stock. The ArgoCD/Helm chart will be removed on the next reconciliation. This action cannot be undone.",

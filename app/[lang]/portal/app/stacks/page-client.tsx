@@ -44,6 +44,18 @@ const STATUS_TONES: Record<string, string> = {
   STOPPED: "border-border bg-muted/40 text-muted-foreground",
 }
 
+const STATUS_LABELS = (
+  messages: ReturnType<typeof getMessages>["console"]["app"]["adminStacks"]
+): Record<string, string> => ({
+  ALL: messages.statusAll,
+  RUNNING: messages.statusRunning,
+  BUILDING: messages.statusBuilding,
+  DEPLOYING: messages.statusDeploying,
+  QUEUED: messages.statusQueued,
+  FAILED: messages.statusFailed,
+  STOPPED: messages.statusStopped,
+})
+
 const STATUS_FILTERS = [
   "ALL",
   "RUNNING",
@@ -173,9 +185,16 @@ export default function AdminStacksPage() {
       if (!res || !res.ok) {
         throw new Error(messages.suspendFailed)
       }
-      toast.success(
-        messages.suspendSuccess.replace("{stack}", suspendTarget.slug)
-      )
+      // Show warning toast if gitops push failed (runtime may not have scaled down)
+      if (res.data && !res.data.gitopsPushed) {
+        toast.warning(
+          messages.suspendPartial.replace("{stack}", suspendTarget.slug)
+        )
+      } else {
+        toast.success(
+          messages.suspendSuccess.replace("{stack}", suspendTarget.slug)
+        )
+      }
       setReloadTick((v) => v + 1)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : messages.suspendFailed)
@@ -314,19 +333,7 @@ export default function AdminStacksPage() {
                 applyFilters(orgInput, queryInput, status)
               }}
             >
-              {status === "ALL"
-                ? messages.statusAll
-                : status === "RUNNING"
-                  ? messages.statusRunning
-                  : status === "BUILDING"
-                    ? messages.statusBuilding
-                    : status === "DEPLOYING"
-                      ? messages.statusDeploying
-                      : status === "QUEUED"
-                        ? messages.statusQueued
-                        : status === "FAILED"
-                          ? messages.statusFailed
-                          : messages.statusStopped}
+              {STATUS_LABELS(messages)[status]}
             </Button>
           ))}
         </div>
