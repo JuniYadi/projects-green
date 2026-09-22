@@ -16,7 +16,7 @@ describe("buildHelmValues", () => {
     })
     expect(out.replicaCount).toBe(1)
     expect(out.resources).toEqual({
-      requests: { cpu: "500m", memory: "1024Mi" },
+      requests: { cpu: "100m", memory: "128Mi" },
       limits: { cpu: "500m", memory: "1024Mi" },
     })
     expect(out.env).toBeUndefined()
@@ -24,18 +24,18 @@ describe("buildHelmValues", () => {
     expect(out.simpleIngress).toBeUndefined()
   })
 
-  it("uses provided cpu/memory for both requests and limits", () => {
+  it("requests are always fixed at platform minimum regardless of plan cpu/memory", () => {
     const out = buildHelmValues({
       slug: "app-test",
       imageRepository: "r",
       imageTag: "1",
       env: [],
-      cpu: 100,
-      memory: 256,
+      cpu: 1000,
+      memory: 2048,
     })
     expect(out.resources).toEqual({
-      requests: { cpu: "100m", memory: "256Mi" },
-      limits: { cpu: "100m", memory: "256Mi" },
+      requests: { cpu: "100m", memory: "128Mi" },
+      limits: { cpu: "1000m", memory: "2048Mi" },
     })
   })
 

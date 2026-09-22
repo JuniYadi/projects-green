@@ -25,7 +25,7 @@ describe("parseStepQueryValue", () => {
 })
 
 describe("resolveContainerLimits", () => {
-  it("mirrors the plan's own request instead of padding it to a ceiling", () => {
+  it("returns the plan's cpu/memory as the container limit ceiling", () => {
     expect(resolveContainerLimits(1000, 2048)).toEqual({
       cpuMillicores: 1000,
       memoryMi: 2048,
