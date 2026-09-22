@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { render, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { __testables } from "@/modules/deploy/api/environment-variables.stub"
@@ -60,7 +60,9 @@ describe("EnvVarsEditor", () => {
     const changes: EnvVar[][] = []
     const view = render(
       <EnvVarsEditor
-        envVars={[{ id: "env-1", key: "APP_ENV", value: "staging", type: "plain" }]}
+        envVars={[
+          { id: "env-1", key: "APP_ENV", value: "staging", type: "plain" },
+        ]}
         persistence="local"
         onChange={(rows) => changes.push(rows)}
       />
@@ -74,14 +76,20 @@ describe("EnvVarsEditor", () => {
     expect(changes).toHaveLength(0)
 
     await user.click(view.getByRole("button", { name: "Delete" }))
-    await user.click(view.getByRole("dialog").getByRole("button", { name: "Delete" }))
+    await user.click(
+      within(view.getByRole("dialog")).getByRole("button", { name: "Delete" })
+    )
     await waitFor(() => expect(changes.at(-1)).toHaveLength(0))
   })
 
   it("copies plain values and never enables secret copy before reveal", async () => {
     const user = userEvent.setup()
     const writeText = mock(async () => {})
-    Object.assign(navigator, { clipboard: { writeText } })
+    const originalClipboard = navigator.clipboard
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    })
     const reveal = mock(async () => "top-secret")
     const view = render(
       <EnvVarsEditor
@@ -99,9 +107,15 @@ describe("EnvVarsEditor", () => {
     await user.click(copyButtons[0])
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("production"))
     await user.click(view.getByRole("button", { name: "Reveal" }))
-    await waitFor(() => expect(view.getByDisplayValue("top-secret")).toBeTruthy())
+    await waitFor(() =>
+      expect(view.getByDisplayValue("top-secret")).toBeTruthy()
+    )
     await user.click(view.getAllByRole("button", { name: "Copy value" })[1])
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("top-secret"))
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      configurable: true,
+    })
   })
 
   it("keeps long values inside a bounded input", () => {
@@ -134,8 +148,8 @@ describe("EnvVarsEditor", () => {
       />
     )
 
-    expect(view.getByText("production")).toBeTruthy()
-    expect(view.queryByText("••••••••")).toBeNull()
+    expect(view.getByDisplayValue("production")).toBeTruthy()
+    expect(view.queryByDisplayValue("••••••••")).toBeNull()
   })
 
   it("creates a managed-service reference without storing a value", async () => {
@@ -342,16 +356,16 @@ describe("EnvVarsEditor", () => {
       />
     )
 
-    expect(view.getByText("••••••••")).toBeTruthy()
+    expect(view.getByDisplayValue("••••••••")).toBeTruthy()
     await user.click(view.getByRole("button", { name: "Reveal" }))
 
     await waitFor(() => {
       expect(reveal).toHaveBeenCalledTimes(1)
-      expect(view.getByText("revealed-value")).toBeTruthy()
+      expect(view.getByDisplayValue("revealed-value")).toBeTruthy()
     })
 
     await user.click(view.getByRole("button", { name: "Hide" }))
-    expect(view.getByText("••••••••")).toBeTruthy()
+    expect(view.getByDisplayValue("••••••••")).toBeTruthy()
   })
 
   it("shows a placeholder for an empty plain value", () => {
@@ -369,7 +383,9 @@ describe("EnvVarsEditor", () => {
       />
     )
 
-    expect(view.getByText("<empty value>")).toBeTruthy()
+    const input = view.getByRole("textbox", { name: "APP_ENV value" })
+    expect(input).toHaveAttribute("placeholder", "<empty value>")
+    expect(input).toHaveValue("")
   })
 
   it("does not display an empty Vault reveal as a successful value", async () => {
@@ -398,7 +414,7 @@ describe("EnvVarsEditor", () => {
         view.getAllByText(/Vault returned an empty secret\./).length
       ).toBeGreaterThan(0)
     })
-    expect(view.getByText("••••••••")).toBeTruthy()
+    expect(view.getByDisplayValue("••••••••")).toBeTruthy()
     expect(view.queryByText("<empty value>")).toBeNull()
   })
 

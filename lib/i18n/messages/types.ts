@@ -82,6 +82,9 @@ export type AppMessages = {
         revealing: string
         edit: string
         delete: string
+        copy: string
+        deleteTitle: string
+        deleteDescription: string
         typePlain: string
         typePlainBadge: string
         typeSecret: string
