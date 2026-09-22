@@ -7017,6 +7017,7 @@ export const enMessages: AppMessages = {
     thProtocol: "Protocol",
     thUsername: "Username",
     thVpnIp: "IP Address",
+    thEndpoint: "Endpoint",
     wireguardStatus: "Status",
     wireguardHandshake: "Handshake",
     wireguardTransfer: "Transfer",

@@ -583,6 +583,7 @@ export default function VpnServerDetailPage() {
                 <TableRow>
                   <TableHead>{messages.thUsername}</TableHead>
                   <TableHead>{messages.thVpnIp}</TableHead>
+                  <TableHead>{messages.thRealAddress}</TableHead>
                   <TableHead>{messages.wireguardStatus}</TableHead>
                   <TableHead>{messages.wireguardHandshake}</TableHead>
                   <TableHead>{messages.wireguardRx}</TableHead>
@@ -592,13 +593,13 @@ export default function VpnServerDetailPage() {
               <TableBody>
                 {wireGuardQuery.isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={7}>
                       <Skeleton className="h-8 w-full" />
                     </TableCell>
                   </TableRow>
                 ) : wireGuardQuery.isError ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-sm text-red-600">
+                    <TableCell colSpan={7} className="text-sm text-red-600">
                       {messages.metricsUnavailable}
                     </TableCell>
                   </TableRow>
@@ -610,6 +611,9 @@ export default function VpnServerDetailPage() {
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {session.ip}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {session.endpoint ?? "—"}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -636,7 +640,7 @@ export default function VpnServerDetailPage() {
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="h-24 text-center text-muted-foreground"
                     >
                       {messages.noWireguardSessions}

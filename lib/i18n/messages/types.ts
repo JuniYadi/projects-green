@@ -6444,6 +6444,7 @@ export type AppMessages = {
     thProtocol: string
     thUsername: string
     thVpnIp: string
+    thEndpoint: string
     wireguardStatus: string
     wireguardHandshake: string
     wireguardTransfer: string
