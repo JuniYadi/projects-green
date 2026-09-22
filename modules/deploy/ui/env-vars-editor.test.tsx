@@ -50,6 +50,72 @@ describe("EnvVarsEditor", () => {
     expect(view.getByRole("button", { name: "Show" })).toBeTruthy()
     expect(view.getByRole("button", { name: "Edit" })).toBeTruthy()
     expect(view.getByRole("button", { name: "Delete" })).toBeTruthy()
+    expect(view.getByRole("textbox", { name: "APP_ENV value" })).toHaveValue(
+      "staging"
+    )
+  })
+
+  it("requires confirmation before deleting and supports cancellation", async () => {
+    const user = userEvent.setup()
+    const changes: EnvVar[][] = []
+    const view = render(
+      <EnvVarsEditor
+        envVars={[{ id: "env-1", key: "APP_ENV", value: "staging", type: "plain" }]}
+        persistence="local"
+        onChange={(rows) => changes.push(rows)}
+      />
+    )
+
+    await user.click(view.getByRole("button", { name: "Delete" }))
+    expect(view.getByRole("dialog")).toBeTruthy()
+    expect(changes).toHaveLength(0)
+    await user.click(view.getByRole("button", { name: "Cancel" }))
+    expect(view.queryByRole("dialog")).toBeNull()
+    expect(changes).toHaveLength(0)
+
+    await user.click(view.getByRole("button", { name: "Delete" }))
+    await user.click(view.getByRole("dialog").getByRole("button", { name: "Delete" }))
+    await waitFor(() => expect(changes.at(-1)).toHaveLength(0))
+  })
+
+  it("copies plain values and never enables secret copy before reveal", async () => {
+    const user = userEvent.setup()
+    const writeText = mock(async () => {})
+    Object.assign(navigator, { clipboard: { writeText } })
+    const reveal = mock(async () => "top-secret")
+    const view = render(
+      <EnvVarsEditor
+        envVars={[
+          { id: "plain", key: "APP_ENV", value: "production", type: "plain" },
+          { id: "secret", key: "TOKEN", value: "", type: "secret_ref" },
+        ]}
+        onChange={() => {}}
+        onRevealSecret={reveal}
+      />
+    )
+
+    const copyButtons = view.getAllByRole("button", { name: "Copy value" })
+    expect(copyButtons[1]).toBeDisabled()
+    await user.click(copyButtons[0])
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("production"))
+    await user.click(view.getByRole("button", { name: "Reveal" }))
+    await waitFor(() => expect(view.getByDisplayValue("top-secret")).toBeTruthy())
+    await user.click(view.getAllByRole("button", { name: "Copy value" })[1])
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("top-secret"))
+  })
+
+  it("keeps long values inside a bounded input", () => {
+    const value = "x".repeat(500)
+    const view = render(
+      <EnvVarsEditor
+        envVars={[{ id: "long", key: "LONG_VALUE", value, type: "plain" }]}
+        onChange={() => {}}
+      />
+    )
+
+    const input = view.getByRole("textbox", { name: "LONG_VALUE value" })
+    expect(input).toHaveValue(value)
+    expect(input.className).toContain("max-w-full")
   })
 
   it("shows legacy plain values even when their old masked flag is set", () => {
