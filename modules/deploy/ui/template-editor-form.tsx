@@ -775,7 +775,7 @@ export function TemplateEditorForm({
                 className="gap-1.5 text-xs"
               >
                 <DotsThreeVertical className="size-4" />
-                <span>{messages.moreActions || "Aksi Lainnya"}</span>
+                <span>{messages.moreActions || "More Actions"}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
