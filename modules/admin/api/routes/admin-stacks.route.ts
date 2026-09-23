@@ -7,6 +7,7 @@ import {
   listAdminStacks,
   adminSuspendStack,
   adminDeleteStack,
+  adminPurgeTerminatedStack,
 } from "@/modules/deploy/admin-stacks.service"
 
 export type AdminStacksRouteDeps = {
@@ -14,6 +15,7 @@ export type AdminStacksRouteDeps = {
   listAdminStacks?: typeof listAdminStacks
   adminSuspendStack?: typeof adminSuspendStack
   adminDeleteStack?: typeof adminDeleteStack
+  adminPurgeTerminatedStack?: typeof adminPurgeTerminatedStack
 }
 
 export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
@@ -22,6 +24,7 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
     listAdminStacks: listStacks = listAdminStacks,
     adminSuspendStack: suspendStack = adminSuspendStack,
     adminDeleteStack: deleteStack = adminDeleteStack,
+    adminPurgeTerminatedStack: purgeStack = adminPurgeTerminatedStack,
   } = deps
 
   return new Elysia()
@@ -102,6 +105,14 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
               message: "Application stack not found",
             }
           }
+          if (msg.startsWith("ALREADY_TERMINATED")) {
+            set.status = 409
+            return {
+              ok: false as const,
+              error: "ALREADY_TERMINATED",
+              message: "Stack is already terminated",
+            }
+          }
           console.error("[admin-stacks] suspend error:", error)
           set.status = 500
           return {
@@ -125,9 +136,10 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
 
         try {
           const result = await deleteStack(params.id)
+          const slug = params.id
           return {
             ok: true as const,
-            message: "Stack terminated successfully",
+            message: `Stack ${slug} marked for termination. Infrastructure will be scaled to 0 immediately. Data will be purged in 30 days.`,
             data: result,
           }
         } catch (error) {
@@ -140,12 +152,66 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
               message: "Application stack not found",
             }
           }
+          if (msg.startsWith("ALREADY_TERMINATED")) {
+            set.status = 409
+            return {
+              ok: false as const,
+              error: "ALREADY_TERMINATED",
+              message: "Stack is already terminated",
+            }
+          }
           console.error("[admin-stacks] delete error:", error)
           set.status = 500
           return {
             ok: false as const,
             error: "INTERNAL_ERROR",
             message: "Failed to terminate application stack",
+          }
+        }
+      },
+      {
+        params: t.Object({ id: t.String() }),
+      }
+    )
+    .post(
+      "/admin/app-hosting/stacks/:id/purge",
+      async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) {
+          return actor as AdminApiError
+        }
+
+        try {
+          const result = await purgeStack(params.id)
+          return {
+            ok: true as const,
+            message: "Stack purged",
+            data: result,
+          }
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          if (msg.startsWith("NOT_FOUND")) {
+            set.status = 404
+            return {
+              ok: false as const,
+              error: "NOT_FOUND",
+              message: "Application stack not found",
+            }
+          }
+          if (msg.startsWith("NOT_TERMINATED")) {
+            set.status = 409
+            return {
+              ok: false as const,
+              error: "NOT_TERMINATED",
+              message: "Stack is not in TERMINATED state",
+            }
+          }
+          console.error("[admin-stacks] purge error:", error)
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_ERROR",
+            message: "Failed to purge application stack",
           }
         }
       },

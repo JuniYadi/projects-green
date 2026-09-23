@@ -52,6 +52,8 @@ export type AdminStackDTO = {
   updatedAt: string
   lastDeployedAt: string | null
   deploymentsCount: number
+  terminatedAt: string | null
+  scheduledPurgeAt: string | null
 }
 
 export type AdminStacksListQuery = {
@@ -156,6 +158,10 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
       updatedAt: s.updatedAt.toISOString(),
       lastDeployedAt: s.lastDeployedAt ? s.lastDeployedAt.toISOString() : null,
       deploymentsCount: s._count.deployments,
+      terminatedAt: s.terminatedAt ? s.terminatedAt.toISOString() : null,
+      scheduledPurgeAt: s.scheduledPurgeAt
+        ? s.scheduledPurgeAt.toISOString()
+        : null,
     }
   })
 
@@ -254,6 +260,246 @@ async function deleteArgoCdApplication(
   }
 }
 
+// ─── Shared helper: scale-to-0 via GitOps ────────────────────────────────────
+
+/**
+ * Shared private helper that builds helm values with replicas=0 and pushes
+ * them to the GitOps repository, then optionally triggers an ArgoCD sync.
+ *
+ * Used by both adminSuspendStack and adminDeleteStack (terminate).
+ *
+ * @returns { gitopsScaled, argocdSynced }
+ */
+async function scaleToZeroViaGitOps(
+  stack: Awaited<ReturnType<typeof prisma.applicationStack.findUnique>> & {
+    template: {
+      blueprintJson: import("@prisma/client").Prisma.JsonValue
+    } | null
+    deployments: { commitSha: string | null }[]
+  },
+  gitopsConfig: GitOpsClusterConfig,
+  argocdConfig: ArgoCdClusterConfig | null,
+  commitMessage: string
+): Promise<{ gitopsScaled: boolean; argocdSynced: boolean }> {
+  let gitopsScaled = false
+  let argocdSynced = false
+
+  try {
+    const cluster = await resolveAppHostingClusterForStack(stack.id)
+
+    let imageRepository: string
+    let imageTag: string
+    if (stack.sourceType === "TEMPLATE") {
+      const resolved = await resolveTemplateImageReference({
+        id: stack.id,
+        slug: stack.slug,
+        metadataJson: stack.metadataJson,
+        template: stack.template ?? null,
+      })
+      imageRepository = resolved.imageRepository
+      imageTag = resolved.imageTag
+    } else {
+      let registryHost = "registry-apac.pfnapp.com"
+      let registryNamespace: string | undefined
+      try {
+        const reg = await resolveClusterIntegration(stack.id, "REGISTRY")
+        registryHost = reg.host
+        registryNamespace = reg.namespace ?? undefined
+      } catch {
+        // fallback defaults
+      }
+      imageRepository = registryNamespace
+        ? `${registryHost}/${registryNamespace}/${stack.slug}`
+        : `${registryHost}/${stack.slug}`
+      const latestDeploy = stack.deployments[0]
+      imageTag = latestDeploy?.commitSha?.slice(0, 7) || "latest"
+    }
+
+    const { envVars, externalSecretVaultPath } = resolveHelmEnvInputs(
+      stack.envVarsJson
+    )
+    const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
+
+    const resolvedDomain =
+      stack.customDomain ??
+      (cluster.managedBaseDomain
+        ? `${stack.slug}.${cluster.managedBaseDomain}`
+        : null)
+
+    const stackMeta =
+      stack.metadataJson && typeof stack.metadataJson === "object"
+        ? (stack.metadataJson as Record<string, unknown>)
+        : null
+    const templateBlueprint =
+      (stack.template?.blueprintJson as Record<string, unknown> | null) ?? null
+    const blueprintStorage =
+      templateBlueprint && typeof templateBlueprint.storage === "object"
+        ? (templateBlueprint.storage as Record<string, unknown>)
+        : null
+    const blueprintRuntime =
+      templateBlueprint && typeof templateBlueprint.runtime === "object"
+        ? (templateBlueprint.runtime as Record<string, unknown>)
+        : null
+
+    const runtimePort =
+      (typeof stackMeta?.defaultPort === "number"
+        ? (stackMeta.defaultPort as number)
+        : null) ??
+      (typeof blueprintRuntime?.defaultPort === "number"
+        ? blueprintRuntime.defaultPort
+        : 80)
+
+    const resolvedFsGroup =
+      typeof stackMeta?.fsGroup === "number"
+        ? (stackMeta.fsGroup as number)
+        : typeof blueprintStorage?.fsGroup === "number"
+          ? (blueprintStorage.fsGroup as number)
+          : typeof blueprintRuntime?.fsGroup === "number"
+            ? (blueprintRuntime.fsGroup as number)
+            : undefined
+
+    const storagePath =
+      typeof blueprintStorage?.path === "string"
+        ? (blueprintStorage.path as string)
+        : typeof blueprintStorage?.mountPath === "string"
+          ? (blueprintStorage.mountPath as string)
+          : "/data"
+
+    const storageConfig =
+      blueprintStorage && blueprintStorage.enabled === true
+        ? {
+            enabled: true,
+            path: storagePath,
+            mountPath: storagePath,
+            size:
+              typeof blueprintStorage.sizeGbDefault === "number"
+                ? `${blueprintStorage.sizeGbDefault}Gi`
+                : "5Gi",
+            storageClass: cluster.storageClass,
+            accessMode: "ReadWriteOnce" as const,
+            fsGroup: resolvedFsGroup,
+            mounts: resolveStorageMounts(blueprintStorage.mounts),
+          }
+        : null
+
+    const { livenessProbe, readinessProbe, startupProbe } = resolveStackProbes({
+      stackMeta,
+      blueprintRuntime,
+      runtimePort,
+    })
+    const command = Array.isArray(blueprintRuntime?.command)
+      ? (blueprintRuntime.command as string[])
+      : Array.isArray(stackMeta?.command)
+        ? (stackMeta.command as string[])
+        : undefined
+    const args = Array.isArray(blueprintRuntime?.args)
+      ? (blueprintRuntime.args as string[])
+      : Array.isArray(stackMeta?.args)
+        ? (stackMeta.args as string[])
+        : undefined
+
+    // Build values with replicas = 0 (scale to zero)
+    const values = buildHelmValues({
+      slug: stack.slug,
+      imageRepository,
+      imageTag,
+      command,
+      args,
+      containerPort: runtimePort,
+      servicePort: runtimePort,
+      env: envVars,
+      replicas: 0,
+      cpu: stack.cpu,
+      memory: stack.memory,
+      domain: resolvedDomain,
+      edge,
+      externalSecretVaultPath,
+      storage: storageConfig,
+      nodeSelector: cluster.nodeSelector,
+      tolerations: cluster.tolerations,
+      deploymentType: getStackDeploymentType(stack.metadataJson),
+      additionalContainerPorts: getStackAdditionalPorts(stack.metadataJson),
+      reloader: true,
+      logging: true,
+      runAsNonRoot: blueprintRuntime?.runAsNonRoot !== false,
+      fsGroup: resolvedFsGroup,
+      livenessProbe,
+      readinessProbe,
+      startupProbe,
+    })
+
+    const { valuePath, helmPath, argocdProjectPath, appSlug, namespace } =
+      resolveGitOpsManifestPaths({
+        slug: stack.slug,
+        organizationId: stack.organizationId,
+        basePath: gitopsConfig.basePath,
+      })
+
+    const repo = gitopsConfig.repo.replace(/\.git$/, "")
+    const gitopsRepoUrl =
+      repo.startsWith("http://") || repo.startsWith("https://")
+        ? `${repo}.git`
+        : `https://github.com/${repo}.git`
+
+    const argocdProjectYaml = buildArgoCdProjectManifest({
+      appSlug,
+      repoUrl: gitopsRepoUrl,
+      branch: gitopsConfig.branch,
+      servicesPath: resolveGitOpsManifestPaths({
+        slug: stack.slug,
+        organizationId: stack.organizationId,
+        basePath: gitopsConfig.basePath,
+      }).appServicesDir,
+      namespace,
+    })
+
+    const helmYaml = buildHelmApplicationManifest({
+      appName: stack.slug,
+      gitopsRepoUrl,
+      branch: gitopsConfig.branch,
+      valueFilePath: valuePath,
+      namespace,
+      ...(argocdConfig?.chartVersion
+        ? { chartVersion: argocdConfig.chartVersion }
+        : {}),
+      ...(argocdConfig?.chartRepo
+        ? { chartRepoUrl: argocdConfig.chartRepo }
+        : {}),
+    })
+
+    const valuesYaml = jsYaml.dump(values, {
+      indent: 2,
+      lineWidth: -1,
+      noRefs: true,
+    })
+
+    const gitops = new GitOpsRepositoryService({
+      pat: gitopsConfig.pat,
+      branch: gitopsConfig.branch,
+    })
+
+    await gitops.commitFiles(gitopsConfig.repo, commitMessage, [
+      { path: valuePath, content: valuesYaml },
+      { path: helmPath, content: helmYaml },
+      { path: argocdProjectPath, content: argocdProjectYaml },
+    ])
+
+    gitopsScaled = true
+
+    if (argocdConfig) {
+      await triggerArgoCdSync(argocdConfig, stack.slug)
+      argocdSynced = true
+    }
+  } catch (err) {
+    console.error(
+      `[admin-stacks] scale-to-0 gitops push failed for ${stack.slug}:`,
+      err
+    )
+  }
+
+  return { gitopsScaled, argocdSynced }
+}
+
 // ─── Suspend (scale to 0) ─────────────────────────────────────────────────────
 
 /**
@@ -277,6 +523,12 @@ export async function adminSuspendStack(
   })
   if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
 
+  if (stack.status === StackStatus.TERMINATED) {
+    throw new Error(
+      `ALREADY_TERMINATED: Stack ${stackId} is already terminated`
+    )
+  }
+
   const { gitopsConfig, argocdConfig } =
     await resolveGitOpsAndArgoConfig(stackId)
 
@@ -284,215 +536,14 @@ export async function adminSuspendStack(
   let argocdSynced = false
 
   if (gitopsConfig) {
-    try {
-      const cluster = await resolveAppHostingClusterForStack(stackId)
-
-      let imageRepository: string
-      let imageTag: string
-      if (stack.sourceType === "TEMPLATE") {
-        const resolved = await resolveTemplateImageReference(stack)
-        imageRepository = resolved.imageRepository
-        imageTag = resolved.imageTag
-      } else {
-        let registryHost = "registry-apac.pfnapp.com"
-        let registryNamespace: string | undefined
-        try {
-          const reg = await resolveClusterIntegration(stackId, "REGISTRY")
-          registryHost = reg.host
-          registryNamespace = reg.namespace ?? undefined
-        } catch {
-          // fallback defaults
-        }
-        imageRepository = registryNamespace
-          ? `${registryHost}/${registryNamespace}/${stack.slug}`
-          : `${registryHost}/${stack.slug}`
-        const latestDeploy = stack.deployments[0]
-        imageTag = latestDeploy?.commitSha?.slice(0, 7) || "latest"
-      }
-
-      const { envVars, externalSecretVaultPath } = resolveHelmEnvInputs(
-        stack.envVarsJson
-      )
-      const edge = await loadPersistedEdgePolicy(stackId, stack.slug)
-
-      const resolvedDomain =
-        stack.customDomain ??
-        (cluster.managedBaseDomain
-          ? `${stack.slug}.${cluster.managedBaseDomain}`
-          : null)
-
-      const stackMeta =
-        stack.metadataJson && typeof stack.metadataJson === "object"
-          ? (stack.metadataJson as Record<string, unknown>)
-          : null
-      const templateBlueprint =
-        (stack.template?.blueprintJson as Record<string, unknown> | null) ??
-        null
-      const blueprintStorage =
-        templateBlueprint && typeof templateBlueprint.storage === "object"
-          ? (templateBlueprint.storage as Record<string, unknown>)
-          : null
-      const blueprintRuntime =
-        templateBlueprint && typeof templateBlueprint.runtime === "object"
-          ? (templateBlueprint.runtime as Record<string, unknown>)
-          : null
-
-      const runtimePort =
-        (typeof stackMeta?.defaultPort === "number"
-          ? (stackMeta.defaultPort as number)
-          : null) ??
-        (typeof blueprintRuntime?.defaultPort === "number"
-          ? blueprintRuntime.defaultPort
-          : 80)
-
-      const resolvedFsGroup =
-        typeof stackMeta?.fsGroup === "number"
-          ? (stackMeta.fsGroup as number)
-          : typeof blueprintStorage?.fsGroup === "number"
-            ? (blueprintStorage.fsGroup as number)
-            : typeof blueprintRuntime?.fsGroup === "number"
-              ? (blueprintRuntime.fsGroup as number)
-              : undefined
-
-      const storagePath =
-        typeof blueprintStorage?.path === "string"
-          ? (blueprintStorage.path as string)
-          : typeof blueprintStorage?.mountPath === "string"
-            ? (blueprintStorage.mountPath as string)
-            : "/data"
-
-      const storageConfig =
-        blueprintStorage && blueprintStorage.enabled === true
-          ? {
-              enabled: true,
-              path: storagePath,
-              mountPath: storagePath,
-              size:
-                typeof blueprintStorage.sizeGbDefault === "number"
-                  ? `${blueprintStorage.sizeGbDefault}Gi`
-                  : "5Gi",
-              storageClass: cluster.storageClass,
-              accessMode: "ReadWriteOnce" as const,
-              fsGroup: resolvedFsGroup,
-              mounts: resolveStorageMounts(blueprintStorage.mounts),
-            }
-          : null
-
-      const { livenessProbe, readinessProbe, startupProbe } =
-        resolveStackProbes({ stackMeta, blueprintRuntime, runtimePort })
-      const command = Array.isArray(blueprintRuntime?.command)
-        ? (blueprintRuntime.command as string[])
-        : Array.isArray(stackMeta?.command)
-          ? (stackMeta.command as string[])
-          : undefined
-      const args = Array.isArray(blueprintRuntime?.args)
-        ? (blueprintRuntime.args as string[])
-        : Array.isArray(stackMeta?.args)
-          ? (stackMeta.args as string[])
-          : undefined
-
-      // Build values with replicas = 0 (scale to zero)
-      const values = buildHelmValues({
-        slug: stack.slug,
-        imageRepository,
-        imageTag,
-        command,
-        args,
-        containerPort: runtimePort,
-        servicePort: runtimePort,
-        env: envVars,
-        replicas: 0,
-        cpu: stack.cpu,
-        memory: stack.memory,
-        domain: resolvedDomain,
-        edge,
-        externalSecretVaultPath,
-        storage: storageConfig,
-        nodeSelector: cluster.nodeSelector,
-        tolerations: cluster.tolerations,
-        deploymentType: getStackDeploymentType(stack.metadataJson),
-        additionalContainerPorts: getStackAdditionalPorts(stack.metadataJson),
-        reloader: true,
-        logging: true,
-        runAsNonRoot: blueprintRuntime?.runAsNonRoot !== false,
-        fsGroup: resolvedFsGroup,
-        livenessProbe,
-        readinessProbe,
-        startupProbe,
-      })
-
-      const { valuePath, helmPath, argocdProjectPath, appSlug, namespace } =
-        resolveGitOpsManifestPaths({
-          slug: stack.slug,
-          organizationId: stack.organizationId,
-          basePath: gitopsConfig.basePath,
-        })
-
-      const repo = gitopsConfig.repo.replace(/\.git$/, "")
-      const gitopsRepoUrl =
-        repo.startsWith("http://") || repo.startsWith("https://")
-          ? `${repo}.git`
-          : `https://github.com/${repo}.git`
-
-      const argocdProjectYaml = buildArgoCdProjectManifest({
-        appSlug,
-        repoUrl: gitopsRepoUrl,
-        branch: gitopsConfig.branch,
-        servicesPath: resolveGitOpsManifestPaths({
-          slug: stack.slug,
-          organizationId: stack.organizationId,
-          basePath: gitopsConfig.basePath,
-        }).appServicesDir,
-        namespace,
-      })
-
-      const helmYaml = buildHelmApplicationManifest({
-        appName: stack.slug,
-        gitopsRepoUrl,
-        branch: gitopsConfig.branch,
-        valueFilePath: valuePath,
-        namespace,
-        ...(argocdConfig?.chartVersion
-          ? { chartVersion: argocdConfig.chartVersion }
-          : {}),
-        ...(argocdConfig?.chartRepo
-          ? { chartRepoUrl: argocdConfig.chartRepo }
-          : {}),
-      })
-
-      const valuesYaml = jsYaml.dump(values, {
-        indent: 2,
-        lineWidth: -1,
-        noRefs: true,
-      })
-
-      const gitops = new GitOpsRepositoryService({
-        pat: gitopsConfig.pat,
-        branch: gitopsConfig.branch,
-      })
-
-      await gitops.commitFiles(
-        gitopsConfig.repo,
-        `Suspend ${stack.slug} (scale to 0)`,
-        [
-          { path: valuePath, content: valuesYaml },
-          { path: helmPath, content: helmYaml },
-          { path: argocdProjectPath, content: argocdProjectYaml },
-        ]
-      )
-
-      gitopsPushed = true
-
-      if (argocdConfig) {
-        await triggerArgoCdSync(argocdConfig, stack.slug)
-        argocdSynced = true
-      }
-    } catch (err) {
-      console.error(
-        `[admin-stacks] suspend gitops push failed for ${stack.slug}:`,
-        err
-      )
-    }
+    const result = await scaleToZeroViaGitOps(
+      stack,
+      gitopsConfig,
+      argocdConfig,
+      `Suspend ${stack.slug} (scale to 0)`
+    )
+    gitopsPushed = result.gitopsScaled
+    argocdSynced = result.argocdSynced
   }
 
   // Always persist the suspended flag in DB regardless of gitops outcome
@@ -514,20 +565,91 @@ export async function adminSuspendStack(
   return { gitopsPushed, argocdSynced }
 }
 
-// ─── Terminate (full removal) ─────────────────────────────────────────────────
+// ─── Terminate (soft-delete: scale to 0, schedule purge in 30 days) ──────────
 
 /**
- * Admin terminate — full removal:
- *   1. Deletes GitOps manifest files (value.yml, helm.yml, argocd Application file,
- *      entire services-yaml/{tenant}/{slug}/ directory) via git commit
- *   2. Calls ArgoCD DELETE /api/v1/applications/:name?cascade=true so the
- *      resources-finalizer tears down all K8s workloads, services, ingresses etc.
- *   3. Releases managed DB stock (Vault KV cleanup)
- *   4. Deletes the ApplicationStack record from the database
+ * Admin terminate — soft-delete with 30-day purge window:
+ *   1. Scales deployment to 0 via GitOps (same as suspend, different commit msg)
+ *   2. Triggers ArgoCD sync
+ *   3. Sets status=TERMINATED, terminatedAt=now, scheduledPurgeAt=now+30d in DB
  *
- * Steps 1-3 are non-fatal: a failure logs a warning but does not prevent DB deletion.
+ * Does NOT delete GitOps manifests, DB record, or release managed stock.
+ * Those happen in adminPurgeTerminatedStack (cron job at day 30).
  */
 export async function adminDeleteStack(stackId: string): Promise<{
+  gitopsScaled: boolean
+  argocdSynced: boolean
+  scheduledPurgeAt: string
+}> {
+  const stack = await prisma.applicationStack.findUnique({
+    where: { id: stackId },
+    include: {
+      template: true,
+      deployments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  })
+  if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
+
+  if (stack.status === StackStatus.TERMINATED) {
+    throw new Error(
+      `ALREADY_TERMINATED: Stack ${stack.slug} is already terminated`
+    )
+  }
+
+  const { gitopsConfig, argocdConfig } =
+    await resolveGitOpsAndArgoConfig(stackId)
+
+  const purgeAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+  let gitopsScaled = false
+  let argocdSynced = false
+
+  if (gitopsConfig) {
+    const result = await scaleToZeroViaGitOps(
+      stack,
+      gitopsConfig,
+      argocdConfig,
+      `Terminate ${stack.slug} (scale to 0, purge scheduled for ${purgeAt.toISOString()})`
+    )
+    gitopsScaled = result.gitopsScaled
+    argocdSynced = result.argocdSynced
+  }
+
+  // ALWAYS update the DB regardless of gitops outcome
+  const currentMeta =
+    typeof stack.metadataJson === "object" && stack.metadataJson !== null
+      ? (stack.metadataJson as Record<string, unknown>)
+      : {}
+  await prisma.applicationStack.update({
+    where: { id: stackId },
+    data: {
+      status: StackStatus.TERMINATED,
+      terminatedAt: new Date(),
+      scheduledPurgeAt: purgeAt,
+      metadataJson: {
+        ...currentMeta,
+        terminated: true,
+        terminatedAt: new Date().toISOString(),
+        scheduledPurgeAt: purgeAt.toISOString(),
+      },
+    },
+  })
+
+  return { gitopsScaled, argocdSynced, scheduledPurgeAt: purgeAt.toISOString() }
+}
+
+// ─── Purge (hard-delete: called by cron at day 30) ───────────────────────────
+
+/**
+ * Admin purge — hard-delete of a previously TERMINATED stack:
+ *   1. Deletes GitOps manifests (serviceDir, helmPath, valuePath, argocdProjectPath)
+ *   2. Triggers ArgoCD cascade delete
+ *   3. Releases managed stock (Vault KV cleanup)
+ *   4. Hard-deletes the DB record
+ *
+ * Called by the terminated-stack-purge cron worker once scheduledPurgeAt has passed.
+ */
+export async function adminPurgeTerminatedStack(stackId: string): Promise<{
   gitopsDeleted: boolean
   argocdDeleted: boolean
   stockReleased: boolean
@@ -536,6 +658,10 @@ export async function adminDeleteStack(stackId: string): Promise<{
     where: { id: stackId },
   })
   if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
+
+  if (stack.status !== StackStatus.TERMINATED) {
+    throw new Error(`NOT_TERMINATED: Stack ${stack.slug} is not terminated`)
+  }
 
   const { gitopsConfig, argocdConfig } =
     await resolveGitOpsAndArgoConfig(stackId)
@@ -562,7 +688,7 @@ export async function adminDeleteStack(stackId: string): Promise<{
       // Delete service directory tree + helm manifest + argocd application file
       await gitops.commitFiles(
         gitopsConfig.repo,
-        `Terminate ${stack.name} (${stack.slug})`,
+        `Purge ${stack.name} (${stack.slug}) — 30-day retention expired`,
         [],
         [serviceDir, helmPath, valuePath, argocdProjectPath]
       )

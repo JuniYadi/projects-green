@@ -42,6 +42,7 @@ const STATUS_TONES: Record<string, string> = {
   DEPLOYING: "border-sky-500/20 bg-sky-500/10 text-sky-500",
   QUEUED: "border-amber-500/20 bg-amber-500/10 text-amber-500",
   STOPPED: "border-border bg-muted/40 text-muted-foreground",
+  TERMINATED: "border-border bg-muted/40 text-muted-foreground",
 }
 
 const STATUS_LABELS = (
@@ -54,6 +55,7 @@ const STATUS_LABELS = (
   QUEUED: messages.statusQueued,
   FAILED: messages.statusFailed,
   STOPPED: messages.statusStopped,
+  TERMINATED: messages.statusTerminated,
 })
 
 const STATUS_FILTERS = [
@@ -64,6 +66,7 @@ const STATUS_FILTERS = [
   "QUEUED",
   "FAILED",
   "STOPPED",
+  "TERMINATED",
 ] as const
 
 export default function AdminStacksPage() {
@@ -215,7 +218,7 @@ export default function AdminStacksPage() {
         throw new Error(messages.terminateFailed)
       }
       toast.success(
-        messages.terminateSuccess.replace("{stack}", deleteTarget.slug)
+        messages.terminateScheduledPurge.replace("{stack}", deleteTarget.slug)
       )
       setReloadTick((v) => v + 1)
     } catch (err) {
@@ -225,6 +228,8 @@ export default function AdminStacksPage() {
       setDeleteTarget(null)
     }
   }
+
+  const nowMs = new Date().getTime()
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -447,6 +452,24 @@ export default function AdminStacksPage() {
                         {messages.suspendedLabel}
                       </div>
                     )}
+                    {stack.status === "TERMINATED" &&
+                      stack.scheduledPurgeAt && (
+                        <div className="mt-0.5 text-[10px] font-semibold text-rose-400">
+                          {messages.purgedLabel.replace(
+                            "{days}",
+                            String(
+                              Math.max(
+                                0,
+                                Math.ceil(
+                                  (new Date(stack.scheduledPurgeAt).getTime() -
+                                    nowMs) /
+                                    86400000
+                                )
+                              )
+                            )
+                          )}
+                        </div>
+                      )}
                     {stack.billingState && stack.billingState !== "ACTIVE" && (
                       <div className="mt-0.5 text-[10px] text-amber-500">
                         {stack.billingState}
@@ -501,28 +524,31 @@ export default function AdminStacksPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      {stack.status !== "STOPPED" && (
+                      {stack.status !== "STOPPED" &&
+                        stack.status !== "TERMINATED" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={actionLoading === stack.id}
+                            onClick={() => setSuspendTarget(stack)}
+                            className="h-7 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700"
+                          >
+                            <PauseCircle className="size-3.5" />
+                            {messages.suspend}
+                          </Button>
+                        )}
+                      {stack.status !== "TERMINATED" && (
                         <Button
                           variant="outline"
                           size="sm"
                           disabled={actionLoading === stack.id}
-                          onClick={() => setSuspendTarget(stack)}
-                          className="h-7 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700"
+                          onClick={() => setDeleteTarget(stack)}
+                          className="h-7 gap-1 px-2 text-xs text-rose-600 hover:text-rose-700"
                         >
-                          <PauseCircle className="size-3.5" />
-                          {messages.suspend}
+                          <Trash className="size-3.5" />
+                          {messages.terminate}
                         </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={actionLoading === stack.id}
-                        onClick={() => setDeleteTarget(stack)}
-                        className="h-7 gap-1 px-2 text-xs text-rose-600 hover:text-rose-700"
-                      >
-                        <Trash className="size-3.5" />
-                        {messages.terminate}
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>

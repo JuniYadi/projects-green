@@ -10,6 +10,7 @@ import type {
   listAdminStacks,
   adminSuspendStack,
   adminDeleteStack,
+  adminPurgeTerminatedStack,
 } from "@/modules/deploy/admin-stacks.service"
 
 mock.module("server-only", () => ({}))
@@ -27,6 +28,7 @@ type GuardFn = typeof requireSuperAdmin
 type ListStacksFn = typeof listAdminStacks
 type SuspendStackFn = typeof adminSuspendStack
 type DeleteStackFn = typeof adminDeleteStack
+type PurgeStackFn = typeof adminPurgeTerminatedStack
 
 const mockStack: AdminStackDTO = {
   id: "stack_1",
@@ -50,6 +52,8 @@ const mockStack: AdminStackDTO = {
   updatedAt: "2026-09-01T10:00:00.000Z",
   lastDeployedAt: "2026-09-01T10:00:00.000Z",
   deploymentsCount: 3,
+  terminatedAt: null,
+  scheduledPurgeAt: null,
 }
 
 const mockListAdminStacks = mock(async () => ({
@@ -66,6 +70,12 @@ const mockSuspendStack = mock(async () => ({
 }))
 
 const mockDeleteStack = mock(async () => ({
+  gitopsScaled: true,
+  argocdSynced: true,
+  scheduledPurgeAt: "2026-10-23T00:00:00.000Z",
+}))
+
+const mockPurgeStack = mock(async () => ({
   gitopsDeleted: true,
   argocdDeleted: true,
   stockReleased: true,
@@ -83,6 +93,7 @@ beforeEach(() => {
   mockListAdminStacks.mockClear()
   mockSuspendStack.mockClear()
   mockDeleteStack.mockClear()
+  mockPurgeStack.mockClear()
   mockGuard.mockClear()
   mockGuard.mockResolvedValue({
     ok: true,
@@ -98,6 +109,7 @@ function makeApp() {
       listAdminStacks: mockListAdminStacks as unknown as ListStacksFn,
       adminSuspendStack: mockSuspendStack as unknown as SuspendStackFn,
       adminDeleteStack: mockDeleteStack as unknown as DeleteStackFn,
+      adminPurgeTerminatedStack: mockPurgeStack as unknown as PurgeStackFn,
     })
   )
 }
@@ -253,7 +265,7 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     expect(body.error).toBe("UNAUTHORIZED")
   })
 
-  it("terminates stack and returns result with accurate flags", async () => {
+  it("terminates stack (soft-delete) and returns scheduledPurgeAt", async () => {
     const res = await makeApp().handle(
       new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
         method: "DELETE",
@@ -263,24 +275,26 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     expect(res.status).toBe(200)
     const body = (await res.json()) as {
       ok: boolean
+      message: string
       data: {
-        gitopsDeleted: boolean
-        argocdDeleted: boolean
-        stockReleased: boolean
+        gitopsScaled: boolean
+        argocdSynced: boolean
+        scheduledPurgeAt: string
       }
     }
     expect(body.ok).toBe(true)
-    expect(body.data.gitopsDeleted).toBe(true)
-    expect(body.data.argocdDeleted).toBe(true)
-    expect(body.data.stockReleased).toBe(true)
+    expect(body.message).toContain("marked for termination")
+    expect(body.message).toContain("30 days")
+    expect(body.data.gitopsScaled).toBe(true)
+    expect(body.data.scheduledPurgeAt).toBe("2026-10-23T00:00:00.000Z")
     expect(mockDeleteStack).toHaveBeenCalledWith("stack_1")
   })
 
-  it("returns accurate flags when argocd delete fails", async () => {
+  it("returns accurate flags when gitops scale fails", async () => {
     mockDeleteStack.mockResolvedValueOnce({
-      gitopsDeleted: true,
-      argocdDeleted: false,
-      stockReleased: true,
+      gitopsScaled: false,
+      argocdSynced: false,
+      scheduledPurgeAt: "2026-10-23T00:00:00.000Z",
     })
 
     const res = await makeApp().handle(
@@ -292,10 +306,10 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     expect(res.status).toBe(200)
     const body = (await res.json()) as {
       ok: boolean
-      data: { argocdDeleted: boolean }
+      data: { gitopsScaled: boolean }
     }
     expect(body.ok).toBe(true)
-    expect(body.data.argocdDeleted).toBe(false)
+    expect(body.data.gitopsScaled).toBe(false)
   })
 
   it("returns 404 when stack not found", async () => {
@@ -313,6 +327,100 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     const body = (await res.json()) as { ok: boolean; error: string }
     expect(body.ok).toBe(false)
     expect(body.error).toBe("NOT_FOUND")
+  })
+
+  it("returns 409 when stack is already terminated", async () => {
+    mockDeleteStack.mockRejectedValueOnce(
+      new Error("ALREADY_TERMINATED: Stack landing-web is already terminated")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ALREADY_TERMINATED")
+  })
+})
+
+describe("POST /admin/app-hosting/stacks/:id/purge", () => {
+  it("returns 401 when unauthenticated", async () => {
+    mockGuard.mockResolvedValueOnce({
+      ok: false,
+      error: "UNAUTHORIZED",
+      message: "Authentication required",
+    })
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/purge", {
+        method: "POST",
+      })
+    )
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("UNAUTHORIZED")
+  })
+
+  it("purges stack and returns result", async () => {
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/purge", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      message: string
+      data: {
+        gitopsDeleted: boolean
+        argocdDeleted: boolean
+        stockReleased: boolean
+      }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.message).toBe("Stack purged")
+    expect(body.data.gitopsDeleted).toBe(true)
+    expect(body.data.stockReleased).toBe(true)
+    expect(mockPurgeStack).toHaveBeenCalledWith("stack_1")
+  })
+
+  it("returns 404 when stack not found", async () => {
+    mockPurgeStack.mockRejectedValueOnce(
+      new Error("NOT_FOUND: Stack stack_x not found")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_x/purge", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(404)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("NOT_FOUND")
+  })
+
+  it("returns 409 when stack is not in TERMINATED state", async () => {
+    mockPurgeStack.mockRejectedValueOnce(
+      new Error("NOT_TERMINATED: Stack landing-web is not terminated")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/purge", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("NOT_TERMINATED")
   })
 })
 

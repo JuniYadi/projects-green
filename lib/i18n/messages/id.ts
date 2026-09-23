@@ -4884,10 +4884,15 @@ export const idMessages: AppMessages = {
           "Stack {stack} ditandai suspended tapi GitOps push gagal — runtime mungkin belum scale down",
         terminateTitle: "Terminasi App Stack",
         terminateDescription:
-          "Ini akan menghapus permanen data stack {stack} dan melepas managed database. Chart ArgoCD/Helm akan dihapus pada rekonsiliasi berikutnya. Tindakan ini tidak dapat dibatalkan.",
+          "Stack {stack} akan di-scale-to-0 sekarang. Semua data (deployment, log, env var) disimpan 30 hari untuk audit, lalu dihapus permanen. Tindakan ini tidak dapat dibatalkan.",
         terminateConfirm: "Terminasi",
-        terminateSuccess: "Stack {stack} berhasil diterminasi dan dihapus",
+        terminateSuccess:
+          "Stack {stack} diterminasi. Infrastruktur di-scale ke 0. Purge data dijadwalkan dalam 30 hari.",
         terminateFailed: "Gagal menterminasi stack",
+        terminateScheduledPurge:
+          "Stack {stack} dijadwalkan untuk terminasi. Data akan dihapus permanen dalam 30 hari.",
+        statusTerminated: "Diterminasi",
+        purgedLabel: "PURGE DALAM {days}h",
       },
       clusters: {
         tabs: {

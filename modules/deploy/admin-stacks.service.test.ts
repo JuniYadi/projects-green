@@ -31,13 +31,12 @@ const mockStackRecord = {
 
 const mockPrisma = {
   applicationStack: {
-     
     count: mock(async (..._args: any[]) => 1 as number),
-     
+
     findMany: mock(async (..._args: any[]) => [mockStackRecord] as any[]),
-     
+
     findUnique: mock(async (..._args: any[]) => mockStackRecord as any),
-     
+
     update: mock(
       async (..._args: any[]) =>
         ({
@@ -45,7 +44,7 @@ const mockPrisma = {
           metadataJson: { suspended: true },
         }) as any
     ),
-     
+
     delete: mock(async (..._args: any[]) => mockStackRecord as any),
   },
 }
@@ -66,14 +65,12 @@ const mockReleaseManagedStock = mock(async () => undefined)
 
 // ─── Cluster integration mock ─────────────────────────────────────────────────
 
- 
 const mockResolveClusterIntegration: ReturnType<
   typeof mock<(...args: any[]) => any>
 > = mock(async (..._args: unknown[]) => {
   throw new Error("No integration configured")
 })
 
- 
 const mockResolveAppHostingClusterForStack: ReturnType<
   typeof mock<(...args: any[]) => any>
 > = mock(async (..._args: unknown[]) => {
@@ -472,6 +469,7 @@ describe("adminSuspendStack", () => {
 describe("adminDeleteStack", () => {
   beforeEach(() => {
     mockPrisma.applicationStack.findUnique.mockClear()
+    mockPrisma.applicationStack.update.mockClear()
     mockPrisma.applicationStack.delete.mockClear()
     mockResolveClusterIntegration.mockClear()
     mockResolveAppHostingClusterForStack.mockClear()
@@ -481,6 +479,10 @@ describe("adminDeleteStack", () => {
     mockPrisma.applicationStack.findUnique.mockImplementation(
       async () => mockStackRecord
     )
+    mockPrisma.applicationStack.update.mockImplementation(async () => ({
+      ...mockStackRecord,
+      status: "TERMINATED",
+    }))
     mockPrisma.applicationStack.delete.mockImplementation(
       async () => mockStackRecord
     )
@@ -500,33 +502,42 @@ describe("adminDeleteStack", () => {
     await expect(adminDeleteStack("stack_1")).rejects.toThrow("NOT_FOUND")
   })
 
-  it("deletes DB record and releases stock when no gitops configured", async () => {
-    const result = await adminDeleteStack("stack_1")
+  it("throws ALREADY_TERMINATED when stack is already terminated", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
+      ...mockStackRecord,
+      status: "TERMINATED",
+    }))
 
-    expect(mockReleaseManagedStock).toHaveBeenCalledWith("stack_1")
-    expect(mockPrisma.applicationStack.delete).toHaveBeenCalledWith({
-      where: { id: "stack_1" },
-    })
-    expect(result.stockReleased).toBe(true)
-    expect(result.gitopsDeleted).toBe(false)
-    expect(result.argocdDeleted).toBe(false)
+    await expect(adminDeleteStack("stack_1")).rejects.toThrow(
+      "ALREADY_TERMINATED"
+    )
   })
 
-  it("sets stockReleased=false when releaseManagedStock throws", async () => {
-    mockReleaseManagedStock.mockImplementation(async () => {
-      throw new Error("Vault cleanup failed")
-    })
-
+  it("soft-deletes: updates DB with TERMINATED status and scheduledPurgeAt", async () => {
     const result = await adminDeleteStack("stack_1")
 
-    expect(result.stockReleased).toBe(false)
-    expect(mockPrisma.applicationStack.delete).toHaveBeenCalledWith({
-      where: { id: "stack_1" },
-    })
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack_1" },
+        data: expect.objectContaining({
+          status: "TERMINATED",
+          terminatedAt: expect.any(Date),
+          scheduledPurgeAt: expect.any(Date),
+        }),
+      })
+    )
+    expect(result.scheduledPurgeAt).toBeDefined()
+    expect(result.gitopsScaled).toBe(false)
+    expect(result.argocdSynced).toBe(false)
+    // Should NOT hard-delete the record
+    expect(mockPrisma.applicationStack.delete).not.toHaveBeenCalled()
+    // Should NOT release stock
+    expect(mockReleaseManagedStock).not.toHaveBeenCalled()
   })
 
-  it("deletes gitops manifests when gitops configured", async () => {
+  it("scales to 0 via gitops when gitops configured", async () => {
     const gitopsConfig = makeMockGitOpsConfig()
+    const cluster = makeMockCluster()
 
     mockResolveClusterIntegration.mockImplementation(
       async (_stackId: string, type: string) => {
@@ -534,76 +545,15 @@ describe("adminDeleteStack", () => {
         throw new Error("No integration configured")
       }
     )
+    mockResolveAppHostingClusterForStack.mockImplementation(async () => cluster)
 
     const result = await adminDeleteStack("stack_1")
 
     expect(mockCommitFiles).toHaveBeenCalledWith(
       gitopsConfig.repo,
-      expect.any(String),
-      [],
-      expect.arrayContaining(["svc/dir"])
+      expect.stringContaining("Terminate"),
+      expect.any(Array)
     )
-    expect(result.gitopsDeleted).toBe(true)
-  })
-
-  it("calls ArgoCD delete and returns argocdDeleted=true when argocd configured", async () => {
-    const argocdConfig = {
-      apiUrl: "https://argocd.example.com",
-      token: "argocd-token",
-      project: "default",
-      appNamespace: "argocd",
-      webhookSecret: null,
-      chartRepo: null,
-      chartVersion: null,
-    }
-
-    mockResolveClusterIntegration.mockImplementation(
-      async (_stackId: string, type: string) => {
-        if (type === "ARGOCD") return argocdConfig
-        throw new Error("No integration configured")
-      }
-    )
-
-    // Mock fetch for ArgoCD DELETE
-    const mockFetch = mock(async () => ({ ok: true, status: 200 }))
-    globalThis.fetch = mockFetch as unknown as typeof fetch
-
-    const result = await adminDeleteStack("stack_1")
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("api/v1/applications/landing-web"),
-      expect.objectContaining({ method: "DELETE" })
-    )
-    expect(result.argocdDeleted).toBe(true)
-  })
-
-  it("returns argocdDeleted=false when ArgoCD delete returns non-200", async () => {
-    const argocdConfig = {
-      apiUrl: "https://argocd.example.com",
-      token: "argocd-token",
-      project: "default",
-      appNamespace: "argocd",
-      webhookSecret: null,
-      chartRepo: null,
-      chartVersion: null,
-    }
-
-    mockResolveClusterIntegration.mockImplementation(
-      async (_stackId: string, type: string) => {
-        if (type === "ARGOCD") return argocdConfig
-        throw new Error("No integration configured")
-      }
-    )
-
-    // Mock fetch returning 500
-    globalThis.fetch = mock(async () => ({
-      ok: false,
-      status: 500,
-      text: async () => "Internal Server Error",
-    })) as unknown as typeof fetch
-
-    const result = await adminDeleteStack("stack_1")
-
-    expect(result.argocdDeleted).toBe(false)
+    expect(result.gitopsScaled).toBe(true)
   })
 })
