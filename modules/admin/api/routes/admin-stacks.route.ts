@@ -241,7 +241,7 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
           const slug = params.id
           return {
             ok: true as const,
-            message: `Stack ${slug} marked for termination. Infrastructure will be scaled to 0 immediately. Data will be purged in 30 days.`,
+            message: `Stack ${slug} terminated immediately in GitOps. Record retained in database.`,
             data: result,
           }
         } catch (error) {

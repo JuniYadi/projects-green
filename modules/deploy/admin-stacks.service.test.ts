@@ -867,29 +867,7 @@ describe("adminDeleteStack", () => {
     )
   })
 
-  it("soft-deletes: updates DB with TERMINATED status and scheduledPurgeAt", async () => {
-    const result = await adminDeleteStack("stack_1")
-
-    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "stack_1" },
-        data: expect.objectContaining({
-          status: "TERMINATED",
-          terminatedAt: expect.any(Date),
-          scheduledPurgeAt: expect.any(Date),
-        }),
-      })
-    )
-    expect(result.scheduledPurgeAt).toBeDefined()
-    expect(result.gitopsScaled).toBe(false)
-    expect(result.argocdSynced).toBe(false)
-    // Should NOT hard-delete the record
-    expect(mockPrisma.applicationStack.delete).not.toHaveBeenCalled()
-    // Should NOT release stock
-    expect(mockReleaseManagedStock).not.toHaveBeenCalled()
-  })
-
-  it("scales to 0 via gitops when gitops configured", async () => {
+  it("terminates: deletes manifests in GitOps, releases stock, and retains DB record", async () => {
     const gitopsConfig = makeMockGitOpsConfig()
     const cluster = makeMockCluster()
 
@@ -906,8 +884,41 @@ describe("adminDeleteStack", () => {
     expect(mockCommitFiles).toHaveBeenCalledWith(
       gitopsConfig.repo,
       expect.stringContaining("Terminate"),
+      [],
       expect.any(Array)
     )
-    expect(result.gitopsScaled).toBe(true)
+    expect(mockReleaseManagedStock).toHaveBeenCalledWith("stack_1")
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack_1" },
+        data: expect.objectContaining({
+          status: "TERMINATED",
+          terminatedAt: expect.any(Date),
+          scheduledPurgeAt: null,
+        }),
+      })
+    )
+    expect(result.gitopsDeleted).toBe(true)
+    expect(result.stockReleased).toBe(true)
+    // Should NOT hard-delete the record from database
+    expect(mockPrisma.applicationStack.delete).not.toHaveBeenCalled()
+  })
+
+  it("updates DB with TERMINATED status even when GitOps is not configured", async () => {
+    const result = await adminDeleteStack("stack_1")
+
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack_1" },
+        data: expect.objectContaining({
+          status: "TERMINATED",
+          terminatedAt: expect.any(Date),
+          scheduledPurgeAt: null,
+        }),
+      })
+    )
+    expect(result.gitopsDeleted).toBe(false)
+    expect(result.stockReleased).toBe(true)
+    expect(mockPrisma.applicationStack.delete).not.toHaveBeenCalled()
   })
 })

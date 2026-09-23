@@ -9,7 +9,7 @@ import {
   Database,
   Storefront,
   RocketLaunchIcon,
-  SquaresFour,
+  Package,
 } from "@/components/ui/phosphor-icons"
 export default function PortalApplicationsPage() {
   const params = useParams<{ lang?: string }>()
@@ -110,7 +110,7 @@ export default function PortalApplicationsPage() {
                   locale,
                 })}
               >
-                <SquaresFour size={14} className="mr-1" />
+                <Package size={14} className="mr-1" />
                 {messages.stacksAction}
               </Link>
             </Button>

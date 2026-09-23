@@ -888,21 +888,21 @@ export async function adminDeployStack(stackId: string): Promise<{
   }
 }
 
-// ─── Terminate (soft-delete: scale to 0, schedule purge in 30 days) ──────────
+// ─── Terminate (immediate gitops delete, keep record in DB) ───────────────────
 
 /**
- * Admin terminate — soft-delete with 30-day purge window:
- *   1. Scales deployment to 0 via GitOps (same as suspend, different commit msg)
- *   2. Triggers ArgoCD sync
- *   3. Sets status=TERMINATED, terminatedAt=now, scheduledPurgeAt=now+30d in DB
+ * Admin terminate — deletes GitOps resources immediately, but keeps DB record:
+ *   1. Deletes GitOps manifests (serviceDir, helmPath, valuePath, argocdProjectPath)
+ *   2. Triggers ArgoCD cascade delete
+ *   3. Releases managed DB stock (Vault KV cleanup)
+ *   4. Sets status=TERMINATED, terminatedAt=now, scheduledPurgeAt=null in DB
  *
- * Does NOT delete GitOps manifests, DB record, or release managed stock.
- * Those happen in adminPurgeTerminatedStack (cron job at day 30).
+ * Keeps ApplicationStack record and its history in database for audit and tracking.
  */
 export async function adminDeleteStack(stackId: string): Promise<{
-  gitopsScaled: boolean
-  argocdSynced: boolean
-  scheduledPurgeAt: string
+  gitopsDeleted: boolean
+  argocdDeleted: boolean
+  stockReleased: boolean
 }> {
   const stack = await prisma.applicationStack.findUnique({
     where: { id: stackId },
@@ -922,23 +922,59 @@ export async function adminDeleteStack(stackId: string): Promise<{
   const { gitopsConfig, argocdConfig } =
     await resolveGitOpsAndArgoConfig(stackId)
 
-  const purgeAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  let gitopsDeleted = false
+  let argocdDeleted = false
+  let stockReleased = false
 
-  let gitopsScaled = false
-  let argocdSynced = false
-
+  // 1. Delete GitOps manifests immediately
   if (gitopsConfig) {
-    const result = await scaleToZeroViaGitOps(
-      stack,
-      gitopsConfig,
-      argocdConfig,
-      `Terminate ${stack.slug} (scale to 0, purge scheduled for ${purgeAt.toISOString()})`
-    )
-    gitopsScaled = result.gitopsScaled
-    argocdSynced = result.argocdSynced
+    try {
+      const { serviceDir, helmPath, valuePath, argocdProjectPath } =
+        resolveGitOpsManifestPaths({
+          slug: stack.slug,
+          organizationId: stack.organizationId,
+          basePath: gitopsConfig.basePath,
+        })
+
+      const gitops = new GitOpsRepositoryService({
+        pat: gitopsConfig.pat,
+        branch: gitopsConfig.branch,
+      })
+
+      await gitops.commitFiles(
+        gitopsConfig.repo,
+        `Terminate ${stack.name} (${stack.slug}) — removed from GitOps`,
+        [],
+        [serviceDir, helmPath, valuePath, argocdProjectPath]
+      )
+
+      gitopsDeleted = true
+    } catch (err) {
+      console.warn(
+        `[admin-stacks] gitops delete failed during terminate for ${stack.slug}:`,
+        err
+      )
+    }
   }
 
-  // ALWAYS update the DB regardless of gitops outcome
+  // 2. Delete ArgoCD Application (cascade=true triggers resources-finalizer)
+  if (argocdConfig) {
+    argocdDeleted = await deleteArgoCdApplication(argocdConfig, stack.slug)
+  }
+
+  // 3. Release managed DB stock (frees Vault KV secret)
+  await releaseManagedStock(stackId)
+    .then(() => {
+      stockReleased = true
+    })
+    .catch((err) => {
+      console.warn(
+        `[admin-stacks] releaseManagedStock failed for ${stackId}:`,
+        err
+      )
+    })
+
+  // 4. Update the DB: mark as TERMINATED, clear scheduledPurgeAt, KEEP record in DB
   const currentMeta =
     typeof stack.metadataJson === "object" && stack.metadataJson !== null
       ? (stack.metadataJson as Record<string, unknown>)
@@ -948,17 +984,16 @@ export async function adminDeleteStack(stackId: string): Promise<{
     data: {
       status: StackStatus.TERMINATED,
       terminatedAt: new Date(),
-      scheduledPurgeAt: purgeAt,
+      scheduledPurgeAt: null,
       metadataJson: {
         ...currentMeta,
         terminated: true,
         terminatedAt: new Date().toISOString(),
-        scheduledPurgeAt: purgeAt.toISOString(),
       },
     },
   })
 
-  return { gitopsScaled, argocdSynced, scheduledPurgeAt: purgeAt.toISOString() }
+  return { gitopsDeleted, argocdDeleted, stockReleased }
 }
 
 // ─── Purge (hard-delete: called by cron at day 30) ───────────────────────────

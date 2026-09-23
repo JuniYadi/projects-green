@@ -189,7 +189,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Overview",
       "Deployments",
-      "Stacks",
+      "Platforms",
       "Clusters",
       "Templates",
       "Managed Stocks",

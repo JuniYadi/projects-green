@@ -4401,6 +4401,8 @@ export type AppMessages = {
         tableResources: string
         tableCreated: string
         tableAction: string
+        columns: string
+        toggleColumns: string
         replicas: string
         loading: string
         empty: string
