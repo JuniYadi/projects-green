@@ -19,6 +19,7 @@ import {
   buildMetaTemplateComponents,
   normalizeTemplateButtons,
   validateTemplateButtons,
+  validateTemplateSlug,
 } from "../template-validator"
 
 const isSuperAdmin = (auth: ResolvedAuth) =>
@@ -683,6 +684,17 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           message: "A WhatsApp device is required to create a template.",
         }
       }
+
+      const slugValidation = validateTemplateSlug(slug)
+      if (!slugValidation.isValid) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "INVALID_SLUG",
+          message: slugValidation.error ?? "Invalid template slug.",
+        }
+      }
+
       // Validate buttons on each language variant
       if (Array.isArray(rawLanguages)) {
         for (const lang of rawLanguages) {

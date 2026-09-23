@@ -834,6 +834,40 @@ describe("templatesRoutes", () => {
       expect(res.status).toBe(422)
     })
 
+    it("rejects creation if slug starts with a number", async () => {
+      const app = createTestApp()
+
+      const body = {
+        slug: "5_stok_kritis",
+        name: "5 Stok Kritis",
+        whatsappDeviceId: "dev-123",
+        category: "UTILITY",
+        languages: [
+          {
+            lang: "id",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Halo {{1}}, stok kritis.",
+            footer: "",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const data = await res.json()
+      expect(data.error).toBe("INVALID_SLUG")
+      expect(data.message).toContain("Slug cannot start with a number")
+    })
+
     it("rejects creation if device is not found or not active", async () => {
       mockDeviceFindFirst.mockResolvedValueOnce(null as any)
       const app = createTestApp()
