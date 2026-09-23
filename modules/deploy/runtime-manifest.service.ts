@@ -1,4 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import fs from "node:fs"
+import path from "node:path"
 import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
@@ -18,7 +20,10 @@ export const RuntimeTunableSchema = z.object({
   key: z.string().trim().min(1),
   label: z.string().trim().min(1),
   type: z.enum(["bytes_string", "string", "number", "select", "boolean"]),
-  default: z.union([z.string(), z.number(), z.boolean()]),
+  default: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  required: z.boolean().optional(),
+  example: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  safe: z.boolean().optional(),
   category: z.string().optional(),
   description: z.string().default(""),
   troubleshooting: z.string().default(""),
@@ -66,6 +71,7 @@ export const RuntimeManifestSchema = z.object({
     }),
   }),
   tunables: z.array(RuntimeTunableSchema).default([]),
+  notes: z.string().optional(),
 })
 
 export type RuntimeManifestInput = z.infer<typeof RuntimeManifestSchema>
@@ -168,6 +174,42 @@ export class RuntimeManifestService {
     return results
   }
 
+  private getBaseImageDirs(): string[] {
+    return [
+      process.env.BASE_IMAGE_PATH,
+      path.resolve(process.cwd(), "../base-image"),
+      path.resolve(process.cwd(), "../../base-image"),
+    ].filter(Boolean) as string[]
+  }
+
+  findLocalBaseImageManifest(frameworkId: string): unknown | null {
+    const norm = frameworkId.toLowerCase().trim()
+    const candidates = this.getBaseImageDirs()
+
+    const possibleRel = [
+      `patches/${norm}/runtime-manifest.json`,
+      `patches/${norm}-agent/runtime-manifest.json`,
+      `patches/${norm.replace(/-agent$/, "")}/runtime-manifest.json`,
+      `patches/${norm}-fpm/runtime-manifest.json`,
+    ]
+
+    for (const baseDir of candidates) {
+      if (!fs.existsSync(baseDir)) continue
+      for (const rel of possibleRel) {
+        const full = path.join(baseDir, rel)
+        if (fs.existsSync(full)) {
+          try {
+            const content = fs.readFileSync(full, "utf8")
+            return JSON.parse(content)
+          } catch {
+            // Ignore parse errors on disk
+          }
+        }
+      }
+    }
+    return null
+  }
+
   async getRuntimeManifest(
     frameworkId?: string | null
   ): Promise<RuntimeManifestDTO> {
@@ -182,7 +224,24 @@ export class RuntimeManifestService {
         return toRuntimeManifestDTO(found.manifestJson)
       }
     } catch {
-      // Fall through to local contract fallback
+      // Fall through to local base-image or platform contract fallback
+    }
+
+    try {
+      const localManifest = this.findLocalBaseImageManifest(
+        frameworkId || normalized
+      )
+      if (localManifest) {
+        const validated = RuntimeManifestSchema.safeParse(localManifest)
+        if (validated.success) {
+          await this.upsertManifest(validated.data).catch((e) =>
+            console.warn("manifest upsert failed", e)
+          )
+          return toRuntimeManifestDTO(validated.data)
+        }
+      }
+    } catch {
+      // Fall through to fallback
     }
 
     return createFallbackManifest(normalized)

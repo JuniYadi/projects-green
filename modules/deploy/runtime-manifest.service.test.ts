@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import type { PrismaClient } from "@prisma/client"
+import fs from "node:fs"
+import os from "node:os"
+import path from "node:path"
 
 import {
   RuntimeManifestService,
@@ -220,5 +223,123 @@ describe("RuntimeManifestService", () => {
     expect(record.manifest.baseImage).toBe(
       "ghcr.io/pfnapp/base/frameworks/laravel:php8.4-alpine"
     )
+  })
+
+  it("finds local base-image manifests when not present in DB", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "base-image-test-"))
+    const patchDir = path.join(tmpDir, "patches", "hermes-agent")
+    fs.mkdirSync(patchDir, { recursive: true })
+
+    const hermesManifest = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      runtime: "hermes-agent",
+      framework: "Hermes Agent",
+      version: "1.0",
+      baseImage: "ghcr.io/pfnapp/hermes-agent:v2026.9.14",
+      ports: { default: 9119, protocol: "HTTP" },
+      security: { runAsUser: 10001, runAsGroup: 10001, readOnlyRoot: false },
+      probes: {
+        liveness: { path: "/healthz", port: 9119 },
+        readiness: { path: "/healthz", port: 9119 },
+      },
+      tunables: [
+        {
+          key: "HERMES_DASHBOARD_BASIC_AUTH_SECRET",
+          label: "Hermes Secret",
+          type: "string",
+          required: false,
+        },
+      ],
+    }
+    fs.writeFileSync(
+      path.join(patchDir, "runtime-manifest.json"),
+      JSON.stringify(hermesManifest)
+    )
+
+    const origEnv = process.env.BASE_IMAGE_PATH
+    try {
+      process.env.BASE_IMAGE_PATH = tmpDir
+      const manifest = await service.getRuntimeManifest("hermes-agent")
+      expect(manifest.runtime).toBe("hermes-agent")
+      expect(manifest.ports.default).toBe(9119)
+      expect(
+        manifest.tunables.some(
+          (t) => t.key === "HERMES_DASHBOARD_BASIC_AUTH_SECRET"
+        )
+      ).toBe(true)
+      expect(mockDb.appRuntimeManifest.upsert).toHaveBeenCalled()
+    } finally {
+      process.env.BASE_IMAGE_PATH = origEnv
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it("warns and returns local manifest when DB upsert fails", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "base-image-test-"))
+    const patchDir = path.join(tmpDir, "patches", "hermes-agent")
+    fs.mkdirSync(patchDir, { recursive: true })
+
+    const hermesManifest = {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      runtime: "hermes-agent",
+      framework: "Hermes Agent",
+      version: "1.0",
+      baseImage: "ghcr.io/pfnapp/hermes-agent:v2026.9.14",
+      ports: { default: 9119, protocol: "HTTP" },
+      security: { runAsUser: 10001, runAsGroup: 10001, readOnlyRoot: false },
+      probes: {
+        liveness: { path: "/healthz", port: 9119 },
+        readiness: { path: "/healthz", port: 9119 },
+      },
+      tunables: [],
+    }
+    fs.writeFileSync(
+      path.join(patchDir, "runtime-manifest.json"),
+      JSON.stringify(hermesManifest)
+    )
+
+    mockDb.appRuntimeManifest.upsert.mockRejectedValueOnce(
+      new Error("DB disk full")
+    )
+    const warnSpy = mock(() => {})
+    const origWarn = console.warn
+    console.warn = warnSpy as unknown as typeof console.warn
+
+    const origEnv = process.env.BASE_IMAGE_PATH
+    try {
+      process.env.BASE_IMAGE_PATH = tmpDir
+      const manifest = await service.getRuntimeManifest("hermes-agent")
+      expect(manifest.runtime).toBe("hermes-agent")
+      expect(manifest.ports.default).toBe(9119)
+      expect(warnSpy).toHaveBeenCalledWith(
+        "manifest upsert failed",
+        expect.any(Error)
+      )
+    } finally {
+      console.warn = origWarn
+      process.env.BASE_IMAGE_PATH = origEnv
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it("handles corrupted or unparseable local manifest gracefully", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "base-image-test-"))
+    const patchDir = path.join(tmpDir, "patches", "broken-agent")
+    fs.mkdirSync(patchDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(patchDir, "runtime-manifest.json"),
+      "{ invalid json here ... "
+    )
+
+    const origEnv = process.env.BASE_IMAGE_PATH
+    try {
+      process.env.BASE_IMAGE_PATH = tmpDir
+      const manifest = await service.getRuntimeManifest("broken-agent")
+      expect(manifest.runtime).toBe("broken-agent")
+      expect(manifest.ports.default).toBe(8080)
+    } finally {
+      process.env.BASE_IMAGE_PATH = origEnv
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
   })
 })

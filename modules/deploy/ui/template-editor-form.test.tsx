@@ -193,4 +193,127 @@ describe("TemplateEditorForm", () => {
     ])
     expect(payload?.blueprintJson?.runtime?.args).toEqual(["--verbose"])
   })
+
+  it("renders More Actions dropdown and Sync from Runtime Manifest button", async () => {
+    const onSave = mock(async () => {})
+    const { getByText } = render(
+      <TemplateEditorForm
+        isNew={false}
+        initialData={{
+          id: "tmpl-hermes",
+          name: "Hermes Agent",
+          slug: "hermes",
+          tagline: "Autonomous AI agent gateway",
+          description: "Gateway router",
+          readmeMarkdown: "# Hermes",
+          category: "AI",
+          visibility: "PUBLIC",
+          version: "1.0.0",
+          isOfficial: true,
+          isFeatured: true,
+          currency: "USD",
+          installCount: 10,
+          reviewNotes: null,
+          verifiedAt: null,
+          priceMonthly: "0",
+          blueprintJson: {
+            version: "1.0.0",
+            runtime: {
+              image: "ghcr.io/pfnapp/hermes-agent:v2026.9.14",
+              defaultPort: 8642,
+            },
+            resources: {
+              defaultCpu: 500,
+              defaultMemory: 512,
+            },
+            envSchema: [],
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }}
+        onSave={onSave}
+      />
+    )
+
+    expect(getByText("More Actions")).toBeTruthy()
+    expect(getByText("Save Changes")).toBeTruthy()
+
+    // Switch to Env Schema tab
+    await userEvent.click(getByText("Env Schema"))
+    expect(getByText("Sync from Runtime Manifest")).toBeTruthy()
+  })
+
+  it("syncs environment variables from runtime manifest on button click", async () => {
+    const origFetch = global.fetch
+    global.fetch = mock(
+      async () =>
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              framework: "Hermes",
+              tunables: [
+                {
+                  key: "HERMES_SYNCED_KEY",
+                  label: "Hermes Key",
+                  type: "string",
+                  default: "test-value",
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+    ) as unknown as typeof fetch
+
+    try {
+      const onSave = mock(async () => {})
+      const { getByText, findByDisplayValue } = render(
+        <TemplateEditorForm
+          isNew={false}
+          initialData={{
+            id: "tmpl-hermes",
+            name: "Hermes Agent",
+            slug: "hermes",
+            tagline: "Autonomous AI agent gateway",
+            description: "Gateway router",
+            readmeMarkdown: "# Hermes",
+            category: "AI",
+            visibility: "PUBLIC",
+            version: "1.0.0",
+            isOfficial: true,
+            isFeatured: true,
+            currency: "USD",
+            installCount: 10,
+            reviewNotes: null,
+            verifiedAt: null,
+            priceMonthly: "0",
+            blueprintJson: {
+              version: "1.0.0",
+              runtime: {
+                image: "ghcr.io/pfnapp/hermes-agent:v2026.9.14",
+                defaultPort: 8642,
+              },
+              resources: {
+                defaultCpu: 500,
+                defaultMemory: 512,
+              },
+              envSchema: [],
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }}
+          onSave={onSave}
+        />
+      )
+
+      await userEvent.click(getByText("Env Schema"))
+      const syncBtn = getByText("Sync from Runtime Manifest")
+      await userEvent.click(syncBtn)
+
+      expect(await findByDisplayValue("HERMES_SYNCED_KEY")).toBeTruthy()
+    } finally {
+      global.fetch = origFetch
+    }
+  })
 })
