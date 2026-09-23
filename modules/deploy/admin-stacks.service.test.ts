@@ -860,7 +860,11 @@ describe("adminDeleteStack", () => {
     mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
       ...mockStackRecord,
       status: "TERMINATED",
-      metadataJson: { gitopsDeleted: true },
+      metadataJson: {
+        gitopsDeleted: true,
+        argocdDeleted: true,
+        stockReleased: true,
+      },
     }))
 
     await expect(adminDeleteStack("stack_1")).rejects.toThrow(
@@ -868,14 +872,18 @@ describe("adminDeleteStack", () => {
     )
   })
 
-  it("allows re-terminating a TERMINATED stack when gitopsDeleted is false", async () => {
+  it("allows re-terminating a TERMINATED stack when cleanup was incomplete", async () => {
     const gitopsConfig = makeMockGitOpsConfig()
     const cluster = makeMockCluster()
 
     mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
       ...mockStackRecord,
       status: "TERMINATED",
-      metadataJson: { gitopsDeleted: false },
+      metadataJson: {
+        gitopsDeleted: true,
+        argocdDeleted: false,
+        stockReleased: false,
+      },
     }))
 
     mockResolveClusterIntegration.mockImplementation(
@@ -888,6 +896,7 @@ describe("adminDeleteStack", () => {
 
     const result = await adminDeleteStack("stack_1")
     expect(result.gitopsDeleted).toBe(true)
+    expect(result.stockReleased).toBe(true)
     expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
   })
 

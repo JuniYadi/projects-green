@@ -187,7 +187,13 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
       gitopsCleanedUp: Boolean(
         typeof s.metadataJson === "object" &&
         s.metadataJson !== null &&
-        (s.metadataJson as Record<string, unknown>).gitopsDeleted
+        (s.metadataJson as Record<string, unknown>).gitopsDeleted &&
+        Boolean(
+          (s.metadataJson as Record<string, unknown>).argocdDeleted ?? true
+        ) &&
+        Boolean(
+          (s.metadataJson as Record<string, unknown>).stockReleased ?? true
+        )
       ),
     }
   })
@@ -924,10 +930,12 @@ export async function adminDeleteStack(stackId: string): Promise<{
       ? (stack.metadataJson as Record<string, unknown>)
       : {}
 
-  if (
-    stack.status === StackStatus.TERMINATED &&
-    Boolean(currentMeta.gitopsDeleted)
-  ) {
+  const isFullyCleanedUp =
+    Boolean(currentMeta.gitopsDeleted) &&
+    Boolean(currentMeta.argocdDeleted ?? true) &&
+    Boolean(currentMeta.stockReleased ?? true)
+
+  if (stack.status === StackStatus.TERMINATED && isFullyCleanedUp) {
     throw new Error(
       `ALREADY_TERMINATED: Stack ${stack.slug} is already terminated and cleaned up`
     )
@@ -936,77 +944,84 @@ export async function adminDeleteStack(stackId: string): Promise<{
   const { gitopsConfig, argocdConfig } =
     await resolveGitOpsAndArgoConfig(stackId)
 
-  if (!gitopsConfig) {
+  if (!gitopsConfig && !currentMeta.gitopsDeleted) {
     throw new Error(
       `CONFIG_MISSING: GitOps configuration unavailable for stack ${stack.slug}. Configure cluster GitOps integration before terminating.`
     )
   }
 
-  let gitopsDeleted = false
-  let argocdDeleted = false
-  let stockReleased = false
+  let gitopsDeleted = Boolean(currentMeta.gitopsDeleted)
+  let argocdDeleted = Boolean(currentMeta.argocdDeleted ?? !argocdConfig)
+  let stockReleased = Boolean(currentMeta.stockReleased)
 
-  // 1. Delete GitOps manifests immediately
-  try {
-    const { serviceDir, helmPath, valuePath, argocdProjectPath } =
-      resolveGitOpsManifestPaths({
-        slug: stack.slug,
-        organizationId: stack.organizationId,
-        basePath: gitopsConfig.basePath,
+  // 1. Delete GitOps manifests immediately if not already deleted
+  if (!gitopsDeleted && gitopsConfig) {
+    try {
+      const { serviceDir, helmPath, valuePath, argocdProjectPath } =
+        resolveGitOpsManifestPaths({
+          slug: stack.slug,
+          organizationId: stack.organizationId,
+          basePath: gitopsConfig.basePath,
+        })
+
+      const gitops = new GitOpsRepositoryService({
+        pat: gitopsConfig.pat,
+        branch: gitopsConfig.branch,
       })
 
-    const gitops = new GitOpsRepositoryService({
-      pat: gitopsConfig.pat,
-      branch: gitopsConfig.branch,
-    })
+      await gitops.commitFiles(
+        gitopsConfig.repo,
+        `Terminate ${stack.name} (${stack.slug}) — removed from GitOps`,
+        [],
+        [serviceDir, helmPath, valuePath, argocdProjectPath]
+      )
 
-    await gitops.commitFiles(
-      gitopsConfig.repo,
-      `Terminate ${stack.name} (${stack.slug}) — removed from GitOps`,
-      [],
-      [serviceDir, helmPath, valuePath, argocdProjectPath]
-    )
-
-    gitopsDeleted = true
-  } catch (err) {
-    console.error(
-      `[admin-stacks] gitops delete failed during terminate for ${stack.slug}:`,
-      err
-    )
-    throw new Error(
-      `GITOPS_DELETE_FAILED: Failed to delete GitOps manifests for ${stack.slug}: ${err instanceof Error ? err.message : String(err)}`
-    )
+      gitopsDeleted = true
+    } catch (err) {
+      console.error(
+        `[admin-stacks] gitops delete failed during terminate for ${stack.slug}:`,
+        err
+      )
+      throw new Error(
+        `GITOPS_DELETE_FAILED: Failed to delete GitOps manifests for ${stack.slug}: ${err instanceof Error ? err.message : String(err)}`
+      )
+    }
   }
 
-  // 2. Delete ArgoCD Application (cascade=true triggers resources-finalizer)
-  if (argocdConfig) {
+  // 2. Delete ArgoCD Application if not already deleted
+  if (argocdConfig && !argocdDeleted) {
     argocdDeleted = await deleteArgoCdApplication(argocdConfig, stack.slug)
   }
 
-  // 3. Release managed DB stock (frees Vault KV secret)
-  await releaseManagedStock(stackId)
-    .then(() => {
-      stockReleased = true
-    })
-    .catch((err) => {
-      console.warn(
-        `[admin-stacks] releaseManagedStock failed for ${stackId}:`,
-        err
-      )
-    })
+  // 3. Release managed DB stock if not already released
+  if (!stockReleased) {
+    await releaseManagedStock(stackId)
+      .then(() => {
+        stockReleased = true
+      })
+      .catch((err) => {
+        console.warn(
+          `[admin-stacks] releaseManagedStock failed for ${stackId}:`,
+          err
+        )
+      })
+  }
 
   // 4. Update the DB: mark as TERMINATED, clear scheduledPurgeAt, KEEP record in DB
   await prisma.applicationStack.update({
     where: { id: stackId },
     data: {
       status: StackStatus.TERMINATED,
-      terminatedAt: new Date(),
+      terminatedAt: stack.terminatedAt ?? new Date(),
       scheduledPurgeAt: null,
       metadataJson: {
         ...currentMeta,
         terminated: true,
-        terminatedAt: new Date().toISOString(),
-        gitopsDeleted: true,
+        terminatedAt:
+          typeof currentMeta.terminatedAt === "string"
+            ? currentMeta.terminatedAt
+            : new Date().toISOString(),
+        gitopsDeleted,
         argocdDeleted,
         stockReleased,
       },
