@@ -1442,7 +1442,7 @@ export function TemplateForm({
                             {isWhatsAppUrl(btn.url) && (
                               <p className="flex items-center gap-1 text-[11px] text-destructive">
                                 <WarningCircle className="size-3.5 shrink-0" />
-                                {locale === "id"
+                                {uiLocale === "id"
                                   ? "Meta melarang link WhatsApp (wa.me) di tombol URL. Gunakan tombol Phone Number."
                                   : "Meta prohibits WhatsApp links (wa.me) in URL buttons. Use a Phone Number button."}
                               </p>
