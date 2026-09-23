@@ -33,10 +33,12 @@ import {
   MagnifyingGlass,
   PauseCircle,
   PlayCircle,
+  Play,
   Trash,
 } from "@phosphor-icons/react"
 
 const STATUS_TONES: Record<string, string> = {
+  IDLE: "border-border bg-muted/40 text-muted-foreground",
   RUNNING: "border-emerald-500/20 bg-emerald-500/10 text-emerald-500",
   FAILED: "border-rose-500/20 bg-rose-500/10 text-rose-500",
   BUILDING: "border-sky-500/20 bg-sky-500/10 text-sky-500",
@@ -50,6 +52,7 @@ const STATUS_LABELS = (
   messages: ReturnType<typeof getMessages>["console"]["app"]["adminStacks"]
 ): Record<string, string> => ({
   ALL: messages.statusAll,
+  IDLE: messages.statusIdle,
   RUNNING: messages.statusRunning,
   BUILDING: messages.statusBuilding,
   DEPLOYING: messages.statusDeploying,
@@ -61,6 +64,7 @@ const STATUS_LABELS = (
 
 const STATUS_FILTERS = [
   "ALL",
+  "IDLE",
   "RUNNING",
   "BUILDING",
   "DEPLOYING",
@@ -101,6 +105,7 @@ export default function AdminStacksPage() {
 
   const [suspendTarget, setSuspendTarget] = useState<AdminStackDTO | null>(null)
   const [resumeTarget, setResumeTarget] = useState<AdminStackDTO | null>(null)
+  const [deployTarget, setDeployTarget] = useState<AdminStackDTO | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminStackDTO | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
@@ -234,6 +239,34 @@ export default function AdminStacksPage() {
       toast.error(err instanceof Error ? err.message : messages.resumeFailed)
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  const handleDeploy = async () => {
+    if (!deployTarget) return
+    setActionLoading(deployTarget.id)
+    try {
+      const { data: res } = await eden.api.admin["app-hosting"].stacks[
+        deployTarget.id
+      ].deploy.post({})
+      if (!res || !res.ok) {
+        throw new Error(
+          messages.deployFailed.replace("{stack}", deployTarget.slug)
+        )
+      }
+      toast.success(
+        messages.deploySuccess.replace("{stack}", deployTarget.slug)
+      )
+      setReloadTick((v) => v + 1)
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : messages.deployFailed.replace("{stack}", deployTarget.slug)
+      )
+    } finally {
+      setActionLoading(null)
+      setDeployTarget(null)
     }
   }
 
@@ -578,6 +611,20 @@ export default function AdminStacksPage() {
                             {messages.suspend}
                           </Button>
                         ))}
+                      {stack.status !== "TERMINATED" &&
+                        (stack.status === "IDLE" ||
+                          stack.status === "FAILED") && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={actionLoading === stack.id}
+                            onClick={() => setDeployTarget(stack)}
+                            className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                          >
+                            <Play className="size-3.5" />
+                            {messages.deploy}
+                          </Button>
+                        )}
                       {stack.status !== "TERMINATED" && (
                         <Button
                           variant="outline"
@@ -648,6 +695,33 @@ export default function AdminStacksPage() {
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               {messages.resumeConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Deploy Confirm Dialog */}
+      <AlertDialog
+        open={!!deployTarget}
+        onOpenChange={(open) => !open && setDeployTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{messages.deployTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {messages.deployDescription.replace(
+                "{stack}",
+                deployTarget?.slug ?? ""
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{messages.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeploy}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {messages.deployConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
