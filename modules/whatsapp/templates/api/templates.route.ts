@@ -1,9 +1,10 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import type {
-  Prisma,
-  WhatsappBillingCategory,
-  WhatsappTemplateSyncStatus,
+import {
+  WhatsappTemplateMetaStatus,
+  type Prisma,
+  type WhatsappBillingCategory,
+  type WhatsappTemplateSyncStatus,
 } from "@prisma/client"
 import {
   resolveAuthContext,
@@ -816,6 +817,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
 
             let latestMetaStatus: WhatsappTemplateSyncStatus = "NOT_SYNCED"
             let metaStatusValue: any = null
+            let hasPushFailure = false
 
             for (const lang of template.languages) {
               let components: Array<Record<string, unknown>> | undefined
@@ -850,18 +852,29 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                   },
                 })
               } catch (langErr: unknown) {
+                hasPushFailure = true
                 const metaErr =
                   langErr instanceof MetaCloudError ? langErr : null
+                const rejectReason =
+                  metaErr?.message ??
+                  (langErr instanceof Error ? langErr.message : String(langErr))
+
+                await prisma.whatsappTemplateLanguage.update({
+                  where: { id: lang.id },
+                  data: {
+                    metaStatus: WhatsappTemplateMetaStatus.REJECTED,
+                    isApproved: false,
+                    rejectReason,
+                  },
+                })
+
                 await logWhatsappAuditEvent({
                   action: "TEMPLATE_META_CREATE_FAILED",
                   organizationId: template.organizationId,
                   adminId: auth.userId,
                   deviceId: device.id,
                   message: `Failed to push language variant ${lang.lang} to Meta for template ${template.name}`,
-                  errorMessage:
-                    langErr instanceof Error
-                      ? langErr.message
-                      : String(langErr),
+                  errorMessage: rejectReason,
                   status: "FAILED",
                   details: {
                     metaErrorCode: metaErr?.code,
@@ -886,18 +899,53 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                   languages: true,
                 },
               })) as typeof template
+            } else if (hasPushFailure) {
+              finalTemplate = (await prisma.whatsappTemplate.update({
+                where: { id: template.id },
+                data: {
+                  syncStatus: "NOT_SYNCED",
+                  metaStatus: WhatsappTemplateMetaStatus.REJECTED,
+                },
+                include: {
+                  languages: true,
+                },
+              })) as typeof template
             }
           }
         } catch (pushErr) {
+          const pushErrMsg =
+            pushErr instanceof Error ? pushErr.message : String(pushErr)
           await logWhatsappAuditEvent({
             action: "TEMPLATE_META_CREATE_FAILED",
             organizationId: template.organizationId,
             adminId: auth.userId,
             deviceId: device.id,
             message: `Direct push to Meta failed for template ${template.name}`,
-            errorMessage: String(pushErr),
+            errorMessage: pushErrMsg,
             status: "FAILED",
           })
+          if (template.languages && template.languages.length > 0) {
+            for (const lang of template.languages) {
+              await prisma.whatsappTemplateLanguage.update({
+                where: { id: lang.id },
+                data: {
+                  metaStatus: WhatsappTemplateMetaStatus.REJECTED,
+                  isApproved: false,
+                  rejectReason: pushErrMsg,
+                },
+              })
+            }
+            finalTemplate = (await prisma.whatsappTemplate.update({
+              where: { id: template.id },
+              data: {
+                syncStatus: "NOT_SYNCED",
+                metaStatus: WhatsappTemplateMetaStatus.REJECTED,
+              },
+              include: {
+                languages: true,
+              },
+            })) as typeof template
+          }
         }
 
         await logWhatsappAuditEvent({
@@ -1030,9 +1078,17 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           ...safeFields
         } = bodyRecord
 
+        const isRejected = template.metaStatus === "REJECTED"
+
         const updateData = hasLanguages
           ? ({
               ...safeFields,
+              ...(isRejected
+                ? {
+                    syncStatus: "NOT_SYNCED",
+                    metaStatus: null,
+                  }
+                : {}),
               languages: {
                 upsert: (bodyRecord.languages as UpdateLanguage[]).map(
                   (lang) => ({
@@ -1057,12 +1113,27 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                       footer: lang.footer,
                       buttons: (normalizeTemplateButtons(lang.buttons) ??
                         lang.buttons) as Prisma.InputJsonValue,
+                      ...(isRejected
+                        ? {
+                            metaStatus: null,
+                            rejectReason: null,
+                            isApproved: false,
+                          }
+                        : {}),
                     },
                   })
                 ),
               },
             } as Prisma.WhatsappTemplateUpdateInput)
-          : (safeFields as Prisma.WhatsappTemplateUpdateInput)
+          : ({
+              ...safeFields,
+              ...(isRejected
+                ? {
+                    syncStatus: "NOT_SYNCED",
+                    metaStatus: null,
+                  }
+                : {}),
+            } as Prisma.WhatsappTemplateUpdateInput)
 
         const updated = await prisma.whatsappTemplate.update({
           where: { id: params.id },

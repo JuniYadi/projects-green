@@ -247,18 +247,61 @@ describe("template-validator", () => {
       expect(res.errors).toHaveLength(0)
     })
 
-    it("fails when phone number is missing or invalid", () => {
-      const missingRes = validateTemplateButtons([
-        { type: "PHONE_NUMBER", text: "Contact", phoneNumber: "" },
-      ])
-      expect(missingRes.isValid).toBe(false)
-      expect(missingRes.errors[0]).toContain("requires a phone number")
+    it("fails when URL button uses wa.me or whatsapp.com link", () => {
+      const waButtons = [
+        {
+          type: "URL",
+          text: "Wa Admin",
+          url: "https://wa.me/6282133403011",
+        },
+      ]
+      const res = validateTemplateButtons(waButtons)
+      expect(res.isValid).toBe(false)
+      expect(res.errors[0]).toContain("Meta prohibits WhatsApp links")
 
-      const invalidRes = validateTemplateButtons([
-        { type: "PHONE_NUMBER", text: "Contact", phoneNumber: "invalid_phone" },
+      const apiWaButtons = [
+        {
+          type: "URL",
+          text: "Chat Admin",
+          url: "https://api.whatsapp.com/send?phone=6282133403011",
+        },
+      ]
+      const res2 = validateTemplateButtons(apiWaButtons)
+      expect(res2.isValid).toBe(false)
+      expect(res2.errors[0]).toContain("Meta prohibits WhatsApp links")
+    })
+
+    it("fails when URL button is missing or lacks protocol", () => {
+      const emptyUrlRes = validateTemplateButtons([
+        { type: "URL", text: "Visit", url: "" },
       ])
-      expect(invalidRes.isValid).toBe(false)
-      expect(invalidRes.errors[0]).toContain("invalid")
+      expect(emptyUrlRes.isValid).toBe(false)
+      expect(emptyUrlRes.errors[0]).toContain("requires a web URL")
+
+      const noProtoRes = validateTemplateButtons([
+        { type: "URL", text: "Visit", url: "example.com" },
+      ])
+      expect(noProtoRes.isValid).toBe(false)
+      expect(noProtoRes.errors[0]).toContain(
+        "must start with http:// or https://"
+      )
+
+      const longUrl = "https://example.com/" + "a".repeat(2000)
+      const longUrlRes = validateTemplateButtons([
+        { type: "URL", text: "Long", url: longUrl },
+      ])
+      expect(longUrlRes.isValid).toBe(false)
+      expect(longUrlRes.errors[0]).toContain(
+        "exceeds Meta's maximum limit of 2000 characters"
+      )
+
+      const noTextWaRes = validateTemplateButtons([
+        { type: "URL", url: "https://wa.me/628123456" },
+      ])
+      expect(noTextWaRes.isValid).toBe(false)
+      expect(noTextWaRes.errors[0]).toContain(
+        'Button #1 ("URL"): Meta prohibits WhatsApp links'
+      )
     })
   })
 

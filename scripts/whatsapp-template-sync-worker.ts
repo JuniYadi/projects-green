@@ -196,6 +196,8 @@ async function pushLocalTemplatesToMeta(
   organizationId: string,
   deviceId: string
 ) {
+  let failed = 0
+
   // Find templates belonging to this org & device that need to be pushed to Meta
   const unpushedTemplates = await prisma.whatsappTemplate.findMany({
     where: {
@@ -245,6 +247,8 @@ async function pushLocalTemplatesToMeta(
           },
         })
       } catch (err) {
+        failed += 1
+        const rejectReason = err instanceof Error ? err.message : String(err)
         logger.warn(
           {
             event: "whatsapp.template_sync.push_failed",
@@ -254,9 +258,28 @@ async function pushLocalTemplatesToMeta(
           },
           `failed to push template ${tpl.name} (${lang.lang}) to Meta`
         )
+
+        await prisma.whatsappTemplateLanguage.update({
+          where: { id: lang.id },
+          data: {
+            metaStatus: WhatsappTemplateMetaStatus.REJECTED,
+            isApproved: false,
+            rejectReason,
+          },
+        })
+
+        await prisma.whatsappTemplate.update({
+          where: { id: tpl.id },
+          data: {
+            syncStatus: WhatsappTemplateSyncStatus.NOT_SYNCED,
+            metaStatus: WhatsappTemplateMetaStatus.REJECTED,
+          },
+        })
       }
     }
   }
+
+  return failed
 }
 
 async function upsertTemplate(
@@ -356,11 +379,12 @@ export async function syncTemplates(
   // must also produce a FAILED audit to close the trace
   let client: WhatsAppDeviceClient
   let templates: MetaTemplate[]
+  let pushFailed = 0
 
   try {
     client = await createClient(jobData)
     // 1. Push local un-synced / newly created templates to Meta Cloud API
-    await pushLocalTemplatesToMeta(
+    pushFailed = await pushLocalTemplatesToMeta(
       client,
       jobData.organizationId,
       jobData.deviceId
@@ -402,7 +426,7 @@ export async function syncTemplates(
     updated: 0,
     skipped: 0,
     notInMeta: 0,
-    failed: 0,
+    failed: pushFailed,
   }
 
   const device = await prisma.whatsappDevice.findFirst({
@@ -462,7 +486,7 @@ export async function syncTemplates(
           new Set(templates.flatMap((t) => possibleSlugsFor(t.name)))
         ),
       },
-      syncStatus: { not: WhatsappTemplateSyncStatus.NOT_IN_META },
+      syncStatus: WhatsappTemplateSyncStatus.SYNCED,
     },
     data: {
       syncStatus: WhatsappTemplateSyncStatus.NOT_IN_META,

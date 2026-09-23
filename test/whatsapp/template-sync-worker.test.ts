@@ -390,4 +390,60 @@ describe("whatsapp-template-sync-worker", () => {
       })
     )
   })
+
+  it("marks template as REJECTED and saves rejectReason when push to Meta fails", async () => {
+    mockPrisma.whatsappTemplate.findMany.mockResolvedValueOnce([
+      {
+        id: "tpl_local_fail",
+        name: "Failed Template",
+        slug: "failed_template",
+        category: "UTILITY",
+        languages: [
+          {
+            id: "lang_fail_1",
+            lang: "id",
+            headerType: "NONE",
+            body: "Invalid template body",
+            footer: null,
+            buttons: null,
+          },
+        ],
+      },
+    ] as any)
+    createTemplateMock.mockRejectedValueOnce(
+      new Error("Invalid parameter: Meta rejected")
+    )
+    listTemplatesPageMock.mockResolvedValue({
+      data: [],
+    })
+
+    await expect(
+      syncTemplates({
+        organizationId: "org_1",
+        deviceId: "device_1",
+        method: "sync-templates",
+      })
+    ).rejects.toThrow("Template sync partially failed")
+
+    expect(mockPrisma.whatsappTemplateLanguage.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "lang_fail_1" },
+        data: expect.objectContaining({
+          metaStatus: "REJECTED",
+          isApproved: false,
+          rejectReason: "Invalid parameter: Meta rejected",
+        }),
+      })
+    )
+
+    expect(mockPrisma.whatsappTemplate.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "tpl_local_fail" },
+        data: expect.objectContaining({
+          syncStatus: "NOT_SYNCED",
+          metaStatus: "REJECTED",
+        }),
+      })
+    )
+  })
 })
